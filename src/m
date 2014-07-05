@@ -1,1 +1,5 @@
-git push https://github.com/jl777/pNXT; make
+git pull https://github.com/jl777/pNXT
+cd daemon
+clang -D FROM_pNXT -c test-server.c
+cd ..
+make
