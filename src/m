@@ -1,5 +1,5 @@
 git pull https://github.com/jl777/pNXT
 cd daemon
-clang -D FROM_pNXT -c test-server.c
+clang -c test-server.c
 cd ..
 make
