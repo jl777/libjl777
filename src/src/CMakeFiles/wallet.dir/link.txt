@@ -1,2 +1,3 @@
 /usr/bin/ar cr libwallet.a  CMakeFiles/wallet.dir/wallet/wallet2.cpp.o CMakeFiles/wallet.dir/wallet/wallet_rpc_server.cpp.o
 /usr/bin/ranlib libwallet.a
+cp libwallet.a ~/pNXT
