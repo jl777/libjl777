@@ -1,0 +1,1 @@
+cmake -D BUILD_GUI=TRUE -D CMAKE_PREFIX_PATH=/Users/jimbolaptop/Qt/5.3/clang_64 -D CMAKE_BUILD_TYPE=Release ../..

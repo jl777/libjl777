@@ -1,0 +1,30 @@
+
+slais.sh
+
+As root (or via sudo) type:
+
+sh slais.sh 2>&1 | tee /tmp/slais.log
+
+
+FAQ
+
+Where Squid installed?
+- /opt/squid
+
+Where is the config file?
+- /opt/squid/etc/squid.conf
+
+How launch/status/stop Squid?
+- service squid.slais start
+- service squid.slais status
+- service squid.slais stop
+
+Where is the file with passwords?
+- /opt/squid/etc/passwd
+- Owner nobody, group nogroup
+
+How add a new users?
+- htpasswd /opt/squid/etc/passwd <username>
+
+Standard-Port
+- 3128
