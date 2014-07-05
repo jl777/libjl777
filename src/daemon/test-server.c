@@ -47,17 +47,17 @@
 extern char testforms[1024*1024];
 unsigned char NXTprotocol_parms[4096];
 
-#ifndef __APPLE__
 #define FROM_pNXT
-#endif
+
 
 #ifdef FROM_pNXT
 #include "../../../libwebsockets/lib/libwebsockets.h"
+#include "libwebsocketsglue.h"
 #else
-#include "libwebsockets.h"
+#include "../lib/libwebsockets.h"
+#include "../../libwebsocketsglue.h"
 #endif
 
-#include "libwebsocketsglue.h"
 
 
 static int close_testing;
