@@ -48,8 +48,8 @@ extern char testforms[1024*1024];
 unsigned char NXTprotocol_parms[4096];
 //int32_t get_iDEX_json(unsigned char *buf);
 
-#include "../lib/libwebsockets.h"
-#include "../../NXTservices/libwebsocketsglue.h"
+#include "../../../libwebsockets/lib/libwebsockets.h"
+#include "libwebsocketsglue.h"
 
 
 static int close_testing;

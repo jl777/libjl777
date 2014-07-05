@@ -13,7 +13,7 @@ char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
 
-#include "NXTprotocol.c"
+#include "../../../NXTservices/NXTprotocol.c"
 uv_loop_t *UV_loop;
 
 char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
@@ -31,13 +31,13 @@ char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-#include "InstantDEX/InstantDEX.h"
-#include "multigateway/multigateway.h"
-#include "NXTorrent.h"
-#include "NXTsubatomic.h"
-#include "NXTcoinsco.h"
+#include "../../../NXTservices/InstantDEX/InstantDEX.h"
+#include "../../../NXTservices/multigateway/multigateway.h"
+#include "../../../NXTservices/NXTorrent.h"
+#include "../../../NXTservices/NXTsubatomic.h"
+#include "../../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
-#include "html.h"
+#include "../../../NXTservices/html.h"
 
 #define STUB_SIG 0x99999999
 struct stub_info { char privatdata[10000]; };
