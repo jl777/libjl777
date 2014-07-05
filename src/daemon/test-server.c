@@ -46,9 +46,17 @@
 #define LIBWEBSOCKETS_PORT 7777
 extern char testforms[1024*1024];
 unsigned char NXTprotocol_parms[4096];
-//int32_t get_iDEX_json(unsigned char *buf);
 
+#ifndef __APPLE__
+#define FROM_pNXT
+#endif
+
+#ifdef FROM_pNXT
 #include "../../../libwebsockets/lib/libwebsockets.h"
+#else
+#include "libwebsockets.h"
+#endif
+
 #include "libwebsocketsglue.h"
 
 
@@ -775,7 +783,6 @@ static struct option options[] = {
 	{ NULL, 0, 0, 0 }
 };
 
-#define FROM_pNXT
 #ifdef FROM_pNXT
 int lwsmain(int argc, char **argv)
 #else
