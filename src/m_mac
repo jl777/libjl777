@@ -1,7 +1,7 @@
 #need to get latest NXTservices at ~/NXTservices
 git pull https://github.com/jl777/pNXT
 cmake ..
-clang -c test-server.c
+clang -c -D FROM_pNXT test-server.c
 cd src
 #scp admin1@209.126.71.170:pNXT/src/src/randombytes.o .
 #scp admin1@209.126.71.170:pNXT/src/src/*.a .
