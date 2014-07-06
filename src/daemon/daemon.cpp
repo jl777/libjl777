@@ -56,12 +56,12 @@ extern "C" uint64_t pNXT_height(currency::core *m)
         if ( wallet.open_wallet("wallet.test","password") == 0 )
             wallet.new_wallet("wallet.test","password");
         addr = wallet.get_address(apa);
+        wallet.load_blocks();
+        wallet.show_balance();
         if ( m->get_miner().start(apa,numthreads) == 0 )
         {
             printf("Failed, mining not started for (%s)\n",addr.c_str());
         }
-        wallet.load_blocks();
-        wallet.show_balance();
         printf("core.%p: start mining (%s) balance %.8f %.8f\n",m,addr.c_str(),(double)wallet.get_confbalance()/100000000L,(double)wallet.get_rawbalance()/100000000L);
         didinit = 1;
     }
