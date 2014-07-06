@@ -13,7 +13,7 @@ char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
 
-#include "../../../NXTservices/NXTprotocol.c"
+#include "../../NXTservices/NXTprotocol.c"
 uv_loop_t *UV_loop;
 
 char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
