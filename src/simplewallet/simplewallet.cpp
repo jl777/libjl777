@@ -553,12 +553,12 @@ void simple_wallet::load_blocks()
         m_daemon_port = RPC_DEFAULT_PORT;
     if ( m_daemon_address.empty() != 0 )
         m_daemon_address = std::string("http://") + m_daemon_host + ":" + std::to_string(m_daemon_port);
-    sleep(30);
+   /* sleep(30);
     while ( try_connect_to_daemon() == 0 )
     {
         printf("no connection yet...\n");
         sleep(3);
-    }
+    }*/
     sleep(3);
     m_wallet->init(m_daemon_address);
     //m_wallet->refresh(fetched_blocks);
