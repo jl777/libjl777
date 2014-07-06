@@ -51,7 +51,7 @@ unsigned char NXTprotocol_parms[4096];
 
 
 #ifdef FROM_pNXT
-#include "../../../libwebsockets/lib/libwebsockets.h"
+#include "../../libwebsockets/lib/libwebsockets.h"
 #include "libwebsocketsglue.h"
 #else
 #include "../lib/libwebsockets.h"
