@@ -127,9 +127,9 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #include "utils/cJSON.c"
 #include "utils/bitcoind_RPC.c"
 #include "utils/jsoncodec.h"
-#include "libtom/crypt_argchk.c"
-#include "libtom/sha256.c"
-#include "libtom/rmd160.c"
+//#include "libtom/crypt_argchk.c"
+//#include "libtom/sha256.c"
+//#include "libtom/rmd160.c"
 
 #define ILLEGAL_COIN "ERR"
 #define ILLEGAL_COINASSET "666"
