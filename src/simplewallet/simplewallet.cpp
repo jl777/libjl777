@@ -553,17 +553,22 @@ void simple_wallet::load_blocks()
         m_daemon_port = RPC_DEFAULT_PORT;
     if ( m_daemon_address.empty() != 0 )
         m_daemon_address = std::string("http://") + m_daemon_host + ":" + std::to_string(m_daemon_port);
-   /* sleep(30);
+    m_wallet->init(m_daemon_address);
+    sleep(3);
     while ( try_connect_to_daemon() == 0 )
     {
         printf("no connection yet...\n");
         sleep(3);
-    }*/
-    sleep(3);
-    m_wallet->init(m_daemon_address);
+    }
     //m_wallet->refresh(fetched_blocks);
-    sleep(3);
     idle_time();
+    std::vector<std::string> args;
+    args.reserve(3);
+    args.push_back("1");
+    args.push_back("1HdfddeqDQKUjEsYaWLWWbFY8sTbYQj2z6vNFZrFV7ZgjSMksZX8wnEiXJm4abkkSwaZ1a4kR2sLtRJCmkeTCRjAMshzgfN");
+    //args.push_back("1D7EihZhDtaAxkB8kN1K9VVBkAYA3fCSGWm1FMzSor6pitTJXp6MD1tH51Tuyj5Pq8D47xThf4DzCCvHAuJ31tmdLHZUKjf");
+    args.push_back("0.12345678");
+    transfer(args);
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::show_incoming_transfers(const std::vector<std::string>& args)
@@ -763,6 +768,7 @@ bool simple_wallet::get_transfer_address(const std::string& adr_str, currency::a
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::transfer(const std::vector<std::string> &args_)
 {
+    printf("transfer.(%s %s %s)\n",args_[0].c_str(),args_[1].c_str(),args_[2].c_str());
   if (!try_connect_to_daemon())
     return true;
 
