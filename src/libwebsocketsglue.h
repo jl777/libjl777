@@ -31,13 +31,13 @@ char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-#include "../../../NXTservices/InstantDEX/InstantDEX.h"
-#include "../../../NXTservices/multigateway/multigateway.h"
-#include "../../../NXTservices/NXTorrent.h"
-#include "../../../NXTservices/NXTsubatomic.h"
-#include "../../../NXTservices/NXTcoinsco.h"
+#include "../../NXTservices/InstantDEX/InstantDEX.h"
+#include "../../NXTservices/multigateway/multigateway.h"
+#include "../../NXTservices/NXTorrent.h"
+#include "../../NXTservices/NXTsubatomic.h"
+#include "../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
-#include "../../../NXTservices/html.h"
+#include "../../NXTservices/html.h"
 
 #define STUB_SIG 0x99999999
 struct stub_info { char privatdata[10000]; };
