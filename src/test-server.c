@@ -1036,9 +1036,9 @@ void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
     static void *ptrs[4];
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = cprotocol; ptrs[3] = upnp;
    // printf("init_lws(%p %p %p %p)\n",core,p2p,cprotocol,upnp);
-    if ( portable_thread_create(_init_lws2,ptrs) == 0 )
-        printf("ERROR launching _init_lws2\n");
-    printf("done init_lws2()\n");
+   // if ( portable_thread_create(_init_lws2,ptrs) == 0 )
+   //     printf("ERROR launching _init_lws2\n");
+   // printf("done init_lws2()\n");
     if ( portable_thread_create(_init_lws,ptrs) == 0 )
         printf("ERROR launching _init_lws\n");
     printf("done init_lws()\n");
