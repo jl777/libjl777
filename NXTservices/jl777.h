@@ -293,6 +293,7 @@ struct NXThandler_info
     portable_tcp_t Punch_tcp;
     uv_udp_t Punch_udp;
     uv_connect_t Punch_connect;
+    int32_t waitforloading,initassets;
     int32_t UDPserver,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numPrivacyServers,msigs_processed;
     int32_t numblocks,numforging,timestamps[1000 * 365 * 10];//,timestampfifo[MIN_NXTCONFIRMS*100];
     int32_t isudpserver,istcpserver,corresponding,myind,NXTsync_sock,height,prevheight,hackindex;

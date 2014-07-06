@@ -240,24 +240,11 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             if ( (nxtprotocol= get_NXTprotocol((char *)in)) != 0 )
             {
                 char *retstr;
-                //strncpy(dispstr,(char *)NXTprotocol_parms,sizeof(dispstr)-1);
-                //dispstr[sizeof(dispstr)-1] = 0;
-                //mylen = strlen(dispstr);
-                //sprintf((char *)dispstr,"%s API.(%s) ->\n",(char *)in+1,parms);
-                //libwebsocket_write(wsi,NXTprotocol_parms,strlen((char *)NXTprotocol_parms),LWS_WRITE_HTTP); breaks as only one write seems to be allowed
                 retstr = NXTprotocol_json_handler(nxtprotocol,(char *)NXTprotocol_parms);
                 //printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
                 if ( retstr != 0 )
                 {
-//printf("NXTprotocol %s.(%s) -> (%s)\n",(char *)in,NXTprotocol_parms,retstr);
-                    /*if ( sizeof(dispstr)-mylen-strlen((char *)in)-strlen(retstr)-64 > 0 )
-                    {
-                        strcat((char *)dispstr,(char *)in+1);
-                        strcat((char *)dispstr,"API ->\n");
-                        strcat((char *)dispstr,(char *)retstr);
-                    } else strcpy(dispstr,"dispstr overflowed");*/
                     len = strlen(retstr);
-                    //libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
                     sprintf((char *)buffer,
                             "HTTP/1.0 200 OK\x0d\x0a"
                             "Server: NXTprotocol.jl777\x0d\x0a"
@@ -314,55 +301,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     }
                 }
             }
-            /*if (!strcmp((const char *)in, "/leaf.jpg")) {
-             if (strlen(resource_path) > sizeof(leaf_path) - 10)
-             return -1;
-             sprintf(leaf_path, "%s/leaf.jpg", resource_path);
-             
-             // well, let's demonstrate how to send the hard way
-
-			p = buffer;
-
-#ifdef WIN32
-			pss->fd = open(leaf_path, O_RDONLY | _O_BINARY);
-#else
-			pss->fd = open(leaf_path, O_RDONLY);
-#endif
-
-			if (pss->fd < 0)
-				return -1;
-
-			fstat(pss->fd, &stat_buf);
-
-			//we will send a big jpeg file, but it could be
-			//anything.  Set the Content-Type: appropriately
-			//so the browser knows what to do with it.
-
-			p += sprintf((char *)p,
-				"HTTP/1.0 200 OK\x0d\x0a"
-				"Server: libwebsockets\x0d\x0a"
-				"Content-Type: image/jpeg\x0d\x0a"
-					"Content-Length: %u\x0d\x0a\x0d\x0a",
-					(unsigned int)stat_buf.st_size);
-
-			//send the http headers...
-			//this won't block since it's the first payload sent
-			//on the connection since it was established
-			//(too small for partial)
-
-			n = libwebsocket_write(wsi, buffer,
-				   p - buffer, LWS_WRITE_HTTP);
-
-			if (n < 0) {
-				close(pss->fd);
-				return -1;
-			}
-			//book us a LWS_CALLBACK_HTTP_WRITEABLE callback
-			libwebsocket_callback_on_writable(context, wsi);
-			break;
-		}*/
-
-		// if not, send a file the easy way 
+		// if not, send a file the easy way
 		strcpy(buf, resource_path);
 		if ( strcmp(in, "/") != 0)
         {
@@ -521,11 +460,7 @@ callback_dumb_increment(struct libwebsocket_context *context,
 					       void *user, void *in, size_t len)
 {
 	int32_t n, m;
-    //unsigned char buffer[4096];
-	//unsigned char buf[4096 + LWS_SEND_BUFFER_PRE_PADDING + 512 +LWS_SEND_BUFFER_POST_PADDING];
-	//unsigned char *p = &buf[LWS_SEND_BUFFER_PRE_PADDING];
 	struct per_session_data__dumb_increment *pss = (struct per_session_data__dumb_increment *)user;
-   // char *tmp,*tmp2;
 
 	switch (reason) {
 
@@ -536,14 +471,6 @@ callback_dumb_increment(struct libwebsocket_context *context,
 		break;
   
 	case LWS_CALLBACK_SERVER_WRITEABLE:
-            //tmp = malloc(1000); tmp2 = malloc(1000);
-            //for (i=0; i<999; i++)
-            //    tmp[i]= tmp[i] = '0' + (i%10);
-            //tmp[i] = tmp2[i] = 0;
-		//n = sprintf((char *)p, "{ %s    %d  %s  }.%ld ",tmp, pss->number++,tmp2,sizeof(buf));
-            //free(tmp); free(tmp2);
-            //m = libwebsocket_write(wsi, p, n, LWS_WRITE_TEXT);
-            //printf("dispstr.(%s)\n",(char *)dispstr);
             n = (int)strlen((char *)dispstr);
             if ( n > 0 )
             {
@@ -554,10 +481,6 @@ callback_dumb_increment(struct libwebsocket_context *context,
                     return -1;
                 }
             }
-            /*if ( close_testing && pss->number == 50 ) {
-                lwsl_info("close tesing limit, closing\n");
-                return -1;
-            }*/
             break;
 
 	case LWS_CALLBACK_RECEIVE:
@@ -1030,10 +953,10 @@ void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
 {
     static void *ptrs[4];
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = cprotocol; ptrs[3] = upnp;
-    //printf("init_lws(%p %p %p %p)\n",core,p2p,cprotocol,upnp);
-   //if ( portable_thread_create(_init_lws2,ptrs) == 0 )
-   //     printf("ERROR launching _init_lws2\n");
-   printf("done init_lws2()\n");
+    printf("init_lws(%p %p %p %p)\n",core,p2p,cprotocol,upnp);
+    if ( portable_thread_create(_init_lws2,ptrs) == 0 )
+        printf("ERROR launching _init_lws2\n");
+    printf("done init_lws2()\n");
     if ( portable_thread_create(_init_lws,ptrs) == 0 )
         printf("ERROR launching _init_lws\n");
     printf("done init_lws()\n");

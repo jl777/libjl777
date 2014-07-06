@@ -3,8 +3,7 @@ git pull https://github.com/jl777/pNXT
 cmake ..
 clang -c -D FROM_pNXT test-server.c
 cd src
-#scp admin1@209.126.71.170:pNXT/src/src/randombytes.o .
-#scp admin1@209.126.71.170:pNXT/src/src/*.a .
+unzip ubuntu.zip
 cp CMakeFiles/daemon.dir/link_ubuntu.txt CMakeFiles/daemon.dir/link.txt
 make simplewallet
 make
