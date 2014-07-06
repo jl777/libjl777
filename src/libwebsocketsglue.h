@@ -13,7 +13,7 @@ char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
 
-#include "../../NXTservices/NXTprotocol.c"
+#include "../NXTservices/NXTservices.c"
 uv_loop_t *UV_loop;
 
 char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
@@ -31,13 +31,13 @@ char *changeurl_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-#include "../../NXTservices/InstantDEX/InstantDEX.h"
-#include "../../NXTservices/multigateway/multigateway.h"
-#include "../../NXTservices/NXTorrent.h"
-#include "../../NXTservices/NXTsubatomic.h"
-#include "../../NXTservices/NXTcoinsco.h"
+//#include "../../NXTservices/InstantDEX/InstantDEX.h"
+//#include "../../NXTservices/multigateway/multigateway.h"
+//#include "../../NXTservices/NXTorrent.h"
+//#include "../../NXTservices/NXTsubatomic.h"
+//#include "../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
-#include "../../NXTservices/html.h"
+#include "../NXTservices/html.h"
 
 #define STUB_SIG 0x99999999
 struct stub_info { char privatdata[10000]; };
@@ -108,17 +108,40 @@ void *stub_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     return(dp);
 }
 
+void NXTservices_idler(uv_idle_t *handle)
+{
+    static int64_t nexttime;
+    int32_t process_syncmem_queue();
+    void call_handlers(struct NXThandler_info *mp,int32_t mode,int32_t height);
+    static uint64_t counter;
+    if ( 0 && counter == 0 )
+    {
+        uv_tty_t *init_stdinout(uv_read_cb read_cb);
+        Global_mp->stdoutput = init_stdinout(0);
+        printf("stdinout done\n");
+    }
+    usleep(1000);
+    if ( (counter++ % 1000) == 0 && microseconds() > nexttime )
+    {
+        call_handlers(Global_mp,NXTPROTOCOL_IDLETIME,0);
+        nexttime = (microseconds() + 1000000);
+    }
+    while ( process_syncmem_queue() > 0 )
+        ;
+    process_UDPsend_queue();
+}
+
 void run_UVloop(void *arg)
 {
     uv_idle_t idler;
     uv_idle_init(UV_loop,&idler);
-    uv_idle_start(&idler,NXTprotocol_idler);
+    uv_idle_start(&idler,NXTservices_idler);
     //multicast_test();
     uv_run(UV_loop,UV_RUN_DEFAULT);
     printf("end of uv_run\n");
 }
 
-void run_NXTprotocol(void *arg)
+void run_NXTservices(void *arg)
 {
     struct NXThandler_info *mp = arg;
     static char *whitelist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, "" };
@@ -208,7 +231,7 @@ while ( 1 )
     while ( 1 ) sleep(60);
 }
 
-void init_NXTprotocol(int _argc,char **_argv)
+void init_NXTservices(int _argc,char **_argv)
 {
     struct NXThandler_info *mp = calloc(1,sizeof(*mp));    // seems safest place to have main data structure
     Global_mp = mp;
@@ -256,8 +279,8 @@ void init_NXTprotocol(int _argc,char **_argv)
     }
     else
     {
-        printf("run_NXTprotocol\n");
-        if ( portable_thread_create(run_NXTprotocol,mp) == 0 )
+        printf("run_NXTservices\n");
+        if ( portable_thread_create(run_NXTservices,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
         while ( Finished_loading == 0 )
             sleep(1);
