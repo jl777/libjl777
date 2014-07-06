@@ -1250,7 +1250,6 @@ int32_t ensure_NXT_blocks(struct NXThandler_info *mp,int32_t height,uint64_t blo
     }
 }*/
 
-int Finished_loading;
 int32_t getNXTblock(char *nextblock,struct NXThandler_info *mp,char *blockidstr,int32_t *height,int32_t *timestamp,int32_t *numblocks)
 {
     int32_t errcode,retflag = 0;
@@ -1449,7 +1448,7 @@ void NXTloop(struct NXThandler_info *mp)
     {
         while ( Finished_loading == 0 )
             sleep(1);
-    }
+    } else Finished_loading = 1;
     if ( mp->initassets != 0 )
         init_assets(mp);
     while ( 1 )
@@ -1476,7 +1475,6 @@ void NXTloop(struct NXThandler_info *mp)
                 if ( Historical_done != 0 )
                 {
                     mp->RTflag++;   // wait for first block before doing any side effects
-                    //update_timestamps_fifo(mp,height);
                     update_assets_trades(mp);
                     call_handlers(mp,NXTPROTOCOL_NEWBLOCK,height);
                     if ( mp->accountjson != 0 )
@@ -1495,12 +1493,6 @@ void NXTloop(struct NXThandler_info *mp)
         else
         {
             printf("ERROR!!!!!!!! no block at height.%d nextblock.(%s)?\n",height,nextblock); //getchar();
-            /*if ( height > 1 )
-            {
-                int32_t numblocks;
-                numblocks = mp->numblocks;
-                getNXTblock(blockidstr,mp,nextblock,&height,&timestamp,&numblocks);
-            }*/
             sleep(30);
         }
     }

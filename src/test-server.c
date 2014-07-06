@@ -850,9 +850,19 @@ int main(int argc, char **argv)
 	}
 
 	n = 0;
-	while (n >= 0 && !force_exit) {
+	while (n >= 0 && !force_exit)
+    {
+        static int started_UV;
 		struct timeval tv;
-        usleep(2100);
+        usleep(5000);
+        if ( Finished_loading != 0 && started_UV == 0 )
+        {
+            printf("run_UVloop\n");
+            if ( portable_thread_create(run_UVloop,Global_mp) == 0 )
+                printf("ERROR hist process_hashtablequeues\n");
+            started_UV = 1;
+        }
+ 
 		gettimeofday(&tv, NULL);
 
 		/*

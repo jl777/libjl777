@@ -12,6 +12,7 @@ int URL_changed;
 char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
+int Finished_loading,Historical_done;
 
 #include "../NXTservices/NXTservices.c"
 uv_loop_t *UV_loop;
@@ -118,7 +119,6 @@ void run_NXTservices(void *arg)
 {
     struct NXThandler_info *mp = arg;
     register_NXT_handler("pNXT",mp,2,NXTPROTOCOL_ILLEGALTYPE,pNXT_handler,pNXT_SIG,1,0,0);
-    //portable_mutex_init(&UDPsend_queue.mutex);
     NXTloop(mp);
     printf("start_NXTloops done\n");
     while ( 1 ) sleep(60);
@@ -172,14 +172,10 @@ void init_NXTservices(int _argc,char **_argv)
             printf("ERROR hist process_hashtablequeues\n");
         if ( portable_thread_create(getNXTblocks,mp) == 0 )
             printf("ERROR start_Histloop\n");
-        
+        gen_testforms();
+
         printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s NXT.(%s)\n",mp->dispname,PC_USERNAME,mp->ipaddr,mp->NXTADDR);
         if ( portable_thread_create(run_NXTservices,mp) == 0 )
-            printf("ERROR hist process_hashtablequeues\n");
-        while ( Finished_loading == 0 )
-            sleep(1);
-        printf("run_UVloop\n");
-        if ( portable_thread_create(run_UVloop,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
     }
  }
