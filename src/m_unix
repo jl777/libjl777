@@ -1,3 +1,4 @@
+#need to get latest NXTservices at ~/NXTservices
 git pull https://github.com/jl777/pNXT
 cmake ..
 clang -c test-server.c
