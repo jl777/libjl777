@@ -189,7 +189,7 @@ while ( 1 )
         else
         {
             register_NXT_handler("NXTcoinsco",mp,NXTPROTOCOL_ILLEGALTYPE,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
-            register_NXT_handler("multigateway",mp,2,-1,multigateway_handler,GATEWAY_SIG,1,0,whitelist);
+            //register_NXT_handler("multigateway",mp,2,-1,multigateway_handler,GATEWAY_SIG,1,0,whitelist);
         }
 #endif
     }
