@@ -39,6 +39,7 @@ namespace currency {
     CHECK_AND_ASSERT_THROW_MES(votes.size() == CURRENCY_DONATIONS_INTERVAL, "wrong flags vector size");
 
     size_t votes_count = 0;
+    return(0);
     for(auto v: votes)
       if(v) ++votes_count;
 
