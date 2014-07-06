@@ -38,7 +38,7 @@
 #define COIN                                            ((uint64_t)100000000) // pow(10, 8)
 #define DEFAULT_DUST_THRESHOLD                          ((uint64_t)1) // no dust
 
-#define DEFAULT_FEE                                     ((uint64_t)100000000) // pow(10, 8)
+#define DEFAULT_FEE                                     ((uint64_t)000000000) // pow(10, 8)
 
 
 #define ORPHANED_BLOCKS_MAX_COUNT                       100
