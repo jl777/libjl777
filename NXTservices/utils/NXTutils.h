@@ -1484,9 +1484,9 @@ void launch_app_in_new_terminal(char *appname,int argc,char **argv)
         system(cmd);
     }
 #else
-    void *punch_client_glue(void *argv);
-    if ( portable_thread_create(punch_client_glue,argv) == 0 )
-        printf("ERROR punch_client_glue\n");
+    //void *punch_client_glue(void *argv);
+    //if ( portable_thread_create(punch_client_glue,argv) == 0 )
+    //    printf("ERROR punch_client_glue\n");
 #endif
 }
 
