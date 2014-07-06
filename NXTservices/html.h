@@ -221,6 +221,7 @@ int NXTorrent_forms(char *NXTaddr,char **forms,char **scripts)
     return(n);
 }
 
+#ifdef BTC_COINID
 char *gen_coinacct_line(char *buf,int32_t coinid,uint64_t nxt64bits,char *NXTaddr)
 {
     char *withdraw,*deposit,*str;
@@ -432,6 +433,7 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 
     return(n);
 }
+#endif
 
 
 char *teststr = "<!DOCTYPE html>\
@@ -501,9 +503,9 @@ try {\n\
 
 void gen_testforms()
 {
-    int32_t coinid;
-    char *str,*depositaddr,buf[4096];
-    int64_t quantity,unconfirmed;
+    //int32_t coinid;
+    //char *str,*depositaddr,buf[4096];
+    //int64_t quantity,unconfirmed;
 #ifdef MAINNET
     char *netstr = "MAINNET";
 #else
@@ -511,10 +513,11 @@ void gen_testforms()
 #endif
     sprintf(testforms,"%s %s <br/><b>%s<br/> %s<br/>NXT.%s balance %.8f %s</b><br/>\n",teststr,netstr,Global_mp->dispname,PC_USERNAME[0]!=0?PC_USERNAME:"setAccountInfo on http://127.0.0.1:6876/test description={\"username\":\"your pc username\"}",Global_mp->NXTADDR,dstr(Global_mp->acctbalance),Global_mp->acctbalance == 0?"<- need to send NXT":"");
     sprintf(testforms+strlen(testforms),"<a href=\"https://coinomat.com/~jamesjl777\">Send NXT -> your Visa/Mastercard</a href>");
+    
+#ifdef BTC_COINID
     str = gen_handler_forms(Global_mp->NXTADDR,"NXTcoinsco","NXTcoins.co API test forms",NXTcoinsco_forms);
     strcat(testforms,str);
     free(str);
-
     strcpy(buf,"Deposit coinaddrs ");
     for (coinid=0; coinid<64; coinid++)
     {
@@ -549,7 +552,8 @@ void gen_testforms()
     str = gen_handler_forms(Global_mp->NXTADDR,"subatomic","subatomic API test forms",subatomic_forms);
     strcat(testforms,str);
     free(str);
-
+#endif
+    
     strcat(testforms,endstr);
     
 }

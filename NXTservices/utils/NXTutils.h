@@ -167,10 +167,10 @@ char *get_ipaddr()
 
 const char *choose_poolserver(char *NXTaddr)
 {
-    static int32_t lastind = -1;
-    uint64_t hashval;
-    //return(SERVER_NAMEA);
-    while ( 1 )
+    //static int32_t lastind = -1;
+   // uint64_t hashval;
+    return(SERVER_NAMEA);
+    /*while ( 1 )
     {
         if ( lastind == -1 )
         {
@@ -181,7 +181,7 @@ const char *choose_poolserver(char *NXTaddr)
         if ( Guardian_names[lastind][0] != 0 )
             break;
     }
-    return(Guardian_names[lastind]);
+    return(Guardian_names[lastind]);*/
 }
 
 int64_t conv_floatstr(char *numstr)
@@ -339,12 +339,14 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
             if ( errjson != 0 )
             {
                 printf("ERROR submitting assetxfer.(%s)\n",jsontxt);
+#ifdef BTC_COINID
                 int32_t _get_gatewayid();
                 if ( _get_gatewayid() >= 0 )
                 {
                     sleep(60);
                     exit(-1);
                 }
+#endif
             }
             txidobj = cJSON_GetObjectItem(json,"transaction");
             copy_cJSON(numstr,txidobj);
@@ -424,6 +426,7 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     return(np);
 }
 
+#ifdef BTC_COINID
 int64_t get_coin_quantity(CURL *curl_handle,int64_t *unconfirmedp,int32_t coinid,char *NXTaddr)
 {
     char *assetid_str(int32_t coinid);
@@ -468,6 +471,7 @@ int64_t get_coin_quantity(CURL *curl_handle,int64_t *unconfirmedp,int32_t coinid
     }
     return(quantity);
 }
+#endif
 
 char *issue_getTransaction(CURL *curl_handle,char *txidstr)
 {
@@ -1065,6 +1069,7 @@ void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
     expand_nxt64bits(NXTcointxid,hashval);
 }
 
+#ifdef BTC_COINID
 struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxid,int32_t vout)
 {
     char *assetid_str();
@@ -1095,6 +1100,7 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
     }
     return(0);
 }
+#endif
 
 int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tokenizedtxt,char *NXTaddr,char *name,int32_t strictflag)
 {
@@ -1350,7 +1356,7 @@ int _increasing_unsignedint(const void *a,const void *b)
 #undef uint_b
 }
 
-static int _increasing_float(const void *a,const void *b)
+int _increasing_float(const void *a,const void *b)
 {
 #define float_a (*(float *)a)
 #define float_b (*(float *)b)
@@ -1698,79 +1704,5 @@ void update_dpreds(double dpreds[6],register double pred)
     //printf("[%f %f %f %f] ",dpreds.x,dpreds.y,dpreds.z,dpreds.w);
 }
 
-void default_stdin_callback(uv_stream_t *stream,ssize_t nread,const uv_buf_t *buf)
-{
-    if ( buf != 0 && buf->base != 0 )
-    printf("nread.%ld %p[%ld] %s\n",nread,buf->base,buf->len,buf->base);
-    else printf("got nread.%ld\n",nread);
-    if ( buf->base != 0 )
-        free(buf->base);
-}
-
-uv_tty_t *init_stdinout(uv_read_cb read_cb)
-{
-    char *ttyname = 0;
-    int width,height,r = 0;
-    int ttyin_fd;//,ttyout_fd;
-    uv_tty_t tty_in,*tty_out = 0;
-    if ( read_cb == 0 )
-        read_cb = default_stdin_callback;
-    tty_out = calloc(1,sizeof(*tty_out));
-    // Make sure we have an FD that refers to a tty 
-#ifdef _WIN32
-    HANDLE handle;
-    handle = CreateFileA("conin$",GENERIC_READ | GENERIC_WRITE,FILE_SHARE_READ | FILE_SHARE_WRITE,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-    //ASSERT(handle != INVALID_HANDLE_VALUE);
-    ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
-    //handle = CreateFileA("conout$",GENERIC_READ | GENERIC_WRITE,FILE_SHARE_READ | FILE_SHARE_WRITE,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-    //ASSERT(handle != INVALID_HANDLE_VALUE);
-    //ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
-#else // unix
-    char *buf; int64_t len,allocsize;
-    if ( system("tty > /tmp/ttyname") != 0 )
-        printf("system error > /tmp/ttyname");
-    ttyname = load_file("/tmp/ttyname",&buf,&len,&allocsize);
-    if ( ttyname != 0 )
-    {
-        if ( ttyname[strlen(ttyname)-1] == '\n' )
-            ttyname[strlen(ttyname)-1] = 0;
-        printf("ttyname.(%s) buf.(%s)\n",ttyname,buf);
-        ttyin_fd = open(ttyname,O_RDONLY,0);
-        if ( ttyin_fd < 0 )
-        {
-            printf("Cannot open (%s) as read-only: %s\n",ttyname,strerror(errno));
-            return(0);
-        }
-        /*ttyout_fd = open(ttyname,O_WRONLY,0);
-        if ( ttyout_fd < 0 )
-        {
-            printf("Cannot open (%s) as write-only: %s\n",ttyname,strerror(errno));
-            return(0);
-        }*/
-    }
-    else
-    {
-        printf("cant open tty.(%s)\n",ttyname);
-        return(0);
-    }
-#endif
-    //ASSERT(ttyin_fd >= 0);
-    //ASSERT(ttyout_fd >= 0);
-    //ASSERT(UV_UNKNOWN_HANDLE == uv_guess_handle(-1));
-    //ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
-    //ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
-    r += uv_tty_init(UV_loop,&tty_in,ttyin_fd,1);  // Readable
-    //ASSERT(r == 0);
-    //r += uv_tty_init(UV_loop,tty_out,ttyout_fd,0);  // Writable
-    //ASSERT(r == 0);
-    r += uv_tty_get_winsize(tty_out,&width,&height);
-    //ASSERT(r == 0);
-    //r += uv_tty_set_mode(&tty_in,1); // Turn on raw mode
-    r += uv_read_start((uv_stream_t *)&tty_in,alloc_buffer,read_cb);
-    if ( r != 0 )
-        printf("ERROR: ");
-    printf("width=%d height=%d r.%d\n",width,height,r);
-    return(tty_out);
-}
 
 #endif

@@ -47,16 +47,11 @@
 extern char testforms[1024*1024];
 unsigned char NXTprotocol_parms[4096];
 
-#define FROM_pNXT
+//#define FROM_pNXT
 
 
-#ifdef FROM_pNXT
-#include "../../libwebsockets/lib/libwebsockets.h"
+#include "../NXTservices/libwebsockets/libwebsockets.h"
 #include "libwebsocketsglue.h"
-#else
-#include "../lib/libwebsockets.h"
-#include "../../libwebsocketsglue.h"
-#endif
 
 
 
@@ -806,8 +801,8 @@ int main(int argc, char **argv)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-    printf("call init_NXTprotocol\n");
-    init_NXTprotocol(argc,argv);
+    printf("call init_NXTservices\n");
+    init_NXTservices(argc,argv);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 

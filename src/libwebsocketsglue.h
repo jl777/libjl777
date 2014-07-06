@@ -111,24 +111,18 @@ void *stub_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
 void NXTservices_idler(uv_idle_t *handle)
 {
     static int64_t nexttime;
-    int32_t process_syncmem_queue();
+    //int32_t process_syncmem_queue();
     void call_handlers(struct NXThandler_info *mp,int32_t mode,int32_t height);
     static uint64_t counter;
-    if ( 0 && counter == 0 )
-    {
-        uv_tty_t *init_stdinout(uv_read_cb read_cb);
-        Global_mp->stdoutput = init_stdinout(0);
-        printf("stdinout done\n");
-    }
     usleep(1000);
     if ( (counter++ % 1000) == 0 && microseconds() > nexttime )
     {
         call_handlers(Global_mp,NXTPROTOCOL_IDLETIME,0);
         nexttime = (microseconds() + 1000000);
     }
-    while ( process_syncmem_queue() > 0 )
-        ;
-    process_UDPsend_queue();
+    //while ( process_syncmem_queue() > 0 )
+    //    ;
+    //process_UDPsend_queue();
 }
 
 void run_UVloop(void *arg)
@@ -144,7 +138,7 @@ void run_UVloop(void *arg)
 void run_NXTservices(void *arg)
 {
     struct NXThandler_info *mp = arg;
-    static char *whitelist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, "" };
+    //static char *whitelist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, "" };
     
     safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
@@ -205,18 +199,18 @@ while ( 1 )
             register_NXT_handler("multigateway",mp,2,-1,multigateway_handler,GATEWAY_SIG,1,0,whitelist);
         }
 #else
-        if ( get_gatewayid(mp->ipaddr) < 0 )
+        //if ( get_gatewayid(mp->ipaddr) < 0 )
         {
-            register_NXT_handler("NXTcoinsco",mp,NXTPROTOCOL_ILLEGALTYPE,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
+            //register_NXT_handler("NXTcoinsco",mp,NXTPROTOCOL_ILLEGALTYPE,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
         }
-        else
+        //else
         {
-            register_NXT_handler("NXTcoinsco",mp,NXTPROTOCOL_ILLEGALTYPE,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
+            //register_NXT_handler("NXTcoinsco",mp,NXTPROTOCOL_ILLEGALTYPE,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
             //register_NXT_handler("multigateway",mp,2,-1,multigateway_handler,GATEWAY_SIG,1,0,whitelist);
         }
 #endif
     }
-    else register_NXT_handler("NXTcoinsco",mp,2,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
+    //else register_NXT_handler("NXTcoinsco",mp,2,NXTPROTOCOL_ILLEGALTYPE,NXTcoinsco_handler,NXTCOINSCO_SIG,1,0,0);
 
     while ( Finished_loading == 0 )
         sleep(1);
@@ -225,7 +219,7 @@ while ( 1 )
     portable_mutex_init(&mp->hash_mutex);
     portable_mutex_init(&mp->hashtable_queue[0].mutex);
     portable_mutex_init(&mp->hashtable_queue[1].mutex);
-    portable_mutex_init(&UDPsend_queue.mutex);
+    //portable_mutex_init(&UDPsend_queue.mutex);
     NXTloop(mp);
     printf("start_NXTloops done\n");
     while ( 1 ) sleep(60);
@@ -272,7 +266,7 @@ void init_NXTservices(int _argc,char **_argv)
     if ( _argc >= 2 && (strcmp(_argv[1],"server") == 0 || strcmp(mp->ipaddr,EMERGENCY_PUNCH_SERVER) == 0) )
     {
 #ifndef WIN32
-        punch_server_main(_argc-1,_argv+1);
+        //punch_server_main(_argc-1,_argv+1);
         printf("hole punch server done\n");
         exit(0);
 #endif
