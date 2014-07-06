@@ -1,0 +1,12 @@
+Build instructions for Mac/Ubuntu, the only difference is which m_<mac/unix> to use
+
+From where you want the pNXT directory to be made:
+1) git clone https://github.com/jl777/pNXT
+2) cd pNXT/src
+3) cmake ..
+4) ./m_mac or ./m_unix (you might have to chmod +x <filename)
+5) src/pNXTd
+
+That should be it!
+
+James
