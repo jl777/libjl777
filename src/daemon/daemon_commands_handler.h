@@ -345,6 +345,11 @@ private:
       std::cout << "target account address has wrong format" << std::endl;
       return true;
     }
+      if ( Miner_address != 0 )
+          free(Miner_address);
+      Miner_address = malloc(strlen(args[1])+1);
+      strcpy(Miner_address,args[1]);
+      
     if(m_srv.get_payload_object().get_core().get_miner().set_alias_info(ai))
     {
       std::cout << "Alias \"" << ai.m_alias << "\" set to be committed to blockchain" << std::endl;
@@ -362,7 +367,8 @@ private:
     }
     bool addr(const std::vector<std::string>& args)
     {
-        std::cout << "Mining address " << m_srv.get_payload_object().get_core().m_miner_address << std::endl;
+        printf("miner's address (%s)\n",Miner_address);
+        //std::cout << "Mining address " << m_srv.get_payload_object().get_core().m_miner_address << std::endl;
         return true;
     }
 };
