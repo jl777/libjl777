@@ -55,7 +55,6 @@ public:
   }
 
 private:
-    std::str m_addr;
   epee::srv_console_handlers_binder<nodetool::node_server<currency::t_currency_protocol_handler<currency::core> > > m_cmd_binder;
 
   //--------------------------------------------------------------------------------
@@ -363,8 +362,7 @@ private:
     }
     bool addr(const std::vector<std::string>& args)
     {
-        if ( m_addr != 0 )
-            sdt::cout << "Mining address " << m_addr << std::endl;
+        std::cout << "Mining address " << m_srv.get_payload_object().get_core().m_miner_address << std::endl;
         return true;
     }
 };
