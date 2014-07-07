@@ -561,6 +561,8 @@ void simple_wallet::load_blocks()
         sleep(3);
     }
     //m_wallet->refresh(fetched_blocks);
+    show_incoming_transfers(std::vector<std::string>());
+    show_payments(std::vector<std::string>());
     sync_wallet();
 }
 
