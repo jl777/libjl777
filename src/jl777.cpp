@@ -25,19 +25,19 @@ void upnp_glue(void *upnp);
 
 struct pNXT_info
 {
-    void *wallet,*core,*p2p,*upnp,*rpc_server;
+    void *wallet,*core,*p2psrv,*upnp,*rpc_server;
     const char *walletaddr;
 };
 struct pNXT_info *Global_pNXT;
 
-void init_pNXT(void *core,void *p2p,void *upnp,void *rpc_server)
+void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
     uint64_t amount = 12345678;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
     gp = Global_pNXT;
-    gp->core = core; gp->p2p = p2p; gp->upnp = upnp; gp->rpc_server = rpc_server;
+    gp->core = core; gp->p2psrv = p2psrv; gp->upnp = upnp; gp->rpc_server = rpc_server;
     if ( gp->wallet == 0 )
         gp->wallet = pNXT_get_wallet("wallet.bin",Global_mp->NXTACCTSECRET);
     if ( gp->wallet != 0 )
@@ -128,7 +128,7 @@ void _init_lws(void *arg)
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
-    init_pNXT(core,p2p,upnp,rpc_server);
+    init_pNXT(core,p2psrv,rpc_server,upnp);
     printf("finished call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
 }
 
@@ -141,11 +141,11 @@ void _init_lws2(void *arg)
     lwsmain(1,argv);
 }
 
-void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
+void init_lws(void *core,void *p2p,void *rpc_server,void *upnp)
 {
     static void *ptrs[4];
-    ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = cprotocol; ptrs[3] = upnp;
-    printf("init_lws(%p %p %p %p)\n",core,p2p,cprotocol,upnp);
+    ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp;
+    printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
     if ( portable_thread_create(_init_lws2,ptrs) == 0 )
         printf("ERROR launching _init_lws2\n");
     printf("done init_lws2()\n");
