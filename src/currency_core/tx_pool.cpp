@@ -55,7 +55,7 @@ namespace currency
 
     uint64_t outputs_amount = get_outs_money_amount(tx);
 
-    if(outputs_amount >= inputs_amount)
+    if(outputs_amount > inputs_amount)
     {
       LOG_PRINT_L0("transaction use more money then it has: use " << outputs_amount << ", have " << inputs_amount);
       tvc.m_verifivation_failed = true;
