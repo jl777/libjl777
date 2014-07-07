@@ -134,7 +134,7 @@ void wallet2::process_new_transaction(const currency::transaction& tx, uint64_t 
         }
         else
         {//strange transfer, seems that in one transaction have transfers from different wallets.
-          LOG_PRINT_RED_L0("Unusual transaction " << currency::get_transaction_hash(tx) << ", tx_money_spent_in_ins: " << tx_money_spent_in_ins << ", tx_money_got_in_outs: " << tx_money_got_in_outs);
+          LOG_PRINT_RED_L0("Unusually transaction " << currency::get_transaction_hash(tx) << ", tx_money_spent_in_ins: " << tx_money_spent_in_ins << ", tx_money_got_in_outs: " << tx_money_got_in_outs);
           m_callback->on_money_spent2(b, tx, tx_money_spent_in_ins, mtd);
           m_callback->on_money_received2(b, tx, tx_money_got_in_outs, mtd);
         }
