@@ -12,7 +12,7 @@
 int lwsmain(int argc,char **argv);
 void *pNXT_get_wallet(char *fname,char *password);
 uint64_t pNXT_sync_wallet(void *wallet);
-const char *pNXT_walletaddr(void *wallet);
+char *pNXT_walletaddr(char *addr,void *wallet);
 int32_t pNXT_startmining(void *core,void *wallet);
 uint64_t pNXT_rawbalance(void *wallet);
 uint64_t pNXT_confbalance(void *wallet);
@@ -26,9 +26,30 @@ void upnp_glue(void *upnp);
 struct pNXT_info
 {
     void *wallet,*core,*p2psrv,*upnp,*rpc_server;
-    const char *walletaddr;
+    char walletaddr[512];
 };
 struct pNXT_info *Global_pNXT;
+
+char *get_pNXT_addr()
+{
+    if ( Global_pNXT != 0 && Global_pNXT->walletaddr != 0 )
+        return(Global_pNXT->walletaddr);
+    return("No pNXT address");
+}
+
+uint64_t get_pNXT_confbalance()
+{
+    if ( Global_pNXT != 0 && Global_pNXT->wallet != 0 )
+        return(pNXT_confbalance(Global_pNXT->wallet));
+    return(0);
+}
+
+uint64_t get_pNXT_rawbalance()
+{
+    if ( Global_pNXT != 0 && Global_pNXT->wallet != 0 )
+        return(pNXT_rawbalance(Global_pNXT->wallet));
+    return(0);
+}
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
@@ -39,12 +60,19 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
     gp = Global_pNXT;
     gp->core = core; gp->p2psrv = p2psrv; gp->upnp = upnp; gp->rpc_server = rpc_server;
     if ( gp->wallet == 0 )
+    {
+        while ( Global_mp->NXTACCTSECRET[0] == 0 )
+            sleep(1);
         gp->wallet = pNXT_get_wallet("wallet.bin",Global_mp->NXTACCTSECRET);
+    }
+    printf("got gp->wallet.%p\n",gp->wallet);
     if ( gp->wallet != 0 )
     {
-        gp->walletaddr = pNXT_walletaddr(gp->wallet);
+        strcpy(gp->walletaddr,"no pNXT address");
+        pNXT_walletaddr(gp->walletaddr,gp->wallet);
+        printf("got walletaddr (%s)\n",gp->walletaddr);
         pNXT_startmining(gp->core,gp->wallet);
-        pNXT_sendmoney(gp->wallet,1,(char *)gp->walletaddr,amount);
+        pNXT_sendmoney(gp->wallet,1,gp->walletaddr,amount);
     }
 }
 
@@ -97,6 +125,8 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));
+            pNXT_sendmoney(gp->wallet,1,gp->walletaddr,12345678);
+
             printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
         }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
@@ -178,12 +208,14 @@ extern "C" void pNXT_sync_wallet(currency::simple_wallet *wallet)
     wallet->sync_wallet();
 }
 
-extern "C" const char *pNXT_walletaddr(currency::simple_wallet *wallet)
+extern "C" char *pNXT_walletaddr(char *walletaddr,currency::simple_wallet *wallet)
 {
     std::string addr;
     currency::account_public_address acct;
     addr = wallet->get_address(acct);
-    return(addr.c_str());
+    printf("inside got wallet addr.(%s)\n",addr.c_str());
+    strcpy(walletaddr,addr.c_str());
+    return(walletaddr);
 }
 
 extern "C" int32_t pNXT_startmining(currency::core *core,currency::simple_wallet *wallet)
