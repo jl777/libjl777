@@ -254,8 +254,8 @@ extern "C" bool pNXT_sendmoney(currency::simple_wallet *wallet,int32_t numfakes,
     char buf[512];
     args.reserve(3);
     wallet->sync_wallet();
+    printf("sending %.8f pNXT to (%s) from %s ",dstr(amount),dest,pNXT_walletaddr(core,wallet));
     wallet->showbalance();
-    printf("sending %.8f pNXT to (%s) from %s balance %.8f %.8f\n",dstr(amount),dest,pNXT_walletaddr(core,wallet),dstr(get_pNXT_confbalance()),dstr(get_pNXT_rawbalance()));
     sprintf(buf,"%d",numfakes);
     args.push_back(buf);
     args.push_back(dest);
