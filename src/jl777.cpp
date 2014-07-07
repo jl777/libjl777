@@ -35,7 +35,7 @@ char *get_pNXT_addr()
 {
     if ( Global_pNXT != 0 && Global_pNXT->walletaddr != 0 )
         return(Global_pNXT->walletaddr);
-    return("No pNXT address");
+    return("<No pNXT address>");
 }
 
 uint64_t get_pNXT_confbalance()
@@ -184,6 +184,15 @@ void init_lws(void *core,void *p2p,void *rpc_server,void *upnp)
         printf("ERROR launching _init_lws\n");
     printf("done init_lws()\n");
 }
+#else
+void *pNXT_get_wallet(char *fname,char *password){return(0);}
+uint64_t pNXT_sync_wallet(void *wallet){return(0);}
+char *pNXT_walletaddr(char *addr,void *wallet){return(0);}
+int32_t pNXT_startmining(void *core,void *wallet){return(0);}
+uint64_t pNXT_rawbalance(void *wallet){return(0);}
+uint64_t pNXT_confbalance(void *wallet){return(0);}
+int32_t pNXT_sendmoney(void *wallet,int32_t numfakes,char *dest,uint64_t amount){return(0);}
+uint64_t pNXT_height(void *core){return(0);}
 #endif
 
 #else

@@ -452,7 +452,7 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     int n = 0;
     char buf[512];
     sprintf(buf,"pNXT %s available raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
-    forms[n] = make_form(NXTaddr,&scripts[n],"pNXT cashout",buf,"cashout","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"cashout",buf,"cashout","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
     n++;
     return(n);
 }

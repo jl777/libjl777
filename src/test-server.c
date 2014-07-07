@@ -243,7 +243,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             {
                 char *retstr;
                 retstr = NXTprotocol_json_handler(nxtprotocol,(char *)NXTprotocol_parms);
-                //printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
+                printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
                 if ( retstr != 0 )
                 {
                     len = strlen(retstr);
@@ -286,7 +286,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 else if ( URL_changed == 0 && testforms[0] != 0 )
                 {
                     mylen = strlen(testforms);
-                    //printf("couldnt load.(%s), testforms len %ld\n",NXTPROTOCOL_HTMLFILE,(long)mylen);
+                    printf("couldnt load.(%s), testforms len %ld\n",NXTPROTOCOL_HTMLFILE,(long)mylen);
                     if ( mylen != 0 )
                     {
                         sprintf((char *)buffer,
