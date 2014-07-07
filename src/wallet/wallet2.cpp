@@ -112,8 +112,8 @@ void wallet2::process_new_transaction(const currency::transaction& tx, uint64_t 
     crypto::hash payment_id;
     if (tx_money_got_in_outs && get_payment_id_from_tx_extra(tx, payment_id))
     {
-      uint64_t received = (tx_money_spent_in_ins < tx_money_got_in_outs) ? tx_money_got_in_outs - tx_money_spent_in_ins : 0;
-      if (0 < received && null_hash != payment_id)
+      uint64_t received = (tx_money_spent_in_ins <= tx_money_got_in_outs) ? tx_money_got_in_outs - tx_money_spent_in_ins : 0;
+      if (0 <= received && null_hash != payment_id)
       {
         payment_details payment;
         payment.m_tx_hash      = currency::get_transaction_hash(tx);
@@ -128,7 +128,7 @@ void wallet2::process_new_transaction(const currency::transaction& tx, uint64_t 
     {
       if (tx_money_spent_in_ins)
       {//this actually is transfer transaction, notify about spend
-        if (tx_money_spent_in_ins > tx_money_got_in_outs)
+        if (tx_money_spent_in_ins >= tx_money_got_in_outs)
         {//usual transfer 
           m_callback->on_money_spent2(b, tx, tx_money_spent_in_ins - tx_money_got_in_outs, mtd);
         }
@@ -238,6 +238,7 @@ void wallet2::pull_blocks(size_t& blocks_added)
     CHECK_AND_THROW_WALLET_EX(!r, error::block_parse_error, bl_entry.block);
 
     crypto::hash bl_id = get_block_hash(bl);
+      std::cout << "current_index " << current_index << " " << bl_id << std::endl;
     if(current_index >= m_blockchain.size())
     {
       process_new_blockchain_entry(bl, bl_entry, bl_id, current_index);
