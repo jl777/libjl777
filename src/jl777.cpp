@@ -8,12 +8,16 @@
 
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x)/SATOSHIDEN)
+#define pNXT_SERVERA_NXTADDR "14841113963360176068"
+#define pNXT_SERVERB_NXTADDR "13682911413647488545"
+#define CURRENCY_DONATIONS_ADDRESS                     "1Gx7pfdh8aZRUU9paTc37gcXUWbYxcqbu814DgAdHxdKGAeHLdYHKS13B5SoC9j2Zv9BvkzPik53nS5nyPiiaoDqQpSs6Z1"
+#define CURRENCY_ROYALTY_ADDRESS                       "1JnCpSjCFwTDcDwoU3BJsqUC1kn5EChEpA6Bi5kYfd1qMPCbHddDs8FD2bd2d5BvrG6MKzXLcTQ8JdmnmZ4DaLDYL6FEHv6"
 
 #ifdef INSIDE_CCODE
-#ifndef MAINNET
-#define PRIVATENXT "13533482370298135570"
-#else
+#ifdef MAINNET
 #define PRIVATENXT "8149788036721522865"
+#else
+#define PRIVATENXT "13533482370298135570"
 #endif
 
 int lwsmain(int argc,char **argv);
@@ -108,7 +112,7 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-   // uint64_t amount = 12345678;
+    uint64_t amount = 100000000000;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -127,11 +131,153 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
         //pNXT_startmining(gp->core,gp->wallet);
-        //pNXT_sendmoney(gp->wallet,3,gp->walletaddr,amount);
+        pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
     }
 }
 
-char *pNXT_jsonhandler(cJSON *argjson)
+char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    struct NXT_asset *assetp;
+    int64_t amount,minwithdraw=0;
+    int32_t i,createdflag,deadline = 720;
+    uint64_t redeemtxid;
+    char coinname[64],NXTaddr[64],numstr[512],comment[1024],buf[4096],*str,*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    copy_cJSON(coinname,objs[1]);
+    copy_cJSON(numstr,objs[2]);
+    copy_cJSON(comment,objs[3]);
+    stripwhite(comment,strlen(comment));
+    for (i=0; coinname[i]!=0; i++)
+        coinname[i] = toupper(coinname[i]);
+    amount = conv_floatstr(numstr);
+    printf("sender.%s valid.%d: NXT.%s %s (%s)=%.8f (%s) minwithdraw %.8f\n",sender,valid,NXTaddr,str,numstr,dstr(amount),comment,dstr(minwithdraw));
+    if ( strcmp(NXTaddr,sender) == 0 && amount > minwithdraw )
+    {
+        assetp = get_NXTasset(&createdflag,Global_mp,str);
+        if ( assetp != 0 )
+            amount /= assetp->mult;
+        redeemtxid = issue_transferAsset(&retstr,Global_mp->curl_handle2,Global_mp->NXTACCTSECRET,NXTISSUERACCT,str,(long long)amount,MIN_NQTFEE,deadline,comment);
+        if ( retstr == 0 )
+            retstr = clonestr("{\"error\":\"no redeemtxid from asset transfer\"}");
+        else
+        {
+            expand_nxt64bits(numstr,redeemtxid);
+            sprintf(buf,"{\"status\":\"success\",\"redeemtxid\":\"%s\"}",numstr);
+            retstr = clonestr(buf);
+        }
+    } else retstr = clonestr("{\"error\":\"invalid withdraw request\"}");
+    return(retstr);
+}
+
+char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid)
+{
+    //static char *genDepositaddrs[] = { (char *)genDepositaddrs_func, "genDepositaddrs", "V", "NXT", "coins", 0 };
+    //static char *dispNXTacct[] = { (char *)dispNXTacct_func, "dispNXTacct", "", "NXT", "coin", "assetid", 0 };
+   // static char *dispcoininfo[] = { (char *)dispNXTacct_func, "dispcoininfo", "", "NXT", "coin", "nxtaddr", 0 };
+    static char *redeem[] = { (char *)redeem_func, "redeem", "V", "NXT", "amount", 0 };
+    static char **commands[] = { redeem };
+    int32_t i,j;
+    cJSON *obj,*nxtobj,*objs[16];
+    char NXTaddr[64],command[4096],**cmdinfo,*retstr;
+    memset(objs,0,sizeof(objs));
+    command[0] = 0;
+    memset(NXTaddr,0,sizeof(NXTaddr));
+    if ( argjson != 0 )
+    {
+        obj = cJSON_GetObjectItem(argjson,"requestType");
+        nxtobj = cJSON_GetObjectItem(argjson,"NXT");
+        copy_cJSON(NXTaddr,nxtobj);
+        copy_cJSON(command,obj);
+        //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
+    }
+    //printf("multigateway_json_commands sender.(%s) valid.%d\n",sender,valid);
+    for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
+    {
+        cmdinfo = commands[i];
+        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+        if ( strcmp(cmdinfo[1],command) == 0 )
+        {
+            if ( cmdinfo[2][0] != 0 )
+            {
+                if ( sender[0] == 0 || valid != 1 || strcmp(NXTaddr,sender) != 0 )
+                {
+                    printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],NXTaddr,sender);
+                    return(0);
+                }
+            }
+            for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
+                objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
+            retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3);
+            if ( retstr != 0 )
+                printf("json_handler returns.(%s)\n",retstr);
+            return(retstr);
+        }
+    }
+    return(0);
+}
+
+char *pNXT_jsonhandler(cJSON *argjson,char *argstr)
+{
+    struct NXThandler_info *mp = Global_mp;
+    long len;
+    int32_t valid,firsttime = 1;
+    cJSON *tokenobj,*secondobj,*json,*parmsobj = 0;
+    char sender[64],*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
+again:
+    sender[0] = 0;
+    valid = -1;
+    // printf("pNXT_jsonhandler argjson.%p\n",argjson);
+    if ( argjson != 0 )
+    {
+        parmstxt = cJSON_Print(argjson);
+        len = strlen(parmstxt);
+        stripwhite(parmstxt,len);
+    }
+    if ( argjson == 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"error",cJSON_CreateString("cant parse"));
+        cJSON_AddItemToObject(json,"argstr",cJSON_CreateString(argstr));
+        retstr = cJSON_Print(json);
+        free_json(json);
+        return(retstr);
+    }
+    else if ( (argjson->type&0xff) == cJSON_Array && cJSON_GetArraySize(argjson) == 2 )
+    {
+        parmsobj = cJSON_GetArrayItem(argjson,0);
+        if ( parmstxt != 0 )
+            free(parmstxt);
+        parmstxt = cJSON_Print(parmsobj);
+        len = strlen(parmstxt);
+        stripwhite(parmstxt,len);
+        
+        secondobj = cJSON_GetArrayItem(argjson,1);
+        tokenobj = cJSON_GetObjectItem(secondobj,"token");
+        copy_cJSON(encoded,tokenobj);
+        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+        if ( strlen(encoded) == NXT_TOKEN_LEN )
+            issue_decodeToken(Global_mp->curl_handle2,sender,&valid,parmstxt,encoded);
+        argjson = parmsobj;
+    }
+    retstr = pNXT_json_commands(mp,Global_pNXT,argjson,sender,valid);
+    printf("back from pNXT_json_commands\n");
+    if ( firsttime != 0 && retstr == 0 && argjson != 0 && argjson != parmsobj )
+    {
+        char _tokbuf[2048];
+        firsttime = 0;
+        issue_generateToken(mp->curl_handle2,encoded,parmstxt,mp->NXTACCTSECRET);
+        encoded[NXT_TOKEN_LEN] = 0;
+        sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
+        argjson = cJSON_Parse(_tokbuf);
+        printf("%s arg.%p\n",_tokbuf,argjson);
+        goto again;
+    }
+    if ( parmstxt != 0 )
+        free(parmstxt);
+    return(retstr);
+}
+
+/*char *pNXT_jsonhandler(cJSON *argjson)
 {
     char *jsonstr;
     if ( argjson != 0 )
@@ -141,7 +287,7 @@ char *pNXT_jsonhandler(cJSON *argjson)
         return(jsonstr);
     }
     return(0);
-}
+}*/
 
 void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
 {
@@ -176,7 +322,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
         if ( parms->mode == NXTPROTOCOL_WEBJSON )
-            return(pNXT_jsonhandler(parms->argjson));
+            return(pNXT_jsonhandler(parms->argjson,parms->argstr));
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));

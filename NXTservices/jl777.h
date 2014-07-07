@@ -345,6 +345,7 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 #ifndef MAX
 #define MAX(x,y) (((x)>=(y)) ? (x) : (y))
 #endif
+typedef char *(*json_handler)(char *NXTaddr,int32_t valid,cJSON **objs,int32_t numobjs);
 
 char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *args);
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
