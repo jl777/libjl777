@@ -53,7 +53,7 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-    uint64_t amount = 12345678;
+    //uint64_t amount = 12345678;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -72,7 +72,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
         pNXT_startmining(gp->core,gp->wallet);
-        pNXT_sendmoney(gp->wallet,0,gp->walletaddr,amount);
+        //pNXT_sendmoney(gp->wallet,0,gp->walletaddr,amount);
     }
 }
 
@@ -125,7 +125,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));
-            pNXT_sendmoney(gp->wallet,1,gp->walletaddr,12345678);
+            pNXT_sendmoney(gp->wallet,0,gp->walletaddr,12345678);
 
             printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
         }
@@ -232,8 +232,9 @@ extern "C" int32_t pNXT_startmining(currency::core *core,currency::simple_wallet
     }
     else
     {
-        printf("core.%p: start mining (%s) balance %.8f %.8f\n",core,pNXT_walletaddr(core,wallet),dstr(get_pNXT_confbalance()),dstr(get_pNXT_rawbalance()));
-    }
+        printf("core.%p: start mining (%s) ",core,pNXT_walletaddr(core,wallet));
+        wallet->showbalance();
+   }
     return(0);
 }
 
@@ -265,28 +266,6 @@ extern "C" bool pNXT_sendmoney(currency::simple_wallet *wallet,int32_t numfakes,
 
 extern "C" uint64_t pNXT_height(currency::core *m)
 {
-    /*static int didinit;
-    int numthreads = 1;
-    std::string addr;
-    currency::account_public_address apa;
-    if ( didinit == 0 )
-    {
-        if ( wallet.open_wallet("wallet.test","password") == 0 )
-            wallet.new_wallet("wallet.test","password");
-        addr = wallet.get_address(apa);
-        wallet.load_blocks();
-        wallet.show_balance();
-        if ( m->get_miner().start(apa,numthreads) == 0 )
-        {
-            printf("Failed, mining not started for (%s)\n",addr.c_str());
-        }
-        printf("core.%p: start mining (%s) balance %.8f %.8f\n",m,addr.c_str(),(double)wallet.get_confbalance()/100000000L,(double)wallet.get_rawbalance()/100000000L);
-        didinit = 1;
-    }
-    else
-    {
-        wallet.idle_time();
-    }*/
     return(m->get_current_blockchain_height());
 }
 
