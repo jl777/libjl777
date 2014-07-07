@@ -46,6 +46,7 @@ namespace currency
       bool show_blockchain_height(const std::vector<std::string> &args);
       void load_blocks();
       void sync_wallet();
+      bool transfer(const std::vector<std::string> &args);
 private:
     void handle_command_line(const boost::program_options::variables_map& vm);
 
@@ -56,7 +57,6 @@ private:
     bool start_mining(const std::vector<std::string> &args);
     bool stop_mining(const std::vector<std::string> &args);
     bool refresh(const std::vector<std::string> &args);
-    bool transfer(const std::vector<std::string> &args);
     bool print_address(const std::vector<std::string> &args = std::vector<std::string>());
     bool save(const std::vector<std::string> &args);
     bool set_log(const std::vector<std::string> &args);
