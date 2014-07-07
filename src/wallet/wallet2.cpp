@@ -113,7 +113,7 @@ void wallet2::process_new_transaction(const currency::transaction& tx, uint64_t 
     if (tx_money_got_in_outs && get_payment_id_from_tx_extra(tx, payment_id))
     {
       uint64_t received = (tx_money_spent_in_ins <= tx_money_got_in_outs) ? tx_money_got_in_outs - tx_money_spent_in_ins : 0;
-      if (0 <= received && null_hash != payment_id)
+      if (null_hash != payment_id) //0 <= received && 
       {
         payment_details payment;
         payment.m_tx_hash      = currency::get_transaction_hash(tx);
