@@ -115,7 +115,7 @@ namespace currency
       txd_p.first->second.receive_time = time(nullptr);
       tvc.m_added_to_pool = true;
 
-      if(txd_p.first->second.fee > 0)
+      if(txd_p.first->second.fee >= 0)
         tvc.m_should_be_relayed = true;
     }
 
