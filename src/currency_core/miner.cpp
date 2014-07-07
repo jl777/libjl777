@@ -215,7 +215,7 @@ namespace currency
         return false;
       }
       m_threads_total = 1;
-      m_do_mining = true;
+      // jl777 m_do_mining = true;
       if(command_line::has_arg(vm, arg_mining_threads))
       {
         m_threads_total = command_line::get_arg(vm, arg_mining_threads);
