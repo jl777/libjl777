@@ -13,6 +13,7 @@ char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
 int Finished_loading,Historical_done;
+#define pNXT_SIG 0x99999999
 
 #include "../NXTservices/NXTservices.c"
 uv_loop_t *UV_loop;
@@ -24,76 +25,6 @@ uv_loop_t *UV_loop;
 //#include "../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
 #include "../NXTservices/html.h"
-
-#define pNXT_SIG 0x99999999
-struct pNXT_info { char privatdata[10000]; };
-struct pNXT_info *Global_pNXT;
-
-char *pNXT_jsonhandler(cJSON *argjson)
-{
-    char *jsonstr;
-    if ( argjson != 0 )
-    {
-        jsonstr = cJSON_Print(argjson);
-        printf("pNXT_jsonhandler.(%s)\n",jsonstr);
-        return(jsonstr);
-    }
-    return(0);
-}
-
-void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
-{
-    cJSON *argjson;
-    struct json_AM *ap;
-    char NXTaddr[64],*sender,*receiver;
-    sender = parms->sender; receiver = parms->receiver; ap = parms->AMptr;
-    expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
-    if ( strcmp(NXTaddr,sender) != 0 )
-    {
-        printf("unexpected NXTaddr %s != sender.%s when receiver.%s\n",NXTaddr,sender,receiver);
-        return;
-    }
-    if ( (argjson = parse_json_AM(ap)) != 0 )
-    {
-        printf("process_pNXT_AM got jsontxt.(%s)\n",ap->jsonstr);
-        free_json(argjson);
-    }
-}
-
-void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
-{
-    char NXTaddr[64],*sender,*receiver,*txid;
-    sender = parms->sender; receiver = parms->receiver; txid = parms->txid;
-    safecopy(NXTaddr,sender,sizeof(NXTaddr));
-    printf("got txid.(%s) type.%d subtype.%d sender.(%s) -> (%s)\n",txid,parms->type,parms->subtype,sender,receiver);
-}
-
-void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height)
-{
-    struct pNXT_info *dp = handlerdata;
-    if ( parms->txid == 0 )     // indicates non-transaction event
-    {
-        if ( parms->mode == NXTPROTOCOL_WEBJSON )
-            return(pNXT_jsonhandler(parms->argjson));
-        else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
-            printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
-        else if ( parms->mode == NXTPROTOCOL_IDLETIME )
-        {
-            //printf("pNXT new idletime %d time %ld microseconds %lld \n",mp->RTflag,time(0),(long long)microseconds());
-        }
-        else if ( parms->mode == NXTPROTOCOL_INIT )
-        {
-            printf("pNXT NXThandler_info init %d\n",mp->RTflag);
-            dp = Global_pNXT = calloc(1,sizeof(*Global_pNXT));
-        }
-        return(dp);
-    }
-    else if ( parms->mode == NXTPROTOCOL_AMTXID )
-        process_pNXT_AM(dp,parms);
-    else if ( parms->mode == NXTPROTOCOL_TYPEMATCH )
-        process_pNXT_typematch(dp,parms);
-    return(dp);
-}
 
 void NXTservices_idler(uv_idle_t *handle)
 {
@@ -119,6 +50,7 @@ void run_UVloop(void *arg)
 
 void run_NXTservices(void *arg)
 {
+    void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
     struct NXThandler_info *mp = arg;
     register_NXT_handler("pNXT",mp,2,NXTPROTOCOL_ILLEGALTYPE,pNXT_handler,pNXT_SIG,1,0,0);
     NXTloop(mp);
@@ -148,7 +80,6 @@ void init_NXTservices(int _argc,char **_argv)
         strcpy(MY_IPADDR,get_ipaddr());
         strcpy(mp->ipaddr,MY_IPADDR);
     }
-
     if ( _argc >= 2 && (strcmp(_argv[1],"server") == 0 || strcmp(mp->ipaddr,EMERGENCY_PUNCH_SERVER) == 0) )
     {
 #ifndef WIN32
@@ -177,6 +108,7 @@ void init_NXTservices(int _argc,char **_argv)
         gen_testforms();
 
         printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s NXT.(%s)\n",mp->dispname,PC_USERNAME,mp->ipaddr,mp->NXTADDR);
+        void run_NXTservices(void *arg);
         if ( portable_thread_create(run_NXTservices,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
     }

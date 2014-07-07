@@ -47,11 +47,13 @@
 extern char testforms[1024*1024];
 unsigned char NXTprotocol_parms[4096];
 
-//#define FROM_pNXT
-
 
 #include "../NXTservices/libwebsockets/libwebsockets.h"
+
 #include "libwebsocketsglue.h"
+#define INSIDE_CCODE
+#include "jl777.cpp"
+#undef INSIDE_CCODE
 
 
 
@@ -927,9 +929,4 @@ done:
 	return 0;
 }
 
-#ifdef FROM_pNXT
-#define INSIDE_CCODE
-#include "jl777.cpp"
-#undef INSIDE_CCODE
-#endif
 

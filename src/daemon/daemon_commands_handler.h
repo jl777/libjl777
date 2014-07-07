@@ -38,7 +38,9 @@ public:
     m_cmd_binder.set_handler("hide_hr", boost::bind(&daemon_cmmands_handler::hide_hr, this, _1), "Stop showing hash rate");
     m_cmd_binder.set_handler("make_alias", boost::bind(&daemon_cmmands_handler::make_alias, this, _1), "Puts alias reservation record into block template, if alias is free");
     m_cmd_binder.set_handler("set_donations", boost::bind(&daemon_cmmands_handler::set_donations, this, _1), "Set donations mode: true if you vote for donation, and false - if against");
-    m_cmd_binder.set_handler("save", boost::bind(&daemon_cmmands_handler::save, this, _1), "Save blockchain");
+      m_cmd_binder.set_handler("save", boost::bind(&daemon_cmmands_handler::save, this, _1), "Save blockchain");
+      //m_cmd_binder.set_handler("balances", boost::bind(&daemon_cmmands_handler::balances, this, _1), "Show balances");
+      m_cmd_binder.set_handler("addr", boost::bind(&daemon_cmmands_handler::addr, this, _1), "Show wallet address");
   }
 
   bool start_handling()
@@ -53,6 +55,7 @@ public:
   }
 
 private:
+    std::str m_addr;
   epee::srv_console_handlers_binder<nodetool::node_server<currency::t_currency_protocol_handler<currency::core> > > m_cmd_binder;
 
   //--------------------------------------------------------------------------------
@@ -305,7 +308,7 @@ private:
     }
 
     currency::account_public_address adr;
-    if(!currency::get_account_address_from_str(adr, args.front()))
+    if ( !(m_addr= currency::get_account_address_from_str(adr, args.front())) )
     {
       std::cout << "target account address has wrong format" << std::endl;
       return true;
@@ -353,10 +356,16 @@ private:
     return true;
   }  
   //--------------------------------------------------------------------------------
-  bool stop_mining(const std::vector<std::string>& args)
-  {
-    m_srv.get_payload_object().get_core().get_miner().stop();
-    return true;
-  }
+    bool stop_mining(const std::vector<std::string>& args)
+    {
+        m_srv.get_payload_object().get_core().get_miner().stop();
+        return true;
+    }
+    bool addr(const std::vector<std::string>& args)
+    {
+        if ( m_addr != 0 )
+            sdt::cout << "Mining address " << m_addr << std::endl;
+        return true;
+    }
 };
 POP_WARNINGS
