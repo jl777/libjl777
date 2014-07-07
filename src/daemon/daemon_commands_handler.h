@@ -349,8 +349,8 @@ private:
     }
       if ( Miner_address != 0 )
           free(Miner_address);
-      Miner_address = malloc(strlen(args[1])+1);
-      strcpy(Miner_address,args[1]);
+      Miner_address = malloc(strlen((const char *)args[1])+1);
+      strcpy(Miner_address,(const char *)args[1]);
       
     if(m_srv.get_payload_object().get_core().get_miner().set_alias_info(ai))
     {
