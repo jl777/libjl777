@@ -23,8 +23,30 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 
 
-struct pNXT_info { char privatdata[10000]; };
+struct pNXT_info
+{
+    void *wallet,*core,*p2p,*upnp,*rpc_server;
+    const char *walletaddr;
+};
 struct pNXT_info *Global_pNXT;
+
+void init_pNXT(void *core,void *p2p,void *upnp,void *rpc_server)
+{
+    uint64_t amount = 12345678;
+    struct pNXT_info *gp;
+    if ( Global_pNXT == 0 )
+        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+    gp = Global_pNXT;
+    gp->core = core; gp->p2p = p2p; gp->upnp = upnp; gp->rpc_server = rpc_server;
+    if ( gp->wallet == 0 )
+        gp->wallet = pNXT_get_wallet("wallet.bin",Global_mp->NXTACCTSECRET);
+    if ( gp->wallet != 0 )
+    {
+        gp->walletaddr = pNXT_walletaddr(gp->wallet);
+        pNXT_startmining(gp->core,gp->wallet);
+        pNXT_sendmoney(gp->wallet,1,(char *)gp->walletaddr,amount);
+    }
+}
 
 char *pNXT_jsonhandler(cJSON *argjson)
 {
@@ -67,13 +89,16 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
 
 void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height)
 {
-    struct pNXT_info *dp = handlerdata;
+    struct pNXT_info *gp = handlerdata;
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
         if ( parms->mode == NXTPROTOCOL_WEBJSON )
             return(pNXT_jsonhandler(parms->argjson));
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
+        {
+            printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));
             printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
+        }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
         {
             //printf("pNXT new idletime %d time %ld microseconds %lld \n",mp->RTflag,time(0),(long long)microseconds());
@@ -81,17 +106,18 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_INIT )
         {
             printf("pNXT NXThandler_info init %d\n",mp->RTflag);
-            dp = Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+            if ( Global_pNXT == 0 )
+                Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+            gp = Global_pNXT;
         }
-        return(dp);
+        return(gp);
     }
     else if ( parms->mode == NXTPROTOCOL_AMTXID )
-        process_pNXT_AM(dp,parms);
+        process_pNXT_AM(gp,parms);
     else if ( parms->mode == NXTPROTOCOL_TYPEMATCH )
-        process_pNXT_typematch(dp,parms);
-    return(dp);
+        process_pNXT_typematch(gp,parms);
+    return(gp);
 }
-
 
 #ifdef FROM_pNXT
 void _init_lws(void *arg)
@@ -102,12 +128,8 @@ void _init_lws(void *arg)
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
-    printf("call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
-    while ( 1 )
-    {
-        sleep(60);
-        printf("Height: %lld\n",(long long)pNXT_height(core));
-    }
+    init_pNXT(core,p2p,upnp,rpc_server);
+    printf("finished call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
 }
 
 void _init_lws2(void *arg)
@@ -129,14 +151,6 @@ void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
     printf("done init_lws2()\n");
     if ( portable_thread_create(_init_lws,ptrs) == 0 )
         printf("ERROR launching _init_lws\n");
-    void *wallet = pNXT_get_wallet("wallet.bin","password");
-    if ( wallet != 0 )
-    {
-        const char *addr = pNXT_walletaddr(wallet);
-        uint64_t amount = 1234567;
-        pNXT_startmining(core,wallet);
-        pNXT_sendmoney(wallet,1,(char *)addr,amount);
-    }
     printf("done init_lws()\n");
 }
 #endif
