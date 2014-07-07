@@ -307,7 +307,7 @@ private:
     }
 
     currency::account_public_address adr;
-    if ( !(m_addr= currency::get_account_address_from_str(adr, args.front())) )
+    if ( !currency::get_account_address_from_str(adr, args.front()) )
     {
       std::cout << "target account address has wrong format" << std::endl;
       return true;
