@@ -233,7 +233,6 @@ extern "C" int32_t pNXT_startmining(currency::core *core,currency::simple_wallet
     }
     else
     {
-        printf("core.%p: start mining (%s) ",core,pNXT_walletaddr(core,wallet));
         wallet->show_balance();
    }
     return(0);
@@ -255,7 +254,7 @@ extern "C" bool pNXT_sendmoney(currency::simple_wallet *wallet,int32_t numfakes,
     char buf[512];
     args.reserve(3);
     wallet->sync_wallet();
-    printf("sending %.8f pNXT to (%s) from %s ",dstr(amount),dest,pNXT_walletaddr(core,wallet));
+    printf("sending %.8f pNXT to (%s)  ",dstr(amount),dest);
     wallet->show_balance();
     sprintf(buf,"%d",numfakes);
     args.push_back(buf);
