@@ -438,9 +438,11 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 int gen_pNXT_cashout_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384];
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\"}';\n}\n",name,handler,name,NXTaddr);
+    char script[16384],*amount;
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"amount\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,amount);
     *scriptp = clonestr(script);
+    free(amount);
     return(n);
 }
 
@@ -448,13 +450,40 @@ int gen_pNXT_send_fields(char *NXTaddr,char *handler,char *name,char **fields,ch
 {
     int n = 0;
     char script[16384],*dest,*amount,*level,*paymentid;
-    dest = construct_varname(fields,n++,name,"dest","dest address:",0,0);
+    dest = construct_varname(fields,n++,name,"dest","dest address:",64,0);
     amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
-    level = construct_varname(fields,n++,name,"level","level (0 or more):",0,0);
-    paymentid = construct_varname(fields,n++,name,"paymentid","paymentid:",0,0);
+    level = construct_varname(fields,n++,name,"level","privacy level (0 or more):",0,0);
+    paymentid = construct_varname(fields,n++,name,"paymentid","paymentid:",64,0);
     sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"level\":\"' + %s + '\",\"paymentid\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,dest,amount,level,paymentid);
     *scriptp = clonestr(script);
     free(dest); free(amount); free(level); free(paymentid);
+    return(n);
+}
+
+int gen_pNXT_send2_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*dest,*amount,*level;
+    dest = construct_varname(fields,n++,name,"dest","dest NXT address:",64,0);
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    level = construct_varname(fields,n++,name,"level","privacy level (0 or more):",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"level\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,dest,amount,level);
+    *scriptp = clonestr(script);
+    free(dest); free(amount); free(level);
+    return(n);
+}
+
+int gen_pNXT_send3_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*dest,*amount,*level,*minrate;
+    dest = construct_varname(fields,n++,name,"dest","dest BTC address:",64,0);
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    level = construct_varname(fields,n++,name,"level","privacy level (0 or more):",0,0);
+    minrate = construct_varname(fields,n++,name,"minrate","minimum conversion rate:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"level\":\"' + %s + '\",\"minrate\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,dest,amount,level,minrate);
+    *scriptp = clonestr(script);
+    free(dest); free(amount); free(level); free(minrate);
     return(n);
 }
 
@@ -469,6 +498,10 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"deposit pNXT to AE","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
     n++;
     forms[n] = make_form(NXTaddr,&scripts[n],"send","send pNXT to another pNXT address","send pNXT","127.0.0.1:7777","pNXT",gen_pNXT_send_fields);
+    n++;
+    forms[n] = make_form(NXTaddr,&scripts[n],"send2","send pNXT to NXT address","send to NXT addr","127.0.0.1:7777","pNXT",gen_pNXT_send2_fields);
+    n++;
+    forms[n] = make_form(NXTaddr,&scripts[n],"send3","send pNXT to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_send3_fields);
     n++;
     return(n);
 }
