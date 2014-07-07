@@ -6,6 +6,8 @@
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 
+#define SATOSHIDEN 100000000L
+
 #ifdef INSIDE_CCODE
 
 void *pNXT_get_wallet(char *fname,char *password);
@@ -66,7 +68,7 @@ extern "C" void init_lws(currency::core *,void *,void *,void *);
 
 extern "C" currency::simple_wallet *pNXT_get_wallet(char *fname,char *password)
 {
-    currency::simple_wallet *wallet = new(wallet);
+    currency::simple_wallet *wallet = new(currency::simple_wallet);
     if ( wallet->open_wallet(fname,password) == 0 )
         if ( wallet->new_wallet(fname,password) == 0 )
             free(wallet), wallet = 0;
@@ -75,14 +77,15 @@ extern "C" currency::simple_wallet *pNXT_get_wallet(char *fname,char *password)
     return(wallet);
 }
 
-extern "C" uint64_t pNXT_sync_wallet(currency::simple_wallet *wallet)
+extern "C" void pNXT_sync_wallet(currency::simple_wallet *wallet)
 {
-    return(wallet->sync_wallet());
+    wallet->sync_wallet();
 }
 
 extern "C" char *pNXT_get_walletaddr(currency::simple_wallet *wallet)
 {
     std::string addr;
+    currency::account_public_address acct;
     addr = wallet->get_address(acct);
     return(addr.c_str());
 }
@@ -120,7 +123,7 @@ extern "C" bool pNXT_sendmoney(currency::simple_wallet *wallet,int32_t numfakes,
     args.push_back(dest);
     sprintf(buf,"%.8f",(double)amount/SATOSHIDEN);
     args.push_back(buf);
-    return(simplewallet:transfer(args));
+    return(wallet->transfer(args));
 }
 
 extern "C" uint64_t pNXT_height(currency::core *m)
