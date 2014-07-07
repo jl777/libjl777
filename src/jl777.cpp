@@ -12,7 +12,7 @@
 
 void *pNXT_get_wallet(char *fname,char *password);
 uint64_t pNXT_sync_wallet(void *wallet);
-char *pNXT_get_walletaddr(void *wallet);
+const char *pNXT_get_walletaddr(void *wallet);
 int32_t pNXT_startmining(void *core,void *wallet);
 uint64_t pNXT_rawbalance(void *wallet);
 uint64_t pNXT_confbalance(void *wallet);
@@ -82,7 +82,7 @@ extern "C" void pNXT_sync_wallet(currency::simple_wallet *wallet)
     wallet->sync_wallet();
 }
 
-extern "C" char *pNXT_get_walletaddr(currency::simple_wallet *wallet)
+extern "C" const char *pNXT_get_walletaddr(currency::simple_wallet *wallet)
 {
     std::string addr;
     currency::account_public_address acct;
@@ -93,8 +93,9 @@ extern "C" char *pNXT_get_walletaddr(currency::simple_wallet *wallet)
 extern "C" int32_t pNXT_startmining(currency::core *m,currency::simple_wallet *wallet)
 {
     int numthreads = 1;
+    std::string addr;
     currency::account_public_address acct;
-    addr = wallet.get_address(acct);
+    addr = wallet->get_address(acct);
     if ( m->get_miner().start(acct,numthreads) == 0 )
     {
         printf("Failed, mining not started for (%s)\n",addr.c_str());
