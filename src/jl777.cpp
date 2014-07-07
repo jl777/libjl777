@@ -223,11 +223,16 @@ extern "C" int32_t pNXT_startmining(currency::core *core,currency::simple_wallet
     int numthreads = 1;
     std::string addr;
     currency::account_public_address acct;
+    wallet->sync_wallet();
     addr = wallet->get_address(acct);
     if ( core->get_miner().start(acct,numthreads) == 0 )
     {
         printf("Failed, mining not started for (%s)\n",addr.c_str());
         return(-1);
+    }
+    else
+    {
+        printf("core.%p: start mining (%s) balance %.8f %.8f\n",core,pNXT_walletaddr(core,wallet),dstr(get_pNXT_confbalance()),dstr(get_pNXT_rawbalance()));
     }
     return(0);
 }
@@ -247,6 +252,9 @@ extern "C" bool pNXT_sendmoney(currency::simple_wallet *wallet,int32_t numfakes,
     std::vector<std::string> args;
     char buf[512];
     args.reserve(3);
+    wallet->sync_wallet();
+    wallet->showbalance();
+    printf("sending %.8f pNXT to (%s) from %s balance %.8f %.8f\n",dstr(amount),dest,pNXT_walletaddr(core,wallet),dstr(get_pNXT_confbalance()),dstr(get_pNXT_rawbalance()));
     sprintf(buf,"%d",numfakes);
     args.push_back(buf);
     args.push_back(dest);
