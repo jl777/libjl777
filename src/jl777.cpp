@@ -60,9 +60,9 @@ void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
     void *wallet = pNXT_get_wallet("wallet.bin","password");
     if ( wallet != 0 )
     {
-        char *addr = pNXT_walletaddr(wallet);
+        const char *addr = pNXT_walletaddr(wallet);
         uint64_t amount = 1234567;
-        pNXT_start_mining(core,wallet);
+        pNXT_startmining(core,wallet);
         pNXT_sendmoney(wallet,1,addr,amount);
     }
     printf("done init_lws()\n");
