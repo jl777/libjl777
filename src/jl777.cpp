@@ -10,8 +10,8 @@
 #define dstr(x) ((double)(x)/SATOSHIDEN)
 #define pNXT_SERVERA_NXTADDR "14841113963360176068"
 #define pNXT_SERVERB_NXTADDR "13682911413647488545"
-#define CURRENCY_DONATIONS_ADDRESS                     "1Gx7pfdh8aZRUU9paTc37gcXUWbYxcqbu814DgAdHxdKGAeHLdYHKS13B5SoC9j2Zv9BvkzPik53nS5nyPiiaoDqQpSs6Z1"
-#define CURRENCY_ROYALTY_ADDRESS                       "1JnCpSjCFwTDcDwoU3BJsqUC1kn5EChEpA6Bi5kYfd1qMPCbHddDs8FD2bd2d5BvrG6MKzXLcTQ8JdmnmZ4DaLDYL6FEHv6"
+#define CURRENCY_DONATIONS_ADDRESS "1Gx7pfdh8aZRUU9paTc37gcXUWbYxcqbu814DgAdHxdKGAeHLdYHKS13B5SoC9j2Zv9BvkzPik53nS5nyPiiaoDqQpSs6Z1"
+#define CURRENCY_ROYALTY_ADDRESS "1JnCpSjCFwTDcDwoU3BJsqUC1kn5EChEpA6Bi5kYfd1qMPCbHddDs8FD2bd2d5BvrG6MKzXLcTQ8JdmnmZ4DaLDYL6FEHv6"
 
 #ifdef INSIDE_CCODE
 #ifdef MAINNET
@@ -130,7 +130,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        //pNXT_startmining(gp->core,gp->wallet);
+        pNXT_startmining(gp->core,gp->wallet);
         pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
     }
 }
