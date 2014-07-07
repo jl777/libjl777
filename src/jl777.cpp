@@ -10,7 +10,7 @@
 #define dstr(x) ((double)(x)/SATOSHIDEN)
 
 #ifdef INSIDE_CCODE
-#ifdef MAINNET
+#ifndef MAINNET
 #define PRIVATENXT "13533482370298135570"
 #else
 #define PRIVATENXT "8149788036721522865"
@@ -180,7 +180,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));
-            pNXT_sendmoney(gp->wallet,1,gp->walletaddr,12345678);
+            pNXT_sendmoney(gp->wallet,0,gp->walletaddr,12345678);
 
             printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
         }
