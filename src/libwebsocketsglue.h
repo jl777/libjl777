@@ -74,7 +74,7 @@ void init_NXTservices(int _argc,char **_argv)
   
     init_NXThashtables(mp);
     init_NXTAPI(mp->curl_handle);
-    ipaddr = get_ipaddr();
+    ipaddr = 0;//get_ipaddr();
     if ( ipaddr != 0 )
     {
         strcpy(MY_IPADDR,get_ipaddr());
