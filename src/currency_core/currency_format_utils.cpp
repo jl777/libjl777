@@ -1137,7 +1137,7 @@ namespace currency
     bl.timestamp = 0;
     bl.nonce = 1010101020; //bender's nightmare
     //miner::find_nonce_for_given_block(bl, 1, 0,);
-      std::count << "genesis hash " << get_block_hash(tx_bl) << std::endl;
+      std::cout << "genesis hash " << get_block_hash(bl) << std::endl;
     return true;
   }
   //---------------------------------------------------------------

@@ -466,9 +466,9 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     int n = 0;
     char buf[512];
     sprintf(buf,"pNXT address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
-    forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"deposit to AE","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"deposit pNXT to AE","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
     n++;
-    forms[n] = make_form(NXTaddr,&scripts[n],"send",buf,"send to pNXT","127.0.0.1:7777","pNXT",gen_pNXT_send_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"send","send pNXT to another pNXT address","send pNXT","127.0.0.1:7777","pNXT",gen_pNXT_send_fields);
     n++;
     return(n);
 }
@@ -477,7 +477,7 @@ char *teststr = "<!DOCTYPE html>\
 <html>\
 <head>\
 <meta charset=\"UTF-8\"/>\
-<title>NXTprotocol dev GUI</title>\
+<title>NXTservices API form</title>\
 <article>\
 <section class=\"browser\">NXTservices detected Browser: <div id=brow>...</div></section><BR><BR>\
 <section id=\"increment\" class=\"group2\">\
