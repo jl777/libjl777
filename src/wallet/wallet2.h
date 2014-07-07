@@ -399,6 +399,7 @@ namespace tools
       src.real_output_in_tx_index = td.m_internal_output_index;
       detail::print_source_entry(src);
       ++i;
+        printf("input.%d\n",i);
     }
 
     currency::tx_destination_entry change_dts = AUTO_VAL_INIT(change_dts);

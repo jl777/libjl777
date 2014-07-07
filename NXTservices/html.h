@@ -444,6 +444,20 @@ int gen_pNXT_cashout_fields(char *NXTaddr,char *handler,char *name,char **fields
     return(n);
 }
 
+int gen_pNXT_send_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*dest,*amount,*level,*paymentid;
+    dest = construct_varname(fields,n++,name,"dest","dest address:",0,0);
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    level = construct_varname(fields,n++,name,"level","level (0 or more):",0,0);
+    paymentid = construct_varname(fields,n++,name,"paymentid","paymentid:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"level\":\"' + %s + '\",\"paymentid\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,dest,amount,level,paymentid);
+    *scriptp = clonestr(script);
+    free(dest); free(amount); free(level); free(paymentid);
+    return(n);
+}
+
 int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
 {
     char *get_pNXT_addr();
@@ -451,8 +465,10 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     uint64_t get_pNXT_rawbalance();
     int n = 0;
     char buf[512];
-    sprintf(buf,"pNXT %s available raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
-    forms[n] = make_form(NXTaddr,&scripts[n],"cashout",buf,"cashout","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    sprintf(buf,"pNXT address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
+    forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"deposit to AE","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    n++;
+    forms[n] = make_form(NXTaddr,&scripts[n],"send",buf,"send to pNXT","127.0.0.1:7777","pNXT",gen_pNXT_send_fields);
     n++;
     return(n);
 }
@@ -463,7 +479,7 @@ char *teststr = "<!DOCTYPE html>\
 <meta charset=\"UTF-8\"/>\
 <title>NXTprotocol dev GUI</title>\
 <article>\
-<section class=\"browser\">NXTprotocol detected Browser: <div id=brow>...</div></section><BR><BR>\
+<section class=\"browser\">NXTservices detected Browser: <div id=brow>...</div></section><BR><BR>\
 <section id=\"increment\" class=\"group2\">\
 <table>\
 <BR><BR>\
