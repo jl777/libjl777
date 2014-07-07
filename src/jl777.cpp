@@ -10,6 +10,12 @@
 #define dstr(x) ((double)(x)/SATOSHIDEN)
 
 #ifdef INSIDE_CCODE
+#ifdef MAINNET
+#define PRIVATENXT "13533482370298135570"
+#else
+#define PRIVATENXT "8149788036721522865"
+#endif
+
 int lwsmain(int argc,char **argv);
 void *pNXT_get_wallet(char *fname,char *password);
 uint64_t pNXT_sync_wallet(void *wallet);
@@ -30,6 +36,54 @@ struct pNXT_info
     char walletaddr[512];
 };
 struct pNXT_info *Global_pNXT;
+
+int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
+{
+    char *assetid_str(int32_t coinid);
+    char cmd[4096],assetid[512];
+    union NXTtype retval;
+    int32_t i,n,iter;
+    cJSON *array,*item,*obj;
+    int64_t quantity,qty;
+    quantity = *unconfirmedp = 0;
+    sprintf(cmd,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
+    retval = extract_NXTfield(0,0,cmd,0,0);
+    if ( retval.json != 0 )
+    {
+        for (iter=0; iter<2; iter++)
+        {
+            qty = 0;
+            array = cJSON_GetObjectItem(retval.json,iter==0?"assetBalances":"unconfirmedAssetBalances");
+            if ( is_cJSON_Array(array) != 0 )
+            {
+                n = cJSON_GetArraySize(array);
+                for (i=0; i<n; i++)
+                {
+                    item = cJSON_GetArrayItem(array,i);
+                    obj = cJSON_GetObjectItem(item,"asset");
+                    copy_cJSON(assetid,obj);
+                    //printf("i.%d of %d: %s(%s)\n",i,n,assetid,cJSON_Print(item));
+                    if ( strcmp(assetid,assetidstr) == 0 )
+                    {
+                        qty = get_cJSON_int(item,iter==0?"balanceQNT":"unconfirmedBalanceQNT");
+                        break;
+                    }
+                }
+            }
+            if ( iter == 0 )
+                quantity = qty;
+            else *unconfirmedp = qty;
+        }
+    }
+    return(quantity);
+}
+
+uint64_t get_privateNXT_balance(char *NXTaddr)
+{
+    int64_t qty,unconfirmed;
+    qty = get_asset_quantity(&unconfirmed,NXTaddr,PRIVATENXT);
+    return(qty * 1000000L); // assumes 2 decimal points
+}
 
 char *get_pNXT_addr()
 {
@@ -54,7 +108,7 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-    uint64_t amount = 12345678;
+   // uint64_t amount = 12345678;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -72,8 +126,8 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        pNXT_startmining(gp->core,gp->wallet);
-        pNXT_sendmoney(gp->wallet,3,gp->walletaddr,amount);
+        //pNXT_startmining(gp->core,gp->wallet);
+        //pNXT_sendmoney(gp->wallet,3,gp->walletaddr,amount);
     }
 }
 

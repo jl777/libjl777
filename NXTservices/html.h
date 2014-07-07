@@ -435,7 +435,18 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 }
 #endif
 
-int gen_pNXT_cashout_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+int gen_pNXT_deposit_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*amount;
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"amount\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,amount);
+    *scriptp = clonestr(script);
+    free(amount);
+    return(n);
+}
+
+int gen_pNXT_withdraw_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
     char script[16384],*amount;
@@ -492,10 +503,14 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     char *get_pNXT_addr();
     uint64_t get_pNXT_confbalance();
     uint64_t get_pNXT_rawbalance();
+    uint64_t get_privateNXT_balance(char *NXTaddr);
     int n = 0;
     char buf[512];
     sprintf(buf,"pNXT address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
-    forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"deposit pNXT to AE","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"convert pNXT to privateNXT asset","127.0.0.1:7777","pNXT",gen_pNXT_deposit_fields);
+    n++;
+    sprintf(buf,"NXT address \"%s\" has %.8f privateNXT assets",NXTaddr,dstr(get_privateNXT_balance(NXTaddr)));
+    forms[n] = make_form(NXTaddr,&scripts[n],"withdraw",buf,"convert privateNXT assets to pNXT coins","127.0.0.1:7777","pNXT",gen_pNXT_withdraw_fields);
     n++;
     forms[n] = make_form(NXTaddr,&scripts[n],"send","send pNXT to another pNXT address","send pNXT","127.0.0.1:7777","pNXT",gen_pNXT_send_fields);
     n++;
