@@ -425,7 +425,7 @@ namespace currency
         break;
       }
 
-      if (best_money < current_reward + current_fee) {
+      if (best_money <= current_reward + current_fee) {
         best_money = current_reward + current_fee;
         best_position = i + 1;
         total_size = current_size;
