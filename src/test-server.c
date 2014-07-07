@@ -928,48 +928,8 @@ done:
 }
 
 #ifdef FROM_pNXT
-uint64_t pNXT_height(void *core); // declare the wrapper function
-void p2p_glue(void *p2psrv);
-void rpc_server_glue(void *rpc_server);
-void upnp_glue(void *upnp);
-
-
-void _init_lws(void *arg)
-{
-    void *core,*p2psrv,*rpc_server,*upnp,**ptrs = (void **)arg;
-    sleep(3);
-    core = ptrs[0]; p2psrv = ptrs[1]; rpc_server = ptrs[2]; upnp = ptrs[3];
-    p2p_glue(p2psrv);
-    rpc_server_glue(rpc_server);
-    upnp_glue(upnp);
-    printf("call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
-    while ( 1 )
-    {
-        sleep(60);
-        printf("Height: %lld\n",(long long)pNXT_height(core));
-    }
-}
-
-void _init_lws2(void *arg)
-{
-    char *argv[2];
-    argv[0] = "from_init_lws";
-    argv[1] = 0;
-    printf("call lwsmain\n");
-    lwsmain(1,argv);
-}
-
-void init_lws(void *core,void *p2p,void *cprotocol,void *upnp)
-{
-    static void *ptrs[4];
-    ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = cprotocol; ptrs[3] = upnp;
-    printf("init_lws(%p %p %p %p)\n",core,p2p,cprotocol,upnp);
-    if ( portable_thread_create(_init_lws2,ptrs) == 0 )
-        printf("ERROR launching _init_lws2\n");
-    printf("done init_lws2()\n");
-    if ( portable_thread_create(_init_lws,ptrs) == 0 )
-        printf("ERROR launching _init_lws\n");
-    printf("done init_lws()\n");
-}
+#define INSIDE_CCODE
+#include "jl777.cpp"
+#undef INSIDE_CCODE
 #endif
 

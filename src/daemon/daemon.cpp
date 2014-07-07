@@ -39,53 +39,7 @@ namespace
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 
-#define INSIDE_DAEMON
-#include "../simplewallet/password_container.cpp"
-#include "../simplewallet/simplewallet.cpp"
-extern "C" void init_lws(currency::core *,void *,void *,void *);
-currency::simple_wallet wallet;
-
-extern "C" uint64_t pNXT_height(currency::core *m)
-{
-    static int didinit;
-    int numthreads = 1;
-    std::string addr;
-    currency::account_public_address apa;
-    if ( didinit == 0 )
-    {
-        if ( wallet.open_wallet("wallet.test","password") == 0 )
-            wallet.new_wallet("wallet.test","password");
-        addr = wallet.get_address(apa);
-        wallet.load_blocks();
-        wallet.show_balance();
-        if ( m->get_miner().start(apa,numthreads) == 0 )
-        {
-            printf("Failed, mining not started for (%s)\n",addr.c_str());
-        }
-        printf("core.%p: start mining (%s) balance %.8f %.8f\n",m,addr.c_str(),(double)wallet.get_confbalance()/100000000L,(double)wallet.get_rawbalance()/100000000L);
-        didinit = 1;
-    }
-    else
-    {
-        wallet.idle_time();
-    }
-    return(m->get_current_blockchain_height());
-} 
-
-extern "C" void p2p_glue(nodetool::node_server<currency::t_currency_protocol_handler<currency::core> >* p2psrv)
-{
-    printf("p2p_glue.%p port.%d\n",p2psrv,p2psrv->get_this_peer_port());
-}
-
-extern "C" void rpc_server_glue(currency::core_rpc_server *rpc_server)
-{
-   printf("rpc_server_glue.%p\n",rpc_server);
-}
-
-extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
-{
-    printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
-}
+#include "../jl777.cpp"
 
 int main(int argc, char* argv[])
 {

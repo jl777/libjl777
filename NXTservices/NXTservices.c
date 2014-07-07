@@ -1444,11 +1444,8 @@ void NXTloop(struct NXThandler_info *mp)
 #else
     height = 75300;
 #endif
-    if ( mp->waitforloading != 0 )
-    {
-        while ( Finished_loading == 0 )
-            sleep(1);
-    } else Finished_loading = 1;
+    while ( Finished_loading == 0 )
+        sleep(1);
     if ( mp->initassets != 0 )
         init_assets(mp);
     while ( 1 )

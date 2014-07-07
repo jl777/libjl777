@@ -528,7 +528,7 @@ bool simple_wallet::show_balance(const std::vector<std::string>& args/* = std::v
   return true;
 }
 
-void simple_wallet::idle_time()
+void simple_wallet::sync_wallet()
 {
     refresh(std::vector<std::string>());
     save(std::vector<std::string>());
@@ -561,15 +561,9 @@ void simple_wallet::load_blocks()
         sleep(3);
     }
     //m_wallet->refresh(fetched_blocks);
-    idle_time();
-    std::vector<std::string> args;
-    args.reserve(3);
-    args.push_back("1");
-    args.push_back("1HdfddeqDQKUjEsYaWLWWbFY8sTbYQj2z6vNFZrFV7ZgjSMksZX8wnEiXJm4abkkSwaZ1a4kR2sLtRJCmkeTCRjAMshzgfN");
-    //args.push_back("1D7EihZhDtaAxkB8kN1K9VVBkAYA3fCSGWm1FMzSor6pitTJXp6MD1tH51Tuyj5Pq8D47xThf4DzCCvHAuJ31tmdLHZUKjf");
-    args.push_back("0.12345678");
-    transfer(args);
+    sync_wallet();
 }
+
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::show_incoming_transfers(const std::vector<std::string>& args)
 {

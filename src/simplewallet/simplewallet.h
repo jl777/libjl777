@@ -45,7 +45,7 @@ namespace currency
       bool show_payments(const std::vector<std::string> &args);
       bool show_blockchain_height(const std::vector<std::string> &args);
       void load_blocks();
-      void idle_time();
+      void sync_wallet();
 private:
     void handle_command_line(const boost::program_options::variables_map& vm);
 

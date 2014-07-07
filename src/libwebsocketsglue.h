@@ -78,7 +78,9 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
             printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
-            printf("pNXT new idletime %d time %ld microseconds %lld \n",mp->RTflag,time(0),(long long)microseconds());
+        {
+            //printf("pNXT new idletime %d time %ld microseconds %lld \n",mp->RTflag,time(0),(long long)microseconds());
+        }
         else if ( parms->mode == NXTPROTOCOL_INIT )
         {
             printf("pNXT NXThandler_info init %d\n",mp->RTflag);
