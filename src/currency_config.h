@@ -94,8 +94,6 @@
 #define P2P_IP_FAILS_BEFOR_BLOCK                        10
 #define P2P_IDLE_CONNECTION_KILL_INTERVAL               (5*60) //5 minutes
 
-Generated new wallet:
-view key:
 
 /* This money will go to growth of the project */
   #define CURRENCY_DONATIONS_ADDRESS                     "1Gx7pfdh8aZRUU9paTc37gcXUWbYxcqbu814DgAdHxdKGAeHLdYHKS13B5SoC9j2Zv9BvkzPik53nS5nyPiiaoDqQpSs6Z1"
