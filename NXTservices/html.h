@@ -435,6 +435,27 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 }
 #endif
 
+int gen_pNXT_cashout_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384];
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\"}';\n}\n",name,handler,name,NXTaddr);
+    *scriptp = clonestr(script);
+    return(n);
+}
+
+int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
+{
+    char *get_pNXT_addr();
+    uint64_t get_pNXT_confbalance();
+    uint64_t get_pNXT_rawbalance();
+    int n = 0;
+    char buf[512];
+    sprintf(buf,"pNXT %s available raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
+    forms[n] = make_form(NXTaddr,&scripts[n],"pNXT cashout",buf,"cashout","127.0.0.1:7777","pNXT",gen_pNXT_cashout_fields);
+    n++;
+    return(n);
+}
 
 char *teststr = "<!DOCTYPE html>\
 <html>\
@@ -504,7 +525,7 @@ try {\n\
 void gen_testforms()
 {
     //int32_t coinid;
-    //char *str,*depositaddr,buf[4096];
+    char *str;//,*depositaddr,buf[4096];
     //int64_t quantity,unconfirmed;
 #ifdef MAINNET
     char *netstr = "MAINNET";
@@ -513,7 +534,10 @@ void gen_testforms()
 #endif
     sprintf(testforms,"%s %s Finished_loading.%d Historical_done.%d <br/><b>%s <br/> %s <br/>NXT.%s balance %.8f %s</b><br/>\n",teststr,netstr,Finished_loading,Historical_done,Global_mp->dispname,PC_USERNAME[0]!=0?PC_USERNAME:"setAccountInfo on http://127.0.0.1:6876/test description={\"username\":\"your pc username\"}",Global_mp->NXTADDR,dstr(Global_mp->acctbalance),Global_mp->acctbalance == 0?"<- need to send NXT":"");
     sprintf(testforms+strlen(testforms),"<br/><a href=\"https://coinomat.com/~jamesjl777\">Send NXT -> your Visa/Mastercard</a href>");
-    
+    str = gen_handler_forms(Global_mp->NXTADDR,"pNXT","privateNXT API test forms",pNXT_forms);
+    strcat(testforms,str);
+    free(str);
+ 
 #ifdef BTC_COINID
     str = gen_handler_forms(Global_mp->NXTADDR,"NXTcoinsco","NXTcoins.co API test forms",NXTcoinsco_forms);
     strcat(testforms,str);
