@@ -72,7 +72,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
         pNXT_startmining(gp->core,gp->wallet);
-        pNXT_sendmoney(gp->wallet,1,gp->walletaddr,amount);
+        pNXT_sendmoney(gp->wallet,0,gp->walletaddr,amount);
     }
 }
 
