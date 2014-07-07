@@ -13,6 +13,8 @@
 #include "crypto/hash.h"
 #include "warnings.h"
 
+char *Miner_address;
+
 PUSH_WARNINGS
 DISABLE_VS_WARNINGS(4100)
 
