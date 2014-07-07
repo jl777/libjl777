@@ -7,6 +7,7 @@
 //
 
 #define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x)/SATOSHIDEN)
 
 #ifdef INSIDE_CCODE
 int lwsmain(int argc,char **argv);
