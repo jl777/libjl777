@@ -161,7 +161,7 @@ namespace currency
     for (; no < out_amounts.size(); no++)
     {
       bool r = construct_tx_out(miner_address, txkey.sec, no, out_amounts[no], tx);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to contruct miner tx out");
+      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx out");
       summary_amounts += out_amounts[no];
     }
 
@@ -171,14 +171,14 @@ namespace currency
     if(donations)
     {
       bool r = construct_tx_out(donation_address, txkey.sec, no, donations, tx);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to contruct miner tx out");
+      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx out");
       ++no;
     }
 
     if(royalty)
     {
       bool r = construct_tx_out(royalty_address, txkey.sec, no, royalty, tx);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to contruct miner tx out");
+      CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx out");
       ++no;
     }
 
@@ -1114,7 +1114,7 @@ namespace currency
     alias_info ai = AUTO_VAL_INIT(ai);
     ai.m_alias = "jl777";
     ai.m_text_comment = "Let's go!";
-    get_account_address_from_str(ai.m_address, "1HNJjUsofq5LYLoXem119dd491yFAb5g4bCHkecV4sPqigmuxw57Ci9am71fEN4CRmA9jgnvo5PDNfaq8QnprWmS5uLqnbq"); 
+    get_account_address_from_str(ai.m_address, "1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj"); 
     construct_miner_tx(0, 0, 0, 0, 0, 0, ac, ac, ac, bl.miner_tx, proof, 11, 0, ai); // zero profit in genesis
     blobdata txb = tx_to_blob(bl.miner_tx);
     std::string hex_tx_represent = string_tools::buff_to_hex_nodelimer(txb);
@@ -1122,9 +1122,9 @@ namespace currency
         
     //hard code coinbase tx in genesis block, because "true" generating tx use random, but genesis should be always the same
 #ifndef TESTNET
-    std::string genesis_coinbase_tx_hex = "010a01ff000780a4e803029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd08807100808ece1c022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa709160080d293ad030252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d600808cee891a02b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841e0080b09dc2df01021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba60080e0a596bb1102b10ba13e303cbe9abf7d5d44f1d417727abcc14903a74e071abd652ce1bf76dd0080a0b6cef785020205e440069d10646f1bbfaeee88a2db218017941c5fa7280849126d2372fc643400bd0101b6134f5d1fe3e7124139c1bdb2ac55d3ae8860e1375c9b39d31d5da2225c1f35024849742077617320612062726967687420636f6c642064617920696e20417072696c2c20616e642074686520636c6f636b73207765726520737472696b696e6720746869727465656e0300056a6c373737afe8323edbd46c74d3010d32e98454d78dad266b8e5f09cc6fb5ae058e080cf9391048c006da8ec9d71d379037ff9036b53e62693bf045e6ac9fc44605f71d2b094c6574277320676f2100";
+    std::string genesis_coinbase_tx_hex = "010101ff000580cab5ee01029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880710080a8d6b907022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa709160080b09dc2df010252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d60080a0b6cef7850202b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841e0080c0dfda8ee906021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba600bd01019ed3e16ddd69f15e55cc8632a836501fd02c033c15df9bd671b5cd8ef8ae224f024849742077617320612062726967687420636f6c642064617920696e20417072696c2c20616e642074686520636c6f636b73207765726520737472696b696e6720746869727465656e0300056a6c373737afe8323edbd46c74d3010d32e98454d78dad266b8e5f09cc6fb5ae058e080cf9391048c006da8ec9d71d379037ff9036b53e62693bf045e6ac9fc44605f71d2b094c6574277320676f2100";
 #else 
-    std::string genesis_coinbase_tx_hex = "010a01ff000780a4e803029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd08807100808ece1c022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa709160080d293ad030252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d600808cee891a02b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841e0080b09dc2df01021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba60080e0a596bb1102b10ba13e303cbe9abf7d5d44f1d417727abcc14903a74e071abd652ce1bf76dd0080a0b6cef785020205e440069d10646f1bbfaeee88a2db218017941c5fa7280849126d2372fc643400bd0101b6134f5d1fe3e7124139c1bdb2ac55d3ae8860e1375c9b39d31d5da2225c1f35024849742077617320612062726967687420636f6c642064617920696e20417072696c2c20616e642074686520636c6f636b73207765726520737472696b696e6720746869727465656e0300056a6c373737afe8323edbd46c74d3010d32e98454d78dad266b8e5f09cc6fb5ae058e080cf9391048c006da8ec9d71d379037ff9036b53e62693bf045e6ac9fc44605f71d2b094c6574277320676f2100";                                          
+    std::string genesis_coinbase_tx_hex = "010101ff000580cab5ee01029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880710080a8d6b907022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa709160080b09dc2df010252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d60080a0b6cef7850202b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841e0080c0dfda8ee906021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba600bd01019ed3e16ddd69f15e55cc8632a836501fd02c033c15df9bd671b5cd8ef8ae224f024849742077617320612062726967687420636f6c642064617920696e20417072696c2c20616e642074686520636c6f636b73207765726520737472696b696e6720746869727465656e0300056a6c373737afe8323edbd46c74d3010d32e98454d78dad266b8e5f09cc6fb5ae058e080cf9391048c006da8ec9d71d379037ff9036b53e62693bf045e6ac9fc44605f71d2b094c6574277320676f2100";
 #endif
     //genesis_coinbase_tx_hex = string_tools::buff_to_hex_nodelimer(txb);
     std::cout << "hard-coded Genesis coinbase tx hex: " << genesis_coinbase_tx_hex << std::endl;

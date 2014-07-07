@@ -694,7 +694,7 @@ bool blockchain_storage::validate_miner_transaction(const block& b, size_t cumul
     }
   }*/
   donation_total = royalty + donation;
-#define dstr(x) ((double)x / 100000000L)
+//#define dstr(x) ((double)x / 100000000L)
   printf("already generated %.8f donated %.8f | royalty %.8f donation %.8f base_reward %.8f txfee %.8f\n",dstr(already_generated_coins),dstr(already_donated_coins),dstr(royalty),dstr(donation),dstr(base_reward),dstr(fee));
   return true;
 }
