@@ -389,8 +389,8 @@ namespace currency
     std::vector<txv *> txs(m_transactions.size());
     std::transform(m_transactions.begin(), m_transactions.end(), txs.begin(), [](txv &a) -> txv * { return &a; });
     std::sort(txs.begin(), txs.end(), [](txv *a, txv *b) -> bool {
-      uint64_t a_hi, a_lo = mul128(a->second.fee, b->second.blob_size, &a_hi);
-      uint64_t b_hi, b_lo = mul128(b->second.fee, a->second.blob_size, &b_hi);
+      uint64_t a_hi, a_lo = mul128(a->second.fee==0?1:a->second.fee, b->second.blob_size, &a_hi);
+      uint64_t b_hi, b_lo = mul128(b->second.fee==0?1:b->second.fee, a->second.blob_size, &b_hi);
       return a_hi > b_hi || (a_hi == b_hi && a_lo > b_lo);
     });
 
