@@ -3,7 +3,7 @@ git pull https://github.com/jl777/pNXT
 cmake ..
 clang -c -D FROM_pNXT test-server.c
 cd src
-unzip -f macosx.zip
+unzip -u macosx.zip
 cp CMakeFiles/daemon.dir/link_mac.txt CMakeFiles/daemon.dir/link.txt
 make simplewallet
 make
