@@ -54,7 +54,7 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-    //uint64_t amount = 12345678;
+    uint64_t amount = 12345678;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -73,7 +73,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
         pNXT_startmining(gp->core,gp->wallet);
-        //pNXT_sendmoney(gp->wallet,0,gp->walletaddr,amount);
+        pNXT_sendmoney(gp->wallet,1,gp->walletaddr,amount);
     }
 }
 
