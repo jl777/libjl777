@@ -3,14 +3,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #pragma once
-#define POS_MODE
 
 #define CURRENCY_MAX_BLOCK_NUMBER                     500000000
 #define CURRENCY_MAX_BLOCK_SIZE                       500000000  // block header blob limit, never used!
 #define CURRENCY_MAX_TX_SIZE                          1000000000
 #define CURRENCY_PUBLIC_ADDRESS_TEXTBLOB_VER          0
 #define CURRENCY_PUBLIC_ADDRESS_BASE58_PREFIX         1 // addresses start with "1"
-#define CURRENCY_MINED_MONEY_UNLOCK_WINDOW            10
+#define CURRENCY_MINED_MONEY_UNLOCK_WINDOW            1
 #define CURRENT_TRANSACTION_VERSION                   1
 #define CURRENT_BLOCK_MAJOR_VERSION                   1
 #define CURRENT_BLOCK_MINOR_VERSION                   0
@@ -20,10 +19,10 @@
 
 // TOTAL_MONEY_SUPPLY - total number coins to be generated
 #define TOTAL_MONEY_SUPPLY                            ((uint64_t)100000000L*100000000L)
-#define DONATIONS_SUPPLY                              (TOTAL_MONEY_SUPPLY/100)
+#define DONATIONS_SUPPLY                              (0*TOTAL_MONEY_SUPPLY/100)
 #define EMISSION_SUPPLY                               (TOTAL_MONEY_SUPPLY - DONATIONS_SUPPLY) 
 
-#define EMISSION_CURVE_CHARACTER                      10  //23
+#define EMISSION_CURVE_CHARACTER                      8  //23
 
 
 #define CURRENCY_TO_KEY_OUT_RELAXED                   0
@@ -38,7 +37,7 @@
 #define COIN                                            ((uint64_t)100000000) // pow(10, 8)
 #define DEFAULT_DUST_THRESHOLD                          ((uint64_t)1) // pow(10, 6)
 
-#define DEFAULT_FEE                                     ((uint64_t)1) // pow(10, 8)
+#define DEFAULT_FEE                                     ((uint64_t)0) // pow(10, 8)
 
 
 #define ORPHANED_BLOCKS_MAX_COUNT                       100
@@ -95,13 +94,15 @@
 #define P2P_IP_FAILS_BEFOR_BLOCK                        10
 #define P2P_IDLE_CONNECTION_KILL_INTERVAL               (5*60) //5 minutes
 
+Generated new wallet:
+view key:
 
 /* This money will go to growth of the project */
-  #define CURRENCY_DONATIONS_ADDRESS                     "1DKm7QbhUZ4AmC2ztVchRhdWukpwtneLEdnCQJRmBVGkSHKJRhsNvE85dQX446SrASaNVWRrVt3Lm1SuY1m43pwYN8smxuK"
-  #define CURRENCY_DONATIONS_ADDRESS_TRACKING_KEY        "e0e01ba91639bca1fc4a2393735557cb25356f6213c060cb22e6c82403a77300"
+  #define CURRENCY_DONATIONS_ADDRESS                     "1Gx7pfdh8aZRUU9paTc37gcXUWbYxcqbu814DgAdHxdKGAeHLdYHKS13B5SoC9j2Zv9BvkzPik53nS5nyPiiaoDqQpSs6Z1"
+  #define CURRENCY_DONATIONS_ADDRESS_TRACKING_KEY        "03960414e9441d40ada9af54ef6c9865394ed796c8eec81ee94eb87d53ec7c0e"
 /* This money will go to the founder of CryptoNote technology, 10% of donations */
-  #define CURRENCY_ROYALTY_ADDRESS                       "1DKm7QbhUZ4AmC2ztVchRhdWukpwtneLEdnCQJRmBVGkSHKJRhsNvE85dQX446SrASaNVWRrVt3Lm1SuY1m43pwYN8smxuK"
-  #define CURRENCY_ROYALTY_ADDRESS_TRACKING_KEY          "e0e01ba91639bca1fc4a2393735557cb25356f6213c060cb22e6c82403a77300"
+  #define CURRENCY_ROYALTY_ADDRESS                       "1JnCpSjCFwTDcDwoU3BJsqUC1kn5EChEpA6Bi5kYfd1qMPCbHddDs8FD2bd2d5BvrG6MKzXLcTQ8JdmnmZ4DaLDYL6FEHv6"
+  #define CURRENCY_ROYALTY_ADDRESS_TRACKING_KEY          "8b034b7cad7a1d2097838370dcdd601864542c5f75f155b834c397a96270ca00"
 
 
 

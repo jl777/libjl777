@@ -393,7 +393,6 @@ difficulty_type blockchain_storage::get_difficulty_for_next_block()
     timestamps.push_back(m_blocks[offset].bl.timestamp);
     commulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
   }
-  //PoS_MODE =  (offset > 46056);
   return next_difficulty(timestamps, commulative_difficulties);
 }
 //------------------------------------------------------------------

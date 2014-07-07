@@ -74,9 +74,6 @@ namespace currency {
 
     size_t length = timestamps.size();
     assert(length == cumulative_difficulties.size());
-//#ifndef POS_MODE
-//    return 1;
-//#endif
     if (length <= 1) {
       return 1;
     }
