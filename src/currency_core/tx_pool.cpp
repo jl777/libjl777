@@ -323,7 +323,9 @@ namespace currency
         if ( is_jl777_tx(&txd.tx) != 0 )
         {
             if ( is_jl777_validatetx(&txd.tx) < 0 )
+            {
                 LOG_ERROR("is_transaction_ready_to_go is_jl777_tx that failed verification");
+            }
             else
             {
                 std::cout << "is_transaction_ready_to_go is_jl777_tx" << std::endl;
