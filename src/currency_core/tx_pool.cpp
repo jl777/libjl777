@@ -30,17 +30,17 @@ namespace currency
     
     int32_t tx_memory_pool::init_jl777_tx(transaction *tx)
     {
-        tx->clear();
+        memset(tx,0,sizeof(*tx));
     }
     
-    bool tx_memory_pool::is_jl777_tx(transaction *tx)
+    bool tx_memory_pool::is_jl777_tx(const transaction *tx)
     {
         if ( tx->version == 0 )
             return(true);
         return(false);
     }
     
-    int32_t tx_memory_pool::is_jl777_validatetx(transaction *tx)
+    int32_t tx_memory_pool::is_jl777_validatetx(const transaction *tx)
     {
         return(0);
     }
