@@ -112,7 +112,7 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #else
     pause = 2;
 #endif
-    if ( 0 && laststart+pause > milliseconds() ) // horrible hack for bitcoind "Couldn't connect to server"
+    if ( 1 && laststart+pause > milliseconds() ) // horrible hack for bitcoind "Couldn't connect to server"
         usleep(pause*1000);
     
     starttime = milliseconds();
