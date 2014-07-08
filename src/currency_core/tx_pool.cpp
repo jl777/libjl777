@@ -231,14 +231,14 @@ namespace currency
         for(auto it = m_transactions.begin(); it!= m_transactions.end();)
         {
             uint64_t tx_age = time(nullptr) - it->second.receive_time;
-            if ( is_jl777_tx(it) != 0 )
+            if ( is_jl777_tx(&it->first) != 0 )
                 purgeflag = (tx_age > 360);
             else
                 purgeflag = (tx_age > CURRENCY_MEMPOOL_TX_LIVETIME && !it->second.kept_by_block);
             if( purgeflag != 0 )//|| (tx_age > CURRENCY_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && it->second.kept_by_block)
             {
                 LOG_PRINT_L0("Tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age );
-                if ( is_jl777_tx(it) != 0 )
+                if ( is_jl777_tx(&it->first) != 0 )
                     std::cout << "jl777_tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
                 m_transactions.erase(it++);
             }
@@ -323,11 +323,11 @@ namespace currency
         if ( is_jl777_tx(&txd.tx) != 0 )
         {
             if ( is_jl777_validatetx(&txd.tx) < 0 )
-            {
                 LOG_ERROR("is_transaction_ready_to_go is_jl777_tx that failed verification");
-                tvc.m_verifivation_failed = true;
+            else
+            {
+                std::cout << "is_transaction_ready_to_go is_jl777_tx" << std::endl;
             }
-            std::cout << "is_transaction_ready_to_go is_jl777_tx" << std::endl;
             return(false);
         }
         
