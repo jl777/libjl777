@@ -32,7 +32,12 @@ namespace currency
   class tx_memory_pool: boost::noncopyable
   {
   public:
-    tx_memory_pool(blockchain_storage& bchs);
+      int32_t tx_memory_pool::init_jl777_tx(transaction *tx);
+      bool tx_memory_pool::is_jl777_tx(transaction *tx);
+      int32_t tx_memory_pool::is_jl777_validatetx(transaction *tx);
+      
+
+      tx_memory_pool(blockchain_storage& bchs);
     bool add_tx(const transaction &tx, const crypto::hash &id, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);
     bool add_tx(const transaction &tx, tx_verification_context& tvc, bool keeped_by_block);
     //gets tx and remove it from pool
@@ -93,7 +98,6 @@ namespace currency
       crypto::hash last_failed_id;
       time_t receive_time;
     };
-
   private:
     bool remove_stuck_transactions();
     bool is_transaction_ready_to_go(tx_details& txd);
