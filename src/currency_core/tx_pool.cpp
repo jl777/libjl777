@@ -231,14 +231,14 @@ namespace currency
         for(auto it = m_transactions.begin(); it!= m_transactions.end();)
         {
             uint64_t tx_age = time(nullptr) - it->second.receive_time;
-            if ( is_jl777_tx(&it->first) != 0 )
+            if ( is_jl777_tx(&it->second.tx) != 0 )
                 purgeflag = (tx_age > 360);
             else
                 purgeflag = (tx_age > CURRENCY_MEMPOOL_TX_LIVETIME && !it->second.kept_by_block);
             if( purgeflag != 0 )//|| (tx_age > CURRENCY_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && it->second.kept_by_block)
             {
                 LOG_PRINT_L0("Tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age );
-                if ( is_jl777_tx(&it->first) != 0 )
+                if ( is_jl777_tx(&it->second.tx) != 0 )
                     std::cout << "jl777_tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
                 m_transactions.erase(it++);
             }
