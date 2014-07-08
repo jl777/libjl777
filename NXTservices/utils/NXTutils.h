@@ -184,14 +184,6 @@ const char *choose_poolserver(char *NXTaddr)
     return(Guardian_names[lastind]);*/
 }
 
-int64_t conv_floatstr(char *numstr)
-{
-    double val,corr;
-    val = atof(numstr);
-    corr = (val < 0.) ? -0.50000000001 : 0.50000000001;
-    return((int64_t)(val * SATOSHIDEN + corr));
-}
-
 union NXTtype extract_NXTfield(CURL *curl_handle,char *origoutput,char *cmd,char *field,int32_t type)
 {
     char *jsonstr,*output,NXTaddr[MAX_NXTADDR_LEN];
@@ -1280,17 +1272,7 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
 }
 
 //#ifndef WIN32
-double milliseconds(void)
-{
-    static struct timeval timeval,first_timeval;
-    gettimeofday(&timeval,0);
-    if ( first_timeval.tv_sec == 0 )
-    {
-        first_timeval = timeval;
-        return(0);
-    }
-    return((timeval.tv_sec - first_timeval.tv_sec) * 1000. + (timeval.tv_usec - first_timeval.tv_usec)/1000.);
-}
+
 //#endif
 
 int64_t microseconds(void)

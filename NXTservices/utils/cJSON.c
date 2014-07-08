@@ -23,7 +23,7 @@
 /* cJSON */
 /* JSON parser in C. */
 
-//#include "cJSON.h"
+#include "cJSON.h"
 
 static const char *ep;
 
@@ -619,6 +619,112 @@ void copy_cJSON(char *dest,cJSON *obj)
             free(str);
         }
     }
+}
+
+int32_t safecopy(char *dest,char *src,long len)
+{
+    int32_t i = -1;
+    if ( dest != 0 )
+        memset(dest,0,len);
+    if ( src != 0 )
+    {
+        for (i=0; i<len&&src[i]!=0; i++)
+            dest[i] = src[i];
+        if ( i == len )
+        {
+            printf("%s too long %ld\n",src,len);
+            return(-1);
+        }
+        dest[i] = 0;
+    }
+    return(i);
+}
+
+int64_t conv_floatstr(char *numstr)
+{
+    double val,corr;
+    val = atof(numstr);
+    corr = (val < 0.) ? -0.50000000001 : 0.50000000001;
+    return((int64_t)(val * SATOSHIDEN + corr));
+}
+
+int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
+{
+    int32_t i,n;
+    uint64_t modval;
+    char rev[64];
+    for (i=0; nxt64bits!=0; i++)
+    {
+        modval = nxt64bits % 10;
+        rev[i] = (char)(modval + '0');
+        nxt64bits /= 10;
+    }
+    n = i;
+    for (i=0; i<n; i++)
+        NXTaddr[i] = rev[n-1-i];
+    NXTaddr[i] = 0;
+    return(n);
+}
+
+char *nxt64str(uint64_t nxt64bits)
+{
+    static char NXTaddr[64];
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    return(NXTaddr);
+}
+
+char *nxt64str2(uint64_t nxt64bits)
+{
+    static char NXTaddr[64];
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    return(NXTaddr);
+}
+
+int32_t cmp_nxt64bits(const char *str,uint64_t nxt64bits)
+{
+    char expanded[64];
+    if ( str == 0 )//|| str[0] == 0 || nxt64bits == 0 )
+        return(-1);
+    if ( nxt64bits == 0 && str[0] == 0 )
+        return(0);
+    expand_nxt64bits(expanded,nxt64bits);
+    return(strcmp(str,expanded));
+}
+
+uint64_t calc_nxt64bits(const char *NXTaddr)
+{
+    int32_t c;
+    int64_t n,i;
+    uint64_t lastval,mult,nxt64bits = 0;
+    n = strlen(NXTaddr);
+    if ( n >= 22 )
+    {
+        printf("calc_nxt64bits: illegal NXTaddr.(%s) too long\n",NXTaddr);
+        return(0);
+    }
+    else if ( strcmp(NXTaddr,"0") == 0 || strcmp(NXTaddr,"false") == 0 )
+    {
+        // printf("zero address?\n"); getchar();
+        return(0);
+    }
+    mult = 1;
+    lastval = 0;
+    for (i=n-1; i>=0; i--,mult*=10)
+    {
+        c = NXTaddr[i];
+        if ( c < '0' || c > '9' )
+        {
+            printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int)i);
+            return(0);
+        }
+        nxt64bits += mult * (c - '0');
+        if ( nxt64bits < lastval )
+            printf("calc_nxt64bits: warning: 64bit overflow %llx < %llx\n",(long long)nxt64bits,(long long)lastval);
+        lastval = nxt64bits;
+    }
+    if ( cmp_nxt64bits(NXTaddr,nxt64bits) != 0 )
+        printf("error calculating nxt64bits: %s -> %llx -> %s\n",NXTaddr,(long long)nxt64bits,nxt64str(nxt64bits));
+    return(nxt64bits);
 }
 
 int64_t _get_cJSON_int(cJSON *json)

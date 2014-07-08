@@ -23,7 +23,18 @@
 #ifndef cJSON__h
 #define cJSON__h
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <math.h>
+#include <float.h>
+#include <memory.h>
+#include <sys/time.h>
+
 #define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x) / SATOSHIDEN)
 
 #ifdef __cplusplus
 extern "C"

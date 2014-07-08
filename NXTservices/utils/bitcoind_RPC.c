@@ -8,6 +8,24 @@
 #ifndef JL777_BITCOIND_RPC
 #define JL777_BITCOIND_RPC
 
+#include <curl/curl.h>
+#include <curl/easy.h>
+
+#include "cJSON.h"
+
+
+double milliseconds(void)
+{
+    static struct timeval timeval,first_timeval;
+    gettimeofday(&timeval,0);
+    if ( first_timeval.tv_sec == 0 )
+    {
+        first_timeval = timeval;
+        return(0);
+    }
+    return((timeval.tv_sec - first_timeval.tv_sec) * 1000. + (timeval.tv_usec - first_timeval.tv_usec)/1000.);
+}
+
 #define EXTRACT_BITCOIND_RESULT     // if defined, ensures error is null and returns the "result" field
 #ifdef EXTRACT_BITCOIND_RESULT
 
@@ -94,7 +112,7 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #else
     pause = 2;
 #endif
-    if ( 1 && laststart+pause > milliseconds() ) // horrible hack for bitcoind "Couldn't connect to server"
+    if ( 0 && laststart+pause > milliseconds() ) // horrible hack for bitcoind "Couldn't connect to server"
         usleep(pause*1000);
     
     starttime = milliseconds();

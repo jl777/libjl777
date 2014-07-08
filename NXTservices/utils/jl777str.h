@@ -11,7 +11,7 @@
 #define NO_DEBUG_MALLOC
 
 
-#define dstr(x) ((double)(x)/SATOSHIDEN)
+#define dstr(x) ((double)(x) / SATOSHIDEN)
 long MY_ALLOCATED,NUM_ALLOCATED,MAX_ALLOCATED,*MY_ALLOCSIZES; void **PTRS;
 
 void *mymalloc(long allocsize)
@@ -65,7 +65,7 @@ void myfree(void *ptr,char *str)
     while ( 1 ) sleep(1);
     free(ptr);
 }
-
+/*
 int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
 {
     int32_t i,n;
@@ -89,15 +89,10 @@ char *nxt64str(uint64_t nxt64bits)
     static char NXTaddr[64];
     expand_nxt64bits(NXTaddr,nxt64bits);
     return(NXTaddr);
-}
+}*/
 
-char *nxt64str2(uint64_t nxt64bits)
-{
-    static char NXTaddr[64];
-    expand_nxt64bits(NXTaddr,nxt64bits);
-    return(NXTaddr);
-}
 
+/*
 int32_t cmp_nxt64bits(const char *str,uint64_t nxt64bits)
 {
     char expanded[64];
@@ -143,7 +138,7 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
     if ( cmp_nxt64bits(NXTaddr,nxt64bits) != 0 )
         printf("error calculating nxt64bits: %s -> %llx -> %s\n",NXTaddr,(long long)nxt64bits,nxt64str(nxt64bits));
     return(nxt64bits);
-}
+}*/
 
 int32_t listcmp(char **list,char *str)
 {
@@ -171,7 +166,7 @@ char *clonestr(char *str)
     return(clone);
 }
 
-int32_t safecopy(char *dest,char *src,long len)
+/*int32_t safecopy(char *dest,char *src,long len)
 {
     int32_t i = -1;
     if ( dest != 0 )
@@ -188,7 +183,7 @@ int32_t safecopy(char *dest,char *src,long len)
         dest[i] = 0;
     }
     return(i);
-}
+}*/
 
 int32_t unhex(char c)
 {
