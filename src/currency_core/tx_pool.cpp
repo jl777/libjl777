@@ -27,114 +27,145 @@ namespace currency
   {
 
   }
+    
+    int32_t tx_memory_pool::init_jl777_tx(transaction *tx)
+    {
+        tx->clear();
+    }
+    
+    bool tx_memory_pool::is_jl777_tx(transaction *tx)
+    {
+        if ( tx->version == 0 )
+            return(true);
+        return(false);
+    }
+    
+    int32_t tx_memory_pool::is_jl777_validatetx(transaction *tx)
+    {
+        return(0);
+    }
+
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::add_tx(const transaction &tx, /*const crypto::hash& tx_prefix_hash,*/ const crypto::hash &id, size_t blob_size, tx_verification_context& tvc, bool kept_by_block)
   {
-    
-    //#9Protection from big transaction flood
-    if(!kept_by_block && blob_size > m_blockchain.get_current_comulative_blocksize_limit() / 2)
-    {
-      LOG_PRINT_L0("transaction is too big (" << blob_size << ")bytes for current transaction flow, tx_id: " << id);
-      tvc.m_verifivation_failed = true;
-      return false;
-    }
-    //TODO: add rule for relay, based on tx size/fee ratio
-
-    if(!check_inputs_types_supported(tx))
-    {
-      tvc.m_verifivation_failed = true;
-      return false;
-    }
-
-    uint64_t inputs_amount = 0;
-    if(!get_inputs_money_amount(tx, inputs_amount))
-    {
-      tvc.m_verifivation_failed = true;
-      return false;
-    }
-
-    uint64_t outputs_amount = get_outs_money_amount(tx);
-
-    if(outputs_amount > inputs_amount)
-    {
-      LOG_PRINT_L0("transaction use more money then it has: use " << outputs_amount << ", have " << inputs_amount);
-      tvc.m_verifivation_failed = true;
-      return false;
-    }
-
-    //check key images for transaction if it is not kept by block
-    if(!kept_by_block)
-    {
-      if(have_tx_keyimges_as_spent(tx))
+      
+      //#9Protection from big transaction flood
+      if(!kept_by_block && blob_size > m_blockchain.get_current_comulative_blocksize_limit() / 2)
       {
-        LOG_ERROR("Transaction with id= "<< id << " used already spent key images");
-        tvc.m_verifivation_failed = true;
-        return false;
+          LOG_PRINT_L0("transaction is too big (" << blob_size << ")bytes for current transaction flow, tx_id: " << id);
+          tvc.m_verifivation_failed = true;
+          return false;
       }
-    }
-
-    crypto::hash max_used_block_id = null_hash;
-    uint64_t max_used_block_height = 0;
-    bool ch_inp_res = m_blockchain.check_tx_inputs(tx, max_used_block_height, max_used_block_id);
-    CRITICAL_REGION_LOCAL(m_transactions_lock);
-    if(!ch_inp_res)
-    {
-      if(kept_by_block)
+      if ( is_jl777_tx(&tx) != 0 )
       {
-        //anyway add this transaction to pool, because it related to block
-        auto txd_p = m_transactions.insert(transactions_container::value_type(id, tx_details()));
-        CHECK_AND_ASSERT_MES(txd_p.second, false, "transaction already exists at inserting in memory pool");
-        txd_p.first->second.blob_size = blob_size;
-        txd_p.first->second.tx = tx;
-        txd_p.first->second.fee = inputs_amount - outputs_amount;
-        txd_p.first->second.max_used_block_id = null_hash;
-        txd_p.first->second.max_used_block_height = 0;
-        txd_p.first->second.kept_by_block = kept_by_block;
-        txd_p.first->second.receive_time = time(nullptr);
-        tvc.m_verifivation_impossible = true;
-        tvc.m_added_to_pool = true;
+          if ( is_jl777_validatetx(&tx) < 0 )
+          {
+              LOG_ERROR("Transaction with id= " << id << " is_jl777_tx that failed verification");
+              tvc.m_verifivation_failed = true;
+          }
+          std::cout << "Transaction with id= " << id << " is_jl777_tx" << std::endl;
+          tvc.m_verifivation_failed = false;
+          tvc.m_added_to_pool = true;
+          tvc.m_should_be_relayed = true;
+          return(true);
+      }
+      //TODO: add rule for relay, based on tx size/fee ratio
+      
+      if(!check_inputs_types_supported(tx))
+      {
+          tvc.m_verifivation_failed = true;
+          return false;
+      }
+      
+      uint64_t inputs_amount = 0;
+      if(!get_inputs_money_amount(tx, inputs_amount))
+      {
+          tvc.m_verifivation_failed = true;
+          return false;
+      }
+      
+      uint64_t outputs_amount = get_outs_money_amount(tx);
+      
+      if(outputs_amount > inputs_amount)
+      {
+          LOG_PRINT_L0("transaction use more money then it has: use " << outputs_amount << ", have " << inputs_amount);
+          tvc.m_verifivation_failed = true;
+          return false;
+      }
+      
+      //check key images for transaction if it is not kept by block
+      if(!kept_by_block)
+      {
+          if(have_tx_keyimges_as_spent(tx))
+          {
+              LOG_ERROR("Transaction with id= "<< id << " used already spent key images");
+              tvc.m_verifivation_failed = true;
+              return false;
+          }
+      }
+      
+      crypto::hash max_used_block_id = null_hash;
+      uint64_t max_used_block_height = 0;
+      bool ch_inp_res = m_blockchain.check_tx_inputs(tx, max_used_block_height, max_used_block_id);
+      CRITICAL_REGION_LOCAL(m_transactions_lock);
+      if(!ch_inp_res)
+      {
+          if(kept_by_block)
+          {
+              //anyway add this transaction to pool, because it related to block
+              auto txd_p = m_transactions.insert(transactions_container::value_type(id, tx_details()));
+              CHECK_AND_ASSERT_MES(txd_p.second, false, "transaction already exists at inserting in memory pool");
+              txd_p.first->second.blob_size = blob_size;
+              txd_p.first->second.tx = tx;
+              txd_p.first->second.fee = inputs_amount - outputs_amount;
+              txd_p.first->second.max_used_block_id = null_hash;
+              txd_p.first->second.max_used_block_height = 0;
+              txd_p.first->second.kept_by_block = kept_by_block;
+              txd_p.first->second.receive_time = time(nullptr);
+              tvc.m_verifivation_impossible = true;
+              tvc.m_added_to_pool = true;
+          }else
+          {
+              LOG_PRINT_L0("tx used wrong inputs, rejected");
+              tvc.m_verifivation_failed = true;
+              return false;
+          }
       }else
       {
-        LOG_PRINT_L0("tx used wrong inputs, rejected");
-        tvc.m_verifivation_failed = true;
-        return false;
+          //update transactions container
+          auto txd_p = m_transactions.insert(transactions_container::value_type(id, tx_details()));
+          CHECK_AND_ASSERT_MES(txd_p.second, false, "intrnal error: transaction already exists at inserting in memorypool");
+          txd_p.first->second.blob_size = blob_size;
+          txd_p.first->second.tx = tx;
+          txd_p.first->second.kept_by_block = kept_by_block;
+          txd_p.first->second.fee = inputs_amount - outputs_amount;
+          txd_p.first->second.max_used_block_id = max_used_block_id;
+          txd_p.first->second.max_used_block_height = max_used_block_height;
+          txd_p.first->second.last_failed_height = 0;
+          txd_p.first->second.last_failed_id = null_hash;
+          txd_p.first->second.receive_time = time(nullptr);
+          tvc.m_added_to_pool = true;
+          
+          //if(txd_p.first->second.fee >= 0)
+          tvc.m_should_be_relayed = true;
       }
-    }else
-    {
-      //update transactions container
-      auto txd_p = m_transactions.insert(transactions_container::value_type(id, tx_details()));
-      CHECK_AND_ASSERT_MES(txd_p.second, false, "intrnal error: transaction already exists at inserting in memorypool");
-      txd_p.first->second.blob_size = blob_size;
-      txd_p.first->second.tx = tx;
-      txd_p.first->second.kept_by_block = kept_by_block;
-      txd_p.first->second.fee = inputs_amount - outputs_amount;
-      txd_p.first->second.max_used_block_id = max_used_block_id;
-      txd_p.first->second.max_used_block_height = max_used_block_height;
-      txd_p.first->second.last_failed_height = 0;
-      txd_p.first->second.last_failed_id = null_hash;
-      txd_p.first->second.receive_time = time(nullptr);
-      tvc.m_added_to_pool = true;
-
-      //if(txd_p.first->second.fee >= 0)
-        tvc.m_should_be_relayed = true;
-    }
-
-    tvc.m_verifivation_failed = true;
-    //update image_keys container, here should everything goes ok.
-    BOOST_FOREACH(const auto& in, tx.vin)
-    {
-      CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, txin, false);
-      std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
-      CHECK_AND_ASSERT_MES(kept_by_block || kei_image_set.size() == 0, false, "internal error: keeped_by_block=" << kept_by_block
-                                          << ",  kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
-                                          << "tx_id=" << id );
-      auto ins_res = kei_image_set.insert(id);
-      CHECK_AND_ASSERT_MES(ins_res.second, false, "internal error: try to insert duplicate iterator in key_image set");
-    }
-
-    tvc.m_verifivation_failed = false;
-    //succeed
-    return true;
+      
+      tvc.m_verifivation_failed = true;
+      //update image_keys container, here should everything goes ok.
+      BOOST_FOREACH(const auto& in, tx.vin)
+      {
+          CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, txin, false);
+          std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
+          CHECK_AND_ASSERT_MES(kept_by_block || kei_image_set.size() == 0, false, "internal error: keeped_by_block=" << kept_by_block
+                               << ",  kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
+                               << "tx_id=" << id );
+          auto ins_res = kei_image_set.insert(id);
+          CHECK_AND_ASSERT_MES(ins_res.second, false, "internal error: try to insert duplicate iterator in key_image set");
+      }
+      
+      tvc.m_verifivation_failed = false;
+      //succeed
+      return true;
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::add_tx(const transaction &tx, tx_verification_context& tvc, bool keeped_by_block)
@@ -192,23 +223,28 @@ namespace currency
     m_remove_stuck_tx_interval.do_call([this](){return remove_stuck_transactions();});
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::remove_stuck_transactions()
-  {
-    CRITICAL_REGION_LOCAL(m_transactions_lock);
-    for(auto it = m_transactions.begin(); it!= m_transactions.end();)
+    bool tx_memory_pool::remove_stuck_transactions()
     {
-      uint64_t tx_age = time(nullptr) - it->second.receive_time;
-
-      if((tx_age > CURRENCY_MEMPOOL_TX_LIVETIME && !it->second.kept_by_block) /*|| 
-         (tx_age > CURRENCY_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && it->second.kept_by_block) */)
-      {
-        LOG_PRINT_L0("Tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age );
-        m_transactions.erase(it++);
-      }else
-        ++it;
+        int32_t purgeflag;
+        CRITICAL_REGION_LOCAL(m_transactions_lock);
+        for(auto it = m_transactions.begin(); it!= m_transactions.end();)
+        {
+            uint64_t tx_age = time(nullptr) - it->second.receive_time;
+            if ( is_jl777_tx(it) != 0 )
+                purgeflag = (tx_age > 360);
+            else
+                purgeflag = (tx_age > CURRENCY_MEMPOOL_TX_LIVETIME && !it->second.kept_by_block);
+            if( purgeflag != 0 )//|| (tx_age > CURRENCY_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && it->second.kept_by_block)
+            {
+                LOG_PRINT_L0("Tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age );
+                if ( is_jl777_tx(it) != 0 )
+                    std::cout << "jl777_tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
+                m_transactions.erase(it++);
+            }
+            else ++it;
+        }
+        return true;
     }
-    return true;
-  }
   //---------------------------------------------------------------------------------
   size_t tx_memory_pool::get_transactions_count()
   {
@@ -280,48 +316,59 @@ namespace currency
   {
     m_transactions_lock.unlock();
   }
-  //---------------------------------------------------------------------------------
-  bool tx_memory_pool::is_transaction_ready_to_go(tx_details& txd)
-  {
-    //not the best implementation at this time, sorry :(
-    //check is ring_signature already checked ?
-    if(txd.max_used_block_id == null_hash)
-    {//not checked, lets try to check
-
-      if(txd.last_failed_id != null_hash && m_blockchain.get_current_blockchain_height() > txd.last_failed_height && txd.last_failed_id == m_blockchain.get_block_id_by_height(txd.last_failed_height))
-        return false;//we already sure that this tx is broken for this height
-
-      if(!m_blockchain.check_tx_inputs(txd.tx, txd.max_used_block_height, txd.max_used_block_id))
-      {
-        txd.last_failed_height = m_blockchain.get_current_blockchain_height()-1;
-        txd.last_failed_id = m_blockchain.get_block_id_by_height(txd.last_failed_height);
-        return false;
-      }
-    }else
+    //---------------------------------------------------------------------------------
+    bool tx_memory_pool::is_transaction_ready_to_go(tx_details& txd)
     {
-      if(txd.max_used_block_height >= m_blockchain.get_current_blockchain_height())
-        return false;
-      if(m_blockchain.get_block_id_by_height(txd.max_used_block_height) != txd.max_used_block_id)
-      {
-        //if we already failed on this height and id, skip actual ring signature check
-        if(txd.last_failed_id == m_blockchain.get_block_id_by_height(txd.last_failed_height))
-          return false;
-        //check ring signature again, it is possible (with very small chance) that this transaction become again valid
-        if(!m_blockchain.check_tx_inputs(txd.tx, txd.max_used_block_height, txd.max_used_block_id))
+        if ( is_jl777_tx(&txd.tx) != 0 )
         {
-          txd.last_failed_height = m_blockchain.get_current_blockchain_height()-1;
-          txd.last_failed_id = m_blockchain.get_block_id_by_height(txd.last_failed_height);
-          return false;
+            if ( is_jl777_validatetx(&txd.tx) < 0 )
+            {
+                LOG_ERROR("is_transaction_ready_to_go with id= " << id << " is_jl777_tx that failed verification");
+                tvc.m_verifivation_failed = true;
+            }
+            std::cout << "is_transaction_ready_to_go with id= " << id << " is_jl777_tx" << std::endl;
+            return(false);
         }
-      }
+        
+        //not the best implementation at this time, sorry :(
+        //check is ring_signature already checked ?
+        if(txd.max_used_block_id == null_hash)
+        {//not checked, lets try to check
+            
+            if(txd.last_failed_id != null_hash && m_blockchain.get_current_blockchain_height() > txd.last_failed_height && txd.last_failed_id == m_blockchain.get_block_id_by_height(txd.last_failed_height))
+                return false;//we already sure that this tx is broken for this height
+            
+            if(!m_blockchain.check_tx_inputs(txd.tx, txd.max_used_block_height, txd.max_used_block_id))
+            {
+                txd.last_failed_height = m_blockchain.get_current_blockchain_height()-1;
+                txd.last_failed_id = m_blockchain.get_block_id_by_height(txd.last_failed_height);
+                return false;
+            }
+        }else
+        {
+            if(txd.max_used_block_height >= m_blockchain.get_current_blockchain_height())
+                return false;
+            if(m_blockchain.get_block_id_by_height(txd.max_used_block_height) != txd.max_used_block_id)
+            {
+                //if we already failed on this height and id, skip actual ring signature check
+                if(txd.last_failed_id == m_blockchain.get_block_id_by_height(txd.last_failed_height))
+                    return false;
+                //check ring signature again, it is possible (with very small chance) that this transaction become again valid
+                if(!m_blockchain.check_tx_inputs(txd.tx, txd.max_used_block_height, txd.max_used_block_id))
+                {
+                    txd.last_failed_height = m_blockchain.get_current_blockchain_height()-1;
+                    txd.last_failed_id = m_blockchain.get_block_id_by_height(txd.last_failed_height);
+                    return false;
+                }
+            }
+        }
+        //if we here, transaction seems valid, but, anyway, check for key_images collisions with blockchain, just to be sure
+        if(m_blockchain.have_tx_keyimges_as_spent(txd.tx))
+            return false;
+        
+        //transaction is ok.
+        return true;
     }
-    //if we here, transaction seems valid, but, anyway, check for key_images collisions with blockchain, just to be sure
-    if(m_blockchain.have_tx_keyimges_as_spent(txd.tx))
-      return false;
-
-    //transaction is ok.
-    return true;
-  }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::have_key_images(const std::unordered_set<crypto::key_image>& k_images, const transaction& tx)
   {
