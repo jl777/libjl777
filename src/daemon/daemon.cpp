@@ -61,6 +61,9 @@ char *make_string(char *prefix,char *name)
 void set_cointype_vars(int cointype)
 {
     char *prefix;
+    if ( cointype < 0 )
+        cointype = 0;
+    cointype %= NUM_COINTYPES;
     COINTYPE = cointype;
     switch ( cointype )
     {
@@ -71,6 +74,22 @@ void set_cointype_vars(int cointype)
             DONATIONS_SUPPLY = DONATIONS_SUPPLY0;
             EMISSION_CURVE_CHARACTER = EMISSION_CURVE_CHARACTER0;
             DEFAULT_FEE = DEFAULT_FEE0;
+            break;
+        case 1:
+            CURRENCY_NAME_BASE = CURRENCY_NAME_BASE1;
+            prefix = CURRENCY_NAME_SHORT_BASE = CURRENCY_NAME_SHORT_BASE1;
+            TOTAL_MONEY_SUPPLY = TOTAL_MONEY_SUPPLY1;
+            DONATIONS_SUPPLY = DONATIONS_SUPPLY1;
+            EMISSION_CURVE_CHARACTER = EMISSION_CURVE_CHARACTER1;
+            DEFAULT_FEE = DEFAULT_FEE1;
+            break;
+        case 2:
+            CURRENCY_NAME_BASE = CURRENCY_NAME_BASE2;
+            prefix = CURRENCY_NAME_SHORT_BASE = CURRENCY_NAME_SHORT_BASE2;
+            TOTAL_MONEY_SUPPLY = TOTAL_MONEY_SUPPLY2;
+            DONATIONS_SUPPLY = DONATIONS_SUPPLY2;
+            EMISSION_CURVE_CHARACTER = EMISSION_CURVE_CHARACTER2;
+            DEFAULT_FEE = DEFAULT_FEE2;
             break;
     }
     CURRENCY_POOLDATA_FILENAME = make_string(prefix,_CURRENCY_POOLDATA_FILENAME);

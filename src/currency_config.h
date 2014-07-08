@@ -17,7 +17,50 @@
 #define P2P_DEFAULT_PORT0                                7770
 #define RPC_DEFAULT_PORT0                                7771
 #endif
-#define NUM_COINTYPES 1
+
+#define CURRENCY_NAME_BASE0                              "privateNXT"
+#define CURRENCY_NAME_SHORT_BASE0                        "pNXT"
+#define TOTAL_MONEY_SUPPLY0                              ((uint64_t)100000000L*100000000L)
+#define DONATIONS_SUPPLY0                                (0*TOTAL_MONEY_SUPPLY/100)
+#define EMISSION_CURVE_CHARACTER0                        8  //23
+#define DEFAULT_FEE0                                     ((uint64_t)0) // pow(10, 8)
+#ifdef TESTNET
+#define P2P_DEFAULT_PORT0                                17770
+#define RPC_DEFAULT_PORT0                                17771
+#else
+#define P2P_DEFAULT_PORT0                                7770
+#define RPC_DEFAULT_PORT0                                7771
+#endif
+
+#define CURRENCY_NAME_BASE1                              "test1"
+#define CURRENCY_NAME_SHORT_BASE1                        "t1"
+#define TOTAL_MONEY_SUPPLY1                              ((uint64_t)100000000L*100000000L)
+#define DONATIONS_SUPPLY1                                (0*TOTAL_MONEY_SUPPLY/100)
+#define EMISSION_CURVE_CHARACTER1                        8  //23
+#define DEFAULT_FEE1                                     ((uint64_t)0) // pow(10, 8)
+#ifdef TESTNET
+#define P2P_DEFAULT_PORT1                                17772
+#define RPC_DEFAULT_PORT1                                17773
+#else
+#define P2P_DEFAULT_PORT1                                7772
+#define RPC_DEFAULT_PORT1                                7773
+#endif
+
+#define CURRENCY_NAME_BASE2                              "test2"
+#define CURRENCY_NAME_SHORT_BASE2                        "t2"
+#define TOTAL_MONEY_SUPPLY2                              ((uint64_t)100000000L*100000000L)
+#define DONATIONS_SUPPLY2                                (0*TOTAL_MONEY_SUPPLY/100)
+#define EMISSION_CURVE_CHARACTER2                        8  //23
+#define DEFAULT_FEE2                                     ((uint64_t)0) // pow(10, 8)
+#ifdef TESTNET
+#define P2P_DEFAULT_PORT2                                17774
+#define RPC_DEFAULT_PORT2                                17775
+#else
+#define P2P_DEFAULT_PORT2                                7774
+#define RPC_DEFAULT_PORT2                                7775
+#endif
+
+#define NUM_COINTYPES 3
 extern char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
 extern int COINTYPE,P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
 extern uint64_t TOTAL_MONEY_SUPPLY;
@@ -123,8 +166,8 @@ extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRE
 #define ALLOW_DEBUG_COMMANDS
 
 //#ifndef TESTNET
-#define CURRENCY_NAME                                   CURRENCY_NAME_BASE[COINTYPE]
-#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE[COINTYPE]
+#define CURRENCY_NAME                                   CURRENCY_NAME_BASE
+#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE
 //#else
 //#define CURRENCY_NAME                                   CURRENCY_NAME_BASE"_testnet"
 //#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE"_testnet"
