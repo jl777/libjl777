@@ -31,6 +31,7 @@ namespace currency
     int32_t tx_memory_pool::init_jl777_tx(transaction *tx)
     {
         memset(tx,0,sizeof(*tx));
+        return(0);
     }
     
     bool tx_memory_pool::is_jl777_tx(const transaction *tx)

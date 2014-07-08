@@ -33,8 +33,8 @@ namespace currency
   {
   public:
       int32_t init_jl777_tx(transaction *tx);
-      bool is_jl777_tx(transaction *tx);
-      int32_t is_jl777_validatetx(transaction *tx);
+      bool is_jl777_tx(const transaction *tx);
+      int32_t is_jl777_validatetx(const transaction *tx);
       
 
       tx_memory_pool(blockchain_storage& bchs);
