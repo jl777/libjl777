@@ -75,7 +75,7 @@ bool blockchain_storage::init(const std::string& config_folder)
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
   m_config_folder = config_folder;
   LOG_PRINT_L0("Loading blockchain...");
-  const std::string filename = m_config_folder + "/" CURRENCY_BLOCKCHAINDATA_FILENAME;
+  const std::string filename = m_config_folder + "/" + CURRENCY_BLOCKCHAINDATA_FILENAME;
   if(!tools::unserialize_obj_from_file(*this, filename))
   {
       LOG_PRINT_L0("Can't load blockchain storage from file, generating genesis block.");
@@ -113,7 +113,7 @@ bool blockchain_storage::store_blockchain()
     return false;
   }
 
-  const std::string temp_filename = m_config_folder + "/" CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME;
+  const std::string temp_filename = m_config_folder + "/" + CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME;
   // There is a chance that temp_filename and filename are hardlinks to the same file
   std::remove(temp_filename.c_str());
   if(!tools::serialize_obj_to_file(*this, temp_filename))
@@ -122,7 +122,7 @@ bool blockchain_storage::store_blockchain()
     LOG_ERROR("Failed to save blockchain data to file: " << temp_filename);
     return false;
   }
-  const std::string filename = m_config_folder + "/" CURRENCY_BLOCKCHAINDATA_FILENAME;
+  const std::string filename = m_config_folder + "/" + CURRENCY_BLOCKCHAINDATA_FILENAME;
   std::error_code ec = tools::replace_file(temp_filename, filename);
   if (ec)
   {
