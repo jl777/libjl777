@@ -174,7 +174,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     //static char *genDepositaddrs[] = { (char *)genDepositaddrs_func, "genDepositaddrs", "V", "NXT", "coins", 0 };
     //static char *dispNXTacct[] = { (char *)dispNXTacct_func, "dispNXTacct", "", "NXT", "coin", "assetid", 0 };
    // static char *dispcoininfo[] = { (char *)dispNXTacct_func, "dispcoininfo", "", "NXT", "coin", "nxtaddr", 0 };
-    static char *redeem[] = { (char *)redeem_func, "redeem", "V", "NXT", "amount", 0 };
+    static char *redeem[] = { (char *)redeem_func, "withdraw", "V", "NXT", "amount", 0 };
     static char **commands[] = { redeem };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
@@ -190,11 +190,11 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
         copy_cJSON(command,obj);
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
     }
-    //printf("multigateway_json_commands sender.(%s) valid.%d\n",sender,valid);
+    printf("pNXT_json_commands sender.(%s) valid.%d | size.%d\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)));
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];
-        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+        printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
         if ( strcmp(cmdinfo[1],command) == 0 )
         {
             if ( cmdinfo[2][0] != 0 )
