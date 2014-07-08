@@ -112,7 +112,7 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-    uint64_t amount = 100000000000;
+    //uint64_t amount = 100000000000;
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));

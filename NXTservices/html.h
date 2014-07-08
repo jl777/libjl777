@@ -435,6 +435,18 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 }
 #endif
 
+int gen_pNXT_select_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*server,*ipaddr;
+    server = construct_varname(fields,n++,name,"server","NXT address:",0,0);
+    ipaddr = construct_varname(fields,n++,name,"ipaddr","or ipaddr address:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"server\":\"' + %s + '\",\"ipaddr\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,server,ipaddr);
+    *scriptp = clonestr(script);
+    free(server); free(ipaddr);
+    return(n);
+}
+
 int gen_pNXT_deposit_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
@@ -521,6 +533,8 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     uint64_t get_privateNXT_balance(char *NXTaddr);
     int n = 0;
     char buf[512];
+    forms[n] = make_form(NXTaddr,&scripts[n],"select","select my privacyServer","choose server","127.0.0.1:7777","pNXT",gen_pNXT_select_fields);
+    n++;
     sprintf(buf,"pNXT cryptnote address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
     forms[n] = make_form(NXTaddr,&scripts[n],"deposit",buf,"convert pNXT cryptonotes to privateNXT asset","127.0.0.1:7777","pNXT",gen_pNXT_deposit_fields);
     n++;
