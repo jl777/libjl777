@@ -20,6 +20,7 @@
 
 #define CURRENCY_NAME_BASE0                              "privateNXT"
 #define CURRENCY_NAME_SHORT_BASE0                        "pNXT"
+#define CONF_FILENAME0                                   "pNXT.conf"
 #define TOTAL_MONEY_SUPPLY0                              ((uint64_t)100000000L*100000000L)
 #define DONATIONS_SUPPLY0                                (0*TOTAL_MONEY_SUPPLY/100)
 #define EMISSION_CURVE_CHARACTER0                        8  //23
@@ -34,6 +35,7 @@
 
 #define CURRENCY_NAME_BASE1                              "test1"
 #define CURRENCY_NAME_SHORT_BASE1                        "t1"
+#define CONF_FILENAME1                                   "t1.conf"
 #define TOTAL_MONEY_SUPPLY1                              ((uint64_t)100000000L*100000000L)
 #define DONATIONS_SUPPLY1                                (0*TOTAL_MONEY_SUPPLY/100)
 #define EMISSION_CURVE_CHARACTER1                        8  //23
@@ -48,6 +50,7 @@
 
 #define CURRENCY_NAME_BASE2                              "test2"
 #define CURRENCY_NAME_SHORT_BASE2                        "t2"
+#define CONF_FILENAME2                                   "t2.conf"
 #define TOTAL_MONEY_SUPPLY2                              ((uint64_t)100000000L*100000000L)
 #define DONATIONS_SUPPLY2                                (0*TOTAL_MONEY_SUPPLY/100)
 #define EMISSION_CURVE_CHARACTER2                        8  //23
@@ -67,7 +70,7 @@ extern uint64_t TOTAL_MONEY_SUPPLY;
 extern uint64_t DONATIONS_SUPPLY;
 extern uint64_t EMISSION_CURVE_CHARACTER;
 extern uint64_t DEFAULT_FEE;
-extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME;
+extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME,*CONF_FILENAME2;
 
 
 #define CURRENCY_MAX_BLOCK_NUMBER                     500000000
