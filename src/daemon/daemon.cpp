@@ -41,9 +41,53 @@ bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 
 #include "../jl777.cpp"
 
+char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
+int COINTYPE,P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
+uint64_t TOTAL_MONEY_SUPPLY;
+uint64_t DONATIONS_SUPPLY;
+uint64_t EMISSION_CURVE_CHARACTER;
+uint64_t DEFAULT_FEE;
+char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME;
+
+char *make_string(char *prefix,char *name)
+{
+    char buf[512];
+    sprintf(buf,"%s_%s",prefix,name);
+    str = malloc(strlen(buf)+1);
+    strcpy(str,buf);
+    return(str);
+}
+
+void set_cointype_vars(int cointype)
+{
+    char *prefix;
+    COINTYPE = cointype;
+    switch ( cointype )
+    {
+        case 0:
+            CURRENCY_NAME_BASE = CURRENCY_NAME_BASE0;
+            prefix = CURRENCY_NAME_SHORT_BASE = CURRENCY_NAME_SHORT_BASE0;
+            TOTAL_MONEY_SUPPLY = TOTAL_MONEY_SUPPLY0;
+            DONATIONS_SUPPLY = DONATIONS_SUPPLY0;
+            EMISSION_CURVE_CHARACTER = EMISSION_CURVE_CHARACTER0;
+            DEFAULT_FEE = DEFAULT_FEE0;
+            break;
+    }
+    CURRENCY_POOLDATA_FILENAME = make_string(prefix,_CURRENCY_POOLDATA_FILENAME);
+    CURRENCY_BLOCKCHAINDATA_FILENAME = make_string(prefix,_CURRENCY_BLOCKCHAINDATA_FILENAME);
+    CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME = make_string(prefix,_CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME);
+    P2P_NET_DATA_FILENAME = make_string(prefix,_P2P_NET_DATA_FILENAME);
+    MINER_CONFIG_FILE_NAME = make_string(prefix,_MINER_CONFIG_FILE_NAME);
+}
+
 int main(int argc, char* argv[])
 {
-
+    if ( argc > 1 )
+    {
+        int cointype = atoi(argv[1]);
+        printf("cointype.%d\n",cointype);
+        set_cointype_vars(cointype);
+    }
   string_tools::set_module_name_and_folder(argv[0]);
 #ifdef WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );

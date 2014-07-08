@@ -4,6 +4,29 @@
 
 #pragma once
 
+#define CURRENCY_NAME_BASE0                              "privateNXT"
+#define CURRENCY_NAME_SHORT_BASE0                        "pNXT"
+#define TOTAL_MONEY_SUPPLY0                              ((uint64_t)100000000L*100000000L)
+#define DONATIONS_SUPPLY0                                (0*TOTAL_MONEY_SUPPLY/100)
+#define EMISSION_CURVE_CHARACTER0                        8  //23
+#define DEFAULT_FEE0                                     ((uint64_t)0) // pow(10, 8)
+#ifdef TESTNET
+#define P2P_DEFAULT_PORT0                                17770
+#define RPC_DEFAULT_PORT0                                17771
+#else
+#define P2P_DEFAULT_PORT0                                7770
+#define RPC_DEFAULT_PORT0                                7771
+#endif
+#define NUM_COINTYPES 1
+extern char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
+extern int COINTYPE,P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
+extern uint64_t TOTAL_MONEY_SUPPLY;
+extern uint64_t DONATIONS_SUPPLY;
+extern uint64_t EMISSION_CURVE_CHARACTER;
+extern uint64_t DEFAULT_FEE;
+extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME;
+
+
 #define CURRENCY_MAX_BLOCK_NUMBER                     500000000
 #define CURRENCY_MAX_BLOCK_SIZE                       500000000  // block header blob limit, never used!
 #define CURRENCY_MAX_TX_SIZE                          1000000000
@@ -18,11 +41,8 @@
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             60
 
 // TOTAL_MONEY_SUPPLY - total number coins to be generated
-#define TOTAL_MONEY_SUPPLY                            ((uint64_t)100000000L*100000000L)
-#define DONATIONS_SUPPLY                              (0*TOTAL_MONEY_SUPPLY/100)
-#define EMISSION_SUPPLY                               (TOTAL_MONEY_SUPPLY - DONATIONS_SUPPLY) 
+#define EMISSION_SUPPLY                               (TOTAL_MONEY_SUPPLY - DONATIONS_SUPPLY)
 
-#define EMISSION_CURVE_CHARACTER                      8  //23
 
 
 #define CURRENCY_TO_KEY_OUT_RELAXED                   0
@@ -37,12 +57,7 @@
 #define COIN                                            ((uint64_t)100000000) // pow(10, 8)
 #define DEFAULT_DUST_THRESHOLD                          ((uint64_t)1) // pow(10, 6)
 
-#define DEFAULT_FEE                                     ((uint64_t)0) // pow(10, 8)
-
-
 #define ORPHANED_BLOCKS_MAX_COUNT                       100
-
-
 #define DIFFICULTY_TARGET                               60 // seconds
 #define DIFFICULTY_WINDOW                               720 // blocks
 #define DIFFICULTY_LAG                                  15  // !!!
@@ -64,14 +79,6 @@
 #define CURRENCY_MEMPOOL_TX_LIVETIME                    86400 //seconds, one day
 #define CURRENCY_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME     604800 //seconds, one week
 
-
-#ifdef TESTNET
-#define P2P_DEFAULT_PORT                                17770
-#define RPC_DEFAULT_PORT                                17771
-#else 
-#define P2P_DEFAULT_PORT                                7770
-#define RPC_DEFAULT_PORT                                7771
-#endif
 
 #define COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT           1000
 
@@ -115,19 +122,17 @@
 
 #define ALLOW_DEBUG_COMMANDS
 
-#define CURRENCY_NAME_BASE                              "privateNXT"
-#define CURRENCY_NAME_SHORT_BASE                        "pNXT"
-#ifndef TESTNET
-#define CURRENCY_NAME                                   CURRENCY_NAME_BASE
-#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE
-#else
-#define CURRENCY_NAME                                   CURRENCY_NAME_BASE"_testnet"
-#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE"_testnet"
-#endif
+//#ifndef TESTNET
+#define CURRENCY_NAME                                   CURRENCY_NAME_BASE[COINTYPE]
+#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE[COINTYPE]
+//#else
+//#define CURRENCY_NAME                                   CURRENCY_NAME_BASE"_testnet"
+//#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE"_testnet"
+//#endif
 
-#define CURRENCY_POOLDATA_FILENAME                      "poolstate.bin"
-#define CURRENCY_BLOCKCHAINDATA_FILENAME                "blockchain.bin"
-#define CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME           "blockchain.bin.tmp"
-#define P2P_NET_DATA_FILENAME                           "p2pstate.bin"
-#define MINER_CONFIG_FILE_NAME                          "miner_conf.json"
+#define _CURRENCY_POOLDATA_FILENAME                      "poolstate.bin"
+#define _CURRENCY_BLOCKCHAINDATA_FILENAME                "blockchain.bin"
+#define _CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME           "blockchain.bin.tmp"
+#define _P2P_NET_DATA_FILENAME                           "p2pstate.bin"
+#define _MINER_CONFIG_FILE_NAME                          "miner_conf.json"
 
