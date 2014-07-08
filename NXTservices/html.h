@@ -37,7 +37,7 @@ char *make_form(char *NXTaddr,char **scriptp,char *name,char *disp,char *button,
             free(fields[i]);
         }
     }
-    sprintf(str,"<td colspan=\"2\"> <input type=\"button\" value=\"%s\" onclick=\"click_%s()\" /></td> </tr>\n</table></form>",button,name);
+    sprintf(str,"<td colspan=\"2\"> <input type=\"button\" value=\"%s\" onclick=\"click_%s()\" /></td> </tr>\n</table></form><br/>",button,name);
     if ( (strlen(buf)+strlen(str)) >= sizeof(buf) )
     {
         printf("yikes! make_form.%s stack smashing???\n",name);
