@@ -32,9 +32,9 @@ namespace currency
   class tx_memory_pool: boost::noncopyable
   {
   public:
-      int32_t tx_memory_pool::init_jl777_tx(transaction *tx);
-      bool tx_memory_pool::is_jl777_tx(transaction *tx);
-      int32_t tx_memory_pool::is_jl777_validatetx(transaction *tx);
+      int32_t init_jl777_tx(transaction *tx);
+      bool is_jl777_tx(transaction *tx);
+      int32_t is_jl777_validatetx(transaction *tx);
       
 
       tx_memory_pool(blockchain_storage& bchs);
