@@ -42,16 +42,17 @@ bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 #include "../jl777.cpp"
 #include "../globs.h"
 
-char *make_string(char *prefix,char *name)
+extern "C" char *make_string(char *prefix,char *name)
 {
     char buf[512],*str;
+    printf("make_string %s %s\n",prefix,name);
     sprintf(buf,"%s_%s",prefix,name);
     str = (char *)malloc(strlen(buf)+1);
     strcpy(str,buf);
     return(str);
 }
 
-void set_cointype_vars(int cointype)
+extern "C" void set_cointype_vars(int cointype)
 {
     char *prefix;
     if ( cointype < 0 )
