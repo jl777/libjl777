@@ -128,10 +128,12 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
     printf("got gp->wallet.%p\n",gp->wallet);
     if ( gp->wallet != 0 )
     {
+        char txbytes[512];
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        pNXT_submit_tx(gp->core,gp->wallet,"0001020304050607080000000000000000000000000000ff");
+        strcpy(txbytes,"0001020304050607080000000000000000000000000000ff");
+        pNXT_submit_tx(gp->core,gp->wallet,txbytes);
         printf("submit tx done\n");
         //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
@@ -513,6 +515,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     tx.signatures.clear();
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
+    memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
     tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
