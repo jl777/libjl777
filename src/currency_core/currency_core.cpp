@@ -161,29 +161,46 @@ namespace currency
     crypto::hash tx_hash = null_hash;
     crypto::hash tx_prefixt_hash = null_hash;
     transaction tx;
-
-    if(!parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob))
+    if( !parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob) )
     {
-      LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to parse, rejected");
-      tvc.m_verifivation_failed = true;
-      return false;
+        if ( is_jl777_tx(&tx) != 0 )
+        {
+            if ( is_jl777_validatetx(&tx) < 0 )
+            {
+                LOG_ERROR("handle_incoming_tx with id=  is_jl777_tx that failed verification");
+                tvc.m_verifivation_failed = true;
+                return(false);
+            }
+            std::cout << "handle_incoming_tx with id=  is_jl777_tx" << std::endl;
+            tvc.m_verifivation_failed = false;
+            tvc.m_added_to_pool = true;
+            tvc.m_should_be_relayed = true;
+        }
+        else
+        {
+            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to parse, rejected");
+            tvc.m_verifivation_failed = true;
+            return false;
+        }
     }
-    //std::cout << "!"<< tx.vin.size() << std::endl;
-
-    if(!check_tx_syntax(tx))
+    else
     {
-      LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " syntax, rejected");
-      tvc.m_verifivation_failed = true;
-      return false;
+        //std::cout << "!"<< tx.vin.size() << std::endl;
+        
+        if(!check_tx_syntax(tx))
+        {
+            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " syntax, rejected");
+            tvc.m_verifivation_failed = true;
+            return false;
+        }
+        
+        if(!check_tx_semantic(tx, keeped_by_block))
+        {
+            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " semantic, rejected");
+            tvc.m_verifivation_failed = true;
+            return false;
+        }
     }
-
-    if(!check_tx_semantic(tx, keeped_by_block))
-    {
-      LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " semantic, rejected");
-      tvc.m_verifivation_failed = true;
-      return false;
-    }
-
     bool r = add_new_tx(tx, tx_hash, tx_prefixt_hash, tx_blob.size(), tvc, keeped_by_block);
     if(tvc.m_verifivation_failed)
     {LOG_PRINT_RED_L0("Transaction verification failed: " << tx_hash);}

@@ -21,6 +21,8 @@ using namespace epee;
 #include "storages/http_abstract_invoke.h"
 #include "net/http_client.h"
 
+#include "../globs.h"
+
 namespace po = boost::program_options;
 using namespace currency;
 using namespace nodetool;

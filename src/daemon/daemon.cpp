@@ -40,15 +40,7 @@ namespace
 bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 
 #include "../jl777.cpp"
-
-char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
-int COINTYPE;
-unsigned long P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
-uint64_t TOTAL_MONEY_SUPPLY;
-uint64_t DONATIONS_SUPPLY;
-uint64_t EMISSION_CURVE_CHARACTER;
-uint64_t DEFAULT_FEE;
-char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME,*CONF_FILENAME;
+#include "../globs.h"
 
 char *make_string(char *prefix,char *name)
 {

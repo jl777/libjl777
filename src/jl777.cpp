@@ -492,4 +492,32 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 {
     printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
 }
+/*
+extern "C" int32_t submit_tx(void *rawtx,int32_t len)
+{
+    currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
+    tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+    if ( !m_core.handle_incoming_tx(tx_blob,tvc,false) )
+    {
+        LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
+        res.status = "Failed";
+        return true;
+    }
+    if ( tvc.m_verifivation_failed )
+    {
+        LOG_PRINT_L0("[on_send_raw_tx]: tx verification failed");
+        res.status = "Failed";
+        return true;
+    }
+    if( !tvc.m_should_be_relayed )
+    {
+        LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
+        res.status = "Not relayed";
+        return true;
+    }
+    NOTIFY_NEW_TRANSACTIONS::request r;
+    r.txs.push_back(tx_blob);
+    m_core->get_protocol()->relay_transactions(r, fake_context);
+}*/
+
 #endif

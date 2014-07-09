@@ -63,6 +63,7 @@ namespace currency
           {
               LOG_ERROR("Transaction with id= " << id << " is_jl777_tx that failed verification");
               tvc.m_verifivation_failed = true;
+              return(false);
           }
           std::cout << "Transaction with id= " << id << " is_jl777_tx" << std::endl;
           tvc.m_verifivation_failed = false;
