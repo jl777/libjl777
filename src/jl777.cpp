@@ -500,13 +500,20 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 
 extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,char *txbytes)
 {
-    blobdata txb,b = txbytes;
+    int i;
+    blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     tx.version = 0;
-    txb = tx_to_blob(tx);
+    //txb = tx_to_blob(tx);
+    txb.erase();
+    for (i=0; i<4; i++)
+        txb.push_back(0);
+    for (i=0; txbytes[i]!=0; t++)
+        txb.push_back(i);
+
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");

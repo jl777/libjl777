@@ -25,7 +25,6 @@ namespace currency
 {
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
-        
     }
     
     extern "C" void add_jl777_tx(transaction *tx,int32_t size)

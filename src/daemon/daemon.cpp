@@ -35,7 +35,7 @@ namespace po = boost::program_options;
 
 namespace
 {
-}
+} 
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 
