@@ -511,7 +511,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     txb.erase();
     for (i=0; i<4; i++)
         txb.push_back(0);
-    for (i=0; txbytes[i]!=0; t++)
+    for (i=0; txbytes[i]!=0; i++)
         txb.push_back(i);
 
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
