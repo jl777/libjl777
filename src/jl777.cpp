@@ -34,6 +34,15 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes);
 
+void add_jl777_tx(void *tx,int32_t size)
+{
+    printf("C add_jl777_tx.%p size.%d\n",tx,size);
+}
+
+void remove_jl777_tx(void *tx,int32_t size)
+{
+    printf("C remove_jl777_tx.%p size.%d\n",tx,size);
+}
 
 struct pNXT_info
 {
