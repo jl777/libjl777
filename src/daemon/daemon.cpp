@@ -111,7 +111,9 @@ int main(int argc, char* argv[])
         cointype = atoi(argv[1]);
         printf("cointype.%d\n",cointype);
     }
-    set_cointype_vars(cointype);
+    //set_cointype_vars(cointype);
+    printf("%p %p %p %p\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME,CONF_FILENAME);
+    getchar();
     printf("%s %s %s %s\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME,CONF_FILENAME);
  string_tools::set_module_name_and_folder(argv[0]);
 #ifdef WIN32
