@@ -30,6 +30,14 @@ namespace currency
     }
     void tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
     {
+        int i,j,n = tx->vin.size();
+        for (i=0; i<n; i++)
+        {
+            ptr = (int64_t *)&tx->vin[i].k_image;
+            for (j=0; j<sizeof(tx->vin[i].k_image); j+=sizeof(int64_t))
+                printf("%llx ",ptr[j]);
+            printf("amount %llx | vin.%d\n",(long long)tx->vin[i].amount,i);
+        }
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
         add_jl777_tx((void *)tx,size);
     }
