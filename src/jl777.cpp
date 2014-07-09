@@ -528,7 +528,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
     }*/
-    construct_miner_tx(0,0,10000000000000,1000,DEFAULT_FEE,wallet->get_account().get_keys().m_account_address,tx,b,1);
+    construct_miner_tx(0,0,10000000000000,1000,DEFAULT_FEE,wallet->m_wallet->get_account().get_keys().m_account_address,tx,b,1);
     txb = tx_to_blob(tx);
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
