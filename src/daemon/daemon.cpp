@@ -44,7 +44,7 @@ bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 
 char *make_string(char *prefix,char *name)
 {
-    char buf[512];
+    char buf[512],*str;
     sprintf(buf,"%s_%s",prefix,name);
     str = malloc(strlen(buf)+1);
     strcpy(str,buf);
