@@ -104,13 +104,14 @@ void set_cointype_vars(int cointype)
 
 int main(int argc, char* argv[])
 {
+    int cointype = 0;
     if ( argc > 1 )
     {
-        int cointype = atoi(argv[1]);
+        cointype = atoi(argv[1]);
         printf("cointype.%d\n",cointype);
-        set_cointype_vars(cointype);
     }
-  string_tools::set_module_name_and_folder(argv[0]);
+    set_cointype_vars(cointype);
+ string_tools::set_module_name_and_folder(argv[0]);
 #ifdef WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif

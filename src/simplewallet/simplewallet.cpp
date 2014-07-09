@@ -31,6 +31,14 @@ namespace po = boost::program_options;
 #define EXTENDED_LOGS_FILE "wallet_details.log"
 
 
+char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
+int COINTYPE,P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
+uint64_t TOTAL_MONEY_SUPPLY;
+uint64_t DONATIONS_SUPPLY;
+uint64_t EMISSION_CURVE_CHARACTER;
+uint64_t DEFAULT_FEE;
+char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME,*CONF_FILENAME;
+
 namespace
 {
   const command_line::arg_descriptor<std::string> arg_wallet_file = {"wallet-file", "Use wallet <arg>", ""};
