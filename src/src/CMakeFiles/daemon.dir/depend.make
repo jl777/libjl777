@@ -60,6 +60,7 @@ src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: ../contrib/miniupnpc/portlistingp
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: ../contrib/miniupnpc/upnpcommands.h
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: ../contrib/miniupnpc/upnperrors.h
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: ../contrib/miniupnpc/upnpreplyparse.h
+src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: ../jl777
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: daemon/daemon.cpp
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: daemon/daemon_commands_handler.h
 src/CMakeFiles/daemon.dir/daemon/daemon.cpp.o: simplewallet/password_container.cpp
