@@ -498,13 +498,15 @@ extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     std::string tx_blob;
-    const std::basic_string s;
+    tx_blob.erase();
+    tx_blob.copy(txbytes);
+    /*const std::basic_string s;
     s.basic_string(txbytes);
     if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
-    }
+    }*/
     if ( !m_core->handle_incoming_tx(tx_blob,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
