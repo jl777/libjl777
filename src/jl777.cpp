@@ -506,13 +506,14 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+    memcpy(&tx,txbytes,strlen(txbytes));
     tx.version = 0;
-    //txb = tx_to_blob(tx);
-    txb.erase();
-    for (i=0; i<4; i++)
+    txb = tx_to_blob(tx);
+    /*txb.erase();
+    for (i=0; i<256; i++)
         txb.push_back(0);
     for (i=0; txbytes[i]!=0; i++)
-        txb.push_back(i);
+        txb.push_back(i);*/
 
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
