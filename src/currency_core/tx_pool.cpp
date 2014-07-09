@@ -78,7 +78,6 @@ namespace currency
           txd_p.first->second.max_used_block_height = 0;
           txd_p.first->second.kept_by_block = kept_by_block;
           txd_p.first->second.receive_time = time(nullptr);
-          tvc.m_verifivation_impossible = true;
 
           return(true);
       }
