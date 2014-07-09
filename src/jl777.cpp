@@ -131,7 +131,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        pNXT_submit_tx(gp->core,"000000000000000000000000000000000000000000000000");
+        pNXT_submit_tx(gp->core,"0001020304050607080000000000000000000000000000ff");
         printf("submit tx done\n");
         //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
