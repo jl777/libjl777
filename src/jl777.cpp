@@ -516,9 +516,9 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
     //memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
-    for (i=0; i<sizeof(input_to_key.p.data); i++)
+    for (i=0; i<sizeof(input_to_key.img.p.data); i++)
     {
-        input_to_key.p.data[i] = txbytes[i];
+        input_to_key.img.p.data[i] = txbytes[i];
         if ( txbytes[i] == 0 )
             break;
     }
