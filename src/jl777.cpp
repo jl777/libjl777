@@ -502,7 +502,7 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 
 extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,char *txbytes)
 {
-    int i;
+    //int i;
     blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
     txin_to_key input_to_key = AUTO_VAL_INIT(input_to_key);
@@ -515,13 +515,13 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     tx.signatures.clear();
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
-    //memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
-    for (i=0; i<sizeof(input_to_key.k_image.p.data); i++)
+    memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
+    /*for (i=0; i<sizeof(input_to_key.k_image.p.data); i++)
     {
         input_to_key.k_image.p.data[i] = txbytes[i];
         if ( txbytes[i] == 0 )
             break;
-    }
+    }*/
     input_to_key.amount = 666;
     tx.vin.push_back(input_to_key);
     tx.vin.push_back(input_to_key);
