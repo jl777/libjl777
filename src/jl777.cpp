@@ -501,13 +501,18 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
 {
     int i;
+    blobdata tx_bl;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    std::string tx_blob;
-    tx_blob.erase();
+    std::string rawtx;
+    rawtx.erase();
     for (i=0; txbytes[i]!=0; i++)
-        tx_blob.push_back(txbytes[i]);
-    tx_blob.push_back(0);
+        rawtx.push_back(txbytes[i]);
+    rawtx.push_back(0);
+    string_tools::parse_hexstr_to_binbuff(rawtx,tx_bl);
+    bool r = m_core->parse_and_validate_tx_from_blob(tx_bl, bl.miner_tx);
+    CHECK_AND_ASSERT_MES(r, false, "failed to parse rawtx from hard coded blob");
+
     /*const std::basic_string s;
     s.basic_string(txbytes);
     if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))

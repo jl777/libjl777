@@ -47,7 +47,7 @@ namespace currency
     ss << tx_blob;
     binary_archive<false> ba(ss);
     bool r = ::serialization::serialize(ba, tx);
-    CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
+    CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob2");
     //TODO: validate tx
 
     //crypto::cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
