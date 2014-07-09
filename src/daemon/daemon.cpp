@@ -105,7 +105,7 @@ extern "C" void set_cointype_vars(int cointype)
 */
 
 int main(int argc, char* argv[])
-{
+{  
     int cointype = 0;
     if ( argc > 1 )
     {
