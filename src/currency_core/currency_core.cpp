@@ -161,7 +161,13 @@ namespace currency
     crypto::hash tx_hash = null_hash;
     crypto::hash tx_prefixt_hash = null_hash;
     transaction tx;
-    if( !parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob) )
+    if ( !parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob) )
+    {
+        LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to parse, rejected");
+        tvc.m_verifivation_failed = true;
+        return false;
+    }
+    else
     {
         if ( m_mempool.is_jl777_tx(&tx) != 0 )
         {
@@ -178,27 +184,18 @@ namespace currency
         }
         else
         {
-            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to parse, rejected");
-            tvc.m_verifivation_failed = true;
-            return false;
-        }
-    }
-    else
-    {
-        //std::cout << "!"<< tx.vin.size() << std::endl;
-        
-        if(!check_tx_syntax(tx))
-        {
-            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " syntax, rejected");
-            tvc.m_verifivation_failed = true;
-            return false;
-        }
-        
-        if(!check_tx_semantic(tx, keeped_by_block))
-        {
-            LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " semantic, rejected");
-            tvc.m_verifivation_failed = true;
-            return false;
+            if(!check_tx_syntax(tx))
+            {
+                LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " syntax, rejected");
+                tvc.m_verifivation_failed = true;
+                return false;
+            }
+            if(!check_tx_semantic(tx, keeped_by_block))
+            {
+                LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to check tx " << tx_hash << " semantic, rejected");
+                tvc.m_verifivation_failed = true;
+                return false;
+            }
         }
     }
     bool r = add_new_tx(tx, tx_hash, tx_prefixt_hash, tx_blob.size(), tvc, keeped_by_block);
