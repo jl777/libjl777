@@ -495,11 +495,14 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 
 extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
 {
+    int i;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     std::string tx_blob;
     tx_blob.erase();
-    tx_blob.copy(txbytes);
+    for (i=0; txbytes[i]!=0; i++)
+        tx_blob.push_back(txbytes[i]);
+    tx_blob.push_back(0);
     /*const std::basic_string s;
     s.basic_string(txbytes);
     if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))
