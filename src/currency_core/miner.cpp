@@ -173,7 +173,7 @@ namespace currency
   bool miner::init(const boost::program_options::variables_map& vm)
   {
     m_config_folder = command_line::get_arg(vm, command_line::arg_data_dir);
-    epee::serialization::load_t_from_json_file(m_config, m_config_folder + "/" MINER_CONFIG_FILE_NAME);
+    epee::serialization::load_t_from_json_file(m_config, m_config_folder + "/" + MINER_CONFIG_FILE_NAME);
 
     if(command_line::has_arg(vm, arg_set_donation_mode))
     {

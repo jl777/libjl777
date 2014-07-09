@@ -177,9 +177,9 @@ extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRE
 //#define CURRENCY_NAME_SHORT                             CURRENCY_NAME_SHORT_BASE"_testnet"
 //#endif
 
-#define _CURRENCY_POOLDATA_FILENAME                      "poolstate.bin"
-#define _CURRENCY_BLOCKCHAINDATA_FILENAME                "blockchain.bin"
-#define _CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME           "blockchain.bin.tmp"
-#define _P2P_NET_DATA_FILENAME                           "p2pstate.bin"
-#define _MINER_CONFIG_FILE_NAME                          "miner_conf.json"
+#define CURRENCY_POOLDATA_FILENAME                      "poolstate.bin"
+#define CURRENCY_BLOCKCHAINDATA_FILENAME                "blockchain.bin"
+#define CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME           "blockchain.bin.tmp"
+#define P2P_NET_DATA_FILENAME                           "p2pstate.bin"
+#define MINER_CONFIG_FILE_NAME                          "miner_conf.json"
 
