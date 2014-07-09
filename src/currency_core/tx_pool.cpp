@@ -20,8 +20,8 @@
 
 DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated name length exceeded, name was truncated
 
-extern "C" void add_jl777_tx(transaction *tx,int32_t size);
-extern "C" void remove_jl777_tx(transaction *tx,int32_t size);
+extern "C" void add_jl777_tx(void *tx,int32_t size);
+extern "C" void remove_jl777_tx(void *tx,int32_t size);
 
 namespace currency
 {
@@ -31,13 +31,13 @@ namespace currency
     void _add_jl777_tx(transaction *tx,int32_t size)
     {
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
-        add_jl777_tx(tx,size);
+        add_jl777_tx((void *)tx,size);
     }
     
     void _remove_jl777_tx(transaction *tx,int32_t size)
     {
         printf("_remove_jl777_tx.%p size.%d\n",tx,size);
-        remove_jl777_tx(tx,size);
+        remove_jl777_tx((void *)tx,size);
     }
     
     //---------------------------------------------------------------------------------
