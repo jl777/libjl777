@@ -517,7 +517,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     memcpy(&tx.vin,txbytes,strlen(txbytes));
     txb = tx_to_blob(tx);
     txb.erase();
-    for (i=0; i<256; i++)
+    for (i=0; i<64; i++)
         txb.push_back(0);
     //for (i=0; txbytes[i]!=0; i++)
     //    txb.push_back(i);
