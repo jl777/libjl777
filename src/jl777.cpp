@@ -507,7 +507,14 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     memcpy(&tx,txbytes,strlen(txbytes));
+    tx.vin.clear();
+    tx.vout.clear();
+    tx.signatures.clear();
+    keypair txkey = keypair::generate();
+    add_tx_pub_key_to_extra(tx, txkey.pub);
     tx.version = 0;
+    txin_to_key input_to_key;
+    tx.vin.push_back(input_to_key);
     txb = tx_to_blob(tx);
     /*txb.erase();
     for (i=0; i<256; i++)
