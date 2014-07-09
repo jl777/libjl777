@@ -36,6 +36,10 @@ int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes);
 
 void add_jl777_tx(void *tx,int32_t size)
 {
+    int i;
+    int64_t *ptr = tx;
+    for (i=0; i<size/sizeof(*ptr); i++)
+        printf("%llx ",ptr[i]);
     printf("C add_jl777_tx.%p size.%d\n",tx,size);
 }
 
