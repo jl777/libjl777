@@ -32,7 +32,7 @@ uint64_t pNXT_height(void *core); // declare the wrapper function
 void p2p_glue(void *p2psrv);
 void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
-int32_t pNXT_submit_tx(void *m_core,char *txbytes);
+int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes);
 
 
 struct pNXT_info
@@ -131,7 +131,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        pNXT_submit_tx(gp->core,"0001020304050607080000000000000000000000000000ff");
+        pNXT_submit_tx(gp->core,gp->wallet,"0001020304050607080000000000000000000000000000ff");
         printf("submit tx done\n");
         //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
@@ -396,7 +396,7 @@ uint64_t pNXT_rawbalance(void *wallet){return(0);}
 uint64_t pNXT_confbalance(void *wallet){return(0);}
 int32_t pNXT_sendmoney(void *wallet,int32_t numfakes,char *dest,uint64_t amount){return(0);}
 uint64_t pNXT_height(void *core){return(0);}
-int32_t pNXT_submit_tx(void *m_core,char *txbytes){return(0);}
+int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes){return(0);}
 
 #endif
 
@@ -498,28 +498,39 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
     printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
 }
 
-extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
+extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,char *txbytes)
 { 
-    int i;
-    blobdata tx_bl;
+    blobdata txb,b = txbytes;
+    transaction tx = AUTO_VAL_INIT(tx);
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    std::string rawtx;
+    /*
+     int i;
+     blobdata tx_bl;
+     std::string rawtx;
     rawtx.erase();
     for (i=0; txbytes[i]!=0; i++)
         rawtx.push_back(txbytes[i]);
     rawtx.push_back(0);
+    
     string_tools::parse_hexstr_to_binbuff(rawtx,tx_bl);
-
-    /*const std::basic_string s;
+    tx.vin.clear();
+    tx.vout.clear();
+    tx.extra.clear();
+    keypair txkey = keypair::generate();
+    add_tx_pub_key_to_extra(tx, txkey.pub);
+    
+     const std::basic_string s;
     s.basic_string(txbytes);
     if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
     }*/
-    if ( !m_core->handle_incoming_tx(tx_bl,tvc,false) )
+    construct_miner_tx(0,0,10000000000000,1000,DEFAULT_FEE,m_wallet->get_account().get_keys().m_account_address,tx,b,1);
+    txb = tx_to_blob(tx);
+    if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
         return -2;
@@ -534,8 +545,8 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
         LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
         return -4;
     }
-    req.txs.push_back(tx_bl);
-    m_core->get_protocol()->relay_transactions(req, fake_context);
+    req.txs.push_back(txb);
+    m_core->get_protocol()->relay_transactions(req,fake_context);
     return(0);
 }
 
