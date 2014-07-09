@@ -20,11 +20,11 @@
 
 DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated name length exceeded, name was truncated
 
-extern "C" void add_jl777_tx(transaction *tx,int32_t size);
-extern "C" void remove_jl777_tx(transaction *tx,int32_t size);
 
 namespace currency
 {
+    extern "C" void add_jl777_tx(transaction *tx,int32_t size);
+    extern "C" void remove_jl777_tx(transaction *tx,int32_t size);
   //---------------------------------------------------------------------------------
   tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
   {
