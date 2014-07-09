@@ -28,13 +28,13 @@ namespace currency
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
     }
-    void _add_jl777_tx(transaction *tx,int32_t size)
+    void tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
     {
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
         add_jl777_tx((void *)tx,size);
     }
     
-    void _remove_jl777_tx(transaction *tx,int32_t size)
+    void tx_memory_pool::_remove_jl777_tx(transaction *tx,int32_t size)
     {
         printf("_remove_jl777_tx.%p size.%d\n",tx,size);
         remove_jl777_tx((void *)tx,size);
