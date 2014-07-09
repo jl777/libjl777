@@ -515,7 +515,13 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     tx.signatures.clear();
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
-    memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
+    //memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
+    for (i=0; i<sizeof(input_to_key.p.data); i++)
+    {
+        input_to_key.p.data[i] = txbytes[i];
+        if ( txbytes[i] == 0 )
+            break;
+    }
     tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
