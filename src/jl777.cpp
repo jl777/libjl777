@@ -32,6 +32,7 @@ uint64_t pNXT_height(void *core); // declare the wrapper function
 void p2p_glue(void *p2psrv);
 void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
+int32_t pNXT_submit_tx(void *m_core,char *txbytes);
 
 
 struct pNXT_info
@@ -130,6 +131,8 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
+        pNXT_submit_tx(gp->core,"000000000000000000000000000000000000000000000000");
+        printf("submit tx done\n");
         //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
     }
@@ -393,6 +396,8 @@ uint64_t pNXT_rawbalance(void *wallet){return(0);}
 uint64_t pNXT_confbalance(void *wallet){return(0);}
 int32_t pNXT_sendmoney(void *wallet,int32_t numfakes,char *dest,uint64_t amount){return(0);}
 uint64_t pNXT_height(void *core){return(0);}
+int32_t pNXT_submit_tx(void *m_core,char *txbytes){return(0);}
+
 #endif
 
 #else
@@ -493,7 +498,7 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
     printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
 }
 
-extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
+extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
 {
     int i;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
