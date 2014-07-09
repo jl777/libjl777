@@ -69,6 +69,17 @@ namespace currency
           tvc.m_verifivation_failed = false;
           tvc.m_added_to_pool = true;
           tvc.m_should_be_relayed = true;
+          auto txd_p = m_transactions.insert(transactions_container::value_type(id, tx_details()));
+          CHECK_AND_ASSERT_MES(txd_p.second, false, "transaction already exists at inserting in memory pool");
+          txd_p.first->second.blob_size = blob_size;
+          txd_p.first->second.tx = tx;
+          txd_p.first->second.fee = 0;
+          txd_p.first->second.max_used_block_id = null_hash;
+          txd_p.first->second.max_used_block_height = 0;
+          txd_p.first->second.kept_by_block = kept_by_block;
+          txd_p.first->second.receive_time = time(nullptr);
+          tvc.m_verifivation_impossible = true;
+
           return(true);
       }
       //TODO: add rule for relay, based on tx size/fee ratio
