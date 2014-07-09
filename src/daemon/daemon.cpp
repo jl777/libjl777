@@ -30,7 +30,7 @@ using namespace epee;
 //TODO: need refactoring here. (template classes can't be used in BOOST_CLASS_VERSION) 
 BOOST_CLASS_VERSION(nodetool::node_server<currency::t_currency_protocol_handler<currency::core> >, CURRENT_P2P_STORAGE_ARCHIVE_VER);
 
- 
+
 namespace po = boost::program_options;
 
 namespace

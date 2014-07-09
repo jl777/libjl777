@@ -503,22 +503,22 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     int i;
     blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
+    txin_to_key input_to_key = AUTO_VAL_INIT(input_to_key);
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+    
     tx.vin.clear();
     tx.vout.clear();
     tx.signatures.clear();
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
-    tx.version = 0;
-    txin_to_key input_to_key;
     tx.vin.push_back(input_to_key);
-    memcpy(&tx.vin,txbytes,strlen(txbytes));
+    tx.version = 0;
     txb = tx_to_blob(tx);
-    txb.erase();
-    for (i=0; i<64; i++)
-        txb.push_back(0);
+    //txb.erase();
+    //for (i=0; i<64; i++)
+    //    txb.push_back(0);
     //for (i=0; txbytes[i]!=0; i++)
     //    txb.push_back(i);
 
