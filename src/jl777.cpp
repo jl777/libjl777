@@ -144,7 +144,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(txbytes,"0001020304050607080000000000000000000000000000ff");
         pNXT_submit_tx(gp->core,gp->wallet,txbytes);
         printf("submit tx done\n");
-        pNXT_startmining(gp->core,gp->wallet);
+        //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
     }
 }
