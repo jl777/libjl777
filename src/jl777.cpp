@@ -522,6 +522,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
         if ( txbytes[i] == 0 )
             break;
     }
+    input_to_key.amount = 666;
     tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
