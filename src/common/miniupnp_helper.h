@@ -121,7 +121,7 @@ namespace tools
     {
       std::string internal_port_str = std::to_string(internal_port);
       std::string external_port_str = std::to_string(external_port);
-      std::string str_desc = CURRENCY_NAME + " v" PROJECT_VERSION_LONG;
+      std::string str_desc = CURRENCY_NAME0 + " v" PROJECT_VERSION_LONG;
 
       int r = UPNP_AddPortMapping(m_urls.controlURL, m_data.first.servicetype,
               external_port_str.c_str(), internal_port_str.c_str(), m_lanaddr, str_desc.c_str(), "TCP", 0, "0");

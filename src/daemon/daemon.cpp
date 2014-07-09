@@ -46,7 +46,7 @@ char *make_string(char *prefix,char *name)
 {
     char buf[512],*str;
     sprintf(buf,"%s_%s",prefix,name);
-    str = malloc(strlen(buf)+1);
+    str = (char *)malloc(strlen(buf)+1);
     strcpy(str,buf);
     return(str);
 }
@@ -88,11 +88,11 @@ void set_cointype_vars(int cointype)
             CONF_FILENAME = (char *)CONF_FILENAME2;
             break;
     }
-    CURRENCY_POOLDATA_FILENAME = make_string(prefix,_CURRENCY_POOLDATA_FILENAME);
-    CURRENCY_BLOCKCHAINDATA_FILENAME = make_string(prefix,_CURRENCY_BLOCKCHAINDATA_FILENAME);
-    CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME = make_string(prefix,_CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME);
-    P2P_NET_DATA_FILENAME = make_string(prefix,_P2P_NET_DATA_FILENAME);
-    MINER_CONFIG_FILE_NAME = make_string(prefix,_MINER_CONFIG_FILE_NAME);
+    CURRENCY_POOLDATA_FILENAME = make_string(prefix,(char *)_CURRENCY_POOLDATA_FILENAME);
+    CURRENCY_BLOCKCHAINDATA_FILENAME = make_string(prefix,(char *)_CURRENCY_BLOCKCHAINDATA_FILENAME);
+    CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME = make_string(prefix,(char *)_CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME);
+    P2P_NET_DATA_FILENAME = make_string(prefix,(char *)_P2P_NET_DATA_FILENAME);
+    MINER_CONFIG_FILE_NAME = make_string(prefix,(char *)_MINER_CONFIG_FILE_NAME);
 }
 
 int main(int argc, char* argv[])
