@@ -524,6 +524,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     }*/
     input_to_key.amount = 666;
     tx.vin.push_back(input_to_key);
+    strcpy(&input_to_key.k_image,(char *)"hello world",sizeof(input_to_key.k_image));
     tx.vin.push_back(input_to_key);
     tx.vin.push_back(input_to_key);
     tx.vin.push_back(input_to_key);
