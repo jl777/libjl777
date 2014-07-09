@@ -42,6 +42,7 @@ bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 #include "../jl777.cpp"
 #include "../globs.h"
 
+/*
 extern "C" char *make_string(char *prefix,char *name)
 {
     char buf[512],*str;
@@ -101,6 +102,7 @@ extern "C" void set_cointype_vars(int cointype)
     P2P_NET_DATA_FILENAME = make_string(prefix,(char *)_P2P_NET_DATA_FILENAME);
     MINER_CONFIG_FILE_NAME = make_string(prefix,(char *)_MINER_CONFIG_FILE_NAME);
 }
+*/
 
 int main(int argc, char* argv[])
 {

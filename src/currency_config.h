@@ -4,18 +4,18 @@
 
 #pragma once
 
-#define CURRENCY_NAME_BASE0                              "privateNXT"
-#define CURRENCY_NAME_SHORT_BASE0                        "pNXT"
-#define TOTAL_MONEY_SUPPLY0                              ((uint64_t)100000000L*100000000L)
-#define DONATIONS_SUPPLY0                                (0*TOTAL_MONEY_SUPPLY/100)
-#define EMISSION_CURVE_CHARACTER0                        8  //23
-#define DEFAULT_FEE0                                     ((uint64_t)0) // pow(10, 8)
+#define CURRENCY_NAME_BASE                              "privateNXT"
+#define CURRENCY_NAME_SHORT_BASE                        "pNXT"
+#define TOTAL_MONEY_SUPPLY                              ((uint64_t)100000000L*100000000L)
+#define DONATIONS_SUPPLY                                (0*TOTAL_MONEY_SUPPLY/100)
+#define EMISSION_CURVE_CHARACTER                        8  //23
+#define DEFAULT_FEE                                     ((uint64_t)0) // pow(10, 8)
 #ifdef TESTNET
-#define P2P_DEFAULT_PORT0                                17770
-#define RPC_DEFAULT_PORT0                                17771
+#define P2P_DEFAULT_PORT                                17770
+#define RPC_DEFAULT_PORT                                17771
 #else
-#define P2P_DEFAULT_PORT0                                7770
-#define RPC_DEFAULT_PORT0                                7771
+#define P2P_DEFAULT_PORT                                7770
+#define RPC_DEFAULT_PORT                                7771
 #endif
 
 #define CURRENCY_NAME_BASE0                              "privateNXT"
@@ -64,15 +64,15 @@
 #endif
 
 #define NUM_COINTYPES 3
-extern char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
 extern int COINTYPE;
+/*extern char *CURRENCY_NAME_BASE,*CURRENCY_NAME_SHORT_BASE;
 extern unsigned long P2P_DEFAULT_PORT,RPC_DEFAULT_PORT;
 extern uint64_t TOTAL_MONEY_SUPPLY;
 extern uint64_t DONATIONS_SUPPLY;
 extern uint64_t EMISSION_CURVE_CHARACTER;
 extern uint64_t DEFAULT_FEE;
 extern char *CURRENCY_POOLDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_FILENAME,*CURRENCY_BLOCKCHAINDATA_TEMP_FILENAME,*P2P_NET_DATA_FILENAME,*MINER_CONFIG_FILE_NAME,*CONF_FILENAME;
-
+*/
 
 #define CURRENCY_MAX_BLOCK_NUMBER                     500000000
 #define CURRENCY_MAX_BLOCK_SIZE                       500000000  // block header blob limit, never used!
