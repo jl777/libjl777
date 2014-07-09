@@ -114,9 +114,9 @@ int main(int argc, char* argv[])
         printf("cointype.%d\n",cointype);
     }
     //set_cointype_vars(cointype);
-    printf("%p %p %p\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME);
-    getchar();
-    printf("%s %s %s\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME);
+    //printf("%p %p %p\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME);
+    //getchar();
+    //printf("%s %s %s\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME);
  string_tools::set_module_name_and_folder(argv[0]);
 #ifdef WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );

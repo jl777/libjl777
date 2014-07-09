@@ -492,12 +492,20 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 {
     printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
 }
-/*
-extern "C" int32_t submit_tx(void *rawtx,int32_t len)
+
+extern "C" int32_t submit_tx(currency::core *m_core,char *txbytes)
 {
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    if ( !m_core.handle_incoming_tx(tx_blob,tvc,false) )
+    std::string tx_blob;
+    const std::basic_string<CharT>s;
+    if(!string_tools::parse_hexstr_to_binbuff(s,tx_blob))
+    {
+        LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex);
+        res.status = "Failed";
+        return true;
+    }
+    if ( !m_core->handle_incoming_tx(tx_blob,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
         res.status = "Failed";
@@ -518,6 +526,6 @@ extern "C" int32_t submit_tx(void *rawtx,int32_t len)
     NOTIFY_NEW_TRANSACTIONS::request r;
     r.txs.push_back(tx_blob);
     m_core->get_protocol()->relay_transactions(r, fake_context);
-}*/
+}
 
 #endif
