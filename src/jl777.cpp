@@ -506,7 +506,6 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    memcpy(&tx,txbytes,strlen(txbytes));
     tx.vin.clear();
     tx.vout.clear();
     tx.signatures.clear();
@@ -515,6 +514,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     tx.version = 0;
     txin_to_key input_to_key;
     tx.vin.push_back(input_to_key);
+    memcpy(&tx.vin,txbytes,strlen(txbytes));
     txb = tx_to_blob(tx);
     /*txb.erase();
     for (i=0; i<256; i++)
