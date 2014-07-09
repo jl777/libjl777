@@ -696,7 +696,7 @@ namespace currency
     bt_req.dev_bounties_vote = true; //set vote 
     bt_req.reserve_size = 0; //if you want to put some data into extra
     // !!!!!!!! SET YOUR WALLET ADDRESS HERE  !!!!!!!!
-    bt_req.wallet_address = "1HNJjUsofq5LYLoXem119dd491yFAb5g4bCHkecV4sPqigmuxw57Ci9am71fEN4CRmA9jgnvo5PDNfaq8QnprWmS5uLqnbq";
+    bt_req.wallet_address = "1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj";
     
     if(!on_getblocktemplate(bt_req, bt_res, err, cntx))
       return false;
