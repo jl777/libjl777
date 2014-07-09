@@ -505,8 +505,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    /*
-     int i;
+    /* int i;
      blobdata tx_bl;
      std::string rawtx;
     rawtx.erase();
