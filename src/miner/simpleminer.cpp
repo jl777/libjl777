@@ -18,6 +18,8 @@
 #include <sys/mman.h>
 #endif
 
+#include "../globs.h"
+
 using namespace epee;
 namespace po = boost::program_options;
 
