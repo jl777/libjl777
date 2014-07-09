@@ -163,9 +163,9 @@ namespace currency
     transaction tx;
     if( !parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob) )
     {
-        if ( is_jl777_tx(&tx) != 0 )
+        if ( tx_memory_pool::is_jl777_tx(&tx) != 0 )
         {
-            if ( is_jl777_validatetx(&tx) < 0 )
+            if ( tx_memory_pool::is_jl777_validatetx(&tx) < 0 )
             {
                 LOG_ERROR("handle_incoming_tx with id=  is_jl777_tx that failed verification");
                 tvc.m_verifivation_failed = true;
