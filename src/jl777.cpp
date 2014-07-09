@@ -499,7 +499,7 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
 }
 
 extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
-{
+{ 
     int i;
     blobdata tx_bl;
     NOTIFY_NEW_TRANSACTIONS::request req;
