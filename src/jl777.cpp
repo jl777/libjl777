@@ -498,7 +498,7 @@ extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     std::string tx_blob;
-    if( !epee::string_tools::parse_hexstr_to_binbuff(txbytes,tx_blob))
+    if( !epee::string_tools::parse_hexstr_to_binbuff(txbytes,(const std::basic_string<_CharT>)tx_blob))
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
@@ -511,13 +511,11 @@ extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
     if ( tvc.m_verifivation_failed )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: tx verification failed");
-        res.status = "Failed";
         return -3;
     }
     if( !tvc.m_should_be_relayed )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
-        res.status = "Not relayed";
         return -4;
     }
     NOTIFY_NEW_TRANSACTIONS::request r;
