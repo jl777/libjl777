@@ -535,7 +535,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
         return -4;
     }
     req.txs.push_back(tx_bl);
-    m_core->get_protocol()->relay_transactions(r, fake_context);
+    m_core->get_protocol()->relay_transactions(req, fake_context);
     return(0);
 }
 
