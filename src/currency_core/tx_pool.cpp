@@ -20,21 +20,24 @@
 
 DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated name length exceeded, name was truncated
 
+extern "C" void add_jl777_tx(transaction *tx,int32_t size);
+extern "C" void remove_jl777_tx(transaction *tx,int32_t size);
 
 namespace currency
 {
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
     }
-    
-    extern "C" void add_jl777_tx(transaction *tx,int32_t size)
+    void _add_jl777_tx(transaction *tx,int32_t size)
     {
-        printf("add_jl777_tx.%p size.%d\n",tx,size);
+        printf("_add_jl777_tx.%p size.%d\n",tx,size);
+        add_jl777_tx(tx,size);
     }
     
-    extern "C" void remove_jl777_tx(transaction *tx,int32_t size)
+    void _remove_jl777_tx(transaction *tx,int32_t size)
     {
-        printf("remove_jl777_tx.%p size.%d\n",tx,size);
+        printf("_remove_jl777_tx.%p size.%d\n",tx,size);
+        remove_jl777_tx(tx,size);
     }
     
     //---------------------------------------------------------------------------------
@@ -88,7 +91,7 @@ namespace currency
           txd_p.first->second.max_used_block_height = 0;
           txd_p.first->second.kept_by_block = kept_by_block;
           txd_p.first->second.receive_time = time(nullptr);
-          add_jl777_tx(&txd_p.first->second.tx,blob_size);
+          _add_jl777_tx(&txd_p.first->second.tx,blob_size);
 
           return(true);
       }
@@ -262,7 +265,7 @@ namespace currency
                 LOG_PRINT_L0("Tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age );
                 if ( is_jl777_tx(&it->second.tx) != 0 )
                 {
-                    remove_jl777_tx(&it->second.tx,it->second.blob_size);
+                    _remove_jl777_tx(&it->second.tx,it->second.blob_size);
                     std::cout << "jl777_tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
                 }
                 m_transactions.erase(it++);
