@@ -45,6 +45,11 @@ bool command_line_preprocessor(const boost::program_options::variables_map& vm);
 extern "C" char *make_string(char *prefix,char *name)
 {
     char buf[512],*str;
+    if ( prefix == 0 || name == 0 )
+    {
+        printf("null str?? %p %p\n",prefix,name);
+        return((char *)"null str");
+    }
     printf("make_string %s %s\n",prefix,name);
     sprintf(buf,"%s_%s",prefix,name);
     str = (char *)malloc(strlen(buf)+1);
@@ -55,6 +60,7 @@ extern "C" char *make_string(char *prefix,char *name)
 extern "C" void set_cointype_vars(int cointype)
 {
     char *prefix;
+    printf("set_cointype_vars cointype.%d\n",cointype);
     if ( cointype < 0 )
         cointype = 0;
     cointype %= NUM_COINTYPES;
@@ -101,6 +107,7 @@ int main(int argc, char* argv[])
     int cointype = 0;
     if ( argc > 1 )
     {
+        printf("argc.%d\n",argc);
         cointype = atoi(argv[1]);
         printf("cointype.%d\n",cointype);
     }
