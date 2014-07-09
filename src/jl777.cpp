@@ -502,6 +502,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
 {
     int i;
     blobdata tx_bl;
+    NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     std::string rawtx;
@@ -510,8 +511,6 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
         rawtx.push_back(txbytes[i]);
     rawtx.push_back(0);
     string_tools::parse_hexstr_to_binbuff(rawtx,tx_bl);
-    bool r = m_core->parse_and_validate_tx_from_blob(tx_bl, bl.miner_tx);
-    CHECK_AND_ASSERT_MES(r, false, "failed to parse rawtx from hard coded blob");
 
     /*const std::basic_string s;
     s.basic_string(txbytes);
@@ -520,7 +519,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
     }*/
-    if ( !m_core->handle_incoming_tx(tx_blob,tvc,false) )
+    if ( !m_core->handle_incoming_tx(tx_bl,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
         return -2;
@@ -535,8 +534,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,char *txbytes)
         LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
         return -4;
     }
-    NOTIFY_NEW_TRANSACTIONS::request r;
-    r.txs.push_back(tx_blob);
+    req.txs.push_back(tx_bl);
     m_core->get_protocol()->relay_transactions(r, fake_context);
     return(0);
 }
