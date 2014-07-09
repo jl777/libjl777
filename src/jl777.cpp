@@ -498,7 +498,9 @@ extern "C" int32_t submit_tx(currency::core *m_core,const char *txbytes)
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
     std::string tx_blob;
-    if( !epee::string_tools::parse_hexstr_to_binbuff(txbytes,(const std::basic_string<_CharT>)tx_blob))
+    const std::basic_string s;
+    s.basic_string(txbytes);
+    if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
         return -1;
