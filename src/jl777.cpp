@@ -527,14 +527,5 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     return(0);
 }
 
-extern "C" void add_jl777_tx(transaction *tx,int32_t size)
-{
-    printf("add_jl777_tx.%p size.%d\n",tx,size);
-}
-
-extern "C" void remove_jl777_tx(transaction *tx,int32_t size)
-{
-    printf("remove_jl777_tx.%p size.%d\n",tx,size);
-}
 
 #endif

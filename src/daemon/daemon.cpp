@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 #ifdef WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
-  log_space::get_set_log_detalisation_level(true, LOG_LEVEL_0);
+    log_space::get_set_log_detalisation_level(true, 2);//LOG_LEVEL_0);
   log_space::log_singletone::add_logger(LOGGER_CONSOLE, NULL, NULL);
   LOG_PRINT_L0("Starting...");
 

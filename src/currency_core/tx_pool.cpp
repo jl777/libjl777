@@ -23,14 +23,22 @@ DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated 
 
 namespace currency
 {
-    extern "C" void add_jl777_tx(transaction *tx,int32_t size);
-    extern "C" void remove_jl777_tx(transaction *tx,int32_t size);
-  //---------------------------------------------------------------------------------
-  tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
-  {
-
-  }
+    tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
+    {
+        
+    }
     
+    extern "C" void add_jl777_tx(transaction *tx,int32_t size)
+    {
+        printf("add_jl777_tx.%p size.%d\n",tx,size);
+    }
+    
+    extern "C" void remove_jl777_tx(transaction *tx,int32_t size)
+    {
+        printf("remove_jl777_tx.%p size.%d\n",tx,size);
+    }
+    
+    //---------------------------------------------------------------------------------
     int32_t tx_memory_pool::init_jl777_tx(transaction *tx)
     {
         memset(tx,0,sizeof(*tx));
