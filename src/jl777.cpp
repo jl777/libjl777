@@ -505,30 +505,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    /* int i;
-     blobdata tx_bl;
-     std::string rawtx;
-    rawtx.erase();
-    for (i=0; txbytes[i]!=0; i++)
-        rawtx.push_back(txbytes[i]);
-    rawtx.push_back(0);
-    
-    string_tools::parse_hexstr_to_binbuff(rawtx,tx_bl);
-    tx.vin.clear();
-    tx.vout.clear();
-    tx.extra.clear();
-    keypair txkey = keypair::generate();
-    add_tx_pub_key_to_extra(tx, txkey.pub);
-    
-     const std::basic_string s;
-    s.basic_string(txbytes);
-    if( !epee::string_tools::parse_hexstr_to_binbuff(s,tx_blob))
-    {
-        LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << txbytes);
-        return -1;
-    }*/
-    //construct_miner_tx(0,0,10000000000000,1000,DEFAULT_FEE,wallet->m_wallet->get_account().get_keys().m_account_address,tx,b,1);
-    //tx.version = 0;
+    tx.version = 0;
     txb = tx_to_blob(tx);
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
@@ -548,6 +525,16 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     req.txs.push_back(txb);
     m_core->get_protocol()->relay_transactions(req,fake_context);
     return(0);
+}
+
+extern "C" void add_jl777_tx(transaction *tx,int32_t size)
+{
+    printf("add_jl777_tx.%p size.%d\n",tx,size);
+}
+
+extern "C" void remove_jl777_tx(transaction *tx,int32_t size)
+{
+    printf("remove_jl777_tx.%p size.%d\n",tx,size);
 }
 
 #endif
