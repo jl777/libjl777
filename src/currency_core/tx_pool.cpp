@@ -20,7 +20,7 @@
 
 DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated name length exceeded, name was truncated
 
-extern "C" void add_jl777_tx(void *tx,int32_t size);
+extern "C" void add_jl777_tx(void *origptr,int64_t *tx,int32_t size);
 extern "C" void remove_jl777_tx(void *tx,int32_t size);
 
 namespace currency
@@ -30,18 +30,24 @@ namespace currency
     }
     bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
     {
-        int64_t *ptr;
-        int i,j;
+        int64_t *ptr,*bytes;
+        int i,j,n;
+        i = n = 0;
+        bytes = malloc(tx->vin.size() * 40);
         BOOST_FOREACH(const auto& in, tx->vin)
         {
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
             ptr = (int64_t *)&tokey_in.k_image;
-            for (j=0; j<sizeof(tokey_in.k_image); j+=sizeof(int64_t))
+            for (j=0; j<(int)sizeof(tokey_in.k_image); j++)
+            {
                 printf("%llx ",(long long)ptr[j]);
-            printf("amount %llx | vin.%d\n",(long long)tokey_in.amount,i);
+                bytes[n++] = ptr[j];
+            }
+            bytes[n++] = tokey_in.amount;
+            printf("amount %llx | vin.%d\n",(long long)tokey_in.amount,i++);
         }
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
-        add_jl777_tx((void *)tx,size);
+        add_jl777_tx((void *)tx,bytes,n * (int)sizeof(int64_t));
         return(true);
     }
     

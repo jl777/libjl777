@@ -34,13 +34,12 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes);
 
-void add_jl777_tx(void *tx,int32_t size)
+void add_jl777_tx(void *origptr,int64_t *tx,int32_t size)
 {
     int i;
-    int64_t *ptr = tx;
-    for (i=0; i<size/sizeof(*ptr); i++)
-        printf("%llx ",(long long)ptr[i]);
-    printf("C add_jl777_tx.%p size.%d\n",tx,size);
+    for (i=0; i<size/sizeof(*tx); i++)
+        printf("%llx ",(long long)tx[i]);
+    printf("C add_jl777_tx.%p size.%d\n",origptr,size);
 }
 
 void remove_jl777_tx(void *tx,int32_t size)
