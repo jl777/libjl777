@@ -33,7 +33,7 @@ namespace currency
         int64_t *ptr,*bytes;
         int i,j,n;
         i = n = 0;
-        bytes = malloc(tx->vin.size() * 40);
+        bytes = (int64_t *)malloc(tx->vin.size() * 40);
         BOOST_FOREACH(const auto& in, tx->vin)
         {
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
