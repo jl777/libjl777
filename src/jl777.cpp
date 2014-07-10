@@ -34,11 +34,11 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
 
-void add_jl777_tx(void *origptr,int64_t *tx,int32_t size)
+void add_jl777_tx(void *origptr,unsigned char *tx,int32_t size)
 {
     int i;
-    for (i=0; i<size/sizeof(*tx); i++)
-        printf("%llx ",(long long)tx[i]);
+    for (i=0; i<size; i++)
+        printf("%08x ",tx[i]);
     printf("C add_jl777_tx.%p size.%d\n",origptr,size);
 }
 
@@ -142,7 +142,6 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
     printf("got gp->wallet.%p\n",gp->wallet);
     if ( gp->wallet != 0 )
     {
-        char txbytes[512];
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
