@@ -1,2 +1,0 @@
-/usr/bin/ar cr libcommon.a  CMakeFiles/common.dir/common/base58.cpp.o CMakeFiles/common.dir/common/command_line.cpp.o CMakeFiles/common.dir/common/util.cpp.o
-/usr/bin/ranlib libcommon.a
