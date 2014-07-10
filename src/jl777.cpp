@@ -535,8 +535,7 @@ int32_t add_byte(transaction *tx,txin_to_key *txin,int32_t offset,unsigned char 
 
 extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,unsigned char *txbytes,int16_t size)
 {
-    int i,j,n;
-    void *dest;
+    int i,j;
     blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
     txin_to_key input_to_key = AUTO_VAL_INIT(input_to_key);
@@ -558,7 +557,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     for (i=0; i<size; i++)
         j = add_byte(&tx,&input_to_key,j,txbytes[i]);
     if ( j != 0 )
-        tx.vin.push_back(txin_to_key);
+        tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
 
