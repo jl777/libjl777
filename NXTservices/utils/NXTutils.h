@@ -1351,6 +1351,19 @@ int _increasing_float(const void *a,const void *b)
 #undef float_b
 }
 
+int _decreasing_float(const void *a,const void *b)
+{
+#define float_a (*(float *)a)
+#define float_b (*(float *)b)
+	if ( float_b > float_a )
+		return(1);
+	else if ( float_b < float_a )
+		return(-1);
+	return(0);
+#undef float_a
+#undef float_b
+}
+
 int _decreasing_unsignedint64(const void *a,const void *b)
 {
 #define uint_a (((uint64_t *)a)[0])

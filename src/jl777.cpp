@@ -34,25 +34,13 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
 
-void add_jl777_tx(void *origptr,unsigned char *tx,int32_t size)
-{
-    int i;
-    for (i=0; i<size; i++)
-        printf("%02x ",tx[i]);
-    printf("C add_jl777_tx.%p size.%d\n",origptr,size);
-}
-
-void remove_jl777_tx(void *tx,int32_t size)
-{
-    printf("C remove_jl777_tx.%p size.%d\n",tx,size);
-}
-
 struct pNXT_info
 {
     void *wallet,*core,*p2psrv,*upnp,*rpc_server;
     char walletaddr[512];
 };
 struct pNXT_info *Global_pNXT;
+#include "orders.h"
 
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
@@ -154,6 +142,72 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
     }
 }
 
+char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    int32_t i,dir,allflag;
+    uint64_t obookid;
+    char buf[512];
+    cJSON *json,*bids,*asks,*item;
+    struct orderbook *op;
+    char obook[512],NXTaddr[64],*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    copy_cJSON(obook,objs[1]);
+    if ( objs[2] != 0 )
+    {
+        copy_cJSON(buf,objs[2]);
+        dir = atoi(buf);
+    }
+    else dir = 1;
+    if ( objs[3] != 0 )
+    {
+        copy_cJSON(buf,objs[3]);
+        allflag = atoi(buf);
+    }
+    else allflag = 0;
+    obookid = calc_nxt64bits(obook);
+    if ( obookid != 0 && (op= create_orderbook(obookid,dir)) != 0 )
+    {
+        if ( op->numbids == 0 && op->numasks == 0 )
+            retstr = clonestr("{\"error\":\"no bids or asks\"}");
+        else
+        {
+            json = cJSON_CreateObject();
+            bids = cJSON_CreateArray();
+            for (i=0; i<op->numbids; i++)
+            {
+                item = create_order_json(&op->bids[i],1,allflag);
+                cJSON_AddItemToArray(bids,item);
+            }
+            asks = cJSON_CreateArray();
+            for (i=0; i<op->numasks; i++)
+            {
+                item = create_order_json(&op->asks[i],1,allflag);
+                cJSON_AddItemToArray(asks,item);
+            }
+            cJSON_AddItemToObject(json,"orderbook",cJSON_CreateString(obook));
+            cJSON_AddItemToObject(json,"bids",bids);
+            cJSON_AddItemToObject(json,"asks",asks);
+            retstr = cJSON_Print(json);
+        }
+        free_orderbook(op);
+    } else retstr = clonestr("{\"error\":\"no such orderbook\"}");
+    return(retstr);
+}
+
+char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    cJSON *json;
+    char *retstr = 0;
+    json = create_orderbooks_json();
+    if ( json != 0 )
+    {
+        retstr = cJSON_Print(json);
+        free_json(json);
+    }
+    else retstr = clonestr("{\"error\":\"no orderbooks\"}");
+    return(retstr);
+}
+
 char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 {
     struct NXT_asset *assetp;
@@ -190,11 +244,10 @@ char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid)
 {
-    //static char *genDepositaddrs[] = { (char *)genDepositaddrs_func, "genDepositaddrs", "V", "NXT", "coins", 0 };
-    //static char *dispNXTacct[] = { (char *)dispNXTacct_func, "dispNXTacct", "", "NXT", "coin", "assetid", 0 };
-   // static char *dispcoininfo[] = { (char *)dispNXTacct_func, "dispcoininfo", "", "NXT", "coin", "nxtaddr", 0 };
     static char *redeem[] = { (char *)redeem_func, "withdraw", "V", "NXT", "amount", 0 };
-    static char **commands[] = { redeem };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "NXT", "obook", "dir", "allfields", 0 };
+    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "", "NXT", 0 };
+    static char **commands[] = { redeem, orderbook, getorderbooks };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
