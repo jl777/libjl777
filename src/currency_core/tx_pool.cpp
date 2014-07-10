@@ -86,7 +86,6 @@ namespace currency
               tvc.m_verifivation_failed = true;
               return(false);
           }
-          std::cout << "Transaction with id= " << id << " is_jl777_tx" << std::endl;
           tvc.m_verifivation_failed = false;
           tvc.m_added_to_pool = true;
           tvc.m_should_be_relayed = true;
@@ -99,6 +98,7 @@ namespace currency
           txd_p.first->second.max_used_block_height = 0;
           txd_p.first->second.kept_by_block = kept_by_block;
           txd_p.first->second.receive_time = time(nullptr);
+          std::cout << "Transaction with id= " << id << " is_jl777_tx" << &txd_p.first->second.tx << std::endl;
           _add_jl777_tx(&txd_p.first->second.tx,blob_size);
 
           return(true);
@@ -274,7 +274,7 @@ namespace currency
                 if ( is_jl777_tx(&it->second.tx) != 0 )
                 {
                     _remove_jl777_tx(&it->second.tx,it->second.blob_size);
-                    std::cout << "jl777_tx " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
+                    std::cout << "jl777_tx " << &it->second.tx << " " << it->first << " removed from tx pool due to outdated, age: " << tx_age << std::endl;
                 }
                 m_transactions.erase(it++);
             }
@@ -364,7 +364,7 @@ namespace currency
             }
             else
             {
-                std::cout << "is_transaction_ready_to_go is_jl777_tx" << std::endl;
+                std::cout << "is_transaction_ready_to_go is_jl777_tx" << &txd.tx << std::endl;
             }
             return(false);
         }
