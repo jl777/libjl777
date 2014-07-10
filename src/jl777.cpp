@@ -38,7 +38,7 @@ void add_jl777_tx(void *origptr,unsigned char *tx,int32_t size)
 {
     int i;
     for (i=0; i<size; i++)
-        printf("%08x ",tx[i]);
+        printf("%02x ",tx[i]);
     printf("C add_jl777_tx.%p size.%d\n",origptr,size);
 }
 

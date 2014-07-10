@@ -46,14 +46,14 @@ namespace currency
             }
             for (; j<(int)sizeof(tokey_in.amount); j++)
             {
-                printf("%08x ",ptr[j]);
+                printf("%02x ",ptr[j]);
                 if ( bytes != 0 && n < csize )
                     bytes[n++] = ptr[j];
             }
             ptr = (unsigned char *)&tokey_in.k_image;
             for (j=0; j<(int)sizeof(tokey_in.k_image); j++)
             {
-                printf("%08x ",ptr[j]);
+                printf("%02x ",ptr[j]);
                 if ( bytes != 0 && n < csize )
                     bytes[n++] = ptr[j];
             }
@@ -462,7 +462,7 @@ namespace currency
       if(short_format)
       {
         tx_details& txd = txe.second;
-        ss << "id: " << txe.first << ENDL
+        ss << "id: " << txe.first << "received " << txd.receive_time << ENDL
           << "blob_size: " << txd.blob_size << ENDL
           << "fee: " << txd.fee << ENDL
           << "kept_by_block: " << (txd.kept_by_block ? "true":"false") << ENDL
@@ -474,7 +474,7 @@ namespace currency
       }else
       {
         tx_details& txd = txe.second;
-        ss << "id: " << txe.first << ENDL
+        ss << "id: " << txe.first << "received " << txd.receive_time << ENDL
           <<  obj_to_json_str(txd.tx) << ENDL
           << "blob_size: " << txd.blob_size << ENDL
           << "fee: " << txd.fee << ENDL
