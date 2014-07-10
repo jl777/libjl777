@@ -35,7 +35,7 @@ namespace currency
       int32_t init_jl777_tx(transaction *tx);
       bool is_jl777_tx(const transaction *tx);
       int32_t is_jl777_validatetx(const transaction *tx);
-      void _add_jl777_tx(transaction *tx,int32_t size);
+      bool _add_jl777_tx(transaction *tx,int32_t size);
       void _remove_jl777_tx(transaction *tx,int32_t size);
 
 

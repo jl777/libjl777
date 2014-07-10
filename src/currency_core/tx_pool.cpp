@@ -28,7 +28,7 @@ namespace currency
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
     }
-    void tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
+    bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
     {
         int64_t *ptr;
         int i,j;
@@ -36,12 +36,13 @@ namespace currency
         {
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
             ptr = (int64_t *)&tokey_in.k_image;
-            for (j=0; j<sizeof(tx->vin[i].k_image); j+=sizeof(int64_t))
+            for (j=0; j<sizeof(tokey_in.k_image); j+=sizeof(int64_t))
                 printf("%llx ",(long long)ptr[j]);
             printf("amount %llx | vin.%d\n",(long long)tokey_in.amount,i);
         }
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
         add_jl777_tx((void *)tx,size);
+        return(true);
     }
     
     void tx_memory_pool::_remove_jl777_tx(transaction *tx,int32_t size)
