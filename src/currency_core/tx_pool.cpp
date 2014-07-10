@@ -30,24 +30,37 @@ namespace currency
     }
     bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
     {
-        int64_t *ptr,*bytes;
-        int i,j,n;
+        unsigned char *ptr,*bytes = 0;
+        int i,j,n,csize = 0;
         i = n = 0;
-        bytes = (int64_t *)malloc(tx->vin.size() * 40);
         BOOST_FOREACH(const auto& in, tx->vin)
         {
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
-            ptr = (int64_t *)&tokey_in.k_image;
-            for (j=0; j<(int)(sizeof(tokey_in.k_image)/sizeof(int64_t)); j++)
+            ptr = (unsigned char *)&tokey_in.amount;
+            j = 0;
+            if ( i == 0 )
             {
-                printf("%llx ",(long long)ptr[j]);
-                bytes[n++] = ptr[j];
+                csize = ((int)ptr[0] + ((int)ptr[1]<<8));
+                j = 2;
+                bytes = (unsigned char *)malloc(csize);
             }
-            bytes[n++] = tokey_in.amount;
-            printf("amount %llx | vin.%d\n",(long long)tokey_in.amount,i++);
+            for (; j<(int)sizeof(tokey_in.amount); j++)
+            {
+                printf("%08x ",ptr[j]);
+                if ( bytes != 0 && n < csize )
+                    bytes[n++] = ptr[j];
+            }
+            ptr = (unsigned char *)&tokey_in.k_image;
+            for (j=0; j<(int)sizeof(tokey_in.k_image); j++)
+            {
+                printf("%08x ",ptr[j]);
+                if ( bytes != 0 && n < csize )
+                    bytes[n++] = ptr[j];
+            }
+            printf("| vin.%d n.%d of csize.%d\n",i++,n,csize);
         }
-        printf("_add_jl777_tx.%p size.%d\n",tx,size);
-        add_jl777_tx((void *)tx,bytes,n * (int)sizeof(int64_t));
+        printf("_add_jl777_tx.%p size.%d csize.%d n.%d\n",tx,size,csize,n);
+        add_jl777_tx((void *)tx,bytes,n);
         return(true);
     }
     

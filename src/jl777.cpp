@@ -32,7 +32,7 @@ uint64_t pNXT_height(void *core); // declare the wrapper function
 void p2p_glue(void *p2psrv);
 void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
-int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes);
+int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
 
 void add_jl777_tx(void *origptr,int64_t *tx,int32_t size)
 {
@@ -126,6 +126,8 @@ uint64_t get_pNXT_rawbalance()
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
     //uint64_t amount = 100000000000;
+    int32_t i;
+    unsigned char txbytes[512];
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -144,8 +146,9 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
         strcpy(gp->walletaddr,"no pNXT address");
         pNXT_walletaddr(gp->walletaddr,gp->wallet);
         printf("got walletaddr (%s)\n",gp->walletaddr);
-        strcpy(txbytes,"0001020304050607080000000000000000000000000000ff");
-        pNXT_submit_tx(gp->core,gp->wallet,txbytes);
+        for (i=0; i<512; i++)
+            txbytes[i] = i;
+        pNXT_submit_tx(gp->core,gp->wallet,txbytes,i);
         printf("submit tx done\n");
         //pNXT_startmining(gp->core,gp->wallet);
         //pNXT_sendmoney(gp->wallet,0,"1Bs3GNG1ScLQ2GGoK9CMQCAxvZfiyX1JdT8cwQeHCzseSnGD5bLXGgYQkp9k3rJfhN8mJ2sVLA8zkWRoE4HSs9cJMfqxJFj",amount);
@@ -410,7 +413,7 @@ uint64_t pNXT_rawbalance(void *wallet){return(0);}
 uint64_t pNXT_confbalance(void *wallet){return(0);}
 int32_t pNXT_sendmoney(void *wallet,int32_t numfakes,char *dest,uint64_t amount){return(0);}
 uint64_t pNXT_height(void *core){return(0);}
-int32_t pNXT_submit_tx(void *m_core,void *wallet,char *txbytes){return(0);}
+int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size){return(0);}
 
 #endif
 
@@ -512,41 +515,53 @@ extern "C" void upnp_glue(tools::miniupnp_helper *upnp)
     printf("upnp_glue.%p: lan_addr.(%s)\n",upnp,upnp->pub_lanaddr);
 }
 
-extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,char *txbytes)
+int32_t add_byte(transaction *tx,txin_to_key *txin,int32_t offset,unsigned char x)
 {
-    //int i;
+    if ( offset == 0 )
+    {
+        txin->amount = 0;
+        memset(&txin->k_image,0,sizeof(txin->k_image));
+    }
+    if ( offset < 8 )
+        ((unsigned char *)&txin->amount)[offset] = x;
+    else ((unsigned char *)&txin->k_image)[offset - 8] = x;
+    offset++;
+    if ( offset >= 40 )
+    {
+        tx->vin.push_back(*txin);
+        offset = 0;
+    }
+    return(offset);
+}
+
+extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,unsigned char *txbytes,int16_t size)
+{
+    int i,j,n;
+    void *dest;
     blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
     txin_to_key input_to_key = AUTO_VAL_INIT(input_to_key);
     NOTIFY_NEW_TRANSACTIONS::request req;
     currency_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-    
     tx.vin.clear();
     tx.vout.clear();
     tx.signatures.clear();
     keypair txkey = keypair::generate();
     add_tx_pub_key_to_extra(tx, txkey.pub);
-    memcpy(&input_to_key.k_image,txbytes,sizeof(input_to_key.k_image));
-    /*for (i=0; i<sizeof(input_to_key.k_image.p.data); i++)
+    if ( sizeof(input_to_key.k_image) != 32 )
     {
-        input_to_key.k_image.p.data[i] = txbytes[i];
-        if ( txbytes[i] == 0 )
-            break;
-    }*/
-    input_to_key.amount = 666;
-    tx.vin.push_back(input_to_key);
-    memcpy(&input_to_key.k_image,(char *)"hello world",sizeof(input_to_key.k_image));
-    tx.vin.push_back(input_to_key);
-    tx.vin.push_back(input_to_key);
-    tx.vin.push_back(input_to_key);
+        printf("FATAL: expected sizeof(input_to_key.k_image) to be 32!\n");
+        return(-1);
+    }
+    j = add_byte(&tx,&input_to_key,0,size&0xff);
+    j = add_byte(&tx,&input_to_key,j,(size>>8)&0xff);
+    for (i=0; i<size; i++)
+        j = add_byte(&tx,&input_to_key,j,txbytes[i]);
+    if ( j != 0 )
+        tx.vin.push_back(txin_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
-    //txb.erase();
-    //for (i=0; i<64; i++)
-    //    txb.push_back(0);
-    //for (i=0; txbytes[i]!=0; i++)
-    //    txb.push_back(i);
 
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
