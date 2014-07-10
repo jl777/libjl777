@@ -37,7 +37,7 @@ namespace currency
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
             ptr = (int64_t *)&tokey_in.k_image;
             for (j=0; j<sizeof(tx->vin[i].k_image); j+=sizeof(int64_t))
-                printf("%llx ",ptr[j]);
+                printf("%llx ",(long long)ptr[j]);
             printf("amount %llx | vin.%d\n",(long long)tokey_in.amount,i);
         }
         printf("_add_jl777_tx.%p size.%d\n",tx,size);
