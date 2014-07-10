@@ -40,7 +40,7 @@ struct pNXT_info
     char walletaddr[512];
 };
 struct pNXT_info *Global_pNXT;
-#include "orders.h"
+#include "../NXTservices/orders.h"
 
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
