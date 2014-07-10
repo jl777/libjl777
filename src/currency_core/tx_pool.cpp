@@ -38,7 +38,7 @@ namespace currency
         {
             CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
             ptr = (int64_t *)&tokey_in.k_image;
-            for (j=0; j<(int)sizeof(tokey_in.k_image); j++)
+            for (j=0; j<(int)(sizeof(tokey_in.k_image)/sizeof(int64_t)); j++)
             {
                 printf("%llx ",(long long)ptr[j]);
                 bytes[n++] = ptr[j];
