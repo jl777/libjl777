@@ -844,7 +844,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 10000) )
+#ifndef __linux__
+    if ( millis > (lastattempt + 1000) )
     {
         if ( privacyServer == 0 )
             privacyServer = (pNXT_privacyServer != 0) ? pNXT_privacyServer : get_random_privacyServer(whitelist,blacklist);
@@ -870,7 +871,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     else
     {
-        if ( millis > (lastping+6000) )
+        if ( millis > (lastping+10000) )
         {
             if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
             {
@@ -893,13 +894,14 @@ void NXTprivacy_idler(uv_idle_t *handle)
             }
             if ( tcp != 0 && tcp->data != 0 )
             {
-                printf("send ping.%d total transferred.%ld\n",numpings,server_xferred);
+                //printf("send ping.%d total transferred.%ld\n",numpings,server_xferred);
                 ASSERT(0 == portable_udpwrite(&addr,tcp->data,"ping",5,1));
                 numpings++;
             }
             lastping = millis;
         }
     }
+#endif
     if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
