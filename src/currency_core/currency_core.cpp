@@ -21,6 +21,7 @@ using namespace epee;
 DISABLE_VS_WARNINGS(4355)
 
 extern "C" uint64_t search_jl777_txid(uint64_t txid);
+extern "C" uint64_t calc_txid(unsigned char *hash,long hashsize);
 
 namespace currency
 {
