@@ -34,6 +34,8 @@ void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
 uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
 
+struct hashtable *orderbook_txids;
+
 struct pNXT_info
 {
     void *wallet,*core,*p2psrv,*upnp,*rpc_server;
@@ -149,18 +151,20 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
-    static struct hashtable *orderbook_txids;
     //uint64_t amount = 100000000000;
     int32_t i;
     struct NXT_str *tp = 0;
     unsigned char txbytes[512];
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
+    {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+        Global_pNXT->orderbook_txidsp = &orderbook_txids;
+        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
+    }
     gp = Global_pNXT;
     gp->core = core; gp->p2psrv = p2psrv; gp->upnp = upnp; gp->rpc_server = rpc_server;
-    orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
-    gp->orderbook_txidsp = &orderbook_txids;
     if ( gp->wallet == 0 )
     {
         while ( Global_mp->NXTACCTSECRET[0] == 0 )
@@ -531,7 +535,13 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         {
             printf("pNXT NXThandler_info init %d\n",mp->RTflag);
             if ( Global_pNXT == 0 )
+            {
+                struct NXT_str *tp;
                 Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+                orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+                Global_pNXT->orderbook_txidsp = &orderbook_txids;
+                printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
+            }
             gp = Global_pNXT;
         }
         return(gp);

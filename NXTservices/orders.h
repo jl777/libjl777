@@ -99,8 +99,9 @@ int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint6
         }
         printf("add tx.%p -> slot.%d\n",tx,raw->num);
         expand_nxt64bits(txidstr,txid);
-        MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txidstr);
-
+        if ( Global_pNXT != 0 && Global_pNXT->orderbook_txidsp != 0 && *Global_pNXT->orderbook_txidsp != 0 )
+            MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txidstr);
+        else printf("ERROR: UNINITIALIZED orderbook hashtable\n");
         raw->orders[raw->num++] = tx;
         return(0);
     }

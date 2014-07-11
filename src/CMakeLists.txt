@@ -8,7 +8,7 @@ file(GLOB_RECURSE SIMPLEMINER miner/*)
 file(GLOB_RECURSE P2P p2p/*)
 file(GLOB_RECURSE RPC rpc/*)
 file(GLOB_RECURSE SIMPLEWALLET simplewallet/*)
-file(GLOB_RECURSE CONN_TOOL connectivity_tool/*)
+#file(GLOB_RECURSE CONN_TOOL connectivity_tool/*)
 file(GLOB_RECURSE WALLET wallet/*)
 file(GLOB_RECURSE MINER miner/*)
 
@@ -30,7 +30,7 @@ source_group(p2p FILES ${P2P})
 source_group(rpc FILES ${RPC})
 source_group(simplewallet FILES ${SIMPLEWALLET})
 source_group(simpleminer FILES ${SIMPLEMINER})
-source_group(connectivity-tool FILES ${CONN_TOOL})
+#source_group(connectivity-tool FILES ${CONN_TOOL})
 source_group(wallet FILES ${WALLET})
 
 if(BUILD_GUI)
@@ -53,9 +53,9 @@ add_executable(daemon ${DAEMON} ${P2P} ${CURRENCY_PROTOCOL})
 add_dependencies(daemon version)
 target_link_libraries(daemon rpc currency_core crypto common upnpc-static ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
                      
-add_executable(connectivity_tool ${CONN_TOOL})
-add_dependencies(connectivity_tool version)
-target_link_libraries(connectivity_tool currency_core crypto common ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
+#add_executable(connectivity_tool ${CONN_TOOL})
+#add_dependencies(connectivity_tool version)
+#target_link_libraries(connectivity_tool currency_core crypto common ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
 
 
 add_executable(simplewallet ${SIMPLEWALLET})
@@ -67,7 +67,7 @@ add_dependencies(simpleminer version)
 target_link_libraries(simpleminer currency_core crypto common ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
 
 set_property(TARGET common crypto currency_core rpc wallet PROPERTY FOLDER "libs")
-set_property(TARGET daemon simplewallet simpleminer connectivity_tool PROPERTY FOLDER "prog")
+set_property(TARGET daemon simplewallet simpleminer PROPERTY FOLDER "prog") #connectivity_tool
 set_property(TARGET daemon PROPERTY OUTPUT_NAME "pNXTd")
 
 if(BUILD_GUI)
@@ -86,8 +86,8 @@ endif()
 
 if(SIMPLE_BUNDLE)
   set(INSTALL_DIR "${CMAKE_BINARY_DIR}/hp-${VERSION}")
-  install(TARGETS daemon simplewallet connectivity_tool
-      RUNTIME DESTINATION "${INSTALL_DIR}" COMPONENT Runtime
+  #install(TARGETS daemon simplewallet connectivity_tool
+  #    RUNTIME DESTINATION "${INSTALL_DIR}" COMPONENT Runtime
   )
 
   install(FILES ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES} DESTINATION "${INSTALL_DIR}/lib")
