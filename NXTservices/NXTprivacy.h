@@ -16,7 +16,7 @@
 #define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
 #define INTRO_SIZE 1400
 
-queue_t RPC_6777;
+queue_t RPC_6777,RPC_6777_response;
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -461,7 +461,11 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     {
         jsonstr = pNXT_jsonhandler(&argjson,buf->base);
         if ( jsonstr != 0 )
+        {
             portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+            printf("free jsonstr.%p and argjson.%p\n",jsonstr,argjson);
+            free(jsonstr);
+        }
         free_json(argjson);
     }
     /*Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.

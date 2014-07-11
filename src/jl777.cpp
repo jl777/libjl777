@@ -413,6 +413,7 @@ again:
         queue_enqueue(&RPC_6777,clonestr(_tokbuf));
 #endif
     }
+    printf("free parmstxt.%p, argjson.%p\n",parmstxt,*argjsonp);
     if ( parmstxt != 0 )
         free(parmstxt);
     return(retstr);
