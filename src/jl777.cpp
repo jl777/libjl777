@@ -359,12 +359,13 @@ char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr)
 again:
     sender[0] = 0;
     valid = -1;
-    // printf("pNXT_jsonhandler argjson.%p\n",argjson);
+    printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
     if ( *argjsonp != 0 )
     {
         parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
         stripwhite(parmstxt,len);
+        printf("parmstxt.(%s)\n",parmstxt);
     }
     if ( *argjsonp == 0 )
     {
@@ -387,11 +388,11 @@ again:
         secondobj = cJSON_GetArrayItem(*argjsonp,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
         copy_cJSON(encoded,tokenobj);
-        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen(encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,&valid,parmstxt,encoded);
-        if ( *argjsonp != 0 )
-            free_json(*argjsonp);
+        //if ( *argjsonp != 0 ) jl777 probably need to detach and make free safe
+        //    free_json(*argjsonp);
         *argjsonp = parmsobj;
     }
     retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid);
@@ -403,8 +404,8 @@ again:
         issue_generateToken(mp->curl_handle2,encoded,parmstxt,mp->NXTACCTSECRET);
         encoded[NXT_TOKEN_LEN] = 0;
         sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-        if ( *argjsonp != 0 )
-            free_json(*argjsonp);
+        //if ( *argjsonp != 0 ) jl777 probably need to detach and make free safe
+        //    free_json(*argjsonp);
         *argjsonp = cJSON_Parse(_tokbuf);
         printf("%s arg.%p\n",_tokbuf,*argjsonp);
 #ifdef __linux__
