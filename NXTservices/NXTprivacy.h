@@ -133,6 +133,8 @@ uint64_t decode_privacyServer(char *jsonstr)
 
 uint64_t calc_privacyServer(char *ipaddr,uint16_t port)
 {
+    if ( ipaddr == 0 || ipaddr[0] == 0 )
+        return(0);
     if ( port == 0 )
         port = NXT_PUNCH_PORT;
     return(calc_ipbits(ipaddr) | ((uint64_t)port << 32));
@@ -800,6 +802,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
         fprintf(stderr, "no address\n");
     else
     {
+        //printf("connect to %s/%d\n",servername,port);
         tcp = calloc(1,sizeof(*tcp));
         *connectp = calloc(1,sizeof(**connectp));
         uv_tcp_init(UV_loop,tcp);
@@ -835,6 +838,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         //printf("idler noticed TCPserver_closed.%d!\n",TCPserver_closed);
         tcp = 0;
         connect = 0;
+        privacyServer = 0;
         TCPserver_closed = 0;
         server_xferred = 0;
         return;
@@ -846,9 +850,10 @@ void NXTprivacy_idler(uv_idle_t *handle)
             privacyServer = (pNXT_privacyServer != 0) ? pNXT_privacyServer : get_random_privacyServer(whitelist,blacklist);
         if ( privacyServer != 0 )
         {
+            //printf("pNXT %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
             if ( tcp == 0 || connect == 0 )
             {
-                printf("attempt privacyServer %llx  connect.%p tcp.%p udp.%p\n",(long long)privacyServer,connect,tcp,tcp!=0?tcp->data:0);
+                printf("attempt privacyServer %llx %s/%d connect.%p tcp.%p udp.%p\n",(long long)privacyServer,ipbits_str((uint32_t)privacyServer),(int)(privacyServer>>32),connect,tcp,tcp!=0?tcp->data:0);
                 tcp = connect_to_privacyServer((struct sockaddr_in *)&addr,&connect,privacyServer);
                 if ( tcp == 0 || connect == 0 )
                 {
@@ -880,7 +885,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     {
                         if ( tcp != 0 )
                         {
-                            printf("shutdown wrong server!\n");
+                            printf("shutdown wrong server! %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
                             uv_shutdown(malloc(sizeof(uv_shutdown_t)),(uv_stream_t *)tcp,after_server_shutdown);
                         }
                     }

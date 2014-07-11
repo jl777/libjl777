@@ -50,6 +50,9 @@ uint64_t get_pNXT_privacyServer(int32_t *activeflagp)
     uint64_t privacyServer;
     privacyServer = calc_privacyServer(Global_pNXT->privacyServer_ipaddr,atoi(Global_pNXT->privacyServer_port));
     *activeflagp = Global_pNXT->privacyServer == privacyServer;
+    //char tmp[32];
+    //expand_ipbits(tmp,(uint32_t)privacyServer);
+    //printf("pNXT ipaddr.(%s) %llx\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
     return(privacyServer);
 }
 
