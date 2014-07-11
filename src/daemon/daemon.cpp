@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
     dch.stop_handling();
     p2psrv.send_stop_signal();
   }); 
-
+ 
   LOG_PRINT_L0("Starting p2p net loop...");
   p2psrv.run();
   LOG_PRINT_L0("p2p   net loop stopped");
