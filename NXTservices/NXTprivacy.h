@@ -16,6 +16,8 @@
 #define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
 #define INTRO_SIZE 1400
 
+queue_t RPC_6777;
+
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
     uv_buf_t buf;
@@ -431,7 +433,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
 
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
-    char *pNXT_jsonhandler(cJSON *argjson,char *argstr);
+    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     //int i;
     char *jsonstr;
     cJSON *argjson;
@@ -455,9 +457,13 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     }
     printf("got %ld bytes (%s)\n",nread,buf->base);
     argjson = cJSON_Parse(buf->base);
-    jsonstr = pNXT_jsonhandler(argjson,buf->base);
-    if ( jsonstr != 0 )
-         portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+    if ( argjson != 0 )
+    {
+        jsonstr = pNXT_jsonhandler(&argjson,buf->base);
+        if ( jsonstr != 0 )
+            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+        free_json(argjson);
+    }
     /*Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.
     for (i=0; i<nread; i++)
     {
@@ -711,7 +717,7 @@ void on_client_connect(uv_connect_t *connect,int status)
         uv_shutdown(malloc(sizeof(uv_shutdown_t)),(uv_stream_t *)tcp,after_server_shutdown);
         return;
     }
-    if ( uv_tcp_getpeername((uv_tcp_t *)connect->handle,(struct sockaddr *)&addr,&addrlen) == 0 )
+    if ( uv_tcp_getpeername(tcp,(struct sockaddr *)&addr,&addrlen) == 0 )
     {
         if ( (port= extract_nameport(servername,sizeof(servername),(struct sockaddr_in *)&addr)) == 0 )
         {
@@ -794,6 +800,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
 
 void NXTprivacy_idler(uv_idle_t *handle)
 {
+    char *jsonstr;
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
     static uint64_t privacyServer;
@@ -838,7 +845,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     else
     {
-        if ( millis > (lastping+60000) )
+        if ( millis > (lastping+6000) )
         {
             if ( tcp != 0 && tcp->data != 0 )
             {
@@ -849,6 +856,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
+    if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
+        portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
 
 void init_NXTprivacy(void *ptr)

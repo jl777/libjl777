@@ -201,8 +201,8 @@ char *NXTprotocol_json_handler(struct NXT_protocol *p,char *argstr)
             retjsontxt = NXTprotocol_json(json);
         else retjsontxt = (*p->NXT_handler)(Global_mp,&PARMS,p->handlerdata,0);
         //printf("retjsontxt.%p\n",retjsontxt);
-        if ( json != 0 )
-            free_json(json);
+        if ( PARMS.argjson != 0 )
+            free_json(PARMS.argjson);
     }
     else if ( strcmp(p->name,"NXTservices") == 0 )
         retjsontxt = NXTprotocol_json(0);

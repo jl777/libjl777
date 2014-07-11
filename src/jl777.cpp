@@ -152,6 +152,8 @@ char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     copy_cJSON(NXTaddr,objs[0]);
     obookid = get_API_nxt64bits(objs[1]);
     dir = get_API_int(objs[2],1);
+    if ( dir == 0 )
+        dir = 1;
     allflag = get_API_int(objs[3],0);
     if ( obookid != 0 && (op= create_orderbook(obookid,dir)) != 0 )
     {
@@ -302,8 +304,8 @@ char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid)
 {
     static char *redeem[] = { (char *)redeem_func, "withdraw", "V", "NXT", "amount", 0 };
-    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "NXT", "obookid", "dir", "allfields", 0 };
-    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "", "NXT", 0 };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "dir", "allfields", 0 };
+    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "dir", "volume", "price", "assetA", "assetB", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "dir", "volume", "price", "assetA", "assetB", 0 };
     static char **commands[] = { redeem, orderbook, getorderbooks, placebid, placeask };
@@ -347,7 +349,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     return(0);
 }
 
-char *pNXT_jsonhandler(cJSON *argjson,char *argstr)
+char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr)
 {
     struct NXThandler_info *mp = Global_mp;
     long len;
@@ -358,13 +360,13 @@ again:
     sender[0] = 0;
     valid = -1;
     // printf("pNXT_jsonhandler argjson.%p\n",argjson);
-    if ( argjson != 0 )
+    if ( *argjsonp != 0 )
     {
-        parmstxt = cJSON_Print(argjson);
+        parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
         stripwhite(parmstxt,len);
     }
-    if ( argjson == 0 )
+    if ( *argjsonp == 0 )
     {
         json = cJSON_CreateObject();
         cJSON_AddItemToObject(json,"error",cJSON_CreateString("cant parse"));
@@ -373,35 +375,43 @@ again:
         free_json(json);
         return(retstr);
     }
-    else if ( (argjson->type&0xff) == cJSON_Array && cJSON_GetArraySize(argjson) == 2 )
+    else if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
     {
-        parmsobj = cJSON_GetArrayItem(argjson,0);
+        parmsobj = cJSON_GetArrayItem(*argjsonp,0);
         if ( parmstxt != 0 )
             free(parmstxt);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
         stripwhite(parmstxt,len);
         
-        secondobj = cJSON_GetArrayItem(argjson,1);
+        secondobj = cJSON_GetArrayItem(*argjsonp,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
         copy_cJSON(encoded,tokenobj);
         //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen(encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,&valid,parmstxt,encoded);
-        argjson = parmsobj;
+        if ( *argjsonp != 0 )
+            free_json(*argjsonp);
+        *argjsonp = parmsobj;
     }
-    retstr = pNXT_json_commands(mp,Global_pNXT,argjson,sender,valid);
+    retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid);
     printf("back from pNXT_json_commands\n");
-    if ( firsttime != 0 && retstr == 0 && argjson != 0 && argjson != parmsobj )
+    if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && *argjsonp != parmsobj )
     {
         char _tokbuf[2048];
         firsttime = 0;
         issue_generateToken(mp->curl_handle2,encoded,parmstxt,mp->NXTACCTSECRET);
         encoded[NXT_TOKEN_LEN] = 0;
         sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-        argjson = cJSON_Parse(_tokbuf);
-        printf("%s arg.%p\n",_tokbuf,argjson);
+        if ( *argjsonp != 0 )
+            free_json(*argjsonp);
+        *argjsonp = cJSON_Parse(_tokbuf);
+        printf("%s arg.%p\n",_tokbuf,*argjsonp);
+#ifdef __linux__
         goto again;
+#else
+        queue_enqueue(&RPC_6777,clonestr(_tokbuf));
+#endif
     }
     if ( parmstxt != 0 )
         free(parmstxt);
@@ -441,7 +451,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
         if ( parms->mode == NXTPROTOCOL_WEBJSON )
-            return(pNXT_jsonhandler(parms->argjson,parms->argstr));
+            return(pNXT_jsonhandler(&parms->argjson,parms->argstr));
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             printf("pNXT Height: %lld | %s raw %.8f confirmed %.8f |",(long long)pNXT_height(gp->core),gp->walletaddr!=0?gp->walletaddr:"no wallet address",dstr(pNXT_rawbalance(gp->wallet)),dstr(pNXT_confbalance(gp->wallet)));
