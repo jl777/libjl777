@@ -28,7 +28,7 @@ namespace currency
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
     }
-    bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size,crypto::hash *id,long hashsize)
+    bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size,const crypto::hash *id,long hashsize)
     {
         unsigned char *ptr,*bytes = 0;
         int i,j,n,csize = 0;
