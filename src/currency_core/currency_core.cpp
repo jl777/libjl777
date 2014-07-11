@@ -20,6 +20,8 @@ using namespace epee;
 
 DISABLE_VS_WARNINGS(4355)
 
+extern "C" uint64_t search_jl777_txid(uint64_t txid);
+
 namespace currency
 {
 
@@ -158,9 +160,10 @@ namespace currency
       return false;
     }
 
-    crypto::hash tx_hash = null_hash;
+    crypto::hash h,tx_hash = null_hash;
     crypto::hash tx_prefixt_hash = null_hash;
     transaction tx;
+      uint64_t txid;
     if ( !parse_tx_from_blob(tx, tx_hash, tx_prefixt_hash, tx_blob) )
     {
         LOG_PRINT_L0("WRONG TRANSACTION BLOB, Failed to parse, rejected");
@@ -171,6 +174,15 @@ namespace currency
     {
         if ( m_mempool.is_jl777_tx(&tx) != 0 )
         {
+            get_transaction_hash(tx,h);
+            txid = calc_txid((unsigned char *)&h,sizeof(h));
+            if ( search_jl777_txid(txid) != 0 )
+            {
+                tvc.m_verifivation_failed = true;
+                printf("duplicate jl777 tx.%llu\n",(long long)txid);
+                LOG_ERROR("handle_incoming_tx with id=  is_jl777_tx already added");
+                return(false);
+            }
             if ( m_mempool.is_jl777_validatetx(&tx) < 0 )
             {
                 LOG_ERROR("handle_incoming_tx with id=  is_jl777_tx that failed verification");

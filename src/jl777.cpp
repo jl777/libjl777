@@ -39,6 +39,7 @@ struct pNXT_info
     void *wallet,*core,*p2psrv,*upnp,*rpc_server;
     char walletaddr[512],privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16];
     uint64_t privacyServer;
+    struct hashtable **orderbook_txidsp;
 };
 struct pNXT_info *Global_pNXT;
 #include "../NXTservices/orders.h"
@@ -52,7 +53,7 @@ uint64_t get_pNXT_privacyServer(int32_t *activeflagp)
     *activeflagp = Global_pNXT->privacyServer == privacyServer;
     char tmp[32];
     expand_ipbits(tmp,(uint32_t)privacyServer);
-    printf("pNXT ipaddr.(%s) %llx %s\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
+    //printf("pNXT ipaddr.(%s) %llx %s\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
     return(privacyServer);
 }
 
@@ -148,14 +149,18 @@ uint64_t get_pNXT_rawbalance()
 
 void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp)
 {
+    static struct hashtable *orderbook_txids;
     //uint64_t amount = 100000000000;
     int32_t i;
+    struct NXT_str *tp = 0;
     unsigned char txbytes[512];
     struct pNXT_info *gp;
     if ( Global_pNXT == 0 )
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
     gp = Global_pNXT;
     gp->core = core; gp->p2psrv = p2psrv; gp->upnp = upnp; gp->rpc_server = rpc_server;
+    orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+    gp->orderbook_txidsp = &orderbook_txids;
     if ( gp->wallet == 0 )
     {
         while ( Global_mp->NXTACCTSECRET[0] == 0 )
@@ -268,7 +273,7 @@ char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_
     price = get_API_float(objs[4]);
     assetA = get_API_nxt64bits(objs[5]);
     assetB = get_API_nxt64bits(objs[6]);
-    printf("polarity.%d dir.%d\n",polarity,dir);
+    printf("PLACE QUOTE polarity.%d dir.%d\n",polarity,dir);
     if ( strcmp(sender,NXTaddr) == 0 && find_raw_orders(obookid) != 0 && valid != 0 )
     {
         if ( price != 0. && volume != 0. && dir != 0 )

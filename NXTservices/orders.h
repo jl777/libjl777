@@ -28,7 +28,7 @@ struct orderbook
 struct orderbook_tx
 {
     int32_t sig,type;
-    uint64_t nxt64bits,baseid,relid;
+    uint64_t txid,nxt64bits,baseid,relid;
     uint64_t baseamount,relamount;
 };
 
@@ -86,9 +86,9 @@ int32_t delete_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx)
     return(-1);
 }
 
-int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx)
+int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint64_t txid)
 {
-    int32_t ind;
+    int32_t ind,createdflag;
     if ( (ind= find_orderbook_tx(raw,tx)) < 0 )
     {
         if ( raw->num >= raw->max )
@@ -97,11 +97,24 @@ int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx)
             raw->orders = (struct orderbook_tx **)realloc(raw->orders,sizeof(*raw->orders) * raw->max);
         }
         printf("add tx.%p -> slot.%d\n",tx,raw->num);
+        MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txid);
+
         raw->orders[raw->num++] = tx;
         return(0);
     }
-    printf("append_orderbook_tx: already have tx.%p\n",tx);
+    printf("append_orderbook_tx: already have tx.%p txid.%llu\n",tx,(long long)txid);
     return(-1);
+}
+
+uint64_t search_jl777_txid(uint64_t txid)
+{
+    char txidstr[64];
+    uint64_t hashval;
+    expand_nxt64bits(txidstr,txid);
+    hashval = MTsearch_hashtable(Global_pNXT->orderbook_txidsp,txidstr);
+    if ( hashval == HASHSEARCH_ERROR )
+        return(0);
+    return(hashval);
 }
 
 int32_t _find_raw_orders(uint64_t obookid)
@@ -122,7 +135,7 @@ struct raw_orders *find_raw_orders(uint64_t obookid)
     else return(Raw_orders[i]);
 }
 
-int32_t update_orderbook_tx(int dir,uint64_t obookid,struct orderbook_tx *tx)
+int32_t update_orderbook_tx(int dir,uint64_t obookid,struct orderbook_tx *tx,uint64_t txid)
 {
     int32_t i;
     struct raw_orders *raw;
@@ -162,7 +175,7 @@ int32_t update_orderbook_tx(int dir,uint64_t obookid,struct orderbook_tx *tx)
         }
     }
     if ( dir > 0 )
-        return(append_orderbook_tx(raw,tx));
+        return(append_orderbook_tx(raw,tx,txid));
     else if ( dir < 0 )
         return(delete_orderbook_tx(raw,tx));
     else if ( dir == 0 && tx->baseamount == 0 && tx->relamount == 0 )
@@ -389,7 +402,7 @@ uint64_t create_raw_orders(uint64_t assetA,uint64_t assetB)
     init_orderbook_tx(1,&tx,0,0,obookid,0,0);
     tx.baseid = assetA;
     tx.relid = assetB;
-    update_orderbook_tx(0,obookid,&tx);
+    update_orderbook_tx(0,obookid,&tx,0);
     return(obookid);
 }
 
@@ -424,8 +437,11 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
         printf("%02x ",tx[i]);
     printf("C add_jl777_tx.%p size.%d hashsize.%ld NXT.%llu\n",tx,size,hashsize,(long long)ORDERBOOK_NXTID);
     if ( (obookid= is_orderbook_tx(tx,size)) != 0 )
-        if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)tx) == 0 )
-            txid = calc_txid(hash,hashsize);
+    {
+        txid = calc_txid(hash,hashsize);
+        if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)tx,txid) == 0 )
+            ((struct orderbook_tx *)tx)->txid = txid;
+    }
     return(txid);
 }
 
@@ -434,7 +450,7 @@ void remove_jl777_tx(void *tx,int32_t size)
     uint64_t obookid;
     printf("C remove_jl777_tx.%p size.%d\n",tx,size);
     if ( (obookid= is_orderbook_tx(tx,size)) != 0 )
-        update_orderbook_tx(-1,obookid,(struct orderbook_tx *)tx);
+        update_orderbook_tx(-1,obookid,(struct orderbook_tx *)tx,0);
 }
 
 #endif
