@@ -50,9 +50,9 @@ uint64_t get_pNXT_privacyServer(int32_t *activeflagp)
     uint64_t privacyServer;
     privacyServer = calc_privacyServer(Global_pNXT->privacyServer_ipaddr,atoi(Global_pNXT->privacyServer_port));
     *activeflagp = Global_pNXT->privacyServer == privacyServer;
-    //char tmp[32];
-    //expand_ipbits(tmp,(uint32_t)privacyServer);
-    //printf("pNXT ipaddr.(%s) %llx\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
+    char tmp[32];
+    expand_ipbits(tmp,(uint32_t)privacyServer);
+    printf("pNXT ipaddr.(%s) %llx %s\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
     return(privacyServer);
 }
 
@@ -738,6 +738,7 @@ extern "C" uint64_t pNXT_submit_tx(currency::core *m_core,currency::simple_walle
         tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
+    printf("FROM submit jl777\n");
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");

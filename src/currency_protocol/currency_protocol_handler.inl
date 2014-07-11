@@ -167,6 +167,7 @@ namespace currency
     for(auto tx_blob_it = arg.b.txs.begin(); tx_blob_it!=arg.b.txs.end();tx_blob_it++)
     {
       currency::tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+        printf("from new block\n");
       m_core.handle_incoming_tx(*tx_blob_it, tvc, true);
       if(tvc.m_verifivation_failed)
       {
@@ -214,6 +215,7 @@ namespace currency
     for(auto tx_blob_it = arg.txs.begin(); tx_blob_it!=arg.txs.end();)
     {
       currency::tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+        printf("from new tx\n");
       m_core.handle_incoming_tx(*tx_blob_it, tvc, false);
       if(tvc.m_verifivation_failed)
       {
@@ -332,6 +334,7 @@ namespace currency
         BOOST_FOREACH(auto& tx_blob, block_entry.txs)
         {
           tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+            printf("from handle response\n");
           m_core.handle_incoming_tx(tx_blob, tvc, true);
           if(tvc.m_verifivation_failed)
           {

@@ -851,7 +851,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             privacyServer = (pNXT_privacyServer != 0) ? pNXT_privacyServer : get_random_privacyServer(whitelist,blacklist);
         if ( privacyServer != 0 )
         {
-            //printf("pNXT %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
+            printf("pNXT %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
             if ( tcp == 0 || connect == 0 )
             {
                 printf("attempt privacyServer %llx %s/%d connect.%p tcp.%p udp.%p\n",(long long)privacyServer,ipbits_str((uint32_t)privacyServer),(int)(privacyServer>>32),connect,tcp,tcp!=0?tcp->data:0);
