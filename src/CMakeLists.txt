@@ -88,7 +88,7 @@ if(SIMPLE_BUNDLE)
   set(INSTALL_DIR "${CMAKE_BINARY_DIR}/hp-${VERSION}")
   #install(TARGETS daemon simplewallet connectivity_tool
   #    RUNTIME DESTINATION "${INSTALL_DIR}" COMPONENT Runtime
-  )
+  #)
 
   install(FILES ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES} DESTINATION "${INSTALL_DIR}/lib")
 
