@@ -1440,11 +1440,12 @@ void NXTloop(struct NXThandler_info *mp)
     uint64_t block;
     char nextblock[1024],blockidstr[1024];
     int32_t tmp,height,timestamp,numconfirms = MIN_NXTCONFIRMS;
-#ifdef MAINNET
+/*#ifdef MAINNET
     height = 134999;
 #else
     height = 75300;
-#endif
+#endif*/
+    height = FIRST_NXT_HEIGHT;
     while ( Finished_loading == 0 )
         sleep(1);
     if ( mp->initassets != 0 )

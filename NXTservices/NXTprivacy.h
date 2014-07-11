@@ -830,7 +830,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     else
     {
-        if ( millis > (lastping+1000) )
+        if ( millis > (lastping+60000) )
         {
             if ( tcp != 0 && tcp->data != 0 )
             {
