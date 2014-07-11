@@ -464,7 +464,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         {
             portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
             printf("free jsonstr.%p and argjson.%p\n",jsonstr,argjson);
-            free(jsonstr);
+            //free(jsonstr);
         }
         free_json(argjson);
     }
