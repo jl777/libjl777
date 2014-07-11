@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
   LOG_PRINT_L0("Starting p2p net loop...");
   p2psrv.run();
   LOG_PRINT_L0("p2p   net loop stopped");
-
+ 
   //stop components
   LOG_PRINT_L0("Stopping core rpc server...");
   rpc_server.send_stop_signal();
