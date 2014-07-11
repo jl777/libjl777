@@ -173,9 +173,9 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #else
 
 #define MIN_NXTCONFIRMS 5
-#define SERVER_NAMEA "209.126.71.170"
-#define SERVER_NAMEB "209.126.73.156"
-#define SERVER_NAMEC "209.126.73.158"
+#define SERVER_NAMEA "209.126.70.170"
+#define SERVER_NAMEB "209.126.70.156"
+#define SERVER_NAMEC "209.126.70.159"
 
 #define EMERGENCY_PUNCH_SERVER SERVER_NAMEA 
 #define POOLSERVER SERVER_NAMEB

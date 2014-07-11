@@ -24,6 +24,7 @@ uv_loop_t *UV_loop;
 //#include "../../NXTservices/NXTsubatomic.h"
 //#include "../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
+#include "../NXTservices/NXTprivacy.h"
 #include "../NXTservices/html.h"
 
 void NXTservices_idler(uv_idle_t *handle)
@@ -43,6 +44,8 @@ void run_UVloop(void *arg)
 {
     uv_idle_t idler;
     uv_idle_init(UV_loop,&idler);
+    //uv_idle_init(UV_loop,&idler);
+    uv_idle_start(&idler,NXTprivacy_idler);
     uv_idle_start(&idler,NXTservices_idler);
     uv_run(UV_loop,UV_RUN_DEFAULT);
     printf("end of uv_run\n");
@@ -105,6 +108,8 @@ void init_NXTservices(int _argc,char **_argv)
             printf("ERROR hist process_hashtablequeues\n");
         if ( portable_thread_create(getNXTblocks,mp) == 0 )
             printf("ERROR start_Histloop\n");
+        if ( portable_thread_create(init_NXTprivacy,mp) == 0 )
+            printf("ERROR init_NXTprivacy\n");
         gen_testforms();
 
         printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s NXT.(%s)\n",mp->dispname,PC_USERNAME,mp->ipaddr,mp->NXTADDR);

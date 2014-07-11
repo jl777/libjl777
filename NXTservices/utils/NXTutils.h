@@ -1586,6 +1586,16 @@ int32_t release_map_file(void *ptr,uint64_t filesize)
 }
 #endif
 
+int is_printable(const char *s)
+{
+    if ( s == 0 || *s == 0 )
+        return(0);
+    for (; *s; ++s)
+        if (!isprint(*s))
+            return 0;
+    return 1;
+}
+
 uint32_t calc_file_crc(uint64_t *filesizep,char *fname)
 {
     void *ptr;

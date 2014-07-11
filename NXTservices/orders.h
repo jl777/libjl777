@@ -9,7 +9,7 @@
 #define xcode_orders_h
 
 #define ORDERBOOK_SIG 0x83746783
-#define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))
+#define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
 struct quote
 {
