@@ -88,6 +88,7 @@ int32_t delete_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx)
 
 int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint64_t txid)
 {
+    char txidstr[64];
     int32_t ind,createdflag;
     if ( (ind= find_orderbook_tx(raw,tx)) < 0 )
     {
@@ -97,7 +98,8 @@ int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint6
             raw->orders = (struct orderbook_tx **)realloc(raw->orders,sizeof(*raw->orders) * raw->max);
         }
         printf("add tx.%p -> slot.%d\n",tx,raw->num);
-        MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txid);
+        expand_nxt64bits(txidstr,txid);
+        MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txidstr);
 
         raw->orders[raw->num++] = tx;
         return(0);
