@@ -431,7 +431,10 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
 
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
-    int i;
+    char *pNXT_jsonhandler(cJSON *argjson,char *argstr);
+    //int i;
+    char *jsonstr;
+    cJSON *argjson;
     // uv_shutdown_t *req;
     printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
     if ( nread < 0 ) // Error or EOF
@@ -451,7 +454,11 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         return;
     }
     printf("got %ld bytes (%s)\n",nread,buf->base);
-    // Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.
+    argjson = cJSON_Parse(buf->base);
+    jsonstr = pNXT_jsonhandler(argjson,buf->base);
+    if ( jsonstr != 0 )
+         portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+    /*Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.
     for (i=0; i<nread; i++)
     {
         if ( buf->base[i] == 'Q' )
@@ -464,7 +471,8 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             return;
         }
     }
-    portable_tcpwrite(handle,buf->base,(int32_t)nread,-1);
+    portable_tcpwrite(handle,buf->base,(int32_t)nread,-1);*/
+    
 }
 
 uv_udp_t *open_udp(struct sockaddr *addr)
