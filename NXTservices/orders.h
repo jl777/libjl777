@@ -108,15 +108,21 @@ int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint6
     return(-1);
 }
 
-uint64_t search_jl777_txid(uint64_t txid)
+uint64_t *search_jl777_txid(uint64_t txid)
 {
     char txidstr[64];
     uint64_t hashval;
+    struct NXT_str *tp;
+    struct hashtable *hp;
     expand_nxt64bits(txidstr,txid);
     hashval = MTsearch_hashtable(Global_pNXT->orderbook_txidsp,txidstr);
     if ( hashval == HASHSEARCH_ERROR )
         return(0);
-    return(hashval);
+    hp = (*Global_pNXT->orderbook_txidsp);
+    tp = hp->hashtable[hashval % hp->hashsize];
+    if ( tp == 0 )
+        return(0);
+    return(&tp->modified);
 }
 
 int32_t _find_raw_orders(uint64_t obookid)
