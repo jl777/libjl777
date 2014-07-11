@@ -366,6 +366,19 @@ char *replacequotes(char *str)
     return(newstr);
 }
 
+char *convert_percent22(char *str)
+{
+    int32_t i,j;
+    for (i=j=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '%' && str[i+1] != 0 && str[i+1] == '2' && str[i+2] == '2' )
+            str[j++] = '"', i += 2;
+        else str[j++] = str[i];
+    }
+    str[j] = 0;
+    return(str);
+}
+
 char *replace_backslashquotes(char *str)
 {
     int32_t i,j,n;

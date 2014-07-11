@@ -32,7 +32,7 @@ uint64_t pNXT_height(void *core); // declare the wrapper function
 void p2p_glue(void *p2psrv);
 void rpc_server_glue(void *rpc_server);
 void upnp_glue(void *upnp);
-int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
+uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
 
 struct pNXT_info
 {
@@ -146,25 +146,13 @@ char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 {
     int32_t i,dir,allflag;
     uint64_t obookid;
-    char buf[512];
     cJSON *json,*bids,*asks,*item;
     struct orderbook *op;
     char obook[512],NXTaddr[64],*retstr = 0;
     copy_cJSON(NXTaddr,objs[0]);
-    copy_cJSON(obook,objs[1]);
-    if ( objs[2] != 0 )
-    {
-        copy_cJSON(buf,objs[2]);
-        dir = atoi(buf);
-    }
-    else dir = 1;
-    if ( objs[3] != 0 )
-    {
-        copy_cJSON(buf,objs[3]);
-        allflag = atoi(buf);
-    }
-    else allflag = 0;
-    obookid = calc_nxt64bits(obook);
+    obookid = get_API_nxt64bits(objs[1]);
+    dir = get_API_int(objs[2],1);
+    allflag = get_API_int(objs[3],0);
     if ( obookid != 0 && (op= create_orderbook(obookid,dir)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
@@ -208,6 +196,75 @@ char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs
     return(retstr);
 }
 
+char *placequote_func(int32_t polarity,char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    int32_t dir;
+    uint64_t obookid,nxt64bits,assetA,assetB,txid;
+    double price,volume;
+    struct orderbook_tx tx;
+    char NXTaddr[64],buf[1024],txidstr[512],*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    nxt64bits = calc_nxt64bits(NXTaddr);
+    obookid = get_API_nxt64bits(objs[1]);
+    dir = get_API_int(objs[2],1);
+    if ( dir == 0 )
+        dir = 1;
+    volume = get_API_float(objs[3]);
+    price = get_API_float(objs[4]);
+    assetA = get_API_nxt64bits(objs[5]);
+    assetB = get_API_nxt64bits(objs[6]);
+    if ( strcmp(sender,NXTaddr) == 0 && find_raw_orders(obookid) != 0 )
+    {
+        if ( price != 0. && volume != 0. && dir != 0 )
+        {
+            if ( dir*polarity > 0 )
+                bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
+            else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
+            txid = pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,(unsigned char *)&tx,sizeof(tx));
+            if ( txid != 0 )
+            {
+                expand_nxt64bits(txidstr,txid);
+                sprintf(buf,"{\"txid\":\"%s\"}",txidstr);
+                retstr = clonestr(buf);
+            }
+        }
+        if ( retstr == 0 )
+        {
+            sprintf(buf,"{\"error submitting\":\"place%s error obookid.%llx dir.%d volume %f price %f\"}",polarity>0?"bid":"ask",(long long)obookid,dir,volume,price);
+            retstr = clonestr(buf);
+        }
+    }
+    else if ( assetA != 0 && assetB != 0 && assetA != assetB )
+    {
+        if ( (obookid= create_raw_orders(assetA,assetB)) != 0 )
+        {
+            sprintf(buf,"{\"obookid\":\"%llu\"}",(long long)obookid);
+            retstr = clonestr(buf);
+        }
+        else
+        {
+            sprintf(buf,"{\"error\":\"couldnt create orderbook for assets %llu and %llu\"}",(long long)assetA,(long long)assetB);
+            retstr = clonestr(buf);
+        }
+    }
+    else
+    {
+        sprintf(buf,"{\"error\":\"place%s error obookid.%llx dir.%d volume %f price %f\"}",polarity>0?"bid":"ask",(long long)obookid,dir,volume,price);
+        retstr = clonestr(buf);
+    }
+    return(retstr);
+}
+
+char *placebid_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    return(placequote_func(1,sender,valid,objs,numobjs));
+}
+
+char *placeask_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    return(placequote_func(-1,sender,valid,objs,numobjs));
+}
+
 char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 {
     struct NXT_asset *assetp;
@@ -245,9 +302,11 @@ char *redeem_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid)
 {
     static char *redeem[] = { (char *)redeem_func, "withdraw", "V", "NXT", "amount", 0 };
-    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "NXT", "obook", "dir", "allfields", 0 };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "NXT", "obookid", "dir", "allfields", 0 };
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "", "NXT", 0 };
-    static char **commands[] = { redeem, orderbook, getorderbooks };
+    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "dir", "volume", "price", "assetA", "assetB", 0 };
+    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "dir", "volume", "price", "assetA", "assetB", 0 };
+    static char **commands[] = { redeem, orderbook, getorderbooks, placebid, placeask };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -349,18 +408,6 @@ again:
     return(retstr);
 }
 
-/*char *pNXT_jsonhandler(cJSON *argjson)
-{
-    char *jsonstr;
-    if ( argjson != 0 )
-    {
-        jsonstr = cJSON_Print(argjson);
-        printf("pNXT_jsonhandler.(%s)\n",jsonstr);
-        return(jsonstr);
-    }
-    return(0);
-}*/
-
 void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
 {
     cJSON *argjson;
@@ -456,6 +503,7 @@ void init_lws(void *core,void *p2p,void *rpc_server,void *upnp)
         printf("ERROR launching _init_lws\n");
     printf("done init_lws()\n");
 }
+
 #else
 void *pNXT_get_wallet(char *fname,char *password){return(0);}
 uint64_t pNXT_sync_wallet(void *wallet){return(0);}
@@ -465,7 +513,7 @@ uint64_t pNXT_rawbalance(void *wallet){return(0);}
 uint64_t pNXT_confbalance(void *wallet){return(0);}
 int32_t pNXT_sendmoney(void *wallet,int32_t numfakes,char *dest,uint64_t amount){return(0);}
 uint64_t pNXT_height(void *core){return(0);}
-int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size){return(0);}
+uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size){return(0);}
 
 #endif
 
@@ -475,6 +523,7 @@ int32_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t 
 #include "simplewallet/password_container.cpp"
 #include "simplewallet/simplewallet.cpp"
 extern "C" void init_lws(currency::core *,void *,void *,void *);
+extern "C" uint64_t calc_txid(unsigned char *hash,long hashsize);
 
 extern "C" currency::simple_wallet *pNXT_get_wallet(char *fname,char *password)
 {
@@ -517,7 +566,7 @@ extern "C" int32_t pNXT_startmining(currency::core *core,currency::simple_wallet
     else
     {
         wallet->show_balance();
-   }
+    }
     return(0);
 }
 
@@ -586,9 +635,11 @@ int32_t add_byte(transaction *tx,txin_to_key *txin,int32_t offset,unsigned char 
     return(offset);
 }
 
-extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,unsigned char *txbytes,int16_t size)
+extern "C" uint64_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet *wallet,unsigned char *txbytes,int16_t size)
 {
     int i,j;
+    crypto::hash h;
+    uint64_t txid = 0;
     blobdata txb,b;
     transaction tx = AUTO_VAL_INIT(tx);
     txin_to_key input_to_key = AUTO_VAL_INIT(input_to_key);
@@ -603,7 +654,7 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
     if ( sizeof(input_to_key.k_image) != 32 )
     {
         printf("FATAL: expected sizeof(input_to_key.k_image) to be 32!\n");
-        return(-1);
+        return(0);
     }
     j = add_byte(&tx,&input_to_key,0,size&0xff);
     j = add_byte(&tx,&input_to_key,j,(size>>8)&0xff);
@@ -613,25 +664,26 @@ extern "C" int32_t pNXT_submit_tx(currency::core *m_core,currency::simple_wallet
         tx.vin.push_back(input_to_key);
     tx.version = 0;
     txb = tx_to_blob(tx);
-
     if ( !m_core->handle_incoming_tx(txb,tvc,false) )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx");
-        return -2;
+        return(0);
     }
     if ( tvc.m_verifivation_failed )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: tx verification failed");
-        return -3;
+        return(0);
     }
     if( !tvc.m_should_be_relayed )
     {
         LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
-        return -4;
+        return(0);
     }
     req.txs.push_back(txb);
     m_core->get_protocol()->relay_transactions(req,fake_context);
-    return(0);
+    get_transaction_hash(tx,h);
+    txid = calc_txid((unsigned char *)&h,sizeof(h));
+    return(txid);
 }
 
 

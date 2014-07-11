@@ -20,7 +20,7 @@
 
 DISABLE_VS_WARNINGS(4244 4345 4503) //'boost::foreach_detail_::or_' : decorated name length exceeded, name was truncated
 
-extern "C" void add_jl777_tx(void *origptr,unsigned char *tx,int32_t size);
+extern "C" uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize);
 extern "C" void remove_jl777_tx(void *tx,int32_t size);
 
 namespace currency
@@ -28,7 +28,7 @@ namespace currency
     tx_memory_pool::tx_memory_pool(blockchain_storage& bchs): m_blockchain(bchs)
     {
     }
-    bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size)
+    bool tx_memory_pool::_add_jl777_tx(transaction *tx,int32_t size,crypto::hash *id,long hashsize)
     {
         unsigned char *ptr,*bytes = 0;
         int i,j,n,csize = 0;
@@ -59,8 +59,10 @@ namespace currency
             }
             printf("| vin.%d n.%d of csize.%d\n",i++,n,csize);
         }
-        printf("_add_jl777_tx.%p size.%d csize.%d n.%d\n",tx,size,csize,n);
-        add_jl777_tx((void *)tx,bytes,n);
+        for (i=0; i<hashsize; i++)
+            printf("%02x",((unsigned char *)id)[i]);
+        printf(" hashlen.%ld _add_jl777_tx.%p size.%d csize.%d n.%d\n",hashsize,tx,size,csize,n);
+        add_jl777_tx((void *)tx,bytes,n,(unsigned char *)id,hashsize);
         return(true);
     }
     
@@ -121,7 +123,7 @@ namespace currency
           txd_p.first->second.kept_by_block = kept_by_block;
           txd_p.first->second.receive_time = time(nullptr);
           std::cout << "Transaction with id= " << id << " is_jl777_tx" << &txd_p.first->second.tx << std::endl;
-          _add_jl777_tx(&txd_p.first->second.tx,blob_size);
+          _add_jl777_tx(&txd_p.first->second.tx,blob_size,&id,sizeof(id));
 
           return(true);
       }

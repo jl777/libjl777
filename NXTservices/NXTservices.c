@@ -188,10 +188,11 @@ char *NXTprotocol_json_handler(struct NXT_protocol *p,char *argstr)
     cJSON *json;
     char *retjsontxt = 0;
     struct NXT_protocol_parms PARMS;
-    //printf("NXTprotocol_json_handler.(%s)\n",jsonstr);
     if ( argstr != 0 )
     {
+        convert_percent22(argstr);
         json = cJSON_Parse(argstr);
+        printf("NXTprotocol_json_handler.(%s)\n",argstr);
         memset(&PARMS,0,sizeof(PARMS));
         PARMS.mode = NXTPROTOCOL_WEBJSON;
         PARMS.argjson = json;

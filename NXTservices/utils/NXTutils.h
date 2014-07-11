@@ -1631,6 +1631,41 @@ cJSON *parse_json_AM(struct json_AM *ap)
     return(0);
 }
 
+int32_t get_API_int(cJSON *obj,int32_t val)
+{
+    char buf[1024];
+    if ( obj != 0 )
+    {
+        copy_cJSON(buf,obj);
+        val = atoi(buf);
+    }
+    return(val);
+}
+
+uint64_t get_API_nxt64bits(cJSON *obj)
+{
+    uint64_t nxt64bits = 0;
+    char buf[1024];
+    if ( obj != 0 )
+    {
+        copy_cJSON(buf,obj);
+        nxt64bits = calc_nxt64bits(buf);
+    }
+    return(nxt64bits);
+}
+
+double get_API_float(cJSON *obj)
+{
+    double val = 0.;
+    char buf[1024];
+    if ( obj != 0 )
+    {
+        copy_cJSON(buf,obj);
+        val = atof(buf);
+    }
+    return(val);
+}
+
 int32_t is_valid_NXTtxid(char *txid)
 {
     long i,len;
