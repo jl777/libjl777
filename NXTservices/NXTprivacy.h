@@ -459,14 +459,16 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     argjson = cJSON_Parse(buf->base);
     if ( argjson != 0 )
     {
+        printf("call json handler %p\n",argjson);
         jsonstr = pNXT_jsonhandler(&argjson,buf->base);
+        printf("backfrom json handler %p jsonstr.%p\n",argjson,jsonstr);
         if ( jsonstr != 0 )
         {
+            printf("tcpwrite.(%s)\n",jsonstr);
             portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
-            printf("free jsonstr.%p and argjson.%p\n",jsonstr,argjson);
             //free(jsonstr); completion frees, dont do it here!
         }
-        //free_json(argjson);
+        free_json(argjson);
     }
     /*Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.
     for (i=0; i<nread; i++)
