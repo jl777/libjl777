@@ -210,7 +210,7 @@ namespace currency
       if ( tvc.m_added_to_pool )
       {
           LOG_PRINT_L1("tx added: " << tx_hash);
-          std::cout << "tx added: " << tx_hash << std:endl;
+          std::cout << "tx added: " << tx_hash << std::endl;
       }
     return r;
   }
