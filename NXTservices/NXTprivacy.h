@@ -131,6 +131,13 @@ uint64_t decode_privacyServer(char *jsonstr)
     return(privacyServer);
 }
 
+uint64_t calc_privacyServer(char *ipaddr,uint16_t port)
+{
+    if ( port == 0 )
+        port = NXT_PUNCH_PORT;
+    return(calc_ipbits(ipaddr) | ((uint64_t)port << 32));
+}
+
 uint64_t *get_possible_privacyServers(int32_t *nump,int32_t max,char *emergency_server)
 { // get list of all tx to PRIVACY_SERVERS acct, scan AM's
     int32_t i,n,m;
@@ -653,7 +660,7 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
 
 void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
-    char sender[32];
+    char sender[32],*str;
     uv_udp_t *udp;
     struct sockaddr addr;
     int port,addrlen = sizeof(addr);
@@ -686,6 +693,10 @@ void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             printf("tcp got bytes.%p >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",handle,nread,buf->base,buf->base,sender,port);
         }
         else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);
+        str = malloc(nread+1);
+        memcpy(str,buf->base,nread);
+        str[nread] = 0;
+        queue_enqueue(&RPC_6777_response,str);
     }
     if ( buf->base != 0 )
         free(buf->base);
@@ -806,7 +817,8 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
 
 void NXTprivacy_idler(uv_idle_t *handle)
 {
-    char *jsonstr;
+    void set_pNXT_privacyServer(uint64_t privacyServer);
+    uint64_t get_pNXT_privacyServer(int32_t *activeflagp);
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
     static uint64_t privacyServer;
@@ -814,7 +826,9 @@ void NXTprivacy_idler(uv_idle_t *handle)
     static struct sockaddr addr;
     static double lastping,lastattempt;
     double millis;
-    char **whitelist,**blacklist;
+    int32_t activeflag;
+    uint64_t pNXT_privacyServer;
+    char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     if ( TCPserver_closed > 0 )
     {
@@ -829,7 +843,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     if ( millis > (lastattempt + 10000) )
     {
         if ( privacyServer == 0 )
-            privacyServer = get_random_privacyServer(whitelist,blacklist);
+            privacyServer = (pNXT_privacyServer != 0) ? pNXT_privacyServer : get_random_privacyServer(whitelist,blacklist);
         if ( privacyServer != 0 )
         {
             if ( tcp == 0 || connect == 0 )
@@ -853,6 +867,25 @@ void NXTprivacy_idler(uv_idle_t *handle)
     {
         if ( millis > (lastping+6000) )
         {
+            if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
+            {
+                if ( privacyServer != 0 )
+                {
+                    if ( privacyServer == pNXT_privacyServer )
+                    {
+                        printf("set_pNXT_privacyServer\n");
+                        set_pNXT_privacyServer(privacyServer);
+                    }
+                    else
+                    {
+                        if ( tcp != 0 )
+                        {
+                            printf("shutdown wrong server!\n");
+                            uv_shutdown(malloc(sizeof(uv_shutdown_t)),(uv_stream_t *)tcp,after_server_shutdown);
+                        }
+                    }
+                }
+            }
             if ( tcp != 0 && tcp->data != 0 )
             {
                 printf("send ping.%d total transferred.%ld\n",numpings,server_xferred);

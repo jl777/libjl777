@@ -438,12 +438,13 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 int gen_pNXT_select_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*server,*ipaddr;
+    char script[16384],*server,*ipaddr,*port;
     server = construct_varname(fields,n++,name,"server","NXT address:",0,0);
     ipaddr = construct_varname(fields,n++,name,"ipaddr","or ipaddr address:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"server\":\"' + %s + '\",\"ipaddr\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,server,ipaddr);
+    port = construct_varname(fields,n++,name,"port","port: (blank for default)",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"server\":\"' + %s + '\",\"ipaddr\":\"' + %s + '\",\"port\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,server,ipaddr,port);
     *scriptp = clonestr(script);
-    free(server); free(ipaddr);
+    free(server); free(ipaddr); free(port);
     return(n);
 }
 
@@ -537,53 +538,47 @@ int gen_pNXT_getorderbooks_fields(char *NXTaddr,char *handler,char *name,char **
 int gen_pNXT_orderbook_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*obookid,*dir,*allfields;
+    char script[16384],*obookid,*polarity,*allfields;
     obookid = construct_varname(fields,n++,name,"obookid","orderbook:",0,0);
-    dir = construct_varname(fields,n++,name,"dir","direction:",0,0);
+    polarity = construct_varname(fields,n++,name,"polarity","polarity:",0,0);
     allfields = construct_varname(fields,n++,name,"allfields","allfields:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"dir\":\"' + %s + '\",\"allfields\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,dir,allfields);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"polarity\":\"' + %s + '\",\"allfields\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,polarity,allfields);
     *scriptp = clonestr(script);
-    free(obookid); free(dir); free(allfields);
+    free(obookid); free(polarity); free(allfields);
     return(n);
 }
 
 int gen_pNXT_placebid_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*obookid,*dir,*volume,*price,*assetA,*assetB;
+    char script[16384],*obookid,*polarity,*volume,*price,*assetA,*assetB;
     obookid = construct_varname(fields,n++,name,"obookid","orderbook:",0,0);
-    dir = construct_varname(fields,n++,name,"dir","direction:",0,0);
+    polarity = construct_varname(fields,n++,name,"polarity","polarity:",0,0);
     volume = construct_varname(fields,n++,name,"volume","volume:",0,0);
     price = construct_varname(fields,n++,name,"price","price:",0,0);
     assetA = construct_varname(fields,n++,name,"assetA","assetA:",0,0);
     assetB = construct_varname(fields,n++,name,"assetB","assetB:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"dir\":\"' + %s + '\",\"volume\":\"' + %s + '\",\"price\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"assetB\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,dir,volume,price,assetA,assetB);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"polarity\":\"' + %s + '\",\"volume\":\"' + %s + '\",\"price\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"assetB\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,polarity,volume,price,assetA,assetB);
     *scriptp = clonestr(script);
-    free(obookid); free(dir); free(volume); free(price); free(assetA); free(assetB);
+    free(obookid); free(polarity); free(volume); free(price); free(assetA); free(assetB);
     return(n);
 }
 
 int gen_pNXT_placeask_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*obookid,*dir,*volume,*price,*assetA,*assetB;
+    char script[16384],*obookid,*polarity,*volume,*price,*assetA,*assetB;
     obookid = construct_varname(fields,n++,name,"obookid","orderbook:",0,0);
-    dir = construct_varname(fields,n++,name,"dir","direction:",0,0);
+    polarity = construct_varname(fields,n++,name,"polarity","polarity:",0,0);
     volume = construct_varname(fields,n++,name,"volume","volume:",0,0);
     price = construct_varname(fields,n++,name,"price","price:",0,0);
     assetA = construct_varname(fields,n++,name,"assetA","assetA:",0,0);
     assetB = construct_varname(fields,n++,name,"assetB","assetB:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"dir\":\"' + %s + '\",\"volume\":\"' + %s + '\",\"price\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"assetB\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,dir,volume,price,assetA,assetB);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"obookid\":\"' + %s + '\",\"polarity\":\"' + %s + '\",\"volume\":\"' + %s + '\",\"price\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"assetB\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,obookid,polarity,volume,price,assetA,assetB);
     *scriptp = clonestr(script);
-    free(obookid); free(dir); free(volume); free(price); free(assetA); free(assetB);
+    free(obookid); free(polarity); free(volume); free(price); free(assetA); free(assetB);
     return(n);
 }
-
-//static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "NXT", "obookid", "dir", "allfields", 0 };
-//static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "", "NXT", 0 };
-//static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "dir", "volume", "price", 0 };
-//static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "dir", "volume", "price", 0 };
-
 
 int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
 {
