@@ -294,17 +294,17 @@ int32_t issue_startForging(CURL *curl_handle,char *secret)
     return(ret.val);
 }
 
-char *issue_broadcastTransaction(CURL *curl_handle,char *txbytes)
+char *issue_broadcastTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
 {
     char cmd[4096];
-    sprintf(cmd,"%s=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",_NXTSERVER,Global_mp->NXTACCTSECRET,txbytes);
+    sprintf(cmd,"%s=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",_NXTSERVER,NXTACCTSECRET,txbytes);
     return(issue_NXTPOST(curl_handle,cmd));
 }
 
-char *issue_signTransaction(CURL *curl_handle,char *txbytes)
+char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
 {
     char cmd[4096];
-    sprintf(cmd,"%s=signTransaction&secretPhrase=%s&unsignedTransactionBytes=%s",_NXTSERVER,Global_mp->NXTACCTSECRET,txbytes);
+    sprintf(cmd,"%s=signTransaction&secretPhrase=%s&unsignedTransactionBytes=%s",_NXTSERVER,NXTACCTSECRET,txbytes);
     return(issue_NXTPOST(curl_handle,cmd));
 }
 
@@ -621,7 +621,7 @@ int32_t issue_generateToken(CURL *curl_handle,char encoded[NXT_TOKEN_LEN],char *
     return(-1);
 }
 
-char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *reftxid)
+char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *reftxid,char *NXTACCTSECRET)
 {
     //union NXTtype retval;
     int32_t len,deadline = 720;
@@ -637,7 +637,7 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
    // printf("in submit_AM\n");
     memset(hexbytes,0,sizeof(hexbytes));
     init_hexbytes(hexbytes,(void *)ap,len);
-    sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%ld",_NXTSERVER,Global_mp->NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",MIN_NQTFEE);
+    sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%ld",_NXTSERVER,NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",MIN_NQTFEE);
     //printf("submit_AM.(%s)\n",cmd);
     jsonstr = issue_NXTPOST(curl_handle,cmd);
     printf("back from issue_NXTPOST.(%s) %p\n",jsonstr,curl_handle);
@@ -1177,7 +1177,7 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
     return(retcode);
 }
 
-char *tokenize_json(CURL *curl_handle,cJSON *argjson)
+char *tokenize_json(CURL *curl_handle,cJSON *argjson,char *NXTACCTSECRET)
 {
     char *str,token[NXT_TOKEN_LEN+1];
     cJSON *array;
@@ -1187,7 +1187,7 @@ char *tokenize_json(CURL *curl_handle,cJSON *argjson)
 
     str = cJSON_Print(argjson);
     stripwhite(str,strlen(str));
-    issue_generateToken(curl_handle,token,str,Global_mp->NXTACCTSECRET);
+    issue_generateToken(curl_handle,token,str,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
     free(str);
     argjson = cJSON_CreateObject();
@@ -1200,7 +1200,7 @@ char *tokenize_json(CURL *curl_handle,cJSON *argjson)
     return(str);
 }
 
-int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long nonce,cJSON *argjson)
+int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long nonce,cJSON *argjson,char *NXTACCTSECRET)
 {
     char *str,pubkey[1024];
     cJSON *json;
@@ -1212,7 +1212,7 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(nonce));
     if ( argjson != 0 )
         cJSON_AddItemToObject(json,"xfer",argjson);
-    str = tokenize_json(curl_handle,json);
+    str = tokenize_json(curl_handle,json,NXTACCTSECRET);
     strcpy(jsonstr,str);
     free(str);
     stripwhite(jsonstr,strlen(jsonstr));

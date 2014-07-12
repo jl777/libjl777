@@ -94,15 +94,15 @@ char *NXTprotocol_json(cJSON *argjson)
     void ensure_depositaddrs(char *NXTaddr);
     int32_t height= -1,i,flag,n=0;
     char *retstr;
-    struct NXThandler_info *mp = Global_mp;
-    char numstr[1024],oldsecret[1024],newsecret[104],chatcmd[1024];
+    //struct NXThandler_info *mp = Global_mp;
+    char numstr[1024],chatcmd[1024];//,oldsecret[1024],newsecret[104];
     struct NXT_protocol *p;
     cJSON *json,*array,*obj,*item;
     flag = 0;
     if ( argjson != 0 )
     {
         height = (int32_t)get_cJSON_int(argjson,"height");
-        if ( extract_cJSON_str(newsecret,sizeof(newsecret),argjson,"newsecret") > 0 )
+        /*if ( extract_cJSON_str(newsecret,sizeof(newsecret),argjson,"newsecret") > 0 )
         {
             flag = 1;
             if ( extract_cJSON_str(oldsecret,sizeof(oldsecret),argjson,"oldsecret") > 0 && strcmp(mp->NXTACCTSECRET,oldsecret) == 0 )
@@ -122,13 +122,13 @@ char *NXTprotocol_json(cJSON *argjson)
                 //ensure_depositaddrs(Global_mp->NXTADDR);
             }
         }
-        else if ( extract_cJSON_str(chatcmd,sizeof(chatcmd),argjson,"chat") > 0 )
+        else*/ if ( extract_cJSON_str(chatcmd,sizeof(chatcmd),argjson,"chat") > 0 )
         {
-            if ( Global_mp->Punch_connect_id[0] != 0 )
+            /*if ( Global_mp->Punch_connect_id[0] != 0 )
             {
                 flag = 2;
                 //terminal_io(chatcmd,&Global_mp->Punch_tcp,Global_mp->Punch_servername,Global_mp->Punch_connect_id);
-            }
+            }*/
         }
     }
     json = cJSON_CreateObject();
@@ -162,15 +162,15 @@ char *NXTprotocol_json(cJSON *argjson)
     cJSON_AddItemToObject(json,"handlers",array);
     if ( flag == 1 )
     {
-        cJSON_AddItemToObject(json,"NXTaddr",cJSON_CreateString(Global_mp->NXTADDR));
-        cJSON_AddItemToObject(json,"secret",cJSON_CreateString(Global_mp->NXTACCTSECRET));
+        //cJSON_AddItemToObject(json,"NXTaddr",cJSON_CreateString(Global_mp->NXTADDR));
+        //cJSON_AddItemToObject(json,"secret",cJSON_CreateString(Global_mp->NXTACCTSECRET));
     }
-    else if ( flag == 2 )
+    /*else if ( flag == 2 )
     {
         cJSON_AddItemToObject(json,"group",cJSON_CreateString(Global_mp->groupname));
         cJSON_AddItemToObject(json,"handle",cJSON_CreateString(Global_mp->dispname));
-    }
-    cJSON_AddItemToObject(json,"API",cJSON_CreateString(Global_mp->NXTURL));
+    }*/
+    //cJSON_AddItemToObject(json,"API",cJSON_CreateString(Global_mp->NXTURL));
     if ( height >= 0 && height < Global_mp->numblocks )
     {
         cJSON_AddItemToObject(json,"height",cJSON_CreateNumber(height));
@@ -1308,7 +1308,7 @@ void *getNXTblocks(void *ptr)
     mp->origblockidstr = ORIGBLOCK;
     strcpy(blockidstr,mp->origblockidstr);
     mp->firsttimestamp = issue_getTime(mp->curl_handle2);
-    numblocks = set_current_NXTblock(&isrescan,mp->curl_handle2,mp->terminationblock);
+    numblocks = set_current_NXTblock(&isrescan,mp->curl_handle2,tmpblock);
     mp->height = height = numblocks - 1;
     ensure_NXT_blocks(mp,numblocks,0,0);
     Finished_loading = 0;
@@ -1476,10 +1476,7 @@ void NXTloop(struct NXThandler_info *mp)
                     mp->RTflag++;   // wait for first block before doing any side effects
                     update_assets_trades(mp);
                     call_handlers(mp,NXTPROTOCOL_NEWBLOCK,height);
-                    if ( mp->accountjson != 0 )
-                        free_json(mp->accountjson);
-                    mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
-                    gen_testforms();
+                    gen_testforms(0);
                 }
                 mp->NXTheight = height++;
             }

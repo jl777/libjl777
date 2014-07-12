@@ -8,6 +8,15 @@
 #ifndef xcode_orders_h
 #define xcode_orders_h
 
+#define NXTSYNC_MESSAGE_SIG 0x49865897
+struct NXTsync_message
+{
+    uint32_t sig;
+    uint16_t hops,len;
+    uint64_t dest64bits;
+    unsigned char message[];
+};
+
 #define ORDERBOOK_SIG 0x83746783
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
@@ -415,6 +424,50 @@ uint64_t create_raw_orders(uint64_t assetA,uint64_t assetB)
     return(obookid);
 }
 
+char *sellpNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
+{
+    char buf[1024];
+    uint64_t satoshis;
+    satoshis = (amount * SATOSHIDEN);
+    sprintf(buf,"NXT.%s sell %.8f NXT for pNXT",NXTaddr,dstr(satoshis));
+    return(clonestr(buf));
+}
+
+char *buypNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
+{
+    char buf[1024];
+    uint64_t satoshis;
+    satoshis = (amount * SATOSHIDEN);
+    sprintf(buf,"NXT.%s buy %.8f pNXT for NXT",NXTaddr,dstr(satoshis));
+    return(clonestr(buf));
+}
+
+char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,char *dest,char *paymentid)
+{
+    char buf[1024];
+    uint64_t satoshis;
+    satoshis = (amount * SATOSHIDEN);
+    sprintf(buf,"send %.8f pNXT from NXT.%s to %s paymentid.(%s) using level.%d",dstr(satoshis),NXTaddr,dest,paymentid,level);
+    return(clonestr(buf));
+}
+
+char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
+{
+    char buf[1024];
+    uint64_t satoshis;
+    satoshis = (amount * SATOSHIDEN);
+    sprintf(buf,"privatesend %.8f NXT from NXT.%s to NXT.%s",dstr(satoshis),NXTaddr,dest);
+    return(clonestr(buf));
+}
+
+uint64_t is_NXTsync_message(unsigned char *tx,int32_t size)
+{
+    struct NXTsync_message *nsm = (struct NXTsync_message *)tx;
+    if ( nsm->sig == NXTSYNC_MESSAGE_SIG )
+        return(nsm->dest64bits);
+    return(0);
+}
+
 uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
 {
     struct orderbook_tx *otx = (struct orderbook_tx *)tx;
@@ -440,7 +493,7 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
 {
     int i;
     uint64_t txid = 0;
-    uint64_t obookid;
+    uint64_t obookid,destNXTaddr;
     display_orderbook_tx((struct orderbook_tx *)tx);
     for (i=0; i<size; i++)
         printf("%02x ",tx[i]);
@@ -450,6 +503,11 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
         txid = calc_txid(hash,hashsize);
         if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)tx,txid) == 0 )
             ((struct orderbook_tx *)tx)->txid = txid;
+    }
+    else if ( (destNXTaddr= is_NXTsync_message(tx,size)) != 0 )
+    {
+        if ( is_subscriber(destNXTaddr) >= 0 )
+            queue_enqueue(&NXTsync_Q,tx);
     }
     return(txid);
 }

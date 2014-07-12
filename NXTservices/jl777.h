@@ -295,19 +295,18 @@ struct NXThandler_info
     cJSON *accountjson;
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
-    void *pm;
-    uint64_t nxt64bits,*privacyServers;
-    uv_tty_t *stdoutput;
+    //void *pm;NXTADDR[64],nxt64bits
+    uint64_t *privacyServers;
+    //uv_tty_t *stdoutput;
     CURL *curl_handle,*curl_handle2,*curl_handle3;
     portable_tcp_t Punch_tcp;
     uv_udp_t Punch_udp;
-    uv_connect_t Punch_connect;
-    int32_t waitforloading,initassets;
-    int32_t UDPserver,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numPrivacyServers,msigs_processed;
-    int32_t numblocks,numforging,timestamps[1000 * 365 * 10];//,timestampfifo[MIN_NXTCONFIRMS*100];
-    int32_t isudpserver,istcpserver,corresponding,myind,NXTsync_sock,height,prevheight,hackindex;
-    char ipaddr[64],NXTAPISERVER[128],NXTADDR[64],NXTACCTSECRET[256],dispname[128],groupname[128];
-    char NXTURL[128],Punch_servername[128],Punch_connect_id[512],otherNXTaddr[MAX_NXTADDR_LEN],terminationblock[128];
+    //uv_connect_t Punch_connect;
+    int32_t initassets;
+    int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
+    int32_t isudpserver,istcpserver,numPrivacyServers;
+    char ipaddr[64],dispname[128],groupname[128];
+    //char NXTURL[128],Punch_servername[128],Punch_connect_id[512],otherNXTaddr[MAX_NXTADDR_LEN];//,terminationblock[128];
 };
 struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr);
 extern struct NXThandler_info *Global_mp;
@@ -361,7 +360,7 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define issue_NXT(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"NXT",cmdstr,0,0,0)
 #define issue_NXTPOST(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",NXTAPIURL,0,0,cmdstr)
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
-void gen_testforms();
+void gen_testforms(char *secret);
 #include "NXTservices.h"
 #include "utils/jl777hash.h"
 //#include "crossplatform.h"

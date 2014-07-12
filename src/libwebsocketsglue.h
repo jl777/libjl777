@@ -96,23 +96,26 @@ void init_NXTservices(int _argc,char **_argv)
         safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
         mp->upollseconds = 333333 * 0;
         mp->pollseconds = POLL_SECONDS;
-        safecopy(mp->NXTAPISERVER,NXTSERVER,sizeof(mp->NXTAPISERVER));
-        gen_randomacct(mp->curl_handle,33,mp->NXTADDR,mp->NXTACCTSECRET,"randvals");
+        //safecopy(mp->NXTAPISERVER,NXTSERVER,sizeof(mp->NXTAPISERVER));
         crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
         init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-        mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
-        printf("(%s) (%s) (%s) (%s) [%s]\n",mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname,mp->NXTACCTSECRET);
-        mp->myind = -1;
-        mp->nxt64bits = calc_nxt64bits(mp->NXTADDR);
+        //mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
+#ifdef __linux__
+        char NXTADDR[64];
+        gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
+        printf("(%s) (%s) (%llu) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
+#endif
+        //mp->myind = -1;
+        //mp->nxt64bits = calc_nxt64bits(mp->NXTADDR);
         if ( portable_thread_create(process_hashtablequeues,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
         if ( portable_thread_create(getNXTblocks,mp) == 0 )
             printf("ERROR start_Histloop\n");
         if ( portable_thread_create(init_NXTprivacy,mp) == 0 )
             printf("ERROR init_NXTprivacy\n");
-        gen_testforms();
+        gen_testforms(_argc>1 ? _argv[1] : 0);
 
-        printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s NXT.(%s)\n",mp->dispname,PC_USERNAME,mp->ipaddr,mp->NXTADDR);
+        printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s\n",mp->dispname,PC_USERNAME,mp->ipaddr);
         void run_NXTservices(void *arg);
         if ( portable_thread_create(run_NXTservices,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");

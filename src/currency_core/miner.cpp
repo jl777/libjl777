@@ -385,7 +385,7 @@ namespace currency
     //std::vector<crypto::hash> local_scratch_pad;
     while(!m_stop)
     {
-      usleep(10000);
+      usleep(100000);
       if(m_pausers_count)//anti split workaround
       {
         misc_utils::sleep_no_w(100);

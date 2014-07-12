@@ -16,7 +16,7 @@
 #define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
 #define INTRO_SIZE 1400
 
-queue_t RPC_6777,RPC_6777_response;
+queue_t RPC_6777,RPC_6777_response,NXTsync_Q;
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -36,7 +36,7 @@ struct orderBook_quote
     uint32_t bookid,flags;
 };
 
-struct client_info
+struct privacy_client
 {
     uint64_t NXTaddrbits,recentBlocks[3],*balances;
     char BTC_pubkey[100];
@@ -65,9 +65,9 @@ struct privacyServer
     char BTC_pubkey[100];
     unsigned char pubkey[20]; //jl777 lookup
     uint64_t *assetids;
-    struct client_info **clients;
+    struct privacy_client **clients;
     struct signed_trade **pendingtrades;
-};
+} P;
 
 struct NXTservices_Topology
 {
@@ -75,6 +75,95 @@ struct NXTservices_Topology
     struct orderBook **books;
     struct privacyServer **servers;
 } *Topology;
+
+
+int32_t is_subscriber(uint64_t nxt64bits)
+{
+    int32_t i;
+    for (i=0; i<P.numclients; i++)
+        if ( P.clients[i]->NXTaddrbits == nxt64bits )
+            return(i);
+    return(-1);
+}
+
+void add_subscriber(uint64_t nxt64bits,unsigned char *pubkey)
+{
+    int32_t ind;
+    struct privacy_client *cp;
+    if ( (ind= is_subscriber(nxt64bits)) >= 0 )
+        cp = P.clients[ind];
+    else
+    {
+        P.clients = (struct privacy_client **)realloc(P.clients,(P.numclients+1) * sizeof(*P.clients));
+        cp = (struct privacy_client *)calloc(1,sizeof(*cp));
+        cp->NXTaddrbits = nxt64bits;
+        P.clients[P.numclients++] = cp;
+    }
+    if ( memcmp(cp->pubkey,pubkey,sizeof(cp->pubkey)) != 0 )
+    {
+        printf("update pubkey for NXT.%llu: %llx\n",(long long)nxt64bits,*(long long *)pubkey);
+        memcpy(cp->pubkey,pubkey,sizeof(cp->pubkey));
+    }
+}
+
+int server_address(char *server,int port,struct sockaddr_in *addr)
+{
+    struct hostent *hp = gethostbyname(server);
+    if ( hp == NULL )
+    {
+        perror("gethostbyname");
+        return -1;
+    }
+    addr->sin_port = htons(port);
+    addr->sin_family = AF_INET;
+    memcpy(&addr->sin_addr.s_addr, hp->h_addr, hp->h_length);
+    return(0);
+}
+
+uint64_t calc_privacyServer(char *ipaddr,uint16_t port)
+{
+    if ( ipaddr == 0 || ipaddr[0] == 0 )
+        return(0);
+    if ( port == 0 )
+        port = NXT_PUNCH_PORT;
+    return(calc_ipbits(ipaddr) | ((uint64_t)port << 32));
+}
+
+uint16_t extract_nameport(char *name,long namesize,struct sockaddr_in *addr)
+{
+    int32_t r;
+    uint16_t port;
+    if ( (r= uv_ip4_name(addr,name,namesize)) != 0 )
+    {
+        fprintf(stderr,"uv_ip4_name error %d (%s)\n",r,uv_err_name(r));
+        return(0);
+    }
+    port = ntohs(addr->sin_port);
+    //printf("sender.(%s) port.%d\n",name,port);
+    return(port);
+}
+
+uint64_t decode_privacyServer(char *jsonstr)
+{
+    cJSON *json;
+    char ipaddr[32],pubkey[256];
+    uint16_t port = 0;
+    uint32_t ipbits = 0;
+    uint64_t privacyServer = 0;
+    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+    {
+        if ( extract_cJSON_str(pubkey,sizeof(pubkey),json,"pubkey") > 0 )
+        {
+            port = get_cJSON_int(json,"port");
+            if ( extract_cJSON_str(ipaddr,sizeof(ipaddr),json,"ipaddr") > 0 )
+                ipbits = calc_ipbits(ipaddr);
+        }
+        free_json(json);
+    }
+    if ( port != 0 && ipbits != 0 )
+        privacyServer = ipbits | ((uint64_t)port << 32);
+    return(privacyServer);
+}
 
 /*
  udp multicast of quotes -> all nodes, clients just update books they care about, servers update global
@@ -109,36 +198,7 @@ struct NXTservices_Topology
  Withdraw into InstantDEX credits or deposit from incurs >>= 10 fee
  */
 
-uint64_t decode_privacyServer(char *jsonstr)
-{
-    cJSON *json;
-    char ipaddr[32],pubkey[256];
-    uint16_t port = 0;
-    uint32_t ipbits = 0;
-    uint64_t privacyServer = 0;
-    if ( (json= cJSON_Parse(jsonstr)) != 0 )
-    {
-        if ( extract_cJSON_str(pubkey,sizeof(pubkey),json,"pubkey") > 0 )
-        {
-            port = get_cJSON_int(json,"port");
-            if ( extract_cJSON_str(ipaddr,sizeof(ipaddr),json,"ipaddr") > 0 )
-                ipbits = calc_ipbits(ipaddr);
-        }
-        free_json(json);
-    }
-    if ( port != 0 && ipbits != 0 )
-        privacyServer = ipbits | ((uint64_t)port << 32);
-    return(privacyServer);
-}
 
-uint64_t calc_privacyServer(char *ipaddr,uint16_t port)
-{
-    if ( ipaddr == 0 || ipaddr[0] == 0 )
-        return(0);
-    if ( port == 0 )
-        port = NXT_PUNCH_PORT;
-    return(calc_ipbits(ipaddr) | ((uint64_t)port << 32));
-}
 
 uint64_t *get_possible_privacyServers(int32_t *nump,int32_t max,char *emergency_server)
 { // get list of all tx to PRIVACY_SERVERS acct, scan AM's
@@ -257,16 +317,30 @@ uint64_t filter_privacyServer(uint64_t privacyServer,char **whitelist,char **bla
     return(privacyServer);
 }
 
-void privacy_client_loop(uv_connect_t *connect,portable_tcp_t *tsockp)
+uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
 {
-    while ( 1 )
+    int32_t i,n;
+    uint64_t privacyServer;
+    if ( Global_mp->privacyServers != 0 )
+        free(Global_mp->privacyServers);
+    Global_mp->privacyServers = get_possible_privacyServers(&Global_mp->numPrivacyServers,1024,EMERGENCY_PUNCH_SERVER);
+    n = Global_mp->numPrivacyServers;
+    for (i=0; i<n; i++)
     {
-        printf("privacy_client_loop\n");
-        sleep(60);
+        if ( (privacyServer= filter_privacyServer(Global_mp->privacyServers[rand() % n],whitelist,blacklist)) == 0 )
+            continue;
+        if ( strcmp(EMERGENCY_PUNCH_SERVER,Global_mp->ipaddr) != 0 )
+            return(privacyServer);
     }
+    return(0);
 }
 
-//#include "uv.h"
+int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
+{
+    gen_tokenjson(0,intro,user,NXTaddr,time(NULL),0,NXTACCTSECRET);
+    return(0);
+}
+
 #include "libuv/test/task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -274,10 +348,29 @@ void privacy_client_loop(uv_connect_t *connect,portable_tcp_t *tsockp)
 static int TCPserver_closed;
 static long server_xferred;
 
+// helper and completion funcs
 void portable_alloc(uv_handle_t *handle,size_t suggested_size,uv_buf_t *buf)
 {
     buf->base = malloc(suggested_size);
     buf->len = suggested_size;
+}
+
+write_req_t *alloc_wr(void *buf,long len,int32_t allocflag)
+{
+    // nonzero allocflag means it will get freed on completion
+    // negative allocflag means already allocated, dont allocate and copy
+    void *ptr;
+    write_req_t *wr;
+    wr = calloc(1,sizeof(*wr));
+    ASSERT(wr != NULL);
+    wr->allocflag = allocflag;
+    if ( allocflag == 1 )
+    {
+        ptr = malloc(len);
+        memcpy(ptr,buf,len);
+    } else ptr = buf;
+    wr->buf = uv_buf_init(ptr,(int32_t)len);
+    return(wr);
 }
 
 void on_close(uv_handle_t *peer)
@@ -301,35 +394,6 @@ void after_server_shutdown(uv_shutdown_t *req,int status)
     free(req);
 }
 
-uint16_t extract_nameport(char *name,long namesize,struct sockaddr_in *addr)
-{
-    int32_t r;
-    uint16_t port;
-    if ( (r= uv_ip4_name(addr,name,namesize)) != 0 )
-    {
-        fprintf(stderr,"uv_ip4_name error %d (%s)\n",r,uv_err_name(r));
-        return(0);
-    }
-    port = ntohs(addr->sin_port);
-    //printf("sender.(%s) port.%d\n",name,port);
-    return(port);
-}
-
-/*void after_shutdown(uv_shutdown_t *req,int status)
- {
- printf("after shutdown %p status.%d %s\n",req,status,uv_err_name(status));
- uv_close((uv_handle_t *)req->handle,on_close);
- free(req);
- }*/
-
-/*void on_udpsend(uv_udp_send_t *req,int status)
- {
- printf("on_udpsend status.%d %s req->data %p\n",status,uv_err_name(status),req->data);
- ASSERT(status == 0);
- free(req->data);
- free(req);
- }*/
-
 void after_write(uv_write_t *req,int status)
 {
     write_req_t *wr;
@@ -343,42 +407,9 @@ void after_write(uv_write_t *req,int status)
     if ( status == 0 )
         return;
     fprintf(stderr, "uv_write error: %d %s\n",status,uv_err_name(status));
-    //if ( status == UV_ECANCELED )
-    //    return;
-    //ASSERT(status == UV_EPIPE);
-    //uv_close((uv_handle_t *)req->handle,on_close);
 }
 
-write_req_t *alloc_wr(void *buf,long len,int32_t allocflag)
-{
-    // nonzero allocflag means it will get freed on completion
-    // negative allocflag means already allocated, dont allocate and copy
-    void *ptr;
-    write_req_t *wr;
-    wr = calloc(1,sizeof(*wr));
-    ASSERT(wr != NULL);
-    wr->allocflag = allocflag;
-    if ( allocflag == 1 )
-    {
-        ptr = malloc(len);
-        memcpy(ptr,buf,len);
-    } else ptr = buf;
-    wr->buf = uv_buf_init(ptr,(int32_t)len);
-    return(wr);
-}
-
-int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag)
-{
-    int32_t r;
-    write_req_t *wr;
-    wr = alloc_wr(buf,len,allocflag);
-    r = uv_write(&wr->req,stream,&wr->buf,1,after_write);
-    if ( r != 0 )
-        fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
-    else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
-    return(r);
-}
-
+// UDP funcs
 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
 {
     int32_t r;
@@ -407,22 +438,6 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         free(rcvbuf->base);
 }
 
-void private_udp(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
-{
-    uint16_t port;
-    char sender[32];
-    if ( nread > 0 )
-    {
-        strcpy(sender,"unknown");
-        port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("private_udp %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
-        ASSERT(addr->sa_family == AF_INET);
-        ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
-    }
-    if ( rcvbuf->base != 0 )
-        free(rcvbuf->base);
-}
-
 void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
@@ -438,62 +453,6 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
-}
-
-void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
-{
-    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
-    //int i;
-    char *jsonstr;
-    cJSON *argjson;
-    // uv_shutdown_t *req;
-    printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
-    if ( nread < 0 ) // Error or EOF
-    {
-        printf("nread.%ld UV_EOF %d\n",nread,UV_EOF);
-        if ( buf->base != 0 )
-            free(buf->base);
-        //req = (uv_shutdown_t *)malloc(sizeof *req);
-        //uv_shutdown(req,handle,after_shutdown);
-        uv_close((uv_handle_t *)handle,on_close);
-        return;
-    }
-    if ( nread == 0 )
-    {
-        // Everything OK, but nothing read.
-        free(buf->base);
-        return;
-    }
-    printf("got %ld bytes (%s)\n",nread,buf->base);
-    argjson = cJSON_Parse(buf->base);
-    if ( argjson != 0 )
-    {
-        printf("call json handler %p\n",argjson);
-        jsonstr = pNXT_jsonhandler(&argjson,buf->base);
-        printf("backfrom json handler %p jsonstr.%p\n",argjson,jsonstr);
-        if ( jsonstr != 0 )
-        {
-            printf("tcpwrite.(%s)\n",jsonstr);
-            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
-            //free(jsonstr); completion frees, dont do it here!
-        }
-        free_json(argjson);
-    }
-    /*Scan for the letter Q which signals that we should quit the server. If we get QS it means close the stream.
-    for (i=0; i<nread; i++)
-    {
-        if ( buf->base[i] == 'Q' )
-        {
-            if ( (i + 1) < nread && buf->base[i + 1] == 'S' )
-            {
-                free(buf->base);
-                uv_close((uv_handle_t *)handle,on_close);
-            }
-            return;
-        }
-    }
-    portable_tcpwrite(handle,buf->base,(int32_t)nread,-1);*/
-    
 }
 
 uv_udp_t *open_udp(struct sockaddr *addr)
@@ -529,34 +488,6 @@ uv_udp_t *open_udp(struct sockaddr *addr)
         return(0);
     }
     return(udp);
-}
-
-void server_on_connection(uv_stream_t *server,int status)
-{
-    struct sockaddr addr;
-    char sender[32];//,NXTaddr[32];
-    int r,port,addrlen = sizeof(addr);
-    uv_stream_t *stream;
-    printf("on_connection %p status.%d\n",server,status);
-    if ( status != 0 )
-        fprintf(stderr,"Connect error %s\n",uv_err_name(status));
-    ASSERT(status == 0);
-    stream = malloc(sizeof(uv_tcp_t));
-    ASSERT(stream != NULL);
-    r = uv_tcp_init(UV_loop,(uv_tcp_t *)stream);
-    ASSERT(r == 0);
-    stream->data = server;  // associate server with stream
-    r = uv_accept(server,stream);
-    ASSERT(r == 0);
-    r = uv_read_start(stream,portable_alloc,after_server_read);
-    ASSERT(r == 0);
-    if ( uv_tcp_getpeername((uv_tcp_t *)stream,&addr,&addrlen) == 0 )
-    {
-        if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
-        {
-            ASSERT(0 == portable_tcpwrite(stream,sender,strlen(sender)+1,1));
-        }
-    }
 }
 
 void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
@@ -608,56 +539,55 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
     return(srv);
 }
 
-uv_tcp_t *start_libuv_tcp4server(int port,void *onconnection) { return(start_libuv_server(4,port,onconnection)); }
-uv_tcp_t *start_libuv_tcp6server(int port,void *onconnection) { return(start_libuv_server(6,port,onconnection)); }
-uv_udp_t *start_libuv_udp4server(int port,void *onrecv) { return(start_libuv_server(-4,port,onrecv)); }
-uv_udp_t *start_libuv_udp6server(int port,void *onrecv) { return(start_libuv_server(-6,port,onrecv)); }
-
-int32_t start_libuv_servers(uv_tcp_t **tcp,uv_udp_t **udp,int32_t ip4_or_ip6,int32_t port)
+// begin TCP specific
+int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag)
 {
-    if ( ip4_or_ip6 == 6 )
-    {
-        if ( tcp != 0 )
-            *tcp = start_libuv_tcp6server(port,server_on_connection);
-        if ( udp != 0 )
-            *udp = start_libuv_udp6server(port,on_udprecv);
-    }
-    else
-    {
-        if ( tcp != 0 )
-            *tcp = start_libuv_tcp4server(port,server_on_connection);
-        if ( udp != 0 )
-            *udp = start_libuv_udp4server(port,on_udprecv);
-    }
-    if ( (tcp != 0 && *tcp == 0) || (udp != 0 && *udp == 0) )
-    {
-        printf("error starting libuv servers %p %p || %p %p\n",tcp,*tcp,udp,*udp);
-        return(-1);
-    }
-    else if ( tcp != 0 && *tcp != 0 && udp != 0 && *udp != 0 )
-    {
-        (*tcp)->data = *udp;
-        (*udp)->data = *tcp;
-    }
-    return(0);
+    int32_t r;
+    write_req_t *wr;
+    wr = alloc_wr(buf,len,allocflag);
+    r = uv_write(&wr->req,stream,&wr->buf,1,after_write);
+    if ( r != 0 )
+        fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
+    else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
+    return(r);
 }
 
-uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
+void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
-    int32_t i,n;
-    uint64_t privacyServer;
-    if ( Global_mp->privacyServers != 0 )
-        free(Global_mp->privacyServers);
-    Global_mp->privacyServers = get_possible_privacyServers(&Global_mp->numPrivacyServers,1024,EMERGENCY_PUNCH_SERVER);
-    n = Global_mp->numPrivacyServers;
-    for (i=0; i<n; i++)
+    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
+    //int i;
+    char *jsonstr;
+    cJSON *argjson;
+    // uv_shutdown_t *req;
+    printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
+    if ( nread < 0 ) // Error or EOF
     {
-        if ( (privacyServer= filter_privacyServer(Global_mp->privacyServers[rand() % n],whitelist,blacklist)) == 0 )
-            continue;
-        if ( strcmp(EMERGENCY_PUNCH_SERVER,Global_mp->ipaddr) != 0 )
-            return(privacyServer);
+        printf("nread.%ld UV_EOF %d\n",nread,UV_EOF);
+        if ( buf->base != 0 )
+            free(buf->base);
+        //req = (uv_shutdown_t *)malloc(sizeof *req); causes problems?!
+        //uv_shutdown(req,handle,after_shutdown);
+        uv_close((uv_handle_t *)handle,on_close);
+        return;
     }
-    return(0);
+    if ( nread == 0 )
+    {
+        // Everything OK, but nothing read.
+        free(buf->base);
+        return;
+    }
+    printf("got %ld bytes (%s)\n",nread,buf->base);
+    argjson = cJSON_Parse(buf->base);
+    if ( argjson != 0 )
+    {
+        jsonstr = pNXT_jsonhandler(&argjson,buf->base);
+        if ( jsonstr == 0 )
+            jsonstr = clonestr("{\"result\":null}");
+        printf("tcpwrite.(%s)\n",jsonstr);
+        portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+            //free(jsonstr); completion frees, dont do it here!
+        free_json(argjson);
+    }
 }
 
 void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
@@ -704,30 +634,42 @@ void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         free(buf->base);
 }
 
-int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr)
+void client_connected(uv_stream_t *server,int status)
 {
-    int c;
-    char jsonstr[4096];
-    gen_tokenjson(0,jsonstr,user,NXTaddr,time(NULL),0);
-    //fprint(stdout, "Connecting as '%s' in group '%s' secret.(%s)\n", user, group,Global_mp->NXTACCTSECRET);
-    c = sprintf(intro, "%s/%s/%s %s", user, group, jsonstr, NXTaddr);
-    assert(c < (int) size);
-    if ( is_printable(intro) == 0 )
+    struct sockaddr addr;
+    char sender[32];
+    int r,port,addrlen = sizeof(addr);
+    uv_stream_t *stream;
+    printf("on_connection %p status.%d\n",server,status);
+    if ( status != 0 )
+        fprintf(stderr,"Connect error %s\n",uv_err_name(status));
+    ASSERT(status == 0);
+    stream = malloc(sizeof(uv_tcp_t));
+    ASSERT(stream != NULL);
+    r = uv_tcp_init(UV_loop,(uv_tcp_t *)stream);
+    ASSERT(r == 0);
+    stream->data = server;  // associate server with stream
+    r = uv_accept(server,stream);
+    ASSERT(r == 0);
+    r = uv_read_start(stream,portable_alloc,after_server_read);
+    ASSERT(r == 0);
+    if ( uv_tcp_getpeername((uv_tcp_t *)stream,&addr,&addrlen) == 0 )
     {
-        fprintf(stderr, "unprintable character[%s] in credentials\n",intro);
-        return(-1);
+        if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
+        {
+            ASSERT(0 == portable_tcpwrite(stream,sender,strlen(sender)+1,1));
+        }
     }
-    return(0);
 }
 
-void on_client_connect(uv_connect_t *connect,int status)
+void connected_to_server(uv_connect_t *connect,int status)
 {
     uv_tcp_t *tcp;
     uv_udp_t *udp;
     uint16_t port;
     struct sockaddr addr;
     int32_t r,addrlen = sizeof(addr);
-    char intro[1024],servername[32];
+    char servername[32];
     tcp = (uv_tcp_t *)connect->handle;
     if ( status < 0 )
     {
@@ -765,27 +707,7 @@ void on_client_connect(uv_connect_t *connect,int status)
             udp = 0;
         }
         tcp->data = udp;
-        if ( set_intro(intro,INTRO_SIZE,Global_mp->dispname,Global_mp->groupname,Global_mp->NXTADDR) < 0 )
-        {
-            printf("connect_to_privacyServer: invalid intro.(%s), try again\n",intro);
-            return;
-        }
-        portable_tcpwrite(connect->handle,intro,strlen(intro),1);
     }
-}
-
-int server_address( char *server,int port,struct sockaddr_in *addr)
-{
-    struct hostent *hp = gethostbyname(server);
-    if ( hp == NULL )
-    {
-        perror("gethostbyname");
-        return -1;
-    }
-    addr->sin_port = htons(port);
-    addr->sin_family = AF_INET;
-    memcpy(&addr->sin_addr.s_addr, hp->h_addr, hp->h_length);
-    return(0);
 }
 
 uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **connectp,uint64_t privacyServer)
@@ -806,7 +728,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
         tcp = calloc(1,sizeof(*tcp));
         *connectp = calloc(1,sizeof(**connectp));
         uv_tcp_init(UV_loop,tcp);
-        if ( (r= uv_tcp_connect(*connectp,tcp,(struct sockaddr *)addr,on_client_connect)) != 0 )
+        if ( (r= uv_tcp_connect(*connectp,tcp,(struct sockaddr *)addr,connected_to_server)) != 0 )
         {
             fprintf(stderr,"no TCP connection to %s/%d err %d %s\n",servername,port,r,uv_err_name(r));
             free(tcp);
@@ -818,25 +740,61 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
     return(tcp);
 }
 
+uv_tcp_t *start_libuv_tcp4server(int port,void *onconnection) { return(start_libuv_server(4,port,onconnection)); }
+uv_tcp_t *start_libuv_tcp6server(int port,void *onconnection) { return(start_libuv_server(6,port,onconnection)); }
+uv_udp_t *start_libuv_udp4server(int port,void *onrecv) { return(start_libuv_server(-4,port,onrecv)); }
+uv_udp_t *start_libuv_udp6server(int port,void *onrecv) { return(start_libuv_server(-6,port,onrecv)); }
+
+int32_t start_libuv_servers(uv_tcp_t **tcp,uv_udp_t **udp,int32_t ip4_or_ip6,int32_t port)
+{
+    if ( ip4_or_ip6 == 6 )
+    {
+        if ( tcp != 0 )
+            *tcp = start_libuv_tcp6server(port,client_connected);
+        if ( udp != 0 )
+            *udp = start_libuv_udp6server(port,on_udprecv);
+    }
+    else
+    {
+        if ( tcp != 0 )
+            *tcp = start_libuv_tcp4server(port,client_connected);
+        if ( udp != 0 )
+            *udp = start_libuv_udp4server(port,on_udprecv);
+    }
+    if ( (tcp != 0 && *tcp == 0) || (udp != 0 && *udp == 0) )
+    {
+        printf("error starting libuv servers %p %p || %p %p\n",tcp,*tcp,udp,*udp);
+        return(-1);
+    }
+    else if ( tcp != 0 && *tcp != 0 && udp != 0 && *udp != 0 )
+    {
+        (*tcp)->data = *udp;
+        (*udp)->data = *tcp;
+    }
+    return(0);
+}
+
 void NXTprivacy_idler(uv_idle_t *handle)
 {
     void set_pNXT_privacyServer(uint64_t privacyServer);
-    uint64_t get_pNXT_privacyServer(int32_t *activeflagp);
+    uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret);
+    static char NXTACCTSECRET[256],NXTADDR[64];
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
     static uint64_t privacyServer;
-    static int32_t numpings;
+    static int32_t counter,numpings,didintro;
     static struct sockaddr addr;
     static double lastping,lastattempt;
     double millis;
     int32_t activeflag;
-    uint64_t pNXT_privacyServer;
-    char *jsonstr,**whitelist,**blacklist;
+    uint64_t pNXT_privacyServer,nxt64bits;
+    char *jsonstr,**whitelist,**blacklist,intro[1024],secret[256];
     whitelist = blacklist = 0;  // eventually get from config JSON
     if ( TCPserver_closed > 0 )
     {
         //printf("idler noticed TCPserver_closed.%d!\n",TCPserver_closed);
         tcp = 0;
+        didintro = 0;
         connect = 0;
         privacyServer = 0;
         TCPserver_closed = 0;
@@ -848,7 +806,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     if ( millis > (lastattempt + 10000) )
     {
         if ( privacyServer == 0 )
-            privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer : get_random_privacyServer(whitelist,blacklist);
+            privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer:get_random_privacyServer(whitelist,blacklist);
         if ( privacyServer != 0 )
         {
             //printf("pNXT %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
@@ -871,9 +829,9 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     else
     {
-        if ( millis > (lastping+10000) )
+        if ( millis > (lastping+1000) )
         {
-            if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
+            if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag,secret)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
             {
                 if ( privacyServer != 0 )
                 {
@@ -892,33 +850,50 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     }
                 }
             }
+            if ( secret[0] != 0 )
+                strcpy(NXTACCTSECRET,secret);
             if ( tcp != 0 && tcp->data != 0 )
             {
-                //printf("send ping.%d total transferred.%ld\n",numpings,server_xferred);
-                ASSERT(0 == portable_udpwrite(&addr,tcp->data,"ping",5,1));
-                numpings++;
+                if ( didintro == 0 )
+                {
+                    nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+                    if ( nxt64bits != 0 )
+                    {
+                        expand_nxt64bits(NXTADDR,nxt64bits);
+                        if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
+                        {
+                            printf("connect_to_privacyServer: invalid intro.(%s), try again\n",intro);
+                            memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
+                            return;
+                        }
+                        portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro),1);
+                        memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
+                        didintro = 1;
+                    }
+                }
+                if ( (counter++ % 60) == 0 )
+                {
+                    //printf("send ping.%d total transferred.%ld\n",numpings,server_xferred);
+                    ASSERT(0 == portable_udpwrite(&addr,tcp->data,"ping",5,1));
+                    numpings++;
+                }
             }
             lastping = millis;
         }
     }
 #endif
-    if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
+    if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
 
 void init_NXTprivacy(void *ptr)
 {
-    //uv_idle_t idler;
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
     printf("init_NXTprivacy.(%s)\n",EMERGENCY_PUNCH_SERVER);
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
-    //uv_idle_init(UV_loop,&idler);
-    //uv_idle_start(&idler,NXTprivacy_idler);
-    //uv_run(UV_loop,UV_RUN_DEFAULT);
-    //printf("We should never get here!\n"); while ( 1 ) sleep(1000);
 }
 
 
