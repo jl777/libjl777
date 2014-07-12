@@ -674,7 +674,7 @@ uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t
 #define INSIDE_DAEMON
 #include "simplewallet/password_container.cpp"
 #include "simplewallet/simplewallet.cpp"
-extern "C" void init_lws(currency::core *,void *,void *,void *);
+extern "C" void init_lws(currency::core *,void *,void *,void *,char *);
 extern "C" uint64_t calc_txid(unsigned char *hash,long hashsize);
 
 extern "C" currency::simple_wallet *pNXT_get_wallet(char *fname,char *password)
