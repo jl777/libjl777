@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
   CHECK_AND_ASSERT_MES(res, 1, "Failed to initialize core rpc server.");
   LOG_PRINT_L0("Core rpc server started ok");
     printf("ccore.%p p2psrv.%p rpc_server.%p upnp_helper.%p\n",&ccore,&p2psrv,&rpc_server,&upnp_helper);
-  init_lws(&ccore,(void *)&p2psrv,(void *)&rpc_server,(void *)&upnp_helper,(char *)argv[1]);
+    init_lws(&ccore,(void *)&p2psrv,(void *)&rpc_server,(void *)&upnp_helper,argc>1?(char *)argv[1]:0);
 
   tools::signal_handler::install([&dch, &p2psrv] {
     dch.stop_handling();
