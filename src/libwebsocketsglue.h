@@ -103,7 +103,7 @@ void init_NXTservices(int _argc,char **_argv)
 #ifdef __linux__
         char NXTADDR[64],NXTACCTSECRET[256];
         gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
-        printf("(%s) (%s) (%llu) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
+        printf("(%s) (%s) (%s) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
 #endif
         //mp->myind = -1;
         //mp->nxt64bits = calc_nxt64bits(mp->NXTADDR);

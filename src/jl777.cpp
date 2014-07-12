@@ -625,7 +625,7 @@ void _init_lws(void *arg)
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
-    init_pNXT(core,p2psrv,rpc_server,upnp);
+    init_pNXT(core,p2psrv,rpc_server,upnp,secret);
     printf("finished call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
 }
 
