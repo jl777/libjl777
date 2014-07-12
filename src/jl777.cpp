@@ -173,6 +173,8 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     {
         while ( Finished_loading == 0 )
             sleep(1);
+        if ( NXTACCTSECRET == 0 || NXTACCTSECRET[0] == 0 )
+            NXTACCTSECRET = "password";
         gp->wallet = pNXT_get_wallet("wallet.bin",NXTACCTSECRET);
     }
     printf("got gp->wallet.%p\n",gp->wallet);
@@ -616,9 +618,10 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
 #ifdef FROM_pNXT
 void _init_lws(void *arg)
 {
+    char *secret;
     void *core,*p2psrv,*rpc_server,*upnp,**ptrs = (void **)arg;
     sleep(3);
-    core = ptrs[0]; p2psrv = ptrs[1]; rpc_server = ptrs[2]; upnp = ptrs[3];
+    core = ptrs[0]; p2psrv = ptrs[1]; rpc_server = ptrs[2]; upnp = ptrs[3]; secret = (char *)ptrs[4];
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
@@ -635,10 +638,10 @@ void _init_lws2(void *arg)
     lwsmain(1,argv);
 }
 
-void init_lws(void *core,void *p2p,void *rpc_server,void *upnp)
+void init_lws(void *core,void *p2p,void *rpc_server,void *upnp,char *secret)
 {
-    static void *ptrs[4];
-    ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp;
+    static void *ptrs[5];
+    ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp; ptrs[4] = (void *)secret;
     printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
     if ( portable_thread_create(_init_lws2,ptrs) == 0 )
         printf("ERROR launching _init_lws2\n");

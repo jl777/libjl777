@@ -101,7 +101,7 @@ void init_NXTservices(int _argc,char **_argv)
         init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
         //mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
 #ifdef __linux__
-        char NXTADDR[64];
+        char NXTADDR[64],NXTACCTSECRET[256];
         gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
         printf("(%s) (%s) (%llu) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
 #endif
