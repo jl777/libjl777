@@ -344,6 +344,7 @@ int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NX
 
 struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
+    int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
     char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
     cJSON *argjson;
@@ -460,18 +461,6 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
     r = uv_udp_send(&wr->ureq,handle,&wr->buf,1,addr,(void *)after_write);
     if ( r != 0 )
         printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->ureq,buf,len);
-    return(r);
-}
-
-int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag)
-{
-    int32_t r;
-    write_req_t *wr;
-    wr = alloc_wr(buf,len,allocflag);
-    r = uv_write(&wr->req,stream,&wr->buf,1,after_write);
-    if ( r != 0 )
-        fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
-    //else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
     return(r);
 }
 
@@ -600,6 +589,17 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
 }
 
 // begin TCP specific
+int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag)
+{
+    int32_t r;
+    write_req_t *wr;
+    wr = alloc_wr(buf,len,allocflag);
+    r = uv_write(&wr->req,stream,&wr->buf,1,after_write);
+    if ( r != 0 )
+        fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
+    //else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
+    return(r);
+}
 
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
