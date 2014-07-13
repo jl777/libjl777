@@ -560,7 +560,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
     cJSON *argjson;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
-    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) == 0 )
+    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
     {
         if ( argjson != 0 )
             free_json(argjson);
