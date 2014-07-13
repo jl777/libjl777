@@ -550,7 +550,7 @@ again:
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[2048],NXTaddr[64],buf[128];
+        char _tokbuf[2048],NXTaddr[64],buf[128],*str;
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
@@ -573,6 +573,12 @@ again:
             n = 0;
             while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
                 usleep(10000);
+            while ( 1 )
+            {
+                if ( (str= queue_dequeue(&RPC_6777_response)) != 0 )
+                    free(retstr), retstr = str;
+                else break;
+            }
             if ( n == 1000 )
                 printf("TIMEOUT: selectserver_func no response\n");
             printf("SERVER SENT.(%s)\n",retstr);

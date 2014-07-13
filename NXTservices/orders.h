@@ -469,9 +469,9 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr)
     int32_t createdflag;
     struct NXT_acct *np;
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    if ( np->tcp != 0 )
+    if ( np->tcp != 0 || np->connect != 0 )
     {
-        portable_tcpwrite(np->tcp,msg,strlen(msg)+1,1);
+        portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,msg,strlen(msg)+1,1);
         sprintf(buf,"{\"status\":\"sendmessage.(%s) to %s pending\"}",msg,destNXTaddr);
     }
     else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without privacyServer\"}",msg,destNXTaddr);
