@@ -560,7 +560,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
             if ( err == 0 )
             {
                 printf("DECRYPTED.(%s)\n",message);
-            } else printf("error decrypting\n");
+            } else printf("error.%d decrypting pubkey.%llx\n",err,*(long long *)pubkey);
         }
         parmstxt = (char *)rcvbuf->base;
         parmstxt[nread] = 0;

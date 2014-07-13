@@ -474,7 +474,7 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
     if ( np->udp != 0 )
     {
         memset(encoded,0,sizeof(encoded));
-        memcpy(encoded,Global_mp->session_privkey,sizeof(Global_mp->session_pubkey));
+        memcpy(encoded,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
         len = _encode_str(encoded+sizeof(Global_mp->session_pubkey),origargstr,(int)strlen(origargstr)+1,np->pubkey,Global_mp->session_privkey);
 
         portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,encoded,len+sizeof(Global_mp->session_pubkey),1);
