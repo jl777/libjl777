@@ -43,13 +43,14 @@ void queue_enqueue(queue_t *queue,void *value)
         queue->capacity++;
         queue->buffer = realloc(queue->buffer,sizeof(*queue->buffer) * queue->capacity);
         queue->buffer[queue->size] = 0;
+        if ( queue->in == 0 )
+            queue->in = queue->size;
         //printf("increase Q size.%d capacity.%d\n",queue->size,queue->capacity);
 		//pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
     }
     //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,queue->capacity);
-	queue->buffer[queue->in] = value;
+	queue->buffer[queue->in++] = value;
 	++queue->size;
-   	++queue->in;
     queue->in %= queue->capacity;
     /*if ( queue->capacity >= 3 )
     printf("added to Q, size.%d in.%d | %p %p %p\n",queue->size,queue->in,queue->buffer[0],queue->buffer[1],queue->buffer[2]);

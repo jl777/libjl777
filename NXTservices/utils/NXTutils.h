@@ -412,7 +412,7 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     np = MTadd_hashtable(createdp,mp->NXTaccts_tablep,NXTaddr);
     if ( *createdp != 0 )
     {
-        queue_enqueue(&np->incoming,clonestr("testmessage"));
+        //queue_enqueue(&np->incoming,clonestr("testmessage"));
         np->H.nxt64bits = calc_nxt64bits(NXTaddr);
         //portable_set_illegaludp(&np->Usock);//np->Usock = -1;
     }

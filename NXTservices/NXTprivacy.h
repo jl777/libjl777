@@ -1089,6 +1089,7 @@ void init_NXTprivacy(void *ptr)
     uv_udp_t *udp,**udpptr;
     if ( (Server_secret= ptr) == 0 )
         Server_secret = "password";
+    //queue_enqueue(&ALL_messages,clonestr("testmessage"));
     nxt64bits = issue_getAccountId(0,Server_secret);
     Server_NXTaddr = calloc(1,64);
     expand_nxt64bits(Server_NXTaddr,nxt64bits);

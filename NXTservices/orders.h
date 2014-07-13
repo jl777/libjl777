@@ -500,7 +500,7 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
         msgs = &np->incoming;
     }
     else msgs = &ALL_messages;
-    while ( queue_size(msgs) > 1 && (str= queue_dequeue(msgs)) != 0 )
+    while ( (str= queue_dequeue(msgs)) != 0 ) //queue_size(msgs) > 1 && 
     {
         if ( array == 0 )
             array = cJSON_CreateArray();
