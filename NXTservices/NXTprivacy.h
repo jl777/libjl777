@@ -342,6 +342,46 @@ int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NX
     return(0);
 }
 
+struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
+{
+    int32_t n,retcode,createdflag;
+    char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
+    cJSON *argjson;
+    struct NXT_acct *np = 0;
+    NXTaddr[0] = pubkey[0] = name[0] = 0;
+    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
+    {
+        if ( argjson != 0 )
+            free_json(argjson);
+        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        if ( np != 0 )
+        {
+            safecopy(np->dispname,name,sizeof(np->dispname));
+            n = decode_hex(np->pubkey,(int32_t)strlen(pubkey)/2,pubkey);
+            if ( n == crypto_box_PUBLICKEYBYTES )
+            {
+                printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
+                if ( sendresponse != 0 )
+                {
+                    if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
+                        printf("error generaing intro??\n");
+                    else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+                }
+            } else np = 0;
+        }
+    }
+    else
+    {
+        if ( sendresponse != 0 )
+        {
+            sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
+            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+        }
+        np = 0;
+    }
+    return(np);
+}
+
 #include "libuv/test/task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -427,11 +467,18 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
 {
     uint16_t port;
     char sender[32];
+    struct NXT_acct *np = 0;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
+        printf("udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",handle,sender,port,nread,flags,server_xferred);
+        rcvbuf->base[nread] = 0;
+        if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
+        {
+            np->Uaddr = *addr;
+            np->udp = (uv_stream_t *)handle;
+        }
         ASSERT(addr->sa_family == AF_INET);
         ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
     }
@@ -551,46 +598,6 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
         fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
     //else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
     return(r);
-}
-
-struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
-{
-    int32_t n,retcode,createdflag;
-    char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
-    cJSON *argjson;
-    struct NXT_acct *np = 0;
-    NXTaddr[0] = pubkey[0] = name[0] = 0;
-    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
-    {
-        if ( argjson != 0 )
-            free_json(argjson);
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( np != 0 )
-        {
-            safecopy(np->dispname,name,sizeof(np->dispname));
-            n = decode_hex(np->pubkey,(int32_t)strlen(pubkey)/2,pubkey);
-            if ( n == crypto_box_PUBLICKEYBYTES )
-            {
-                printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
-                if ( sendresponse != 0 )
-                {
-                    if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
-                        printf("error generaing intro??\n");
-                    else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
-                }
-            } else np = 0;
-        }
-    }
-    else
-    {
-        if ( sendresponse != 0 )
-        {
-            sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
-            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
-        }
-        np = 0;
-    }
-    return(np);
 }
 
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
