@@ -498,13 +498,41 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     return(0);
 }
 
+char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt)
+{
+    long len;
+    char encoded[NXT_TOKEN_LEN+1];
+    cJSON *secondobj,*tokenobj,*parmsobj;
+    if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
+    {
+        secondobj = cJSON_GetArrayItem(*argjsonp,1);
+        tokenobj = cJSON_GetObjectItem(secondobj,"token");
+        copy_cJSON(encoded,tokenobj);
+        parmsobj = cJSON_DetachItemFromArray(*argjsonp,0);
+        if ( parmstxt != 0 )
+            free(parmstxt);
+        parmstxt = cJSON_Print(parmsobj);
+        len = strlen(parmstxt);
+        stripwhite(parmstxt,len);
+        
+        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+        if ( strlen(encoded) == NXT_TOKEN_LEN )
+            issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
+        if ( *argjsonp != 0 )
+            free_json(*argjsonp);
+        *argjsonp = parmsobj;
+        return(parmstxt);
+    }
+    return(0);
+}
+
 char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr)
 {
     struct NXThandler_info *mp = Global_mp;
     long len;
     int32_t n,valid,firsttime = 1;
-    cJSON *secretobj,*tokenobj,*secondobj,*json,*parmsobj = 0;
-    char NXTACCTSECRET[256],sender[64],*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
+    cJSON *secretobj,*json;
+    char NXTACCTSECRET[256],sender[64],*origparmstxt,*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
 again:
     sender[0] = 0;
     valid = -1;
@@ -525,7 +553,7 @@ again:
         free_json(json);
         return(retstr);
     }
-    else if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
+   /* else if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
     {
         secondobj = cJSON_GetArrayItem(*argjsonp,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
@@ -543,10 +571,15 @@ again:
         if ( *argjsonp != 0 )
             free_json(*argjsonp);
         *argjsonp = parmsobj;
+    }*/
+    else
+    {
+        origparmstxt = parmstxt;
+        parmstxt = verify_tokenized_json(sender,&valid,argjsonp,parmstxt);
     }
     retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid,argstr);
     //printf("back from pNXT_json_commands\n");
-    if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && *argjsonp != parmsobj )
+    if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && parmstxt == 0 )
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
@@ -562,7 +595,8 @@ again:
             expand_nxt64bits(NXTaddr,nxt64bits);
             cJSON_DeleteItemFromObject(*argjsonp,"secret");
             cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
-            free(parmstxt);
+            if ( parmstxt != 0 )
+                free(parmstxt);
             parmstxt = cJSON_Print(*argjsonp);
             len = strlen(parmstxt);
             stripwhite(parmstxt,len);
@@ -585,12 +619,14 @@ again:
         }
         else
         {
-            issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
+            issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
-            sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
+            sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",origparmstxt,encoded);
             if ( *argjsonp != 0 )
                 free_json(*argjsonp);
             *argjsonp = cJSON_Parse(_tokbuf);
+            if ( origparmstxt != 0 )
+                free(origparmstxt), origparmstxt = 0;
             goto again;
         }
     }

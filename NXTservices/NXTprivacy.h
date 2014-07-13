@@ -166,6 +166,56 @@ uint64_t decode_privacyServer(char *jsonstr)
     return(privacyServer);
 }
 
+int _encode_str(unsigned char *cipher,char *str,int size,unsigned char *destpubkey,unsigned char *myprivkey)
+{
+    long len;
+    unsigned char buf[4096],*nonce = cipher;
+    randombytes(nonce,crypto_box_NONCEBYTES);
+    cipher += crypto_box_NONCEBYTES;
+    len = size;//strlen(str) + 1;
+    //printf("len.%ld -> %ld %ld\n",len,len+crypto_box_ZEROBYTES,len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
+    memset(cipher,0,len+crypto_box_ZEROBYTES);
+    memset(buf,0,crypto_box_ZEROBYTES);
+    memcpy(buf+crypto_box_ZEROBYTES,str,len);
+    /*int i;
+     for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
+     printf("%02x",destpubkey[i]);
+     printf(" destpubkey\n");
+     for (i=0; i<crypto_box_SECRETKEYBYTES; i++)
+     printf("%02x",myprivkey[i]);
+     printf(" myprivkey\n");
+     for (i=0; i<crypto_box_NONCEBYTES; i++)
+     printf("%02x",nonce[i]);
+     printf(" nonce\n");*/
+    crypto_box(cipher,buf,len+crypto_box_ZEROBYTES,nonce,destpubkey,myprivkey);
+    return((int)len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
+}
+
+int _decode_cipher(char *str,unsigned char *cipher,int32_t *lenp,unsigned char *srcpubkey,unsigned char *myprivkey)
+{
+    int i,err,len = *lenp;
+    unsigned char *nonce = cipher;
+    cipher += crypto_box_NONCEBYTES, len -= crypto_box_NONCEBYTES;
+    /*int i;
+     for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
+     printf("%02x",srcpubkey[i]);
+     printf(" destpubkey\n");
+     for (i=0; i<crypto_box_SECRETKEYBYTES; i++)
+     printf("%02x",myprivkey[i]);
+     printf(" myprivkey\n");
+     for (i=0; i<crypto_box_NONCEBYTES; i++)
+     printf("%02x",nonce[i]);
+     printf(" nonce\n");*/
+    err = crypto_box_open((unsigned char *)str,cipher,len,nonce,srcpubkey,myprivkey);
+    for (i=0; i<len-crypto_box_ZEROBYTES; i++)
+        str[i] = str[i+crypto_box_ZEROBYTES];
+    //for (i=0; i<len;i++)
+    //    printf("%02x",str[i]);
+    // printf("Err.%d\n",err);
+    *lenp = len - crypto_box_ZEROBYTES;
+    return(err);
+}
+
 /*
  udp multicast of quotes -> all nodes, clients just update books they care about, servers update global
  servers and clients sync orderbooks via crc32 retransmit if discrepancy in ping
@@ -489,18 +539,49 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
 
 void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
+    char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt);
     uint16_t port;
-    char sender[32];
+    int32_t valid,err,len,createdflag;
+    cJSON *argjson;
+    struct NXT_acct *np;
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
+    char sender[32],senderNXTaddr[32],message[4096],*parmstxt;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
+        memset(message,0,nread);
+        if ( nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
+        {
+            memcpy(pubkey,rcvbuf->base,sizeof(pubkey));
+            err = _decode_cipher(message,(void *)((long)rcvbuf->base + sizeof(pubkey)),&len,pubkey,Global_mp->session_privkey);
+        }
+        parmstxt = (char *)rcvbuf->base;
+        parmstxt[nread] = 0;
+        argjson = cJSON_Parse(parmstxt);
+        if ( argjson != 0 )
+        {
+            parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
+            free_json(argjson);
+            if ( valid != 0 )
+            {
+                np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+                if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                {
+                    printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
+                    memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
+                }
+            }
+            printf("parmstxt.%p valid.%d sender.(%s)\n",parmstxt,valid,senderNXTaddr);
+        }
+        if ( parmstxt != 0 )
+            free(parmstxt);
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,1));
     }
-    if ( rcvbuf->base != 0 )
+    else if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
 }
 

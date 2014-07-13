@@ -466,14 +466,21 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
 char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,char *origargstr)
 {
     char buf[1024];
-    int32_t createdflag;
+    uint64_t tmp;
+    unsigned char encoded[4096];
+    int32_t createdflag,len;
     struct NXT_acct *np;
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
     if ( np->udp != 0 )
     {
-        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,origargstr,strlen(origargstr)+1,1);
+        memset(encoded,0,sizeof(encoded));
+        memcpy(encoded,Global_mp->session_privkey,sizeof(Global_mp->session_pubkey));
+        len = _encode_str(encoded+sizeof(Global_mp->session_pubkey),origargstr,(int)strlen(origargstr)+1,np->pubkey,Global_mp->session_privkey);
+
+        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,encoded,len,1);
+        memcpy(&tmp,np->pubkey,sizeof(tmp));
         //portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,origargstr,strlen(origargstr)+1,1);
-        sprintf(buf,"{\"status\":\"%s sendmessage.(%s) to %s pending\"}",NXTaddr,msg,destNXTaddr);
+        sprintf(buf,"{\"status\":\"%s encrypted.%llx sendmessage.(%s) to %s pending\"}",NXTaddr,(long long)tmp,msg,destNXTaddr);
     }
     else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without privacyServer\"}",msg,destNXTaddr);
     return(clonestr(buf));
