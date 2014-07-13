@@ -939,7 +939,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             }
             if ( secret[0] != 0 )
                 strcpy(NXTACCTSECRET,secret);
-            if ( tcp != 0 && tcp->data != 0 )
+            if ( tcp != 0 && (udp= tcp->data) != 0 )
             {
                 if ( didintro == 0 )
                 {
@@ -953,7 +953,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
                             memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                             return;
                         }
-                        portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro),1);
+                        portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,1);
+                        portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,1);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                         didintro = 1;
                     }
@@ -964,7 +965,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     if ( (counter++ % 10) == 0 && udp != 0 )
                     {
                         //printf("udp.%p send ping.%d total transferred.%ld\n",udp,numpings,server_xferred);
-                        ASSERT(0 == portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,1));
+                        portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,1);
                         numpings++;
                     }
                 }
