@@ -1100,15 +1100,18 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
     int64_t amount,timeval,diff = 0;
     int32_t valid,retcode = -13;
     char buf[1024],NXTname[1024],username[1024],groupname[1024],sender[MAX_NXTADDR_LEN],encoded[1024],*firstjsontxt = 0;
-    acctjson = issue_getAccountInfo(curl_handle,&amount,NXTname,username,NXTaddr,groupname);
     if ( argjsonp != 0 )
         *argjsonp = 0;
-    if ( pubkey != 0 )
-        pubkey[0] = 0;
-    if ( acctjson != 0 )
-        free_json(acctjson);
-    if ( strcmp(name,NXTname) != 0 )
-        return(-1);
+    if ( NXTaddr[0] != 0 )
+    {
+        acctjson = issue_getAccountInfo(curl_handle,&amount,NXTname,username,NXTaddr,groupname);
+        if ( pubkey != 0 )
+            pubkey[0] = 0;
+        if ( acctjson != 0 )
+            free_json(acctjson);
+        if ( name[0] != 0 && strcmp(name,NXTname) != 0 )
+            return(-1);
+    }
     array = cJSON_Parse(tokenizedtxt);
     if ( array == 0 )
         return(-2);
@@ -1127,15 +1130,18 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
                 printf("%p ARGJSON.(%s)\n",*argjsonp,cJSON_Print(*argjsonp));
         }
         obj = cJSON_GetObjectItem(firstitem,"NXT"); copy_cJSON(buf,obj);
-        if ( strcmp(buf,NXTaddr) != 0 )
+        if ( NXTaddr[0] != 0 && strcmp(buf,NXTaddr) != 0 )
             retcode = -3;
         else
         {
+            strcpy(NXTaddr,buf);
             obj = cJSON_GetObjectItem(firstitem,"name"); copy_cJSON(buf,obj);
-            if ( strcmp(buf,name) != 0 )
+            if ( name[0] != 0 && strcmp(buf,name) != 0 )
                 retcode = -4;
             else
             {
+                if ( name[0] == 0 )
+                    strcpy(name,buf);
                 if ( strictflag != 0 )
                 {
                     timeval = get_cJSON_int(firstitem,"time");

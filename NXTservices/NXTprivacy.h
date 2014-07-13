@@ -553,12 +553,13 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
     return(r);
 }
 
-int32_t process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
+struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
     int32_t n,retcode,createdflag;
     char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
     cJSON *argjson;
-    struct NXT_acct *np;
+    struct NXT_acct *np = 0;
+    NXTaddr[0] = pubkey[0] = name[0] = 0;
     if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) == 0 )
     {
         if ( argjson != 0 )
@@ -578,7 +579,6 @@ int32_t process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
                 else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
             }
         }
-        return(0);
     }
     else
     {
@@ -587,8 +587,9 @@ int32_t process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
             sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
             portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
         }
-        return(retcode);
+        np = 0;
     }
+    return(np);
 }
 
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
@@ -618,7 +619,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     printf("got %ld bytes (%s)\n",nread,buf->base);
     buf->base[nread] = 0;
     if ( (np= handle->data) == 0 )
-        process_intro(handle,(char *)buf->base,1);
+        handle->data = process_intro(handle,(char *)buf->base,1);
     else
     {
         argjson = cJSON_Parse(buf->base);
@@ -681,7 +682,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
         memcpy(str,buf->base,nread);
         str[nread] = 0;
         if ( connect != 0 && connect->data == 0 )
-            process_intro(tcp,str,0);
+            connect->data = process_intro(tcp,str,0);
         queue_enqueue(&RPC_6777_response,str);
     }
     if ( buf->base != 0 )
