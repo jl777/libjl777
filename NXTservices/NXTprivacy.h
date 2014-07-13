@@ -16,6 +16,7 @@
 #define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
 #define INTRO_SIZE 1400
 
+char *Server_NXTaddr,*Server_secret;
 queue_t RPC_6777,RPC_6777_response,NXTsync_Q;
 
 typedef struct {
@@ -552,13 +553,51 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
     return(r);
 }
 
+int32_t process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
+{
+    int32_t n,retcode,createdflag;
+    char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
+    cJSON *argjson;
+    struct NXT_acct *np;
+    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) == 0 )
+    {
+        if ( argjson != 0 )
+            free_json(argjson);
+        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        if ( np != 0 )
+        {
+            handle->data = (void *)np;
+            np->handle = handle;
+            safecopy(np->dispname,name,sizeof(np->dispname));
+            n = decode_hex(np->pubkey,(int32_t)strlen(pubkey)/2,pubkey);
+            printf("created.%d NXT.%s pubkey.%s (len.%d/%d) name.%s\n",createdflag,NXTaddr,pubkey,n,crypto_box_PUBLICKEYBYTES,name);
+            if ( sendresponse != 0 )
+            {
+                if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
+                    printf("error generaing intro??\n");
+                else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+            }
+        }
+        return(0);
+    }
+    else
+    {
+        if ( sendresponse != 0 )
+        {
+            sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
+            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+        }
+        return(retcode);
+    }
+}
+
 void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 {
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
-    //int i;
-    char *jsonstr;
     cJSON *argjson;
-    // uv_shutdown_t *req;
+    char *jsonstr;
+    struct NXT_acct *np;
+     // uv_shutdown_t *req;
     printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
     if ( nread < 0 ) // Error or EOF
     {
@@ -577,39 +616,52 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         return;
     }
     printf("got %ld bytes (%s)\n",nread,buf->base);
-    argjson = cJSON_Parse(buf->base);
-    if ( argjson != 0 )
+    buf->base[nread] = 0;
+    if ( (np= handle->data) == 0 )
+        process_intro(handle,(char *)buf->base,1);
+    else
     {
-        jsonstr = pNXT_jsonhandler(&argjson,buf->base);
-        if ( jsonstr == 0 )
-            jsonstr = clonestr("{\"result\":null}");
-        printf("tcpwrite.(%s)\n",jsonstr);
-        portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+        argjson = cJSON_Parse(buf->base);
+        if ( argjson != 0 )
+        {
+            jsonstr = pNXT_jsonhandler(&argjson,buf->base);
+            if ( jsonstr == 0 )
+                jsonstr = clonestr("{\"result\":null}");
+            printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np->H.NXTaddr);
+            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
             //free(jsonstr); completion frees, dont do it here!
-        free_json(argjson);
+            free_json(argjson);
+        }
     }
 }
 
-void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
+void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
     char sender[32],*str;
     uv_udp_t *udp;
+    uv_stream_t *connect;
     struct sockaddr addr;
     int port,addrlen = sizeof(addr);
-    printf("tcp_client_gotbytes handle.%p data.%p\n",handle,handle->data);
+    if ( (udp= (uv_udp_t *)tcp->data) != 0 )
+    {
+        connect = (uv_stream_t *)udp->data;
+        if ( connect != 0 )
+            printf("connect.%p -> %p\n",connect,connect->data);
+    } else connect = 0;
+    printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
     if ( nread < 0 ) // Error or EOF
     {
         printf("Lost contact with Server!\n");
         ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
             free(buf->base);
-        if ( (udp= (uv_udp_t *)handle->data) != 0 )
+        if ( udp != 0 )
         {
             printf("stop and close udp %p\n",udp);
             uv_udp_recv_stop(udp);
             uv_close((uv_handle_t *)udp,on_server_close);
         }
-        uv_shutdown(malloc(sizeof(uv_shutdown_t)),handle,after_server_shutdown);
+        uv_shutdown(malloc(sizeof(uv_shutdown_t)),tcp,after_server_shutdown);
         return;
     }
     else if ( nread == 0 )
@@ -618,16 +670,18 @@ void tcp_client_gotbytes(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     }
     else
     {
-        if ( uv_tcp_getpeername((uv_tcp_t *)handle,&addr,&addrlen) == 0 )
+        if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
         {
             uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
             port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
-            printf("tcp got bytes.%p >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",handle,nread,buf->base,buf->base,sender,port);
+            printf("tcp got bytes.%p >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",tcp,nread,buf->base,buf->base,sender,port);
         }
         else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);
         str = malloc(nread+1);
         memcpy(str,buf->base,nread);
         str[nread] = 0;
+        if ( connect != 0 && connect->data == 0 )
+            process_intro(tcp,str,0);
         queue_enqueue(&RPC_6777_response,str);
     }
     if ( buf->base != 0 )
@@ -648,7 +702,7 @@ void client_connected(uv_stream_t *server,int status)
     ASSERT(stream != NULL);
     r = uv_tcp_init(UV_loop,(uv_tcp_t *)stream);
     ASSERT(r == 0);
-    stream->data = server;  // associate server with stream
+    stream->data = 0;   // need to wait until we know which acct it is
     r = uv_accept(server,stream);
     ASSERT(r == 0);
     r = uv_read_start(stream,portable_alloc,after_server_read);
@@ -707,6 +761,7 @@ void connected_to_server(uv_connect_t *connect,int status)
             udp = 0;
         }
         tcp->data = udp;
+        udp->data = connect;
     }
 }
 
@@ -888,9 +943,15 @@ void NXTprivacy_idler(uv_idle_t *handle)
 
 void init_NXTprivacy(void *ptr)
 {
+    uint64_t nxt64bits;
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
-    printf("init_NXTprivacy.(%s)\n",EMERGENCY_PUNCH_SERVER);
+    if ( (Server_secret= ptr) == 0 )
+        Server_secret = "password";
+    nxt64bits = issue_getAccountId(0,Server_secret);
+    Server_NXTaddr = calloc(1,64);
+    expand_nxt64bits(Server_NXTaddr,nxt64bits);
+    printf("init_NXTprivacy.(%s) -> %llu (%s)\n",(char *)ptr,(long long)nxt64bits,Server_NXTaddr);
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);

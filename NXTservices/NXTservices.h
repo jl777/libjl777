@@ -60,13 +60,14 @@ struct NXT_acct
     // fields for NXTorrent
     double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
     // fields for RT comms
-    portable_udp_t Usock;
-    int32_t recvid,sentid;
-    struct sockaddr Uaddr;
-    struct udp_info U;
+    //portable_udp_t Usock;
+    //int32_t recvid,sentid;
+    //struct sockaddr Uaddr;
+    //struct udp_info U;
+    uv_stream_t *handle;
     char dispname[128];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
-    uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
+    //uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 

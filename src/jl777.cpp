@@ -260,6 +260,7 @@ char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs
 
 char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
 {
+    int32_t n = 0;
     char NXTaddr[64],server[1024],ipaddr[512],port[512],secret[512],*retstr = 0;
     copy_cJSON(NXTaddr,objs[0]);
     copy_cJSON(server,objs[1]);
@@ -267,7 +268,13 @@ char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     copy_cJSON(port,objs[3]);
     copy_cJSON(secret,objs[4]);
     if ( sender[0] != 0 && valid != 0 )
+    {
         retstr = select_privacyServer(server,ipaddr,port,secret);
+        while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
+            usleep(10000);
+        if ( n == 1000 )
+            printf("TIMEOUT: selectserver_func no response\n");
+    }
     return(retstr);
 }
 
@@ -462,7 +469,7 @@ char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr)
 {
     struct NXThandler_info *mp = Global_mp;
     long len;
-    int32_t valid,firsttime = 1;
+    int32_t n,valid,firsttime = 1;
     cJSON *secretobj,*tokenobj,*secondobj,*json,*parmsobj = 0;
     char NXTACCTSECRET[256],sender[64],*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
 again:
@@ -528,8 +535,12 @@ again:
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
             queue_enqueue(&RPC_6777,clonestr(_tokbuf));
-            while ( (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
+            n = 0;
+            while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
                 usleep(10000);
+            if ( n == 1000 )
+                printf("TIMEOUT: selectserver_func no response\n");
+            printf("SERVER SENT.(%s)\n",retstr);
         }
         else
         {

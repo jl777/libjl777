@@ -101,9 +101,9 @@ void init_NXTservices(int _argc,char **_argv)
         init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
         //mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
 #ifdef __linux__
-        char NXTADDR[64],NXTACCTSECRET[256];
-        gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
-        printf("(%s) (%s) (%s) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
+        //char NXTADDR[64],NXTACCTSECRET[256];
+        //gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
+        //printf("(%s) (%s) (%s) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
 #endif
         //mp->myind = -1;
         //mp->nxt64bits = calc_nxt64bits(mp->NXTADDR);
@@ -111,7 +111,7 @@ void init_NXTservices(int _argc,char **_argv)
             printf("ERROR hist process_hashtablequeues\n");
         if ( portable_thread_create(getNXTblocks,mp) == 0 )
             printf("ERROR start_Histloop\n");
-        if ( portable_thread_create(init_NXTprivacy,mp) == 0 )
+        if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
             printf("ERROR init_NXTprivacy\n");
         gen_testforms(_argc>1 ? _argv[1] : 0);
 
