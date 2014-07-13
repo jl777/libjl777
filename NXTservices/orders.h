@@ -500,13 +500,14 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
         msgs = &np->incoming;
     }
     else msgs = &ALL_messages;
-    printf("size of queue.%d\n",queue_size(msgs));
-    while ( (str= queue_dequeue(msgs)) != 0 )
+    while ( queue_size(msgs) > 1 && (str= queue_dequeue(msgs)) != 0 )
     {
         if ( array == 0 )
             array = cJSON_CreateArray();
-        printf("add str.(%s) size.%d\n",str,queue_size(msgs));
+        //printf("add str.(%s) size.%d\n",str,queue_size(msgs));
         cJSON_AddItemToArray(array,cJSON_CreateString(str));
+        free(str);
+        str = 0;
     }
     if ( array != 0 )
         cJSON_AddItemToObject(json,"messages",array);

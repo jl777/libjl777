@@ -43,14 +43,19 @@ void queue_enqueue(queue_t *queue,void *value)
         queue->capacity++;
         queue->buffer = realloc(queue->buffer,sizeof(*queue->buffer) * queue->capacity);
         queue->buffer[queue->size] = 0;
+        //printf("increase Q size.%d capacity.%d\n",queue->size,queue->capacity);
 		//pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
     }
-    //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",*(long *)value,queue->in,queue->size,queue->capacity);
+    //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,queue->capacity);
 	queue->buffer[queue->in] = value;
 	++queue->size;
-	++queue->in;
-	queue->in %= queue->capacity;
-	portable_mutex_unlock(&(queue->mutex));
+   	++queue->in;
+    queue->in %= queue->capacity;
+    /*if ( queue->capacity >= 3 )
+    printf("added to Q, size.%d in.%d | %p %p %p\n",queue->size,queue->in,queue->buffer[0],queue->buffer[1],queue->buffer[2]);
+    else printf("added to Q, size.%d in %d capacity %d\n",queue->size,queue->in,queue->capacity);
+	*/
+    portable_mutex_unlock(&(queue->mutex));
 	//pthread_cond_broadcast(&(queue->cond_empty));
 }
 
@@ -69,10 +74,11 @@ void *queue_dequeue(queue_t *queue)
     {
         value = queue->buffer[queue->out];
         queue->buffer[queue->out] = 0;
-        //printf("dequeue %lx from %d, size.%d capacity.%d\n",*(long *)value,queue->out,queue->size,queue->capacity);
+        //printf("dequeue %lx from %d, size.%d capacity.%d\n",(long)value,queue->out,queue->size,queue->capacity);
         --queue->size;
         ++queue->out;
         queue->out %= queue->capacity;
+        //printf("new size.%d out.%d\n",queue->size,queue->out);
     }
 	portable_mutex_unlock(&(queue->mutex));
 	//pthread_cond_broadcast(&(queue->cond_full));

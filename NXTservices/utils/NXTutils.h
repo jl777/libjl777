@@ -413,7 +413,6 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     if ( *createdp != 0 )
     {
         queue_enqueue(&np->incoming,clonestr("testmessage"));
-        free(queue_dequeue(&np->incoming));
         np->H.nxt64bits = calc_nxt64bits(NXTaddr);
         //portable_set_illegaludp(&np->Usock);//np->Usock = -1;
     }
