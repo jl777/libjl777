@@ -243,7 +243,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             {
                 char *retstr;
                 retstr = NXTprotocol_json_handler(nxtprotocol,(char *)NXTprotocol_parms);
-                printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
+                //printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
                 if ( retstr != 0 )
                 {
                     len = strlen(retstr);
@@ -254,7 +254,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                             "Access-Control-Allow-Origin: *\x0d\x0a"
                             "Content-Length: %u\x0d\x0a\x0d\x0a",
                             (unsigned int)len);
-                    printf("html hdr.(%s)\n",buffer);
+                    //printf("html hdr.(%s)\n",buffer);
                     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
                     libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
                 }

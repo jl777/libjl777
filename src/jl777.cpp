@@ -46,7 +46,12 @@ struct pNXT_info
 struct pNXT_info *Global_pNXT;
 #include "../NXTservices/orders.h"
 
-void set_pNXT_privacyServer(uint64_t privacyServer) { if ( Global_pNXT != 0 ) Global_pNXT->privacyServer = privacyServer; }
+void set_pNXT_privacyServer(uint64_t privacyServer)
+{
+    printf("SET PRIVACYSERVER to %llu\n",(long long)privacyServer);
+    if ( Global_pNXT != 0 )
+        Global_pNXT->privacyServer = privacyServer;
+}
 
 uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret)
 {
@@ -437,7 +442,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
         copy_cJSON(command,obj);
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
     }
-    printf("pNXT_json_commands sender.(%s) valid.%d | size.%d\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)));
+    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)));
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];
@@ -457,7 +462,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
             retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3);
-            if ( retstr != 0 )
+            if ( 0 && retstr != 0 )
                 printf("json_handler returns.(%s)\n",retstr);
             return(retstr);
         }
@@ -512,7 +517,7 @@ again:
         *argjsonp = parmsobj;
     }
     retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid);
-    printf("back from pNXT_json_commands\n");
+    //printf("back from pNXT_json_commands\n");
     if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && *argjsonp != parmsobj )
     {
         uint64_t nxt64bits;
@@ -520,7 +525,7 @@ again:
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         copy_cJSON(NXTACCTSECRET,secretobj);
-        //printf("%s arg.%p\n",_tokbuf,*argjsonp);
+        printf("%llu %s arg.%p\n",(long long)Global_pNXT->privacyServer,_tokbuf,*argjsonp);
         if ( Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
@@ -553,7 +558,7 @@ again:
             goto again;
         }
     }
-    printf("free parmstxt.%p, argjson.%p\n",parmstxt,*argjsonp);
+    //printf("free parmstxt.%p, argjson.%p\n",parmstxt,*argjsonp);
     if ( parmstxt != 0 )
         free(parmstxt);
     return(retstr);

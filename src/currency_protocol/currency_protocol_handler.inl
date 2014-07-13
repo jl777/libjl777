@@ -215,7 +215,7 @@ namespace currency
     for(auto tx_blob_it = arg.txs.begin(); tx_blob_it!=arg.txs.end();)
     {
       currency::tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-        printf("from new tx\n");
+        //printf("from new tx\n");
       m_core.handle_incoming_tx(*tx_blob_it, tvc, false);
       if(tvc.m_verifivation_failed)
       {

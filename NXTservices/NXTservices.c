@@ -1474,11 +1474,11 @@ void NXTloop(struct NXThandler_info *mp)
                 if ( Historical_done != 0 )
                 {
                     mp->RTflag++;   // wait for first block before doing any side effects
-                    printf("update assets trades\n");
+                    //printf("update assets trades\n");
                     update_assets_trades(mp);
-                    printf("call_handlers\n");
+                    //printf("call_handlers\n");
                     call_handlers(mp,NXTPROTOCOL_NEWBLOCK,height);
-                    printf("calling gen_testforms\n");
+                    //printf("calling gen_testforms\n");
                     gen_testforms(0);
                 }
                 mp->NXTheight = height++;

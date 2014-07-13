@@ -64,7 +64,7 @@ struct NXT_acct
     //int32_t recvid,sentid;
     //struct sockaddr Uaddr;
     //struct udp_info U;
-    uv_stream_t *handle;
+    uv_stream_t *tcp,*connect,*udp;
     char dispname[128];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
     //uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
