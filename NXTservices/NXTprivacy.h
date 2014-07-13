@@ -17,7 +17,7 @@
 #define INTRO_SIZE 1400
 
 char *Server_NXTaddr,*Server_secret;
-queue_t RPC_6777,RPC_6777_response,NXTsync_Q;
+queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages;
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -542,7 +542,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
     char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt);
     uint16_t port;
     int32_t valid,err,len,createdflag;
-    cJSON *argjson;
+    cJSON *argjson,*msgjson;
     struct NXT_acct *np;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
     char sender[32],senderNXTaddr[32],message[4096],*parmstxt;
@@ -561,32 +561,42 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
             {
                 printf("DECRYPTED.(%s)\n",message);
             } else printf("error.%d decrypting pubkey.%llx\n",err,*(long long *)pubkey);
-        }
-        parmstxt = (char *)rcvbuf->base;
-        parmstxt[nread] = 0;
-        argjson = cJSON_Parse(parmstxt);
-        if ( argjson != 0 )
-        {
-            parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
-            free_json(argjson);
-            if ( valid != 0 )
+            
+            parmstxt = clonestr(message);//rcvbuf->base;
+            parmstxt[nread] = 0;
+            argjson = cJSON_Parse(parmstxt);
+            if ( argjson != 0 )
             {
-                np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
+                if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
                 {
-                    printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
-                    memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
+                    np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+                    if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                    {
+                        printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
+                        memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
+                    }
+                    queue_enqueue(&ALL_messages,clonestr(parmstxt));
+                    printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
+                    msgjson = cJSON_GetObjectItem(argjson,"msg");
+                    copy_cJSON(message,msgjson);
+                    if ( message[0] != 0 )
+                    {
+                        queue_enqueue(&np->incoming,clonestr(message));
+                        printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
+                    }
                 }
+                free_json(argjson);
+                printf("parmstxt.%p valid.%d sender.(%s) msg.(%s)\n",parmstxt,valid,senderNXTaddr,message);
             }
-            printf("parmstxt.%p valid.%d sender.(%s)\n",parmstxt,valid,senderNXTaddr);
+            if ( parmstxt != 0 )
+                free(parmstxt);
         }
-        if ( parmstxt != 0 )
-            free(parmstxt);
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,1));
     }
-    else if ( rcvbuf->base != 0 )
+    if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
 }
 
@@ -988,7 +998,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     millis = ((double)uv_hrtime() / 1000000);
 #ifndef __linux__
-    if ( millis > (lastattempt + 3000) )
+    if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
             privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer:get_random_privacyServer(whitelist,blacklist);

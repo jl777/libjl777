@@ -486,14 +486,33 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
     return(clonestr(buf));
 }
 
-char *checkmessage(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
+char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
 {
-    char buf[1024];
+    char *str;
     int32_t createdflag;
     struct NXT_acct *np;
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    sprintf(buf,"{\"error\":\"cant checkmessage from %s without privacyServer\"}",senderNXTaddr);
-    return(clonestr(buf));
+    queue_t *msgs;
+    cJSON *json,*array = 0;
+    json = cJSON_CreateObject();
+    if ( senderNXTaddr != 0 && senderNXTaddr[0] != 0 )
+    {
+        np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+        msgs = &np->incoming;
+    }
+    else msgs = &ALL_messages;
+    printf("size of queue.%d\n",queue_size(msgs));
+    while ( (str= queue_dequeue(msgs)) != 0 )
+    {
+        if ( array == 0 )
+            array = cJSON_CreateArray();
+        printf("add str.(%s) size.%d\n",str,queue_size(msgs));
+        cJSON_AddItemToArray(array,cJSON_CreateString(str));
+    }
+    if ( array != 0 )
+        cJSON_AddItemToObject(json,"messages",array);
+    str = cJSON_Print(json);
+    free_json(json);
+    return(str);
 }
 
 uint64_t is_NXTsync_message(unsigned char *tx,int32_t size)

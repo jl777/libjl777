@@ -429,9 +429,9 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     copy_cJSON(NXTaddr,objs[0]);
     copy_cJSON(senderNXTaddr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
-    if ( sender[0] != 0 && valid != 0 && senderNXTaddr[0] != 0 )
-        retstr = checkmessage(NXTaddr,NXTACCTSECRET,senderNXTaddr);
-    else retstr = clonestr("{\"error\":\"invalid checkmessage request\"}");
+    if ( sender[0] != 0 && valid != 0 )
+        retstr = checkmessages(NXTaddr,NXTACCTSECRET,senderNXTaddr);
+    else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
     return(retstr);
 }
 
@@ -447,7 +447,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
-    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessage", "V", "NXT", "sender", "secret", 0 };
+    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
     static char *privatesend[] = { (char *)privatesend_func, "privatesend", "V", "NXT", "amount", "secret", "dest", 0 };
     static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "server", "ipaddr", "port", "secret", 0 };
@@ -513,7 +513,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
             free(parmstxt);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
-        stripwhite(parmstxt,len);
+        stripwhite_ns(parmstxt,len);
         
         //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen(encoded) == NXT_TOKEN_LEN )
@@ -541,7 +541,7 @@ again:
     {
         parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
-        stripwhite(parmstxt,len);
+        stripwhite_ns(parmstxt,len);
         //printf("parmstxt.(%s)\n",parmstxt);
     }
     if ( *argjsonp == 0 )
@@ -563,7 +563,7 @@ again:
             free(parmstxt);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
-        stripwhite(parmstxt,len);
+        stripwhite_ns(parmstxt,len);
         
 //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen(encoded) == NXT_TOKEN_LEN )
@@ -589,7 +589,7 @@ again:
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-        if ( strcmp(buf,"select") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);
@@ -599,7 +599,7 @@ again:
                 free(parmstxt);
             parmstxt = cJSON_Print(*argjsonp);
             len = strlen(parmstxt);
-            stripwhite(parmstxt,len);
+            stripwhite_ns(parmstxt,len);
             issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);

@@ -62,6 +62,7 @@ struct NXT_acct
     // fields for RT comms
     //portable_udp_t Usock;
     //int32_t recvid,sentid;
+    queue_t incoming;
     struct sockaddr Uaddr;
     uv_stream_t *tcp,*connect,*udp;
     char dispname[128];

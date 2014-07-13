@@ -601,7 +601,7 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"sendmessage","send encrypted message to NXT address","sendmsg","127.0.0.1:7777","pNXT",gen_pNXT_sendmsg_fields);
     n++;
     
-    forms[n] = make_form(NXTaddr,&scripts[n],"checkmessage","check for encrypted messages from NXT address","check","127.0.0.1:7777","pNXT",gen_pNXT_getmsg_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"checkmessages","check for encrypted messages from NXT address","check","127.0.0.1:7777","pNXT",gen_pNXT_getmsg_fields);
     n++;
     
     forms[n] = make_form(NXTaddr,&scripts[n],"getorderbooks","get all orderbooks","get orderbooks","127.0.0.1:7777","pNXT",gen_pNXT_getorderbooks_fields);

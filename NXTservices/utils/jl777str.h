@@ -414,6 +414,20 @@ long stripwhite(char *buf,long len)
     return(j);
 }
 
+long stripwhite_ns(char *buf,long len)
+{
+    int32_t i,j,c;
+    for (i=j=0; i<len; i++)
+    {
+        c = buf[i];
+        buf[j] = c;
+        if ( buf[j] != '\n' && buf[j] != '\r' && buf[j] != '\t' )
+            j++;
+    }
+    buf[j] = 0;
+    return(j);
+}
+
 char safechar64(int32_t x)
 {
     x %= 64;

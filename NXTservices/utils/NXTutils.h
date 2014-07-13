@@ -412,6 +412,8 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     np = MTadd_hashtable(createdp,mp->NXTaccts_tablep,NXTaddr);
     if ( *createdp != 0 )
     {
+        queue_enqueue(&np->incoming,clonestr("testmessage"));
+        free(queue_dequeue(&np->incoming));
         np->H.nxt64bits = calc_nxt64bits(NXTaddr);
         //portable_set_illegaludp(&np->Usock);//np->Usock = -1;
     }
@@ -1032,7 +1034,7 @@ struct NXT_assettxid *update_assettxid_list(char *sender,char *receiver,char *as
         if ( argjson != 0 )
         {
             tp->comment = cJSON_Print(argjson);
-            stripwhite(tp->comment,strlen(tp->comment));
+            stripwhite_ns(tp->comment,strlen(tp->comment));
         }
         //tp->quantity = 0;
         //if ( wp->cointxid[0] != 0 )
@@ -1156,7 +1158,7 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
                 }
                 if ( retcode != -5 )
                 {
-                    firstjsontxt = cJSON_Print(firstitem); stripwhite(firstjsontxt,strlen(firstjsontxt));
+                    firstjsontxt = cJSON_Print(firstitem); stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
                     tokenobj = cJSON_GetArrayItem(array,1);
                     obj = cJSON_GetObjectItem(tokenobj,"token");
                     copy_cJSON(encoded,obj);
@@ -1192,7 +1194,7 @@ char *tokenize_json(CURL *curl_handle,cJSON *argjson,char *NXTACCTSECRET)
     cJSON_AddItemToArray(array,argjson);
 
     str = cJSON_Print(argjson);
-    stripwhite(str,strlen(str));
+    stripwhite_ns(str,strlen(str));
     issue_generateToken(curl_handle,token,str,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
     free(str);
@@ -1201,7 +1203,7 @@ char *tokenize_json(CURL *curl_handle,cJSON *argjson,char *NXTACCTSECRET)
     cJSON_AddItemToArray(array,argjson);
     
     str = cJSON_Print(array);
-    stripwhite(str,strlen(str));
+    stripwhite_ns(str,strlen(str));
     free_json(array);
     return(str);
 }
@@ -1221,7 +1223,7 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     str = tokenize_json(curl_handle,json,NXTACCTSECRET);
     strcpy(jsonstr,str);
     free(str);
-    stripwhite(jsonstr,strlen(jsonstr));
+    stripwhite_ns(jsonstr,strlen(jsonstr));
     return((int)strlen(jsonstr));
 }
 
