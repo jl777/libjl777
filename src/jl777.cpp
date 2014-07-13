@@ -197,7 +197,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     }
 }
 
-char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t i,polarity,allflag;
     uint64_t obookid;
@@ -249,7 +249,7 @@ char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     char *retstr = 0;
@@ -263,7 +263,7 @@ char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs
     return(retstr);
 }
 
-char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t n = 0;
     char NXTaddr[64],server[1024],ipaddr[512],port[512],secret[512],*retstr = 0;
@@ -283,7 +283,7 @@ char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t polarity;
     uint64_t obookid,nxt64bits,assetA,assetB,txid;
@@ -343,17 +343,17 @@ char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_
     return(retstr);
 }
 
-char *placebid_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *placebid_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(placequote_func(1,sender,valid,objs,numobjs));
+    return(placequote_func(1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *placeask_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *placeask_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(placequote_func(-1,sender,valid,objs,numobjs));
+    return(placequote_func(-1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char NXTaddr[64],NXTACCTSECRET[512],*retstr = 0;
@@ -366,7 +366,7 @@ char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char NXTaddr[64],NXTACCTSECRET[512],*retstr = 0;
@@ -379,7 +379,7 @@ char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *send_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     int32_t level;
@@ -396,7 +396,7 @@ char *send_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *privatesend_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *privatesend_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char NXTaddr[64],NXTACCTSECRET[512],destNXTaddr[256],*retstr = 0;
@@ -410,7 +410,7 @@ char *privatesend_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     return(retstr);
 }
 
-char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTaddr[64],NXTACCTSECRET[512],destNXTaddr[256],msg[1024],*retstr = 0;
     copy_cJSON(NXTaddr,objs[0]);
@@ -418,12 +418,12 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     copy_cJSON(NXTACCTSECRET,objs[2]);
     copy_cJSON(msg,objs[3]);
     if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
-        retstr = sendmessage(NXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+        retstr = sendmessage(NXTaddr,NXTACCTSECRET,msg,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
 }
 
-char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTaddr[64],NXTACCTSECRET[512],senderNXTaddr[256],*retstr = 0;
     copy_cJSON(NXTaddr,objs[0]);
@@ -442,13 +442,13 @@ forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price a
 forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price and send privateNXT to NXT address","sell mgwBTC","127.0.0.1:7777","pNXT",gen_pNXT_sell_fields);
 */
 
-char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid)
+char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessage", "V", "NXT", "sender", "secret", 0 };
-    static char *send[] = { (char *)send_func, "send", "V", "NXT", "amount", "secret", "dest", "level", "paymentid", 0 };
+    static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
     static char *privatesend[] = { (char *)privatesend_func, "privatesend", "V", "NXT", "amount", "secret", "dest", 0 };
     static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "server", "ipaddr", "port", "secret", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "polarity", "allfields", "secret", 0 };
@@ -489,7 +489,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             }
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
-            retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3);
+            retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3,origargstr);
             if ( 0 && retstr != 0 )
                 printf("json_handler returns.(%s)\n",retstr);
             return(retstr);
@@ -544,7 +544,7 @@ again:
             free_json(*argjsonp);
         *argjsonp = parmsobj;
     }
-    retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid);
+    retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid,argstr);
     //printf("back from pNXT_json_commands\n");
     if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && *argjsonp != parmsobj )
     {

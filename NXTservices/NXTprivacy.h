@@ -549,7 +549,7 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
     r = uv_write(&wr->req,stream,&wr->buf,1,after_write);
     if ( r != 0 )
         fprintf(stderr,"portable_write error %d %s\n",r,uv_err_name(r));
-    else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
+    //else printf("portable_write.%d %p %ld (%s)\n",allocflag,buf,len,(char *)buf);
     return(r);
 }
 

@@ -463,7 +463,7 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
     return(clonestr(buf));
 }
 
-char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr)
+char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,char *origargstr)
 {
     char buf[1024];
     int32_t createdflag;
@@ -471,8 +471,8 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr)
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
     if ( np->tcp != 0 || np->connect != 0 )
     {
-        portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,msg,strlen(msg)+1,1);
-        sprintf(buf,"{\"status\":\"sendmessage.(%s) to %s pending\"}",msg,destNXTaddr);
+        portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,origargstr,strlen(origargstr)+1,1);
+        sprintf(buf,"{\"status\":\"%s sendmessage.(%s) to %s pending\"}",NXTaddr,msg,destNXTaddr);
     }
     else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without privacyServer\"}",msg,destNXTaddr);
     return(clonestr(buf));
