@@ -477,7 +477,7 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
         memcpy(encoded,Global_mp->session_privkey,sizeof(Global_mp->session_pubkey));
         len = _encode_str(encoded+sizeof(Global_mp->session_pubkey),origargstr,(int)strlen(origargstr)+1,np->pubkey,Global_mp->session_privkey);
 
-        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,encoded,len,1);
+        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,encoded,len+sizeof(Global_mp->session_pubkey),1);
         memcpy(&tmp,np->pubkey,sizeof(tmp));
         //portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,origargstr,strlen(origargstr)+1,1);
         sprintf(buf,"{\"status\":\"%s encrypted.%llx sendmessage.(%s) to %s pending\"}",NXTaddr,(long long)tmp,msg,destNXTaddr);

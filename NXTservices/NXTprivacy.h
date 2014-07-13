@@ -555,7 +555,12 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
         if ( nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
         {
             memcpy(pubkey,rcvbuf->base,sizeof(pubkey));
+            len = (int32_t)(nread - sizeof(pubkey));
             err = _decode_cipher(message,(void *)((long)rcvbuf->base + sizeof(pubkey)),&len,pubkey,Global_mp->session_privkey);
+            if ( err == 0 )
+            {
+                printf("DECRYPTED.(%s)\n",message);
+            } else printf("error decrypting\n");
         }
         parmstxt = (char *)rcvbuf->base;
         parmstxt[nread] = 0;
