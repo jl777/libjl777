@@ -409,6 +409,32 @@ char *privatesend_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
     else retstr = clonestr("{\"error\":\"invalid send request\"}");
     return(retstr);
 }
+
+char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    char NXTaddr[64],NXTACCTSECRET[512],destNXTaddr[256],msg[1024],*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    copy_cJSON(destNXTaddr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    copy_cJSON(msg,objs[3]);
+    if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
+        retstr = sendmessage(NXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+    else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
+    return(retstr);
+}
+
+char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs)
+{
+    char NXTaddr[64],NXTACCTSECRET[512],senderNXTaddr[256],*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    copy_cJSON(senderNXTaddr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && valid != 0 && senderNXTaddr[0] != 0 )
+        retstr = checkmessage(NXTaddr,NXTACCTSECRET,senderNXTaddr);
+    else retstr = clonestr("{\"error\":\"invalid checkmessage request\"}");
+    return(retstr);
+}
+
 /*
 
 forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
@@ -420,6 +446,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
 {
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
+    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
+    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessage", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)send_func, "send", "V", "NXT", "amount", "secret", "dest", "level", "paymentid", 0 };
     static char *privatesend[] = { (char *)privatesend_func, "privatesend", "V", "NXT", "amount", "secret", "dest", 0 };
     static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "server", "ipaddr", "port", "secret", 0 };
@@ -427,7 +455,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
-    static char **commands[] = { placebid, placeask, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char **commands[] = { checkmsg, placebid, placeask, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -520,13 +548,15 @@ again:
     //printf("back from pNXT_json_commands\n");
     if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && *argjsonp != parmsobj )
     {
+        cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[2048],NXTaddr[64];
+        char _tokbuf[2048],NXTaddr[64],buf[128];
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
+        reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
+        copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-        printf("%llu %s arg.%p\n",(long long)Global_pNXT->privacyServer,_tokbuf,*argjsonp);
-        if ( Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"select") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);

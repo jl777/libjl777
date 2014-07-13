@@ -598,8 +598,9 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     cJSON *argjson;
     char *jsonstr;
-    struct NXT_acct *np;
+    struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
+    np = handle->data;
     printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
     if ( nread < 0 ) // Error or EOF
     {
@@ -609,6 +610,12 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         //req = (uv_shutdown_t *)malloc(sizeof *req); causes problems?!
         //uv_shutdown(req,handle,after_shutdown);
         uv_close((uv_handle_t *)handle,on_close);
+        if ( np != 0 )
+        {
+            np->tcp = 0;
+            np->udp = 0;
+            np->connect = 0;
+        }
         return;
     }
     if ( nread == 0 )
@@ -619,7 +626,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     }
     printf("got %ld bytes (%s)\n",nread,buf->base);
     buf->base[nread] = 0;
-    if ( (np= handle->data) == 0 )
+    if ( np == 0 )
     {
         np = process_intro(handle,(char *)buf->base,1);
         handle->data = np;
@@ -644,21 +651,24 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
     char sender[32],*str;
-    struct NXT_acct *np;
-    uv_udp_t *udp;
-    uv_stream_t *connect;
+    struct NXT_acct *np = 0;
+    uv_udp_t *udp = 0;
+    uv_stream_t *connect = 0;
     struct sockaddr addr;
     int port,addrlen = sizeof(addr);
     if ( (udp= (uv_udp_t *)tcp->data) != 0 )
     {
         connect = (uv_stream_t *)udp->data;
         if ( connect != 0 )
+        {
+            np = connect->data;
             printf("connect.%p -> %p\n",connect,connect->data);
-    } else connect = 0;
-    printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
+        }
+    }
+    //printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
     if ( nread < 0 ) // Error or EOF
     {
-        printf("Lost contact with Server!\n");
+        printf("Lost contact with Server! np.%p\n",np);
         ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
             free(buf->base);
@@ -669,6 +679,13 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
             uv_close((uv_handle_t *)udp,on_server_close);
         }
         uv_shutdown(malloc(sizeof(uv_shutdown_t)),tcp,after_server_shutdown);
+        if ( np != 0 )
+        {
+            printf("clear server ptrs %p %p %p\n",np->tcp,np->connect,np->udp);
+            np->tcp = 0;
+            np->udp = 0;
+            np->connect = 0;
+        }
         return;
     }
     else if ( nread == 0 )
@@ -877,7 +894,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     }
     millis = ((double)uv_hrtime() / 1000000);
 #ifndef __linux__
-    if ( millis > (lastattempt + 1000) )
+    if ( millis > (lastattempt + 3000) )
     {
         if ( privacyServer == 0 )
             privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer:get_random_privacyServer(whitelist,blacklist);

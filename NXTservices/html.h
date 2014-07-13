@@ -531,6 +531,31 @@ int gen_pNXT_getorderbooks_fields(char *NXTaddr,char *handler,char *name,char **
     return(n);
 }
 
+int gen_pNXT_getmsg_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*secret,*sender;
+    secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
+    sender = construct_varname(fields,n++,name,"sender","sender's NXT address (blank for any):",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"secret\":\"' + %s + '\",\"sender\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,secret,sender);
+    *scriptp = clonestr(script);
+    free(secret); free(sender);
+    return(n);
+}
+
+int gen_pNXT_sendmsg_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*secret,*dest,*msg;
+    secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
+    dest = construct_varname(fields,n++,name,"dest","dest NXT address:",0,0);
+    msg = construct_varname(fields,n++,name,"msg","encrypted message:",60,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"msg\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,secret,dest,msg);
+    *scriptp = clonestr(script);
+    free(secret); free(dest); free(msg);
+    return(n);
+}
+
 int gen_pNXT_orderbook_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
@@ -572,7 +597,13 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     char buf[512];
     forms[n] = make_form(NXTaddr,&scripts[n],"select","select my privacyServer","choose server","127.0.0.1:7777","pNXT",gen_pNXT_select_fields);
     n++;
-   
+    
+    forms[n] = make_form(NXTaddr,&scripts[n],"sendmessage","send encrypted message to NXT address","sendmsg","127.0.0.1:7777","pNXT",gen_pNXT_sendmsg_fields);
+    n++;
+    
+    forms[n] = make_form(NXTaddr,&scripts[n],"checkmessage","check for encrypted messages from NXT address","check","127.0.0.1:7777","pNXT",gen_pNXT_getmsg_fields);
+    n++;
+    
     forms[n] = make_form(NXTaddr,&scripts[n],"getorderbooks","get all orderbooks","get orderbooks","127.0.0.1:7777","pNXT",gen_pNXT_getorderbooks_fields);
     n++;
     

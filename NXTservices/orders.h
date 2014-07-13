@@ -454,9 +454,37 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
 char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
 {
     char buf[1024];
+    int32_t createdflag;
     uint64_t satoshis;
+    struct NXT_acct *np;
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"privatesend %.8f NXT from NXT.%s to NXT.%s",dstr(satoshis),NXTaddr,dest);
+    return(clonestr(buf));
+}
+
+char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr)
+{
+    char buf[1024];
+    int32_t createdflag;
+    struct NXT_acct *np;
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    if ( np->tcp != 0 )
+    {
+        portable_tcpwrite(np->tcp,msg,strlen(msg)+1,1);
+        sprintf(buf,"{\"status\":\"sendmessage.(%s) to %s pending\"}",msg,destNXTaddr);
+    }
+    else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without privacyServer\"}",msg,destNXTaddr);
+    return(clonestr(buf));
+}
+
+char *checkmessage(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
+{
+    char buf[1024];
+    int32_t createdflag;
+    struct NXT_acct *np;
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    sprintf(buf,"{\"error\":\"cant checkmessage from %s without privacyServer\"}",senderNXTaddr);
     return(clonestr(buf));
 }
 
