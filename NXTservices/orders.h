@@ -121,16 +121,11 @@ int32_t append_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx,uint6
 uint64_t *search_jl777_txid(uint64_t txid)
 {
     char txidstr[64];
-    uint64_t hashval;
+    int32_t createdflag;
     struct NXT_str *tp;
-    struct hashtable *hp;
     expand_nxt64bits(txidstr,txid);
-    hashval = MTsearch_hashtable(Global_pNXT->orderbook_txidsp,txidstr);
-    if ( hashval == HASHSEARCH_ERROR )
-        return(0);
-    hp = (*Global_pNXT->orderbook_txidsp);
-    tp = hp->hashtable[hashval % hp->hashsize];
-    if ( tp == 0 )
+    tp = MTadd_hashtable(&createdflag,Global_pNXT->orderbook_txidsp,txidstr);
+    if ( createdflag != 0 )
         return(0);
     return(&tp->modified);
 }

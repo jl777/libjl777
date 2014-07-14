@@ -179,7 +179,7 @@ namespace currency
             txid = calc_txid((unsigned char *)&h,sizeof(h));
             if ( (counterp= search_jl777_txid(txid)) != 0 )
             {
-                if ( (*counterp)++ > 1 )
+                if ( (*counterp)++ > 0 )
                 {
                     tvc.m_verifivation_failed = true;
                     printf("duplicate jl777 tx.%llu counter.%llu\n",(long long)txid,(long long)*counterp);
@@ -193,7 +193,7 @@ namespace currency
                 tvc.m_verifivation_failed = true;
                 return(false);
             }
-            std::cout << "handle_incoming_tx with id=  is_jl777_tx " << &tx << std::endl;
+            std::cout << "handle_incoming_tx with id=  is_jl777_tx " << tx << std::endl;
             tvc.m_verifivation_failed = false;
             tvc.m_added_to_pool = true;
             tvc.m_should_be_relayed = true;
