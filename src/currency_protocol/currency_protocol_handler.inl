@@ -334,7 +334,7 @@ namespace currency
         BOOST_FOREACH(auto& tx_blob, block_entry.txs)
         {
           tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-            printf("from handle response\n");
+          //  printf("from handle response\n");
           m_core.handle_incoming_tx(tx_blob, tvc, true);
           if(tvc.m_verifivation_failed)
           {
