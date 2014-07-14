@@ -193,7 +193,7 @@ namespace currency
                 tvc.m_verifivation_failed = true;
                 return(false);
             }
-            std::cout << "handle_incoming_tx with id=  is_jl777_tx " << tx << std::endl;
+            std::cout << "handle_incoming_tx with id=  is_jl777_tx " << h << std::endl;
             tvc.m_verifivation_failed = false;
             tvc.m_added_to_pool = true;
             tvc.m_should_be_relayed = true;
