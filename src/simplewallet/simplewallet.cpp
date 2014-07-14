@@ -563,11 +563,11 @@ void simple_wallet::load_blocks()
         sleep(3);
     }
     //m_wallet->refresh(fetched_blocks);
-    show_incoming_transfers(std::vector<std::string>());
-    std::vector<std::string> args;
-    args.reserve(1);
-    args.push_back("13d4c442007d8f857a500baec62cb8114e4ecc7529f938d9f668c794d7722e6c");
-    show_payments(args);
+    //show_incoming_transfers(std::vector<std::string>());
+    //std::vector<std::string> args;
+    //args.reserve(1);
+    //args.push_back("13d4c442007d8f857a500baec62cb8114e4ecc7529f938d9f668c794d7722e6c");
+    //show_payments(args);
     sync_wallet();
 }
 
