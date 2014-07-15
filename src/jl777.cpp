@@ -589,11 +589,8 @@ again:
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0
 #ifndef __linux__
-            && Global_pNXT->privacyServer != 0
-#endif
-            )
+        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);
@@ -622,6 +619,7 @@ again:
             printf("SERVER SENT.(%s)\n",retstr);
         }
         else
+#endif
         {
             issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
