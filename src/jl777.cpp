@@ -589,7 +589,11 @@ again:
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0
+#ifndef __linux__
+            && Global_pNXT->privacyServer != 0
+#endif
+            )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);

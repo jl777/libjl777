@@ -1058,7 +1058,7 @@ void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
     hashval = calc_decimalhash(cointxid);
     if ( vout < 0 )
         hashval = ~hashval;
-    else hashval ^= (1 << vout);
+    else hashval ^= (1L << vout);
     expand_nxt64bits(NXTcointxid,hashval);
 }
 
