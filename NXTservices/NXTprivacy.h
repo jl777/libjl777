@@ -388,7 +388,7 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
 
 int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
 {
-    gen_tokenjson(0,intro,user,NXTaddr,time(NULL),0,NXTACCTSECRET);
+    gen_tokenjson(0,intro,0,NXTaddr,time(NULL),0,NXTACCTSECRET);
     return(0);
 }
 
