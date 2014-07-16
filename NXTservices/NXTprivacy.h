@@ -736,7 +736,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     buf->base[nread] = 0;
     if ( np == 0 )
     {
-        np = process_intro(handle,(char *)buf->base,1);
+        np = 0;//process_intro(handle,(char *)buf->base,1);
         printf("process_intro returns np.%p for handle.%p\n",np,handle);
         if ( np != 0 )
         {
