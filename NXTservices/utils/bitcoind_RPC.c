@@ -97,13 +97,14 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
  *
  ************************************************************************/
 
-char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *params)
+char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static int numretries,count,count2;
     static double elapsedsum,elapsedsum2,laststart;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
     CURLcode res;
+    CURL *curl_handle;
     long len;
     double starttime;
     

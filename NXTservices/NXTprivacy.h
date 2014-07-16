@@ -987,7 +987,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     struct NXT_acct *np;
     int32_t activeflag;
     uint64_t nxt64bits;
-    char *jsonstr,**whitelist,**blacklist,intro[1024],secret[256];
+    char *jsonstr,**whitelist,**blacklist,intro[4096],secret[1024];
     whitelist = blacklist = 0;  // eventually get from config JSON
     if ( TCPserver_closed > 0 )
     {
