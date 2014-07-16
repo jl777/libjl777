@@ -386,11 +386,11 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
     return(0);
 }
 
-int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
+/*int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
 {
     gen_tokenjson(0,intro,0,NXTaddr,time(NULL),0,NXTACCTSECRET);
     return(0);
-}
+}*/
 
 struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
@@ -415,9 +415,11 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 if ( sendresponse != 0 )
                 {
                     printf("call set_intro (%s)\n",Server_secret);
-                    if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
-                        printf("error generating intro??\n");
-                    else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+                    //gen_tokenjson(0,retbuf,0,Server_NXTaddr,time(NULL),0,Server_secret);
+                    //if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
+                    //    printf("error generating intro??\n");
+                    //else
+                    portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
@@ -1059,7 +1061,9 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     if ( nxt64bits != 0 )
                     {
                         expand_nxt64bits(NXTADDR,nxt64bits);
-                        if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
+                        gen_tokenjson(0,intro,0,NXTADDR,time(NULL),0,NXTACCTSECRET);
+                        //if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
+                        if ( intro[0] == 0 )
                         {
                             printf("connect_to_privacyServer: invalid intro.(%s), try again\n",intro);
                             memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
