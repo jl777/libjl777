@@ -8,7 +8,7 @@
 #ifndef xcode_orders_h
 #define xcode_orders_h
 
-#include "atomic.h"
+#include "../NXTservices/atomic.h"
 
 #define NXTSYNC_MESSAGE_SIG 0x49865897
 struct NXTsync_message
