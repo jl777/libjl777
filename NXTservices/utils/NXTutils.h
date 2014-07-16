@@ -1243,7 +1243,9 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     argstr = cJSON_Print(json);
     if ( argstr != 0 )
     {
+        printf("got argstr.(%s)\n",argstr);
         stripwhite_ns(argstr,strlen(argstr));
+        printf("stripped\n");
         issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
         token[NXT_TOKEN_LEN] = 0;
         sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
