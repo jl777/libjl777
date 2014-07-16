@@ -1244,17 +1244,22 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     char *str,pubkey[1024];
     cJSON *json;
     json = cJSON_CreateObject();
-    cJSON_AddItemToObject(json,"name",cJSON_CreateString(user));
-    cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+    if ( user != 0 )
+        cJSON_AddItemToObject(json,"name",cJSON_CreateString(user));
+    if ( NXTaddr != 0 )
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(pubkey));
     cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(nonce));
     if ( argjson != 0 )
         cJSON_AddItemToObject(json,"xfer",argjson);
     str = tokenize_json(curl_handle,json,NXTACCTSECRET);
-    strcpy(jsonstr,str);
-    free(str);
-    stripwhite_ns(jsonstr,strlen(jsonstr));
+    if ( str != 0 )
+    {
+        strcpy(jsonstr,str);
+        free(str);
+        stripwhite_ns(jsonstr,strlen(jsonstr));
+    } else jsonstr[0] = 0;
     return((int)strlen(jsonstr));
 }
 
