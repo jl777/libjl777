@@ -1253,15 +1253,15 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     printf("1\n");
     if ( NXTaddr != 0 )
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-    printf("2\n");
+    printf("2 (%s)\n",cJSON_Print(json));
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-    printf("3\n");
+    printf("3 (%s)\n",pubkey);
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(pubkey));
-    printf("4\n");
+    printf("4 (%s)\n",cJSON_Print(json));
     cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(nonce));
     if ( argjson != 0 )
         cJSON_AddItemToObject(json,"xfer",argjson);
-    printf("gen_tokenjson.(%s) pubkey.(%s) (%s) (%s)\n",NXTaddr,pubkey,cJSON_Print(json),NXTACCTSECRET);
+    printf("gen_tokenjson.(%s) pubkey.(%s) (%s)\n",NXTaddr,pubkey,NXTACCTSECRET);
     str = tokenize_json(curl_handle,json,NXTACCTSECRET);
     if ( str != 0 )
     {
