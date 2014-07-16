@@ -727,7 +727,14 @@ int main(int argc, char **argv)
 	int daemonize = 0;
 #endif
     printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,argc>1?argv[1]:"");
-    init_NXTservices(argc,argv);
+    if ( argc == 1 )
+    {
+        char *_argv[3];
+        _argv[0] = "pNXTd"; _argv[1] = argv[0]; _argv[2] = 0;
+        argc = 2;
+        init_NXTservices(argc,_argv);
+    }
+    else init_NXTservices(argc,argv);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
