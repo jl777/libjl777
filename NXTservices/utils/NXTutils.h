@@ -1229,6 +1229,7 @@ char *tokenize_json(CURL *curl_handle,cJSON *argjson,char *NXTACCTSECRET)
     stripwhite_ns(str,strlen(str));
     issue_generateToken(curl_handle,token,str,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
+    printf("got token.(%s)\n",token);
     free(str);
     free_json(argjson);
     argjson = cJSON_CreateObject();

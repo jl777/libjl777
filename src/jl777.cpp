@@ -182,7 +182,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
             NXTACCTSECRET = "password";
         gp->wallet = pNXT_get_wallet("wallet.bin",NXTACCTSECRET);
     }
-    printf("got gp->wallet.%p\n",gp->wallet);
+    printf("got gp->wallet.%p (%s)\n",gp->wallet,NXTACCTSECRET);
     if ( gp->wallet != 0 )
     {
         strcpy(gp->walletaddr,"no pNXT address");
@@ -605,7 +605,7 @@ again:
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[2048],NXTaddr[64],buf[128],*str;
+        char _tokbuf[4096],NXTaddr[64],buf[1024],*str;
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
