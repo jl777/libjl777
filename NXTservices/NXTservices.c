@@ -35,7 +35,7 @@ int32_t validate_nxtaddr(char *nxtaddr)
 
 void *register_NXT_handler(char *name,struct NXThandler_info *mp,int32_t type,int32_t subtype,NXT_handler handler,uint32_t AMsigfilter,int32_t priority,char **assetlist,char **whitelist)
 {
-    struct NXT_protocol_parms PARMS;
+    static struct NXT_protocol_parms PARMS;
     struct NXT_protocol *p;
     printf("register %ld\n",sizeof(*p));
     p = calloc(1,sizeof(*p));
@@ -50,7 +50,7 @@ void *register_NXT_handler(char *name,struct NXThandler_info *mp,int32_t type,in
     PARMS.mode = NXTPROTOCOL_INIT;
     if ( Num_NXThandlers < (int32_t)(sizeof(NXThandlers)/sizeof(*NXThandlers)) )
     {
-        printf("calling handlerinit.%s size.%d\n",name,Num_NXThandlers);
+        printf("calling handlerinit.%s %p size.%d\n",name,handler,Num_NXThandlers);
         p->handlerdata = (*handler)(mp,&PARMS,0,0);
         NXThandlers[Num_NXThandlers++] = p;
         printf("back handlerinit.%s size.%d\n",name,Num_NXThandlers);

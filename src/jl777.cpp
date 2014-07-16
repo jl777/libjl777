@@ -720,6 +720,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
                 printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
             }
             gp = Global_pNXT;
+            printf("return gp.%p\n",gp);
         }
         return(gp);
     }
