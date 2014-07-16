@@ -1221,7 +1221,7 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
 
 int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long nonce,cJSON *argjson,char *NXTACCTSECRET)
 {
-    char *str,*argstr,pubkey[1024],token[1024],buf[4096];
+    char *argstr,pubkey[1024],token[1024];
     cJSON *json;
     printf("gen_tokenjson.(%s) argjson.%p jsonstr.%p user.%p\n",NXTaddr,argjson,jsonstr,user);
     json = cJSON_CreateObject();
@@ -1247,6 +1247,7 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
         issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
         token[NXT_TOKEN_LEN] = 0;
         sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
+        printf("tokenized.(%s)\n",jsonstr);
         free(argstr);
     }
     return((int)strlen(jsonstr));
