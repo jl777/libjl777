@@ -37,12 +37,14 @@ void *register_NXT_handler(char *name,struct NXThandler_info *mp,int32_t type,in
 {
     struct NXT_protocol_parms PARMS;
     struct NXT_protocol *p = calloc(1,sizeof(*p));
+    printf("register p %p\n",p);
     safecopy(p->name,name,sizeof(p->name));
     p->type = type; p->subtype = subtype;
     p->AMsigfilter = AMsigfilter;
     p->priority = priority;
     p->assetlist = assetlist; p->whitelist = whitelist;
     p->NXT_handler = handler;
+    printf("register %p\n",p);
     memset(&PARMS,0,sizeof(PARMS));
     PARMS.mode = NXTPROTOCOL_INIT;
     if ( Num_NXThandlers < (int32_t)(sizeof(NXThandlers)/sizeof(*NXThandlers)) )
@@ -52,6 +54,7 @@ void *register_NXT_handler(char *name,struct NXThandler_info *mp,int32_t type,in
         NXThandlers[Num_NXThandlers++] = p;
         printf("back handlerinit.%s size.%d\n",name,Num_NXThandlers);
     }
+    printf("done register.%p\n",p);
     return(p->handlerdata);
 }
 

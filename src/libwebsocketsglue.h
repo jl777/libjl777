@@ -113,9 +113,9 @@ void init_NXTservices(int _argc,char **_argv)
             printf("ERROR hist process_hashtablequeues\n");
         if ( portable_thread_create(getNXTblocks,mp) == 0 )
             printf("ERROR start_Histloop\n");
-        //if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
-        //    printf("ERROR init_NXTprivacy\n");
-        //gen_testforms(_argc>1 ? _argv[1] : 0);
+        if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
+            printf("ERROR init_NXTprivacy\n");
+        gen_testforms(_argc>1 ? _argv[1] : 0);
 
         printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
         void run_NXTservices(void *arg);
