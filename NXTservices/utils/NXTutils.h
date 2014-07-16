@@ -1240,7 +1240,7 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
         cJSON_AddItemToObject(json,"xfer",argjson);
     printf("gen_tokenjson.(%s) pubkey.(%s) (%s) json.%p argjson.%p\n",NXTaddr,pubkey,NXTACCTSECRET,json,argjson);
     jsonstr[0] = 0;
-    argstr = cJSON_Print(json);
+    argstr = 0;//cJSON_Print(json);
     if ( argstr != 0 )
     {
         printf("got argstr.(%s)\n",argstr);
