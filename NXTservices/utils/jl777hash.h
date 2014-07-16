@@ -43,8 +43,8 @@ void queue_enqueue(queue_t *queue,void *value)
         queue->capacity++;
         queue->buffer = realloc(queue->buffer,sizeof(*queue->buffer) * queue->capacity);
         queue->buffer[queue->size] = 0;
-        if ( queue->in == 0 )
-            queue->in = queue->size;
+        //if ( queue->in == 0 )
+        //    queue->in = queue->size;
         //printf("increase Q size.%d capacity.%d\n",queue->size,queue->capacity);
 		//pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
     }
