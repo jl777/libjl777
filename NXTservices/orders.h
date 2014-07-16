@@ -8,6 +8,8 @@
 #ifndef xcode_orders_h
 #define xcode_orders_h
 
+#include "../NXTservices/atomic.h"
+
 #define NXTSYNC_MESSAGE_SIG 0x49865897
 struct NXTsync_message
 {
@@ -18,7 +20,6 @@ struct NXTsync_message
 };
 
 #define ORDERBOOK_SIG 0x83746783
-#define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
 struct quote
 {
@@ -509,6 +510,57 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     str = cJSON_Print(json);
     free_json(json);
     return(str);
+}
+
+char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
+{
+    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],refhash[65],encoded[NXT_TOKEN_LEN+1],_tokbuf[4096];
+    struct NXT_tx T,*tx;
+    long i,n;
+    uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB;
+    if ( NXTaddr[0] == 0 )
+    {
+        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        printf("makeoffer.(%s)\n",NXTaddr);
+    }
+    nxt64bits = calc_nxt64bits(NXTaddr);
+    other64bits = calc_nxt64bits(otherNXTaddr);
+    assetoshisA = calc_assetoshis(assetA,qtyA);
+    assetoshisB = calc_assetoshis(assetB,qtyB);
+    if ( assetoshisA == 0 || assetoshisB == 0 || assetA == assetB )
+    {
+        sprintf(buf,"{\"error\":\"%s\",\"descr\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"","illegal parameter",(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
+        return(clonestr(buf));
+    }
+    set_NXTtx(nxt64bits,&T,assetA,qtyA,other64bits);
+    sprintf(T.comment,"{\"assetB\":\"%llu\",\"qtyB\":\"%llu\"}",(long long)assetB,(long long)assetoshisB);
+    tx = sign_NXT_tx(utxbytes,signedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
+    if ( tx != 0 )
+    {
+        init_hexbytes(sighash,tx->sighash,sizeof(tx->sighash));
+        init_hexbytes(refhash,tx->refhash,sizeof(tx->refhash));
+        sprintf(buf,"{\"utx\":\"%s\",\"sig\":\"%s\",\"ref\":\"%s\"}",utxbytes,sighash,refhash);
+        free(tx);
+        if ( 0 )
+        {
+            n = strlen(utxbytes);
+            for (i=n; i<n+128; i++)
+                utxbytes[i] = '0';
+            utxbytes[i] = 0;
+            char *tmp = issue_parseTransaction(0,utxbytes);
+            printf("(%s)\n",tmp);
+            free(tmp);
+        }
+        stripwhite_ns(buf,strlen(buf));
+        issue_generateToken(0,encoded,buf,NXTACCTSECRET);
+        encoded[NXT_TOKEN_LEN] = 0;
+        sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
+        printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
+        return(sendmessage(NXTaddr,NXTACCTSECRET,_tokbuf,otherNXTaddr,buf));
+    }
+    else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
+    return(clonestr(buf));
 }
 
 uint64_t is_NXTsync_message(unsigned char *tx,int32_t size)

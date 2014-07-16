@@ -2,7 +2,7 @@
 //  globs.h
 //  xcode
 //
-//  Created by jimbo laptop on 7/8/14.
+//  Created by jl777 on 7/8/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 
