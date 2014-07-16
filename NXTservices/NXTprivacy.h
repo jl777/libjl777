@@ -2,8 +2,8 @@
 //  NXTprivacy.h
 //  gateway
 //
-//  Created by jimbo laptop on 7/4/14.
-//  Copyright (c) 2014 jimbo laptop. All rights reserved.
+//  Created by jl777 on 7/4/14.
+//  Copyright (c) 2014 jl777. All rights reserved.
 //
 
 #ifndef gateway_NXTprivacy_h

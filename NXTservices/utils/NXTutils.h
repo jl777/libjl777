@@ -520,6 +520,38 @@ char *issue_getAsset(CURL *curl_handle,char *assetidstr)
     //printf("calculated.(%s)\n",ret.str);
 }
 
+uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
+{
+    cJSON *json;
+    int32_t i,decimals,errcode;
+    uint64_t mult,assetoshis = 0;
+    char assetidstr[64],*jsonstr;
+    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+        return(amount * SATOSHIDEN);
+    expand_nxt64bits(assetidstr,assetidbits);
+    jsonstr = issue_getAsset(0,assetidstr);
+    if ( jsonstr != 0 )
+    {
+       // printf("Assetjson.(%s)\n",jsonstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            errcode = (int32_t)get_cJSON_int(json,"errorCode");
+            if ( errcode == 0 )
+            {
+                decimals = (int32_t)get_cJSON_int(json,"decimals");
+                mult = 1;
+                for (i=7-decimals; i>=0; i--)
+                    mult *= 10;
+                assetoshis = (amount * SATOSHIDEN) / mult;
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    //printf("assetoshis.%llu\n",(long long)assetoshis);
+    return(assetoshis);
+}
+
 char *issue_calculateFullHash(CURL *curl_handle,char *unsignedtxbytes,char *sighash)
 {
     char cmd[4096],buf[512];

@@ -2,7 +2,7 @@
 //  jl777.cpp
 //  glue code for pNXT
 //
-//  Created by jimbo laptop on 7/6/14.
+//  Created by jl777 on 7/6/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 
@@ -612,12 +612,13 @@ again:
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
 //#ifndef __linux__
-        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);
             cJSON_DeleteItemFromObject(*argjsonp,"secret");
             cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
+            //printf("replace NXT.(%s)\n",NXTaddr);
             if ( parmstxt != 0 )
                 free(parmstxt);
             parmstxt = cJSON_Print(*argjsonp);
