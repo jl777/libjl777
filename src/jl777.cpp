@@ -747,7 +747,7 @@ void _init_lws(void *arg)
 void _init_lws2(void *arg)
 {
     char *argv[2];
-    argv[0] = "arg";
+    argv[0] = arg;
     argv[1] = 0;
     printf("call lwsmain\n");
     lwsmain(1,argv);
