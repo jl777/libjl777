@@ -726,7 +726,7 @@ int main(int argc, char **argv)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-    printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,argc>1?argv[1]:"");
+    printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,argc>0?argv[0]:"");
     if ( argc == 1 )
     {
         char *_argv[3];
