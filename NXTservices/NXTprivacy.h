@@ -414,7 +414,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
                 if ( sendresponse != 0 )
                 {
-                    printf("call set_intro\n");
+                    printf("call set_intro (%s)\n",Server_secret);
                     if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
                         printf("error generating intro??\n");
                     else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
