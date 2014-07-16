@@ -709,6 +709,7 @@ int lwsmain(int argc, char **argv)
 int main(int argc, char **argv)
 #endif
 {
+    static char *_argv[3];
 	char cert_path[1024];
 	char key_path[1024];
 	int n = 0;
@@ -729,12 +730,11 @@ int main(int argc, char **argv)
     printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,argc>0?argv[0]:"");
     if ( argc == 1 )
     {
-        char *_argv[3];
         _argv[0] = "pNXTd"; _argv[1] = argv[0]; _argv[2] = 0;
         argc = 2;
-        init_NXTservices(argc,_argv);
+        argv = _argv;
     }
-    else init_NXTservices(argc,argv);
+    init_NXTservices(argc,argv);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
