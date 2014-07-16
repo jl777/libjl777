@@ -2,8 +2,8 @@
 //  NXTprivacy.h
 //  gateway
 //
-//  Created by jl777 on 7/4/14.
-//  Copyright (c) 2014 jl777. All rights reserved.
+//  Created by jimbo laptop on 7/4/14.
+//  Copyright (c) 2014 jimbo laptop. All rights reserved.
 //
 
 #ifndef gateway_NXTprivacy_h
@@ -386,21 +386,21 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
     return(0);
 }
 
-/*int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
+int set_intro(char *intro,int size,char *user,char *group,char *NXTaddr,char *NXTACCTSECRET)
 {
-    gen_tokenjson(0,intro,0,NXTaddr,time(NULL),0,NXTACCTSECRET);
+    gen_tokenjson(0,intro,user,NXTaddr,time(NULL),0,NXTACCTSECRET);
     return(0);
-}*/
+}
 
 struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
-    char retbuf[4096],pubkey[1024],NXTaddr[1024],name[1024];
-    cJSON *argjson = 0;
+    char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
+    cJSON *argjson;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
-    if ( sendresponse == 0 && (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
+    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
     {
         if ( argjson != 0 )
             free_json(argjson);
@@ -414,13 +414,9 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
                 if ( sendresponse != 0 )
                 {
-                    printf("call set_intro (%s)\n",Server_secret);
-                    gen_tokenjson(0,retbuf,0,Server_NXTaddr,time(NULL),0,Server_secret);
-                    if ( retbuf[0] == 0 )
-                        printf("error generating intro??\n");
-                    else
-                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
-                    printf("after tcpwrite to %p (%s)\n",handle,retbuf);
+                    if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
+                        printf("error generaing intro??\n");
+                    else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
                 }
             } else np = 0;
         }
@@ -732,18 +728,13 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         free(buf->base);
         return;
     }
-    printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
+    printf("got %ld bytes (%s)\n",nread,buf->base);
     buf->base[nread] = 0;
     if ( np == 0 )
     {
-        np = 0;//process_intro(handle,(char *)buf->base,1);
-        printf("process_intro returns np.%p for handle.%p\n",np,handle);
-        if ( np != 0 )
-        {
-            handle->data = np;
-            np->connect = handle;
-        }
-        printf("after process_intro returns np.%p for handle.%p\n",np,handle);
+        np = process_intro(handle,(char *)buf->base,1);
+        handle->data = np;
+        np->connect = handle;
     }
     else
     {
@@ -759,10 +750,6 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             free_json(argjson);
         }
     }
-    printf("free base\n");
-    if ( buf->base != 0 )
-        free(buf->base);
-    printf("after free\n");
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
@@ -785,8 +772,8 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     //printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
     if ( nread < 0 ) // Error or EOF
     {
-        printf("Lost contact with Server! np.%p nread.%ld\n",np,nread);
-        //ASSERT(nread == UV_EOF);
+        printf("Lost contact with Server! np.%p\n",np);
+        ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
             free(buf->base);
         if ( udp != 0 )
@@ -995,7 +982,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     struct NXT_acct *np;
     int32_t activeflag;
     uint64_t nxt64bits;
-    char *jsonstr,**whitelist,**blacklist,intro[4096],secret[1024];
+    char *jsonstr,**whitelist,**blacklist,intro[1024],secret[256];
     whitelist = blacklist = 0;  // eventually get from config JSON
     if ( TCPserver_closed > 0 )
     {
@@ -1010,7 +997,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-//#ifndef __linux__
+#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
@@ -1064,9 +1051,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     if ( nxt64bits != 0 )
                     {
                         expand_nxt64bits(NXTADDR,nxt64bits);
-                        gen_tokenjson(0,intro,0,NXTADDR,time(NULL),0,NXTACCTSECRET);
-                        //if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
-                        if ( intro[0] == 0 )
+                        if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
                         {
                             printf("connect_to_privacyServer: invalid intro.(%s), try again\n",intro);
                             memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
@@ -1092,7 +1077,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-//#endif
+#endif
     if ( tcp != 0 && (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }

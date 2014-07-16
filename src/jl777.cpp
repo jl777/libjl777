@@ -2,7 +2,7 @@
 //  jl777.cpp
 //  glue code for pNXT
 //
-//  Created by jl777 on 7/6/14.
+//  Created by jimbo laptop on 7/6/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 
@@ -182,7 +182,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
             NXTACCTSECRET = "password";
         gp->wallet = pNXT_get_wallet("wallet.bin",NXTACCTSECRET);
     }
-    printf("got gp->wallet.%p (%s)\n",gp->wallet,NXTACCTSECRET);
+    printf("got gp->wallet.%p\n",gp->wallet);
     if ( gp->wallet != 0 )
     {
         strcpy(gp->walletaddr,"no pNXT address");
@@ -435,27 +435,6 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    uint64_t assetA,assetB;
-    double qtyA,qtyB;
-    int32_t type;
-    char NXTaddr[64],NXTACCTSECRET[512],otherNXTaddr[256],*retstr = 0;
-    copy_cJSON(NXTaddr,objs[0]);
-    copy_cJSON(NXTACCTSECRET,objs[1]);
-    copy_cJSON(otherNXTaddr,objs[2]);
-    assetA = get_API_nxt64bits(objs[3]);
-    qtyA = get_API_float(objs[4]);
-    assetB = get_API_nxt64bits(objs[5]);
-    qtyB = get_API_float(objs[6]);
-    type = get_API_int(objs[7],0);
-
-    if ( sender[0] != 0 && valid != 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
-        retstr = makeoffer(NXTaddr,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
-    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
-    return(retstr);
-}
-
 /*
 
 forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
@@ -476,8 +455,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
-    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char **commands[] = { checkmsg, placebid, placeask, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -605,20 +583,18 @@ again:
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[4096],NXTaddr[64],buf[1024],*str;
+        char _tokbuf[2048],NXTaddr[64],buf[128],*str;
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-//#ifndef __linux__
-        if ( strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
             expand_nxt64bits(NXTaddr,nxt64bits);
             cJSON_DeleteItemFromObject(*argjsonp,"secret");
             cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
-            //printf("replace NXT.(%s)\n",NXTaddr);
             if ( parmstxt != 0 )
                 free(parmstxt);
             parmstxt = cJSON_Print(*argjsonp);
@@ -642,7 +618,6 @@ again:
             printf("SERVER SENT.(%s)\n",retstr);
         }
         else
-//#endif
         {
             issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
@@ -720,7 +695,6 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
                 printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
             }
             gp = Global_pNXT;
-            printf("return gp.%p\n",gp);
         }
         return(gp);
     }
@@ -748,7 +722,7 @@ void _init_lws(void *arg)
 void _init_lws2(void *arg)
 {
     char *argv[2];
-    argv[0] = arg;
+    argv[0] = "from_init_lws";
     argv[1] = 0;
     printf("call lwsmain\n");
     lwsmain(1,argv);
@@ -759,7 +733,7 @@ void init_lws(void *core,void *p2p,void *rpc_server,void *upnp,char *secret)
     static void *ptrs[5];
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp; ptrs[4] = (void *)secret;
     printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
-    if ( portable_thread_create(_init_lws2,secret) == 0 )
+    if ( portable_thread_create(_init_lws2,ptrs) == 0 )
         printf("ERROR launching _init_lws2\n");
     printf("done init_lws2()\n");
     if ( portable_thread_create(_init_lws,ptrs) == 0 )

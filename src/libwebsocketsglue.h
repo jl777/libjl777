@@ -55,11 +55,9 @@ void run_NXTservices(void *arg)
 {
     void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
     struct NXThandler_info *mp = arg;
-    printf("inside run_NXTservices %p\n",mp);
     register_NXT_handler("pNXT",mp,2,NXTPROTOCOL_ILLEGALTYPE,pNXT_handler,pNXT_SIG,1,0,0);
-    printf("NXTloop\n");
     NXTloop(mp);
-    printf("NXTloop done\n");
+    printf("start_NXTloops done\n");
     while ( 1 ) sleep(60);
 }
 
@@ -117,7 +115,7 @@ void init_NXTservices(int _argc,char **_argv)
             printf("ERROR init_NXTprivacy\n");
         gen_testforms(_argc>1 ? _argv[1] : 0);
 
-        printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
+        printf("run_NXTservices >>>>>>>>>>>>>>> %s: %s %s\n",mp->dispname,PC_USERNAME,mp->ipaddr);
         void run_NXTservices(void *arg);
         if ( portable_thread_create(run_NXTservices,mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
