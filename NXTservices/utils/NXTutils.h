@@ -1219,34 +1219,9 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
     return(retcode);
 }
 
-char *tokenize_json(CURL *curl_handle,char *jsonstr,char *NXTACCTSECRET)
-{
-    char *str,token[4096];
-    cJSON *array,*tokenobj;
-    //printf("SECRET.(%s)\n",Global_mp->NXTACCTSECRET);
-    stripwhite_ns(jsonstr,strlen(jsonstr));
- 
-    issue_generateToken(curl_handle,token,jsonstr,NXTACCTSECRET);
-    token[NXT_TOKEN_LEN] = 0;
-    printf("got token.(%s) len.%ld\n",token,strlen(token));
-    tokenobj = cJSON_CreateObject();
-    cJSON_AddItemToObject(tokenobj,"token",cJSON_CreateString(token));
-
-    array = cJSON_CreateArray();
-    cJSON_AddItemToArray(array,cJSON_CreateString(jsonstr));
-    cJSON_AddItemToArray(array,tokenobj);
-    
-    str = cJSON_Print(array);
-    replace_backslashquotes(str);
-    printf("newstr.(%s)\n",str);
-    stripwhite_ns(str,strlen(str));
-    free_json(array);
-    return(str);
-}
-
 int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long nonce,cJSON *argjson,char *NXTACCTSECRET)
 {
-    char *str,*argstr,pubkey[1024];
+    char *str,*argstr,pubkey[1024],token[1024],buf[4096];
     cJSON *json;
     printf("gen_tokenjson.(%s) argjson.%p jsonstr.%p user.%p\n",NXTaddr,argjson,jsonstr,user);
     json = cJSON_CreateObject();
@@ -1268,13 +1243,10 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     argstr = cJSON_Print(json);
     if ( argstr != 0 )
     {
-        str = tokenize_json(curl_handle,argstr,NXTACCTSECRET);
-        if ( str != 0 )
-        {
-            strcpy(jsonstr,str);
-            stripwhite_ns(jsonstr,strlen(jsonstr));
-            free(str);
-        }
+        stripwhite_ns(argstr,strlen(argstr));
+        issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
+        token[NXT_TOKEN_LEN] = 0;
+        sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
         free(argstr);
     }
     return((int)strlen(jsonstr));
