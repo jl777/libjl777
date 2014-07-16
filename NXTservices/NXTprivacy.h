@@ -396,8 +396,13 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
+<<<<<<< HEAD
     char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
     cJSON *argjson;
+=======
+    char retbuf[4096],pubkey[128],NXTaddr[64],name[128];
+    cJSON *argjson = 0;
+>>>>>>> parent of c89d1b2... ?
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
     if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
@@ -414,9 +419,22 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
                 if ( sendresponse != 0 )
                 {
+<<<<<<< HEAD
                     if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
                         printf("error generaing intro??\n");
                     else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+=======
+                    printf("call set_intro (%s)\n",Server_secret);
+                    gen_tokenjson(0,retbuf,0,Server_NXTaddr,time(NULL),0,Server_secret);
+                    //if ( set_intro(retbuf,sizeof(retbuf),Global_mp->dispname,Global_mp->groupname,Server_NXTaddr,Server_secret) < 0 )
+                    //    printf("error generating intro??\n");
+                    //else
+                    if ( retbuf[0] == 0 )
+                        printf("error generating intro??\n");
+                    else
+                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+                    printf("after tcpwrite to %p (%s)\n",handle,retbuf);
+>>>>>>> parent of c89d1b2... ?
                 }
             } else np = 0;
         }
@@ -732,9 +750,19 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     buf->base[nread] = 0;
     if ( np == 0 )
     {
+<<<<<<< HEAD
         np = process_intro(handle,(char *)buf->base,1);
         handle->data = np;
         np->connect = handle;
+=======
+        np = process_intro(handle,(char *)buf->base,0);
+        printf("process_intro returns np.%p for handle.%p\n",np,handle);
+        if ( np != 0 )
+        {
+            handle->data = np;
+            np->connect = handle;
+        }
+>>>>>>> parent of c89d1b2... ?
     }
     else
     {
@@ -750,6 +778,11 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             free_json(argjson);
         }
     }
+<<<<<<< HEAD
+=======
+    if ( buf->base != 0 )
+        free(buf->base);
+>>>>>>> parent of c89d1b2... ?
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
