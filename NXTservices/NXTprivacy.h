@@ -396,7 +396,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
-    char retbuf[1024],pubkey[128],NXTaddr[64],name[128];
+    char retbuf[4096],pubkey[128],NXTaddr[64],name[128];
     cJSON *argjson;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
