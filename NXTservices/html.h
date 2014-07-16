@@ -573,16 +573,17 @@ int gen_pNXT_orderbook_fields(char *NXTaddr,char *handler,char *name,char **fiel
 int gen_pNXT_makeoffer_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*secret,*qtyA,*qtyB,*assetA,*assetB,*type;
+    char script[16384],*secret,*qtyA,*qtyB,*assetA,*assetB,*type,*other;
     secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
+    other = construct_varname(fields,n++,name,"other","other party's NXT address:",0,0);
     assetA = construct_varname(fields,n++,name,"assetA","assetA:",0,0);
     qtyA = construct_varname(fields,n++,name,"qtyA","qtyA:",0,0);
     assetB = construct_varname(fields,n++,name,"assetB","assetB:",0,0);
     qtyB = construct_varname(fields,n++,name,"qtyB","qtyB:",0,0);
     type = construct_varname(fields,n++,name,"type","type:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"secret\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"qtyA\":\"' + %s + '\",\"assetB\":\"' + %s + '\",\"qtyB\":\"' + %s + '\"\"type\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,secret,assetA,qtyA,assetB,qtyB,type);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"NXT\":\"%s\",\"secret\":\"' + %s + '\",\"other\":\"' + %s + '\",\"assetA\":\"' + %s + '\",\"qtyA\":\"' + %s + '\",\"assetB\":\"' + %s + '\",\"qtyB\":\"' + %s + '\",\"type\":\"' + %s + '\"}';\n}\n",name,handler,name,NXTaddr,secret,other,assetA,qtyA,assetB,qtyB,type);
     *scriptp = clonestr(script);
-    free(secret); free(assetA); free(qtyA); free(assetB); free(qtyB); free(type);
+    free(secret); free(other), free(assetA); free(qtyA); free(assetB); free(qtyB); free(type);
     return(n);
 }
 

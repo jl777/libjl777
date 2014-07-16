@@ -511,6 +511,15 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     return(str);
 }
 
+char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
+{
+    char buf[1024];
+    qtyA *= SATOSHIDEN;
+    qtyB *= SATOSHIDEN;
+    sprintf(buf,"NXT.%s makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\n",NXTaddr,otherNXTaddr,dstr(qtyA),(long long)assetA,dstr(qtyB),(long long)assetB,type);
+    return(clonestr(buf));
+}
+
 uint64_t is_NXTsync_message(unsigned char *tx,int32_t size)
 {
     struct NXTsync_message *nsm = (struct NXTsync_message *)tx;

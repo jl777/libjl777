@@ -435,6 +435,27 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
+char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t assetA,assetB;
+    double qtyA,qtyB;
+    int32_t type;
+    char NXTaddr[64],NXTACCTSECRET[512],otherNXTaddr[256],*retstr = 0;
+    copy_cJSON(NXTaddr,objs[0]);
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(otherNXTaddr,objs[2]);
+    assetA = get_API_nxt64bits(objs[3]);
+    qtyA = get_API_float(objs[4]);
+    assetB = get_API_nxt64bits(objs[5]);
+    qtyB = get_API_float(objs[6]);
+    type = get_API_int(objs[7],0);
+
+    if ( sender[0] != 0 && valid != 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
+        retstr = makeoffer(NXTaddr,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
+
 /*
 
 forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
@@ -455,7 +476,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
-    static char **commands[] = { checkmsg, placebid, placeask, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
+    static char **commands[] = { checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -589,7 +611,7 @@ again:
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
-#ifndef __linux__
+//#ifndef __linux__
         if ( strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
@@ -619,7 +641,7 @@ again:
             printf("SERVER SENT.(%s)\n",retstr);
         }
         else
-#endif
+//#endif
         {
             issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
