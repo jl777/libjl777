@@ -1147,7 +1147,10 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
     }
     array = cJSON_Parse(tokenizedtxt);
     if ( array == 0 )
+    {
+        printf("couldnt validate.(%s)\n",tokenizedtxt);
         return(-2);
+    }
     if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
     {
         firstitem = cJSON_GetArrayItem(array,0);

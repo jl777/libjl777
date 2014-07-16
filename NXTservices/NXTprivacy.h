@@ -736,8 +736,11 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     {
         np = process_intro(handle,(char *)buf->base,1);
         printf("process_intro returns np.%p for handle.%p\n",np,handle);
-        handle->data = np;
-        np->connect = handle;
+        if ( np != 0 )
+        {
+            handle->data = np;
+            np->connect = handle;
+        }
     }
     else
     {
@@ -1002,7 +1005,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-#ifndef __linux__
+//#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
@@ -1082,7 +1085,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-#endif
+//#endif
     if ( tcp != 0 && (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
