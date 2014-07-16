@@ -36,8 +36,9 @@ int32_t validate_nxtaddr(char *nxtaddr)
 void *register_NXT_handler(char *name,struct NXThandler_info *mp,int32_t type,int32_t subtype,NXT_handler handler,uint32_t AMsigfilter,int32_t priority,char **assetlist,char **whitelist)
 {
     struct NXT_protocol_parms PARMS;
-    struct NXT_protocol *p = calloc(1,sizeof(*p));
-    printf("register p %p\n",p);
+    struct NXT_protocol *p;
+    printf("register %ld\n",sizeof(*p));
+    p = calloc(1,sizeof(*p));
     safecopy(p->name,name,sizeof(p->name));
     p->type = type; p->subtype = subtype;
     p->AMsigfilter = AMsigfilter;
