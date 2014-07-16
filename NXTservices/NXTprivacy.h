@@ -728,11 +728,12 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
         free(buf->base);
         return;
     }
-    printf("got %ld bytes (%s)\n",nread,buf->base);
+    printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
     buf->base[nread] = 0;
     if ( np == 0 )
     {
         np = process_intro(handle,(char *)buf->base,1);
+        printf("process_intro returns np.%p for handle.%p\n",np,handle);
         handle->data = np;
         np->connect = handle;
     }
@@ -750,6 +751,8 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             free_json(argjson);
         }
     }
+    if ( buf->base != 0 )
+        free(buf->base);
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
@@ -772,8 +775,8 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     //printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
     if ( nread < 0 ) // Error or EOF
     {
-        printf("Lost contact with Server! np.%p\n",np);
-        ASSERT(nread == UV_EOF);
+        printf("Lost contact with Server! np.%p nread.%ld\n",np,nread);
+        //ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
             free(buf->base);
         if ( udp != 0 )
