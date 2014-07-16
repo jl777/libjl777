@@ -747,7 +747,7 @@ void _init_lws(void *arg)
 void _init_lws2(void *arg)
 {
     char *argv[2];
-    argv[0] = "from_init_lws";
+    argv[0] = "arg";
     argv[1] = 0;
     printf("call lwsmain\n");
     lwsmain(1,argv);
@@ -758,7 +758,7 @@ void init_lws(void *core,void *p2p,void *rpc_server,void *upnp,char *secret)
     static void *ptrs[5];
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp; ptrs[4] = (void *)secret;
     printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
-    if ( portable_thread_create(_init_lws2,ptrs) == 0 )
+    if ( portable_thread_create(_init_lws2,secret) == 0 )
         printf("ERROR launching _init_lws2\n");
     printf("done init_lws2()\n");
     if ( portable_thread_create(_init_lws,ptrs) == 0 )

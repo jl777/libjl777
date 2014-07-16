@@ -56,8 +56,9 @@ void run_NXTservices(void *arg)
     void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
     struct NXThandler_info *mp = arg;
     register_NXT_handler("pNXT",mp,2,NXTPROTOCOL_ILLEGALTYPE,pNXT_handler,pNXT_SIG,1,0,0);
+    printf("NXTloop\n");
     NXTloop(mp);
-    printf("start_NXTloops done\n");
+    printf("NXTloop done\n");
     while ( 1 ) sleep(60);
 }
 
