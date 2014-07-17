@@ -580,13 +580,13 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
                         memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
                     }
-                    //queue_enqueue(&ALL_messages,clonestr(parmstxt));
+                    queue_enqueue(&ALL_messages,clonestr(parmstxt));
                     printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
                     msgjson = cJSON_GetObjectItem(argjson,"msg");
                     copy_cJSON(message,msgjson);
                     if ( message[0] != 0 )
                     {
-                        //queue_enqueue(&np->incoming,clonestr(message));
+                        queue_enqueue(&np->incoming,clonestr(message));
                         printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
                     }
                 }
@@ -734,7 +734,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     }
     printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
     buf->base[nread] = 0;
-    if ( np == 0 )
+    if ( 0 && np == 0 )
     {
         np = process_intro(handle,(char *)buf->base,1);
         printf("process_intro returns np.%p for handle.%p\n",np,handle);
@@ -1010,7 +1010,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-#ifndef __linux__
+//#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
@@ -1092,7 +1092,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-#endif
+//#endif
     if ( tcp != 0 && (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
@@ -1104,7 +1104,6 @@ void init_NXTprivacy(void *ptr)
     uv_udp_t *udp,**udpptr;
     if ( (Server_secret= ptr) == 0 )
         Server_secret = "password";
-    //queue_enqueue(&ALL_messages,clonestr("testmessage"));
     nxt64bits = issue_getAccountId(0,Server_secret);
     Server_NXTaddr = calloc(1,64);
     expand_nxt64bits(Server_NXTaddr,nxt64bits);
