@@ -1108,9 +1108,9 @@ void NXTprivacy_idler(uv_idle_t *handle)
     if ( (ptrs= queue_dequeue(&IntroQ)) != 0 )
     {
         h = ptrs[0];
-        np = process_intro(h,(char *)ptrs[1],1);
+        np = process_intro(h,(char *)ptrs[1],0);
         printf("process_intro returns np.%p for handle.%p\n",np,h);
-        if ( np != 0 )
+        if ( 0 && np != 0 )
         {
             handle->data = np;
             np->connect = h;
