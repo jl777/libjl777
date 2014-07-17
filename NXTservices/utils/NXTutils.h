@@ -1225,27 +1225,24 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *user,char *NXTaddr,long 
     cJSON *json;
     printf("gen_tokenjson.(%s) argjson.%p jsonstr.%p user.%p\n",NXTaddr,argjson,jsonstr,user);
     json = cJSON_CreateObject();
-    if ( user != 0 )
-        cJSON_AddItemToObject(json,"name",cJSON_CreateString(user));
-    printf("1\n");
+    //if ( user != 0 )
+    //    cJSON_AddItemToObject(json,"name",cJSON_CreateString(user));
+    //printf("1\n");
     if ( NXTaddr != 0 )
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-    printf("2 (%s)\n",cJSON_Print(json));
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-    printf("3 (%s)\n",pubkey);
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(pubkey));
-    printf("4 (%s)\n",cJSON_Print(json));
     cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(nonce));
-    if ( argjson != 0 )
-        cJSON_AddItemToObject(json,"xfer",argjson);
+    //if ( argjson != 0 )
+    //    cJSON_AddItemToObject(json,"xfer",argjson);
     printf("gen_tokenjson.(%s) pubkey.(%s) (%s) json.%p argjson.%p\n",NXTaddr,pubkey,NXTACCTSECRET,json,argjson);
     jsonstr[0] = 0;
     argstr = cJSON_Print(json);
     if ( argstr != 0 )
     {
         printf("got argstr.(%s)\n",argstr);
-        stripwhite_ns(argstr,strlen(argstr));
-        printf("stripped\n");
+        //stripwhite_ns(argstr,strlen(argstr));
+        //printf("stripped\n");
         issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
         token[NXT_TOKEN_LEN] = 0;
         sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);

@@ -414,12 +414,13 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
                 if ( sendresponse != 0 )
                 {
-                    printf("call set_intro (%s)\n",Server_secret);
+                    printf("call set_intro %s.(%s)\n",Server_NXTaddr,Server_secret);
                     gen_tokenjson(0,retbuf,0,Server_NXTaddr,time(NULL),0,Server_secret);
+                    printf("got (%s)\n",retbuf);
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    else
-                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+                    //else
+                    //    portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
@@ -1120,7 +1121,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         free(ptrs);
         printf("done free\n");
     }
-} 
+}
 
 void init_NXTprivacy(void *ptr)
 {
