@@ -412,7 +412,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
-    char retbuf[1024],pubkey[256],NXTaddr[64],name[64],argstr[1024],token[256];
+    char retbuf[4096],pubkey[256],NXTaddr[64],name[64],argstr[1024],token[256];
     cJSON *argjson = 0;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
@@ -428,23 +428,23 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
             if ( n == crypto_box_PUBLICKEYBYTES )
             {
                 printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
-                if ( sendresponse != 0 )
+                if ( handle != 0 && sendresponse != 0 )
                 {
-                    printf("call set_intro %s.(%s)\n",Server_NXTaddr,Server_secret);
+                    printf("call set_intro handle.%p %s.(%s)\n",handle,Server_NXTaddr,Server_secret);
                     //gen_tokenjson(0,retbuf,Server_NXTaddr,time(NULL),Server_secret);
                     //printf("got (%s)\n",retbuf);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
                     printf("got argstr.(%s)\n",argstr);
 
-                    //issue_generateToken(0,token,argstr,Server_secret);
+                    issue_generateToken(0,token,argstr,Server_secret);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    else
-                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+                    //else
+                    //    portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
