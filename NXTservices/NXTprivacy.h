@@ -756,15 +756,13 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             if ( jsonstr == 0 )
                 jsonstr = clonestr("{\"result\":null}");
             printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
-            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+            //portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
         }
     }
-    printf("free base\n");
     if ( buf->base != 0 )
         free(buf->base);
-    printf("after free\n");
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
