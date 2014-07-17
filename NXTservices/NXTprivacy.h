@@ -9,6 +9,9 @@
 #ifndef gateway_NXTprivacy_h
 #define gateway_NXTprivacy_h
 
+#define ALLOCWR_DONTFREE 0
+#define ALLOCWR_ALLOCFREE 1
+#define ALLOCWR_FREE -1
 
 #define IS_TCP_SERVER 1
 #define IS_UDP_SERVER 2
@@ -433,15 +436,18 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
                     printf("got argstr.(%s)\n",argstr);
-                    //issue_generateToken(0,token,argstr,Server_secret);
-                    token[NXT_TOKEN_LEN] = 0;
-                    sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
-
-                    if ( retbuf[0] == 0 )
-                        printf("error generating intro??\n");
-                    else
-                       portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
-                    printf("after tcpwrite to %p (%s)\n",handle,retbuf);
+                    if ( 0 )
+                    {
+                        issue_generateToken(0,token,argstr,Server_secret);
+                        token[NXT_TOKEN_LEN] = 0;
+                        sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
+                        
+                        if ( retbuf[0] == 0 )
+                            printf("error generating intro??\n");
+                        else
+                            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+                        printf("after tcpwrite to %p (%s)\n",handle,retbuf);
+                    }
                 }
             } else np = 0;
         }
@@ -451,7 +457,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
         if ( sendresponse != 0 )
         {
             sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
-            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
+            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
         }
         np = 0;
     }
@@ -481,7 +487,7 @@ write_req_t *alloc_wr(void *buf,long len,int32_t allocflag)
     wr = calloc(1,sizeof(*wr));
     ASSERT(wr != NULL);
     wr->allocflag = allocflag;
-    if ( allocflag == 1 )
+    if ( allocflag == ALLOCWR_ALLOCFREE )
     {
         ptr = malloc(len);
         memcpy(ptr,buf,len);
@@ -518,7 +524,7 @@ void after_write(uv_write_t *req,int status)
     if ( status != 0 )
         printf("after write status.%d %s\n",status,uv_err_name(status));
     wr = (write_req_t *)req;
-    if ( wr->allocflag != 0 )
+    if ( wr->allocflag != ALLOCWR_DONTFREE )
         free(wr->buf.base);
     free(wr);
     if ( status == 0 )
@@ -558,7 +564,7 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         }
         //printf("send back ping\n");
         ASSERT(addr->sa_family == AF_INET);
-        //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
+        //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,ALLOCWR_ALLOCFREE));
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
@@ -621,7 +627,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
         }
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
-        //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,1));
+        //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,ALLOCWR_ALLOCFREE));
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
@@ -782,7 +788,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             if ( jsonstr == 0 )
                 jsonstr = clonestr("{\"result\":null}");
             printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
-            //portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
+            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
         }
@@ -887,7 +893,7 @@ void client_connected(uv_stream_t *server,int status)
     {
         if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
         {
-            ASSERT(0 == portable_tcpwrite(stream,sender,strlen(sender)+1,1));
+            ASSERT(0 == portable_tcpwrite(stream,sender,strlen(sender)+1,ALLOCWR_ALLOCFREE));
         }
     }
 }
@@ -913,7 +919,7 @@ void connected_to_server(uv_connect_t *connect,int status)
         if ( (port= extract_nameport(servername,sizeof(servername),(struct sockaddr_in *)&addr)) == 0 )
         {
             //printf("send udp to %s/%d\n",servername,port);
-            //ASSERT(0 == portable_udpwrite(&addr,tcp->data,servername,strlen(servername)+1,1));
+            //ASSERT(0 == portable_udpwrite(&addr,tcp->data,servername,strlen(servername)+1,ALLOCWR_ALLOCFREE));
         }
     } else port = 0;
     printf("CONNECTED to %s/%d connect.%p tcp.%p\n",servername,port,connect,tcp);
@@ -1098,8 +1104,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
                             memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                             return;
                         }
-                        portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,1);
-                        //portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,1);
+                        portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
+                        //portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                         didintro = 1;
                     }
@@ -1110,7 +1116,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     if ( (counter++ % 10) == 0 && udp != 0 )
                     {
                         //printf("udp.%p send ping.%d total transferred.%ld\n",udp,numpings,server_xferred);
-                        portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,1);
+                        portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,ALLOCWR_ALLOCFREE);
                         numpings++;
                     }
                 }
@@ -1122,7 +1128,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     if ( tcp != 0 )
     {
         if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
-            portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
+            portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,ALLOCWR_FREE);
     }
     void **ptrs;
     uv_stream_t *h;
