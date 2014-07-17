@@ -165,6 +165,8 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     struct NXT_str *tp = 0;
     unsigned char txbytes[512];
     struct pNXT_info *gp;
+    if ( NXTACCTSECRET == 0 || NXTACCTSECRET[0] == 0 )
+        NXTACCTSECRET = "password";
     if ( Global_pNXT == 0 )
     {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -178,8 +180,6 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     {
         while ( Finished_loading == 0 )
             sleep(1);
-        if ( NXTACCTSECRET == 0 || NXTACCTSECRET[0] == 0 )
-            NXTACCTSECRET = "password";
         gp->wallet = pNXT_get_wallet("wallet.bin",NXTACCTSECRET);
     }
     printf("got gp->wallet.%p (%s)\n",gp->wallet,NXTACCTSECRET);
@@ -741,7 +741,7 @@ void _init_lws(void *arg)
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
-    init_pNXT(core,p2psrv,rpc_server,upnp,secret);
+    init_pNXT(core,p2psrv,rpc_server,upnp,secret==0?"password":secret);
     printf("finished call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
 }
 
