@@ -730,7 +730,7 @@ int main(int argc, char **argv)
     printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,argc>0?argv[0]:"");
     if ( argc == 1 )
     {
-        _argv[0] = "pNXTd"; _argv[1] = argv[0]; _argv[2] = 0;
+        _argv[0] = "pNXTd"; _argv[1] = (argv[0]==0?"password":argv[0]); _argv[2] = 0;
         argc = 2;
         argv = _argv;
     }
