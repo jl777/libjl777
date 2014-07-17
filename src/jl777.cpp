@@ -492,7 +492,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
         copy_cJSON(command,obj);
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
     }
-    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)));
+    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d | command.(%s)\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command);
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];

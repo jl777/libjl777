@@ -753,7 +753,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             jsonstr = pNXT_jsonhandler(&argjson,buf->base);
             if ( jsonstr == 0 )
                 jsonstr = clonestr("{\"result\":null}");
-            printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np->H.NXTaddr);
+            printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
             portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,-1);
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
