@@ -431,7 +431,6 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 if ( handle != 0 && sendresponse != 0 )
                 {
                     printf("call set_intro handle.%p %s.(%s)\n",handle,Server_NXTaddr,Server_secret);
-                    //gen_tokenjson(0,retbuf,Server_NXTaddr,time(NULL),Server_secret);
                     //printf("got (%s)\n",retbuf);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
@@ -443,8 +442,8 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    //else
-                    //    portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+                    else
+                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
