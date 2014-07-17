@@ -400,7 +400,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
     cJSON *argjson = 0;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
-    if ( sendresponse == 0 && (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
+    if ( (retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
     {
         if ( argjson != 0 )
             free_json(argjson);
@@ -580,13 +580,13 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
                         memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
                     }
-                    queue_enqueue(&ALL_messages,clonestr(parmstxt));
+                    //queue_enqueue(&ALL_messages,clonestr(parmstxt));
                     printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
                     msgjson = cJSON_GetObjectItem(argjson,"msg");
                     copy_cJSON(message,msgjson);
                     if ( message[0] != 0 )
                     {
-                        queue_enqueue(&np->incoming,clonestr(message));
+                        //queue_enqueue(&np->incoming,clonestr(message));
                         printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
                     }
                 }
