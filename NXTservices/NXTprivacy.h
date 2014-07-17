@@ -531,11 +531,11 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         //rcvbuf->base[nread] = 0;
         if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
         {
-            printf("got np.%p\n",np);
+            //printf("got np.%p\n",np);
             np->Uaddr = *addr;
             np->udp = (uv_stream_t *)handle;
         }
-        printf("send back ping\n");
+        //printf("send back ping\n");
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
     }
@@ -736,7 +736,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     }
     printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
     buf->base[nread] = 0;
-    if ( 0 && np == 0 )
+    if ( 1 && np == 0 )
     {
         np = process_intro(handle,(char *)buf->base,1);
         printf("process_intro returns np.%p for handle.%p\n",np,handle);
