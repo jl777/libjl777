@@ -436,18 +436,16 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
                     printf("got argstr.(%s)\n",argstr);
-                    if ( 0 )
-                    {
-                        issue_generateToken(0,token,argstr,Server_secret);
-                        token[NXT_TOKEN_LEN] = 0;
-                        sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
-                        
-                        if ( retbuf[0] == 0 )
-                            printf("error generating intro??\n");
-                        else
-                            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
-                        printf("after tcpwrite to %p (%s)\n",handle,retbuf);
-                    }
+
+                    //issue_generateToken(0,token,argstr,Server_secret);
+                    token[NXT_TOKEN_LEN] = 0;
+                    sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
+                    
+                    if ( retbuf[0] == 0 )
+                        printf("error generating intro??\n");
+                    else
+                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+                    printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
         }
