@@ -17,7 +17,7 @@
 #define INTRO_SIZE 1400
 
 char *Server_NXTaddr,*Server_secret;
-queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages;
+queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages,IntroQ;
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -558,7 +558,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
         memset(message,0,nread);
-        if ( 0 && nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
+        if ( 1 && nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
         {
             memcpy(pubkey,rcvbuf->base,sizeof(pubkey));
             len = (int32_t)(nread - sizeof(pubkey));
@@ -738,14 +738,19 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
-        np = process_intro(handle,(char *)buf->base,0);
+        void **ptrs;
+        ptrs = malloc(sizeof(*ptrs) * 2);
+        ptrs[0] = handle;
+        ptrs[1] = buf->base;
+        queue_enqueue(&IntroQ,ptrs);
+        /*np = process_intro(handle,(char *)buf->base,0);
         printf("process_intro returns np.%p for handle.%p\n",np,handle);
         if ( np != 0 )
         {
             handle->data = np;
             np->connect = handle;
         }
-        printf("after process_intro returns np.%p for handle.%p\n",np,handle);
+        printf("after process_intro returns np.%p for handle.%p\n",np,handle);*/
     }
     else
     {
@@ -760,9 +765,9 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
         }
+        if ( buf->base != 0 )
+            free(buf->base);
     }
-    if ( buf->base != 0 )
-        free(buf->base);
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
@@ -1073,7 +1078,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                             return;
                         }
                         portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,1);
-                        portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,1);
+                        //portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,1);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                         didintro = 1;
                     }
@@ -1093,8 +1098,28 @@ void NXTprivacy_idler(uv_idle_t *handle)
         }
     }
 //#endif
-    if ( tcp != 0 && (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
-        portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
+    if ( tcp != 0 )
+    {
+        void **ptrs;
+        struct NXT_acct *np;
+        uv_stream_t *handle;
+        if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
+            portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
+        if ( (ptrs= queue_dequeue(&IntroQ)) != 0 )
+        {
+            handle = ptrs[0];
+            np = process_intro(handle,(char *)ptrs[1],1);
+            printf("process_intro returns np.%p for handle.%p\n",np,handle);
+            if ( np != 0 )
+            {
+                handle->data = np;
+                np->connect = handle;
+            }
+            printf("after process_intro returns np.%p for handle.%p\n",np,handle);
+            free(ptrs[1]);
+            free(ptrs);
+        }
+    }
 }
 
 void init_NXTprivacy(void *ptr)
