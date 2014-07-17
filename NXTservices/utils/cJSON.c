@@ -285,10 +285,36 @@ cJSON *cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int32
 	return c;
 }
 /* Default options for cJSON_Parse */
-cJSON *cJSON_Parse(const char *value) {return cJSON_ParseWithOpts(value,0,0);}
+cJSON *cJSON_Parse(const char *value)
+{
+    static int depth;
+    cJSON *retval;
+    if ( depth > 0 )
+    {
+        while ( depth > 0 )
+            usleep(1000);
+    }
+    depth++;
+    retval = cJSON_ParseWithOpts(value,0,0);
+    depth--;
+    return(retval);
+}
 
 /* Render a cJSON item/entity/structure to text. */
-char *cJSON_Print(cJSON *item)				{return print_value(item,0,1);}
+char *cJSON_Print(cJSON *item)
+{
+    static int depth;
+    char *retval;
+    if ( depth > 0 )
+    {
+        while ( depth > 0 )
+            usleep(1000);
+    }
+    depth++;
+    retval = print_value(item,0,1);
+    depth--;
+    return(retval);
+}
 char *cJSON_PrintUnformatted(cJSON *item)	{return print_value(item,0,0);}
 
 /* Parser core - when encountering text, process appropriately. */
