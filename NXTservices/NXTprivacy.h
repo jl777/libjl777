@@ -873,11 +873,11 @@ void client_connected(uv_stream_t *server,int status)
     char sender[32];
     int r,port,addrlen = sizeof(addr);
     uv_stream_t *stream;
-    printf("on_connection %p (connect) status.%d\n",server,status);
     if ( status != 0 )
         fprintf(stderr,"Connect error %s\n",uv_err_name(status));
     ASSERT(status == 0);
     stream = malloc(sizeof(uv_tcp_t));
+    printf("on_connection %p (connect) status.%d | stream.%p\n",server,status,stream);
     ASSERT(stream != NULL);
     r = uv_tcp_init(UV_loop,(uv_tcp_t *)stream);
     ASSERT(r == 0);

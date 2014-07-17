@@ -631,7 +631,7 @@ int32_t issue_decodeToken(CURL *curl_handle,char sender[MAX_NXTADDR_LEN],int32_t
 
 int32_t issue_generateToken(CURL *curl_handle,char encoded[NXT_TOKEN_LEN],char *key,char *secret)
 {
-    char cmd[4096],token[NXT_TOKEN_LEN+1];
+    char cmd[4096],token[2*NXT_TOKEN_LEN+1];
     cJSON *tokenobj;
     union NXTtype retval;
     encoded[0] = 0;
