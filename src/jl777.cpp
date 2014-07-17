@@ -618,7 +618,7 @@ again:
             expand_nxt64bits(NXTaddr,nxt64bits);
             cJSON_DeleteItemFromObject(*argjsonp,"secret");
             cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
-            //printf("replace NXT.(%s)\n",NXTaddr);
+            printf("replace NXT.(%s)\n",NXTaddr);
             if ( parmstxt != 0 )
                 free(parmstxt);
             parmstxt = cJSON_Print(*argjsonp);
