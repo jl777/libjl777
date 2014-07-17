@@ -437,7 +437,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
                     printf("got argstr.(%s)\n",argstr);
 
-                    issue_generateToken(0,token,argstr,Server_secret);
+                    //issue_generateToken(0,token,argstr,Server_secret);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     
