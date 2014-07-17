@@ -1120,7 +1120,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         free(ptrs);
         printf("done free\n");
     }
-}
+} 
 
 void init_NXTprivacy(void *ptr)
 {
