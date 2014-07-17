@@ -528,12 +528,14 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",handle,sender,port,nread,flags,server_xferred);
-        rcvbuf->base[nread] = 0;
+        //rcvbuf->base[nread] = 0;
         if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
         {
+            printf("got np.%p\n",np);
             np->Uaddr = *addr;
             np->udp = (uv_stream_t *)handle;
         }
+        printf("send back ping\n");
         ASSERT(addr->sa_family == AF_INET);
         ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
     }
