@@ -1010,7 +1010,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-//#ifndef __linux__
+#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
@@ -1092,7 +1092,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-//#endif
+#endif
     if ( tcp != 0 && (jsonstr= queue_dequeue(&RPC_6777)) != 0 ) // this is for servers
         portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,-1);
 }
