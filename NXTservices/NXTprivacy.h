@@ -521,13 +521,13 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
 void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
-    char sender[32];
+    char sender[256];
     struct NXT_acct *np = 0;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",handle,sender,port,nread,flags,server_xferred);
+        printf("buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,handle,sender,port,nread,flags,server_xferred);
         //rcvbuf->base[nread] = 0;
         if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
         {
@@ -537,7 +537,7 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         }
         printf("send back ping\n");
         ASSERT(addr->sa_family == AF_INET);
-        ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
+        //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,1));
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
@@ -551,7 +551,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
     cJSON *argjson,*msgjson;
     struct NXT_acct *np;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
-    char sender[32],senderNXTaddr[32],message[4096],*parmstxt;
+    char sender[64],senderNXTaddr[64],message[4096],*parmstxt;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
