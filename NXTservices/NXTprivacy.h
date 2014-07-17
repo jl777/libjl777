@@ -558,7 +558,7 @@ void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,con
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
         memset(message,0,nread);
-        if ( nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
+        if ( 0 && nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
         {
             memcpy(pubkey,rcvbuf->base,sizeof(pubkey));
             len = (int32_t)(nread - sizeof(pubkey));
