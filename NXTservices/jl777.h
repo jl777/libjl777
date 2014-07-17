@@ -129,7 +129,7 @@ static portable_thread_t *portable_thread_create(void *funcp,void *argp)
 // includes that include actual code
 #include "nacl/crypto_box.h"
 #include "nacl/randombytes.h"
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { printf("malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
+void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); printf("malloc %p.%ld\n",ptr,allocsize); if ( ptr == 0 ) { printf("malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
 void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { printf("calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
 #define malloc jl777malloc
 #define calloc jl777calloc
