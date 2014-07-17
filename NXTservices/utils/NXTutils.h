@@ -1219,19 +1219,6 @@ int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tok
     return(retcode);
 }
 
-int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET)
-{
-    char argstr[1024],pubkey[1024],token[1024];
-    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,nonce);
-    printf("got argstr.(%s)\n",argstr);
-    issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
-    token[NXT_TOKEN_LEN] = 0;
-    sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
-    printf("tokenized.(%s)\n",jsonstr);
-    return((int)strlen(jsonstr));
-}
-
 uint32_t calc_ipbits(char *ipaddr)
 {
     return(inet_addr(ipaddr));

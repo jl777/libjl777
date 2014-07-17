@@ -392,11 +392,24 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
     return(0);
 }*/
 
+int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET)
+{
+    char argstr[1024],pubkey[1024],token[1024];
+    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,nonce);
+    printf("got argstr.(%s)\n",argstr);
+    issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
+    token[NXT_TOKEN_LEN] = 0;
+    sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
+    printf("tokenized.(%s)\n",jsonstr);
+    return((int)strlen(jsonstr));
+}
+
 struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
-    char retbuf[1024],pubkey[256],NXTaddr[64],name[64];
+    char retbuf[1024],pubkey[256],NXTaddr[64],name[64],argstr[1024],token[256];
     cJSON *argjson = 0;
     struct NXT_acct *np = 0;
     NXTaddr[0] = pubkey[0] = name[0] = 0;
@@ -416,8 +429,15 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                 {
                     printf("call set_intro %s.(%s)\n",Server_NXTaddr,Server_secret);
                     //gen_tokenjson(0,retbuf,Server_NXTaddr,time(NULL),Server_secret);
-                    printf("got (%s)\n",retbuf);
-                    if ( 1 || retbuf[0] == 0 )
+                    //printf("got (%s)\n",retbuf);
+                    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
+                    printf("got argstr.(%s)\n",argstr);
+                    issue_generateToken(0,token,argstr,Server_secret);
+                    token[NXT_TOKEN_LEN] = 0;
+                    sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
+
+                    if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
                     else
                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,1);
