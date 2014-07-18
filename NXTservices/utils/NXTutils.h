@@ -588,6 +588,7 @@ int32_t get_NXTtxid_confirmations(CURL *curl_handle,char *txid)
     sprintf(cmd,"%s=getTransaction&transaction=%s",NXTSERVER,txid);
     jsonstr = issue_curl(curl_handle,cmd);
     json = cJSON_Parse(jsonstr);
+    free(jsonstr);
     return((int32_t)get_cJSON_int(json,"confirmations"));
    // ret = extract_NXTfield(0,cmd,"confirmations",sizeof(int32_t));
     //return(ret.val);
@@ -775,7 +776,10 @@ void set_next_NXTblock(CURL *curl_handle,int32_t *timestamp,char *nextblock,char
     sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
     jsonstr = issue_curl(curl_handle,cmd);
     if ( jsonstr != 0 )
+    {
         retval.json = cJSON_Parse(jsonstr);
+        free(jsonstr);
+    }
     else retval.json = 0;
     // printf("cmd.(%s)\n",cmd);
     //retval = extract_NXTfield(0,cmd,0,0);
@@ -807,7 +811,10 @@ void set_prev_NXTblock(CURL *curl_handle,int32_t *height,int32_t *timestamp,char
     sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
     jsonstr = issue_curl(curl_handle,cmd);
     if ( jsonstr != 0 )
+    {
         retval.json = cJSON_Parse(jsonstr);
+        free(jsonstr);
+    }
     else retval.json = 0;
     // printf("cmd.(%s)\n",cmd);
     //retval = extract_NXTfield(0,cmd,0,0);
