@@ -523,13 +523,13 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
 char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt)
 {
     long len;
-    char encoded[NXT_TOKEN_LEN+1];
+    unsigned char encoded[NXT_TOKEN_LEN+1];
     cJSON *secondobj,*tokenobj,*parmsobj;
     if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
     {
         secondobj = cJSON_GetArrayItem(*argjsonp,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
-        copy_cJSON(encoded,tokenobj);
+        copy_cJSON((char *)encoded,tokenobj);
         parmsobj = cJSON_DetachItemFromArray(*argjsonp,0);
         if ( parmstxt != 0 )
             free(parmstxt);
@@ -538,7 +538,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
         stripwhite_ns(parmstxt,len);
         
         //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
-        if ( strlen(encoded) == NXT_TOKEN_LEN )
+        if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
         if ( *argjsonp != 0 )
             free_json(*argjsonp);

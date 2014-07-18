@@ -603,7 +603,7 @@ uint64_t issue_getBalance(CURL *curl_handle,char *NXTaddr)
     return(ret.nxt64bits);
 }
 
-int32_t issue_decodeToken(CURL *curl_handle,char sender[MAX_NXTADDR_LEN],int32_t *validp,char *key,char encoded[NXT_TOKEN_LEN])
+int32_t issue_decodeToken(CURL *curl_handle,char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN])
 {
     char cmd[4096],token[512+2*NXT_TOKEN_LEN+1];
     cJSON *nxtobj,*validobj;
@@ -1133,98 +1133,6 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
     return(0);
 }
 #endif
-
-int32_t validate_token(CURL *curl_handle,cJSON **argjsonp,char *pubkey,char *tokenizedtxt,char *NXTaddr,char *name,int32_t strictflag)
-{
-    cJSON *acctjson,*array,*firstitem=0,*tokenobj,*obj;
-    int64_t amount,timeval,diff = 0;
-    int32_t valid,retcode = -13;
-    char buf[1024],NXTname[1024],username[1024],groupname[1024],sender[MAX_NXTADDR_LEN],encoded[1024],*firstjsontxt = 0;
-    if ( argjsonp != 0 )
-        *argjsonp = 0;
-    if ( NXTaddr[0] != 0 )
-    {
-        acctjson = issue_getAccountInfo(curl_handle,&amount,NXTname,username,NXTaddr,groupname);
-        if ( pubkey != 0 )
-            pubkey[0] = 0;
-        if ( acctjson != 0 )
-            free_json(acctjson);
-        if ( name[0] != 0 && strcmp(name,NXTname) != 0 )
-            return(-1);
-    }
-    array = cJSON_Parse(tokenizedtxt);
-    if ( array == 0 )
-    {
-        printf("couldnt validate.(%s)\n",tokenizedtxt);
-        return(-2);
-    }
-    if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
-    {
-        firstitem = cJSON_GetArrayItem(array,0);
-        if ( pubkey != 0 )
-        {
-            obj = cJSON_GetObjectItem(firstitem,"pubkey");
-            copy_cJSON(pubkey,obj);
-        }
-        if ( argjsonp != 0 )
-        {
-            *argjsonp = cJSON_GetObjectItem(firstitem,"xfer");
-            if ( 0 && *argjsonp != 0 )
-                printf("%p ARGJSON.(%s)\n",*argjsonp,cJSON_Print(*argjsonp));
-        }
-        obj = cJSON_GetObjectItem(firstitem,"NXT"); copy_cJSON(buf,obj);
-        if ( NXTaddr[0] != 0 && strcmp(buf,NXTaddr) != 0 )
-            retcode = -3;
-        else
-        {
-            strcpy(NXTaddr,buf);
-            obj = cJSON_GetObjectItem(firstitem,"name"); copy_cJSON(buf,obj);
-            if ( name[0] != 0 && strcmp(buf,name) != 0 )
-                retcode = -4;
-            else
-            {
-                if ( name[0] == 0 )
-                    strcpy(name,buf);
-                if ( strictflag != 0 )
-                {
-                    timeval = get_cJSON_int(firstitem,"time");
-                    diff = timeval - time(NULL);
-                    if ( diff < 0 )
-                        diff = -diff;
-                    if ( diff > strictflag )
-                    {
-                        printf("time diff %lld too big %lld vs %ld\n",(long long)diff,(long long)timeval,time(NULL));
-                        retcode = -5;
-                    }
-                }
-                if ( retcode != -5 )
-                {
-                    firstjsontxt = cJSON_Print(firstitem); stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
-                    tokenobj = cJSON_GetArrayItem(array,1);
-                    obj = cJSON_GetObjectItem(tokenobj,"token");
-                    copy_cJSON(encoded,obj);
-                    memset(sender,0,sizeof(sender));
-                    valid = -1;
-                    if ( issue_decodeToken(curl_handle,sender,&valid,firstjsontxt,encoded) > 0 )
-                    {
-                        if ( strcmp(sender,NXTaddr) == 0 )
-                        {
-                            printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
-                            retcode = valid;
-                        }
-                    }
-                    if ( retcode < 0 )
-                        printf("err: signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
-                    free(firstjsontxt);
-                }
-            }
-        }
-    }
-    if ( retcode >= 0 && firstitem != 0 && argjsonp != 0 && *argjsonp != 0 )
-        *argjsonp = cJSON_DetachItemFromObject(firstitem,"xfer");
-    free_json(array);
-    return(retcode);
-}
 
 uint32_t calc_ipbits(char *ipaddr)
 {

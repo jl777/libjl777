@@ -408,27 +408,88 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char 
     return((int)strlen(jsonstr));
 }
 
+int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
+{
+    cJSON *array=0,*firstitem=0,*tokenobj,*obj;
+    int64_t timeval,diff = 0;
+    int32_t valid,retcode = -13;
+    char buf[4096],sender[64],*firstjsontxt = 0;
+    unsigned char encoded[4096];
+    array = cJSON_Parse(tokenizedtxt);
+    if ( array == 0 )
+    {
+        printf("couldnt validate.(%s)\n",tokenizedtxt);
+        return(-2);
+    }
+    if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
+    {
+        firstitem = cJSON_GetArrayItem(array,0);
+        if ( pubkey != 0 )
+        {
+            obj = cJSON_GetObjectItem(firstitem,"pubkey");
+            copy_cJSON(pubkey,obj);
+        }
+        obj = cJSON_GetObjectItem(firstitem,"NXT"), copy_cJSON(buf,obj);
+        if ( NXTaddr[0] != 0 && strcmp(buf,NXTaddr) != 0 )
+            retcode = -3;
+        else
+        {
+            strcpy(NXTaddr,buf);
+            if ( strictflag != 0 )
+            {
+                timeval = get_cJSON_int(firstitem,"time");
+                diff = timeval - time(NULL);
+                if ( diff < 0 )
+                    diff = -diff;
+                if ( diff > strictflag )
+                {
+                    printf("time diff %lld too big %lld vs %ld\n",(long long)diff,(long long)timeval,time(NULL));
+                    retcode = -5;
+                }
+            }
+            if ( retcode != -5 )
+            {
+                firstjsontxt = cJSON_Print(firstitem), stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
+                tokenobj = cJSON_GetArrayItem(array,1);
+                obj = cJSON_GetObjectItem(tokenobj,"token");
+                copy_cJSON((char *)encoded,obj);
+                memset(sender,0,sizeof(sender));
+                valid = -1;
+                if ( issue_decodeToken(curl_handle,sender,&valid,firstjsontxt,encoded) > 0 )
+                {
+                    if ( strcmp(sender,NXTaddr) == 0 )
+                    {
+                        printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
+                        retcode = valid;
+                    }
+                }
+                if ( retcode < 0 )
+                    printf("err: signed by invalid NXT.%s valid.%d or timediff too big diff.%lld\n",sender,valid,(long long)diff);
+                free(firstjsontxt);
+            }
+        }
+    }
+    if ( array != 0 )
+        free_json(array);
+    return(retcode);
+}
+
 struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
-    char retbuf[4096],pubkey[256],NXTaddr[64],name[64],argstr[1024],token[256];
-    cJSON *argjson = 0;
+    char retbuf[4096],pubkey[256],NXTaddr[64],argstr[1024],token[256];
     struct NXT_acct *np = 0;
-    NXTaddr[0] = pubkey[0] = name[0] = 0;
-    if ( 1 )//(retcode= validate_token(0,&argjson,pubkey,bufbase,NXTaddr,name,15)) > 0 )
+    NXTaddr[0] = pubkey[0] = 0;
+    if ( (retcode= validate_token(0,pubkey,NXTaddr,bufbase,15)) > 0 )
     {
-        if ( argjson != 0 )
-            free_json(argjson);
-        strcpy(NXTaddr,"8989816935121514892");
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
         if ( np != 0 )
         {
-            safecopy(np->dispname,name,sizeof(np->dispname));
-            n = decode_hex(np->pubkey,(int32_t)strlen(pubkey)/2,pubkey);
-            if ( 1 )//n == crypto_box_PUBLICKEYBYTES )
+            n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+            if ( n == crypto_box_PUBLICKEYBYTES )
             {
-                printf("created.%d NXT.%s pubkey.%s (len.%d) name.%s\n",createdflag,NXTaddr,pubkey,n,name);
+                printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
                 if ( handle != 0 && sendresponse != 0 )
                 {
                     printf("call set_intro handle.%p %s.(%s)\n",handle,Server_NXTaddr,Server_secret);
@@ -436,15 +497,12 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
                     printf("got argstr.(%s)\n",argstr);
-
                     issue_generateToken(0,token,argstr,Server_secret);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
-                    
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    else
-                        portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+                    else portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
                 }
             } else np = 0;
