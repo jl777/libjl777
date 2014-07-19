@@ -510,13 +510,14 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                         printf("error generating intro??\n");
                     else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
                     printf("after tcpwrite to %p (%s)\n",connect,retbuf);
-                    return(np);
                 }
+                return(np);
             }
         }
     }
     else
     {
+        printf("token validation error.%d\n",retcode);
         if ( sendresponse != 0 )
         {
             sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
