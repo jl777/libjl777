@@ -419,6 +419,18 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     return(np);
 }
 
+struct NXT_acct *find_NXTacct(char *NXTaddr,char *NXTACCTSECRET)
+{
+    int32_t createdflag;
+    uint64_t nxt64bits;
+    if ( NXTaddr[0] == 0 )
+    {
+        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+    }
+    return(get_NXTacct(&createdflag,Global_mp,NXTaddr));
+}
+
 #ifdef BTC_COINID
 int64_t get_coin_quantity(CURL *curl_handle,int64_t *unconfirmedp,int32_t coinid,char *NXTaddr)
 {

@@ -20,7 +20,7 @@
 #define INTRO_SIZE 1400
 
 char *Server_NXTaddr,*Server_secret;
-queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages,IntroQ;
+queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages;
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -794,7 +794,7 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
 
 void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
-    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
+    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender);
     cJSON *argjson;
     //char NXTaddr[64],pubkey[256],argstr[1024],token[NXT_TOKEN_LEN+1];
     char retbuf[1024],*jsonstr;
@@ -830,48 +830,15 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     //buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
-        if ( 0 )
+        if ( (np= process_intro(connect,(char *)buf->base,1)) != 0 )
         {
-            void **ptrs;
-            ptrs = malloc(sizeof(*ptrs) * 2);
-            ptrs[0] = connect;
-            ptrs[1] = buf->base;
-            queue_enqueue(&IntroQ,ptrs);
-            return; // avoid buf->base from being freed
+            connect->data = np;
+            np->connect = connect;
         }
         else
         {
-            if ( (np= process_intro(connect,(char *)buf->base,1)) != 0 )
-            {
-                connect->data = np;
-                np->connect = connect;
-            }
-            else
-            {
-                sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
-                portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
-            }
-            /*memset(NXTaddr,0,sizeof(NXTaddr));
-            if ( (retcode= validate_token(0,pubkey,NXTaddr,buf->base,15)) > 0 )
-            {
-                np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-                connect->data = np;
-                np->connect = connect;
-                n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
-                if ( n == crypto_box_PUBLICKEYBYTES )
-                {
-                    printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
-                    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
-                    printf("got argstr.(%s)\n",argstr);
-                    issue_generateToken(0,token,argstr,Server_secret);
-                    token[NXT_TOKEN_LEN] = 0;
-                    sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
-                    portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
-                    free(buf->base);
-                    return;
-                }
-            }*/
+            sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
+            portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
         }
     }
     else
@@ -879,7 +846,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         argjson = cJSON_Parse(buf->base);
         if ( argjson != 0 )
         {
-            jsonstr = pNXT_jsonhandler(&argjson,buf->base);
+            jsonstr = pNXT_jsonhandler(&argjson,buf->base,np->H.NXTaddr);
             if ( jsonstr == 0 )
                 jsonstr = clonestr("{\"result\":\"pNXT_jsonhandler returns null\"}");
             printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
@@ -1223,23 +1190,6 @@ void NXTprivacy_idler(uv_idle_t *handle)
     {
         if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
             portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,ALLOCWR_FREE);
-    }
-    void **ptrs;
-    uv_stream_t *h;
-    if ( (ptrs= queue_dequeue(&IntroQ)) != 0 )
-    {
-        h = ptrs[0];
-        np = process_intro(h,(char *)ptrs[1],1);
-        printf("process_intro returns np.%p for handle.%p\n",np,h);
-        if ( np != 0 )
-        {
-            handle->data = np;
-            np->connect = h;
-        }
-        printf("after process_intro returns np.%p for handle.%p ptrs.%p ptrs[1] %p\n",np,h,ptrs,ptrs[1]);
-        free(ptrs[1]);
-        free(ptrs);
-        printf("done free\n");
     }
 }
 

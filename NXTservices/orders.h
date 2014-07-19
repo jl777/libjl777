@@ -424,6 +424,8 @@ char *sellpNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
 {
     char buf[1024];
     uint64_t satoshis;
+    struct NXT_acct *np;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"NXT.%s sell %.8f NXT for pNXT",NXTaddr,dstr(satoshis));
     return(clonestr(buf));
@@ -433,6 +435,8 @@ char *buypNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
 {
     char buf[1024];
     uint64_t satoshis;
+    struct NXT_acct *np;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"NXT.%s buy %.8f pNXT for NXT",NXTaddr,dstr(satoshis));
     return(clonestr(buf));
@@ -442,6 +446,8 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
 {
     char buf[1024];
     uint64_t satoshis;
+    struct NXT_acct *np;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"send %.8f pNXT from NXT.%s to %s paymentid.(%s) using level.%d",dstr(satoshis),NXTaddr,dest,paymentid,level);
     return(clonestr(buf));
@@ -450,10 +456,9 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
 char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
 {
     char buf[1024];
-    int32_t createdflag;
     uint64_t satoshis;
     struct NXT_acct *np;
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"privatesend %.8f NXT from NXT.%s to NXT.%s",dstr(satoshis),NXTaddr,dest);
     return(clonestr(buf));
@@ -462,16 +467,11 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
 char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,char *origargstr)
 {
     char buf[1024];
-    uint64_t tmp,nxt64bits;
+    uint64_t tmp;
     unsigned char encoded[4096];
-    int32_t createdflag,len;
+    int32_t len;
     struct NXT_acct *np;
-    if ( NXTaddr[0] == 0 )
-    {
-        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
-        expand_nxt64bits(NXTaddr,nxt64bits);
-    }
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     if ( np->udp != 0 )
     {
         memset(encoded,0,sizeof(encoded));
@@ -490,14 +490,13 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
 {
     char *str;
-    int32_t createdflag;
     struct NXT_acct *np;
     queue_t *msgs;
     cJSON *json,*array = 0;
     json = cJSON_CreateObject();
     if ( senderNXTaddr != 0 && senderNXTaddr[0] != 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+        np = find_NXTacct(NXTaddr,NXTACCTSECRET);
         msgs = &np->incoming;
     }
     else msgs = &ALL_messages;
@@ -523,12 +522,7 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
     struct NXT_tx T,*tx;
     long i,n;
     uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB;
-    if ( NXTaddr[0] == 0 )
-    {
-        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
-        expand_nxt64bits(NXTaddr,nxt64bits);
-        printf("makeoffer.(%s)\n",NXTaddr);
-    }
+    find_NXTacct(NXTaddr,NXTACCTSECRET);
     nxt64bits = calc_nxt64bits(NXTaddr);
     other64bits = calc_nxt64bits(otherNXTaddr);
     assetoshisA = calc_assetoshis(assetA,qtyA);
