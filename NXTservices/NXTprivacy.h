@@ -508,9 +508,9 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    //else portable_tcpwrite(handle,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
+                    else portable_tcpwrite(handle,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
                     printf("after tcpwrite to %p (%s)\n",handle,retbuf);
-                }
+                } else np = 0;
             } else np = 0;
         }
     }
