@@ -480,7 +480,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
     return(retcode);
 }
 
-struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendresponse)
+struct NXT_acct *process_intro(uv_stream_t *tcp,char *bufbase,int32_t sendresponse)
 {
     int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
     int32_t n,retcode,createdflag;
@@ -496,9 +496,9 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
             if ( n == crypto_box_PUBLICKEYBYTES )
             {
                 printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
-                if ( handle != 0 && sendresponse != 0 )
+                if ( tcp != 0 && sendresponse != 0 )
                 {
-                    printf("call set_intro handle.%p %s.(%s)\n",handle,Server_NXTaddr,Server_secret);
+                    printf("call set_intro handle.%p %s.(%s)\n",tcp,Server_NXTaddr,Server_secret);
                     //printf("got (%s)\n",retbuf);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
@@ -508,8 +508,8 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    else portable_tcpwrite(handle,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
-                    printf("after tcpwrite to %p (%s)\n",handle,retbuf);
+                    else portable_tcpwrite(tcp,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
+                    printf("after tcpwrite to %p (%s)\n",tcp,retbuf);
                 } else np = 0;
             } else np = 0;
         }
@@ -519,7 +519,7 @@ struct NXT_acct *process_intro(uv_stream_t *handle,char *bufbase,int32_t sendres
         if ( sendresponse != 0 )
         {
             sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
-            portable_tcpwrite(handle,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+            portable_tcpwrite(tcp,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
         }
         np = 0;
     }
@@ -792,23 +792,25 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
     return(r);
 }
 
-void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
+void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     cJSON *argjson;
     char *jsonstr;
+    uv_stream_t *tcp;
     struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
-    np = handle->data;
-    printf("after read %ld | handle.%p data.%p\n",nread,handle,handle->data);
+    //np = connect->data;
+    tcp = connect->data;
+    printf("after read %ld | connect.%p tcp.%p\n",nread,connect,tcp);
     if ( nread < 0 ) // Error or EOF
     {
         printf("nread.%ld UV_EOF %d\n",nread,UV_EOF);
         if ( buf->base != 0 )
             free(buf->base);
         //req = (uv_shutdown_t *)malloc(sizeof *req); causes problems?!
-        //uv_shutdown(req,handle,after_shutdown);
-        uv_close((uv_handle_t *)handle,on_close);
+        //uv_shutdown(req,connect,after_shutdown);
+        uv_close((uv_handle_t *)connect,on_close);
         if ( np != 0 )
         {
             np->tcp = 0;
@@ -827,19 +829,20 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
     buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
-        void **ptrs;
+        /*void **ptrs;
         ptrs = malloc(sizeof(*ptrs) * 2);
-        ptrs[0] = handle;
+        ptrs[0] = connect;
         ptrs[1] = buf->base;
-        queue_enqueue(&IntroQ,ptrs);
-        /*np = process_intro(handle,(char *)buf->base,0);
-        printf("process_intro returns np.%p for handle.%p\n",np,handle);
+        queue_enqueue(&IntroQ,ptrs);*/
+        np = process_intro(tcp,(char *)buf->base,0);
+        printf("process_intro returns np.%p for connect.%p\n",np,connect);
         if ( np != 0 )
         {
-            handle->data = np;
-            np->connect = handle;
+            //connect->data = np;
+            np->connect = connect;
+            np->tcp = tcp;
         }
-        printf("after process_intro returns np.%p for handle.%p\n",np,handle);*/
+        printf("after process_intro returns np.%p for connect.%p\n",np,connect);
     }
     else
     {
@@ -850,7 +853,7 @@ void after_server_read(uv_stream_t *handle,ssize_t nread,const uv_buf_t *buf)
             if ( jsonstr == 0 )
                 jsonstr = clonestr("{\"result\":null}");
             printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
-            portable_tcpwrite(handle,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
+            portable_tcpwrite(connect,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
         }
@@ -932,30 +935,30 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
         free(buf->base);
 }
 
-void client_connected(uv_stream_t *server,int status)
+void client_connected(uv_stream_t *tcp,int status)
 {
     struct sockaddr addr;
     char sender[32];
     int r,port,addrlen = sizeof(addr);
-    uv_stream_t *stream;
+    uv_stream_t *connect;
     if ( status != 0 )
         fprintf(stderr,"Connect error %s\n",uv_err_name(status));
     ASSERT(status == 0);
-    stream = malloc(sizeof(uv_tcp_t));
-    printf("on_connection %p (connect) status.%d | stream.%p\n",server,status,stream);
-    ASSERT(stream != NULL);
-    r = uv_tcp_init(UV_loop,(uv_tcp_t *)stream);
+    connect = malloc(sizeof(uv_tcp_t));
+    printf("on_connection %p (connect) status.%d | connect.%p\n",tcp,status,connect);
+    ASSERT(connect != NULL);
+    r = uv_tcp_init(UV_loop,(uv_tcp_t *)connect);
     ASSERT(r == 0);
-    stream->data = 0;   // need to wait until we know which acct it is
-    r = uv_accept(server,stream);
+    connect->data = tcp;
+    r = uv_accept(tcp,connect);
     ASSERT(r == 0);
-    r = uv_read_start(stream,portable_alloc,after_server_read);
+    r = uv_read_start(connect,portable_alloc,after_server_read);
     ASSERT(r == 0);
-    if ( uv_tcp_getpeername((uv_tcp_t *)stream,&addr,&addrlen) == 0 )
+    if ( uv_tcp_getpeername((uv_tcp_t *)connect,&addr,&addrlen) == 0 )
     {
         if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
         {
-            ASSERT(0 == portable_tcpwrite(stream,sender,strlen(sender)+1,ALLOCWR_ALLOCFREE));
+            ASSERT(0 == portable_tcpwrite(tcp,sender,strlen(sender)+1,ALLOCWR_ALLOCFREE));
         }
     }
 }
