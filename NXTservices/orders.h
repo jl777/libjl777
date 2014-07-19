@@ -478,7 +478,7 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
         //portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,origargstr,strlen(origargstr)+1,1);
         sprintf(buf,"{\"status\":\"%s encrypted.%llx sendmessage.(%s) to %s pending\"}",NXTaddr,(long long)tmp,msg,destNXTaddr);
     }
-    else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without privacyServer\"}",msg,destNXTaddr);
+    else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without udp connection\"}",msg,destNXTaddr);
     return(clonestr(buf));
 }
 
