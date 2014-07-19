@@ -797,7 +797,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     cJSON *argjson;
     char NXTaddr[64],pubkey[256],retbuf[1024],*jsonstr;
-    int32_t createdflag,retcode;
+    int32_t n,createdflag,retcode;
     struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
     np = connect->data;
@@ -845,21 +845,32 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
                 connect->data = np;
                 np->connect = connect;
-                portable_tcpwrite(connect,pubkey,(int32_t)strlen(pubkey)+1,ALLOCWR_ALLOCFREE);
+                n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+                if ( n == crypto_box_PUBLICKEYBYTES )
+                {
+                    printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
+                    /*if ( connect != 0 && sendresponse != 0 )
+                    {
+                        printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
+                        //printf("got (%s)\n",retbuf);
+                        init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+                        sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
+                        printf("got argstr.(%s)\n",argstr);
+                        issue_generateToken(0,token,argstr,Server_secret);
+                        token[NXT_TOKEN_LEN] = 0;
+                        sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
+                        if ( retbuf[0] == 0 )
+                            printf("error generating intro??\n");
+                        else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
+                        printf("after tcpwrite to %p (%s)\n",connect,retbuf);
+                    } else np = 0;*/
+                    portable_tcpwrite(connect,pubkey,(int32_t)strlen(pubkey)+1,ALLOCWR_ALLOCFREE);
+                    free(buf->base);
+                    return;
+                }
             }
-            else
-            {
-                sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
-                portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
-            }
-            /*np = process_intro(connect,(char *)buf->base,1);
-            printf("process_intro returns np.%p for connect.%p\n",np,connect);
-            if ( np != 0 )
-            {
-                connect->data = np;
-                np->connect = connect;
-            }
-            printf("after process_intro returns np.%p for connect.%p\n",np,connect);*/
+            sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
+            portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
         }
     }
     else
