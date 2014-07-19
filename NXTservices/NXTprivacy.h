@@ -796,8 +796,10 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     cJSON *argjson;
-    char NXTaddr[64],pubkey[256],retbuf[1024],argstr[1024],token[NXT_TOKEN_LEN+1],*jsonstr;
-    int32_t n,createdflag,retcode;
+    //char NXTaddr[64],pubkey[256],argstr[1024],token[NXT_TOKEN_LEN+1];
+    char retbuf[1024],*jsonstr;
+    //int32_t n,createdflag;
+    int32_t retcode;
     struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
     np = connect->data;
@@ -839,7 +841,17 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         }
         else
         {
-            memset(NXTaddr,0,sizeof(NXTaddr));
+            if ( (np= process_intro(connect,(char *)buf->base,1)) != 0 )
+            {
+                connect->data = np;
+                np->connect = connect;
+            }
+            else
+            {
+                sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
+                portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+            }
+            /*memset(NXTaddr,0,sizeof(NXTaddr));
             if ( (retcode= validate_token(0,pubkey,NXTaddr,buf->base,15)) > 0 )
             {
                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
@@ -859,9 +871,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
                     free(buf->base);
                     return;
                 }
-            }
-            sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
-            portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+            }*/
         }
     }
     else
@@ -945,8 +955,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
                 np->connect = connect;
                 np->tcp = tcp;
                 np->udp = (uv_stream_t *)udp;
-                if ( connect != 0 )
-                    connect->data = (void *)np;
+                connect->data = (void *)np;
             }
         }
         queue_enqueue(&RPC_6777_response,str);
@@ -1190,7 +1199,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                             return;
                         }
                         portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
-                        //portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
+                        portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                         didintro = 1;
                     }
