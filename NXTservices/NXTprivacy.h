@@ -510,8 +510,9 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                         printf("error generating intro??\n");
                     else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
                     printf("after tcpwrite to %p (%s)\n",connect,retbuf);
-                } else np = 0;
-            } else np = 0;
+                    return(np);
+                }
+            }
         }
     }
     else
@@ -521,9 +522,8 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
             sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
             portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
         }
-        np = 0;
     }
-    return(np);
+    return(0);
 }
 
 #include "libuv/test/task.h"
@@ -623,7 +623,7 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
             printf("got np.%p <- UDP %p\n",np,handle);
             np->Uaddr = *addr;
             np->udp = (uv_stream_t *)handle;
-        }
+        } else printf("on_udprecv: process_intro returns null?\n");
         //printf("send back ping\n");
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,ALLOCWR_ALLOCFREE));
@@ -834,6 +834,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         {
             connect->data = np;
             np->connect = connect;
+            printf("set np.%p connect.%p\n",np,connect);
         }
         else
         {
