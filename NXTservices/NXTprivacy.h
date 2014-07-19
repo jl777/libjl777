@@ -415,12 +415,12 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
     int32_t valid,retcode = -13;
     char buf[4096],sender[64],*firstjsontxt = 0;
     unsigned char encoded[4096];
-    strcpy(NXTaddr,"8989816935121514892");
+    /*strcpy(NXTaddr,"8989816935121514892");
     int i;
     for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
         pubkey[i] = '0';
     pubkey[i] = 0;
-    return(1);
+    return(1);*/
     array = cJSON_Parse(tokenizedtxt);
     if ( array == 0 )
     {
@@ -834,15 +834,20 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
             ptrs[0] = connect;
             ptrs[1] = buf->base;
             queue_enqueue(&IntroQ,ptrs);
+            return; // avoid buf->base from being freed
         }
         else
         {
-            int32_t createdflag;
-            np = get_NXTacct(&createdflag,Global_mp,"8989816935121514892");
-            connect->data = np;
-            np->connect = connect;
-            portable_tcpwrite(connect,"yo mama",(int32_t)strlen("yo mama")+1,ALLOCWR_ALLOCFREE);
-
+            char NXTaddr[64],pubkey[256];
+            int32_t createdflag,retcode;
+            if ( (retcode= validate_token(0,pubkey,NXTaddr,buf->base,15)) > 0 )
+            {
+                np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                connect->data = np;
+                np->connect = connect;
+                portable_tcpwrite(connect,pubkey,(int32_t)strlen(pubkey)+1,ALLOCWR_ALLOCFREE);
+            }
+            else printf("validate_token error.%d\n",retcode);
             /*np = process_intro(connect,(char *)buf->base,1);
             printf("process_intro returns np.%p for connect.%p\n",np,connect);
             if ( np != 0 )
@@ -866,9 +871,9 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
             //free(jsonstr); completion frees, dont do it here!
             free_json(argjson);
         }
-        if ( buf->base != 0 )
-            free(buf->base);
     }
+    if ( buf->base != 0 )
+        free(buf->base);
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
