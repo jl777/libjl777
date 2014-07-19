@@ -251,7 +251,7 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
     int32_t i;
     for (i=0; i<n; i++)
         bytes[i] = _decode_hex(&hex[i*2]);
-    bytes[i] = 0;
+    //bytes[i] = 0;
     return(n);
 }
 
