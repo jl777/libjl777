@@ -824,7 +824,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         return;
     }
     printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
-    buf->base[nread] = 0;
+    //buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
         /*void **ptrs;
@@ -832,7 +832,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         ptrs[0] = connect;
         ptrs[1] = buf->base;
         queue_enqueue(&IntroQ,ptrs);*/
-        np = process_intro(connect,(char *)buf->base,0);
+        np = process_intro(connect,(char *)buf->base,1);
         printf("process_intro returns np.%p for connect.%p\n",np,connect);
         if ( np != 0 )
         {
