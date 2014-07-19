@@ -462,10 +462,15 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
 char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,char *origargstr)
 {
     char buf[1024];
-    uint64_t tmp;
+    uint64_t tmp,nxt64bits;
     unsigned char encoded[4096];
     int32_t createdflag,len;
     struct NXT_acct *np;
+    if ( NXTaddr[0] == 0 )
+    {
+        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+    }
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
     if ( np->udp != 0 )
     {

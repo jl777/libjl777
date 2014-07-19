@@ -729,7 +729,7 @@ void gen_testforms(char *NXTACCTSECRET)
 #ifdef MAINNET
     char *netstr = "MAINNET";
 #else
-    char *netstr = "TESTNET";
+    //char *netstr = "TESTNET";
 #endif
     NXTADDR[0] = 0;
     if ( NXTACCTSECRET != 0 )
