@@ -796,7 +796,8 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
     char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr);
     cJSON *argjson;
-    char *jsonstr;
+    char NXTaddr[64],pubkey[256],retbuf[1024],*jsonstr;
+    int32_t createdflag,retcode;
     struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
     np = connect->data;
@@ -838,8 +839,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         }
         else
         {
-            char NXTaddr[64],pubkey[256];
-            int32_t createdflag,retcode;
+            memset(NXTaddr,0,sizeof(NXTaddr));
             if ( (retcode= validate_token(0,pubkey,NXTaddr,buf->base,15)) > 0 )
             {
                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
@@ -847,7 +847,11 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
                 np->connect = connect;
                 portable_tcpwrite(connect,pubkey,(int32_t)strlen(pubkey)+1,ALLOCWR_ALLOCFREE);
             }
-            else printf("validate_token error.%d\n",retcode);
+            else
+            {
+                sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
+                portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
+            }
             /*np = process_intro(connect,(char *)buf->base,1);
             printf("process_intro returns np.%p for connect.%p\n",np,connect);
             if ( np != 0 )
@@ -865,7 +869,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         {
             jsonstr = pNXT_jsonhandler(&argjson,buf->base);
             if ( jsonstr == 0 )
-                jsonstr = clonestr("{\"result\":null}");
+                jsonstr = clonestr("{\"result\":\"pNXT_jsonhandler returns null\"}");
             printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
             portable_tcpwrite(connect,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
             //free(jsonstr); completion frees, dont do it here!
