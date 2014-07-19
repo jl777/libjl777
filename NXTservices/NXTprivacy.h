@@ -620,7 +620,7 @@ void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const stru
         //rcvbuf->base[nread] = 0;
         if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
         {
-            //printf("got np.%p\n",np);
+            printf("got np.%p <- UDP %p\n",np,handle);
             np->Uaddr = *addr;
             np->udp = (uv_stream_t *)handle;
         }

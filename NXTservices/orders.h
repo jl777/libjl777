@@ -472,6 +472,7 @@ char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,
     int32_t len;
     struct NXT_acct *np;
     np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    printf("%s %s got np.%p udp.%p\n",NXTaddr,NXTACCTSECRET,np,np->udp);
     if ( np->udp != 0 )
     {
         memset(encoded,0,sizeof(encoded));
