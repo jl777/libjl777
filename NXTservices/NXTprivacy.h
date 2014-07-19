@@ -508,7 +508,7 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    //else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
+                    else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
                     printf("after tcpwrite to %p (%s)\n",connect,retbuf);
                 } else np = 0;
             } else np = 0;
@@ -827,19 +827,31 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     //buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
-        void **ptrs;
-        ptrs = malloc(sizeof(*ptrs) * 2);
-        ptrs[0] = connect;
-        ptrs[1] = buf->base;
-        queue_enqueue(&IntroQ,ptrs);
-        /*np = process_intro(connect,(char *)buf->base,1);
-        printf("process_intro returns np.%p for connect.%p\n",np,connect);
-        if ( np != 0 )
+        if ( 0 )
         {
+            void **ptrs;
+            ptrs = malloc(sizeof(*ptrs) * 2);
+            ptrs[0] = connect;
+            ptrs[1] = buf->base;
+            queue_enqueue(&IntroQ,ptrs);
+        }
+        else
+        {
+            int32_t createdflag;
+            np = get_NXTacct(&createdflag,Global_mp,"8989816935121514892");
             connect->data = np;
             np->connect = connect;
+            portable_tcpwrite(connect,"yo mama",(int32_t)strlen("yo mama")+1,ALLOCWR_ALLOCFREE);
+
+            /*np = process_intro(connect,(char *)buf->base,1);
+            printf("process_intro returns np.%p for connect.%p\n",np,connect);
+            if ( np != 0 )
+            {
+                connect->data = np;
+                np->connect = connect;
+            }
+            printf("after process_intro returns np.%p for connect.%p\n",np,connect);*/
         }
-        printf("after process_intro returns np.%p for connect.%p\n",np,connect);*/
     }
     else
     {
