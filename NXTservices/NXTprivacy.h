@@ -827,19 +827,19 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     //buf->base[nread] = 0;
     if ( 1 && np == 0 )
     {
-        /*void **ptrs;
+        void **ptrs;
         ptrs = malloc(sizeof(*ptrs) * 2);
         ptrs[0] = connect;
         ptrs[1] = buf->base;
-        queue_enqueue(&IntroQ,ptrs);*/
-        np = process_intro(connect,(char *)buf->base,1);
+        queue_enqueue(&IntroQ,ptrs);
+        /*np = process_intro(connect,(char *)buf->base,1);
         printf("process_intro returns np.%p for connect.%p\n",np,connect);
         if ( np != 0 )
         {
             connect->data = np;
             np->connect = connect;
         }
-        printf("after process_intro returns np.%p for connect.%p\n",np,connect);
+        printf("after process_intro returns np.%p for connect.%p\n",np,connect);*/
     }
     else
     {
