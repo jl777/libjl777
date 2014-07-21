@@ -730,7 +730,7 @@ void gen_testforms(char *NXTACCTSECRET)
 #ifdef MAINNET
     char *netstr = "MAINNET";
 #else
-    //char *netstr = "TESTNET";
+    char *netstr = "TESTNET";
 #endif
     NXTADDR[0] = 0;
     if ( NXTACCTSECRET != 0 )
@@ -744,7 +744,7 @@ void gen_testforms(char *NXTACCTSECRET)
             mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,NXTADDR,mp->groupname);
         }
     }
-    //sprintf(testforms,"%s %s Finished_loading.%d Historical_done.%d <br/><b>%s <br/> %s <br/>NXT.%s balance %.8f %s</b><br/>\n",teststr,netstr,Finished_loading,Historical_done,Global_mp->dispname,PC_USERNAME[0]!=0?PC_USERNAME:"setAccountInfo on http://127.0.0.1:6876/test description={\"username\":\"your pc username\"}",NXTADDR,dstr(Global_mp->acctbalance),Global_mp->acctbalance == 0?"<- need to send NXT":"");
+    sprintf(testforms,"%s %s Finished_loading.%d Historical_done.%d <br/><b>%s <br/> %s <br/>NXT.%s balance %.8f %s</b><br/>\n",teststr,netstr,Finished_loading,Historical_done,Global_mp->dispname,PC_USERNAME[0]!=0?PC_USERNAME:"setAccountInfo on http://127.0.0.1:6876/test description={\"username\":\"your pc username\"}",NXTADDR,dstr(Global_mp->acctbalance),Global_mp->acctbalance == 0?"<- need to send NXT":"");
     sprintf(testforms+strlen(testforms),"<br/><a href=\"https://coinomat.com/~jamesjl777\">Send NXT -> your Visa/Mastercard</a href>");
     str = gen_handler_forms(NXTADDR,"pNXT","pNXT API test forms",pNXT_forms);
     strcat(testforms,str);
