@@ -225,6 +225,7 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define NXTAPIURL "http://127.0.0.1:6876/nxt"
 
 #define BTC_COINASSET "1639299849328439538"
+#define BTCD_COINASSET "7631394205089352260"
 #define LTC_COINASSET "1994770251775275406"
 #define DRK_COINASSET "4731882869050825869"
 #endif

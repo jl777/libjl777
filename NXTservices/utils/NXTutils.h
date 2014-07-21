@@ -419,6 +419,19 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     return(np);
 }
 
+void clear_NXT_networkinfo(struct NXT_acct *np)
+{
+    if ( np != 0 )
+    {
+        np->tcp = 0;
+        np->udp = 0;
+        np->udp_port = 0;
+        memset(&np->Uaddr,0,sizeof(np->Uaddr));
+        memset(np->udp_sender,0,sizeof(np->udp_sender));
+        np->connect = 0;
+    }
+}
+
 struct NXT_acct *find_NXTacct(char *NXTaddr,char *NXTACCTSECRET)
 {
     int32_t createdflag;
@@ -653,7 +666,7 @@ int32_t issue_generateToken(CURL *curl_handle,char encoded[NXT_TOKEN_LEN],char *
     retval = extract_NXTfield(curl_handle,0,cmd,0,0);
     if ( retval.json != 0 )
     {
-        printf("token.(%s)\n",cJSON_Print(retval.json));
+        //printf("token.(%s)\n",cJSON_Print(retval.json));
         tokenobj = cJSON_GetObjectItem(retval.json,"token");
         memset(token,0,sizeof(token));
         copy_cJSON(token,tokenobj);

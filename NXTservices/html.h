@@ -479,13 +479,14 @@ int gen_pNXT_send_fields(char *NXTaddr,char *handler,char *name,char **fields,ch
 int gen_pNXT_privatesend_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*dest,*amount,*secret;
+    char script[16384],*dest,*amount,*secret,*coin;
     secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
     dest = construct_varname(fields,n++,name,"dest","dest NXT account:",0,0);
     amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount);
+    coin = construct_varname(fields,n++,name,"coin","coin:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"coin\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount,coin);
     *scriptp = clonestr(script);
-    free(secret); free(dest); free(amount);
+    free(secret); free(dest); free(amount); free(coin);
     return(n);
 }
 

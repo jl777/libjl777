@@ -10,16 +10,14 @@
 
 #include "../NXTservices/atomic.h"
 
-#define NXTSYNC_MESSAGE_SIG 0x49865897
-struct NXTsync_message
-{
-    uint32_t sig;
-    uint16_t hops,len;
-    uint64_t dest64bits;
-    unsigned char message[];
-};
-
 #define ORDERBOOK_SIG 0x83746783
+
+struct orderbook_tx
+{
+    int32_t sig,type;
+    uint64_t txid,nxt64bits,baseid,relid;
+    uint64_t baseamount,relamount;
+};
 
 struct quote
 {
@@ -33,13 +31,6 @@ struct orderbook
     uint64_t assetA,assetB;
     struct quote *bids,*asks;
     int32_t numbids,numasks,polarity;
-};
-
-struct orderbook_tx
-{
-    int32_t sig,type;
-    uint64_t txid,nxt64bits,baseid,relid;
-    uint64_t baseamount,relamount;
 };
 
 struct raw_orders
@@ -390,6 +381,8 @@ int32_t init_orderbook_tx(int32_t polarity,struct orderbook_tx *tx,int32_t type,
     return(-1);
 }
 
+//{"success":true,"message":"","result":{"buy":[{"Quantity":48.06620614,"Rate":0.00055003},{"Quantity":280.91122887,"Rate":0.00055000},{"Quantity":500.00000000,"Rate":0.00054626},{"Quantity":70.26866440,"Rate":0.00054620},{"Quantity":65.00000000,"Rate":0.00054400}],"sell":[{"Quantity":9.76044214,"Rate":0.00057051},{"Quantity":19.63144898,"Rate":0.00057054},{"Quantity":1.00000000,"Rate":0.00057455},{"Quantity":1.00000000,"Rate":0.00057469},{"Quantity":1.00000000,"Rate":0.00057489}]}}
+
 int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t obookid,double price,double volume)
 {
     uint64_t baseamount,relamount;
@@ -453,7 +446,7 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
     return(clonestr(buf));
 }
 
-char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
+char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,char *coinstr)
 {
     char buf[1024];
     uint64_t satoshis;
@@ -461,30 +454,6 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest)
     np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     satoshis = (amount * SATOSHIDEN);
     sprintf(buf,"privatesend %.8f NXT from NXT.%s to NXT.%s",dstr(satoshis),NXTaddr,dest);
-    return(clonestr(buf));
-}
-
-char *sendmessage(char *NXTaddr,char *NXTACCTSECRET,char *msg,char *destNXTaddr,char *origargstr)
-{
-    char buf[1024];
-    uint64_t tmp;
-    unsigned char encoded[4096];
-    int32_t len;
-    struct NXT_acct *np;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    printf("%s %s got np.%p udp.%p\n",NXTaddr,NXTACCTSECRET,np,np->udp);
-    if ( np->udp != 0 )
-    {
-        memset(encoded,0,sizeof(encoded));
-        memcpy(encoded,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-        len = _encode_str(encoded+sizeof(Global_mp->session_pubkey),origargstr,(int)strlen(origargstr)+1,np->pubkey,Global_mp->session_privkey);
-
-        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,encoded,len+sizeof(Global_mp->session_pubkey),1);
-        memcpy(&tmp,np->pubkey,sizeof(tmp));
-        //portable_tcpwrite(np->tcp!=0?np->tcp:np->connect,origargstr,strlen(origargstr)+1,1);
-        sprintf(buf,"{\"status\":\"%s encrypted.%llx sendmessage.(%s) to %s pending\"}",NXTaddr,(long long)tmp,msg,destNXTaddr);
-    }
-    else sprintf(buf,"{\"error\":\"cant sendmessage.(%s) to %s without udp connection\"}",msg,destNXTaddr);
     return(clonestr(buf));
 }
 
@@ -501,7 +470,7 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
         msgs = &np->incoming;
     }
     else msgs = &ALL_messages;
-    while ( (str= queue_dequeue(msgs)) != 0 ) //queue_size(msgs) > 1 && 
+    while ( (str= queue_dequeue(msgs)) != 0 ) //queue_size(msgs) > 1 &&
     {
         if ( array == 0 )
             array = cJSON_CreateArray();
@@ -515,6 +484,63 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     str = cJSON_Print(json);
     free_json(json);
     return(str);
+}
+
+char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
+{
+    char buf[1024];
+    unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
+    int32_t len,createdflag;
+    struct NXT_acct *np,*destnp;
+    np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
+    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    memset(finalbuf,0,sizeof(finalbuf));
+    memset(encoded,0,sizeof(encoded));
+    memset(encoded2,0,sizeof(encoded2));
+    len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+    if ( len > sizeof(finalbuf)-256 )
+    {
+        printf("sendmessage, payload too big %d\n",len);
+        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",NXTaddr,msg,destNXTaddr,len);
+    }
+    else if ( len > 0 )
+    {
+        outbuf = encoded;
+        if ( np->udp != 0 && destnp->udp == 0 )
+        {
+            len = onionize(encoded2,Global_pNXT->privacyServer_NXTaddr,encoded,len);
+            outbuf = encoded2;
+            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,Global_pNXT->privacyServer_NXTaddr,origargstr,msg,destNXTaddr);
+        }
+        else if ( destnp->udp != 0 )
+        {
+            np = destnp;
+            sprintf(buf,"{\"status\":\"%s sends direct encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+        } else np = 0;  // have to use p2p network
+        if ( len > 0 )
+        {
+            len = crcize(finalbuf,outbuf,len);
+            if ( len > sizeof(finalbuf) )
+            {
+                printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+                exit(-1);
+            }
+            if ( np != 0 )
+                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,outbuf,len,1);
+            else
+            {
+                if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,outbuf,len) == 0 )
+                {
+                    sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+                }
+                else
+                {
+                    sprintf(buf,"{\"status\":\"%s sends via p2p encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+                }
+            }
+        } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s error encoding 2nd layer\"}",NXTaddr,msg,destNXTaddr);
+    } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s probably no pubkey\"}",NXTaddr,msg,destNXTaddr);
+    return(clonestr(buf));
 }
 
 char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
@@ -540,7 +566,7 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
     {
         init_hexbytes(sighash,tx->sighash,sizeof(tx->sighash));
         init_hexbytes(refhash,tx->refhash,sizeof(tx->refhash));
-        sprintf(buf,"{\"utx\":\"%s\",\"sig\":\"%s\",\"ref\":\"%s\"}",utxbytes,sighash,refhash);
+        sprintf(buf,"{\"utx\":\"%s\",\"sig\":\"%s\",\"ref\":\"%s\",\"time\":%ld}",utxbytes,sighash,refhash,time(NULL));
         free(tx);
         if ( 0 )
         {
@@ -557,18 +583,20 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
         encoded[NXT_TOKEN_LEN] = 0;
         sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
         printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
-        return(sendmessage(NXTaddr,NXTACCTSECRET,_tokbuf,otherNXTaddr,buf));
+        return(sendmessage(NXTaddr,_tokbuf,otherNXTaddr,buf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));
 }
 
-uint64_t is_NXTsync_message(unsigned char *tx,int32_t size)
+uint64_t calc_txid(unsigned char *hash,long hashsize)
 {
-    struct NXTsync_message *nsm = (struct NXTsync_message *)tx;
-    if ( nsm->sig == NXTSYNC_MESSAGE_SIG )
-        return(nsm->dest64bits);
-    return(0);
+    uint64_t txid = 0;
+    if ( hashsize >= sizeof(txid) )
+        memcpy(&txid,hash,sizeof(txid));
+    else memcpy(&txid,hash,hashsize);
+    printf("calc_txid.(%llu)\n",(long long)txid);
+    return(txid);
 }
 
 uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
@@ -582,35 +610,27 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
     return(0);
 }
 
-uint64_t calc_txid(unsigned char *hash,long hashsize)
-{
-    uint64_t txid = 0;
-    if ( hashsize >= sizeof(txid) )
-        memcpy(&txid,hash,sizeof(txid));
-    else memcpy(&txid,hash,hashsize);
-    printf("calc_txid.(%llu)\n",(long long)txid);
-    return(txid);
-}
-
 uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
     uint64_t txid = 0;
-    uint64_t obookid,destNXTaddr;
+    uint64_t obookid;
     display_orderbook_tx((struct orderbook_tx *)tx);
     for (i=0; i<size; i++)
         printf("%02x ",tx[i]);
     printf("C add_jl777_tx.%p size.%d hashsize.%ld NXT.%llu\n",tx,size,hashsize,(long long)ORDERBOOK_NXTID);
-    if ( (obookid= is_orderbook_tx(tx,size)) != 0 )
+    txid = calc_txid(hash,hashsize);
+    if ( is_encrypted_packet(tx,size) != 0 )
     {
-        txid = calc_txid(hash,hashsize);
-        if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)tx,txid) == 0 )
-            ((struct orderbook_tx *)tx)->txid = txid;
+        process_packet(0,0,tx,size,0,0,0,0,0);
     }
-    else if ( (destNXTaddr= is_NXTsync_message(tx,size)) != 0 )
+    else
     {
-        if ( is_subscriber(destNXTaddr) >= 0 )
-            queue_enqueue(&NXTsync_Q,tx);
+        if ( (obookid= is_orderbook_tx(tx,size)) != 0 )
+        {
+            if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)tx,txid) == 0 )
+                ((struct orderbook_tx *)tx)->txid = txid;
+        }
     }
     return(txid);
 }

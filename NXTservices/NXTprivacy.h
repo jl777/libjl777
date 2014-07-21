@@ -21,6 +21,7 @@
 
 char *Server_NXTaddr,*Server_secret;
 queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages;
+#include "packets.h"
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -28,87 +29,6 @@ typedef struct {
     int32_t allocflag;
 } write_req_t;
 
-struct orderBook_info
-{
-    uint64_t assetA,assetB,*serverNXTaddrs;
-    uint32_t bookid,revbookid,numservers;
-};
-
-struct orderBook_quote
-{
-    uint64_t assetAfemtos,assetBfemtos,nxt64bits;
-    uint32_t bookid,flags;
-};
-
-struct privacy_client
-{
-    uint64_t NXTaddrbits,recentBlocks[3],*balances;
-    char BTC_pubkey[100];
-    unsigned char pubkey[20]; //jl777 lookup
-    int32_t numquotes,timestamps[3],numtrades,numpaids,numassets;
-    struct orderBook_quote **quotes; // sorted by bookid, multicast
-};
-
-struct signed_trade
-{
-    uint64_t buyerbits,sellerbits,assetA,assetB,assetAfemto,assetBfemto; // implicit fee >>10
-    unsigned char buyertoken[160],sellertoken[160];
-    int32_t timestampA,timestampB;
-};
-
-struct privateInfo
-{
-    struct sockaddr_in addr;
-    uint64_t privateNXTaddr,credits;
-};
-
-struct privacyServer
-{
-    int32_t numassets,numclients,timestamp,maxheight,matched_height,numforks;
-    uint64_t matchedBlocks[16];
-    char BTC_pubkey[100];
-    unsigned char pubkey[20]; //jl777 lookup
-    uint64_t *assetids;
-    struct privacy_client **clients;
-    struct signed_trade **pendingtrades;
-} P;
-
-struct NXTservices_Topology
-{
-    int32_t numbooks,numservers,timestamp,maxheight,matched_height;
-    struct orderBook **books;
-    struct privacyServer **servers;
-} *Topology;
-
-
-int32_t is_subscriber(uint64_t nxt64bits)
-{
-    int32_t i;
-    for (i=0; i<P.numclients; i++)
-        if ( P.clients[i]->NXTaddrbits == nxt64bits )
-            return(i);
-    return(-1);
-}
-
-void add_subscriber(uint64_t nxt64bits,unsigned char *pubkey)
-{
-    int32_t ind;
-    struct privacy_client *cp;
-    if ( (ind= is_subscriber(nxt64bits)) >= 0 )
-        cp = P.clients[ind];
-    else
-    {
-        P.clients = (struct privacy_client **)realloc(P.clients,(P.numclients+1) * sizeof(*P.clients));
-        cp = (struct privacy_client *)calloc(1,sizeof(*cp));
-        cp->NXTaddrbits = nxt64bits;
-        P.clients[P.numclients++] = cp;
-    }
-    if ( memcmp(cp->pubkey,pubkey,sizeof(cp->pubkey)) != 0 )
-    {
-        printf("update pubkey for NXT.%llu: %llx\n",(long long)nxt64bits,*(long long *)pubkey);
-        memcpy(cp->pubkey,pubkey,sizeof(cp->pubkey));
-    }
-}
 
 int server_address(char *server,int port,struct sockaddr_in *addr)
 {
@@ -167,56 +87,6 @@ uint64_t decode_privacyServer(char *jsonstr)
     if ( port != 0 && ipbits != 0 )
         privacyServer = ipbits | ((uint64_t)port << 32);
     return(privacyServer);
-}
-
-int _encode_str(unsigned char *cipher,char *str,int size,unsigned char *destpubkey,unsigned char *myprivkey)
-{
-    long len;
-    unsigned char buf[4096],*nonce = cipher;
-    randombytes(nonce,crypto_box_NONCEBYTES);
-    cipher += crypto_box_NONCEBYTES;
-    len = size;//strlen(str) + 1;
-    //printf("len.%ld -> %ld %ld\n",len,len+crypto_box_ZEROBYTES,len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
-    memset(cipher,0,len+crypto_box_ZEROBYTES);
-    memset(buf,0,crypto_box_ZEROBYTES);
-    memcpy(buf+crypto_box_ZEROBYTES,str,len);
-    /*int i;
-     for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
-     printf("%02x",destpubkey[i]);
-     printf(" destpubkey\n");
-     for (i=0; i<crypto_box_SECRETKEYBYTES; i++)
-     printf("%02x",myprivkey[i]);
-     printf(" myprivkey\n");
-     for (i=0; i<crypto_box_NONCEBYTES; i++)
-     printf("%02x",nonce[i]);
-     printf(" nonce\n");*/
-    crypto_box(cipher,buf,len+crypto_box_ZEROBYTES,nonce,destpubkey,myprivkey);
-    return((int)len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
-}
-
-int _decode_cipher(char *str,unsigned char *cipher,int32_t *lenp,unsigned char *srcpubkey,unsigned char *myprivkey)
-{
-    int i,err,len = *lenp;
-    unsigned char *nonce = cipher;
-    cipher += crypto_box_NONCEBYTES, len -= crypto_box_NONCEBYTES;
-    /*int i;
-     for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
-     printf("%02x",srcpubkey[i]);
-     printf(" destpubkey\n");
-     for (i=0; i<crypto_box_SECRETKEYBYTES; i++)
-     printf("%02x",myprivkey[i]);
-     printf(" myprivkey\n");
-     for (i=0; i<crypto_box_NONCEBYTES; i++)
-     printf("%02x",nonce[i]);
-     printf(" nonce\n");*/
-    err = crypto_box_open((unsigned char *)str,cipher,len,nonce,srcpubkey,myprivkey);
-    for (i=0; i<len-crypto_box_ZEROBYTES; i++)
-        str[i] = str[i+crypto_box_ZEROBYTES];
-    //for (i=0; i<len;i++)
-    //    printf("%02x",str[i]);
-    // printf("Err.%d\n",err);
-    *lenp = len - crypto_box_ZEROBYTES;
-    return(err);
 }
 
 /*
@@ -395,138 +265,6 @@ uint64_t get_random_privacyServer(char **whitelist,char **blacklist)
     return(0);
 }*/
 
-int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET)
-{
-    char argstr[1024],pubkey[1024],token[1024];
-    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,nonce);
-    printf("got argstr.(%s)\n",argstr);
-    issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
-    token[NXT_TOKEN_LEN] = 0;
-    sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
-    printf("tokenized.(%s)\n",jsonstr);
-    return((int)strlen(jsonstr));
-}
-
-int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
-{
-    cJSON *array=0,*firstitem=0,*tokenobj,*obj;
-    int64_t timeval,diff = 0;
-    int32_t valid,retcode = -13;
-    char buf[4096],sender[64],*firstjsontxt = 0;
-    unsigned char encoded[4096];
-    /*strcpy(NXTaddr,"8989816935121514892");
-    int i;
-    for (i=0; i<crypto_box_PUBLICKEYBYTES; i++)
-        pubkey[i] = '0';
-    pubkey[i] = 0;
-    return(1);*/
-    array = cJSON_Parse(tokenizedtxt);
-    if ( array == 0 )
-    {
-        printf("couldnt validate.(%s)\n",tokenizedtxt);
-        return(-2);
-    }
-    if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
-    {
-        firstitem = cJSON_GetArrayItem(array,0);
-        if ( pubkey != 0 )
-        {
-            obj = cJSON_GetObjectItem(firstitem,"pubkey");
-            copy_cJSON(pubkey,obj);
-        }
-        obj = cJSON_GetObjectItem(firstitem,"NXT"), copy_cJSON(buf,obj);
-        if ( NXTaddr[0] != 0 && strcmp(buf,NXTaddr) != 0 )
-            retcode = -3;
-        else
-        {
-            strcpy(NXTaddr,buf);
-            if ( strictflag != 0 )
-            {
-                timeval = get_cJSON_int(firstitem,"time");
-                diff = timeval - time(NULL);
-                if ( diff < 0 )
-                    diff = -diff;
-                if ( diff > strictflag )
-                {
-                    printf("time diff %lld too big %lld vs %ld\n",(long long)diff,(long long)timeval,time(NULL));
-                    retcode = -5;
-                }
-            }
-            if ( retcode != -5 )
-            {
-                firstjsontxt = cJSON_Print(firstitem), stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
-                tokenobj = cJSON_GetArrayItem(array,1);
-                obj = cJSON_GetObjectItem(tokenobj,"token");
-                copy_cJSON((char *)encoded,obj);
-                memset(sender,0,sizeof(sender));
-                valid = -1;
-                if ( issue_decodeToken(curl_handle,sender,&valid,firstjsontxt,encoded) > 0 )
-                {
-                    if ( strcmp(sender,NXTaddr) == 0 )
-                    {
-                        printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
-                        retcode = valid;
-                    }
-                }
-                if ( retcode < 0 )
-                    printf("err: signed by invalid NXT.%s valid.%d or timediff too big diff.%lld\n",sender,valid,(long long)diff);
-                free(firstjsontxt);
-            }
-        }
-    }
-    if ( array != 0 )
-        free_json(array);
-    return(retcode);
-}
-
-struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendresponse)
-{
-    int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocflag);
-    int32_t n,retcode,createdflag;
-    char retbuf[4096],pubkey[256],NXTaddr[64],argstr[1024],token[256];
-    struct NXT_acct *np = 0;
-    NXTaddr[0] = pubkey[0] = 0;
-    if ( (retcode= validate_token(0,pubkey,NXTaddr,bufbase,15)) > 0 )
-    {
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( np != 0 )
-        {
-            n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
-            if ( n == crypto_box_PUBLICKEYBYTES )
-            {
-                printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
-                if ( connect != 0 && sendresponse != 0 )
-                {
-                    printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
-                    //printf("got (%s)\n",retbuf);
-                    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",Server_NXTaddr,pubkey,time(NULL));
-                    printf("got argstr.(%s)\n",argstr);
-                    issue_generateToken(0,token,argstr,Server_secret);
-                    token[NXT_TOKEN_LEN] = 0;
-                    sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
-                    if ( retbuf[0] == 0 )
-                        printf("error generating intro??\n");
-                    else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
-                    printf("after tcpwrite to %p (%s)\n",connect,retbuf);
-                }
-                return(np);
-            }
-        }
-    }
-    else
-    {
-        printf("token validation error.%d\n",retcode);
-        if ( sendresponse != 0 )
-        {
-            sprintf(retbuf,"{\"error\":\"token validation error.%d\"}",retcode);
-            portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
-        }
-    }
-    return(0);
-}
-
 #include "libuv/test/task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -608,86 +346,34 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
     return(r);
 }
 
-void on_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
+void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
     char sender[256];
-    struct NXT_acct *np = 0;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,handle,sender,port,nread,flags,server_xferred);
-        //rcvbuf->base[nread] = 0;
-        if ( (np= process_intro(0,(char *)rcvbuf->base,0)) != 0 )
-        {
-            printf("got np.%p <- UDP %p\n",np,handle);
-            np->Uaddr = *addr;
-            np->udp = (uv_stream_t *)handle;
-        } else printf("on_udprecv: process_intro returns null?\n");
-        //printf("send back ping\n");
+        printf("buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
+        process_packet(0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,ALLOCWR_ALLOCFREE));
+        server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
 }
 
-void on_client_udprecv(uv_udp_t *handle,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
+void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
-    char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt);
     uint16_t port;
-    int32_t valid,err,len,createdflag;
-    cJSON *argjson,*msgjson;
-    struct NXT_acct *np;
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
-    char sender[64],senderNXTaddr[64],message[4096],*parmstxt;
+    char sender[64];
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
-        memset(message,0,nread);
-        if ( 1 && nread > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
-        {
-            memcpy(pubkey,rcvbuf->base,sizeof(pubkey));
-            len = (int32_t)(nread - sizeof(pubkey));
-            err = _decode_cipher(message,(void *)((long)rcvbuf->base + sizeof(pubkey)),&len,pubkey,Global_mp->session_privkey);
-            if ( err == 0 )
-            {
-                printf("DECRYPTED.(%s)\n",message);
-            } else printf("error.%d decrypting pubkey.%llx\n",err,*(long long *)pubkey);
-            
-            parmstxt = clonestr(message);//rcvbuf->base;
-            parmstxt[nread] = 0;
-            argjson = cJSON_Parse(parmstxt);
-            if ( argjson != 0 )
-            {
-                parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
-                if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
-                {
-                    np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                    if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
-                    {
-                        printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
-                        memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
-                    }
-                    queue_enqueue(&ALL_messages,clonestr(parmstxt));
-                    printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
-                    msgjson = cJSON_GetObjectItem(argjson,"msg");
-                    copy_cJSON(message,msgjson);
-                    if ( message[0] != 0 )
-                    {
-                        queue_enqueue(&np->incoming,clonestr(message));
-                        printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
-                    }
-                }
-                free_json(argjson);
-                printf("parmstxt.%p valid.%d sender.(%s) msg.(%s)\n",parmstxt,valid,senderNXTaddr,message);
-            }
-            if ( parmstxt != 0 )
-                free(parmstxt);
-        }
+        process_packet(0,0,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,ALLOCWR_ALLOCFREE));
@@ -793,14 +479,24 @@ int32_t portable_tcpwrite(uv_stream_t *stream,void *buf,long len,int32_t allocfl
     return(r);
 }
 
+uint16_t set_peerinfo(struct sockaddr *addr,char *sender,uv_stream_t *tcp)
+{
+    uint16_t port;
+    int32_t addrlen = sizeof(*addr);
+    if ( uv_tcp_getpeername((uv_tcp_t *)tcp,addr,&addrlen) == 0 )
+    {
+        uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
+        port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
+        return(port);
+    }
+    return(0);
+}
+
 void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
-    char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender);
-    cJSON *argjson;
-    //char NXTaddr[64],pubkey[256],argstr[1024],token[NXT_TOKEN_LEN+1];
-    char retbuf[1024],*jsonstr;
-    //int32_t n,createdflag;
-    int32_t retcode;
+    char sender[64];
+    struct sockaddr addr;
+    int32_t port;
     struct NXT_acct *np = 0;
      // uv_shutdown_t *req;
     np = connect->data;
@@ -813,12 +509,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         //req = (uv_shutdown_t *)malloc(sizeof *req); causes problems?!
         //uv_shutdown(req,connect,after_shutdown);
         uv_close((uv_handle_t *)connect,on_close);
-        if ( np != 0 )
-        {
-            np->tcp = 0;
-            np->udp = 0;
-            np->connect = 0;
-        }
+        clear_NXT_networkinfo(np);
         return;
     }
     if ( nread == 0 )
@@ -827,48 +518,22 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
         free(buf->base);
         return;
     }
-    printf("got %ld bytes (%s) buf.%p base.%p np.%p\n",nread,buf->base,buf,buf->base,np);
-    //buf->base[nread] = 0;
-    if ( 1 && np == 0 )
-    {
-        if ( (np= process_intro(connect,(char *)buf->base,1)) != 0 )
-        {
-            connect->data = np;
-            np->connect = connect;
-            printf("set np.%p connect.%p\n",np,connect);
-        }
-        else
-        {
-            sprintf(retbuf,"{\"error\":\"validate_token error.%d\"}",retcode);
-            portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
-        }
-    }
-    else
-    {
-        argjson = cJSON_Parse(buf->base);
-        if ( argjson != 0 )
-        {
-            jsonstr = pNXT_jsonhandler(&argjson,buf->base,np->H.NXTaddr);
-            if ( jsonstr == 0 )
-                jsonstr = clonestr("{\"result\":\"pNXT_jsonhandler returns null\"}");
-            printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
-            portable_tcpwrite(connect,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
-            //free(jsonstr); completion frees, dont do it here!
-            free_json(argjson);
-        }
-    }
+    port = set_peerinfo(&addr,sender,connect);
+    printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
+    if ( (np= process_packet(np,1,(unsigned char *)buf->base,(int32_t)nread,connect,0,&addr,sender,port)) != 0 )
+        connect->data = np;
     if ( buf->base != 0 )
         free(buf->base);
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
-    char sender[32],*str;
+    char sender[32];
     struct NXT_acct *np = 0;
     uv_udp_t *udp = 0;
     uv_stream_t *connect = 0;
     struct sockaddr addr;
-    int port,addrlen = sizeof(addr);
+    int port;
     if ( (udp= (uv_udp_t *)tcp->data) != 0 )
     {
         connect = (uv_stream_t *)udp->data;
@@ -892,29 +557,27 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
             uv_close((uv_handle_t *)udp,on_server_close);
         }
         uv_shutdown(malloc(sizeof(uv_shutdown_t)),tcp,after_server_shutdown);
-        if ( np != 0 )
-        {
-            printf("clear server ptrs %p %p %p\n",np->tcp,np->connect,np->udp);
-            np->tcp = 0;
-            np->udp = 0;
-            np->connect = 0;
-        }
+        clear_NXT_networkinfo(np);
         return;
     }
     else if ( nread == 0 )
     {
         // Everything OK, but nothing read.
     }
-    else
+    else if ( connect != 0 )
     {
-        if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
+        port = set_peerinfo(&addr,sender,connect);
+        printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
+        if ( (np= process_packet(np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
+            connect->data = np;
+        /*if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
         {
             uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
             port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
             printf("udp.%p tcp.%p got bytes.%p (connect) >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",udp,tcp,connect,nread,buf->base,buf->base,sender,port);
         }
-        else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);
-        str = malloc(nread+1);
+        else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);*/
+        /*str = malloc(nread+1);
         memcpy(str,buf->base,nread);
         str[nread] = 0;
         if ( connect != 0 && connect->data == 0 )
@@ -928,6 +591,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
             }
         }
         queue_enqueue(&RPC_6777_response,str);
+         */
     }
     if ( buf->base != 0 )
         free(buf->base);
@@ -1082,7 +746,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
     static uint64_t privacyServer,pNXT_privacyServer;
-    static int32_t counter,numpings,didintro;
+    static int32_t counter,didintro; // numpings
     static struct sockaddr addr;
     static double lastping,lastattempt;
     double millis;
@@ -1179,8 +843,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     if ( (counter++ % 10) == 0 && udp != 0 )
                     {
                         //printf("udp.%p send ping.%d total transferred.%ld\n",udp,numpings,server_xferred);
-                        portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,ALLOCWR_ALLOCFREE);
-                        numpings++;
+                        //portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,ALLOCWR_ALLOCFREE);
+                        //numpings++;
                     }
                 }
             }
