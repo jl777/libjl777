@@ -527,7 +527,6 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
         } else np = 0;  // have to use p2p network
         if ( len > 0 )
         {
-            printf("crcize.%d\n",len);
             len = crcize(finalbuf,outbuf,len);
             if ( len > sizeof(finalbuf) )
             {

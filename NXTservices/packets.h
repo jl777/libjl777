@@ -65,6 +65,7 @@ int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
     uint32_t crc = _crc32(0,encoded,len);
     memcpy(final,&crc,sizeof(crc));
     memcpy(final + sizeof(crc),encoded,len);
+    printf("crc.%08x for len.%d\n",crc,len);
     return(len + sizeof(crc));
 }
 
@@ -127,9 +128,10 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     len -= sizeof(crc);
     if ( len <= 0 )
         return(0);
+    memcpy(&packet_crc,tx,sizeof(packet_crc));
     tx += sizeof(crc);
     crc = _crc32(0,tx,len);
-    memcpy(&packet_crc,tx,sizeof(packet_crc));
+    printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
     return(packet_crc == crc);
 }
 
