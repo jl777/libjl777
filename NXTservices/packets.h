@@ -446,7 +446,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 }
             }
             free_json(argjson);
-            printf("parmstxt.%p valid.%d sender.(%s) msg.(%s)\n",parmstxt,valid,senderNXTaddr,msg);
+            return(np);
         }
         else if ( I_am_server != 0 && (tcp != 0 || udp != 0) ) // test to make sure we are hub and not p2p broadcast
         {

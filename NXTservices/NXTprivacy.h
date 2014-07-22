@@ -371,7 +371,10 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             {
                 char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr);
                 if ( (retstr= sendmessage(Server_NXTaddr,retjsonstr,np->H.NXTaddr,retjsonstr)) != 0 )
+                {
+                    printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
                     free(retstr);
+                }
             }
          }
         server_xferred += nread;
