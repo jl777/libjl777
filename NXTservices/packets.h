@@ -445,6 +445,11 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     }
                 }
             }
+            else
+            {
+                printf("routine non-tokenized message.(%s)\n",parmstxt);
+                strcpy(retjsonstr,parmstxt);
+            }
             free_json(argjson);
             return(np);
         }
@@ -464,11 +469,6 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 }
             }
             else sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
-        }
-        else
-        {
-            printf("routine non-tokenized message.(%s)\n",parmstxt);
-            strcpy(retjsonstr,parmstxt);
         }
         if ( parmstxt != 0 )
             free(parmstxt);

@@ -423,6 +423,7 @@ void clear_NXT_networkinfo(struct NXT_acct *np)
 {
     if ( np != 0 )
     {
+        np->sentintro = 0;
         np->tcp = 0;
         np->udp = 0;
         np->udp_port = 0;
