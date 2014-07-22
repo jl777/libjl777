@@ -551,7 +551,7 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
             }
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
-                printf("broadcast %d via p2p\n",len);
+                printf("Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
                 if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,finalbuf,len) == 0 )
                 {
                     sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
