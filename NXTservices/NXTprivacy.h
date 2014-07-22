@@ -349,13 +349,13 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
 void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
-    char sender[256];
+    char sender[256],retjsonstr[4096];
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
-        process_packet(0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
+        process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,ALLOCWR_ALLOCFREE));
         server_xferred += nread;
@@ -367,13 +367,13 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
 void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
-    char sender[64];
+    char sender[64],retjsonstr[4096];
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
-        process_packet(0,0,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
+        process_packet(retjsonstr,0,0,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
         //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,ALLOCWR_ALLOCFREE));
@@ -494,7 +494,7 @@ uint16_t set_peerinfo(struct sockaddr *addr,char *sender,uv_stream_t *tcp)
 
 void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 {
-    char sender[64];
+    char sender[64],retjsonstr[4096];
     struct sockaddr addr;
     int32_t port;
     struct NXT_acct *np = 0;
@@ -520,15 +520,17 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     }
     port = set_peerinfo(&addr,sender,connect);
     printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
-    if ( (np= process_packet(np,1,(unsigned char *)buf->base,(int32_t)nread,connect,0,&addr,sender,port)) != 0 )
+    if ( (np= process_packet(retjsonstr,np,1,(unsigned char *)buf->base,(int32_t)nread,connect,0,&addr,sender,port)) != 0 )
         connect->data = np;
+    if ( retjsonstr[0] != 0 )
+        portable_tcpwrite(connect,retjsonstr,(int32_t)strlen(retjsonstr)+1,ALLOCWR_ALLOCFREE);
     if ( buf->base != 0 )
         free(buf->base);
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
-    char sender[32];
+    char sender[32],retjsonstr[4096];
     struct NXT_acct *np = 0;
     uv_udp_t *udp = 0;
     uv_stream_t *connect = 0;
@@ -568,7 +570,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     {
         port = set_peerinfo(&addr,sender,connect);
         printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
-        if ( (np= process_packet(np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
+        if ( (np= process_packet(retjsonstr,np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
             connect->data = np;
         /*if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
         {
@@ -620,7 +622,7 @@ void client_connected(uv_stream_t *tcp,int status)
     {
         if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
         {
-            ASSERT(0 == portable_tcpwrite(connect,sender,strlen(sender)+1,ALLOCWR_ALLOCFREE));
+            //ASSERT(0 == portable_tcpwrite(connect,sender,strlen(sender)+1,ALLOCWR_ALLOCFREE));
         }
     }
 }
@@ -852,10 +854,13 @@ void NXTprivacy_idler(uv_idle_t *handle)
         }
     }
 //#endif
-    if ( tcp != 0 )
+    if ( tcp != 0 ) // for clients to send to server
     {
         if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
+        {
+            // onionize jl777
             portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,ALLOCWR_FREE);
+        }
     }
 }
 

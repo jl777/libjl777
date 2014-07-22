@@ -526,7 +526,7 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
                 exit(-1);
             }
             if ( np != 0 )
-                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,outbuf,len,1);
+                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,outbuf,len,ALLOCWR_ALLOCFREE);
             else
             {
                 if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,outbuf,len) == 0 )
@@ -613,6 +613,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
 uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
+    char retjsonstr[4096];
     uint64_t txid = 0;
     uint64_t obookid;
     display_orderbook_tx((struct orderbook_tx *)tx);
@@ -622,7 +623,7 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
     txid = calc_txid(hash,hashsize);
     if ( is_encrypted_packet(tx,size) != 0 )
     {
-        process_packet(0,0,tx,size,0,0,0,0,0);
+        process_packet(retjsonstr,0,0,tx,size,0,0,0,0,0);
     }
     else
     {

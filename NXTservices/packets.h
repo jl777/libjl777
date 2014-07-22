@@ -320,13 +320,35 @@ void tcpclient()
     queue_enqueue(&RPC_6777_response,str);
 }*/
 
-struct NXT_acct *process_packet(struct NXT_acct *np,int32_t I_am_server,unsigned char *recvbuf,int32_t recvlen,uv_stream_t *tcp,uv_stream_t *udp,const struct sockaddr *addr,char *sender,uint16_t port)
+void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_t *tcp,uv_stream_t *udp,const struct sockaddr *addr,char *sender,uint16_t port)
 {
-    uint64_t destbits;
-    int32_t valid,err,len,createdflag;
+    if ( udp != 0 )
+    {
+        np->Uaddr = *addr;
+        np->udp = udp;
+        np->udp_port = port;
+        safecopy(np->udp_sender,sender,sizeof(np->udp_sender));
+    }
+    else
+    {
+        np->addr = *addr;
+        if ( I_am_server != 0 )
+            np->connect = tcp;
+        else np->tcp = tcp;
+        np->tcp_port = port;
+        safecopy(np->tcp_sender,sender,sizeof(np->tcp_sender));
+    }
+}
+
+struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_am_server,unsigned char *recvbuf,int32_t recvlen,uv_stream_t *tcp,uv_stream_t *udp,const struct sockaddr *addr,char *sender,uint16_t port)
+{
+    uint64_t destbits = 0;
+    struct NXT_acct *tokenized_np;
+    int32_t valid,len=0,createdflag;
     cJSON *argjson,*msgjson;
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096];
-    char senderNXTaddr[64],message[4096],*parmstxt;
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],crcbuf[4096];
+    char senderNXTaddr[64],destNXTaddr[64],message[4096],*parmstxt,*jsonstr;
+    sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
     if ( is_encrypted_packet(recvbuf,recvlen) != 0 )
     {
         recvbuf += sizeof(uint32_t);
@@ -335,45 +357,36 @@ struct NXT_acct *process_packet(struct NXT_acct *np,int32_t I_am_server,unsigned
         {
             memcpy(&destbits,decoded,sizeof(destbits));
             printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
-            return(0);
         }
         else return(0);
     }
-    else if ( tcp != 0 || udp != 0 )
+    else if ( np == 0 && (tcp != 0 || udp != 0) )
     {
-        if ( (np= process_intro(0,(char *)recvbuf,(I_am_server!=0 && tcp!=0) ? 1 : 0)) != 0 )
+        if ( (np= process_intro(tcp,(char *)recvbuf,(I_am_server!=0 && tcp!=0) ? 1 : 0)) != 0 )
         {
             printf("process_intro got NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",np->H.NXTaddr,np,I_am_server,udp,tcp,sender,port);
-            if ( udp != 0 )
-            {
-                np->Uaddr = *addr;
-                np->udp = udp;
-                np->udp_port = port;
-                safecopy(np->udp_sender,sender,sizeof(np->udp_sender));
-            }
-            else
-            {
-                np->addr = *addr;
-                if ( I_am_server != 0 )
-                    np->connect = tcp;
-                else np->tcp = tcp;
-                np->tcp_port = port;
-                safecopy(np->tcp_sender,sender,sizeof(np->tcp_sender));
-            }
+            update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
+            retjsonstr[0] = 0;
+            return(np);
         } else printf("on_udprecv: process_intro returns null?\n");
-    } else return(0);
-    
-    memset(message,0,recvlen);
-    if ( 1 && recvlen > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
+    }
+    else
     {
-        memcpy(pubkey,recvbuf,sizeof(pubkey));
-        len = (int32_t)(recvlen - sizeof(pubkey));
-        err = _decode_cipher(message,(void *)((long)recvbuf + sizeof(pubkey)),&len,pubkey,Global_mp->session_privkey);
-        if ( err == 0 )
-        {
-            printf("DECRYPTED.(%s)\n",message);
-        } else printf("error.%d decrypting pubkey.%llx\n",err,*(long long *)pubkey);
-        
+        printf("process_packet got unexpected nonencrypted len.%d NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",recvlen,np!=0?np->H.NXTaddr:"noaddr",np,I_am_server,udp,tcp,sender,port);
+        return(0);
+    }
+    memset(message,0,recvlen);
+    //if ( recvlen > (sizeof(pubkey) + crypto_box_NONCEBYTES+1) )
+    if ( len > 0 )
+    {
+        /*memcpy(pubkey,recvbuf,sizeof(pubkey));
+         len = (int32_t)(recvlen - sizeof(pubkey));
+         err = _decode_cipher(message,(void *)((long)recvbuf + sizeof(pubkey)),&len,pubkey,Global_mp->session_privkey);
+         if ( err == 0 )
+         {
+         printf("DECRYPTED.(%s)\n",message);
+         } else printf("error.%d decrypting pubkey.%llx\n",err,*(long long *)pubkey);
+         */
         parmstxt = clonestr(message);//rcvbuf->base;
         parmstxt[recvlen] = 0;
         argjson = cJSON_Parse(parmstxt);
@@ -382,31 +395,73 @@ struct NXT_acct *process_packet(struct NXT_acct *np,int32_t I_am_server,unsigned
             parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
             if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
-                np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                printf("got np.%p <- UDP %p\n",np,udp);
-                np->Uaddr = *addr;
-                np->udp = (uv_stream_t *)udp;
-                if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+                if ( np != 0 && tokenized_np != np )
+                    printf("np.%p NXT.%s != tokenized_np.%p NXT.%s\n",np,np->H.NXTaddr,tokenized_np,tokenized_np->H.NXTaddr);
+                else
                 {
-                    printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
-                    memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
-                }
-                queue_enqueue(&ALL_messages,clonestr(parmstxt));
-                printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
-                msgjson = cJSON_GetObjectItem(argjson,"msg");
-                copy_cJSON(message,msgjson);
-                if ( message[0] != 0 )
-                {
-                    queue_enqueue(&np->incoming,clonestr(message));
-                    printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
+                    np = tokenized_np;
+                    update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
+                    if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                    {
+                        printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
+                        memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
+                    }
+                    if ( I_am_server == 0 )
+                    {
+                        queue_enqueue(&ALL_messages,clonestr(parmstxt));
+                        printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
+                        msgjson = cJSON_GetObjectItem(argjson,"msg");
+                        copy_cJSON(message,msgjson);
+                        if ( message[0] != 0 )
+                        {
+                            queue_enqueue(&np->incoming,clonestr(message));
+                            printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,message,queue_size(&np->incoming));
+                        }
+                    }
+                    else
+                    {
+                        char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender);
+                        jsonstr = pNXT_jsonhandler(&argjson,parmstxt,np->H.NXTaddr);
+                        if ( jsonstr == 0 )
+                            strcpy(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null\"}");
+                        else
+                        {
+                            strcpy(retjsonstr,jsonstr);
+                            free(jsonstr);
+                        }
+                        printf("tcpwrite.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
+                        //portable_tcpwrite(connect,jsonstr,(int32_t)strlen(jsonstr)+1,ALLOCWR_FREE);
+                        //free(jsonstr); completion frees, dont do it here!
+                        
+                        //queue_enqueue(&RPC_6777_response,str);
+                    }
                 }
             }
             free_json(argjson);
             printf("parmstxt.%p valid.%d sender.(%s) msg.(%s)\n",parmstxt,valid,senderNXTaddr,message);
         }
+        else if ( tcp != 0 || udp != 0 ) // test to make sure not p2p broadcast
+        {
+            // route packet
+            memcpy(&destbits,parmstxt,sizeof(destbits));
+            if ( destbits != 0 )
+            {
+                expand_nxt64bits(destNXTaddr,destbits);
+                np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                if ( np->udp != 0 )
+                {
+                    int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
+                    len = crcize(crcbuf,(unsigned char *)parmstxt,recvlen);
+                    portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
+                }
+            }
+            else sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
+        }
         if ( parmstxt != 0 )
             free(parmstxt);
     }
+    else printf("process_packet got unexpected recvlen.%d NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",recvlen,np!=0?np->H.NXTaddr:"noaddr",np,I_am_server,udp,tcp,sender,port);
     return(0);
 }
 
