@@ -255,7 +255,7 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
             n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
             if ( n == crypto_box_PUBLICKEYBYTES )
             {
-                printf("created.%d NXT.%s pubkey.%s (len.%d)\n",createdflag,NXTaddr,pubkey,n);
+                printf("created.%d NXT.%s pubkey.%s (len.%d) connect.%p sendresponse.%d\n",createdflag,NXTaddr,pubkey,n,connect,sendresponse);
                 if ( connect != 0 && sendresponse != 0 )
                 {
                     //printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
@@ -266,9 +266,10 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                     issue_generateToken(0,token,argstr,Server_secret);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
+                    //printf("send back.(%s)\n",retbuf);
                     if ( retbuf[0] == 0 )
                         printf("error generating intro??\n");
-                    else portable_tcpwrite(connect,clonestr(retbuf),(int32_t)strlen(retbuf)+1,ALLOCWR_FREE);
+                    else portable_tcpwrite(connect,retbuf,(int32_t)strlen(retbuf)+1,ALLOCWR_ALLOCFREE);
                     //printf("after tcpwrite to %p (%s)\n",connect,retbuf);
                 }
                 return(np);
@@ -324,6 +325,7 @@ void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_
 {
     if ( udp != 0 )
     {
+        printf("set UDP.%p %s/%d\n",udp,sender,port);
         np->Uaddr = *addr;
         np->udp = udp;
         np->udp_port = port;
@@ -331,6 +333,7 @@ void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_
     }
     else
     {
+        printf("set TCP.%p %s/%d\n",tcp,sender,port);
         np->addr = *addr;
         if ( I_am_server != 0 )
             np->connect = tcp;

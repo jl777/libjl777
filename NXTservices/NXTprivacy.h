@@ -485,8 +485,8 @@ uint16_t set_peerinfo(struct sockaddr *addr,char *sender,uv_stream_t *tcp)
     int32_t addrlen = sizeof(*addr);
     if ( uv_tcp_getpeername((uv_tcp_t *)tcp,addr,&addrlen) == 0 )
     {
-        uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
-        port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
+        uv_ip4_name((struct sockaddr_in *)addr,sender,16);
+        port = ntohs(((struct sockaddr_in *)addr)->sin_port);
         return(port);
     }
     return(0);
@@ -531,11 +531,11 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
     char sender[32],retjsonstr[4096];
+    struct sockaddr addr;
     struct NXT_acct *np = 0;
     uv_udp_t *udp = 0;
     uv_stream_t *connect = 0;
-    struct sockaddr addr;
-    int port;
+    uint16_t port;
     if ( (udp= (uv_udp_t *)tcp->data) != 0 )
     {
         connect = (uv_stream_t *)udp->data;
@@ -570,8 +570,6 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     {
         port = set_peerinfo(&addr,sender,connect);
         printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
-        if ( (np= process_packet(retjsonstr,np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
-            connect->data = np;
         /*if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
         {
             uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
@@ -579,6 +577,9 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
             printf("udp.%p tcp.%p got bytes.%p (connect) >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",udp,tcp,connect,nread,buf->base,buf->base,sender,port);
         }
         else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);*/
+        if ( (np= process_packet(retjsonstr,np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
+            connect->data = np;
+     
         /*str = malloc(nread+1);
         memcpy(str,buf->base,nread);
         str[nread] = 0;
