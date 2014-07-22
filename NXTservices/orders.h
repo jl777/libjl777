@@ -502,7 +502,7 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     memset(finalbuf,0,sizeof(finalbuf));
     memset(encoded,0,sizeof(encoded));
     memset(encoded2,0,sizeof(encoded2));
-    printf("sendmessage (%s) to %s\n",msg,destNXTaddr);
+    printf("sendmessage (%s) len.%ld to %s\n",origargstr,strlen(origargstr),destNXTaddr);
     len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
     if ( len > sizeof(finalbuf)-256 )
     {

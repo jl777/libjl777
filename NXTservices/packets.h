@@ -87,8 +87,9 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     payload_len = len;
     memcpy(encoded,&payload_len,sizeof(payload_len));
     encoded += sizeof(payload_len);
-    
+    printf("encode len.%d -> ",len);
     len = _encode_str(encoded,(char *)payload,len,np->pubkey,Global_mp->session_privkey);
+    printf("new len.%d + %ld = %ld\n",len,sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits),sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits)+len);
     return(len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits));
 }
 
