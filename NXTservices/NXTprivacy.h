@@ -363,6 +363,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             if ( np->sentintro == 0 )
             {
                 gen_tokenjson(0,intro,Server_NXTaddr,time(NULL),Server_secret);
+                printf(">>>>>>>> send UDP intro\n");
                 ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro),ALLOCWR_ALLOCFREE));
                 np->sentintro = 1;
             }

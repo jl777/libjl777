@@ -48,7 +48,7 @@ struct pNXT_info *Global_pNXT;
 
 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
 {
-    if ( Global_pNXT != 0 )
+    if ( Global_pNXT != 0 && NXTaddr != 0 && NXTaddr[0] != 0 )
     {
         strcpy(Global_pNXT->privacyServer_NXTaddr,NXTaddr);
         printf("SETTING PRIVACY SERVER NXT ADDR.(%s)\n",Global_pNXT->privacyServer_NXTaddr);

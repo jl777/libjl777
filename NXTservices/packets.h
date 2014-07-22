@@ -74,7 +74,7 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     uint64_t nxt64bits;
     int32_t createdflag;
-    uint16_t payload_len;
+    uint16_t *payload_lenp,slen;
     struct NXT_acct *np;
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
@@ -84,17 +84,19 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     encoded += sizeof(nxt64bits);
     memcpy(encoded,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     encoded += sizeof(Global_mp->session_pubkey);
-    payload_len = len;
-    memcpy(encoded,&payload_len,sizeof(payload_len));
-    encoded += sizeof(payload_len);
+    payload_lenp = (uint16_t *)encoded;
+    encoded += sizeof(*payload_lenp);
     printf("encode len.%d -> ",len);
     len = _encode_str(encoded,(char *)payload,len,np->pubkey,Global_mp->session_privkey);
-    printf("new len.%d + %ld = %ld\n",len,sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits),sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits)+len);
-    return(len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits));
+    slen = len;
+    memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
+    printf("new len.%d + %ld = %ld\n",len,sizeof(*payload_lenp) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits),sizeof(*payload_lenp) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits)+len);
+    return(len + sizeof(*payload_lenp) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits));
 }
 
 int32_t deonionize(unsigned char *decoded,unsigned char *encoded,int32_t len,uint64_t mynxtbits)
 {
+    void *origencoded = encoded;
     int32_t err;
     uint16_t payload_len;
     unsigned char *pubkey;
@@ -104,6 +106,7 @@ int32_t deonionize(unsigned char *decoded,unsigned char *encoded,int32_t len,uin
         pubkey = encoded;
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
+        printf("(%ld) -> %d %2x\n",(long)encoded - (long)origencoded,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)) == len )
         {
