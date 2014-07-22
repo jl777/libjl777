@@ -94,16 +94,15 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     return(len + sizeof(*payload_lenp) + sizeof(Global_mp->session_pubkey) + sizeof(nxt64bits));
 }
 
-int32_t deonionize(unsigned char *decoded,unsigned char *encoded,int32_t len,uint64_t mynxtbits)
+int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *encoded,int32_t len,uint64_t mynxtbits)
 {
     void *origencoded = encoded;
     int32_t err;
     uint16_t payload_len;
-    unsigned char *pubkey;
     if ( mynxtbits == 0 || memcmp(&mynxtbits,encoded,sizeof(mynxtbits)) == 0 )
     {
         encoded += sizeof(mynxtbits);
-        pubkey = encoded;
+        memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
         printf("pubkey.%llx vs mypubkey.%llx (%ld) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,(long)encoded - (long)origencoded,payload_len,payload_len);
@@ -373,7 +372,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
     {
         recvbuf += sizeof(uint32_t);
         recvlen -= sizeof(uint32_t);
-        if ( (len= deonionize(decoded,recvbuf,recvlen,0)) > 0 )
+        if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen,0)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
             decrypted = 1;
