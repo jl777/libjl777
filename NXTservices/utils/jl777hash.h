@@ -330,6 +330,14 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     void *result;
     extern struct NXThandler_info *Global_mp;
     struct hashpacket *ptr;
+#ifdef __APPLE__
+    if ( key == 0 || key[0] == 0 )
+    {
+        printf("MTadd_hashtable null key??\n");
+        while ( 1 )
+            sleep(60);
+    }
+#endif
     if ( Historical_done != 0 )
         return(add_hashtable(createdflagp,hp_ptr,key));
     else

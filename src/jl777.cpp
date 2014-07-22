@@ -46,11 +46,22 @@ struct pNXT_info
 struct pNXT_info *Global_pNXT;
 #include "../NXTservices/orders.h"
 
+void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
+{
+    if ( Global_pNXT != 0 )
+    {
+        strcpy(Global_pNXT->privacyServer_NXTaddr,NXTaddr);
+        printf("SETTING PRIVACY SERVER NXT ADDR.(%s)\n",Global_pNXT->privacyServer_NXTaddr);
+    }
+}
+
 void set_pNXT_privacyServer(uint64_t privacyServer)
 {
-    printf("SET PRIVACYSERVER to %llu\n",(long long)privacyServer);
+    printf("SETTING PRIVACY SERVER NXT ADDR.(%s)\n",Global_pNXT->privacyServer_NXTaddr);
     if ( Global_pNXT != 0 )
+    {
         Global_pNXT->privacyServer = privacyServer;
+    }
 }
 
 uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret)
@@ -66,20 +77,14 @@ uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret)
     return(privacyServer);
 }
 
-char *select_privacyServer(char *serverNXTaddr,char *ipaddr,char *portstr,char *secret)
+char *select_privacyServer(char *ipaddr,char *portstr,char *secret)
 {
     char buf[1024];
     uint16_t port;
-    uint64_t nxt64bits;
     if ( portstr != 0 && portstr[0] != 0 )
     {
         port = atoi(portstr);
         sprintf(Global_pNXT->privacyServer_port,"%u",port);
-    }
-    if ( serverNXTaddr[0] != 0 )
-    {
-        nxt64bits = calc_nxt64bits(serverNXTaddr);
-        expand_nxt64bits(Global_pNXT->privacyServer_NXTaddr,nxt64bits);
     }
     if ( ipaddr[0] != 0 )
         strcpy(Global_pNXT->privacyServer_ipaddr,ipaddr);
@@ -265,14 +270,13 @@ char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs
 char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t n = 0;
-    char server[1024],ipaddr[512],port[512],secret[512],*retstr = 0;
-    copy_cJSON(server,objs[1]);
-    copy_cJSON(ipaddr,objs[2]);
-    copy_cJSON(port,objs[3]);
-    copy_cJSON(secret,objs[4]);
+    char ipaddr[512],port[512],secret[512],*retstr = 0;
+    copy_cJSON(ipaddr,objs[1]);
+    copy_cJSON(port,objs[2]);
+    copy_cJSON(secret,objs[3]);
     if ( sender[0] != 0 && valid != 0 )
     {
-        retstr = select_privacyServer(server,ipaddr,port,secret);
+        retstr = select_privacyServer(ipaddr,port,secret);
         while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
             usleep(10000);
         if ( n == 1000 )
@@ -465,7 +469,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
     static char *privatesend[] = { (char *)privatesend_func, "privatesend", "V", "NXT", "amount", "secret", "dest", "coin", 0 };
-    static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "server", "ipaddr", "port", "secret", 0 };
+    static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "polarity", "allfields", "secret", 0 };
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
@@ -514,6 +518,18 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     return(0);
 }
 
+char *remove_secret(cJSON **argjsonp,char *parmstxt)
+{
+    long len;
+    cJSON_DeleteItemFromObject(*argjsonp,"secret");
+    if ( parmstxt != 0 )
+        free(parmstxt);
+    parmstxt = cJSON_Print(*argjsonp);
+    len = strlen(parmstxt);
+    stripwhite_ns(parmstxt,len);
+    return(parmstxt);
+}
+
 char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender)
 {
     struct NXThandler_info *mp = Global_mp;
@@ -560,39 +576,44 @@ again:
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
         copy_cJSON(NXTACCTSECRET,secretobj);
+        cJSON_AddItemToObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
+        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
+        printf("replace NXT.(%s)\n",NXTaddr);
 #ifndef __linux__
         if ( strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
-            nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
-            expand_nxt64bits(NXTaddr,nxt64bits);
-            cJSON_DeleteItemFromObject(*argjsonp,"secret");
-            cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
-            printf("replace NXT.(%s)\n",NXTaddr);
-            if ( parmstxt != 0 )
-                free(parmstxt);
-            parmstxt = cJSON_Print(*argjsonp);
-            len = strlen(parmstxt);
-            stripwhite_ns(parmstxt,len);
+            parmstxt = remove_secret(argjsonp,parmstxt);
             issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-            queue_enqueue(&RPC_6777,clonestr(_tokbuf));
-            n = 0;
-            while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
-                usleep(10000);
-            while ( 1 )
+            if ( 0 )
             {
-                if ( (str= queue_dequeue(&RPC_6777_response)) != 0 )
-                    free(retstr), retstr = str;
-                else break;
+                queue_enqueue(&RPC_6777,clonestr(_tokbuf));
+                n = 0;
+                while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
+                    usleep(10000);
+                while ( 1 )
+                {
+                    if ( (str= queue_dequeue(&RPC_6777_response)) != 0 )
+                        free(retstr), retstr = str;
+                    else break;
+                }
+                if ( n == 1000 )
+                    printf("TIMEOUT: selectserver_func no response\n");
+                printf("SERVER SENT.(%s)\n",retstr);
             }
-            if ( n == 1000 )
-                printf("TIMEOUT: selectserver_func no response\n");
-            printf("SERVER SENT.(%s)\n",retstr);
+            else
+            {
+                retstr = sendmessage(NXTaddr,_tokbuf,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+            }
         }
         else
 #endif
         {
+            //if ( strcmp(buf,"sendmessage") == 0 )
+            //    origparmstxt = remove_secret(argjsonp,origparmstxt);
             issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",origparmstxt,encoded);

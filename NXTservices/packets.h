@@ -369,7 +369,13 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         {
             printf("process_intro got NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",np->H.NXTaddr,np,I_am_server,udp,tcp,sender,port);
             update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
-            retjsonstr[0] = 0;
+            if ( I_am_server == 0 )
+            {
+                void set_pNXT_privacyServer_NXTaddr(char *NXTaddr);
+                set_pNXT_privacyServer_NXTaddr(np->H.NXTaddr);
+                strcpy(retjsonstr,(char *)recvbuf);
+            }
+            else retjsonstr[0] = 0;
             return(np);
         } else printf("on_udprecv: process_intro returns null?\n");
     }

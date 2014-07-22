@@ -19,8 +19,9 @@
 #define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
 #define INTRO_SIZE 1400
 
-char *Server_NXTaddr,*Server_secret;
-queue_t RPC_6777,RPC_6777_response,NXTsync_Q,ALL_messages;
+char *Server_secret,*Server_NXTaddr;
+queue_t RPC_6777,RPC_6777_response,ALL_messages;
+
 #include "packets.h"
 
 typedef struct {
@@ -28,7 +29,6 @@ typedef struct {
     uv_buf_t buf;
     int32_t allocflag;
 } write_req_t;
-
 
 int server_address(char *server,int port,struct sockaddr_in *addr)
 {
@@ -349,15 +349,15 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
 void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
-    char sender[256],retjsonstr[4096];
+    char sender[256],retjsonstr[4096],buf[1024];
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
+        sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         ASSERT(addr->sa_family == AF_INET);
-        //ASSERT(0 == portable_udpwrite(addr,handle,"ping",5,ALLOCWR_ALLOCFREE));
+        ASSERT(0 == portable_udpwrite(addr,udp,buf,strlen(buf),ALLOCWR_ALLOCFREE));
         server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
@@ -532,6 +532,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
 {
     char sender[32],retjsonstr[4096];
     struct sockaddr addr;
+    int32_t addrlen = sizeof(addr);
     struct NXT_acct *np = 0;
     uv_udp_t *udp = 0;
     uv_stream_t *connect = 0;
@@ -568,18 +569,20 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     }
     else if ( connect != 0 )
     {
-        port = set_peerinfo(&addr,sender,connect);
-        printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
-        /*if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
+        //port = set_peerinfo(&addr,sender,connect);
+        //printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
+        if ( uv_tcp_getpeername((uv_tcp_t *)tcp,&addr,&addrlen) == 0 )
         {
             uv_ip4_name((struct sockaddr_in *)&addr,sender,16);
             port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
             printf("udp.%p tcp.%p got bytes.%p (connect) >>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",udp,tcp,connect,nread,buf->base,buf->base,sender,port);
         }
-        else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);*/
+        else printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from MYSTERY\n",nread,buf->base,buf->base);
         if ( (np= process_packet(retjsonstr,np,0,(unsigned char *)buf->base,(int32_t)nread,tcp,0,&addr,sender,port)) != 0 )
             connect->data = np;
-     
+        if ( retjsonstr[0] == 0 )
+            sprintf(retjsonstr,"{\"error\":\"no response from process packet\"}");
+        queue_enqueue(&RPC_6777_response,clonestr(retjsonstr));
         /*str = malloc(nread+1);
         memcpy(str,buf->base,nread);
         str[nread] = 0;

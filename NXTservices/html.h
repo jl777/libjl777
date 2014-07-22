@@ -438,14 +438,14 @@ int NXTcoinsco_forms(char *NXTaddr,char **forms,char **scripts)
 int gen_pNXT_select_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*server,*ipaddr,*port,*secret;
+    char script[16384],*ipaddr,*port,*secret;
     secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
-    server = construct_varname(fields,n++,name,"server","NXT address:",0,0);
+    //server = construct_varname(fields,n++,name,"server","NXT address:",0,0);
     ipaddr = construct_varname(fields,n++,name,"ipaddr","or ipaddr address:",0,0);
     port = construct_varname(fields,n++,name,"port","port: (blank for default)",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"NXT\":\"' + %s + '\",\"ipaddr\":\"' + %s + '\",\"port\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,server,ipaddr,port);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"ipaddr\":\"' + %s + '\",\"port\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,ipaddr,port);
     *scriptp = clonestr(script);
-    free(secret),free(server); free(ipaddr); free(port);
+    free(secret); free(ipaddr); free(port);
     return(n);
 }
 
