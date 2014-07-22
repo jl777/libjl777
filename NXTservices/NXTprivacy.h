@@ -349,15 +349,19 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
 void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t port;
-    char sender[256],retjsonstr[4096],buf[1024];
+    char sender[256],retjsonstr[4096],intro[4096];
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
+        //sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         ASSERT(addr->sa_family == AF_INET);
-        ASSERT(0 == portable_udpwrite(addr,udp,buf,strlen(buf),ALLOCWR_ALLOCFREE));
+        if ( Server_NXTaddr != 0 && Server_secret != 0 )
+        {
+            gen_tokenjson(0,intro,Server_NXTaddr,time(NULL),Server_secret);
+            ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro),ALLOCWR_ALLOCFREE));
+        }
         server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
