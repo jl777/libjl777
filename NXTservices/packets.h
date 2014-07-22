@@ -97,7 +97,7 @@ int32_t deonionize(unsigned char *decoded,unsigned char *encoded,int32_t len,uin
     int32_t err;
     uint16_t payload_len;
     unsigned char *pubkey;
-    if ( memcmp(&mynxtbits,encoded,sizeof(mynxtbits)) == 0 )
+    if ( mynxtbits == 0 || memcmp(&mynxtbits,encoded,sizeof(mynxtbits)) == 0 )
     {
         encoded += sizeof(mynxtbits);
         pubkey = encoded;
