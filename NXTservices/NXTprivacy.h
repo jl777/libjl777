@@ -350,7 +350,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
 {
     uint16_t port;
     struct NXT_acct *np;
-    char sender[256],retjsonstr[4096],intro[4096];
+    char sender[256],retjsonstr[4096],intro[4096],*retstr;
     if ( nread > 0 )
     {
         strcpy(sender,"unknown");
@@ -364,10 +364,16 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             {
                 gen_tokenjson(0,intro,Server_NXTaddr,time(NULL),Server_secret);
                 printf(">>>>>>>> send UDP intro\n");
-                ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro),ALLOCWR_ALLOCFREE));
+                ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE));
                 np->sentintro = 1;
             }
-        }
+            else if ( retjsonstr[0] != 0 )
+            {
+                char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr);
+                if ( (retstr= sendmessage(Server_NXTaddr,retjsonstr,np->H.NXTaddr,retjsonstr)) != 0 )
+                    free(retstr);
+            }
+         }
         server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
