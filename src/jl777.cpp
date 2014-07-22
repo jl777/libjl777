@@ -495,7 +495,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];
-        printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
         if ( strcmp(cmdinfo[1],command) == 0 )
         {
             if ( cmdinfo[2][0] != 0 )

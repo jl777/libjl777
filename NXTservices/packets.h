@@ -86,7 +86,7 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     encoded += sizeof(Global_mp->session_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("pubkey.%llx encode len.%d -> ",*(long long *)np->pubkey,len);
+    printf("np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->pubkey,Global_mp->session_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -261,7 +261,7 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
             n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
             if ( n == crypto_box_PUBLICKEYBYTES )
             {
-                printf("created.%d NXT.%s pubkey.%s (len.%d) connect.%p sendresponse.%d\n",createdflag,NXTaddr,pubkey,n,connect,sendresponse);
+                printf("np.%p created.%d NXT.%s pubkey.%s (len.%d) connect.%p sendresponse.%d\n",np,createdflag,NXTaddr,pubkey,n,connect,sendresponse);
                 if ( connect != 0 && sendresponse != 0 )
                 {
                     //printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
