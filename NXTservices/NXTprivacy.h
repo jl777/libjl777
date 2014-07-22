@@ -20,7 +20,7 @@
 #define INTRO_SIZE 1400
 
 char *Server_secret,*Server_NXTaddr;
-queue_t RPC_6777,RPC_6777_response,ALL_messages;
+queue_t RPC_6777_response,ALL_messages;
 
 #include "packets.h"
 
@@ -785,7 +785,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-//#ifndef __linux__
+#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
         if ( privacyServer == 0 )
@@ -867,13 +867,21 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-//#endif
+#endif
     if ( tcp != 0 ) // for clients to send to server
-    {
-        if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
+    {// deprecated
+        /*if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
         {
             // onionize jl777
             portable_tcpwrite((uv_stream_t *)tcp,jsonstr,strlen(jsonstr)+1,ALLOCWR_FREE);
+        }*/
+    }
+    else
+    {
+        if ( (jsonstr= queue_dequeue(&ALL_messages)) != 0 )
+        {
+            printf("SERVER GOTMSG.(%s)\n",jsonstr);
+            free(jsonstr);
         }
     }
 }

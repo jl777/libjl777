@@ -349,6 +349,16 @@ void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_
     }
 }
 
+void queue_message(struct NXT_acct *np,char *msg,char *origmsg)
+{
+    queue_enqueue(&ALL_messages,clonestr(origmsg));
+    if ( msg[0] != 0 )
+    {
+        queue_enqueue(&np->incoming,clonestr(msg));
+        printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,msg,queue_size(&np->incoming));
+    }
+}
+
 struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_am_server,unsigned char *recvbuf,int32_t recvlen,uv_stream_t *tcp,uv_stream_t *udp,const struct sockaddr *addr,char *sender,uint16_t port)
 {
     uint64_t destbits = 0;
@@ -415,15 +425,10 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     }
                     if ( I_am_server == 0 )
                     {
-                        queue_enqueue(&ALL_messages,clonestr(parmstxt));
                         printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
                         msgjson = cJSON_GetObjectItem(argjson,"msg");
                         copy_cJSON(msg,msgjson);
-                        if ( msg[0] != 0 )
-                        {
-                            queue_enqueue(&np->incoming,clonestr(msg));
-                            printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,msg,queue_size(&np->incoming));
-                        }
+                        queue_message(np,msg,parmstxt);
                     }
                     else
                     {

@@ -540,7 +540,7 @@ char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender)
 {
     struct NXThandler_info *mp = Global_mp;
     long len;
-    int32_t n,valid,firsttime = 1;
+    int32_t valid,firsttime = 1;
     cJSON *secretobj,*json;
     char NXTACCTSECRET[256],sender[64],*origparmstxt,*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
 again:
@@ -576,7 +576,7 @@ again:
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[4096],NXTaddr[64],buf[1024],*str;
+        char _tokbuf[4096],NXTaddr[64],buf[1024];//,*str;
         firsttime = 0;
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
@@ -594,7 +594,7 @@ again:
             issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-            if ( 0 )
+            /*if ( 0 )
             {
                 queue_enqueue(&RPC_6777,clonestr(_tokbuf));
                 n = 0;
@@ -610,7 +610,7 @@ again:
                     printf("TIMEOUT: selectserver_func no response\n");
                 printf("SERVER SENT.(%s)\n",retstr);
             }
-            else
+            else*/
             {
                 retstr = sendmessage(NXTaddr,_tokbuf,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
             }
