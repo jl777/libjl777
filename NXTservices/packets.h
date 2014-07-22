@@ -86,7 +86,7 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     encoded += sizeof(Global_mp->session_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("encode len.%d -> ",len);
+    printf("pubkey.%llx encode len.%d -> ",*(long long *)np->pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->pubkey,Global_mp->session_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -106,7 +106,7 @@ int32_t deonionize(unsigned char *decoded,unsigned char *encoded,int32_t len,uin
         pubkey = encoded;
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
-        printf("(%ld) -> %d %2x\n",(long)encoded - (long)origencoded,payload_len,payload_len);
+        printf("pubkey.%llx vs mypubkey.%llx (%ld) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,(long)encoded - (long)origencoded,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)) == len )
         {

@@ -515,7 +515,6 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     memset(encoded2,0,sizeof(encoded2));
     printf("sendmessage (%s) len.%ld to %s\n",origargstr,strlen(origargstr),destNXTaddr);
     len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
-    //deonionize(encoded2,encoded,len,0);
     if ( len > sizeof(finalbuf)-256 )
     {
         printf("sendmessage, payload too big %d\n",len);
