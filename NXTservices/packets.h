@@ -363,7 +363,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
 {
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np;
-    int32_t valid,len=0,createdflag;
+    int32_t valid,len=0,createdflag,decrypted=0;
     cJSON *argjson,*msgjson;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],crcbuf[4096];
     char senderNXTaddr[64],destNXTaddr[64],msg[1024],*parmstxt=0,*jsonstr;
@@ -376,6 +376,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         if ( (len= deonionize(decoded,recvbuf,recvlen,0)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
+            decrypted = 1;
             printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
         }
         else return(0);
@@ -418,7 +419,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 {
                     np = tokenized_np;
                     update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
-                    if ( memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                    if ( decrypted != 0 && memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
                     {
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
                         memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
