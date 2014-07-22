@@ -427,8 +427,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     }
                     else
                     {
-                        char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender);
-                        jsonstr = pNXT_jsonhandler(&argjson,parmstxt,np->H.NXTaddr);
+                        char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+                        jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,(char *)decoded);
                         if ( jsonstr == 0 )
                             strcpy(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null\"}");
                         else

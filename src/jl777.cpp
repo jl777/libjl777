@@ -518,6 +518,11 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     return(0);
 }
 
+char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+{
+    return(pNXT_json_commands(Global_mp,Global_pNXT,argjson,sender,valid,origargstr));
+}
+
 char *remove_secret(cJSON **argjsonp,char *parmstxt)
 {
     long len;
