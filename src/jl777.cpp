@@ -417,6 +417,7 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(destNXTaddr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
     copy_cJSON(msg,objs[3]);
+    printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
         retstr = sendmessage(sender,msg,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
@@ -494,7 +495,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];
-        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+        printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
         if ( strcmp(cmdinfo[1],command) == 0 )
         {
             if ( cmdinfo[2][0] != 0 )
@@ -510,7 +511,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
             retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3,origargstr);
-            if ( 0 && retstr != 0 )
+            if ( 1 && retstr != 0 )
                 printf("json_handler returns.(%s)\n",retstr);
             return(retstr);
         }

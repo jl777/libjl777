@@ -492,7 +492,8 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
     int32_t len,createdflag;
     struct NXT_acct *np,*destnp;
-    if ( Global_pNXT->privacyServer_NXTaddr[0] == 0 )
+    printf("sendmessage.(%s) -> NXT.(%s) (%s) (%s)\n",NXTaddr,destNXTaddr,msg,origargstr);
+    if ( Server_NXTaddr == 0 && Global_pNXT->privacyServer_NXTaddr[0] == 0 )
     {
         sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to null privacyServer\"}",NXTaddr,msg);
         return(clonestr(buf));

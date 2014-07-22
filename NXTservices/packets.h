@@ -430,13 +430,13 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                         char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                         jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,(char *)decoded);
                         if ( jsonstr == 0 )
-                            strcpy(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null\"}");
+                            sprintf(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null from (%s)\"}",(char *)decoded);
                         else
                         {
                             strcpy(retjsonstr,jsonstr);
                             free(jsonstr);
                         }
-                        printf("respond.(%s) to NXT.%s\n",jsonstr,np!=0?np->H.NXTaddr:"unknown");
+                        printf("respond.(%s) to NXT.%s\n",retjsonstr,np!=0?np->H.NXTaddr:"unknown");
                     }
                 }
             }
