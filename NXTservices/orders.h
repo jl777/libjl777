@@ -457,24 +457,25 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,cha
     return(clonestr(buf));
 }
 
-char *getpubkey(char *addr)
+char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
 {
     char buf[4096],pubkey[128];
-    struct NXT_acct *pubnp;
+    struct NXT_acct *np,*pubnp;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
     printf("in getpubkey(%s)\n",addr);
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr);
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr,time(NULL));
     return(clonestr(buf));
 }
 
-char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
+char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
 {
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    printf("in publishaddrs.(%s)\n",NXTaddr);
+    np = get_NXTacct(&createdflag,Global_mp,pubNXT);
+    printf("in publishaddrs.(%s)\n",pubNXT);
     if ( pubkey != 0 && pubkey[0] != 0 )
         decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
     if ( BTCDaddr[0] != 0 )
@@ -492,7 +493,7 @@ char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubkey,char *BTCDaddr
         safecopy(np->pNXTaddr,pNXTaddr,sizeof(np->pNXTaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,pNXTaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    return(getpubkey(NXTaddr));
+    return(getpubkey(NXTaddr,NXTACCTSECRET,pubNXT));
 }
 
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)

@@ -436,21 +436,22 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     copy_cJSON(addr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
     if ( sender[0] != 0 && valid != 0 && addr[0] != 0 )
-        retstr = getpubkey(addr);
+        retstr = getpubkey(sender,NXTACCTSECRET,addr);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
     return(retstr);
 }
 
 char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char NXTACCTSECRET[512],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],pNXTaddr[1024],*retstr = 0;
+    char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],pNXTaddr[1024],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
-    copy_cJSON(pubkey,objs[2]);
-    copy_cJSON(BTCDaddr,objs[3]);
-    copy_cJSON(BTCaddr,objs[4]);
-    copy_cJSON(pNXTaddr,objs[5]);
-    if ( sender[0] != 0 && valid != 0 )
-        retstr = publishaddrs(sender,NXTACCTSECRET,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
+    copy_cJSON(pubNXT,objs[2]);
+    copy_cJSON(pubkey,objs[3]);
+    copy_cJSON(BTCDaddr,objs[4]);
+    copy_cJSON(BTCaddr,objs[5]);
+    copy_cJSON(pNXTaddr,objs[6]);
+    if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
+        retstr = publishaddrs(sender,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
@@ -497,7 +498,7 @@ forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)getpubkey_func, "publishaddrs", "V", "NXT", "secret", "pubkey", "BTCD", "BTC", "pNXT", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "pNXT", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };

@@ -450,17 +450,17 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
                         memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
                     }
-                    if ( I_am_server == 0 )
+                    /*if ( I_am_server == 0 )
                     {
                         printf("QUEUEALLMESSAGES.(%s) size.%d\n",parmstxt,queue_size(&ALL_messages));
                         msgjson = cJSON_GetObjectItem(argjson,"msg");
                         copy_cJSON(msg,msgjson);
                         queue_message(np,msg,parmstxt);
                     }
-                    else
+                    else*/
                     {
                         char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                        jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,(char *)decoded);
+                        jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,parmstxt);//(char *)decoded);
                         if ( jsonstr == 0 )
                             sprintf(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null from (%s)\"}",(char *)decoded);
                         else
