@@ -898,15 +898,17 @@ void NXTprivacy_idler(uv_idle_t *handle)
 
 void init_NXTprivacy(void *ptr)
 {
-    uint64_t nxt64bits;
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
+#ifdef __linux__
+    uint64_t nxt64bits;
     if ( (Server_secret= ptr) == 0 )
         Server_secret = "password";
     nxt64bits = issue_getAccountId(0,Server_secret);
     Server_NXTaddr = calloc(1,64);
     expand_nxt64bits(Server_NXTaddr,nxt64bits);
     printf("init_NXTprivacy.(%s) -> %llu (%s)\n",(char *)ptr,(long long)nxt64bits,Server_NXTaddr);
+#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);

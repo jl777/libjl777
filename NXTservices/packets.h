@@ -464,8 +464,9 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
                     int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
-                    len = crcize(crcbuf,(unsigned char *)parmstxt,recvlen);
+                    len = crcize(crcbuf,decoded,len);
                     portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
+                    return(np);
                 }
             }
             else sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);

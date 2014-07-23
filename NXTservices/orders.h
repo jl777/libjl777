@@ -559,6 +559,7 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     else if ( len > 0 )
     {
         outbuf = encoded;
+        printf("np.%p np->udp %p destnpudp.%p\n",np,np!=0?np->udp:0,destnp->udp);
         if ( np != 0 && np->udp != 0 && destnp->udp == 0 )
         {
             printf("Must use indirection\n");
@@ -654,7 +655,7 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
         issue_generateToken(0,encoded,buf,NXTACCTSECRET);
         encoded[NXT_TOKEN_LEN] = 0;
         sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
-        printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
+       // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
         return(sendmessage(NXTaddr,_tokbuf,otherNXTaddr,buf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);

@@ -51,15 +51,17 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
     if ( Global_pNXT != 0 && NXTaddr != 0 && NXTaddr[0] != 0 )
     {
         strcpy(Global_pNXT->privacyServer_NXTaddr,NXTaddr);
-        printf("SETTING PRIVACY SERVER NXT ADDR.(%s)\n",Global_pNXT->privacyServer_NXTaddr);
+        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s)\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr);
     }
 }
 
 void set_pNXT_privacyServer(uint64_t privacyServer)
 {
-    printf("SETTING PRIVACY SERVER NXT ADDR.(%s)\n",Global_pNXT->privacyServer_NXTaddr);
-    if ( Global_pNXT != 0 )
+    if ( Global_pNXT != 0 && privacyServer != 0 )
     {
+        char tmp[32];
+        expand_ipbits(tmp,(uint32_t)privacyServer);
+        printf("SETTING PRIVACY SERVER IPADDR.(%s)\n",tmp);
         Global_pNXT->privacyServer = privacyServer;
     }
 }
