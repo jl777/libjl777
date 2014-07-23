@@ -69,6 +69,13 @@ int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
     return(len + sizeof(crc));
 }
 
+char *send_tokenized_cmd(char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr)
+{
+    char _tokbuf[4096];
+    int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+    return(sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf));
+}
+
 int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
@@ -82,10 +89,11 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] != 0 )
         {
-            char _tokbuf[4096],cmdstr[4096];
+            char cmdstr[4096];
             sprintf(cmdstr,"{\"requestType\":\"getpubkey\",\"NXT\":\"%s\",\"addr\":\"%s\",\"time\":%ld}",verifiedNXTaddr,destNXTaddr,time(NULL));
-            int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-            sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+            send_tokenized_cmd(verifiedNXTaddr,NXTACCTSECRET,cmdstr);
+            //int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+            //sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
         }
         return(0);
     }
