@@ -365,6 +365,8 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define issue_NXTPOST(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",NXTAPIURL,0,0,cmdstr)
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 void gen_testforms(char *secret);
+extern uv_loop_t *UV_loop;
+
 #include "NXTservices.h"
 #include "utils/jl777hash.h"
 //#include "crossplatform.h"
@@ -372,6 +374,6 @@ void gen_testforms(char *secret);
 #include "utils/NXTutils.h"
 //#include "utils/NXTsock.h"
 //#include "punch.h"
-//#include "NXTprivacy.h"
+#include "NXTprivacy.h"
 
 #endif

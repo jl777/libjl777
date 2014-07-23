@@ -463,7 +463,7 @@ char *getpubkey(char *addr)
     struct NXT_acct *pubnp;
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"pubkey\":\"%s\",\"NXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr);
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr);
     return(clonestr(buf));
 }
 
@@ -615,7 +615,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
     char *parsed,buf[1024];
     if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
     {
-        
+         
     }
     sprintf(buf,"{\"error\":\"%s cant parse processutx.(%s)\"}",sender,utx);
     return(0);

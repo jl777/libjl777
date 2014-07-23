@@ -36,15 +36,8 @@ uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t
 
 struct hashtable *orderbook_txids;
 
-struct pNXT_info
-{
-    void *wallet,*core,*p2psrv,*upnp,*rpc_server;
-    char walletaddr[512],privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16],NXTACCTSECRET[256];
-    uint64_t privacyServer;
-    struct hashtable **orderbook_txidsp;
-};
-struct pNXT_info *Global_pNXT;
 #include "../NXTservices/orders.h"
+//#include "packets.h"
 
 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
 {
@@ -458,7 +451,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     copy_cJSON(pNXTaddr,objs[5]);
     if ( sender[0] != 0 && valid != 0 )
         retstr = publishaddrs(sender,NXTACCTSECRET,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
-    else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
+    else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
 

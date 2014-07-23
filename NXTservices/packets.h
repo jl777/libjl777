@@ -80,9 +80,13 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     if ( memcmp(np->pubkey,zerokey,sizeof(zerokey)) == 0 )
     {
-        char _tokbuf[4096],cmdstr[4096];
-        int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-        sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,destNXTaddr,cmdstr);
+        if ( Global_pNXT->privacyServer_NXTaddr[0] != 0 )
+        {
+            char _tokbuf[4096],cmdstr[4096];
+            sprintf(cmdstr,"{\"requestType\":\"getpubkey\",\"NXT\":\"%s\",\"addr\":\"%s\",\"time\":%ld}",verifiedNXTaddr,destNXTaddr,time(NULL));
+            int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+            sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+        }
         return(0);
     }
     memcpy(encoded,&nxt64bits,sizeof(nxt64bits));

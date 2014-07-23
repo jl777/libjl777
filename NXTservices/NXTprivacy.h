@@ -23,6 +23,14 @@ char *Server_secret,*Server_NXTaddr;
 queue_t RPC_6777_response,ALL_messages;
 char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr);
 
+struct pNXT_info
+{
+    void *wallet,*core,*p2psrv,*upnp,*rpc_server;
+    char walletaddr[512],privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16],NXTACCTSECRET[256];
+    uint64_t privacyServer;
+    struct hashtable **orderbook_txidsp;
+};
+struct pNXT_info *Global_pNXT;
 #include "packets.h"
 
 typedef struct {
@@ -371,7 +379,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             }
             else if ( retjsonstr[0] != 0 )
             {
-                if ( 0 && (retstr= sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                if ( 1 && (retstr= sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
                     free(retstr);

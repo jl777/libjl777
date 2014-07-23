@@ -628,6 +628,10 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"select","select my privacyServer","choose server","127.0.0.1:7777","pNXT",gen_pNXT_select_fields);
     n++;
     
+    forms[n] = make_form(NXTaddr,&scripts[n],"makeoffer","make offer","offer","127.0.0.1:7777","pNXT",gen_pNXT_makeoffer_fields);
+    n++;
+    
+   
     forms[n] = make_form(NXTaddr,&scripts[n],"sendmessage","send encrypted message to NXT address","sendmsg","127.0.0.1:7777","pNXT",gen_pNXT_sendmsg_fields);
     n++;
     
@@ -639,10 +643,6 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     
     forms[n] = make_form(NXTaddr,&scripts[n],"orderbook","get orderbook","orderbook","127.0.0.1:7777","pNXT",gen_pNXT_orderbook_fields);
     n++;
-    
-    forms[n] = make_form(NXTaddr,&scripts[n],"makeoffer","make offer","offer","127.0.0.1:7777","pNXT",gen_pNXT_makeoffer_fields);
-    n++;
-    
     forms[n] = make_form(NXTaddr,&scripts[n],"placebid","place bid","bid","127.0.0.1:7777","pNXT",gen_pNXT_placequote_fields);
     n++;
     

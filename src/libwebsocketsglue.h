@@ -24,7 +24,7 @@ uv_loop_t *UV_loop;
 //#include "../../NXTservices/NXTsubatomic.h"
 //#include "../../NXTservices/NXTcoinsco.h"
 //#include "NXTmixer.h"
-#include "../NXTservices/NXTprivacy.h"
+//#include "../NXTservices/NXTprivacy.h"
 #include "../NXTservices/html.h"
 
 void NXTservices_idler(uv_idle_t *handle)
