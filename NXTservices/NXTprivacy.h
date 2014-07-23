@@ -21,6 +21,7 @@
 
 char *Server_secret,*Server_NXTaddr;
 queue_t RPC_6777_response,ALL_messages;
+char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr);
 
 #include "packets.h"
 
@@ -370,8 +371,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             }
             else if ( retjsonstr[0] != 0 )
             {
-                char *sendmessage(char *NXTaddr,char *msg,int32_t len,char *destNXTaddr,char *origargstr);
-                if ( (retstr= sendmessage(Server_NXTaddr,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                if ( 0 && (retstr= sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
                     free(retstr);

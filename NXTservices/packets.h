@@ -65,13 +65,13 @@ int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
     uint32_t crc = _crc32(0,encoded,len);
     memcpy(final,&crc,sizeof(crc));
     memcpy(final + sizeof(crc),encoded,len);
-    printf("crc.%08x for len.%d\n",crc,len);
+    //printf("crc.%08x for len.%d\n",crc,len);
     return(len + sizeof(crc));
 }
 
-int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
+int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
 {
-    unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
+    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     uint64_t nxt64bits;
     int32_t createdflag;
     uint16_t *payload_lenp,slen;
@@ -79,14 +79,19 @@ int32_t onionize(unsigned char *encoded,char *destNXTaddr,unsigned char *payload
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     if ( memcmp(np->pubkey,zerokey,sizeof(zerokey)) == 0 )
+    {
+        char _tokbuf[4096],cmdstr[4096];
+        int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+        sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,destNXTaddr,cmdstr);
         return(0);
+    }
     memcpy(encoded,&nxt64bits,sizeof(nxt64bits));
     encoded += sizeof(nxt64bits);
     memcpy(encoded,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     encoded += sizeof(Global_mp->session_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->pubkey,len);
+    printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->pubkey,Global_mp->session_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -105,7 +110,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
-        printf("pubkey.%llx vs mypubkey.%llx (%ld) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,(long)encoded - (long)origencoded,payload_len,payload_len);
+        printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%ld) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,(long)encoded - (long)origencoded,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)) == len )
         {
@@ -362,11 +367,12 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
 {
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np;
-    int32_t valid,len=0,createdflag,decrypted=0;
+    int32_t valid,len=0,tmp,createdflag,decrypted=0;
     cJSON *argjson,*msgjson;
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096];//,crcbuf[4096];
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],tmppubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],tmpdecoded[4096];
     char senderNXTaddr[64],destNXTaddr[64],msg[1024],*parmstxt=0,*jsonstr;
     memset(decoded,0,sizeof(decoded));
+    memset(tmpdecoded,0,sizeof(tmpdecoded));
     sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
     if ( is_encrypted_packet(recvbuf,recvlen) != 0 )
     {
@@ -375,8 +381,17 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen,0)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-            decrypted = 1;
+            decrypted++;
             printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
+            if ( (tmp= deonionize(tmppubkey,tmpdecoded,decoded,len,0)) > 0 )
+            {
+                memcpy(&destbits,decoded,sizeof(destbits));
+                decrypted++;
+                len = tmp;
+                memcpy(decoded,tmpdecoded,len);
+                memcpy(pubkey,tmppubkey,sizeof(pubkey));
+                printf("decrypted2 len.%d dest.(%llu)\n",len,(long long)destbits);
+            }
         }
         else return(0);
     }
@@ -462,9 +477,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
                 if ( Server_NXTaddr != 0 && (np->udp != 0 || np->tcp != 0) )
                 {
-                    char *sendmessage(char *NXTaddr,char *msg,int32_t len,char *destNXTaddr,char *origargstr);
                     printf("route packet to NXT.%s\n",destNXTaddr);
-                    strcpy(retjsonstr,sendmessage(Server_NXTaddr,(char *)decoded,len,destNXTaddr,0));
+                    strcpy(retjsonstr,sendmessage(Server_NXTaddr,Server_secret,(char *)decoded,len,destNXTaddr,0));
                     //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                     //len = crcize(crcbuf,decoded,len);
                     //portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);

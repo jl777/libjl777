@@ -522,7 +522,7 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     return(str);
 }
 
-char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
+char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
 {
     char buf[4096];
     unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
@@ -533,16 +533,16 @@ char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char 
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] == 0 )
         {
-            sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to null privacyServer\"}",NXTaddr,msg);
+            sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to null privacyServer\"}",verifiedNXTaddr,msg);
             return(clonestr(buf));
         }
         np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
     }
     else if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
         queue_message(np,msg,origargstr);
-        sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,NXTaddr);
+        sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,verifiedNXTaddr);
         return(clonestr(buf));
     }
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
@@ -550,17 +550,17 @@ char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char 
     memset(encoded,0,sizeof(encoded));
     memset(encoded2,0,sizeof(encoded2));
     if ( origargstr != 0 )
-        len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
     else
     {
-        len = onionize(encoded,destNXTaddr,(unsigned char *)msg,msglen);
+        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded,destNXTaddr,(unsigned char *)msg,msglen);
         msg = origargstr = "<encrypted>";
     }
     printf("sendmessage (%s) len.%d to %s\n",origargstr,msglen,destNXTaddr);
     if ( len > sizeof(finalbuf)-256 )
     {
         printf("sendmessage, payload too big %d\n",len);
-        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",NXTaddr,msg,destNXTaddr,len);
+        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
     }
     else if ( len > 0 )
     {
@@ -569,15 +569,15 @@ char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char 
         if ( np != 0 && np->udp != 0 && destnp->udp == 0 )
         {
             printf("Must use indirection\n");
-            len = onionize(encoded2,Global_pNXT->privacyServer_NXTaddr,encoded,len);
+            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded2,Global_pNXT->privacyServer_NXTaddr,encoded,len);
             outbuf = encoded2;
-            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,Global_pNXT->privacyServer_NXTaddr,origargstr,msg,destNXTaddr);
+            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,Global_pNXT->privacyServer_NXTaddr,origargstr,msg,destNXTaddr);
         }
         else if ( destnp->udp != 0 )
         {
             printf("can do direct!\n");
             np = destnp;
-            sprintf(buf,"{\"status\":\"%s sends direct encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+            sprintf(buf,"{\"status\":\"%s sends direct encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
         } else np = 0;  // have to use p2p network
         if ( len > 0 )
         {
@@ -597,16 +597,16 @@ char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char 
                 printf("Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
                 if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,finalbuf,len) == 0 )
                 {
-                    sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+                    sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
                 }
                 else
                 {
-                    sprintf(buf,"{\"status\":\"%s sends via p2p encrypted sendmessage.(%s) [%s] to %s pending\"}",NXTaddr,origargstr,msg,destNXTaddr);
+                    sprintf(buf,"{\"status\":\"%s sends via p2p encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
                 }
             }
-            else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s unexpected case\"}",NXTaddr,msg,destNXTaddr);
-        } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s error encoding 2nd layer\"}",NXTaddr,msg,destNXTaddr);
-    } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s probably no pubkey\"}",NXTaddr,msg,destNXTaddr);
+            else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s unexpected case\"}",verifiedNXTaddr,msg,destNXTaddr);
+        } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s error encoding 2nd layer\"}",verifiedNXTaddr,msg,destNXTaddr);
+    } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s probably no pubkey\"}",verifiedNXTaddr,msg,destNXTaddr);
     return(clonestr(buf));
 }
 
@@ -621,14 +621,14 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
     return(0);
 }
 
-char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
+char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
 {
-    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],encoded[NXT_TOKEN_LEN+1],_tokbuf[4096];
+    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],_tokbuf[4096];
     struct NXT_tx T,*tx;
     long i,n;
     uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB;
-    find_NXTacct(NXTaddr,NXTACCTSECRET);
-    nxt64bits = calc_nxt64bits(NXTaddr);
+    find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    nxt64bits = calc_nxt64bits(verifiedNXTaddr);
     other64bits = calc_nxt64bits(otherNXTaddr);
     assetoshisA = calc_assetoshis(assetA,qtyA);
     assetoshisB = calc_assetoshis(assetB,qtyB);
@@ -645,7 +645,7 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
     {
         init_hexbytes(sighash,tx->sighash,sizeof(tx->sighash));
         init_hexbytes(fullhash,tx->fullhash,sizeof(tx->fullhash));
-        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"time\":%ld}",NXTaddr,utxbytes,sighash,fullhash,time(NULL));
+        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"time\":%ld}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL));
         free(tx);
         if ( 0 )
         {
@@ -657,12 +657,13 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
             printf("(%s)\n",tmp);
             free(tmp);
         }
-        stripwhite_ns(buf,strlen(buf));
-        issue_generateToken(0,encoded,buf,NXTACCTSECRET);
-        encoded[NXT_TOKEN_LEN] = 0;
-        sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
+        n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
+        //stripwhite_ns(buf,strlen(buf));
+        //issue_generateToken(0,encoded,buf,NXTACCTSECRET);
+        //encoded[NXT_TOKEN_LEN] = 0;
+        //sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
        // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
-        return(sendmessage(NXTaddr,_tokbuf,(int32_t)strlen(_tokbuf)+1,otherNXTaddr,buf));
+        return(sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,buf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));

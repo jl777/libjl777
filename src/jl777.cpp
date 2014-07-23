@@ -421,7 +421,7 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(msg,objs[3]);
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
-        retstr = sendmessage(sender,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
+        retstr = sendmessage(sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
 }
@@ -654,7 +654,7 @@ again:
             }
             else*/
             {
-                retstr = sendmessage(NXTaddr,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+                retstr = sendmessage(NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
             }
         }
         else

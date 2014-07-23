@@ -1182,6 +1182,17 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
 }
 #endif
 
+int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET)
+{
+    char encoded[NXT_TOKEN_LEN+1];
+    stripwhite_ns(cmdjson,strlen(cmdjson));
+    issue_generateToken(0,encoded,cmdjson,NXTACCTSECRET);
+    encoded[NXT_TOKEN_LEN] = 0;
+    sprintf(tokenized,"[%s,{\"token\":\"%s\"}]",cmdjson,encoded);
+    return((int32_t)strlen(tokenized)+1);
+    // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
+}
+
 uint32_t calc_ipbits(char *ipaddr)
 {
     return(inet_addr(ipaddr));
