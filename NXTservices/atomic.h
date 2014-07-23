@@ -13,7 +13,7 @@
 
 struct NXT_tx
 {
-    unsigned char refhash[32],sighash[32];
+    unsigned char refhash[32],sighash[32],fullhash[32];
     uint64_t senderbits,recipientbits,assetidbits;
     int64_t feeNQT;
     union { int64_t amountNQT; int64_t quantityQNT; };
@@ -69,8 +69,8 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
             if ( retstr != 0 )
             {
                 json = cJSON_Parse(retstr);
-                //if ( json != 0 )
-                //    printf("Parsed.(%s)\n",cJSON_Print(json));
+                if ( json != 0 )
+                    printf("Parsed.(%s)\n",cJSON_Print(json));
                 free(retstr);
             }
         }
@@ -122,7 +122,7 @@ int32_t calc_raw_NXTtx(char *utxbytes,char *sighash,uint64_t assetidbits,int64_t
     {
         if ( extract_cJSON_str(utxbytes,1024,json,"transactionBytes") > 0 && extract_cJSON_str(sighash,1024,json,"signatureHash") > 0 )
         {
-            truncate_utxbytes(utxbytes);
+            //truncate_utxbytes(utxbytes);
             retval = 0;
             printf("generated utx.(%s) sighash.(%s)\n",utxbytes,sighash);
         } else printf("missing tx or sighash.(%s)\n",cJSON_Print(json));
@@ -138,7 +138,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     uint64_t assetidbits,quantity;
     cJSON *attachmentobj;
     struct NXT_tx *utx = 0;
-    char sender[1024],recipient[1024],deadline[1024],feeNQT[1024],amountNQT[1024],type[1024],subtype[1024],verify[1024],referencedTransaction[1024],quantityQNT[1024],comment[1024],assetidstr[1024],sighash[1024];
+    char sender[1024],recipient[1024],deadline[1024],feeNQT[1024],amountNQT[1024],type[1024],subtype[1024],verify[1024],referencedTransaction[1024],quantityQNT[1024],comment[1024],assetidstr[1024],sighash[1024],fullhash[1024];
     if ( json == 0 )
         return(0);
     if ( extract_cJSON_str(sender,sizeof(sender),json,"sender") > 0 ) n++;
@@ -151,6 +151,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     if ( extract_cJSON_str(subtype,sizeof(subtype),json,"subtype") > 0 ) n++;
     if ( extract_cJSON_str(verify,sizeof(verify),json,"verify") > 0 ) n++;
     if ( extract_cJSON_str(sighash,sizeof(sighash),json,"signatureHash") > 0 ) n++;
+    if ( extract_cJSON_str(fullhash,sizeof(fullhash),json,"fullHash") > 0 ) n++;
     comment[0] = 0;
     assetidbits = ORDERBOOK_NXTID;
     quantity = 0;
@@ -172,6 +173,8 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     memset(utx,0,size);
     if ( strlen(referencedTransaction) == 64 )
         decode_hex(utx->refhash,32,referencedTransaction);
+    if ( strlen(fullhash) == 64 )
+        decode_hex(utx->fullhash,32,fullhash);
     if ( strlen(sighash) == 64 )
         decode_hex(utx->sighash,32,sighash);
     utx->senderbits = calc_nxt64bits(sender);
@@ -207,7 +210,7 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
         else if ( extract_cJSON_str(utxbytes,1024,txjson,"unsignedTransactionBytes") > 0 &&
              extract_cJSON_str(signedtx,1024,txjson,"transactionBytes") > 0 )
         {
-            truncate_utxbytes(utxbytes);
+            //truncate_utxbytes(utxbytes);
             if ( (parsed = issue_parseTransaction(0,signedtx)) != 0 )
             {
                 refjson = cJSON_Parse(parsed);

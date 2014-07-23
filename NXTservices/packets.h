@@ -418,7 +418,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 {
                     np = tokenized_np;
                     update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
-                    if ( decrypted != 0 && memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 )
+                    if ( decrypted != 0 && memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 ) // we dont do it above to prevent spoofing
                     {
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
                         memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
@@ -447,8 +447,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             }
             else
             {
-                printf("routine non-tokenized message.(%s)\n",parmstxt);
-                strcpy(retjsonstr,parmstxt);
+                printf("routine non-tokenized message.(%s)\n",decoded);
+                strcpy(retjsonstr,(char *)decoded);
             }
             free_json(argjson);
             return(np);

@@ -1504,11 +1504,12 @@ void NXTloop(struct NXThandler_info *mp)
 
 void init_NXThashtables(struct NXThandler_info *mp)
 {
+    struct other_addr *op = 0;
     struct NXT_acct *np = 0;
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp = 0;
     struct NXT_guid *gp = 0;
-    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*NXTsyncaddrs;
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs;
     if ( NXTguids == 0 )
         NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
     if ( NXTasset_txids == 0 )
@@ -1517,15 +1518,15 @@ void init_NXThashtables(struct NXThandler_info *mp)
         NXTassets = hashtable_create("NXTassets",HASHTABLES_STARTSIZE,sizeof(struct NXT_asset),((long)&ap->H.assetid[0] - (long)ap),sizeof(ap->H.assetid),((long)&ap->H.modified - (long)ap));
     if ( NXTaddrs == 0 )
         NXTaddrs = hashtable_create("NXTaddrs",HASHTABLES_STARTSIZE,sizeof(struct NXT_acct),((long)&np->H.NXTaddr[0] - (long)np),sizeof(np->H.NXTaddr),((long)&np->H.modified - (long)np));
-    if ( NXTsyncaddrs == 0 )
-        NXTsyncaddrs = hashtable_create("NXTsyncaddrs",HASHTABLES_STARTSIZE,sizeof(struct NXT_acct),((long)&np->H.NXTaddr[0] - (long)np),sizeof(np->H.NXTaddr),((long)&np->H.modified - (long)np));
+    if ( otheraddrs == 0 )
+        otheraddrs = hashtable_create("otheraddrs",HASHTABLES_STARTSIZE,sizeof(struct other_addr),((long)&op->addr[0] - (long)op),sizeof(op->addr),((long)&op->modified - (long)op));
     if ( mp != 0 )
     {
         mp->NXTguid_tablep = &NXTguids;
         mp->NXTaccts_tablep = &NXTaddrs;
-        mp->NXTsyncaddrs_tablep = &NXTsyncaddrs;
+        mp->otheraddrs_tablep = &otheraddrs;
         mp->NXTassets_tablep = &NXTassets;
         mp->NXTasset_txids_tablep = &NXTasset_txids;
-        printf("init_NXThashtables: %p %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids,NXTsyncaddrs);
+        printf("init_NXThashtables: %p %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids,otheraddrs);
     }
 }

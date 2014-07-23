@@ -417,7 +417,7 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(destNXTaddr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
     copy_cJSON(msg,objs[3]);
-    printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
+    //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
         retstr = sendmessage(sender,msg,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
@@ -431,6 +431,31 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     copy_cJSON(NXTACCTSECRET,objs[2]);
     if ( sender[0] != 0 && valid != 0 )
         retstr = checkmessages(sender,NXTACCTSECRET,senderNXTaddr);
+    else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
+    return(retstr);
+}
+
+char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],addr[256],*retstr = 0;
+    copy_cJSON(addr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && valid != 0 && addr[0] != 0 )
+        retstr = getpubkey(addr);
+    else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
+    return(retstr);
+}
+
+char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],pNXTaddr[1024],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(pubkey,objs[2]);
+    copy_cJSON(BTCDaddr,objs[3]);
+    copy_cJSON(BTCaddr,objs[4]);
+    copy_cJSON(pNXTaddr,objs[5]);
+    if ( sender[0] != 0 && valid != 0 )
+        retstr = publishaddrs(sender,NXTACCTSECRET,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
     else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
     return(retstr);
 }
@@ -455,6 +480,18 @@ char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
+char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],utx[10234],full[1024],sig[1024],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(utx,objs[2]);
+    copy_cJSON(sig,objs[3]);
+    copy_cJSON(full,objs[4]);
+    if ( sender[0] != 0 && valid != 0 )
+        retstr = processutx(sender,utx,sig,full);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
 /*
 
 forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
@@ -464,6 +501,9 @@ forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
+    static char *publishaddrs[] = { (char *)getpubkey_func, "publishaddrs", "V", "NXT", "secret", "pubkey", "BTCD", "BTC", "pNXT", 0 };
+    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
@@ -476,7 +516,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char **commands[] = { getpubkey, processutx,publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;

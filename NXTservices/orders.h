@@ -457,6 +457,42 @@ char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,cha
     return(clonestr(buf));
 }
 
+char *getpubkey(char *addr)
+{
+    char buf[4096],pubkey[128];
+    struct NXT_acct *pubnp;
+    pubnp = search_addresses(addr);
+    init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
+    sprintf(buf,"{\"pubkey\":\"%s\",\"NXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr);
+    return(clonestr(buf));
+}
+
+char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
+{
+    int32_t createdflag;
+    struct NXT_acct *np;
+    struct other_addr *op;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    if ( pubkey != 0 && pubkey[0] != 0 )
+        decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+    if ( BTCDaddr[0] != 0 )
+    {
+        safecopy(np->BTCDaddr,BTCDaddr,sizeof(np->BTCDaddr));
+        op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCDaddr),op->nxt64bits = np->H.nxt64bits;
+    }
+    if ( BTCaddr[0] != 0 )
+    {
+        safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
+        op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
+    }
+    if ( pNXTaddr[0] != 0 )
+    {
+        safecopy(np->pNXTaddr,pNXTaddr,sizeof(np->pNXTaddr));
+        op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,pNXTaddr),op->nxt64bits = np->H.nxt64bits;
+    }
+    return(getpubkey(NXTaddr));
+}
+
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
 {
     char *str;
@@ -488,11 +524,11 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
 
 char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
 {
-    char buf[1024];
+    char buf[4096];
     unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
     int32_t len,createdflag;
     struct NXT_acct *np = 0,*destnp;
-    printf("sendmessage.(%s) -> NXT.(%s) (%s) (%s)\n",NXTaddr,destNXTaddr,msg,origargstr);
+    //printf("sendmessage.(%s) -> NXT.(%s) (%s) (%s)\n",NXTaddr,destNXTaddr,msg,origargstr);
     if ( Server_NXTaddr == 0 )
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] == 0 )
@@ -567,9 +603,20 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     return(clonestr(buf));
 }
 
+char *processutx(char *sender,char *utx,char *sig,char *full)
+{
+    char *parsed,buf[1024];
+    if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
+    {
+        
+    }
+    sprintf(buf,"{\"error\":\"%s cant parse processutx.(%s)\"}",sender,utx);
+    return(0);
+}
+
 char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
 {
-    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],refhash[65],encoded[NXT_TOKEN_LEN+1],_tokbuf[4096];
+    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],encoded[NXT_TOKEN_LEN+1],_tokbuf[4096];
     struct NXT_tx T,*tx;
     long i,n;
     uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB;
@@ -578,19 +625,20 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
     other64bits = calc_nxt64bits(otherNXTaddr);
     assetoshisA = calc_assetoshis(assetA,qtyA);
     assetoshisB = calc_assetoshis(assetB,qtyB);
+    //printf("assetoshis A %llu B %llu\n",(long long)assetoshisA,(long long)assetoshisB);
     if ( assetoshisA == 0 || assetoshisB == 0 || assetA == assetB )
     {
         sprintf(buf,"{\"error\":\"%s\",\"descr\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"","illegal parameter",(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
         return(clonestr(buf));
     }
-    set_NXTtx(nxt64bits,&T,assetA,qtyA,other64bits);
+    set_NXTtx(nxt64bits,&T,assetA,assetoshisA,other64bits);
     sprintf(T.comment,"{\"assetB\":\"%llu\",\"qtyB\":\"%llu\"}",(long long)assetB,(long long)assetoshisB);
     tx = sign_NXT_tx(utxbytes,signedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
     if ( tx != 0 )
     {
         init_hexbytes(sighash,tx->sighash,sizeof(tx->sighash));
-        init_hexbytes(refhash,tx->refhash,sizeof(tx->refhash));
-        sprintf(buf,"{\"utx\":\"%s\",\"sig\":\"%s\",\"ref\":\"%s\",\"time\":%ld}",utxbytes,sighash,refhash,time(NULL));
+        init_hexbytes(fullhash,tx->fullhash,sizeof(tx->fullhash));
+        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"time\":%ld}",NXTaddr,utxbytes,sighash,fullhash,time(NULL));
         free(tx);
         if ( 0 )
         {

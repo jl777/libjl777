@@ -419,6 +419,27 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     return(np);
 }
 
+struct NXT_acct *search_addresses(char *addr)
+{
+    char NXTaddr[64];
+    int32_t createdflag;
+    struct NXT_acct *np;
+    struct other_addr *op;
+    if ( search_hashtable(*Global_mp->NXTaccts_tablep,addr) == HASHSEARCH_ERROR )
+    {
+        if ( search_hashtable(*Global_mp->otheraddrs_tablep,addr) == HASHSEARCH_ERROR )
+            return(0);
+        op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,addr);
+        expand_nxt64bits(NXTaddr,op->nxt64bits);
+        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        if ( strcmp(np->BTCDaddr,addr) == 0 || strcmp(np->BTCaddr,addr) == 0 || strcmp(np->pNXTaddr,addr) == 0 )
+            return(np);
+        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s) (%s)\n",addr,np->H.NXTaddr,np->BTCDaddr,np->BTCaddr,np->pNXTaddr);
+        return(0);
+    }
+    else return(get_NXTacct(&createdflag,Global_mp,addr));
+}
+
 void clear_NXT_networkinfo(struct NXT_acct *np)
 {
     if ( np != 0 )
@@ -542,6 +563,7 @@ char *issue_getAsset(CURL *curl_handle,char *assetidstr)
 {
     char cmd[4096];
     sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
+    //printf("cmd.(%s)\n",cmd);
     return(issue_NXTPOST(curl_handle,cmd));
     //printf("calculated.(%s)\n",ret.str);
 }
@@ -558,7 +580,7 @@ uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
     jsonstr = issue_getAsset(0,assetidstr);
     if ( jsonstr != 0 )
     {
-       // printf("Assetjson.(%s)\n",jsonstr);
+        //printf("Assetjson.(%s) for asset.(%s)\n",jsonstr,assetidstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             errcode = (int32_t)get_cJSON_int(json,"errorCode");

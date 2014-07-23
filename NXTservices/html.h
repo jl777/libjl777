@@ -449,6 +449,18 @@ int gen_pNXT_select_fields(char *NXTaddr,char *handler,char *name,char **fields,
     return(n);
 }
 
+int gen_pNXT_pubkey_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*addr,*secret;
+    secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
+    addr = construct_varname(fields,n++,name,"addr","address (NXT, BTCD, pNXT or BTC):",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"addr\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,addr);
+    *scriptp = clonestr(script);
+    free(secret); free(addr);
+    return(n);
+}
+
 int gen_pNXT_depwith_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
@@ -651,7 +663,9 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     n++;
     forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price and send privateNXT to NXT address","sell mgwBTC","127.0.0.1:7777","pNXT",gen_pNXT_sell_fields);
     n++;
-    
+    forms[n] = make_form(NXTaddr,&scripts[n],"getpubkey","get public key for address","get pubkey","127.0.0.1:7777","pNXT",gen_pNXT_pubkey_fields);
+    n++;
+  
     return(n);
 }
 

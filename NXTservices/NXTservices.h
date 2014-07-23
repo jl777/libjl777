@@ -47,6 +47,12 @@ struct NXT_asset
 struct udp_info { uint64_t nxt64bits; uint32_t ipbits; uint16_t port; };
 #define SET_UDPINFO(up,bits,addr) ((up)->nxt64bits = bits, (up)->ipbits = calc_ipbits(inet_ntoa((addr)->sin_addr)), (up)->port = ntohs((addr)->sin_port))
 
+struct other_addr
+{
+    uint64_t modified,nxt64bits;
+    char addr[128];
+};
+
 struct NXT_acct
 {
     struct NXT_str H;
@@ -66,7 +72,7 @@ struct NXT_acct
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;
-    char dispname[128],udp_sender[64],tcp_sender[64];
+    char dispname[128],udp_sender[64],tcp_sender[64],BTCaddr[80],BTCDaddr[80],pNXTaddr[128];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
     //uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
 };

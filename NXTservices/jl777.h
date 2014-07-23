@@ -206,8 +206,8 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define _NXTSERVER "requestType"
 #ifdef MAINNET
 #define NXT_FORKHEIGHT 173271
-#define NXTSERVER "http://127.0.0.1:7876/nxt?requestType"
-#define NXTAPIURL "http://127.0.0.1:7876/nxt"
+//#define NXTSERVER "http://127.0.0.1:7876/nxt?requestType"
+//#define NXTAPIURL "http://127.0.0.1:7876/nxt"
 
 #define BTC_COINASSET "4551058913252105307"
 #define LTC_COINASSET "2881764795164526882"
@@ -295,7 +295,7 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**NXTsyncaddrs_tablep;
+    struct hashtable **NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep;
     cJSON *accountjson;
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
