@@ -143,11 +143,11 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char 
     char argstr[1024],pubkey[1024],token[1024];
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,nonce);
-    printf("got argstr.(%s)\n",argstr);
+    //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
     sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
-    printf("tokenized.(%s)\n",jsonstr);
+    //printf("tokenized.(%s)\n",jsonstr);
     return((int)strlen(jsonstr));
 }
 
@@ -364,7 +364,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
     struct NXT_acct *tokenized_np;
     int32_t valid,len=0,createdflag,decrypted=0;
     cJSON *argjson,*msgjson;
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],crcbuf[4096];
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096];//,crcbuf[4096];
     char senderNXTaddr[64],destNXTaddr[64],msg[1024],*parmstxt=0,*jsonstr;
     memset(decoded,0,sizeof(decoded));
     sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
@@ -460,12 +460,15 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                if ( np->udp != 0 )
+                if ( Server_NXTaddr != 0 && (np->udp != 0 || np->tcp != 0) )
                 {
+                    char *sendmessage(char *NXTaddr,char *msg,int32_t len,char *destNXTaddr,char *origargstr);
                     printf("route packet to NXT.%s\n",destNXTaddr);
-                    int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
-                    len = crcize(crcbuf,decoded,len);
-                    portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
+                    strcpy(retjsonstr,sendmessage(Server_NXTaddr,(char *)decoded,len,destNXTaddr,0));
+                    //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
+                    //len = crcize(crcbuf,decoded,len);
+                    //portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
+                    //sprintf(retjsonstr,"{\"result\":\"routed packet from %s/%d to dest.%llu %d bytes from %s/%d\"}",sender,port,(long long)destbits,len,sender,port);
                     return(np);
                 }
             }

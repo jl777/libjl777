@@ -522,7 +522,7 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     return(str);
 }
 
-char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
+char *sendmessage(char *NXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
 {
     char buf[4096];
     unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
@@ -549,8 +549,14 @@ char *sendmessage(char *NXTaddr,char *msg,char *destNXTaddr,char *origargstr)
     memset(finalbuf,0,sizeof(finalbuf));
     memset(encoded,0,sizeof(encoded));
     memset(encoded2,0,sizeof(encoded2));
-    printf("sendmessage (%s) len.%ld to %s\n",origargstr,strlen(origargstr),destNXTaddr);
-    len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+    if ( origargstr != 0 )
+        len = onionize(encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+    else
+    {
+        len = onionize(encoded,destNXTaddr,(unsigned char *)msg,msglen);
+        msg = origargstr = "<encrypted>";
+    }
+    printf("sendmessage (%s) len.%d to %s\n",origargstr,msglen,destNXTaddr);
     if ( len > sizeof(finalbuf)-256 )
     {
         printf("sendmessage, payload too big %d\n",len);
@@ -656,7 +662,7 @@ char *makeoffer(char *NXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t as
         encoded[NXT_TOKEN_LEN] = 0;
         sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
        // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
-        return(sendmessage(NXTaddr,_tokbuf,otherNXTaddr,buf));
+        return(sendmessage(NXTaddr,_tokbuf,(int32_t)strlen(_tokbuf)+1,otherNXTaddr,buf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));
