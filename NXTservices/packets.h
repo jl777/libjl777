@@ -468,7 +468,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                             strcpy(retjsonstr,jsonstr);
                             free(jsonstr);
                         }
-                        printf("respond.(%s) to NXT.%s\n",retjsonstr,np!=0?np->H.NXTaddr:"unknown");
+                        printf("respond.(%s) to np.%p NXT.%s\n",retjsonstr,np,np!=0?np->H.NXTaddr:"unknown");
                     }
                 }
             }
