@@ -461,6 +461,7 @@ char *getpubkey(char *addr)
 {
     char buf[4096],pubkey[128];
     struct NXT_acct *pubnp;
+    printf("in getpubkey(%s)\n",addr);
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
     sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr);
@@ -473,6 +474,7 @@ char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubkey,char *BTCDaddr
     struct NXT_acct *np;
     struct other_addr *op;
     np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    printf("in publishaddrs.(%s)\n",NXTaddr);
     if ( pubkey != 0 && pubkey[0] != 0 )
         decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
     if ( BTCDaddr[0] != 0 )

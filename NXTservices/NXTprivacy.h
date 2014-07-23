@@ -379,7 +379,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             }
             else if ( retjsonstr[0] != 0 )
             {
-                if ( 1 && (retstr= send_tokenized_cmd(Server_NXTaddr,Server_secret,retjsonstr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                if ( 1 && (retstr= send_tokenized_cmd(Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
                     free(retstr);
