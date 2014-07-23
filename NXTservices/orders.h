@@ -465,7 +465,7 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
     printf("in getpubkey(%s)\n",addr);
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",NXTaddr,pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr,time(NULL));
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr,time(NULL));
     return(clonestr(buf));
 }
 
