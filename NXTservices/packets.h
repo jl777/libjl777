@@ -460,7 +460,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     else*/
                     {
                         char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                        jsonstr = issue_pNXT_json_commands(argjson,Server_NXTaddr!=0?Server_NXTaddr:np->H.NXTaddr,valid,parmstxt);//(char *)decoded);
+                        jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,parmstxt);//(char *)decoded);
                         if ( jsonstr == 0 )
                             sprintf(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null from (%s)\"}",(char *)decoded);
                         else

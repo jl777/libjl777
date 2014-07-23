@@ -541,7 +541,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
                 if ( sender[0] == 0 || valid != 1 || strcmp(NXTaddr,sender) != 0 )
                 {
                     printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],sender,NXTaddr);
-                    return(0);
+                    //return(0);
                 }
             }
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
