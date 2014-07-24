@@ -72,7 +72,7 @@ struct NXT_acct
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;
-    char dispname[128],udp_sender[64],tcp_sender[64],BTCaddr[80],BTCDaddr[80],pNXTaddr[128];
+    char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64],BTCaddr[80],BTCDaddr[80],pNXTaddr[128];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
     //uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
 };

@@ -615,26 +615,110 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
 
 char *processutx(char *sender,char *utx,char *sig,char *full)
 {
-    char *parsed,buf[1024];
-    if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
+    //PARSED OFFER.({"sender":"8989816935121514892","timestamp":20810867,"height":2147483647,"amountNQT":"0","verify":false,"subtype":1,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetB\":\"1639299849328439538\",\"qtyB\":\"1000000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","feeNQT":"100000000","senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","type":2,"deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","recipient":"8989816935121514892"})
+    struct NXT_tx T,*tx;
+    cJSON *json,*obj,*offerjson,*commentobj;
+    struct NXT_tx *offertx;
+    struct NXT_acct *np;
+    int32_t createdflag;
+    double vol,price,amountB;
+    uint64_t qtyB,assetB;
+    char *jsonstr,*parsed,buf[1024],calchash[1024],NXTaddr[64],responseutx[1024],signedtx[1024],fullhash[1024],otherNXTaddr[64];
+    jsonstr = issue_calculateFullHash(0,utx,sig);
+    if ( jsonstr != 0 )
     {
-         
+        json = cJSON_Parse(jsonstr);
+        if ( json != 0 )
+        {
+            obj = cJSON_GetObjectItem(json,"fullHash");
+            copy_cJSON(calchash,obj);
+            if ( strcmp(calchash,full) == 0 )
+            {
+                if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
+                {
+                    printf("PARSED OFFER.(%s)\n",parsed);
+                    if ( (offerjson= cJSON_Parse(parsed)) != 0 )
+                    {
+                        offertx = set_NXT_tx(offerjson);
+                        expand_nxt64bits(otherNXTaddr,offertx->senderbits);
+                        vol = conv_assetoshis(offertx->assetidbits,offertx->quantityQNT);
+                        if ( vol != 0. && offertx->comment[0] != 0 )
+                        {
+                            commentobj = cJSON_Parse(offertx->comment);
+                            if ( commentobj != 0 )
+                            {
+                                assetB = get_satoshi_obj(commentobj,"assetB");
+                                qtyB = get_satoshi_obj(commentobj,"qtyB");
+                                amountB = conv_assetoshis(assetB,qtyB);
+                                price = (amountB / vol);
+                                free_json(commentobj);
+                                
+                                set_NXTtx(offertx->recipientbits,&T,offertx->assetidbits,offertx->quantityQNT,offertx->senderbits);
+                                sprintf(T.comment,"{\"assetA\":\"%llu\",\"qtyA\":\"%llu\"}",(long long)offertx->assetidbits,(long long)offertx->quantityQNT);
+                                init_hexbytes(fullhash,offertx->fullhash,sizeof(offertx->fullhash));
+                                expand_nxt64bits(NXTaddr,offertx->recipientbits);
+                                np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                                if ( np->NXTACCTSECRET[0] != 0 )
+                                {
+                                    tx = sign_NXT_tx(responseutx,signedtx,np->NXTACCTSECRET,offertx->recipientbits,&T,fullhash,1.);
+                                    if ( tx != 0 )
+                                    {
+                                        sprintf(buf,"{\"requestType\":\"respondtx\",\"NXT\":\"%s\",\"signedtx\":\"%s\",\"time\":%ld}",NXTaddr,signedtx,time(NULL));
+                                        send_tokenized_cmd(NXTaddr,np->NXTACCTSECRET,buf,otherNXTaddr);
+                                        free(tx);
+                                        sprintf(buf,"{\"results\":\"utx from NXT.%llu accepted with fullhash.(%s) %.8f of %llu for %.8f of %llu -> price %.11f\"}",(long long)offertx->senderbits,full,vol,(long long)offertx->assetidbits,amountB,(long long)assetB,price);
+                                    }
+                                    else sprintf(buf,"{\"error\":\"from %s error signing responsutx.(%s)\"}",otherNXTaddr,NXTaddr);
+                                }
+                                else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,np->H.NXTaddr);
+                            }
+                            else sprintf(buf,"{\"error\":\"%s error parsing comment comment.(%s)\"}",otherNXTaddr,offertx->comment);
+                        }
+                        else sprintf(buf,"{\"error\":\"%s missing comment.(%s) or zero vol %.8f\"}",otherNXTaddr,parsed,vol);
+                        free_json(offerjson);
+                    }
+                    else sprintf(buf,"{\"error\":\"%s cant json parse offer.(%s)\"}",otherNXTaddr,parsed);
+                    free(parsed);
+                }
+                else sprintf(buf,"{\"error\":\"%s cant parse processutx.(%s)\"}",otherNXTaddr,utx);
+            }
+            free_json(json);
+        }
+        else sprintf(buf,"{\"error\":\"cant parse calcfullhash results.(%s) from %s\"}",jsonstr,otherNXTaddr);
+        free(jsonstr);
     }
-    sprintf(buf,"{\"error\":\"%s cant parse processutx.(%s)\"}",sender,utx);
-    return(0);
+    else sprintf(buf,"{\"error\":\"processutx cant issue calcfullhash\"}");
+    return(clonestr(buf));
+}
+
+char *respondtx(char *sender,char *signedtx)
+{
+    char *parsed;
+    printf("respondtx got (%s) from NXT.%s\n",signedtx,sender);
+    if ( (parsed = issue_parseTransaction(0,signedtx)) != 0 )
+    {
+        printf("RESPONSETX.(%s)\n",parsed);
+        free(parsed);
+    }
+    return(clonestr("ho ho"));
 }
 
 char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
 {
     char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],_tokbuf[4096];
     struct NXT_tx T,*tx;
+    struct NXT_acct *np;
     long i,n;
+    int32_t createdflag;
     uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB;
     find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     nxt64bits = calc_nxt64bits(verifiedNXTaddr);
     other64bits = calc_nxt64bits(otherNXTaddr);
     assetoshisA = calc_assetoshis(assetA,qtyA);
     assetoshisB = calc_assetoshis(assetB,qtyB);
+    np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
+    if ( np->NXTACCTSECRET[0] == 0 )
+        strcpy(np->NXTACCTSECRET,NXTACCTSECRET);
     //printf("assetoshis A %llu B %llu\n",(long long)assetoshisA,(long long)assetoshisB);
     if ( assetoshisA == 0 || assetoshisB == 0 || assetA == assetB )
     {
@@ -661,12 +745,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
             free(tmp);
         }
         n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
-        //stripwhite_ns(buf,strlen(buf));
-        //issue_generateToken(0,encoded,buf,NXTACCTSECRET);
-        //encoded[NXT_TOKEN_LEN] = 0;
-        //sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",buf,encoded);
-       // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
-        return(sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,buf));
+        return(sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));

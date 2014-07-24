@@ -600,14 +600,45 @@ uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
     return(assetoshis);
 }
 
+
+double conv_assetoshis(uint64_t assetidbits,uint64_t assetoshis)
+{
+    cJSON *json;
+    int32_t i,decimals,errcode;
+    uint64_t mult;
+    double amount = 0;
+    char assetidstr[64],*jsonstr;
+    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+        return((double)assetoshis / SATOSHIDEN);
+    expand_nxt64bits(assetidstr,assetidbits);
+    jsonstr = issue_getAsset(0,assetidstr);
+    if ( jsonstr != 0 )
+    {
+        //printf("Assetjson.(%s) for asset.(%s)\n",jsonstr,assetidstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            errcode = (int32_t)get_cJSON_int(json,"errorCode");
+            if ( errcode == 0 )
+            {
+                decimals = (int32_t)get_cJSON_int(json,"decimals");
+                mult = 1;
+                for (i=7-decimals; i>=0; i--)
+                    mult *= 10;
+                amount = ((double)(assetoshis * mult) / SATOSHIDEN);
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    //printf("assetoshis.%llu\n",(long long)assetoshis);
+    return(amount);
+}
+
 char *issue_calculateFullHash(CURL *curl_handle,char *unsignedtxbytes,char *sighash)
 {
-    char cmd[4096],buf[512];
-    union NXTtype ret;
+    char cmd[4096];
     sprintf(cmd,"%s=calculateFullHash&unsignedTransactionBytes=%s&signatureHash=%s",_NXTSERVER,unsignedtxbytes,sighash);
-    ret = extract_NXTfield(curl_handle,buf,cmd,"fullHash",0);
-    //printf("calculated.(%s)\n",ret.str);
-    return(ret.str);
+    return(issue_NXTPOST(curl_handle,cmd));
 }
 
 char *issue_parseTransaction(CURL *curl_handle,char *txbytes)

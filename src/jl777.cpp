@@ -478,13 +478,23 @@ char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
 
 char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char NXTACCTSECRET[512],utx[10234],full[1024],sig[1024],*retstr = 0;
+    char NXTACCTSECRET[512],utx[4096],full[1024],sig[1024],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
     copy_cJSON(utx,objs[2]);
     copy_cJSON(sig,objs[3]);
     copy_cJSON(full,objs[4]);
     if ( sender[0] != 0 && valid != 0 )
         retstr = processutx(sender,utx,sig,full);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
+
+char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char signedtx[4096],*retstr = 0;
+    copy_cJSON(signedtx,objs[1]);
+    if ( sender[0] != 0 && valid != 0 && signedtx[0] != 0 )
+        retstr = respondtx(sender,signedtx);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
 }
@@ -497,6 +507,7 @@ forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
     static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "pNXT", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
@@ -512,7 +523,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { getpubkey, processutx,publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char **commands[] = { getpubkey, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -538,10 +549,10 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             {
                 if ( NXTaddr[0] == 0 )
                     strcpy(NXTaddr,sender);
-                if ( sender[0] == 0 || valid != 1 || strcmp(NXTaddr,sender) != 0 )
+                if ( sender[0] == 0 || valid != 1 || (strcmp(NXTaddr,sender) != 0 && strcmp(sender,Global_pNXT->privacyServer_NXTaddr) != 0) )
                 {
                     printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],sender,NXTaddr);
-                    //return(0);
+                    return(0);
                 }
             }
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)

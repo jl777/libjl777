@@ -380,9 +380,9 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np;
     int32_t valid,len=0,tmp,createdflag,decrypted=0;
-    cJSON *argjson,*msgjson;
+    cJSON *argjson;//,*msgjson;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],tmppubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],tmpdecoded[4096];
-    char senderNXTaddr[64],destNXTaddr[64],msg[1024],*parmstxt=0,*jsonstr;
+    char senderNXTaddr[64],destNXTaddr[64],*parmstxt=0,*jsonstr;
     memset(decoded,0,sizeof(decoded));
     memset(tmpdecoded,0,sizeof(tmpdecoded));
     sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
