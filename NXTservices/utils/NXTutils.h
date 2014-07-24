@@ -294,11 +294,34 @@ int32_t issue_startForging(CURL *curl_handle,char *secret)
     return(ret.val);
 }
 
-char *issue_broadcastTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
+uint64_t issue_broadcastTransaction(int32_t *errcodep,CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
 {
-    char cmd[4096];
+    cJSON *json,*errjson;
+    uint64_t txid = 0;
+    char cmd[4096],*retstr;
     sprintf(cmd,"%s=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",_NXTSERVER,NXTACCTSECRET,txbytes);
-    return(issue_NXTPOST(curl_handle,cmd));
+    retstr = issue_NXTPOST(curl_handle,cmd);
+    *errcodep = -1;
+    if ( retstr != 0 )
+    {
+        printf("broadcast got.(%s)\n",retstr);
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            errjson = cJSON_GetObjectItem(json,"errorCode");
+            if ( errjson != 0 )
+            {
+                printf("ERROR submitting assetxfer.(%s)\n",retstr);
+                *errcodep = (int32_t)get_cJSON_int(json,"errorCode");
+            }
+            else
+            {
+                if ( (txid = get_satoshi_obj(json,"transaction")) != 0 )
+                    *errcodep = 0;
+            }
+        }
+        free(retstr);
+    }
+    return(txid);
 }
 
 char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)

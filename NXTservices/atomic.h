@@ -64,7 +64,9 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
         if ( cmd[0] != 0 )
         {
             sprintf(cmd+strlen(cmd),"&deadline=%u&feeNQT=%lld&secretPhrase=%s&recipient=%s&broadcast=false",utx->deadline,(long long)utx->feeNQT,NXTACCTSECRET,destNXTaddr);
-            printf("generated cmd.(%s)\n",cmd);
+            if ( reftxid != 0 && reftxid[0] != 0 )
+                sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",reftxid);
+            printf("generated cmd.(%s) reftxid.(%s)\n",cmd,reftxid);
             retstr = issue_NXTPOST(0,cmd);
             if ( retstr != 0 )
             {
@@ -143,7 +145,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
         return(0);
     if ( extract_cJSON_str(sender,sizeof(sender),json,"sender") > 0 ) n++;
     if ( extract_cJSON_str(recipient,sizeof(recipient),json,"recipient") > 0 ) n++;
-    if ( extract_cJSON_str(referencedTransaction,sizeof(referencedTransaction),json,"referencedTransaction") > 0 ) n++;
+    if ( extract_cJSON_str(referencedTransaction,sizeof(referencedTransaction),json,"referencedTransactionFullHash") > 0 ) n++;
     if ( extract_cJSON_str(amountNQT,sizeof(amountNQT),json,"amountNQT") > 0 ) n++;
     if ( extract_cJSON_str(feeNQT,sizeof(feeNQT),json,"feeNQT") > 0 ) n++;
     if ( extract_cJSON_str(deadline,sizeof(deadline),json,"deadline") > 0 ) n++;
@@ -198,6 +200,7 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
     cJSON *refjson,*txjson;
     char *parsed,*str,errstr[32];
     struct NXT_tx *refutx = 0;
+    printf("sign_NXT_tx reftxid.(%s)\n",reftxid);
     txjson = gen_NXT_tx_json(utx,reftxid,myshare,NXTACCTSECRET,nxt64bits);
     utxbytes[0] = signedtx[0] = 0;
     if ( txjson != 0 )
@@ -227,6 +230,53 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
     }
     return(refutx);
 }
+
+int32_t equiv_NXT_tx(struct NXT_tx *tx,char *comment)
+{
+    cJSON *json;
+    uint64_t assetA,assetB,qtyA,qtyB,asset,qty;
+    if ( (json= cJSON_Parse(comment)) != 0 )
+    {
+        assetA = get_satoshi_obj(json,"assetA");
+        qtyA = get_satoshi_obj(json,"qtyA");
+        assetB = get_satoshi_obj(json,"assetB");
+        qtyB = get_satoshi_obj(json,"qtyB");
+        free_json(json);
+        if ( assetA != 0 && qtyA != 0 )
+        {
+            asset = assetA;
+            qty = qtyA;
+        }
+        else if ( assetB != 0 && qtyB != 0 )
+        {
+            asset = assetB;
+            qty = qtyB;
+        } else return(-2);
+        if ( tx->assetidbits != asset )
+            return(-3);
+        if ( tx->quantityQNT != qty ) // tx->quantityQNT is union as long as same assetid, then these can be compared directly
+            return(-4);
+        return(0);
+    } else return(-1);
+}
+
+struct NXT_tx *conv_txbytes(char *txbytes)
+{
+    struct NXT_tx *tx = 0;
+    char *parsed;
+    cJSON *json;
+    if ( (parsed = issue_parseTransaction(0,txbytes)) != 0 )
+    {
+        if ( (json= cJSON_Parse(parsed)) != 0 )
+        {
+            tx = set_NXT_tx(json);
+            free_json(json);
+        }
+        free(parsed);
+    }
+    return(tx);
+}
+
 /*
 int32_t update_atomic(struct NXT_acct *np,struct subatomic_tx *atx)
 {

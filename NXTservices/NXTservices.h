@@ -69,6 +69,7 @@ struct NXT_acct
     //portable_udp_t Usock;
     //int32_t recvid,sentid;
     queue_t incoming;
+    char *signedtx;
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;
