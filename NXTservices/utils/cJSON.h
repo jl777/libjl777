@@ -54,6 +54,8 @@ extern "C"
 #define is_cJSON_String(json) ((json) != 0 && ((json)->type & 0xff) == cJSON_String)
 #define is_cJSON_Number(json) ((json) != 0 && ((json)->type & 0xff) == cJSON_Number)
 #define is_cJSON_Object(json) ((json) != 0 && ((json)->type & 0xff) == cJSON_Object)
+#define is_cJSON_True(json) ((json) != 0 && ((json)->type & 0xff) == cJSON_True)
+#define is_cJSON_False(json) ((json) != 0 && ((json)->type & 0xff) == cJSON_False)
     
 #define cJSON_IsReference 256
     
@@ -165,7 +167,12 @@ void copy_cJSON(char *dest,cJSON *obj);
     int64_t get_cJSON_int(cJSON *json,char *field);
     void add_satoshis_json(cJSON *json,char *field,uint64_t satoshis);
     uint64_t get_satoshi_obj(cJSON *json,char *field);
-
+    
+    int32_t get_API_int(cJSON *obj,int32_t val);
+    uint64_t get_API_nxt64bits(cJSON *obj);
+    double get_API_float(cJSON *obj);
+    char *get_cJSON_fieldname(cJSON *obj);
+    
 #ifdef __cplusplus
 }
 #endif

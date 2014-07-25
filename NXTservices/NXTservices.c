@@ -13,11 +13,7 @@ uint64_t *Assetlist;
 int32_t is_special_addr(char *NXTaddr)
 {
     extern int32_t is_gateway_addr(char *);
-    if ( strcmp(NXTaddr,NXTISSUERACCT) == 0
-#ifdef BTC_COINID
-        || is_gateway_addr(NXTaddr) != 0
-#endif
-        )
+    if ( strcmp(NXTaddr,NXTISSUERACCT) == 0 || is_gateway_addr(NXTaddr) != 0 )
         return(1);
     else return(0);
 }
@@ -480,7 +476,7 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
                             tp->receiverbits = calc_nxt64bits(receiver);
                             if ( tp->comment != 0 && (commentobj= cJSON_Parse(tp->comment)) != 0 )
                             {
-#ifdef BTC_COINID
+#ifdef INSIDE_MGW
                                int32_t coinid;
                                 char cointxid[128];
                                 cJSON *cointxidobj;
@@ -935,17 +931,16 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
     return(jsonstr);
 }
 
-#ifdef BTC_COINID
 int64_t calc_MGW_assets(int32_t coinid)
 {
     char *assetid_str(int32_t coinid);
-    static char *blacklist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, BTC_COINASSET, "" };
+    //static char *blacklist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, BTC_COINASSET, "" };
     int64_t total = 0;
     char *assetidstr,*jsonstr;
     assetidstr = assetid_str(coinid);
     if ( strcmp(assetidstr,ILLEGAL_COINASSET) != 0 && strcmp(assetidstr,"0") != 0 )
     {
-        jsonstr = emit_asset_json(&total,assetidstr,0,blacklist);
+        jsonstr = emit_asset_json(&total,assetidstr,0,MGW_blacklist);
         if ( jsonstr != 0 )
             free(jsonstr);
     }
@@ -958,7 +953,7 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
     char *get_deposit_addr(int32_t coinid,char *NXTaddr);
     char *find_user_withdrawaddr(int32_t coinid,uint64_t nxt64bits);
     int32_t i,j,createdflag,coinid;
-    char numstr[1024],sender[1024],receiver[1024],*depositaddr,*withdrawaddr,*jsonstr = 0;
+    char numstr[1024],sender[1024],receiver[1024],*jsonstr = 0;
     struct NXT_acct *np,*seller,*buyer,*issuernp;
     struct NXT_asset *ap;
     struct NXT_assettxid_list *txlist;
@@ -1037,6 +1032,8 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
             }
         }
     }
+#ifdef INSIDE_MGW
+    char *depositaddr,*withdrawaddr;
     withdrawaddr = find_user_withdrawaddr(coinid,np->H.nxt64bits);
     depositaddr = get_deposit_addr(coinid,NXTaddr);
     if ( withdrawaddr != 0 || depositaddr != 0 )
@@ -1048,25 +1045,25 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
         if ( withdrawaddr != 0 )
             cJSON_AddItemToObject(json,"MGW withdraw addr",cJSON_CreateString(withdrawaddr));
     }
+#endif
     if ( json != 0 )
     {
         if ( array != 0 )
             cJSON_AddItemToObject(json,"assets",array);
         jsonstr = cJSON_Print(json);
         /*if ( jsonstr != 0 )
-        {
-            printf("%s",jsonstr);
-            if ( fp != 0 )
-            {
-                fprintf(fp,"%s",jsonstr);
-                fflush(fp);
-            }
-        }*/
+         {
+         printf("%s",jsonstr);
+         if ( fp != 0 )
+         {
+         fprintf(fp,"%s",jsonstr);
+         fflush(fp);
+         }
+         }*/
         free_json(json);
     }
     return(jsonstr);
 }
-#endif
 
 struct NXT_asset *init_asset(struct NXThandler_info *mp,char *assetidstr)
 {
@@ -1093,15 +1090,13 @@ struct NXT_asset *init_asset(struct NXThandler_info *mp,char *assetidstr)
                 ap->description = clonestr(buf);
             if ( extract_cJSON_str(buf,sizeof(buf),json,"name") > 0 )
             {
-#ifdef BTC_COINID
                 int32_t conv_coinstr(char *);
-                if ( buf[0] == 'm' && buf[1] == 'g' && buf[2] == 'w' && conv_coinstr(buf+3) >= 0 )
+                if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' && conv_coinstr(buf+3) >= 0 )
                     ap->name = clonestr(buf+3);
-                else
-#endif
-                    ap->name = clonestr(buf);
+                else ap->name = clonestr(buf);
             }
-            printf("NXT.%llu issued %s %s decimals.%d %.8f (%s)\n",(long long)ap->issuer,assetidstr,ap->name,ap->decimals,dstr(mult * ap->issued),ap->description);
+            if ( strcmp("11060861818140490423",assetidstr) == 0 )
+                printf("INIT_ASSET: NXT.%llu issued %s %s decimals.%d %.8f (%s)\n",(long long)ap->issuer,assetidstr,ap->name,ap->decimals,dstr(mult * ap->issued),ap->description);
             if ( strcmp(assetidstr,EX_DIVIDEND_ASSETID) == 0 )
                 ap->exdiv_height = EX_DIVIDEND_HEIGHT;
             free_json(json);
@@ -1443,13 +1438,17 @@ void NXTloop(struct NXThandler_info *mp)
 {
     uint64_t block;
     char nextblock[1024],blockidstr[1024];
-    int32_t tmp,height,timestamp,numconfirms = MIN_NXTCONFIRMS;
-/*#ifdef MAINNET
-    height = 134999;
-#else
-    height = 75300;
-#endif*/
-    height = FIRST_NXT_HEIGHT;
+    int32_t tmp,height=0,timestamp,numconfirms = MIN_NXTCONFIRMS;
+    if ( 1 )
+    {
+        process_NXTblock(&tmp,nextblock,mp,height,GENESISBLOCK);
+        // printf("tmp.%d height.%d genesis.%s\n",tmp,height,GENESISBLOCK);
+        if ( tmp != height )
+            exit(666);
+        // printf("start\n");
+    }
+    process_NXTblock(&tmp,nextblock,mp,height,ORIGBLOCK);
+    height = tmp;
     while ( Finished_loading == 0 )
         sleep(1);
     if ( mp->initassets != 0 )

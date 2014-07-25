@@ -164,9 +164,14 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     int32_t i;
     struct NXT_str *tp = 0;
     unsigned char txbytes[512];
+    char NXTADDR[128],secret[256];
     struct pNXT_info *gp;
-    if ( NXTACCTSECRET == 0 || NXTACCTSECRET[0] == 0 )
-        NXTACCTSECRET = "password";
+    init_MGWconf(NXTADDR,secret,Global_mp);
+
+    if ( NXTACCTSECRET != 0 && NXTACCTSECRET[0] != 0 )
+        strcpy(secret,NXTACCTSECRET);
+    if ( secret[0] == 0 )
+        strcpy(secret,"password");
     if ( Global_pNXT == 0 )
     {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -180,9 +185,9 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     {
         while ( Finished_loading == 0 )
             sleep(1);
-        gp->wallet = pNXT_get_wallet("wallet.bin",NXTACCTSECRET);
+        gp->wallet = pNXT_get_wallet("wallet.bin",secret);
     }
-    printf("got gp->wallet.%p (%s)\n",gp->wallet,NXTACCTSECRET);
+    printf("got gp->wallet.%p (%s)\n",gp->wallet,secret);
     if ( gp->wallet != 0 )
     {
         strcpy(gp->walletaddr,"no pNXT address");
@@ -392,7 +397,7 @@ char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 char *privatesend_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
-    int32_t coinid;
+    //int32_t coinid;
     char NXTACCTSECRET[512],destNXTaddr[512],coinstr[512],*retstr = 0;
     amount = get_API_float(objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);

@@ -16,11 +16,11 @@
 
 
 #define FIRST_NXT_HEIGHT 180000
-#define ORIGBLOCK "14398161661982498695"    //"91889681853055765";//"16787696303645624065";
+//#define ORIGBLOCK "14398161661982498695"    //"91889681853055765";//"16787696303645624065";
 #else
 #define FIRST_NXT_HEIGHT 159000
 //#define ORIGBLOCK "16787696303645624065"    //"91889681853055765";//"16787696303645624065";
-#define ORIGBLOCK "5766707417914019248" 
+//#define ORIGBLOCK "5766707417914019248"
 //"13150177114724378433"    //"16369892481908412756"    //"91889681853055765";//"16787696303645624065";
 #endif
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
@@ -154,13 +154,13 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define MGW_INSTANTDEX_TONXTAE -4
 
 #define NXT_COINASSET "0"
-#define CGB_COINASSET "3033014595361865200"
+/*#define CGB_COINASSET "3033014595361865200"
 #define DOGE_COINASSET "8011756047853511145"   //"17694574681003862481"
 #define USD_COINASSET "4562283093369359331"
 #define CNY_COINASSET "13983943517283353302"
 
 #define MIXER_NXTADDR "1234567890123456789"
-#define NODECOIN_POOLSERVER_ADDR "11445347041779652448"
+#define NODECOIN_POOLSERVER_ADDR "11445347041779652448"*/
 
 #define GENESISACCT "1739068987193023818"
 #define NODECOIN_SIG 0x63968736
@@ -170,8 +170,17 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define NXTSYNC_PORT 5777
 
 #define NUM_GATEWAYS 3
+#define _NXTSERVER "requestType"
+#define EMERGENCY_PUNCH_SERVER Server_names[0]
+#define POOLSERVER Server_names[1]
+#define MIXER_ADDR Server_names[2]
+
+#define GENESISACCT "1739068987193023818"
+#define GENESISBLOCK "2680262203532249785"
+
+/*
 #ifdef PRODUCTION
-#define MIN_NXTCONFIRMS 10
+//#define MIN_NXTCONFIRMS 10
 #define SERVER_NAMEA "65.49.77.102"
 #define SERVER_NAMEB "65.49.77.114"
 #define SERVER_NAMEC "65.49.77.115"
@@ -186,7 +195,7 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define NXTACCTE "14311766766716340607"
 #else
 
-#define MIN_NXTCONFIRMS 5
+//#define MIN_NXTCONFIRMS 5
 #define SERVER_NAMEA "209.126.70.170"
 #define SERVER_NAMEB "209.126.70.156"
 #define SERVER_NAMEC "209.126.70.159"
@@ -203,9 +212,8 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #endif
 
 
-#define _NXTSERVER "requestType"
 #ifdef MAINNET
-#define NXT_FORKHEIGHT 173271
+//#define NXT_FORKHEIGHT 173271
 //#define NXTSERVER "http://127.0.0.1:7876/nxt?requestType"
 //#define NXTAPIURL "http://127.0.0.1:7876/nxt"
 
@@ -216,13 +224,13 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define NXTISSUERACCT "7117166754336896747"     // multigateway MGW is the issuer
 #define NODECOIN "11749590149008849562"
 #else
-#define NXT_FORKHEIGHT 0
+//#define NXT_FORKHEIGHT 0
 
 #define NXTISSUERACCT "18232225178877143084"
 #define NODECOIN "9096665501521699628"
 
-#define NXTSERVER "http://127.0.0.1:6876/nxt?requestType"
-#define NXTAPIURL "http://127.0.0.1:6876/nxt"
+//#define NXTSERVER "http://127.0.0.1:6876/nxt?requestType"
+//#define NXTAPIURL "http://127.0.0.1:6876/nxt"
 
 #define BTC_COINASSET "1639299849328439538"
 #define BTCD_COINASSET "7631394205089352260"
@@ -231,14 +239,15 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #endif
 
 #define USD "3759130218572630531"
-#define CNY "17293030412654616962"
+#define CNY "17293030412654616962"*/
+
 #define DEFAULT_NXT_DEADLINE 720
 
-#define SERVER_PORT 3013
-#define SERVER_PORTSTR "3013"
+//#define SERVER_PORT 3013
+//#define SERVER_PORTSTR "3013"
 
 #define SATOSHIDEN 100000000L
-#define MIN_NQTFEE SATOSHIDEN
+//#define MIN_NQTFEE SATOSHIDEN
 #define NXT_TOKEN_LEN 160
 #define MAX_NXT_STRLEN 24
 #define MAX_NXTTXID_LEN MAX_NXT_STRLEN
@@ -366,12 +375,24 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 void gen_testforms(char *secret);
 extern uv_loop_t *UV_loop;
+int SERVER_PORT;
+char Server_names[NUM_GATEWAYS+1][64];
+#define MAX_MGWCOINS 64
+char Server_NXTaddrs[256][64],Assetid_strs[MAX_MGWCOINS][64],SERVER_PORTSTR[64];
+char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[64],NXTISSUERACCT[64];
+cJSON *MGWconf,*MGWcoins[64];
+uint64_t MIN_NQTFEE = SATOSHIDEN;
+int32_t MIN_NXTCONFIRMS = 10;
+uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;
+int32_t NXT_FORKHEIGHT;
+char NXTSERVER[64],NXTAPIURL[64];
 
 #include "NXTservices.h"
 #include "utils/jl777hash.h"
 //#include "crossplatform.h"
 
 #include "utils/NXTutils.h"
+#include "coins.h"
 //#include "utils/NXTsock.h"
 //#include "punch.h"
 #include "NXTprivacy.h"

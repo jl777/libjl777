@@ -165,12 +165,12 @@ char *get_ipaddr()
     return(_ipaddr);
 }
 
-const char *choose_poolserver(char *NXTaddr)
+/*const char *choose_poolserver(char *NXTaddr)
 {
     //static int32_t lastind = -1;
    // uint64_t hashval;
     return(SERVER_NAMEA);
-    /*while ( 1 )
+    while ( 1 )
     {
         if ( lastind == -1 )
         {
@@ -181,8 +181,8 @@ const char *choose_poolserver(char *NXTaddr)
         if ( Guardian_names[lastind][0] != 0 )
             break;
     }
-    return(Guardian_names[lastind]);*/
-}
+    return(Guardian_names[lastind]);
+}*/
 
 union NXTtype extract_NXTfield(CURL *curl_handle,char *origoutput,char *cmd,char *field,int32_t type)
 {
@@ -773,7 +773,7 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
    // printf("in submit_AM\n");
     memset(hexbytes,0,sizeof(hexbytes));
     init_hexbytes(hexbytes,(void *)ap,len);
-    sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%ld",_NXTSERVER,NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",MIN_NQTFEE);
+    sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%lld",_NXTSERVER,NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",MIN_NQTFEE);
     //printf("submit_AM.(%s)\n",cmd);
     jsonstr = issue_NXTPOST(curl_handle,cmd);
     printf("back from issue_NXTPOST.(%s) %p\n",jsonstr,curl_handle);

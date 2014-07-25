@@ -1,6 +1,13 @@
 Building
 --------
 
+jl777: make sure to install clang
+also need "convert" to generate .jpg files
+
+http://www.imagemagick.org/script/install-source.php#unix
+
+
+
 ### Unix and MacOS X
 
 Dependencies: GCC 4.7.3 or later, CMake 2.8.6 or later, and Boost 1.53(but don't use 1.54) or later. You may download them from:

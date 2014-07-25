@@ -863,4 +863,11 @@ void add_satoshis_json(cJSON *json,char *field,uint64_t satoshis)
         printf("error adding satoshi obj %ld -> %ld\n",(unsigned long)satoshis,(unsigned long)get_satoshi_obj(json,field));
 }
 
+char *get_cJSON_fieldname(cJSON *obj)
+{
+    if ( obj != 0 && obj->string != 0 )
+        return(obj->string);
+    else return("<no cJSON string field");
+}
+
 void free_json(cJSON *json) { if ( json != 0 ) cJSON_Delete(json); };

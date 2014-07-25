@@ -221,7 +221,7 @@ int NXTorrent_forms(char *NXTaddr,char **forms,char **scripts)
     return(n);
 }
 
-#ifdef BTC_COINID
+#ifdef INSIDE_MGW
 char *gen_coinacct_line(char *buf,int32_t coinid,uint64_t nxt64bits,char *NXTaddr)
 {
     char *withdraw,*deposit,*str;
@@ -679,6 +679,7 @@ char *teststr = "<!DOCTYPE html>\
 <section id=\"increment\" class=\"group2\">\
 <table>\
 <BR><BR>\
+<img src=\"testimage.jpg\"/>\
 <div id=number> </div>\
 <td>Your websocket connection status:</td>\
 <td id=wsdi_statustd align=center class=\"explain\"><div id=wsdi_status>Not initialized</div></td>\
@@ -733,6 +734,19 @@ try {\n\
     </script>\n\
     </html>";
 
+void load_testimage()
+{
+    FILE *fp;
+    if ( (fp= fopen("testimage.jpg","rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        testimagelen = (int32_t)ftell(fp);
+        rewind(fp);
+        if ( fread(testimage,1,testimagelen,fp) != testimagelen )
+            printf("error reading testimage\n");
+        fclose(fp);
+    }
+}
 
 void gen_testforms(char *NXTACCTSECRET)
 {
@@ -746,6 +760,7 @@ void gen_testforms(char *NXTACCTSECRET)
 #else
     char *netstr = "TESTNET";
 #endif
+    load_testimage();
     NXTADDR[0] = 0;
     if ( NXTACCTSECRET != 0 )
     {
@@ -764,12 +779,12 @@ void gen_testforms(char *NXTACCTSECRET)
     strcat(testforms,str);
     free(str);
  
-#ifdef BTC_COINID
+#ifdef INSIDE_MGW
     str = gen_handler_forms(Global_mp->NXTADDR,"NXTcoinsco","NXTcoins.co API test forms",NXTcoinsco_forms);
     strcat(testforms,str);
     free(str);
     strcpy(buf,"Deposit coinaddrs ");
-    for (coinid=0; coinid<64; coinid++)
+    for (coinid=0; coinid<MAX_MGWCOINS; coinid++)
     {
         if ( strcmp(coinid_str(coinid),ILLEGAL_COIN) != 0 )
         {

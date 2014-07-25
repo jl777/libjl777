@@ -12,6 +12,14 @@
 
 #define ORDERBOOK_SIG 0x83746783
 
+#define ORDERBOOK_FEED 1
+#define NXT_FEEDID 0xfeed0000L
+#define BITTREX_FEEDID 0xfeed0001L
+#define CRYPTSY_FEEDID 0xfeed0002L
+#define POLONIEX_FEEDID 0xfeed0003L
+#define MINTPAL_FEEDID 0xfeed0004L
+#define BTER_FEEDID 0xfeed0005L
+
 struct orderbook_tx
 {
     int32_t sig,type;
@@ -39,6 +47,8 @@ struct raw_orders
     struct orderbook_tx **orders;
     int num,max;
 } **Raw_orders;
+#include "../NXTservices/feeds.h"
+
 int Num_raw_orders,Max_raw_orders;
 
 void display_orderbook_tx(struct orderbook_tx *tx)

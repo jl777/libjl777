@@ -44,7 +44,8 @@
 
 #define LIBWEBSOCKETS_MILLIS 250
 #define LIBWEBSOCKETS_PORT 7777
-extern char testforms[1024*1024];
+extern int testimagelen;
+extern char testforms[1024*1024],testimage[1024*1024];
 unsigned char NXTprotocol_parms[4096];
 
 
@@ -239,6 +240,23 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             // if a legal POST URL, let it continue and accept data
             if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
                 return 0;
+            if ( strcmp(in,"/testimage.jpg") == 0 )
+            {
+                if ( testimagelen != 0 )
+                {
+                    //unsigned char buffer[512];
+                    sprintf((char *)buffer,
+                            "HTTP/1.0 200 OK\x0d\x0a"
+                            "Server: libwebsockets\x0d\x0a"
+                            "Content-Type: image/jpeg\x0d\x0a"
+                            "Content-Length: %u\x0d\x0a\x0d\x0a",
+                            (unsigned int)testimagelen);
+                    printf("buffer.(%s)\n",buffer);
+                    libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
+                    libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
+                    return(-1);
+                }
+            }
             if ( (nxtprotocol= get_NXTprotocol((char *)in)) != 0 )
             {
                 char *retstr;
@@ -303,6 +321,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     }
                 }
             }
+
 		// if not, send a file the easy way
 		strcpy(buf, resource_path);
 		if ( strcmp(in, "/") != 0)
@@ -473,15 +492,31 @@ callback_dumb_increment(struct libwebsocket_context *context,
 		break;
   
 	case LWS_CALLBACK_SERVER_WRITEABLE:
-            n = (int)strlen((char *)dispstr);
-            if ( n > 0 )
+            if ( 1 )//0 && testimagelen == 0 )
             {
-                m = libwebsocket_write(wsi, (unsigned char *)dispstr, n, LWS_WRITE_TEXT);
-                //printf("wrote (%s).%d to wsi, got %d\n",dispstr,n,m);
-                if (m < n) {
-                    lwsl_err("ERROR %d writing to di socket\n", n);
-                    return -1;
+                n = (int)strlen((char *)dispstr);
+                if ( n > 0 )
+                {
+                    m = libwebsocket_write(wsi, (unsigned char *)dispstr, n, LWS_WRITE_TEXT);
+                    //printf("wrote (%s).%d to wsi, got %d\n",dispstr,n,m);
+                    if (m < n) {
+                        lwsl_err("ERROR %d writing to di socket\n", n);
+                        return -1;
+                    }
                 }
+            }
+            else
+            {
+                unsigned char buffer[512];
+                sprintf((char *)buffer,
+                        "HTTP/1.0 200 OK\x0d\x0a"
+                        "Server: libwebsockets\x0d\x0a"
+                        "Content-Type: image/jpeg\x0d\x0a"
+                        "Content-Length: %u\x0d\x0a\x0d\x0a",
+                        (unsigned int)testimagelen);
+                printf("buffer.(%s)\n",buffer);
+                libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
+                libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
             }
             break;
 
@@ -722,6 +757,10 @@ int main(int argc, char **argv)
 #endif
 	unsigned int oldus = 0;
 	struct lws_context_creation_info info;
+#ifndef FROM_pNXT
+   char NXTADDR[128],secret[256];
+    init_MGWconf(NXTADDR,secret,Global_mp);
+#endif
 
 	int debug_level = 7;
 #ifndef LWS_NO_DAEMONIZE
