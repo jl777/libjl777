@@ -10,6 +10,15 @@
  *
  */
 
+void disp_yval(int32_t color,float yval,uint32_t *bitmap,int32_t x,int32_t rowwidth,int32_t height);
+void disp_dot(float radius,int32_t color,float yval,uint32_t *bitmap,int32_t x,int32_t rowwidth,int32_t height);
+uint32_t scale_color(uint32_t color,float strength);
+
+#define LEFTMARGIN 0
+#define TIMEIND_PIXELS 512
+#define NUM_ACTIVE_PIXELS 1024
+#define MAX_ACTIVE_WIDTH (NUM_ACTIVE_PIXELS + TIMEIND_PIXELS)
+
 #define NUM_REQFUNC_SPLINES 32
 #define MAX_LOOKAHEAD 60
 #define MAX_SCREENWIDTH 2048
@@ -63,7 +72,7 @@ int32_t widths12[19] = { 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
 int32_t widths16[19] = { 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 };
 int32_t RTwidths[19] = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7 };
 
-int smallprimes[168] =
+int32_t smallprimes[168] =
 {
 	2,      3,      5,      7,     11,     13,     17,     19,     23,     29,
 	31,     37,     41,     43,     47,     53,     59,     61,     67,     71,
@@ -84,6 +93,37 @@ int smallprimes[168] =
 	947,    953,    967,    971,    977,    983,    991,    997
 };
 
+double Display_scale;
+uint32_t forex_colors[16],*Display_bitmap,*Display_bitmaps[91];
+uint32_t Screenheight = 768,Screenwidth = (MAX_ACTIVE_WIDTH + 16);
+
+double xdisp_sqrt(double x) { return((x < 0.) ? -sqrt(-x) : sqrt(x)); }
+double xdisp_cbrt(double x) { return((x < 0.) ? -cbrt(-x) : cbrt(x)); }
+double xdisp_log(double x) { return((x < 0.) ? -log(-(x)+1) : log((x)+1)); }
+double xdisp_log10(double x) { return((x < 0.) ? -log10(-(x)+1) : log10((x)+1)); }
+
+double _pairaved(double valA,double valB)
+{
+	if ( valA != 0. && valB != 0. )
+		return((valA + valB) / 2.);
+	else if ( valA != 0. ) return(valA);
+	else return(valB);
+}
+
+double _pairave(float valA,float valB)
+{
+	if ( valA != 0.f && valB != 0.f )
+		return((valA + valB) / 2.);
+	else if ( valA != 0.f ) return(valA);
+	else return(valB);
+}
+
+double _pairdiff(double valA,double valB)
+{
+	if ( valA != 0. && valB != 0. )
+		return((valA - valB));
+	else return(0.);
+}
 
 double calc_dpreds(double dpreds[6])
 {
@@ -245,9 +285,9 @@ double calc_logprice(double rawprice)
 	return(rawprice);
 }
 
-float _bufave(float *buf,int len)
+float _bufave(float *buf,int32_t len)
 {
-	int i,n;
+	int32_t i,n;
 	double sum;
 	sum = 0.;
 	n = 0;
@@ -266,9 +306,9 @@ float _bufave(float *buf,int len)
 	return(sum);
 }
 
-double _dbufabsave(double *buf,int len)
+double _dbufabsave(double *buf,int32_t len)
 {
-	int i,n;
+	int32_t i,n;
 	float val;
 	double sum;
 	sum = 0.;
@@ -289,9 +329,9 @@ double _dbufabsave(double *buf,int len)
 	return(sum);
 }
 
-double _dbufmagnitude(double *buf,int len)
+double _dbufmagnitude(double *buf,int32_t len)
 {
-	int i,n;
+	int32_t i,n;
 	float val;
 	double sum;
 	sum = 0.;
@@ -312,10 +352,9 @@ double _dbufmagnitude(double *buf,int len)
 	return(sum);
 }
 
-
-double _bufaved(float *buf,int len)
+double _bufaved(float *buf,int32_t len)
 {
-	int i,n;
+	int32_t i,n;
 	double sum;
 	sum = 0.;
 	n = 0;
@@ -334,9 +373,9 @@ double _bufaved(float *buf,int len)
 	return(sum);
 }
 
-double _dbufave(double *buf,int len)
+double _dbufave(double *buf,int32_t len)
 {
-	int i,n;
+	int32_t i,n;
 	double sum;
 	sum = 0.;
 	n = 0;
@@ -355,9 +394,9 @@ double _dbufave(double *buf,int len)
 	return(sum);
 }
 
-double _dfifoave(double *dfifo,int fifomod,int fifosize,int clumpsize)
+double _dfifoave(double *dfifo,int32_t fifomod,int32_t fifosize,int32_t clumpsize)
 {
-    int residue,starti = fifomod - clumpsize + 1;
+    int32_t residue,starti = fifomod - clumpsize + 1;
 	if ( clumpsize >= fifosize )
 		return(_dbufave(dfifo,fifosize));
 	else
@@ -432,9 +471,10 @@ double _oscillator_amplitude_from_vaf(double angular_freq,double slope,double ac
 double _smooth_doubles(double *dest,int32_t weekind)
 {
 	static double filter[8] = { 0.2905619972,1.539912853,0.3033266023,1.466074838,1.146540574,0.5808175934,0.9764347770, 1.392661532, };
+    int32_t i;
 	if ( weekind < 14 )
         return(0.);
-    for (int32_t i=0; i<15; i++)
+    for (i=0; i<15; i++)
         if ( dest[weekind-i] == 0 )
             return(_dbufave(dest+weekind-14,15));
 	return(((dest[weekind] + dest[weekind-14]) * filter[0] +
@@ -497,10 +537,10 @@ double _EMAsmooth_floats(float *buf,int32_t ind)
 double _prime_smooth(float *buf,int32_t ind,int32_t mode)
 {
     double dbuf[15];
-    int32_t offset;
+    int32_t i,offset;
     if ( ind < smallprimes[14]*15 )
         return(0);
-    for (int32_t i=0; i<15; i++)
+    for (i=0; i<15; i++)
     {
         if ( mode == 0 )
             offset = (i==14) ? 0 : -smallprimes[13-i]*15;
@@ -567,7 +607,7 @@ struct madata *init_madata(struct madata **ptrp,int32_t numitems,int32_t islogpr
 	struct madata *mp;
 	//printf("init madata(%d) numactive_mas.%d\n",numitems,numactive_mas);
 	numactive_mas++;
-	size = (int)(sizeof(struct madata) + (sizeof(mp->rotbuf[0])*numitems));
+	size = (int32_t)(sizeof(struct madata) + (sizeof(mp->rotbuf[0])*numitems));
 	if ( numitems == 0 )
 	{
 		printf("init_madata(%d) = %d\n",numitems,size);
@@ -1116,7 +1156,6 @@ int32_t disp_RTspline(int32_t numprimes,int32_t numslopeprimes,float *srcbuf,dou
 	return(RTi);
 }
 
-
 //////////////// filtered bufs
 
 double init_emawts(double *emawts,int32_t len)
@@ -1286,13 +1325,20 @@ double dSum16(double *dTmp)
 void init_filtered_bufs()
 {
 	int32_t _maxprimes = 5;
-	int32_t i,lasti,smoothwidth = 512;
+	int32_t i,j,lasti,smoothwidth = 512;
 	double den,ave,wts[7];//,_coeffs[5000],_projden[5000];
 	double dTmp[16] = { 0.2905619972,1.539912853,0.3033266023,1.466074838,1.146540574,0.5808175934,0.9764347770,1.392661532, 0.9764347770,0.5808175934,1.146540574,1.466074838,0.3033266023,1.539912853,0.2905619972,0. };
-	ave = dSum16(dTmp);
-    for (i=0; i<16; i++)
-        dTmp[i] /= ave;
-	printf("dTmp sum %.20f -> %.20f\n",ave,dSum16(dTmp));
+	for (j=0; j<4; j++)
+    {
+        ave = dSum16(dTmp);
+        for (i=0; i<16; i++)
+        {
+            if ( j == 0 )
+                dTmp[i] /= ave;
+            else dTmp[i] = (.5 * dTmp[i] + .5 * dTmp[i]/ave);
+        }
+        printf("dTmp sum %.20f -> %.20f\n",ave,dSum16(dTmp));
+    }
 	wts[0] = dTmp[8]; wts[1] = dTmp[9]; wts[2] = dTmp[0xa]; wts[3] = dTmp[0xb]; wts[4] = dTmp[0xc]; wts[5] = dTmp[0xd]; wts[6] = dTmp[0xe];
 	Filter_middlei = calc_smooth_code2(Filtercoeffs,dTmp[7],wts,7,smoothwidth,_maxprimes);
 	memset(Filterprojden,0,sizeof(Filterprojden));
@@ -1315,6 +1361,7 @@ void init_filtered_bufs()
 			printf("%.20f, ",Filterprojden[i]);
 		printf("\n};	// lasti.%d\n",lasti);
 	}
+    init_emawts(EMAWTS15,15);
 }
 
 void _init_filtered_buf(struct filtered_buf *fb,int32_t middlei,int32_t len,double *coeffs,double *projden)

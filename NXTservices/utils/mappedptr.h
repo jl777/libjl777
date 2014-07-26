@@ -65,10 +65,6 @@ void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsiz
 #define calloc jl777calloc
 
 void fatal(char *str) { printf("FATAL: (%s)\n",str); while ( 1 ) sleep(10); }
-double xdisp_sqrt(double x) { return((x < 0.) ? -sqrt(-x) : sqrt(x)); }
-double xdisp_cbrt(double x) { return((x < 0.) ? -cbrt(-x) : cbrt(x)); }
-double xdisp_log(double x) { return((x < 0.) ? -log(-(x)+1) : log((x)+1)); }
-double xdisp_log10(double x) { return((x < 0.) ? -log10(-(x)+1) : log10((x)+1)); }
 
 double _kb(double n) { return(n / 1024.); }
 double _mb(double n) { return(n / (1024.*1024.)); }

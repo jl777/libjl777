@@ -85,13 +85,14 @@ void usleep(int32_t);
 #include "nacl/crypto_box.h"
 #include "nacl/randombytes.h"
 
-//#include "guardians.h"
+#include "utils/smoothers.h"
+#include "utils/bars.h"
 #include "utils/jdatetime.h"
 #include "utils/mappedptr.h"
 #include "utils/sorts.h"
 #include "utils/kdtree.c"
 #include "bitmap.h"
-#include "utils/smoothers.h"
+
 #include "utils/cJSON.h"
 #include "utils/jl777str.h"
 #include "utils/cJSON.c"

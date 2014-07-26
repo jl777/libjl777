@@ -9,37 +9,12 @@
 #ifndef xcode_bitmap_h
 #define xcode_bitmap_h
 
-#define LEFTMARGIN 0
-#define TIMEIND_PIXELS 512
-#define NUM_ACTIVE_PIXELS 1024
-#define MAX_ACTIVE_WIDTH (NUM_ACTIVE_PIXELS + TIMEIND_PIXELS)
-int32_t forex_colors[16];
-double Display_scale;
-uint32_t *Display_bitmap,*Display_bitmaps[91];
-int32_t Screenheight = 768;
-int32_t Screenwidth = (MAX_ACTIVE_WIDTH + 16);
-
-
-double _pairaved(double valA,double valB)
-{
-	if ( valA != 0. && valB != 0. )
-		return((valA + valB) / 2.);
-	else if ( valA != 0. ) return(valA);
-	else return(valB);
-}
 
 double calc_loganswer(double pastlogprice,double futurelogprice)
 {
 	if ( fabs(pastlogprice) < .0000001 || fabs(futurelogprice) < .0000001 )
 		return(0);
 	return(10000. * (exp(futurelogprice - pastlogprice)-1.));
-}
-
-double _pairdiff(double valA,double valB)
-{
-	if ( valA != 0. && valB != 0. )
-		return((valA - valB));
-	else return(0.);
 }
 
 float _calc_pricey(double price,double weekave)
