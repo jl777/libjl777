@@ -175,13 +175,13 @@ dump_handshake_info(struct libwebsocket *wsi)
 		lws_hdr_copy(wsi, buf, sizeof buf, n);
         if ( strcmp(token_names[n],"Uri-Args:") == 0 )
             strcpy((char *)NXTprotocol_parms,buf);
-		fprintf(stderr, "    %s = %s n.%d\n", token_names[n], buf,n);
+		//fprintf(stderr, "    %s = %s n.%d\n", token_names[n], buf,n);
 	}
 }
 
 const char * get_mimetype(const char *file)
 {
-	int n = (int)strlen(file);
+	int n = (int32_t)strlen(file);
 
 	if (n < 5)
 		return NULL;
@@ -210,7 +210,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 	char leaf_path[1024];
 	char b64[64];
 	struct timeval tv;
-	int n, m;
+	//int n, m;
     int64_t mylen;
 	//unsigned char *p;
     struct NXT_protocol *nxtprotocol;
@@ -242,20 +242,30 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 return 0;
             if ( strcmp(in,"/testimage.jpg") == 0 )
             {
-                if ( testimagelen != 0 )
+                static int counter;
+                static uint64_t lastmicro;
+                //load_testimage("testimage.jpg");
+                if ( testimagelen != 0 )//&& microseconds() > lastmicro+1000000 )
                 {
-                    //unsigned char buffer[512];
-                    sprintf((char *)buffer,
+                    counter++;
+                    printf("%d IN.(%s) testimagelen.%d\n",counter,in,testimagelen);
+                    unsigned char *space;
+                    space = malloc(testimagelen+512);
+                    sprintf((char *)space,
                             "HTTP/1.0 200 OK\x0d\x0a"
                             "Server: libwebsockets\x0d\x0a"
                             "Content-Type: image/jpeg\x0d\x0a"
                             "Content-Length: %u\x0d\x0a\x0d\x0a",
                             (unsigned int)testimagelen);
-                    printf("buffer.(%s)\n",buffer);
-                    libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                    libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
-                    return(-1);
+                    memcpy(space+strlen((char *)space),testimage,testimagelen);
+                    //printf("buffer.(%s)\n",buffer);
+                    libwebsocket_write(wsi,space,strlen((char *)buffer)+testimagelen,LWS_WRITE_HTTP);
+                    //libwebsocket_callback_on_writable(context, wsi);
+                    //libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
+                    free(space);
+                    lastmicro = microseconds();
                 }
+                return(-1);
             }
             if ( (nxtprotocol= get_NXTprotocol((char *)in)) != 0 )
             {
@@ -280,7 +290,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             }
             else
             {
-                static char *fileptr; static int64_t allocsize;
+                /*static char *fileptr; static int64_t allocsize;
                 if ( 1 && load_file(NXTPROTOCOL_HTMLFILE,&fileptr,&mylen,&allocsize) != 0 )
                 {
                     printf("loaded NXTprotocol, len.%ld + forms.%ld\n",(long)mylen,strlen(testforms));
@@ -301,10 +311,11 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     libwebsocket_write(wsi,(unsigned char *)fileptr,mylen,LWS_WRITE_HTTP);
                     return(-1);
                 }
-                else if ( URL_changed == 0 && testforms[0] != 0 )
+                else*/
+                    if ( URL_changed == 0 && testforms[0] != 0 )
                 {
                     mylen = strlen(testforms);
-                    printf("couldnt load.(%s), testforms len %ld\n",NXTPROTOCOL_HTMLFILE,(long)mylen);
+                    printf("testforms len %ld\n",(long)mylen);
                     if ( mylen != 0 )
                     {
                         sprintf((char *)buffer,
@@ -361,7 +372,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 		buf[20] = '\0';
 		if ( len < 20 )
 			buf[len] = '\0';
-		lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s... len %d\n",(const char *)buf,(int)len);
+		lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s... len %d\n",(const char *)buf,(int32_t)len);
 		break;
         case LWS_CALLBACK_HTTP_BODY_COMPLETION: // the whole sent body arried, close the connection
 
@@ -373,9 +384,9 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 		 
 		return -1;
 	case LWS_CALLBACK_HTTP_WRITEABLE:           // we can send more of whatever it is we were sending
-		do
+		/*do
         {
-			n = (int)read(pss->fd,buffer,sizeof buffer);
+			n = (int32_t)read(pss->fd,buffer,sizeof buffer);
 			if ( n < 0 ) // problem reading, close conn
 				goto bail;
 			if ( n == 0 ) // sent it all, close conn
@@ -386,7 +397,10 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 				goto bail;
 			if ( m != n ) // partial write, adjust
 				lseek(pss->fd,m - n,SEEK_CUR);
-		} while ( lws_send_pipe_choked(wsi) == 0 );
+		} while ( lws_send_pipe_choked(wsi) == 0 );*/
+        //if ( testimagelen != 0 )
+        //    libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
+
 		libwebsocket_callback_on_writable(context,wsi);
 		break;
 flush_bail:
@@ -407,7 +421,7 @@ bail:
 	 */
 	case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 #if 0
-		libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
+		libwebsockets_get_peer_addresses(context, wsi, (int32_t)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
 		fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
 #endif
 		// if we returned non-zero from here, we kill the connection 
@@ -494,7 +508,7 @@ callback_dumb_increment(struct libwebsocket_context *context,
 	case LWS_CALLBACK_SERVER_WRITEABLE:
             if ( 1 )//0 && testimagelen == 0 )
             {
-                n = (int)strlen((char *)dispstr);
+                n = (int32_t)strlen((char *)dispstr);
                 if ( n > 0 )
                 {
                     m = libwebsocket_write(wsi, (unsigned char *)dispstr, n, LWS_WRITE_TEXT);
@@ -521,7 +535,7 @@ callback_dumb_increment(struct libwebsocket_context *context,
             break;
 
 	case LWS_CALLBACK_RECEIVE:
-//		fprintf(stderr, "rx %d\n", (int)len);
+//		fprintf(stderr, "rx %d\n", (int32_t)len);
 		//if (len < 6)
 		//	break;
             printf("button.(%s)\n",(char *)in);
@@ -855,7 +869,7 @@ int main(int argc, char **argv)
 #ifdef EXTERNAL_POLL
 	max_poll_elements = getdtablesize();
 	pollfds = malloc(max_poll_elements * sizeof (struct pollfd));
-	fd_lookup = malloc(max_poll_elements * sizeof (int));
+	fd_lookup = malloc(max_poll_elements * sizeof (int32_t));
 	if (pollfds == NULL || fd_lookup == NULL) {
 		lwsl_err("Out of memory pollfds=%d\n", max_poll_elements);
 		return -1;

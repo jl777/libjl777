@@ -672,6 +672,13 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
 char *teststr = "<!DOCTYPE html>\
 <html>\
 <head>\
+<script language=\"JavaScript\">\
+function refreshIt(element) {\
+    setTimeout(function() {\
+        element.src = element.src.split('?')[0] + '?' + new Date().getTime();\
+    }, 1000);\
+}\
+</script>\
 <meta charset=\"UTF-8\"/>\
 <title>NXTservices API form</title>\
 <article>\
@@ -679,7 +686,6 @@ char *teststr = "<!DOCTYPE html>\
 <section id=\"increment\" class=\"group2\">\
 <table>\
 <BR><BR>\
-<img src=\"testimage.jpg\"/>\
 <div id=number> </div>\
 <td>Your websocket connection status:</td>\
 <td id=wsdi_statustd align=center class=\"explain\"><div id=wsdi_status>Not initialized</div></td>\
@@ -687,6 +693,7 @@ char *teststr = "<!DOCTYPE html>\
 </table>\
 </td></tr></table>\
 </section>\
+<img src=\"testimage.jpg\" name=\"InstantDEX Display\" onload=\"refreshIt(this)\">\
 </article>";
 
 char *endstr = "<script>\n\
@@ -732,12 +739,17 @@ try {\n\
         alert('<p>Error' + exception);\n\
     }\n\
     </script>\n\
+<body>\
+</body>\
     </html>";
 
-void load_testimage()
+void load_testimage(char *imagefname)
 {
     FILE *fp;
-    if ( (fp= fopen("testimage.jpg","rb")) != 0 )
+    if ( testimagelen != 0 )
+        memset(testimage,0,testimagelen);
+    testimagelen = 0;
+    if ( (fp= fopen(imagefname,"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         testimagelen = (int32_t)ftell(fp);
@@ -752,6 +764,8 @@ void gen_testforms(char *NXTACCTSECRET)
 {
     struct NXThandler_info *mp = Global_mp;
     //int32_t coinid;
+    static unsigned int *bitmap;
+    static int counter;
     uint64_t nxt64bits;
     char *str,NXTADDR[64];//,*depositaddr,buf[4096];
     //int64_t quantity,unconfirmed;
@@ -760,7 +774,11 @@ void gen_testforms(char *NXTACCTSECRET)
 #else
     char *netstr = "TESTNET";
 #endif
-    load_testimage();
+    counter++;
+    if ( bitmap == 0 )
+        bitmap = calloc(Screenheight*Screenwidth,sizeof(*bitmap));
+    output_jpg("testimage",bitmap,.001);
+    load_testimage("testimage.jpg");
     NXTADDR[0] = 0;
     if ( NXTACCTSECRET != 0 )
     {
@@ -773,7 +791,7 @@ void gen_testforms(char *NXTACCTSECRET)
             mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,NXTADDR,mp->groupname);
         }
     }
-    sprintf(testforms,"%s %s Finished_loading.%d Historical_done.%d <br/><b>%s <br/> %s <br/>NXT.%s balance %.8f %s</b><br/>\n",teststr,netstr,Finished_loading,Historical_done,Global_mp->dispname,PC_USERNAME[0]!=0?PC_USERNAME:"setAccountInfo on http://127.0.0.1:6876/test description={\"username\":\"your pc username\"}",NXTADDR,dstr(Global_mp->acctbalance),Global_mp->acctbalance == 0?"<- need to send NXT":"");
+    sprintf(testforms,"%s %s counter.%d Finished_loading.%d Historical_done.%d <br/> <br/><br/>\n",teststr,netstr,counter,Finished_loading,Historical_done);
     sprintf(testforms+strlen(testforms),"<br/><a href=\"https://coinomat.com/~jamesjl777\">Send NXT -> your Visa/Mastercard</a href>");
     str = gen_handler_forms(NXTADDR,"pNXT","pNXT API test forms",pNXT_forms);
     strcat(testforms,str);

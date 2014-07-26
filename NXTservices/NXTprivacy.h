@@ -814,7 +814,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             //printf("pNXT %llx vs %llx\n",(long long)pNXT_privacyServer,(long long)privacyServer);
             if ( tcp == 0 || connect == 0 )
             {
-                printf("attempt privacyServer %llx %s/%d connect.%p tcp.%p udp.%p\n",(long long)privacyServer,ipbits_str((uint32_t)privacyServer),(int)(privacyServer>>32),connect,tcp,tcp!=0?tcp->data:0);
+                printf("attempt privacyServer %llx %s/%d connect.%p tcp.%p udp.%p\n",(long long)privacyServer,ipbits_str((uint32_t)privacyServer),(int32_t)(privacyServer>>32),connect,tcp,tcp!=0?tcp->data:0);
                 tcp = connect_to_privacyServer((struct sockaddr_in *)&addr,&connect,privacyServer);
                 if ( tcp == 0 || connect == 0 )
                 {

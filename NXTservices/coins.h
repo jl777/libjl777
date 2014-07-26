@@ -359,7 +359,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
     uint64_t nxt64bits;
     cJSON *array,*item;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
-    int32_t i,n,coinid,ismainnet;
+    int32_t i,n,coinid,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
     printf("init_MGWconf\n");
     jsonstr = load_file("MGW.conf",&buf,&len,&allocsize);
@@ -370,7 +370,8 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         if ( MGWconf != 0 )
         {
             printf("parsed\n");
-            MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int)MIN_NQTFEE);
+            timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
+            MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
             SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),0) - MULTIGATEWAY_VARIANT;
@@ -472,6 +473,8 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         printf("need a non-zero GATEWAY_SIG || no issuer.(%s) or no origblock.(%s) or null serverport.%d\n",NXTISSUERACCT,ORIGBLOCK,SERVER_PORT);
         exit(1);
     }
+    init_jdatetime(NXT_GENESISTIME,timezone);
+    init_filtered_bufs();
 }
 
 int32_t is_gateway_addr(char *addr)

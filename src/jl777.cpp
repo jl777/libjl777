@@ -167,7 +167,6 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     char NXTADDR[128],secret[256];
     struct pNXT_info *gp;
     init_MGWconf(NXTADDR,secret,Global_mp);
-
     if ( NXTACCTSECRET != 0 && NXTACCTSECRET[0] != 0 )
         strcpy(secret,NXTACCTSECRET);
     if ( secret[0] == 0 )

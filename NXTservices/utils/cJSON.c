@@ -740,7 +740,7 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
         c = NXTaddr[i];
         if ( c < '0' || c > '9' )
         {
-            printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int)i);
+            printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
             return(0);
         }
         nxt64bits += mult * (c - '0');

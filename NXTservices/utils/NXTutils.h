@@ -78,7 +78,7 @@ char *_issue_cmd_to_buffer(char *prog,char *arg1,char *arg2,char *arg3)
         close(fd[1]);
         len = 0;
         buffer[0] = 0;
-        while ( fgets(buffer+len,(int)(sizeof(buffer)-len),stdin) != 0 )
+        while ( fgets(buffer+len,(int32_t)(sizeof(buffer)-len),stdin) != 0 )
         {
             printf("%s\n",buffer+len);
             len += strlen(buffer+len);
@@ -104,7 +104,7 @@ char *oldget_ipaddr()
     char *retstr,*tmp;
     if ( ipaddr != 0 )
         return(ipaddr);
-    for (iter=0; iter<(int)((sizeof(devs))/(sizeof(*devs))); iter++)
+    for (iter=0; iter<(int32_t)((sizeof(devs))/(sizeof(*devs))); iter++)
     {
         printf("iter.%d\n",iter);
         retstr = _issue_cmd_to_buffer("ifconfig",devs[iter],"| grep \"inet addr\" | awk '{print $2}'","");
@@ -139,7 +139,7 @@ char *get_ipaddr()
     if ( curl_handle == 0 )
         return(0);
     ipaddr[0] = 0;
-    for (i=0; i<(int)(sizeof(ipsrcs)/sizeof(*ipsrcs)); i++)
+    for (i=0; i<(int32_t)(sizeof(ipsrcs)/sizeof(*ipsrcs)); i++)
     {
         jsonstr = issue_curl(curl_handle,ipsrcs[i]);
         if ( jsonstr != 0 )
@@ -234,10 +234,10 @@ union NXTtype extract_NXTfield(CURL *curl_handle,char *origoutput,char *cmd,char
                         case sizeof(uint32_t):
                             retval.uval = atoi(output);
                             break;
-                        case -(int)sizeof(int32_t):
+                        case -(int32_t)sizeof(int32_t):
                             retval.val = atoi(output);
                             break;
-                        case -(int)sizeof(int64_t):
+                        case -(int32_t)sizeof(int64_t):
                             retval.lval = calc_nxt64bits(output);
                             break;
                         case 64:
@@ -763,7 +763,7 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
     int32_t len,deadline = 720;
     cJSON *json,*txjson,*errjson;
     char hexbytes[4096],cmd[5120],txid[MAX_NXTADDR_LEN],*jsonstr,*retstr = 0;
-    len = ap->size;//(int)sizeof(*ap);
+    len = ap->size;//(int32_t)sizeof(*ap);
     if ( len > 1000 || len < 1 )
     {
         printf("issue_sendMessage illegal len %d\n",len);
@@ -972,8 +972,8 @@ int32_t gen_randomacct(CURL *curl_handle,uint32_t randchars,char *NXTaddr,char *
     unsigned char bits[33];
     NXTaddr[0] = 0;
     randchars /= 8;
-    if ( randchars > (int)sizeof(bits) )
-        randchars = (int)sizeof(bits);
+    if ( randchars > (int32_t)sizeof(bits) )
+        randchars = (int32_t)sizeof(bits);
     if ( randchars < 3 )
         randchars = 3;
     for (iter=0; iter<=8; iter++)
@@ -1310,153 +1310,6 @@ int64_t microseconds(void)
     return(timeval.tv_sec*1000000 + timeval.tv_usec);
 }
 
-#define SMALLVAL .000000000000001
-
-double _dxblend(double *destp,double val,double decay)
-{
-	double oldval;
-	if ( (oldval = *destp) != 0. )
-		return((oldval * decay) + ((1. - decay) * val));
-	else
-		return(val);
-}
-
-double dxblend(double *destp,double val,double decay)
-{
-	double newval,slope;
-	if ( isnan(*destp) != 0 )
-		*destp = 0.;
-	if ( isnan(val) != 0 )
-		return(0.);
-	if ( *destp == 0 )
-	{
-		*destp = val;
-		return(0);
-	}
-	newval = _dxblend(destp,val,decay);
-	if ( newval < SMALLVAL && newval > -SMALLVAL )
-	{
-		// non-zero marker for actual values close to or even equal to zero
-		if ( newval < 0. )
-			newval = -SMALLVAL;
-		else
-			newval = SMALLVAL;
-	}
-	if ( *destp != 0. && newval != 0. )
-	{
-		//slope = ((newval / *destp) - 1.);
-		slope = (newval - *destp);
-	}
-	else
-		slope = 0.;
-	*destp = newval;
-	return(slope);
-}
-
-int _increasing_unsignedint(const void *a,const void *b)
-{
-#define uint_a (((unsigned int *)a)[0])
-#define uint_b (((unsigned int *)b)[0])
-	if ( uint_b > uint_a )
-		return(-1);
-	else if ( uint_b < uint_a )
-		return(1);
-	return(0);
-#undef uint_a
-#undef uint_b
-}
-
-int _increasing_float(const void *a,const void *b)
-{
-#define float_a (*(float *)a)
-#define float_b (*(float *)b)
-	if ( float_b > float_a )
-		return(-1);
-	else if ( float_b < float_a )
-		return(1);
-	return(0);
-#undef float_a
-#undef float_b
-}
-
-int _decreasing_float(const void *a,const void *b)
-{
-#define float_a (*(float *)a)
-#define float_b (*(float *)b)
-	if ( float_b > float_a )
-		return(1);
-	else if ( float_b < float_a )
-		return(-1);
-	return(0);
-#undef float_a
-#undef float_b
-}
-
-int _decreasing_unsignedint64(const void *a,const void *b)
-{
-#define uint_a (((uint64_t *)a)[0])
-#define uint_b (((uint64_t *)b)[0])
-	if ( uint_b > uint_a )
-		return(1);
-	else if ( uint_b < uint_a )
-		return(-1);
-	return(0);
-#undef uint_a
-#undef uint_b
-}
-
-int _decreasing_signedint64(const void *a,const void *b)
-{
-#define int_a (((int64_t *)a)[0])
-#define int_b (((int64_t *)b)[0])
-	if ( int_b > int_a )
-		return(1);
-	else if ( int_b < int_a )
-		return(-1);
-	return(0);
-#undef int_a
-#undef int_b
-}
-
-
-static int _decreasing_double(const void *a,const void *b)
-{
-#define double_a (*(double *)a)
-#define double_b (*(double *)b)
-	if ( double_b > double_a )
-		return(1);
-	else if ( double_b < double_a )
-		return(-1);
-	return(0);
-#undef double_a
-#undef double_b
-}
-
-static int _increasing_double(const void *a,const void *b)
-{
-#define double_a (*(double *)a)
-#define double_b (*(double *)b)
-	if ( double_b > double_a )
-		return(-1);
-	else if ( double_b < double_a )
-		return(1);
-	return(0);
-#undef double_a
-#undef double_b
-}
-
-int32_t revsortds(double *buf,uint32_t num,int32_t size)
-{
-	qsort(buf,num,size,_decreasing_double);
-	return(0);
-}
-
-int32_t sortds(double *buf,uint32_t num,int32_t size)
-{
-	qsort(buf,num,size,_increasing_double);
-	return(0);
-}
-
 int32_t bitweight(uint64_t x)
 {
     int32_t wt,i;
@@ -1522,61 +1375,7 @@ int search_uint32_ts(int32_t *ints,int32_t val)
     return(-1);
 }
 
-#ifndef WIN32
-void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
-{
-	void *mmap64(void *addr,size_t len,int prot,int flags,int fildes,off_t off);
-	int fd,rwflags,flags = MAP_FILE|MAP_SHARED;
-	uint64_t filesize;
-    void *ptr = 0;
-	*filesizep = 0;
-	if ( enablewrite != 0 )
-		fd = open(fname,O_RDWR);
-	else
-  		fd = open(fname,O_RDONLY);
-	if ( fd < 0 )
-	{
-		//printf("map_file: error opening enablewrite.%d %s\n",enablewrite,fname);
-        return(0);
-	}
-    if ( *filesizep == 0 )
-        filesize = (uint64_t)lseek(fd,0,SEEK_END);
-    else
-        filesize = *filesizep;
-	rwflags = PROT_READ;
-	if ( enablewrite != 0 )
-		rwflags |= PROT_WRITE;
-#ifdef __APPLE__
-	ptr = mmap(0,filesize,rwflags,flags,fd,0);
-#else
-	ptr = mmap64(0,filesize,rwflags,flags,fd,0);
-#endif
-	close(fd);
-    if ( ptr == 0 || ptr == MAP_FAILED )
-	{
-		printf("map_file.write%d: mapping %s failed? mp %p\n",enablewrite,fname,ptr);
-		return(0);
-	}
-	*filesizep = filesize;
-	return(ptr);
-}
-
-int32_t release_map_file(void *ptr,uint64_t filesize)
-{
-	int32_t retval;
-    if ( ptr == 0 )
-	{
-		printf("release_map_file: null ptr\n");
-		return(-1);
-	}
-	retval = munmap(ptr,filesize);
-	if ( retval != 0 )
-		printf("release_map_file: munmap error %p %ld: err %d\n",ptr,(long)filesize,retval);
-	//else
-	//	printf("released %p %ld\n",ptr,filesize);
-	return(retval);
-}
-#else
+#ifdef WIN32
 void usleep(int utimeout)
 {
     utimeout /= 1000;
@@ -1588,29 +1387,6 @@ void usleep(int utimeout)
 void sleep(int seconds)
 {
     Sleep(seconds * 1000);
-}
-
-void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
-{
-    FILE *fp;
-    void *ptr = 0;
-    *filesizep = 0;
-    if ( (fp= fopen(fname,"rb")) != 0 )
-    {
-        fseek(fp,0,SEEK_END);
-        *filesizep = ftell(fp);
-        rewind(fp);
-        ptr = malloc((long)*filesizep);
-        fread(ptr,1,(long)*filesizep,fp);
-        fclose(fp);
-    }
-    return(ptr);
-}
-
-int32_t release_map_file(void *ptr,uint64_t filesize)
-{
-    free(ptr);
-    return(0);
 }
 #endif
 
@@ -1719,58 +1495,5 @@ int32_t is_valid_NXTtxid(char *txid)
         return(0);
     return(1);
 }
-
-double calc_dpreds(double dpreds[6])
-{
-    double sum,net,both;
-	sum = (dpreds[0] + dpreds[2]);
-	net = (dpreds[1] - dpreds[3]);
-	both = MAX(1,(dpreds[1] + dpreds[3]));
-	//return(sum/both);
-	if ( net*sum > 0 )
-		return((net * fabs(sum))/(both * both));
-	else return(0.);
-}
-
-double calc_dpreds_ave(double dpreds[6])
-{
-    double sum,both;
-	sum = (dpreds[0] + dpreds[2]);
-	both = MAX(1,(dpreds[1] + dpreds[3]));
-	return(sum/both);
-}
-
-double calc_dpreds_abs(double dpreds[6])
-{
-    double both;
-	both = (dpreds[1] + dpreds[3]);
-	if ( both >= 1. )
-		return((dpreds[0] - dpreds[2]) / both);
-	else return(0);
-}
-
-double calc_dpreds_metric(double dpreds[6])
-{
-    double both;
-	both = (dpreds[1] + dpreds[3]);
-	if ( both >= 1. )
-		return((dpreds[1] - dpreds[3]) / both);
-	else return(0);
-}
-
-void update_dpreds(double dpreds[6],register double pred)
-{
-	if ( pred > SMALLVAL ) dpreds[0] += pred, dpreds[1] += 1.;
-	else if ( pred < -SMALLVAL ) dpreds[2] += pred, dpreds[3] += 1.;
-    if ( pred != 0. )
-    {
-        if ( dpreds[4] == 0. || pred < dpreds[4] )
-            dpreds[4] = pred;
-        if ( dpreds[5] == 0. || pred > dpreds[5] )
-            dpreds[5] = pred;
-    }
-    //printf("[%f %f %f %f] ",dpreds.x,dpreds.y,dpreds.z,dpreds.w);
-}
-
 
 #endif

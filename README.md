@@ -6,7 +6,7 @@ also need "convert" to generate .jpg files
 
 http://www.imagemagick.org/script/install-source.php#unix
 
-
+I just copied the convert executable to /usr/bin and all the .dylib files to /usr/lib and it fixed the runtime errors
 
 ### Unix and MacOS X
 

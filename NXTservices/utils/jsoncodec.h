@@ -97,7 +97,7 @@ int32_t compare_jsontext(char *jsonA,char *jsonB)
     lenB = stripstr(strB,strlen(strB));
     if ( lenA == lenB )
         retval = strcmp(strA,strB);
-    else retval = (int)(lenA - lenB);
+    else retval = (int32_t)(lenA - lenB);
     free(strA); free(strB);
     return(retval);
 }
@@ -174,7 +174,7 @@ int32_t init_jsoncodec(char *jsontext)
                     JSONlist = realloc(JSONlist,n * sizeof(*JSONlist) * n);
                     memset(&JSONlist[i],0,sizeof(JSONlist[i]));
                     JSONlist[i].word = clonestr(word);
-                    JSONlist[i].len = (int)strlen(word);
+                    JSONlist[i].len = (int32_t)strlen(word);
                     JSONlist[i].count = 1;
                 }
             }
@@ -193,7 +193,7 @@ int32_t init_jsoncodec(char *jsontext)
         {
             if ( JSONlist[i].word == 0 )
                 break;
-            JSONlist[i].len = (int)strlen(JSONlist[i].word);
+            JSONlist[i].len = (int32_t)strlen(JSONlist[i].word);
         }
     }
     if ( jsontext != 0 )

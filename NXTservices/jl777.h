@@ -7,6 +7,9 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
+#define NXT_GENESISTIME 1385294400
+#define SMALLVAL .000000000000001
+
 //#define MAINNET
 //#define DEBUG_MODE
 //#define PRODUCTION
@@ -52,7 +55,6 @@
 //#include <sys/time.h>
 //#include <pthread.h>
 
-#include <sys/mman.h>   // only for support of map_file and release_map_file in NXTutils.h
 #include <fcntl.h>
 
 #define ENABLE_DIRENT
@@ -61,11 +63,7 @@
 #include <dirent.h>     //only NXTmembers.h
 #endif
 
-#ifdef __APPLE__
 #include "libuv/include/uv.h"
-#else
-#include "libuv/include/uv.h"
-#endif
 #include <curl/curl.h>
 #include <curl/easy.h>
 
@@ -78,64 +76,22 @@
 #include "../libuv/include/uv.h"
 #include "libwebsockets/win32port/win32helpers/gettimeofday.h"
 #define STDIN_FILENO 0
-void sleep(int);
-void usleep(int);
+void sleep(int32_t);
+void usleep(int32_t);
 #endif
 
-//#define UDP_OLDWAY
-#ifdef UDP_OLDWAY
-#define portable_udp_t int32_t
-#else
-#define portable_udp_t uv_udp_t
-#endif
-
-#define portable_tcp_t uv_tcp_t
-
-//#define portable_mutex_t pthread_mutex_t
-#define portable_mutex_t uv_mutex_t
-#define portable_thread_t uv_thread_t
-
-static int32_t portable_mutex_init(portable_mutex_t *mutex)
-{
-    return(uv_mutex_init(mutex));
-    //pthread_mutex_init(mutex,NULL);
-}
-
-static void portable_mutex_lock(portable_mutex_t *mutex)
-{
-    //printf("lock.%p\n",mutex);
-    uv_mutex_lock(mutex);
-    // pthread_mutex_lock(mutex);
-}
-
-static void portable_mutex_unlock(portable_mutex_t *mutex)
-{
-   // printf("unlock.%p\n",mutex);
-    uv_mutex_unlock(mutex);
-    //pthread_mutex_unlock(mutex);
-}
-
-static portable_thread_t *portable_thread_create(void *funcp,void *argp)
-{
-    portable_thread_t *ptr;
-    ptr = (uv_thread_t *)malloc(sizeof(portable_thread_t));
-    if ( uv_thread_create(ptr,funcp,argp) != 0 )
-        //if ( pthread_create(ptr,NULL,funcp,argp) != 0 )
-    {
-        free(ptr);
-        return(0);
-    } else return(ptr);
-}
 
 // includes that include actual code
 #include "nacl/crypto_box.h"
 #include "nacl/randombytes.h"
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { printf("malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
-void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { printf("calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
-#define malloc jl777malloc
-#define calloc jl777calloc
 
 //#include "guardians.h"
+#include "utils/jdatetime.h"
+#include "utils/mappedptr.h"
+#include "utils/sorts.h"
+#include "utils/kdtree.c"
+#include "bitmap.h"
+#include "utils/smoothers.h"
 #include "utils/cJSON.h"
 #include "utils/jl777str.h"
 #include "utils/cJSON.c"

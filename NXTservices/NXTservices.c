@@ -21,7 +21,7 @@ int32_t is_special_addr(char *NXTaddr)
 int32_t validate_nxtaddr(char *nxtaddr)
 {
     // make sure it has publickey
-    int32_t n = (int)strlen(nxtaddr);
+    int32_t n = (int32_t)strlen(nxtaddr);
     while ( n > 10 && (nxtaddr[n-1] == '\n' || nxtaddr[n-1] == '\r') )
         n--;
     if ( n < 1 )
@@ -418,10 +418,10 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
                 tp->receiverbits = calc_nxt64bits(sender);
                 if ( attachment != 0 )
                     tp->quantity = get_cJSON_int(attachment,"quantityQNT");
-                printf("%d) t%d >>>>>>>>>>>> AE transfer.%d.%d: GENESIS -> NXT.%s qty %.8f\n",Numtransfers,tp->timestamp,(int)type,(int)subtype,sender,dstr(tp->quantity));
+                printf("%d) t%d >>>>>>>>>>>> AE transfer.%d.%d: GENESIS -> NXT.%s qty %.8f\n",Numtransfers,tp->timestamp,(int32_t)type,(int32_t)subtype,sender,dstr(tp->quantity));
                 transfer_asset_balance(mp,tp,tp->assetbits,GENESISACCT,sender,tp->quantity);
             }
-            else printf("%d) t%d >>>>>>>>>>>> AE transfer.%d.%d: GENESIS -> NXT.%s\n",Numtransfers,tp->timestamp,(int)type,(int)subtype,sender);
+            else printf("%d) t%d >>>>>>>>>>>> AE transfer.%d.%d: GENESIS -> NXT.%s\n",Numtransfers,tp->timestamp,(int32_t)type,(int32_t)subtype,sender);
             Numtransfers++;
         }
         if ( attachment != 0 )
@@ -443,7 +443,7 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
             else if ( assetjson != 0 && type == 2 && subtype <= 1 )
             {
                 tp = add_NXT_assettxid(&ap,assetid,mp,assetjson,txid,timestamp);
-                //printf("type.%d subtype.%d tp.%p\n",(int)type,(int)subtype,tp);
+                //printf("type.%d subtype.%d tp.%p\n",(int32_t)type,(int32_t)subtype,tp);
                 if ( tp->comment != 0 )
                     free(tp->comment), tp->comment = 0;
                 tp->timestamp = timestamp;
@@ -1208,7 +1208,7 @@ void init_assets(struct NXThandler_info *mp)
 int32_t ensure_NXT_blocks(struct NXThandler_info *mp,int32_t height,uint64_t blockid,int32_t timestamp)
 {
     int32_t changed = 0;
-    if ( height >= (int)(sizeof(mp->blocks)/sizeof(*mp->blocks)) )
+    if ( height >= (int32_t)(sizeof(mp->blocks)/sizeof(*mp->blocks)) )
         return(-1);
     if ( (height+1) > mp->numblocks )
     {

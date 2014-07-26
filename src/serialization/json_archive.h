@@ -92,7 +92,7 @@ struct json_archive<true> : public json_archive_base<std::ostream, true>
     begin_string(delimiter);
     for (size_t i = 0; i < len; i++) {
       unsigned char c = ((unsigned char *)buf)[i];
-      stream_ << std::hex << std::setw(2) << std::setfill('0') << (int)c;
+      stream_ << std::hex << std::setw(2) << std::setfill('0') << (int32_t)c;
     }
     end_string(delimiter);
   }

@@ -10,7 +10,7 @@
 #define xcode_packets_h
 
 
-int _encode_str(unsigned char *cipher,char *str,int size,unsigned char *destpubkey,unsigned char *myprivkey)
+int32_t _encode_str(unsigned char *cipher,char *str,int32_t size,unsigned char *destpubkey,unsigned char *myprivkey)
 {
     long len;
     unsigned char buf[4096],*nonce = cipher;
@@ -32,10 +32,10 @@ int _encode_str(unsigned char *cipher,char *str,int size,unsigned char *destpubk
      printf("%02x",nonce[i]);
      printf(" nonce\n");*/
     crypto_box(cipher,buf,len+crypto_box_ZEROBYTES,nonce,destpubkey,myprivkey);
-    return((int)len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
+    return((int32_t)len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES);
 }
 
-int _decode_cipher(char *str,unsigned char *cipher,int32_t *lenp,unsigned char *srcpubkey,unsigned char *myprivkey)
+int32_t _decode_cipher(char *str,unsigned char *cipher,int32_t *lenp,unsigned char *srcpubkey,unsigned char *myprivkey)
 {
     int i,err,len = *lenp;
     unsigned char *nonce = cipher;
@@ -155,7 +155,7 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     return(packet_crc == crc);
 }
 
-int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET)
+int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET)
 {
     char argstr[1024],pubkey[1024],token[1024];
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
@@ -165,7 +165,7 @@ int gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char 
     token[NXT_TOKEN_LEN] = 0;
     sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
     //printf("tokenized.(%s)\n",jsonstr);
-    return((int)strlen(jsonstr));
+    return((int32_t)strlen(jsonstr));
 }
 
 int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
