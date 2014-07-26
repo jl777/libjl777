@@ -741,7 +741,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
             printf("pNXT NXThandler_info init %d\n",mp->RTflag);
             if ( Global_pNXT == 0 )
             {
-                struct NXT_str *tp;
+                struct NXT_str *tp = 0;
                 Global_pNXT = calloc(1,sizeof(*Global_pNXT));
                 orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
                 Global_pNXT->orderbook_txidsp = &orderbook_txids;
