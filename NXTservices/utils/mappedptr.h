@@ -322,7 +322,7 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 				truncate(fname,allocsize);
 			open_mappedptr(mp);
 			if ( mp->fileptr == 0 || mp->allocsize != allocsize )
-				printf("SECOND error mapping(%s) ptr %p mapped %llu vs allocsize %llu\n",fname,mp->fileptr,mp->allocsize,(long long)allocsize);
+				printf("SECOND error mapping(%s) ptr %p mapped %llu vs allocsize %llu\n",fname,mp->fileptr,(long long)mp->allocsize,(long long)allocsize);
 		}
 	}
 	if ( ptrp != 0 )
