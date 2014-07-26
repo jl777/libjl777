@@ -312,6 +312,24 @@ void zero_last128(char *dest,char *src)
     }
 }
 
+void tolowercase(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return;
+    for (i=0; str[i]!=0; i++)
+        str[i] = tolower(str[i]);
+}
+
+void touppercase(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return;
+    for (i=0; str[i]!=0; i++)
+        str[i] = toupper(str[i]);
+}
+
 void reverse_hexstr(char *str)
 {
     int i,n;

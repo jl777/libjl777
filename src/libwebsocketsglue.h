@@ -72,10 +72,9 @@ void init_NXTservices(int _argc,char **_argv)
     portable_mutex_init(&mp->hash_mutex);
     portable_mutex_init(&mp->hashtable_queue[0].mutex);
     portable_mutex_init(&mp->hashtable_queue[1].mutex);
-    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    mp->curl_handle = curl_easy_init();
-    mp->curl_handle2 = curl_easy_init();
-    mp->curl_handle3 = curl_easy_init();
+    //mp->curl_handle = curl_easy_init();
+    //mp->curl_handle2 = curl_easy_init();
+    //mp->curl_handle3 = curl_easy_init();
   
     init_NXThashtables(mp);
     init_NXTAPI(mp->curl_handle);

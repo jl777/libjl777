@@ -13,16 +13,10 @@
 #define ORDERBOOK_SIG 0x83746783
 
 #define ORDERBOOK_FEED 1
-#define NXT_FEEDID 0xfeed0000L
-#define BITTREX_FEEDID 0xfeed0001L
-#define CRYPTSY_FEEDID 0xfeed0002L
-#define POLONIEX_FEEDID 0xfeed0003L
-#define MINTPAL_FEEDID 0xfeed0004L
-#define BTER_FEEDID 0xfeed0005L
 
 struct orderbook_tx
 {
-    int32_t sig,type;
+    uint32_t sig,type;
     uint64_t txid,nxt64bits,baseid,relid;
     uint64_t baseamount,relamount;
 };
@@ -30,7 +24,7 @@ struct orderbook_tx
 struct quote
 {
     float price;    // must be first!!
-    int32_t type;
+    uint32_t type;
     uint64_t nxt64bits,baseamount,relamount;
 };
 
@@ -45,7 +39,7 @@ struct raw_orders
 {
     uint64_t assetA,assetB,obookid;
     struct orderbook_tx **orders;
-    int num,max;
+    int32_t num,max;
 } **Raw_orders;
 #include "../NXTservices/feeds.h"
 
@@ -398,7 +392,7 @@ int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits
     uint64_t baseamount,relamount;
     baseamount = volume * SATOSHIDEN;
     relamount = (price * baseamount);
-    printf("bid base.%llu rel.%llu\n",(long long)baseamount,(long long)relamount);
+    //printf("bid base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
     return(init_orderbook_tx(1,tx,type,nxt64bits,obookid,baseamount,relamount));
 }
 
@@ -407,7 +401,7 @@ int32_t ask_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits
     uint64_t baseamount,relamount;
     baseamount = volume * SATOSHIDEN;
     relamount = (price * baseamount);
-    printf("ask base.%llu rel.%llu\n",(long long)baseamount,(long long)relamount);
+    //printf("ask base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
     return(init_orderbook_tx(-1,tx,type,nxt64bits,obookid,baseamount,relamount));
 }
 

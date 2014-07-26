@@ -166,11 +166,12 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     unsigned char txbytes[512];
     char NXTADDR[128],secret[256];
     struct pNXT_info *gp;
-    init_MGWconf(NXTADDR,secret,Global_mp);
+    secret[0] = 0;
     if ( NXTACCTSECRET != 0 && NXTACCTSECRET[0] != 0 )
         strcpy(secret,NXTACCTSECRET);
     if ( secret[0] == 0 )
         strcpy(secret,"password");
+    init_MGWconf(NXTADDR,secret,Global_mp);
     if ( Global_pNXT == 0 )
     {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -765,10 +766,10 @@ void _init_lws(void *arg)
     void *core,*p2psrv,*rpc_server,*upnp,**ptrs = (void **)arg;
     sleep(3);
     core = ptrs[0]; p2psrv = ptrs[1]; rpc_server = ptrs[2]; upnp = ptrs[3]; secret = (char *)ptrs[4];
+    init_pNXT(core,p2psrv,rpc_server,upnp,secret==0?"password":secret);
     p2p_glue(p2psrv);
     rpc_server_glue(rpc_server);
     upnp_glue(upnp);
-    init_pNXT(core,p2psrv,rpc_server,upnp,secret==0?"password":secret);
     printf("finished call lwsmain pNXT.(%p) height.%lld | %p %p %p\n",ptrs[0],(long long)pNXT_height(core),p2psrv,rpc_server,upnp);
 }
 
@@ -784,6 +785,11 @@ void _init_lws2(void *arg)
 void init_lws(void *core,void *p2p,void *rpc_server,void *upnp,char *secret)
 {
     static void *ptrs[5];
+    if ( strcmp(secret,"exchanges") == 0 )
+    {
+        init_pNXT(0,0,0,0,secret);
+        exit(0);
+    }
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp; ptrs[4] = (void *)secret;
     printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
     if ( portable_thread_create(_init_lws2,secret) == 0 )

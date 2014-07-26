@@ -8,8 +8,8 @@
 #ifndef JL777_BITCOIND_RPC
 #define JL777_BITCOIND_RPC
 
-#include <curl/curl.h>
-#include <curl/easy.h>
+//#include <curl/curl.h>
+//#include <curl/easy.h>
 
 #include "cJSON.h"
 

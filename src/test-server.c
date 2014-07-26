@@ -772,7 +772,12 @@ int main(int argc, char **argv)
 	unsigned int oldus = 0;
 	struct lws_context_creation_info info;
 #ifndef FROM_pNXT
-   char NXTADDR[128],secret[256];
+    char NXTADDR[128],secret[256];
+    if ( argc > 1 )
+        safecopy(secret,argv[1],sizeof(secret));
+#ifdef __APPLE__ 
+    strcpy(secret,"exchanges");
+#endif
     init_MGWconf(NXTADDR,secret,Global_mp);
 #endif
 

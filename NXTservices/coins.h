@@ -8,6 +8,7 @@
 
 #ifndef gateway_coins_h
 #define gateway_coins_h
+
 #define MULTIGATEWAY_VARIANT 3
 
 #define NXT_COINID 0
@@ -353,15 +354,17 @@ uint64_t get_orderbook_assetid(char *coinstr)
     return(0);
 }
 
-
 void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
 {
     uint64_t nxt64bits;
     cJSON *array,*item;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
-    int32_t i,n,coinid,ismainnet,timezone=0;
+    int32_t i,n,coinid,ismainnet,exchangeflag,timezone=0;
     int64_t len=0,allocsize=0;
-    printf("init_MGWconf\n");
+    exchangeflag = !strcmp(NXTACCTSECRET,"exchanges");
+    printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    init_filtered_bufs();
     jsonstr = load_file("MGW.conf",&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
@@ -371,6 +374,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         {
             printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
+            init_jdatetime(NXT_GENESISTIME,timezone * 3600);
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
@@ -466,6 +470,8 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                 MGW_blacklist[n++] = Assetid_strs[BTC_COINID];    // from accidental transfer
                 MGW_blacklist[n++] = "";
             }
+            void init_exchanges(cJSON *confobj,int32_t exchangeflag);
+            init_exchanges(MGWconf,exchangeflag);
         }
     }
     if ( GATEWAY_SIG == 0 || NXTISSUERACCT[0] == 0 || ORIGBLOCK[0] == 0 || SERVER_PORT == 0 )
@@ -473,8 +479,6 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         printf("need a non-zero GATEWAY_SIG || no issuer.(%s) or no origblock.(%s) or null serverport.%d\n",NXTISSUERACCT,ORIGBLOCK,SERVER_PORT);
         exit(1);
     }
-    init_jdatetime(NXT_GENESISTIME,timezone);
-    init_filtered_bufs();
 }
 
 int32_t is_gateway_addr(char *addr)

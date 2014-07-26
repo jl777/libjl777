@@ -9,7 +9,6 @@
 #ifndef xcode_mappedptr_h
 #define xcode_mappedptr_h
 
-#include <sys/mman.h>   
 
 struct mappedptr
 {
@@ -19,17 +18,6 @@ struct mappedptr
 	int32_t rwflag,actually_allocated;
 };
 
-#ifdef UDP_OLDWAY
-#define portable_udp_t int32_t
-#else
-#define portable_udp_t uv_udp_t
-#endif
-
-#define portable_tcp_t uv_tcp_t
-
-//#define portable_mutex_t pthread_mutex_t
-#define portable_mutex_t uv_mutex_t
-#define portable_thread_t uv_thread_t
 
 int32_t portable_mutex_init(portable_mutex_t *mutex)
 {
@@ -119,6 +107,7 @@ void *alloc_aligned_buffer(uint64_t allocsize)
 	return(ptr);
 }
 
+#ifndef WIN32
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 {
 	void *mmap64(void *addr,size_t len,int32_t prot,int32_t flags,int32_t fildes,off_t off);
@@ -325,6 +314,6 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 		(*ptrp) = mp->fileptr;
     return(mp->fileptr);
 }
-
+#endif
 
 #endif

@@ -9,7 +9,7 @@
 #ifndef xcode_jdatetime_h
 #define xcode_jdatetime_h
 
-#include <sys/time.h>
+//#include <sys/time.h>
 #ifndef BUFSIZE
 #define BUFSIZE 512
 #endif
@@ -308,7 +308,8 @@ int32_t year_to_jdatetime(int32_t year)
 int32_t gmt_to_local(int32_t jdatetime,int32_t tzone)
 {
 	int32_t ltime;
-	ltime = jdatetime + tzone*0;
+	ltime = jdatetime + tzone;
+    //printf("ltime.%d j.%d tzon.%d\n",ltime,jdatetime,tzone);
 	ltime += dst_adjust(jdatetime);
 	return(ltime);
 }
@@ -403,9 +404,9 @@ int32_t timezone_init(int32_t timezone)
 	return(0);
 }
 
-int32_t conv_unixtime(uint32_t unixtime)
+uint32_t conv_unixtime(uint32_t unixtime)
 {
-    int32_t zerotime = 946684800;
+    uint32_t zerotime = 946684800;
 	return(unixtime - zerotime);
 }
 

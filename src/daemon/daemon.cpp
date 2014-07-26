@@ -105,12 +105,14 @@ extern "C" void set_cointype_vars(int cointype)
 
 int main(int argc, char* argv[])
 {  
-    int cointype = 0;
     if ( argc > 1 )
     {
-        printf("argc.%d\n",argc);
-        cointype = atoi(argv[1]);
-        printf("cointype.%d\n",cointype);
+        printf("argc.%d (%s)\n",argc,argv[1]);
+        if ( strcmp(argv[1],"exchanges") == 0 )
+        {
+            init_lws(0,0,0,0,argv[1]);
+            exit(0);
+        }
     }
     //set_cointype_vars(cointype);
     //printf("%p %p %p\n",CURRENCY_POOLDATA_FILENAME,CURRENCY_BLOCKCHAINDATA_FILENAME,P2P_NET_DATA_FILENAME);

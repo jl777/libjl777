@@ -54,6 +54,7 @@
 #include <sys/wait.h>
 //#include <sys/time.h>
 //#include <pthread.h>
+#include <sys/mman.h>
 
 #include <fcntl.h>
 
@@ -80,6 +81,18 @@ void sleep(int32_t);
 void usleep(int32_t);
 #endif
 
+#ifdef UDP_OLDWAY
+#define portable_udp_t int32_t
+#else
+#define portable_udp_t uv_udp_t
+#endif
+
+#define portable_tcp_t uv_tcp_t
+
+//#define portable_mutex_t pthread_mutex_t
+#define portable_thread_t uv_thread_t
+
+#define portable_mutex_t uv_mutex_t
 
 // includes that include actual code
 #include "nacl/crypto_box.h"

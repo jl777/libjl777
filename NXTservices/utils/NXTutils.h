@@ -591,6 +591,37 @@ char *issue_getAsset(CURL *curl_handle,char *assetidstr)
     //printf("calculated.(%s)\n",ret.str);
 }
 
+uint64_t get_asset_mult(uint64_t assetidbits)
+{
+    cJSON *json;
+    int32_t i,decimals,errcode;
+    uint64_t mult = 0;
+    char assetidstr[64],*jsonstr;
+    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+        return(1);
+    expand_nxt64bits(assetidstr,assetidbits);
+    jsonstr = issue_getAsset(0,assetidstr);
+    if ( jsonstr != 0 )
+    {
+        //printf("Assetjson.(%s) for asset.(%s)\n",jsonstr,assetidstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            errcode = (int32_t)get_cJSON_int(json,"errorCode");
+            if ( errcode == 0 )
+            {
+                decimals = (int32_t)get_cJSON_int(json,"decimals");
+                mult = 1;
+                for (i=7-decimals; i>=0; i--)
+                    mult *= 10;
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    //printf("assetoshis.%llu\n",(long long)assetoshis);
+    return(mult);
+}
+
 uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
 {
     cJSON *json;
@@ -1496,4 +1527,19 @@ int32_t is_valid_NXTtxid(char *txid)
     return(1);
 }
 
+void ensure_directory(char *dirname) // jl777: does this work in windows?
+{
+    FILE *fp;
+    char fname[512],cmd[512];
+    sprintf(fname,"%s/tmp",dirname);
+    if ( (fp= fopen(fname,"rb")) == 0 )
+    {
+        sprintf(cmd,"mkdir %s",dirname);
+        if ( system(cmd) != 0 )
+            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
+        fp = fopen(fname,"wb");
+        fclose(fp);
+    }
+    else fclose(fp);
+}
 #endif

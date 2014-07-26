@@ -32,6 +32,69 @@
 #define BARI_MEDIAN 14
 #define BARI_AVEPRICE 15
 
+
+#define TRADEVALS_FIFOSIZE (60+(2*((HARDCODED_CONTAMINATION_PIXELS+1) * 180))) //TRADEVALS_MAXPRIME)))
+#define HARDCODED_CONTAMINATION_PIXELS 6
+#define TRADEVALS_MINPRIME 0
+#define TRADEVALS_MAXPRIME 64
+#define TRADEVALS_WIDTH(j) ((j)+1)
+
+#define SUB_ZFLOATS(dest,src) (dest).bar.V -= (src).bar.V, (dest).nonz.V -= (src).nonz.V
+#define ADD_ZFLOATS(dest,src) (dest).bar.V += (src).bar.V, (dest).nonz.V += (src).nonz.V
+
+void add_zfloats(float dest[2][NUM_BARPRICES],float zbar[2][NUM_BARPRICES])
+{
+    int32_t i;
+    for (i=0; i<NUM_BARPRICES; i++)
+    {
+        dest[0][i] += zbar[0][i];
+        dest[1][i] += zbar[1][i];
+    }
+}
+
+void sub_zfloats(float dest[2][NUM_BARPRICES],float zbar[2][NUM_BARPRICES])
+{
+    int32_t i;
+    for (i=0; i<NUM_BARPRICES; i++)
+    {
+        dest[0][i] -= zbar[0][i];
+        dest[1][i] -= zbar[1][i];
+    }
+}
+
+void update_barsfifo(float oldest[TRADEVALS_MAXPRIME][2][NUM_BARPRICES],float recent[TRADEVALS_MAXPRIME][HARDCODED_CONTAMINATION_PIXELS][2][NUM_BARPRICES],float barsfifo[TRADEVALS_FIFOSIZE][2][NUM_BARPRICES],int32_t ind,float newbar[NUM_BARPRICES]) // MUST be called for every ind
+{
+	int32_t j,fifomod,slot,width;
+	float border[2][NUM_BARPRICES],newzbar[2][NUM_BARPRICES];
+	fifomod = (ind % TRADEVALS_FIFOSIZE);
+    memset(newzbar,0,sizeof(newzbar));
+    for (j=0; j<NUM_BARPRICES; j++)
+        if ( newbar[j] != 0.f )
+            newzbar[0][j] = newbar[j], newzbar[1][j] = 1.f;
+	memcpy(oldest,barsfifo[fifomod],sizeof(oldest[0]) * NUM_BARPRICES);
+	for (j=0; j<TRADEVALS_MAXPRIME; j++)
+	{
+		width = TRADEVALS_WIDTH(j);
+		add_zfloats(recent[j][0],newzbar);
+		for (slot=0; slot<HARDCODED_CONTAMINATION_PIXELS+1; slot++)
+		{
+			memcpy(border,barsfifo[(ind - (slot+1)*width + 1) % TRADEVALS_FIFOSIZE],sizeof(border));
+			if ( slot < HARDCODED_CONTAMINATION_PIXELS )
+			{
+				sub_zfloats(recent[j][slot],border);
+				if ( slot < HARDCODED_CONTAMINATION_PIXELS-1 )
+					add_zfloats(recent[j][slot+1],border);
+                else add_zfloats(oldest[j],border);
+            }
+			else sub_zfloats(oldest[j],border);
+		}
+		//for (bari=0; bari<16; bari++)
+		//	printf("(%8.6f %.0f) ",(svm->oldest[j].bar.s[bari] / MAX(1,svm->oldest[j].nonz.s[bari])),svm->oldest[j].nonz.s[bari]);
+		//printf("oldest.j%d\n",j);
+	}
+	memcpy(barsfifo[fifomod],newbar,sizeof(barsfifo[fifomod]));
+}
+
 float _nonz_min(float oldval,float newval)
 {
 	if ( newval != 0.f && (oldval == 0.f || newval < oldval) )
@@ -53,42 +116,29 @@ float check_price(float price)
 	else return(price);
 }
 
-void check_quote(float quote[2],float hbla[2])
+void update_bar(float bar[NUM_BARPRICES],float quote[2])
 {
-	quote[0] = check_price(hbla[0]);
-	quote[1] = check_price(hbla[1]);
-}
-
-void init_barprices(float bar[NUM_BARPRICES],float quotes[][2],int32_t n)
-{
-	int32_t i;
-	float bid,ask,quote[2];
-	//for (i=0; i<n; i++)
-	//	printf("%d.(%7.6f %7.6f) ",i,exp(quotes[i].x),exp(quotes[i].y));
-	//printf("<<<< starting\n");
-    memset(bar,0,sizeof(*bar) * NUM_BARPRICES);
-	for (i=0; i<n; i++)
-	{
-		check_quote(quote,quotes[i]);
-		if ( (bid= quote[0]) != 0 && (ask= quote[1]) != 0 )
-		{
-			bar[BARI_LASTBID] = bid;
-			bar[BARI_LASTASK] = ask;
-			if ( bar[BARI_FIRSTBID] == 0 )
-			{
-				bar[BARI_HIGHBID] = bar[BARI_LOWBID] = bar[BARI_FIRSTBID] = bid;
-				bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
-			}
-			else
-			{
-				if ( bid > bar[BARI_HIGHBID] ) bar[BARI_HIGHBID] = bid;
-                if ( bid < bar[BARI_LOWBID] ) bar[BARI_LOWBID] = bid;
-                if ( ask > bar[BARI_HIGHASK] ) bar[BARI_HIGHASK] = ask;
-                if ( ask < bar[BARI_LOWASK] ) bar[BARI_LOWASK] = ask;
-            }
-			//printf("%d.(%f %f) ",i,exp(bid),exp(ask));
-		}
-	}
+    float bid,ask;
+    bid = check_price(quote[0]);
+    ask = check_price(quote[1]);
+    if ( (bid= quote[0]) != 0 && (ask= quote[1]) != 0 )
+    {
+        bar[BARI_LASTBID] = bid;
+        bar[BARI_LASTASK] = ask;
+        if ( bar[BARI_FIRSTBID] == 0 )
+        {
+            bar[BARI_HIGHBID] = bar[BARI_LOWBID] = bar[BARI_FIRSTBID] = bid;
+            bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
+        }
+        else
+        {
+            if ( bid > bar[BARI_HIGHBID] ) bar[BARI_HIGHBID] = bid;
+            if ( bid < bar[BARI_LOWBID] ) bar[BARI_LOWBID] = bid;
+            if ( ask > bar[BARI_HIGHASK] ) bar[BARI_HIGHASK] = ask;
+            if ( ask < bar[BARI_LOWASK] ) bar[BARI_LOWASK] = ask;
+        }
+        //printf("%d.(%f %f) ",i,exp(bid),exp(ask));
+    }
 }
 
 void barinsert_arbvirts(float bar[NUM_BARPRICES],float arbbid,float arbask,float virtbid,float virtask)
@@ -140,6 +190,18 @@ void calc_barprice_aves(float bar[NUM_BARPRICES])
 	}
 }
 
+void init_bar(float bar[NUM_BARPRICES],float quotes[][2],int32_t n)
+{
+	int32_t i;
+	//for (i=0; i<n; i++)
+	//	printf("%d.(%7.6f %7.6f) ",i,exp(quotes[i].x),exp(quotes[i].y));
+	//printf("<<<< starting\n");
+    memset(bar,0,sizeof(*bar) * NUM_BARPRICES);
+	for (i=0; i<n; i++)
+        update_bar(bar,quotes[i]);
+    calc_barprice_aves(bar);
+}
+
 void _merge_bars(float bar[NUM_BARPRICES],float newbar[NUM_BARPRICES])
 {
 	if ( bar[BARI_FIRSTBID] == 0.f )
@@ -183,5 +245,6 @@ void calc_pairaves(float aves[NUM_BARPRICES/2],float bar[NUM_BARPRICES])
 	for (bari=0; bari<NUM_BARPRICES; bari+=2)
 		aves[bari>>1] = _pairave(bar[bari],bar[bari+1]);
 }
+
 
 #endif
