@@ -14,6 +14,12 @@
 #define MAX_LOOKAHEAD 60
 #define MAX_SCREENWIDTH 2048
 #define MAX_AMPLITUDE 100.
+#ifndef MIN
+#define MIN(x,y) (((x)<=(y)) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x,y) (((x)>=(y)) ? (x) : (y))
+#endif
 
 //#define calc_predisplinex(startweekind,clumpsize,weekind) (((weekind) - (startweekind))/(clumpsize))
 #define _extrapolate_Spline(Spline,gap) ((double)(Spline[0]) + ((gap) * ((double)(Spline[1]) + ((gap) * ((double)(Spline[2]) + ((gap) * (double)(Spline[3])))))))
@@ -1282,7 +1288,7 @@ void init_filtered_bufs()
 	int32_t _maxprimes = 5;
 	int32_t i,lasti,smoothwidth = 512;
 	double den,ave,wts[7];//,_coeffs[5000],_projden[5000];
-	double dTmp[16] = { 0.2905619972,1.539912853,0.3033266023,1.466074838,1.146540574,0.5808175934,0.9764347770,1.392661532, 0.9764347770,0.5808175934,1.146540574,1.466074838,0.3033266023,1.539912853,0.2905619972,0 };
+	double dTmp[16] = { 0.2905619972,1.539912853,0.3033266023,1.466074838,1.146540574,0.5808175934,0.9764347770,1.392661532, 0.9764347770,0.5808175934,1.146540574,1.466074838,0.3033266023,1.539912853,0.2905619972,0. };
 	ave = dSum16(dTmp);
     for (i=0; i<16; i++)
         dTmp[i] /= ave;
