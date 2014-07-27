@@ -45,8 +45,8 @@
 #define LIBWEBSOCKETS_MILLIS 250
 #define LIBWEBSOCKETS_PORT 7777
 extern int testimagelen;
-extern char testforms[1024*1024],testimage[1024*1024];
-unsigned char NXTprotocol_parms[4096];
+extern char testforms[1024*1024];
+unsigned char NXTprotocol_parms[4096],testimage[1024*1024*sizeof(int32_t)];
 
 
 #include "../NXTservices/libwebsockets/libwebsockets.h"
@@ -240,15 +240,14 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             // if a legal POST URL, let it continue and accept data
             if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
                 return 0;
-            if ( strcmp(in,"/testimage.jpg") == 0 )
+            if ( (testimagelen= search_images(testimage,(char *)in+1)) != 0 )
             {
                 static int counter;
                 static uint64_t lastmicro;
-                //load_testimage("testimage.jpg");
-                if ( testimagelen != 0 )//&& microseconds() > lastmicro+1000000 )
+                if ( testimagelen != 0 )
                 {
                     counter++;
-                    printf("%d IN.(%s) testimagelen.%d\n",counter,in,testimagelen);
+                    //printf("%d IN.(%s) testimagelen.%d\n",counter,in,testimagelen);
                     unsigned char *space;
                     space = malloc(testimagelen+512);
                     sprintf((char *)space,
@@ -260,8 +259,6 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     memcpy(space+strlen((char *)space),testimage,testimagelen);
                     //printf("buffer.(%s)\n",buffer);
                     libwebsocket_write(wsi,space,strlen((char *)buffer)+testimagelen,LWS_WRITE_HTTP);
-                    //libwebsocket_callback_on_writable(context, wsi);
-                    //libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
                     free(space);
                     lastmicro = microseconds();
                 }
@@ -775,9 +772,9 @@ int main(int argc, char **argv)
     char NXTADDR[128],secret[256];
     if ( argc > 1 )
         safecopy(secret,argv[1],sizeof(secret));
-#ifdef __APPLE__ 
-    strcpy(secret,"exchanges");
-#endif
+//#ifdef __APPLE__
+//    strcpy(secret,"exchanges");
+//#endif
     init_MGWconf(NXTADDR,secret,Global_mp);
 #endif
 

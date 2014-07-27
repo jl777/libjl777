@@ -13,6 +13,22 @@
 #define ORDERBOOK_SIG 0x83746783
 
 #define ORDERBOOK_FEED 1
+#define NUM_PRICEDATA_SPLINES 17
+
+struct price_data
+{
+    struct exchange_quote *allquotes;
+    uint32_t *display;
+    uint64_t obookid;
+    char base[64],rel[64];
+    struct filtered_buf bidfb,askfb,avefb,slopefb,accelfb;
+    float *bars,avebar[NUM_BARPRICES],highbids[MAX_ACTIVE_WIDTH],lowasks[MAX_ACTIVE_WIDTH],aveprices[MAX_ACTIVE_WIDTH];
+    double displine[MAX_ACTIVE_WIDTH],dispslope[MAX_ACTIVE_WIDTH],dispaccel[MAX_ACTIVE_WIDTH];
+    double splineprices[MAX_ACTIVE_WIDTH],slopes[MAX_ACTIVE_WIDTH],accels[MAX_ACTIVE_WIDTH];
+    double *pixeltimes,timefactor,aveprice,absslope,absaccel,avedisp,aveslope,aveaccel,bidsum,asksum,halfspread;
+    double dSplines[NUM_PRICEDATA_SPLINES][4],jdatetimes[NUM_PRICEDATA_SPLINES],splinevals[NUM_PRICEDATA_SPLINES];
+    int32_t numquotes,maxquotes,firstjdatetime,lastjdatetime,screenwidth,screenheight,numsplines,polarity;
+};
 
 struct orderbook_tx
 {
@@ -43,7 +59,46 @@ struct raw_orders
 } **Raw_orders;
 #include "../NXTservices/feeds.h"
 
-int Num_raw_orders,Max_raw_orders;
+int Num_raw_orders,Max_raw_orders,Num_price_datas;
+struct price_data **Price_datas;
+
+struct price_data *get_price_data(uint64_t obookid)
+{
+    int32_t i = 0;
+    if ( Num_price_datas > 0 )
+    {
+        for (i=0; i<Num_price_datas; i++)
+            if ( Price_datas[i]->obookid == obookid )
+                return(Price_datas[i]);
+    }
+    Num_price_datas++;
+    Price_datas = realloc(Price_datas,sizeof(*Price_datas) * Num_price_datas);
+    Price_datas[i] = calloc(1,sizeof(*Price_datas[i]));
+    Price_datas[i]->obookid = obookid;
+    return(Price_datas[i]);
+}
+
+void purge_price_data(struct price_data *dp)
+{
+    freep((void **)&dp->allquotes);
+    freep((void **)&dp->display);
+    freep((void **)&dp->pixeltimes);
+    freep((void **)&dp->bars);
+    memset(dp,0,sizeof(*dp));
+}
+
+void free_orderbook(struct orderbook *op)
+{
+    if ( op != 0 )
+    {
+        if ( op->bids != 0 )
+            free(op->bids);
+        if ( op->asks != 0 )
+            free(op->asks);
+        //purge_price_data(&op->P);
+        free(op);
+    }
+}
 
 void display_orderbook_tx(struct orderbook_tx *tx)
 {
@@ -288,12 +343,53 @@ int32_t is_orderbook_bid(int32_t polarity,struct raw_orders *raw,struct orderboo
     return(dir * polarity);
 }
 
+void sort_orderbook(struct orderbook *op,struct orderbook_tx **orders,int32_t n,struct raw_orders *raw)
+{
+    struct quote *bids,*asks,*qp;
+    int32_t i,dir;
+    struct orderbook_tx *tx;
+    bids = (struct quote *)calloc(n,sizeof(*bids));
+    asks = (struct quote *)calloc(n,sizeof(*asks));
+    if ( n != 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( (tx= orders[i]) != 0 && tx->baseamount != 0 && tx->relamount != 0 )
+            {
+                if ( (dir= is_orderbook_bid(op->polarity,raw,tx)) > 0 )
+                {
+                    qp = &bids[op->numbids++];
+                    qp->baseamount = tx->baseamount;
+                    qp->relamount = tx->relamount;
+                }
+                else if ( dir < 0 )
+                {
+                    qp = &asks[op->numasks++];
+                    qp->baseamount = tx->relamount;
+                    qp->relamount = tx->baseamount;
+                }
+                else
+                {
+                    display_orderbook_tx(tx);
+                    printf("create_orderbook: unexpected non-dir quote.%p (%llu) base.%llu | (%llu) rel.%llu\n",tx,(long long)tx->baseid,(long long)tx->baseamount,(long long)tx->relid,(long long)tx->relamount);
+                    continue;
+                }
+                printf("tx.%p dir.%d base.%llu rel.%llu\n",tx,dir,(long long)tx->baseid,(long long)tx->relid);
+                qp->type = tx->type;
+                qp->nxt64bits = tx->nxt64bits;
+                qp->price = (float)((double)qp->relamount / qp->baseamount);
+            }
+        }
+    }
+    op->bids = shrink_and_sort(1,bids,op->numbids,n);
+    op->asks = shrink_and_sort(-1,asks,op->numasks,n);
+}
+
 struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity)
 {
-    int32_t i,n,dir;
-    struct quote *bids,*asks,*qp;
+    int32_t n;
     struct orderbook *op = 0;
-    struct orderbook_tx **orders,*tx;
+    struct orderbook_tx **orders;
     struct raw_orders *raw;
     if ( (raw= find_raw_orders(obookid)) != 0 )
     {
@@ -304,57 +400,11 @@ struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity)
             op->assetA = raw->assetA;
             op->assetB = raw->assetB;
             op->polarity = polarity;
-            bids = (struct quote *)calloc(n,sizeof(*bids));
-            asks = (struct quote *)calloc(n,sizeof(*asks));
-            if ( n != 0 )
-            {
-                for (i=0; i<n; i++)
-                {
-                    if ( (tx= orders[i]) != 0 && tx->baseamount != 0 && tx->relamount != 0 )
-                    {
-                        if ( (dir= is_orderbook_bid(polarity,raw,tx)) > 0 )
-                        {
-                            qp = &bids[op->numbids++];
-                            qp->baseamount = tx->baseamount;
-                            qp->relamount = tx->relamount;
-                        }
-                        else if ( dir < 0 )
-                        {
-                            qp = &asks[op->numasks++];
-                            qp->baseamount = tx->relamount;
-                            qp->relamount = tx->baseamount;
-                        }
-                        else
-                        {
-                            display_orderbook_tx(tx);
-                            printf("create_orderbook: unexpected non-dir quote.%p (%llu) base.%llu | (%llu) rel.%llu\n",tx,(long long)tx->baseid,(long long)tx->baseamount,(long long)tx->relid,(long long)tx->relamount);
-                            continue;
-                        }
-                        printf("tx.%p dir.%d base.%llu rel.%llu\n",tx,dir,(long long)tx->baseid,(long long)tx->relid);
-                        qp->type = tx->type;
-                        qp->nxt64bits = tx->nxt64bits;
-                        qp->price = (float)((double)qp->relamount / qp->baseamount);
-                    }
-                }
-            }
+            sort_orderbook(op,orders,n,raw);
             free(orders);
-            op->bids = shrink_and_sort(1,bids,op->numbids,n);
-            op->asks = shrink_and_sort(-1,asks,op->numasks,n);
         }
     }
     return(op);
-}
-
-void free_orderbook(struct orderbook *op)
-{
-    if ( op != 0 )
-    {
-        if ( op->bids != 0 )
-            free(op->bids);
-        if ( op->asks != 0 )
-            free(op->asks);
-        free(op);
-    }
 }
 
 int32_t init_orderbook_tx(int32_t polarity,struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t obookid,uint64_t baseamount,uint64_t relamount)

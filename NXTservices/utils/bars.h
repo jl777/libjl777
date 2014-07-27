@@ -116,12 +116,11 @@ float check_price(float price)
 	else return(price);
 }
 
-void update_bar(float bar[NUM_BARPRICES],float quote[2])
+void update_bar(float bar[NUM_BARPRICES],float bid,float ask)
 {
-    float bid,ask;
-    bid = check_price(quote[0]);
-    ask = check_price(quote[1]);
-    if ( (bid= quote[0]) != 0 && (ask= quote[1]) != 0 )
+    bid = check_price(bid);
+    ask = check_price(ask);
+    if ( bid != 0.f && ask != 0.f )
     {
         bar[BARI_LASTBID] = bid;
         bar[BARI_LASTASK] = ask;
@@ -198,7 +197,7 @@ void init_bar(float bar[NUM_BARPRICES],float quotes[][2],int32_t n)
 	//printf("<<<< starting\n");
     memset(bar,0,sizeof(*bar) * NUM_BARPRICES);
 	for (i=0; i<n; i++)
-        update_bar(bar,quotes[i]);
+        update_bar(bar,quotes[i][0],quotes[i][1]);
     calc_barprice_aves(bar);
 }
 

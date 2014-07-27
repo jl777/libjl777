@@ -15,12 +15,12 @@ void disp_dot(float radius,int32_t color,float yval,uint32_t *bitmap,int32_t x,i
 uint32_t scale_color(uint32_t color,float strength);
 
 #define LEFTMARGIN 0
-#define TIMEIND_PIXELS 512
-#define NUM_ACTIVE_PIXELS 1024
+#define TIMEIND_PIXELS 60
+#define MAX_LOOKAHEAD 60
+#define NUM_ACTIVE_PIXELS ((32*24) - MAX_LOOKAHEAD)
 #define MAX_ACTIVE_WIDTH (NUM_ACTIVE_PIXELS + TIMEIND_PIXELS)
 
 #define NUM_REQFUNC_SPLINES 32
-#define MAX_LOOKAHEAD 60
 #define MAX_SCREENWIDTH 2048
 #define MAX_AMPLITUDE 100.
 #ifndef MIN
@@ -33,6 +33,7 @@ uint32_t scale_color(uint32_t color,float strength);
 //#define calc_predisplinex(startweekind,clumpsize,weekind) (((weekind) - (startweekind))/(clumpsize))
 #define _extrapolate_Spline(Spline,gap) ((double)(Spline[0]) + ((gap) * ((double)(Spline[1]) + ((gap) * ((double)(Spline[2]) + ((gap) * (double)(Spline[3])))))))
 #define _extrapolate_Slope(Spline,gap) ((double)(Spline[1]) + ((gap) * ((double)(Spline[2]) + ((gap) * (double)(Spline[3])))))
+#define _extrapolate_Accel(Spline,gap) ((double)(Spline[2]) + ((gap) * ((double)(Spline[3]))))
 
 struct madata
 {
@@ -93,9 +94,9 @@ int32_t smallprimes[168] =
 	947,    953,    967,    971,    977,    983,    991,    997
 };
 
-double Display_scale;
+double Display_scale = 1.;
 uint32_t forex_colors[16],*Display_bitmap,*Display_bitmaps[91];
-uint32_t Screenheight = 768,Screenwidth = (MAX_ACTIVE_WIDTH + 16);
+uint32_t Screenheight = 512,Screenwidth = (MAX_ACTIVE_WIDTH + 16);
 
 double xdisp_sqrt(double x) { return((x < 0.) ? -sqrt(-x) : sqrt(x)); }
 double xdisp_cbrt(double x) { return((x < 0.) ? -cbrt(-x) : cbrt(x)); }
@@ -306,7 +307,7 @@ float _bufave(float *buf,int32_t len)
 	return(sum);
 }
 
-double _dbufabsave(double *buf,int32_t len)
+double _dbufabs(double *buf,int32_t len)
 {
 	int32_t i,n;
 	float val;
@@ -842,12 +843,12 @@ void pingpong_smoother(int32_t numprimes,double *dest,double *src,int32_t maxwid
 	}
 }
 
-int32_t calc_spline(double *aveabsp,double *outputs,double *slopes,double dSplines[][4],int32_t firstx,double *weekinds,double *splinevals,int32_t clumpsize,int32_t len)
+int32_t calc_spline(double *aveabsp,double *outputs,double *slopes,double dSplines[][4],int32_t firstx,float *weekinds,double *splinevals,int32_t clumpsize,int32_t len)
 {
 	double c[NUM_REQFUNC_SPLINES],f[NUM_REQFUNC_SPLINES],dd[NUM_REQFUNC_SPLINES],dl[NUM_REQFUNC_SPLINES],du[NUM_REQFUNC_SPLINES],gaps[NUM_REQFUNC_SPLINES];
-	int32_t n,i,lasti,x,numsplines,nonz;
-	double gap,sum,dweekind,yval,abssum,lastval,lastweekind,incr = clumpsize;
-	double vx,vy,vw,vz,slope = 0;
+	int32_t n,i,lasti,numsplines,nonz;//x
+	double gap,sum,abssum,lastval,lastweekind;//,incr = clumpsize,dweekind,yval,
+	double vx,vy,vw,vz;//,slope = 0;
 	double dSpline[4];
 	n = lasti = nonz = 0;
 	sum = 0.;
@@ -870,7 +871,7 @@ int32_t calc_spline(double *aveabsp,double *outputs,double *slopes,double dSplin
 			n++;
 		}
 	}
-	//printf("numsplines.%d\n",n);
+	printf("numsplines.%d\n",n);
 	numsplines = n;
 	if ( n < 4 )
 		return(0);
@@ -926,6 +927,8 @@ int32_t calc_spline(double *aveabsp,double *outputs,double *slopes,double dSplin
 		dSpline[0] = vx, dSpline[1] = vy, dSpline[2] = vz, dSpline[3] = vw; //= (double4){ vx, vy, vz, vw };
 		//printf("%3d: w%8.1f [%9.6f %9.6f %9.6f %9.6f]\n",i,weekinds[i],(vx),vy*1000,vz*1000*1000,vw*1000*1000*1000);
 		memcpy(dSplines[i],dSpline,sizeof(dSpline));
+    }
+    /*
 		gap = clumpsize;//MAX(1.,(incr / 3.));
 		dweekind = weekinds[i] + gap;
 		lastval = dSpline[0];
@@ -979,11 +982,11 @@ int32_t calc_spline(double *aveabsp,double *outputs,double *slopes,double dSplin
 	}
 	if ( nonz != 0 )
 		abssum /= nonz;
-	*aveabsp = abssum;
+	*aveabsp = abssum;*/
 	return(numsplines);
 }
 
-int32_t calc_splinevals(int32_t numprimes,float *projbuf,float *srcbuf,int32_t *RTip,int32_t *firstxp,int32_t lastweekind,double splinevals[NUM_REQFUNC_SPLINES],double weekinds[NUM_REQFUNC_SPLINES],int32_t clumpsize,double halfterminator,double terminator)
+int32_t calc_splinevals(int32_t numprimes,float *projbuf,float *srcbuf,int32_t *RTip,int32_t *firstxp,int32_t lastweekind,double splinevals[NUM_REQFUNC_SPLINES],float weekinds[NUM_REQFUNC_SPLINES],int32_t clumpsize,double halfterminator,double terminator)
 {
 	double src[MAX_SCREENWIDTH],dest[MAX_SCREENWIDTH];
 	double val;
@@ -1072,7 +1075,8 @@ int32_t disp_RTspline(int32_t numprimes,int32_t numslopeprimes,float *srcbuf,dou
 	float *projbuf = srcbuf;
 	double scale=1.,halfterminator=0;
 	int32_t RTi=-1,firstx = -1,outcolor=0;
-	double slopeabs,weekinds[NUM_REQFUNC_SPLINES],splinevals[NUM_REQFUNC_SPLINES];
+    float weekinds[NUM_REQFUNC_SPLINES];
+	double slopeabs,splinevals[NUM_REQFUNC_SPLINES];
 	double dSplines[NUM_REQFUNC_SPLINES][4];
 	double lastslope,accel,lastaccel,val;//,dispweekave = Dispweekaves[svm->refc];
 	int32_t i,n=-1,y,color,colorscale,firstweekind;
@@ -1518,6 +1522,8 @@ double _update_filtered_buf(struct filtered_buf *fb,double newval,int32_t *width
 double update_filtered_buf(struct filtered_buf *fb,double newval,int32_t *widths)
 {
 	int32_t i;
+    if ( fb->len == 0 )
+        init_filtered_buf(fb);
 	if ( newval != 0. )
 	{
 		if ( fb->lastval == 0. )

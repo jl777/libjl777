@@ -356,10 +356,11 @@ uint64_t get_orderbook_assetid(char *coinstr)
 
 void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
 {
+    static int32_t exchangeflag;
     uint64_t nxt64bits;
     cJSON *array,*item;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
-    int32_t i,n,coinid,ismainnet,exchangeflag,timezone=0;
+    int32_t i,n,coinid,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
     exchangeflag = !strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
@@ -470,8 +471,11 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                 MGW_blacklist[n++] = Assetid_strs[BTC_COINID];    // from accidental transfer
                 MGW_blacklist[n++] = "";
             }
-            void init_exchanges(cJSON *confobj,int32_t exchangeflag);
-            init_exchanges(MGWconf,exchangeflag);
+            void *poll_exchanges(void *);
+            int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
+            if ( init_exchanges(MGWconf,exchangeflag) > 0 )
+                if ( portable_thread_create(poll_exchanges,&exchangeflag) == 0 )
+                    printf("ERROR poll_exchanges\n");
         }
     }
     if ( GATEWAY_SIG == 0 || NXTISSUERACCT[0] == 0 || ORIGBLOCK[0] == 0 || SERVER_PORT == 0 )

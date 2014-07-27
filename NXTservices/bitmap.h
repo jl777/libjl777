@@ -20,7 +20,7 @@ double calc_loganswer(double pastlogprice,double futurelogprice)
 float _calc_pricey(double price,double weekave)
 {
 	if ( price != 0. && weekave != 0. )
-		return(.2 * calc_loganswer(weekave,price));
+		return(.25 * calc_loganswer(weekave,price));
 	else
 		return(0.f);
 }
@@ -225,56 +225,90 @@ void disp_dot(float radius,int32_t color,float yval,uint32_t *bitmap,int32_t x,i
 		disp_yval(color,yval,bitmap,x,rowwidth,height);
 }
 
-void horizline(uint32_t *bitmap,double rawprice,double ave)
+void horizline(int32_t calclogflag,uint32_t *bitmap,double rawprice,double ave)
 {
     int32_t x;
-    double yval = _calc_pricey(log(rawprice),log(ave));
+    double yval;
+    if ( calclogflag != 0 )
+        yval = _calc_pricey(log(rawprice),log(ave));
+    else yval = _calc_pricey(rawprice,ave);
     for (x=0; x<Screenwidth; x++)
         disp_yval(0x888888,yval,bitmap,x,Screenwidth,Screenheight);
 }
 
-void _output_line(int32_t calclogflag,double ave,double *buf,int32_t n,int32_t color,uint32_t *bitmap,int32_t rowwidth,int32_t height)
+void rescale_floats(float *line,int32_t width,double scale)
 {
-    int32_t i,x;
-    float yval,val;
-    if ( ave == 0 )
-        return;
-    ave = log(ave);
-    for (i=0,x=rowwidth-1; i<n; i++,x--)
+    int32_t i;
+    for (i=0; i<width; i++)
+        line[i] *= scale;
+}
+
+void rescale_doubles(double *line,int32_t width,double scale)
+{
+    int32_t i;
+    for (i=0; i<width; i++)
+        line[i] *= scale;
+}
+
+double _output_line(int32_t calclogflag,double ave,double *output,double *buf,int32_t n,int32_t color,uint32_t *bitmap,int32_t rowwidth,int32_t height)
+{
+    int32_t x,nonz = 0;
+    double yval,val,aveabs = 0.;
+    if ( ave == 0. )
+        return(0.);
+    if ( calclogflag != 0 )
+        ave = log(ave);
+    for (x=0; x<n; x++)
     {
-        if ( (val= buf[i]) != 0 )
+        if ( (val= buf[x]) != 0 )
         {
             if ( calclogflag != 0 )
-                val = log(buf[i]);
-            yval = _calc_pricey(val,ave);
-            disp_yval(color,yval,bitmap,x,rowwidth,height);
-        }
+                val = log(buf[x]);
+            if ( ave != 1. )
+                yval = _calc_pricey(val,ave);
+            else yval = val;
+            printf("%f ",yval);
+            if ( fabs(yval) > .0000000001 )
+            {
+                aveabs += fabs(yval);
+                nonz++;
+                if ( color != 0 )
+                    disp_yval(color,yval,bitmap,x,rowwidth,height);
+            }
+        } else yval = 0.;
+        output[x] = yval;
     }
+    if ( nonz != 0 )
+        aveabs /= nonz;
+    return(aveabs);
     //
     //printf("ave %f rowwidth.%d\n",ave,rowwidth);
 }
 
-void output_line(int32_t calclogflag,double ave,float *buf,int32_t n,int32_t color,uint32_t *bitmap,int32_t rowwidth,int32_t height)
+double output_line(int32_t smoothiters,int32_t calclogflag,double ave,double *output,double *input,int32_t n,int32_t color,uint32_t *bitmap,int32_t rowwidth,int32_t height)
 {
-    double src[1024],dest[1024];
+    double src[2048],dest[2048];
     int32_t i;
     memset(src,0,sizeof(src));
     memset(dest,0,sizeof(dest));
-    if ( 1 )
+    if ( smoothiters != 0 )
     {
         void smooth1024(double dest[],double src[],int32_t smoothiters);
         for (i=0; i<1024; i++)
-            src[1023-i] = dest[1023-i] = buf[i];
-        smooth1024(dest,src,3);
+            src[1023-i] = dest[1023-i] = input[i];
+        smooth1024(dest,src,smoothiters);
         for (int32_t i=0; i<1024; i++)
             src[1023-i] = dest[i];
     }
     else
     {
-        for (i=0; i<1024; i++)
-            src[i] = buf[i];
+        for (i=0; i<n; i++)
+        {
+            src[i] = input[i];
+            printf("%f ",src[i]);
+        }
     }
-    _output_line(calclogflag,ave,src,1024,color,bitmap,rowwidth,height);
+    return(_output_line(calclogflag,ave,output,src,rowwidth,color,bitmap,rowwidth,height));
 }
 
 int32_t nonzrow(uint32_t *bitmap,int32_t rowwidth)
@@ -341,20 +375,82 @@ void gen_ppmfile(char *fname,int32_t rows,int32_t startx,int32_t endx,uint32_t *
     }
 }
 
-void output_jpg(char *name,uint32_t *bitmap,double ave)
+void output_jpg(char *name,uint32_t *bitmap,int32_t width,int32_t height)
 {
+    //int32_t calclogflag = 0;
     char fname[512],cmd[512];
-    float bids[1024],asks[1024];
+    /*float bids[1024],asks[1024];
     memset(bids,0,sizeof(bids));
     memset(asks,0,sizeof(asks));
     memset(bitmap,0,sizeof(*bitmap) * Screenwidth*Screenheight);
-    horizline(bitmap,ave,ave);
-    output_line(0,ave,bids,1024,0x0088ff,bitmap,Screenwidth,Screenheight);
-    output_line(0,ave,asks,1024,0xff3300,bitmap,Screenwidth,Screenheight);
+    horizline(calclogflag,bitmap,ave,ave);
+    output_line(3,calclogflag,ave,bids,1024,0x0088ff,bitmap,Screenwidth,Screenheight);
+    output_line(3,calclogflag,ave,asks,1024,0xff3300,bitmap,Screenwidth,Screenheight);*/
     sprintf(fname,"%s.ppm",name);
-    gen_ppmfile(fname,0,Screenwidth-670,Screenwidth-1,bitmap,Screenwidth,Screenheight);
+    gen_ppmfile(fname,height,0,width-1,bitmap,width,height);
     sprintf(cmd,"convert %s %s.jpg",fname,name);
     system(cmd);
+}
+
+int32_t Numimages,*Image_sizes;
+unsigned char **Image_buffers; char **Image_names;
+
+int32_t search_images(unsigned char *testimage,char *arg)
+{
+    int32_t i;
+    if ( Numimages == 0 )
+        return(0);
+    //printf("search (%s)\n",arg);
+    for (i=0; i<Numimages; i++)
+    {
+        if ( strcmp(arg,Image_names[i]) == 0 && Image_sizes[i] != 0 )
+        {
+            memcpy(testimage,Image_buffers[i],Image_sizes[i]);
+            return(Image_sizes[i]);
+        }
+    }
+    return(0);
+}
+
+int32_t add_image(char *imagename)
+{
+    char *clonestr(char *);
+    FILE *fp;
+    char fname[512];
+    int32_t i = 0,imagesize;
+    sprintf(fname,"%s.jpg",imagename);
+    if ( Numimages > 0 )
+    {
+        for (i=0; i<Numimages; i++)
+        {
+            if ( strcmp(Image_names[i],fname) == 0 )
+                break;
+        }
+    }
+    if ( i == Numimages )
+    {
+        Numimages++;
+        Image_buffers = realloc(Image_buffers,sizeof(*Image_buffers) * Numimages);
+        Image_names = realloc(Image_names,sizeof(*Image_names) * Numimages);
+        Image_sizes = realloc(Image_sizes,sizeof(*Image_sizes) * Numimages);
+        Image_names[i] = clonestr(fname);
+        Image_sizes[i] = 0;
+        Image_buffers[i] = calloc(1024*1024,sizeof(int32_t)); // should be safe to have 4MB buffer
+        printf("allocate image.%d\n",i);
+    }
+    printf("loading %s image.%d of %d\n",fname,i,Numimages);
+    imagesize = 0;
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        imagesize = (int32_t)ftell(fp);
+        rewind(fp);
+        if ( fread(Image_buffers[i],1,imagesize,fp) != imagesize )
+            printf("error reading %s %d bytes\n",Image_names[i],imagesize);
+        fclose(fp);
+    }
+    Image_sizes[i] = imagesize;
+    return(imagesize);
 }
 
 #endif

@@ -10,7 +10,7 @@
 
 int URL_changed,testimagelen;
 char dispstr[65536];
-char testimage[1024*1024],testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
+char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 char NXTPROTOCOL_HTMLFILE[512] = { "/tmp/NXTprotocol.html" };
 int Finished_loading,Historical_done;
 #define pNXT_SIG 0x99999999

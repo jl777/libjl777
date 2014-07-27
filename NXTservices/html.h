@@ -693,7 +693,11 @@ function refreshIt(element) {\
 </table>\
 </td></tr></table>\
 </section>\
-<img src=\"testimage.jpg\" name=\"InstantDEX Display\" onload=\"refreshIt(this)\">\
+<img src=\"BTCD_BTC.jpg\" name=\"BTCD_BTC\" onload=\"refreshIt(this)\">\
+<img src=\"bittrex_BTCD_BTC.jpg\" name=\"bittrex_BTCD_BTC\" onload=\"refreshIt(this)\">\
+<img src=\"cryptsy_BTCD_BTC.jpg\" name=\"cryptsy_BTCD_BTC\" onload=\"refreshIt(this)\">\
+<img src=\"BTC_NXT.jpg\" name=\"BTC_NXT\" onload=\"refreshIt(this)\">\
+<img src=\"bter_NXT_BTC.jpg\" name=\"bter_NXT_BTC\" onload=\"refreshIt(this)\">\
 </article>";
 
 char *endstr = "<script>\n\
@@ -743,28 +747,11 @@ try {\n\
 </body>\
     </html>";
 
-void load_testimage(char *imagefname)
-{
-    FILE *fp;
-    if ( testimagelen != 0 )
-        memset(testimage,0,testimagelen);
-    testimagelen = 0;
-    if ( (fp= fopen(imagefname,"rb")) != 0 )
-    {
-        fseek(fp,0,SEEK_END);
-        testimagelen = (int32_t)ftell(fp);
-        rewind(fp);
-        if ( fread(testimage,1,testimagelen,fp) != testimagelen )
-            printf("error reading testimage\n");
-        fclose(fp);
-    }
-}
-
 void gen_testforms(char *NXTACCTSECRET)
 {
     struct NXThandler_info *mp = Global_mp;
     //int32_t coinid;
-    static unsigned int *bitmap;
+    //static unsigned int *bitmap;
     static int counter;
     uint64_t nxt64bits;
     char *str,NXTADDR[64];//,*depositaddr,buf[4096];
@@ -775,10 +762,10 @@ void gen_testforms(char *NXTACCTSECRET)
     char *netstr = "TESTNET";
 #endif
     counter++;
-    if ( bitmap == 0 )
-        bitmap = calloc(Screenheight*Screenwidth,sizeof(*bitmap));
-    output_jpg("testimage",bitmap,.001);
-    load_testimage("testimage.jpg");
+    //if ( bitmap == 0 )
+    //    bitmap = calloc(Screenheight*Screenwidth,sizeof(*bitmap));
+    //output_jpg("testimage",bitmap,.001);
+    //load_testimage("testimage.jpg");
     NXTADDR[0] = 0;
     if ( NXTACCTSECRET != 0 )
     {

@@ -321,6 +321,15 @@ void tolowercase(char *str)
         str[i] = tolower(str[i]);
 }
 
+void freep(void **ptrp)
+{
+	if ( *ptrp != 0 )
+	{
+		free(*ptrp);
+		*ptrp = 0;
+	}
+}
+
 void touppercase(char *str)
 {
     int32_t i;
