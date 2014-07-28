@@ -617,6 +617,18 @@ int gen_pNXT_placequote_fields(char *NXTaddr,char *handler,char *name,char **fie
     return(n);
 }
 
+int gen_pNXT_tradebot_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+{
+    int n = 0;
+    char script[16384],*secret,*code;
+    secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
+    code = construct_varname(fields,n++,name,"tradebot","tradebot code JSON or (filename):",100,10);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"code\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,code);
+    *scriptp = clonestr(script);
+    free(secret); free(code);
+    return(n);
+}
+
 int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
 {
     char *get_pNXT_addr();
@@ -631,7 +643,9 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"makeoffer","make offer","offer","127.0.0.1:7777","pNXT",gen_pNXT_makeoffer_fields);
     n++;
     
-   
+    forms[n] = make_form(NXTaddr,&scripts[n],"tradebot","launch tradebot","start","127.0.0.1:7777","pNXT",gen_pNXT_tradebot_fields);
+    n++;
+    
     forms[n] = make_form(NXTaddr,&scripts[n],"sendmessage","send encrypted message to NXT address","sendmsg","127.0.0.1:7777","pNXT",gen_pNXT_sendmsg_fields);
     n++;
     

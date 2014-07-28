@@ -438,7 +438,7 @@ int32_t add_image(char *imagename)
         Image_buffers[i] = calloc(1024*1024,sizeof(int32_t)); // should be safe to have 4MB buffer
         printf("allocate image.%d\n",i);
     }
-    printf("loading %s image.%d of %d\n",fname,i,Numimages);
+    //printf("loading %s image.%d of %d\n",fname,i,Numimages);
     imagesize = 0;
     if ( (fp= fopen(fname,"rb")) != 0 )
     {

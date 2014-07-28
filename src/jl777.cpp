@@ -37,6 +37,7 @@ uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t
 struct hashtable *orderbook_txids;
 
 #include "../NXTservices/orders.h"
+#include "../NXTservices/tradebot.h"
 //#include "packets.h"
 
 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
@@ -503,6 +504,58 @@ char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
 }
+
+char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static char *buf;
+    static int64_t filelen,allocsize;
+    long len;
+    cJSON *botjson;
+    char NXTACCTSECRET[512],code[4096],retbuf[4096],*str,*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(code,objs[2]);
+    printf("tradebotfunc.(%s) sender.(%s) valid.%d code.(%s)\n",origargstr,sender,valid,code);
+    if ( sender[0] != 0 && valid != 0 && code[0] != 0 )
+    {
+        len = strlen(code);
+        if ( code[0] == '(' && code[len-1] == ')' )
+        {
+            code[len-1] = 0;
+            str = load_file(code+1,&buf,&filelen,&allocsize);
+            if ( str == 0 )
+            {
+                sprintf(retbuf,"{\"error\":\"cant open (%s)\"}",code+1);
+                return(clonestr(retbuf));
+            }
+        }
+        else
+        {
+            str = code;
+            printf("str is (%s)\n",str);
+        }
+        if ( str != 0 )
+        {
+            //printf("before.(%s) ",str);
+            replace_singlequotes(str);
+            //printf("after.(%s)\n",str);
+            if ( (botjson= cJSON_Parse(str)) != 0 )
+            {
+                retstr = start_tradebot(sender,NXTACCTSECRET,botjson);
+                free_json(botjson);
+            }
+            else
+            {
+                str[sizeof(retbuf)-128] = 0;
+                sprintf(retbuf,"{\"error\":\"couldnt parse (%s)\"}",str);
+            }
+            if ( str != code )
+                free(str);
+        }
+    }
+    else retstr = clonestr("{\"result\":\"invalid tradebot request\"}");
+    return(retstr);
+}
+
 /*
 
 forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
@@ -512,6 +565,7 @@ forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
     static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "pNXT", 0 };
@@ -528,7 +582,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { getpubkey, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
+    static char **commands[] = { getpubkey, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, privatesend, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -640,7 +694,7 @@ again:
         cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
         printf("replace NXT.(%s)\n",NXTaddr);
 #ifndef __linux__
-        if ( strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             parmstxt = remove_secret(argjsonp,parmstxt);
             issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);

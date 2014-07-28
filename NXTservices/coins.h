@@ -356,9 +356,10 @@ uint64_t get_orderbook_assetid(char *coinstr)
 
 void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
 {
+    int32_t init_tradebots(cJSON *languagesobj);
     static int32_t exchangeflag;
     uint64_t nxt64bits;
-    cJSON *array,*item;
+    cJSON *array,*item,*languagesobj = 0;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
     int32_t i,n,coinid,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
@@ -376,6 +377,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
             printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
+            languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
@@ -478,6 +480,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                     printf("ERROR poll_exchanges\n");
         }
     }
+    init_tradebots(languagesobj);
     if ( GATEWAY_SIG == 0 || NXTISSUERACCT[0] == 0 || ORIGBLOCK[0] == 0 || SERVER_PORT == 0 )
     {
         printf("need a non-zero GATEWAY_SIG || no issuer.(%s) or no origblock.(%s) or null serverport.%d\n",NXTISSUERACCT,ORIGBLOCK,SERVER_PORT);

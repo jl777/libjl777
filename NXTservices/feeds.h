@@ -340,7 +340,7 @@ void output_image(char *name,struct price_data *dp)
             disp_yval(0x0000ff,yval,dp->display,i,dp->screenwidth,dp->screenheight);
         }
     }
-    printf("%s\n",name);
+    //printf("%s\n",name);
    /* dp->avedisp = output_line(0,1,dp->aveprice,dp->displine,dp->splineprices,dp->screenwidth,0,dp->display,dp->screenwidth,dp->screenheight);
     dp->aveslope = output_line(0,0,dp->absslope,dp->dispslope,dp->slopes,dp->screenwidth,0,dp->display,dp->screenwidth,dp->screenheight);
     dp->aveaccel = output_line(3,0,dp->absaccel,dp->dispaccel,dp->accels,dp->screenwidth,0,dp->display,dp->screenwidth,dp->screenheight);
@@ -1152,8 +1152,9 @@ void *poll_exchanges(void *writeflagp)
     struct price_data *dp;
     uint64_t *obooks;
     char name[512];
+    uint32_t jdatetime,lastminute = 0;
     struct exchange_state *eps[NUM_EXCHANGES];
-    int32_t i,j,n,m,writeflag,maxdepth = 8;
+    int32_t i,j,n,m,iter,newminuteflag,writeflag,maxdepth = 8;
     writeflag = *(int32_t *)writeflagp;
     printf("exchange mode: writeflag.%d numactive.%d maxdepth.%d\n",writeflag,Numactivefiles,maxdepth);
     while ( Numactivefiles > 0 )
@@ -1179,21 +1180,43 @@ void *poll_exchanges(void *writeflagp)
         }
         if ( n != 0 )
         {
-            memset(eps,0,sizeof(eps));
-            for (i=0; i<n; i++)
+            void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state **eps,int32_t numexchanges,uint64_t obookid,int32_t newminuteflag);
+            newminuteflag = jdatetime = 0;
+            for (iter=0; iter<3; iter++)
             {
-                for (j=m=0; j<Numactivefiles; j++)
-                    if ( Activefiles[j]->obookid == obooks[i] )
-                        eps[m++] = Activefiles[j];
-                if ( m != 0 )
+                if ( iter == 1 )
                 {
-                    //printf("have %d exchanges that quote %s %s\n",m,eps[0]->base,eps[0]->rel);
-                    dp = get_price_data(obooks[i]);
-                    safecopy(dp->rel,eps[0]->rel,sizeof(dp->rel));
-                    safecopy(dp->base,eps[0]->base,sizeof(dp->base));
-                    dp->polarity = eps[0]->polarity;
-                    sprintf(name,"%s_%s",dp->base,dp->rel);
-                    update_contract_pair(name,dp,Screenwidth,Screenheight,obooks[i],eps,m);
+                    jdatetime = actual_gmt_jdatetime();
+                    if ( jdatetime/60 >= lastminute+1 )
+                    {
+                        printf("new minute (%s) %d %d\n",jdatetime_str(jdatetime),jdatetime,jdatetime%60);
+                        lastminute = jdatetime/60;
+                        newminuteflag = 1;
+                    }
+                }
+                memset(eps,0,sizeof(eps));
+                for (i=0; i<n; i++)
+                {
+                    for (j=m=0; j<Numactivefiles; j++)
+                        if ( Activefiles[j]->obookid == obooks[i] )
+                            eps[m++] = Activefiles[j];
+                    if ( iter == 0 )
+                    {
+                        if ( m != 0 )
+                        {
+                            //printf("have %d exchanges that quote %s %s\n",m,eps[0]->base,eps[0]->rel);
+                            dp = get_price_data(obooks[i]);
+                            safecopy(dp->rel,eps[0]->rel,sizeof(dp->rel));
+                            safecopy(dp->base,eps[0]->base,sizeof(dp->base));
+                            dp->polarity = eps[0]->polarity;
+                            sprintf(name,"%s_%s",dp->base,dp->rel);
+                            update_contract_pair(name,dp,Screenwidth,Screenheight,obooks[i],eps,m);
+                        }
+                    }
+                    else if ( iter == 1 && m > 0 )
+                        tradebot_event_processor(jdatetime,get_price_data(obooks[i]),eps,m,obooks[i],0);
+                    else if ( iter == 2 && newminuteflag != 0 )
+                        tradebot_event_processor(jdatetime,get_price_data(obooks[i]),eps,m,obooks[i],1);
                 }
             }
         }
@@ -1211,6 +1234,7 @@ int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag)
     char base[64],rel[64];
     Numactivefiles = 0;
     pollarg = exchangeflag;
+    //return(0);
     for (i=0; i<(int)(sizeof(exchange_names)/sizeof(*exchange_names)); i++)
     {
         if ( confobj == 0 )
