@@ -364,7 +364,7 @@ int32_t parse_cryptsy(struct exchange_state *ep,int32_t maxdepth) // "BTC-BTCD"
         free(marketjson);
         if ( market[0] == 0 )
         {
-            printf("parse_cryptsy: no marketid\n");
+            printf("parse_cryptsy: no marketid for %s\n",ep->base);
             return(0);
         }
         sprintf(ep->url,"http://pubapi.cryptsy.com/api.php?method=singleorderdata&marketid=%s",market);
