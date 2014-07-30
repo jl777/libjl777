@@ -768,16 +768,6 @@ int main(int argc, char **argv)
 #endif
 	unsigned int oldus = 0;
 	struct lws_context_creation_info info;
-#ifndef FROM_pNXT
-    char NXTADDR[128],secret[256];
-    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    if ( argc > 1 )
-        safecopy(secret,argv[1],sizeof(secret));
-//#ifdef __APPLE__
-//    strcpy(secret,"exchanges");
-//#endif
-    init_MGWconf(NXTADDR,secret,Global_mp);
-#endif
 
 	int debug_level = 7;
 #ifndef LWS_NO_DAEMONIZE
@@ -789,6 +779,16 @@ int main(int argc, char **argv)
         argc = 2;
         argv = _argv;
     }
+    //#ifndef FROM_pNXT
+    char NXTADDR[128],secret[256];
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    if ( argc > 1 )
+        safecopy(secret,argv[1],sizeof(secret));
+    //#ifdef __APPLE__
+    //    strcpy(secret,"exchanges");
+    //#endif
+    init_MGWconf(NXTADDR,secret,Global_mp);
+    //#endif
     printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,_argv[1]);
     init_NXTservices(argc,argv);
 	memset(&info, 0, sizeof info);

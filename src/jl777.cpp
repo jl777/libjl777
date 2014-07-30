@@ -165,14 +165,14 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     int32_t i;
     struct NXT_str *tp = 0;
     unsigned char txbytes[512];
-    char NXTADDR[128],secret[256];
+    //char NXTADDR[128],secret[256];
     struct pNXT_info *gp;
-    secret[0] = 0;
+    /*secret[0] = 0;
     if ( NXTACCTSECRET != 0 && NXTACCTSECRET[0] != 0 )
         strcpy(secret,NXTACCTSECRET);
     if ( secret[0] == 0 )
-        strcpy(secret,"password");
-    init_MGWconf(NXTADDR,secret,Global_mp);
+        strcpy(secret,"password");*/
+    //init_MGWconf(NXTADDR,secret,Global_mp);
     if ( Global_pNXT == 0 )
     {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
