@@ -13,8 +13,10 @@ OBJS	:= $(SRCS:%.c=%.o)
 
 all: $(TARGET)
 
+#$(TARGET): $(OBJS)
+#	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+    ar rcu libpicoc.a $(OBJS) 
 
 test:	all
 	(cd tests; make test)

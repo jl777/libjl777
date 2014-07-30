@@ -1,3 +1,17 @@
+{'lang':'ptl','botname':'testbot5','outputs':[{'name':'test','type':'double'}],'picoc':
+
+'double main(int argc,char **argv)
+{ 
+    int ev,ch; 
+    unsigned long obookid;
+    if ( init_PTL(&ev,&ch,0,''BTCD'',''BTC'') == 0 ) 
+        return(0.); 
+    obookid = placebid(Base,Rel,0.00125,100.);
+    printf(''FROM TRADEBOT obookid.%lx %s %s %s: highbid vol %.6f %.8f || %.8f vol %.6f lowask %ld\n'',obookid,Exchange,Base,Rel,Bidvol(0),Bid(0),Ask(0),Askvol(0),sizeof(unsigned long));
+    return(Bid(0));
+}'
+}
+
 picoc
 -----
 
