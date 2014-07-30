@@ -366,5 +366,6 @@ char NXTSERVER[64],NXTAPIURL[64];
 //#include "utils/NXTsock.h"
 //#include "punch.h"
 #include "NXTprivacy.h"
+double picoc(int argc,char **argv,char *codestr);
 
 #endif

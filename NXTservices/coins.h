@@ -367,6 +367,13 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     init_filtered_bufs();
+    if ( 0 )
+    {
+        char *argv[1] = { "test" };
+        double picoc(int argc,char **argv,char *codestr);
+        picoc(1,argv,clonestr("double main(){ double val = 1.234567890123456; printf(\"hello world val %.20f\\n\",val); return(val);}"));
+        getchar();
+    }
     jsonstr = load_file("MGW.conf",&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
@@ -473,11 +480,10 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                 MGW_blacklist[n++] = Assetid_strs[BTC_COINID];    // from accidental transfer
                 MGW_blacklist[n++] = "";
             }
-            void *poll_exchanges(void *);
+            void start_polling_exchanges(int32_t exchangeflag);
             int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
             if ( init_exchanges(MGWconf,exchangeflag) > 0 )
-                if ( portable_thread_create(poll_exchanges,&exchangeflag) == 0 )
-                    printf("ERROR poll_exchanges\n");
+                start_polling_exchanges(exchangeflag);
         }
     }
     init_tradebots(languagesobj);

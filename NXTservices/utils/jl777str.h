@@ -414,7 +414,12 @@ char *replace_singlequotes(char *str)
     for (i=0; str[i]!=0; i++)
     {
         if ( str[i] == '\'' )
-            str[i] = '"';
+        {
+            if ( str[i+1] == '\'' )
+                str[i] = '\\', str[i+1] = '"', i++;
+            else
+                str[i] = '"';
+        }
     }
     return(str);
 }

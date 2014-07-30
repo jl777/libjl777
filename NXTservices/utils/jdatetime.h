@@ -318,7 +318,7 @@ int32_t time_t_to_jdate(time_t t)
 {
 	int32_t jdate;
 	struct tm *tp;
-	tp = localtime(&t);
+	tp = gmtime(&t);//localtime(&t);
 	//printf("mon %d, day %d, year %d\n",tp->tm_mon,tp->tm_mday,tp->tm_year);
 	jdate = mdy_to_julian(tp->tm_mon+1,tp->tm_mday,tp->tm_year+1900);
 	//printf("jdate %d, %s\n",jdate,jdate_fname(jdate));
@@ -329,7 +329,7 @@ int32_t time_t_to_jtime(time_t t)
 {
 	int32_t jdate;
 	struct tm *tp;
-	tp = localtime(&t);
+	tp = gmtime(&t);//localtime(&t);
 	jdate = time_t_to_jdate(t);
 	return((jdate*SECONDS_IN_DAY) + (tp->tm_hour*SECONDS_IN_HOUR) + (tp->tm_min*SECONDS_IN_MINUTE) + tp->tm_sec);
 }
@@ -345,8 +345,7 @@ int32_t current_jtime()
 int32_t actual_gmt_jdatetime()
 {
 	int32_t jdatetime;
-	jdatetime = current_jtime();// - TIMEZONE_ADJUST;
-	jdatetime -= dst_adjust(jdatetime);
+	jdatetime = current_jtime();
 	ACTUAL_GMT_JDATETIME = jdatetime;
     //printf("current local time %s, timezone %d, DST %d\n",jdatetime_str(jdatetime),TIMEZONE_ADJUST,dst_adjust(jdatetime));
 	return(jdatetime);

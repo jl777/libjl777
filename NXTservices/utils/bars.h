@@ -41,6 +41,17 @@
 
 #define SUB_ZFLOATS(dest,src) (dest).bar.V -= (src).bar.V, (dest).nonz.V -= (src).nonz.V
 #define ADD_ZFLOATS(dest,src) (dest).bar.V += (src).bar.V, (dest).nonz.V += (src).nonz.V
+#define invert_price(x) (((x) == 0.) ? 0. : (1. / (x)))
+
+void invert_bar(float invbar[NUM_BARPRICES],float bar[NUM_BARPRICES])
+{
+    int32_t bari;
+    if ( bar[BARI_FIRSTBID] != 0.f )
+    {
+        for (bari=0; bari<NUM_BARPRICES; bari++)
+            invbar[bari] = invert_price(bar[bari]);
+    }
+}
 
 void add_zfloats(float dest[2][NUM_BARPRICES],float zbar[2][NUM_BARPRICES])
 {

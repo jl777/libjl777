@@ -216,7 +216,7 @@ char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     if ( polarity == 0 )
         polarity = 1;
     allflag = get_API_int(objs[3],0);
-    if ( obookid != 0 && (op= create_orderbook(obookid,polarity)) != 0 )
+    if ( obookid != 0 && (op= create_orderbook(obookid,polarity,0,0)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
             retstr = clonestr("{\"error\":\"no bids or asks\"}");
@@ -531,7 +531,7 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
         else
         {
             str = code;
-            printf("str is (%s)\n",str);
+            //printf("str is (%s)\n",str);
         }
         if ( str != 0 )
         {
@@ -547,6 +547,7 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
             {
                 str[sizeof(retbuf)-128] = 0;
                 sprintf(retbuf,"{\"error\":\"couldnt parse (%s)\"}",str);
+                printf("%s\n",retbuf);
             }
             if ( str != code )
                 free(str);
