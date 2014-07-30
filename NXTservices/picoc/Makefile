@@ -1,4 +1,4 @@
-CC=gcc
+CC=clang
 CFLAGS=-Wall -pedantic -g -DUNIX_HOST
 LIBS=-lm -lreadline
 
@@ -16,7 +16,7 @@ all: $(TARGET)
 #$(TARGET): $(OBJS)
 #	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 $(TARGET): $(OBJS)
-    ar rcu libpicoc.a $(OBJS)
+     ar  rcu  libpicoc.a  $(OBJS)
 
 test:	all
 	(cd tests; make test)
