@@ -3,7 +3,7 @@ git pull https://github.com/jl777/pNXT
 cmake ..
 clang -c -D FROM_pNXT test-server.c
 cd ../NXTservices/picoc
-make
+make clean; make
 cp libpicoc.a ../../src/src
 cd ../../src
 cd src
