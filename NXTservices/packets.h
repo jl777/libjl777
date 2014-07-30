@@ -217,6 +217,8 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
                 valid = -1;
                 if ( issue_decodeToken(curl_handle,sender,&valid,firstjsontxt,encoded) > 0 )
                 {
+                    if ( NXTaddr[0] == 0 )
+                        strcpy(NXTaddr,sender);
                     if ( strcmp(sender,NXTaddr) == 0 )
                     {
                         printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
@@ -224,7 +226,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
                     }
                 }
                 if ( retcode < 0 )
-                    printf("err: signed by invalid NXT.%s valid.%d or timediff too big diff.%lld\n",sender,valid,(long long)diff);
+                    printf("err: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld\n",sender,NXTaddr,valid,(long long)diff);
                 free(firstjsontxt);
             }
         }

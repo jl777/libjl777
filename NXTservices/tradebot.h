@@ -628,7 +628,7 @@ void copy_tradebot_ptrs(struct InstantDEX_state *state,struct tradebot_ptrs *ptr
         state->bidnxt = ptrs->bidnxt, state->asknxt = ptrs->asknxt;
         state->m1 = ptrs->m1, state->m2 = ptrs->m2, state->m3 = ptrs->m3, state->m4 = ptrs->m4, state->m5 = ptrs->m5, state->m10 = ptrs->m10, state->m15 = ptrs->m15, state->m30 = ptrs->m30, state->h1 = ptrs->h1;
         state->inv_m1 = ptrs->inv_m1, state->inv_m2 = ptrs->inv_m2, state->inv_m3 = ptrs->inv_m3, state->inv_m4 = ptrs->inv_m4, state->inv_m5 = ptrs->inv_m5, state->inv_m10 = ptrs->inv_m10, state->inv_m15 = ptrs->inv_m15, state->inv_m30 = ptrs->inv_m30, state->inv_h1 = ptrs->inv_h1;
-        printf("bids %f %f, asks %f %f copy tradebot normal\n",state->bids[0],state->inv_bids[0],state->asks[0],state->inv_asks[0]);
+        //printf("bids %f %f, asks %f %f copy tradebot normal\n",state->bids[0],state->inv_bids[0],state->asks[0],state->inv_asks[0]);
     }
     else
     {
@@ -640,7 +640,7 @@ void copy_tradebot_ptrs(struct InstantDEX_state *state,struct tradebot_ptrs *ptr
         state->bidvols = ptrs->inv_bidvols, state->inv_bidvols = ptrs->bidvols, state->askvols = ptrs->inv_askvols, state->inv_askvols = ptrs->askvols;
         state->inv_m1 = ptrs->m1, state->inv_m2 = ptrs->m2, state->inv_m3 = ptrs->m3, state->inv_m4 = ptrs->m4, state->inv_m5 = ptrs->m5, state->inv_m10 = ptrs->m10, state->inv_m15 = ptrs->m15, state->inv_m30 = ptrs->m30, state->inv_h1 = ptrs->h1;
         state->m1 = ptrs->inv_m1, state->m2 = ptrs->inv_m2, state->m3 = ptrs->inv_m3, state->m4 = ptrs->inv_m4, state->m5 = ptrs->inv_m5, state->m10 = ptrs->inv_m10, state->m15 = ptrs->inv_m15, state->m30 = ptrs->inv_m30, state->h1 = ptrs->inv_h1;
-        printf("bids %f %f, asks %f %f copy tradebot invert\n",state->bids[0],state->inv_bids[0],state->asks[0],state->inv_asks[0]);
+        //printf("bids %f %f, asks %f %f copy tradebot invert\n",state->bids[0],state->inv_bids[0],state->asks[0],state->inv_asks[0]);
     }
     state->maxbars = ptrs->maxbars;
 }

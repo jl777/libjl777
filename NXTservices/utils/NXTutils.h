@@ -276,12 +276,9 @@ uint64_t issue_getAccountId(CURL *curl_handle,char *password)
     char cmd[4096];
     union NXTtype ret;
     sprintf(cmd,"%s=getAccountId&secretPhrase=%s",_NXTSERVER,password);
-    //printf("(%s) ->(%s)\n",cmd,issue_NXTPOST(cmd));
-#ifdef MAINNET
     ret = extract_NXTfield(curl_handle,0,cmd,"accountId",64);
-#else
-    ret = extract_NXTfield(curl_handle,0,cmd,"account",64);
-#endif
+    if ( ret.nxt64bits == 0 )
+        ret = extract_NXTfield(curl_handle,0,cmd,"account",64);
     return(ret.nxt64bits);
 }
 
@@ -756,6 +753,7 @@ int32_t issue_decodeToken(CURL *curl_handle,char *sender,int32_t *validp,char *k
         nxtobj = cJSON_GetObjectItem(retval.json,"account");
         copy_cJSON(sender,nxtobj);
         free_json(retval.json);
+        //printf("decoded valid.%d NXT.%s len.%d\n",*validp,sender,(int32_t)strlen(sender));
         if ( sender[0] != 0 )
             return((int32_t)strlen(sender));
         else return(0);

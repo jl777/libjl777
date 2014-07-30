@@ -165,7 +165,7 @@ void init_pNXT(void *core,void *p2psrv,void *rpc_server,void *upnp,char *NXTACCT
     int32_t i;
     struct NXT_str *tp = 0;
     unsigned char txbytes[512];
-    char NXTADDR[128],secret[256];
+    char secret[256];//NXTADDR[128],
     struct pNXT_info *gp;
     secret[0] = 0;
     if ( NXTACCTSECRET != 0 && NXTACCTSECRET[0] != 0 )

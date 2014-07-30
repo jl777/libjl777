@@ -208,7 +208,7 @@ int32_t generate_quote_entry(struct exchange_state *ep)
         printf("local time %s\n", asctime(loc));*/
         Q.highbid = ep->hbla[0];
         Q.lowask = ep->hbla[1];
-        if ( ep->writeflag != 0 && fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
+        if ( (1 || ep->writeflag != 0) && fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
             printf("error writing quote to %s\n",ep->name);
         else
         {
