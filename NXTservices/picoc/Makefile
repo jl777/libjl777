@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -DUNIX_HOST
+CFLAGS=-Wall -pedantic -g  # -DUNIX_HOST
 LIBS=-lm -lreadline
 
 TARGET	= libpicoc.a

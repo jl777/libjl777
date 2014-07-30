@@ -2,6 +2,7 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 #define  UNIX_HOST
+#include <stdint.h>
 
 /* configurable options */
 /* select your host type (or do it in the Makefile):
