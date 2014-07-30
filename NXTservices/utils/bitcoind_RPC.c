@@ -173,7 +173,7 @@ try_again:
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,params,numretries);
         free(s.ptr);
-        usleep(2*1000000); // two seconds
+        usleep(13*1000000);
         goto try_again;
         
     } else {

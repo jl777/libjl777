@@ -29,6 +29,7 @@ uint64_t ensure_orderbook(uint64_t *baseidp,uint64_t *relidp,int32_t *polarityp,
     struct raw_orders *raw;
     *baseidp = baseid = get_orderbook_assetid(base);
     *relidp = relid = get_orderbook_assetid(rel);
+    //printf("base.%s %llu, rel.%s %llu\n",base,(long long)baseid,rel,(long long)relid);
     if ( baseid == 0 || relid == 0 )
         return(0);
     obookid = create_raw_orders(baseid,relid);
@@ -114,7 +115,8 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     long fpos,entrysize = (sizeof(uint32_t) + 2*sizeof(float));
     ep = calloc(1,sizeof(*ep));
     memset(ep,0,sizeof(*ep));
-    ep->writeflag = writeflag;
+    //printf("init_exchange_state %s %s %s\n",name,base,rel);
+    ep->writeflag = 1;//writeflag;
     safecopy(ep->name,name,sizeof(ep->name));
     safecopy(ep->base,base,sizeof(ep->base));
     safecopy(ep->lbase,base,sizeof(ep->lbase));
@@ -150,7 +152,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     {
         ensure_directory("exchangedata");
         sprintf(fname,"exchangedata/%s_%s_%s",name,base,rel);
-        ep->fp = fopen(fname,writeflag!=0?"rb+":"rb");
+        ep->fp = fopen(fname,ep->writeflag!=0?"rb+":"rb");
         if ( ep->fp != 0 )
         {
             fseek(ep->fp,0,SEEK_END);
@@ -158,7 +160,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
             n = (int32_t)(fpos / entrysize);
             if ( (fpos % entrysize) != 0 )
                 fpos = n * entrysize;
-            if ( writeflag != 0 )
+            if ( ep->writeflag != 0 )
                 fseek(ep->fp,fpos,SEEK_SET);
             else
             {
@@ -175,7 +177,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
                 }
             }
         }
-        else if ( writeflag != 0 ) ep->fp = fopen(fname,"wb");
+        else if ( ep->writeflag != 0 ) ep->fp = fopen(fname,"wb");
         printf("exchange file.(%s) %p\n",fname,ep->fp);
     }
     return(ep);
@@ -208,13 +210,14 @@ int32_t generate_quote_entry(struct exchange_state *ep)
         printf("local time %s\n", asctime(loc));*/
         Q.highbid = ep->hbla[0];
         Q.lowask = ep->hbla[1];
-        if ( (1 || ep->writeflag != 0) && fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
+        if ( ep->writeflag != 0 && fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
             printf("error writing quote to %s\n",ep->name);
-        else
+       // else
         {
-            if ( ep->writeflag == 0 )
+            //if ( ep->writeflag == 0 )
                 add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
-            else printf("%12s %s %5s/%-5s %.8f (%.8f %.8f) %.8f (%.8f %.8f)\n",ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,ep->bidminmax[0],ep->bidminmax[1],Q.lowask,ep->askminmax[0],ep->askminmax[1]);
+           // else
+           //     printf("%12s %s %5s/%-5s %.8f %.8f\n",ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,Q.lowask);
         }
         fflush(ep->fp);
     }
@@ -825,7 +828,7 @@ void *poll_exchanges(void *flagp)
     uint32_t jdatetime;
     struct orderbook_tx **orders;
     uint64_t *obooks,*changedmasks;
-    int32_t i,j,exchangeid,n,writeflag,maxdepth = 20;
+    int32_t i,j,starti,exchangeid,n,writeflag,maxdepth = 20;
     writeflag = ((*(int32_t *)flagp) & 1);
     exchangeid = ((*(int32_t *)flagp) >> 1);
     if ( NUM_EXCHANGES > sizeof(*changedmasks)*8 )
@@ -855,9 +858,10 @@ void *poll_exchanges(void *flagp)
         n = 0;
         obooks = calloc(Numactivefiles,sizeof(*obooks)); // maybe dynamically added
         changedmasks = calloc(Numactivefiles,sizeof(*changedmasks));
+        starti = (rand() % Numactivefiles);
         for (i=0; i<Numactivefiles; i++)
         {
-            ep = Activefiles[i];
+            ep = Activefiles[(starti + i) % Numactivefiles];
             j = (int32_t)(ep->feedid - 0xfeed0000L);
             if ( j != exchangeid )
                 continue;
@@ -873,7 +877,7 @@ void *poll_exchanges(void *flagp)
                         if ( _search_list(ep->obookid,obooks,n) < 0 )
                             obooks[n++] = ep->obookid;
                         //tradebot_event_processor(actual_gmt_jdatetime(),0,&ep,1,ep->obookid,0,1L << j);
-                        changedmasks[i] |= (1 << j);
+                        changedmasks[(starti + i) % Numactivefiles] |= (1 << j);
                     }
                     ep->lastmilli = Lastmillis[j] = milliseconds();
                 }
@@ -881,7 +885,7 @@ void *poll_exchanges(void *flagp)
         }
         free(obooks);
         free(changedmasks);
-        sleep(5);
+        sleep(1);
     }
     return(0);
 }

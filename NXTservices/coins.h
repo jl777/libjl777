@@ -341,17 +341,23 @@ int32_t conv_assetid(char *assetid)
 uint64_t get_orderbook_assetid(char *coinstr)
 {
     char *assetidstr;
-    int32_t coinid;
+    int32_t i,coinid;
+    uint64_t virtassetid;
     if ( strcmp(coinstr,"NXT") == 0 )
         return(ORDERBOOK_NXTID);
     if ( (coinid= conv_coinstr(coinstr)) >= 0 )
     {
         assetidstr = assetid_str(coinid);
-        if ( strcmp(assetidstr,ILLEGAL_COINASSET) == 0 )
-            return(0);
-        return(calc_nxt64bits(assetidstr));
+        if ( strcmp(assetidstr,ILLEGAL_COINASSET) != 0 )
+            return(calc_nxt64bits(assetidstr));
     }
-    return(0);
+    virtassetid = 0;
+    for (i=0; coinstr[i]!=0; i++)
+    {
+        virtassetid <<= 8;
+        virtassetid |= (coinstr[i] & 0xff);
+    }
+    return(virtassetid);
 }
 
 void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
