@@ -1,8 +1,8 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g  # -DUNIX_HOST
+CFLAGS=-Wall -pedantic -g #-DUNIX_HOST
 LIBS=-lm -lreadline
 
-TARGET	= libpicoc.a
+TARGET	= picoc
 SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
 	variable.c clibrary.c platform.c include.c \
 	platform/platform_unix.c platform/library_unix.c \
@@ -13,10 +13,9 @@ OBJS	:= $(SRCS:%.c=%.o)
 
 all: $(TARGET)
 
-#$(TARGET): $(OBJS)
-#	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 $(TARGET): $(OBJS)
-     ar  rcu  libpicoc.a  $(OBJS)
+	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+	ar rcu  libpicoc.a  $(OBJS)
 
 test:	all
 	(cd tests; make test)
@@ -55,3 +54,4 @@ cstdlib/errno.o: cstdlib/errno.c interpreter.h platform.h
 cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
+
