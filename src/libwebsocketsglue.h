@@ -84,7 +84,7 @@ void init_NXTservices(int _argc,char **_argv)
         strcpy(MY_IPADDR,get_ipaddr());
         strcpy(mp->ipaddr,MY_IPADDR);
     }
-    if ( _argc >= 2 && (strcmp(_argv[1],"server") == 0 || strcmp(mp->ipaddr,EMERGENCY_PUNCH_SERVER) == 0) )
+    /*if ( _argc >= 2 && (strcmp(_argv[1],"server") == 0 || strcmp(mp->ipaddr,EMERGENCY_PUNCH_SERVER) == 0) )
     {
 #ifndef WIN32
         //punch_server_main(_argc-1,_argv+1);
@@ -92,7 +92,7 @@ void init_NXTservices(int _argc,char **_argv)
         exit(0);
 #endif
     }
-    else
+    else*/
     {
         safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
         mp->upollseconds = 333333 * 0;

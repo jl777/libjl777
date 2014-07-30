@@ -643,7 +643,7 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"makeoffer","make offer","offer","127.0.0.1:7777","pNXT",gen_pNXT_makeoffer_fields);
     n++;
     
-    forms[n] = make_form(NXTaddr,&scripts[n],"tradebot","launch tradebot","start","127.0.0.1:7777","pNXT",gen_pNXT_tradebot_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"tradebot","launch tradebot","startbot","127.0.0.1:7777","pNXT",gen_pNXT_tradebot_fields);
     n++;
     
     forms[n] = make_form(NXTaddr,&scripts[n],"sendmessage","send encrypted message to NXT address","sendmsg","127.0.0.1:7777","pNXT",gen_pNXT_sendmsg_fields);
