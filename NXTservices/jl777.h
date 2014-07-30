@@ -355,8 +355,8 @@ uint64_t MIN_NQTFEE = SATOSHIDEN;
 int32_t MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;
 int32_t NXT_FORKHEIGHT;
-char NXTSERVER[64],NXTAPIURL[64];
-
+char NXTAPIURL[64] = { "http://127.0.0.1:6876/nxt" };
+char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
 #include "NXTservices.h"
 #include "utils/jl777hash.h"
 //#include "crossplatform.h"

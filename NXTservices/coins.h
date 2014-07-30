@@ -374,6 +374,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         picoc(1,argv,clonestr("double main(){ double val = 1.234567890123456; printf(\"hello world val %.20f\\n\",val); return(val);}"));
         getchar();
     }
+    printf("load MGW.conf\n");
     jsonstr = load_file("MGW.conf",&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
@@ -415,7 +416,6 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                 strcpy(ORIGBLOCK,origblock);
             strcpy(NXTSERVER,NXTAPIURL);
             strcat(NXTSERVER,"?requestType");
-
             extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
