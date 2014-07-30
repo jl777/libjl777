@@ -845,6 +845,7 @@ void init_lws(void *core,void *p2p,void *rpc_server,void *upnp,char *secret)
         init_pNXT(0,0,0,0,secret);
         exit(0);
     }
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     ptrs[0] = core; ptrs[1] = p2p; ptrs[2] = rpc_server; ptrs[3] = upnp; ptrs[4] = (void *)secret;
     printf("init_lws(%p %p %p %p)\n",core,p2p,rpc_server,upnp);
     if ( portable_thread_create(_init_lws2,secret) == 0 )

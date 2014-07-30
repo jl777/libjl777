@@ -770,6 +770,7 @@ int main(int argc, char **argv)
 	struct lws_context_creation_info info;
 #ifndef FROM_pNXT
     char NXTADDR[128],secret[256];
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( argc > 1 )
         safecopy(secret,argv[1],sizeof(secret));
 //#ifdef __APPLE__

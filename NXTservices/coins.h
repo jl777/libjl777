@@ -365,8 +365,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
     int64_t len=0,allocsize=0;
     exchangeflag = !strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
-    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    init_filtered_bufs();
+    //init_filtered_bufs();
     if ( 0 )
     {
         char *argv[1] = { "test" };
