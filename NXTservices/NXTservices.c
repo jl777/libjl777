@@ -4,9 +4,7 @@
 //
 #include "jl777.h"
 
-int32_t Numtransfers,Historical_done,EX_DIVIDEND_HEIGHT,EX_DIVIDEND_DECIMALS;
-char *EX_DIVIDEND_DESCRIPTION = "each MGW asset represents .0001% of multigateway\\r\\nmultigateway will generate minimal fees from deposits and withdraws of cryptos into NXT AE. It uses a separate multisig acct for each depositor. It will have ongoing server costs and to minimize the cost of depositing and withdrawing crypto assets into NXT, it will keep fees as low as possible. Currently its projected revenue source will be via auctions for listing altcoins and altcoin giveaways. Such revenues received net of operating costs will be distributed to asset holders.\\r\\nmultigateway isnt a non-profit, but it also isnt designed to be a massive profit generator. Any investment in multigateway will help cover operating costs and help the NXT community.";
-char EX_DIVIDEND_ASSETID[64];// = { "10524562908394749924" };
+int32_t Numtransfers,Historical_done;
 struct NXThandler_info *Global_mp;
 uint64_t *Assetlist;
 
@@ -230,7 +228,7 @@ int32_t process_NXT_event(struct NXThandler_info *mp,int32_t height,char *txid,i
     count = 0;
     highest_priority = -1;
     memset(&PARMS,0,sizeof(PARMS));
-    if ( Num_NXThandlers == 0 && EX_DIVIDEND_HEIGHT == 0 )
+    if ( Num_NXThandlers == 0 )
         printf("WARNING: process_NXT_event Num_NXThandlers.%d\n",Num_NXThandlers);
     PARMS.height = height;
     for (i=0; i<Num_NXThandlers; i++)
@@ -477,7 +475,7 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
                             if ( tp->comment != 0 && (commentobj= cJSON_Parse(tp->comment)) != 0 )
                             {
 #ifdef INSIDE_MGW
-                               int32_t coinid;
+/*                               int32_t coinid;
                                 char cointxid[128];
                                 cJSON *cointxidobj;
                                 cointxidobj = cJSON_GetObjectItem(commentobj,"cointxid");
@@ -508,13 +506,8 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
                                         }
                                     }
                                 }
-                                free_json(commentobj);
+                                free_json(commentobj);*/
 #endif
-                            }
-                            if ( strcmp(assetid,EX_DIVIDEND_ASSETID) == 0 )
-                            {
-                                Numtransfers++;
-                                printf("AE transfer: NXT.%s -> NXT.%s volume %.8f\n",sender,receiver,dstr(tp->quantity));
                             }
                             transfer_asset_balance(mp,tp,tp->assetbits,sender,receiver,tp->quantity);
                             break;
@@ -586,8 +579,8 @@ uint64_t update_assettxid_trade(struct NXT_trade *trade)
         {
             expand_nxt64bits(sender,tp->senderbits);
             expand_nxt64bits(receiver,tp->receiverbits);
-            if ( strcmp(assetidstr,EX_DIVIDEND_ASSETID) == 0 )
-                printf("%d) t%d >>>>>>>>> %s AE trade: NXT.%s -> NXT.%s price %.8f volume %.8f %llx\n",ap->num,tp->timestamp,assetidstr,sender,receiver,dstr(tp->price),ap->mult*dstr(tp->quantity),(long long)txidbits);
+            //if ( strcmp(assetidstr,EX_DIVIDEND_ASSETID) == 0 )
+            //    printf("%d) t%d >>>>>>>>> %s AE trade: NXT.%s -> NXT.%s price %.8f volume %.8f %llx\n",ap->num,tp->timestamp,assetidstr,sender,receiver,dstr(tp->price),ap->mult*dstr(tp->quantity),(long long)txidbits);
             transfer_asset_balance(Global_mp,tp,tp->assetbits,sender,receiver,tp->quantity);
             return(txidbits);
         }
@@ -931,14 +924,13 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
     return(jsonstr);
 }
 
-int64_t calc_MGW_assets(int32_t coinid)
+int64_t calc_MGW_assets(char *coinstr)
 {
-    char *assetid_str(int32_t coinid);
-    //static char *blacklist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, BTC_COINASSET, "" };
+  //static char *blacklist[] = { NXTISSUERACCT, NXTACCTA, NXTACCTB, NXTACCTC, NXTACCTD, NXTACCTE, BTC_COINASSET, "" };
     int64_t total = 0;
     char *assetidstr,*jsonstr;
-    assetidstr = assetid_str(coinid);
-    if ( strcmp(assetidstr,ILLEGAL_COINASSET) != 0 && strcmp(assetidstr,"0") != 0 )
+    assetidstr = get_assetid_str(coinstr);
+    if ( assetidstr != 0 && strcmp(assetidstr,ILLEGAL_COINASSET) != 0 && strcmp(assetidstr,"0") != 0 )
     {
         jsonstr = emit_asset_json(&total,assetidstr,0,MGW_blacklist);
         if ( jsonstr != 0 )
@@ -949,17 +941,18 @@ int64_t calc_MGW_assets(int32_t coinid)
 
 char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t txlog)
 {
-    int32_t conv_assetid(char *assetidstr);
+    struct coin_info *conv_assetid(char *assetidstr);
     char *get_deposit_addr(int32_t coinid,char *NXTaddr);
     char *find_user_withdrawaddr(int32_t coinid,uint64_t nxt64bits);
-    int32_t i,j,createdflag,coinid;
+    int32_t i,j,createdflag;
+    struct coin_info *cp;
     char numstr[1024],sender[1024],receiver[1024],*jsonstr = 0;
     struct NXT_acct *np,*seller,*buyer,*issuernp;
     struct NXT_asset *ap;
     struct NXT_assettxid_list *txlist;
     struct NXT_assettxid *txid;
     cJSON *json=0,*array=0,*item,*txobj,*txarray = 0;
-    coinid = conv_assetid(assetidstr);
+    cp = conv_assetid(assetidstr);
     if ( assetidstr == 0 || assetidstr[0] == 0 || strcmp(assetidstr,ILLEGAL_COINASSET) == 0 || strcmp(assetidstr,NXT_COINASSET) == 0 )
         return(0);
     if ( maxtimestamp <= 0 )
@@ -1090,15 +1083,15 @@ struct NXT_asset *init_asset(struct NXThandler_info *mp,char *assetidstr)
                 ap->description = clonestr(buf);
             if ( extract_cJSON_str(buf,sizeof(buf),json,"name") > 0 )
             {
-                int32_t conv_coinstr(char *);
-                if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' && conv_coinstr(buf+3) >= 0 )
+                //int32_t conv_coinstr(char *);
+                if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' )//&& conv_coinstr(buf+3) >= 0 )
                     ap->name = clonestr(buf+3);
                 else ap->name = clonestr(buf);
             }
             if ( strcmp("11060861818140490423",assetidstr) == 0 )
                 printf("INIT_ASSET: NXT.%llu issued %s %s decimals.%d %.8f (%s)\n",(long long)ap->issuer,assetidstr,ap->name,ap->decimals,dstr(mult * ap->issued),ap->description);
-            if ( strcmp(assetidstr,EX_DIVIDEND_ASSETID) == 0 )
-                ap->exdiv_height = EX_DIVIDEND_HEIGHT;
+            //if ( strcmp(assetidstr,EX_DIVIDEND_ASSETID) == 0 )
+            //    ap->exdiv_height = EX_DIVIDEND_HEIGHT;
             free_json(json);
         }
         free(jsonstr);

@@ -9,348 +9,70 @@
 #ifndef gateway_coins_h
 #define gateway_coins_h
 
-#define MULTIGATEWAY_VARIANT 3
+int32_t Numcoins;
+struct coin_info **Daemons;
 
-#define NXT_COINID 0
-#define BTC_COINID 1
-#define LTC_COINID 2
-#define CGB_COINID 3
-#define DOGE_COINID 4
-#define DRK_COINID 5
-#define ANC_COINID 6
-#define BC_COINID 7
-#define BTCD_COINID 8
-#define PPC_COINID 9
-#define NMC_COINID 10
-#define XC_COINID 11
-#define VRC_COINID 12
-#define ZET_COINID 13
-#define QRK_COINID 14
-#define RDD_COINID 15
-#define XPM_COINID 16
-#define FTC_COINID 17
-#define CLOAK_COINID 18
-#define VIA_COINID 19
-#define MEC_COINID 20
-#define URO_COINID 21
-#define YBC_COINID 22
-#define IFC_COINID 23
-#define VTC_COINID 24
-#define POT_COINID 25
-#define KEY_COINID 26
-#define FRAC_COINID 27
-#define CNL_COINID 28
-#define VOOT_COINID 29
-#define GML_COINID 30
-#define SYNC_COINID 31
-#define CRYPT_COINID 32
-#define RZR_COINID 33
-#define ICB_COINID 34
-#define CYC_COINID 35
-#define EAC_COINID 36
-#define MAX_COINID 37
-#define START_COINID 38
-
-#define BTC_MARKER "17outUgtsnLkguDuXm14tcQ7dMbdD8KZGK"
-#define LTC_MARKER "Le9hFCEGKDKp7qYpzfWyEFAq58kSQsjAqX"
-#define CGB_MARKER "PTqkPVfNkenMF92ZP8wfMQgQJc9DWZmwpB"
-#define DOGE_MARKER "D72Xdw5cVyuX9JLivLxG3V9awpvj7WvsMi"
-#define DRK_MARKER "XiiSWYGYozVKg3jyDLfJSF2xbieX15bNU8"
-#define ANC_MARKER "D72Xdw5cVyuX9JLivLxG3V9awpvj7WvsMi"
-#define BC_MARKER "BPyox1j426KkLy7x2uF3fygkSaM8LKVLY1"
-#define BTCD_MARKER "RMMGbxZdav3cRJmWScNVX6BJivn6BNbBE8"
-#define PPC_MARKER "PWLZF7Rw5zBGAQz2b84a29AYuk2FDDRd5V"
-#define NMC_MARKER "NEkzWvNfccfHH7T1sU2E6FhFdTqBDfn59v"
-#define XC_MARKER "XLwwCT4iGevPXqWHXBAe1BNMVLDzNRygFN"
-#define VRC_MARKER "VYtKsjtepCpy8TonPNXersfikh2uzGmXeh"
-#define ZET_MARKER "ZSyLYZ7X2Mmod4365S7cWcc3gdudjkGeSx"
-#define QRK_MARKER "QXHfTKKsWYnSqZaVqYSYrcSyYyvAbeAcoF" // bter
-#define RDD_MARKER "RpCQXn6LB4tCekx62DWoSPHbeuRsZdt59e"
-#define XPM_MARKER "AJSE7mDNgkkSYnu2XaRoarKojCk687WC9R"
-#define FTC_MARKER "6eheBngsQN5iitCiXpMDpSGawmw9TkGck5"
-#define CLOAK_MARKER "C3AkZBH3wcTkJ1H7KpZZeMLkkvk73eKYcD"
-#define VIA_MARKER "VjRSxRg9gBr4bAWNUgA5871eWa8fJqjFU4"
-#define MEC_MARKER "MRpHsm9vV3Mt59e6Ssv4XBQUbXAsJ7GFpV" // bter
-#define URO_MARKER "UPrW8bs9G9WohzQgoNCSAyVHJ6YmjytSkW"
-#define YBC_MARKER "Ydh2WyYuJa3fkMTLqqfkSkTP5dyk1N7yFV"
-#define IFC_MARKER "iB4zLQZKcuwJS7ra9eewbY8ntTKCC2U4Up" // bter
-#define VTC_MARKER "VmW1mmJNA3ThX2Ef7yL9jYEVaWuTqaNWne"
-#define POT_MARKER "PJjYpxFLCZrU6roseEjeG7q4ket2timHcp"
-#define KEY_MARKER "KCqRbcUrCY3PrGZMVgqru2S4Brwtu1Ahha"
-#define FRAC_MARKER "Fffoss3zCKP1DteiFaEUZmAYtmw6yvD3ui"
-#define CNL_MARKER "119c8uD1rqE6MFBaBetMG8dMFkXA8iWiV"
-#define VOOT_MARKER "VPNPpebJfxPcoYzBAxme54FVND9h1rHkYP"
-#define GML_MARKER "GapogT2oKxjRRcEbuDGMomM5gyYF3TSw2e"
-#define SYNC_MARKER "SRPYSpw2YoKC9Vkdt7sqPjgzfg3LppcBZA"
-#define CRYPT_MARKER "ExpiWbZJMSqjaKYXWz2ywVcKQxUsk91fyG"
-#define RZR_MARKER "RUZgYrCcrERhYDqShgW1cYX2cE3Maw2bUi"
-#define ICB_MARKER "iqhciwDtWyiQhR5SMxYauiXf4sAmFkGXuT"
-#define CYC_MARKER "CfNs2kTF6vZ8zsxKc54SYQPksFH87nM9hn"
-#define EAC_MARKER "eYyTgezT256CstvUiZ3TobkaY4obhrefsR"
-#define MAX_MARKER "mXRm6wDYZFZsPzFwGKSaNuXPczSEfLi67Y"
-#define START_MARKER "sXWgrDSE6ugt5uAfJnLWGiN7yYrk97DSNH"
-
-
-//#define CGB_COINASSET "3033014595361865200"
-//#define DOGE_COINASSET "8011756047853511145"   //"17694574681003862481"
-//#define USD_COINASSET "4562283093369359331"
-//#define CNY_COINASSET "13983943517283353302"
-
-#ifdef PRODUCTION
-//#define SERVER_NAMEA "65.49.77.102"
-//#define SERVER_NAMEB "65.49.77.114"
-//#define SERVER_NAMEC "65.49.77.115"
-
-//#define NXTACCTA "3144696369927305525"
-//#define NXTACCTB "17410682079219394914"
-//#define NXTACCTC "14311766766716340607"
-//#define NXTACCTD "14311766766716340607"
-//#define NXTACCTE "14311766766716340607"
-#else
-
-//#define SERVER_NAMEA "209.126.70.170"   //"209.126.71.170"
-//#define SERVER_NAMEB "209.126.70.156"   //"209.126.73.156"
-//#define SERVER_NAMEC "209.126.70.159"   //"209.126.73.158"
-
-
-//#define NXTACCTA "423766016895692955"
-//#define NXTACCTB "12240549928875772593"
-//#define NXTACCTC "8279528579993996036"
-//#define NXTACCTD "5723512772332443130"
-//#define NXTACCTE "15740288657919119263"
-#endif
-
-#ifdef MAINNET
-//#define ORIGBLOCK "14398161661982498695"    //"91889681853055765";//"16787696303645624065";
-
-//#define BTC_COINASSET "4551058913252105307"
-//#define LTC_COINASSET "2881764795164526882"
-//#define DRK_COINASSET "17353118525598940144"
-//#define BTCD_COINASSET "13897302962208744213"
-
-//#define NXTISSUERACCT "7117166754336896747"     // multigateway MGW is the issuer
-//#define NODECOIN "11749590149008849562"
-#else
-
-//#define NXTISSUERACCT "18232225178877143084"
-//#define NODECOIN "9096665501521699628"
-
-//#define ORIGBLOCK "16787696303645624065"    //"91889681853055765";//"16787696303645624065";
-
-//#define BTC_COINASSET "1639299849328439538"
-//#define LTC_COINASSET "1994770251775275406"
-//#define DRK_COINASSET "4731882869050825869"
-#endif
-
-//#define USD "3759130218572630531"
-//#define CNY "17293030412654616962"
-
-//#define SERVER_PORT 3013
-//#define SERVER_PORTSTR "3013"
-//#define MIN_NQTFEE SATOSHIDEN
-
-/*
-
-#define BTC_CONF "bitcoin"
-#define BTC_TXFEE .0001           // don't forget to match txfee with coin
-#define BTC_NXTEQUIV .0001
-#define BTC_MIN_CONFIRMS 4
-#define BTC_PORT "127.0.0.1:8332"
-#define BTC_FIRST_BLOCKHEIGHT 300797    //300192
-#define BTC_FORK_BLOCKHEIGHT 308539
-
-#define LTC_CONF "litecoin"
-#define LTC_TXFEE .001           // don't forget to match txfee with coin
-#define LTC_NXTEQUIV .01
-#define LTC_MIN_CONFIRMS 6
-#define LTC_PORT "127.0.0.1:9332"
-#define LTC_FIRST_BLOCKHEIGHT 564980
-#define LTC_FORK_BLOCKHEIGHT 594965
-
-#define CGB_CONF "cgbcoin"
-#define CGB_TXFEE .0001           // don't forget to match txfee with coin
-#define CGB_NXTEQUIV .1
-#define CGB_MIN_CONFIRMS 3
-#define CGB_PORT "127.0.0.1:9902"
-#define CGB_FIRST_BLOCKHEIGHT 104411
-
-#define DOGE_CONF "dogecoin"
-#define DOGE_TXFEE 1.0000           // don't forget to match txfee with coin
-#define DOGE_NXTEQUIV 100
-#define DOGE_MIN_CONFIRMS 6
-#define DOGE_PORT "127.0.0.1:22555"
-#define DOGE_FIRST_BLOCKHEIGHT 216981   //175713   //162555
-
-#define DRK_CONF "darkcoin"
-#define DRK_TXFEE .01             // don't forget to match txfee with coin
-#define DRK_NXTEQUIV .01
-#define DRK_MIN_CONFIRMS 6
-#define DRK_PORT "127.0.0.1:9998"
-#define DRK_FIRST_BLOCKHEIGHT 49594
-
-#define BTCD_CONF "BitcoinDark"
-#define BTCD_TXFEE .01             // don't forget to match txfee with coin
-#define BTCD_NXTEQUIV .1
-#define BTCD_MIN_CONFIRMS 3
-#define BTCD_PORT "127.0.0.1:14632"
-#define BTCD_FIRST_BLOCKHEIGHT 16000
-
-#define ANC_COINASSET ""
-#define ANC_CONF "anoncoin"
-#define ANC_TXFEE .01             // don't forget to match txfee with coin
-#define ANC_NXTEQUIV .1
-#define ANC_MIN_CONFIRMS 3
-#define ANC_PORT "127.0.0.1:9998"
-#define ANC_FIRST_BLOCKHEIGHT 0
-
-
-#define BC_COINASSET ""
-#define BC_CONF "blackcoin"
-#define BC_TXFEE .01             // don't forget to match txfee with coin
-#define BC_NXTEQUIV 1
-#define BC_MIN_CONFIRMS 3
-#define BC_PORT "127.0.0.1:15715"
-#define BC_FIRST_BLOCKHEIGHT 0
-
-*/
-
-
-char *get_marker(int32_t coinid)
+struct coin_info *get_coin_info(char *coinstr)
 {
-    switch ( coinid )
-    {
-        case NXT_COINID: return("NXT doesnt need a marker");
-        case BTC_COINID: return(BTC_MARKER);
-        case LTC_COINID: return(LTC_MARKER);
-        case CGB_COINID: return(CGB_MARKER);
-        case DOGE_COINID: return(DOGE_MARKER);
-        case DRK_COINID: return(DRK_MARKER);
-        case ANC_COINID: return(ANC_MARKER);
-        case BC_COINID: return(BC_MARKER);
-        case BTCD_COINID: return(BTCD_MARKER);
-        case PPC_COINID: return(PPC_MARKER);
-        case NMC_COINID: return(NMC_MARKER);
-        case XC_COINID: return(XC_MARKER);
-        case VRC_COINID: return(VRC_MARKER);
-        case ZET_COINID: return(ZET_MARKER);
-        case QRK_COINID: return(QRK_MARKER);
-        case RDD_COINID: return(RDD_MARKER);
-        case XPM_COINID: return(XPM_MARKER);
-        case FTC_COINID: return(FTC_MARKER);
-        case CLOAK_COINID: return(CLOAK_MARKER);
-        case VIA_COINID: return(VIA_MARKER);
-        case MEC_COINID: return(MEC_MARKER);
-        case URO_COINID: return(URO_MARKER);
-        case YBC_COINID: return(YBC_MARKER);
-        case IFC_COINID: return(IFC_MARKER);
-        case VTC_COINID: return(VTC_MARKER);
-        case POT_COINID: return(POT_MARKER);
-        case KEY_COINID: return(KEY_MARKER);
-        case FRAC_COINID: return(FRAC_MARKER);
-        case CNL_COINID: return(CNL_MARKER);
-        case VOOT_COINID: return(VOOT_MARKER);
-        case GML_COINID: return(GML_MARKER);
-        case SYNC_COINID: return(SYNC_MARKER);
-        case CRYPT_COINID: return(CRYPT_MARKER);
-        case RZR_COINID: return(RZR_MARKER);
-        case ICB_COINID: return(ICB_MARKER);
-        case CYC_COINID: return(CYC_MARKER);
-        case EAC_COINID: return(EAC_MARKER);
-        case MAX_COINID: return(MAX_MARKER);
-        case START_COINID: return(START_MARKER);
-    }
+    int32_t i;
+    for (i=0; i<Numcoins; i++)
+        if ( strcmp(coinstr,Daemons[i]->name) == 0 )
+            return(Daemons[i]);
     return(0);
 }
 
-char *coinid_str(int32_t coinid)
+char *get_marker(char *coinstr)
 {
-    switch ( coinid )
-    {
-        case NXT_COINID: return("NXT");
-        case BTC_COINID: return("BTC");
-        case LTC_COINID: return("LTC");
-        case CGB_COINID: return("CGB");
-        case DOGE_COINID: return("DOGE");
-        case DRK_COINID: return("DRK");
-        case ANC_COINID: return("ANC");
-        case BC_COINID: return("BC");
-        case BTCD_COINID: return("BTCD");
-        case PPC_COINID: return("PPC");
-        case NMC_COINID: return("NMC");
-        case XC_COINID: return("XC");
-        case VRC_COINID: return("VRC");
-        case ZET_COINID: return("ZET");
-        case QRK_COINID: return("QRK");
-        case RDD_COINID: return("RDD");
-        case XPM_COINID: return("XPM");
-        case FTC_COINID: return("FTC");
-        case CLOAK_COINID: return("CLOAK");
-        case VIA_COINID: return("VIA");
-        case MEC_COINID: return("MEC");
-        case URO_COINID: return("URO");
-        case YBC_COINID: return("YBC");
-        case IFC_COINID: return("IFC");
-        case VTC_COINID: return("VTC");
-        case POT_COINID: return("POT");
-        case KEY_COINID: return("KEY");
-        case FRAC_COINID: return("FRAC");
-        case CNL_COINID: return("CNL");
-        case VOOT_COINID: return("VOOT");
-        case GML_COINID: return("GML");
-        case SYNC_COINID: return("SYNC");
-        case CRYPT_COINID: return("CRYPT");
-        case RZR_COINID: return("RZR");
-        case ICB_COINID: return("ICB");
-        case CYC_COINID: return("CYC");
-        case EAC_COINID: return("EAC");
-        case MAX_COINID: return("MAX");
-        case START_COINID: return("START");
-    }
-    return(ILLEGAL_COIN);
+    struct coin_info *cp;
+    if ( strcmp(coinstr,"NXT") == 0 )
+        return("8712042175100667547"); // NXTprivacy
+    else if ( strcmp(coinstr,"BTC") == 0 )
+        return("177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
+    else if ( strcmp(coinstr,"BTCD") == 0 )
+        return("RMMGbxZdav3cRJmWScNVX6BJivn6BNbBE8");
+    else if ( strcmp(coinstr,"LTC") == 0 )
+        return("LUERp4v5abpTk9jkuQh3KFxc4mFSGTMCiz");
+    else if ( strcmp(coinstr,"DRK") == 0 )
+        return("XmxSWLPA92QyAXxw2FfYFFex6QgBhadv2Q");
+    else if ( (cp= get_coin_info(coinstr)) != 0 )
+        return(cp->marker);
+    else return(0);
 }
 
-char *assetid_str(int32_t coinid)
+char *get_assetid_str(char *coinstr)
 {
-    if ( coinid < 0 || coinid >= MAX_MGWCOINS || Assetid_strs[coinid][0] == 0 )
-        return(ILLEGAL_COINASSET);
-    else return(Assetid_strs[coinid]);
+    struct coin_info *cp;
+    if ( (cp= get_coin_info(coinstr)) != 0 && cp->assetid[0] != 0 )
+        return(cp->assetid);
+    return(0);
 }
 
-int32_t conv_coinstr(char *_name)
+uint64_t get_assetidbits(char *coinstr)
 {
-    int32_t i,coinid;
-    char name[256];
-    strcpy(name,_name);
-    for (i=0; name[i]!=0; i++)
-        name[i] = toupper(name[i]);
-    for (coinid=0; coinid<MAX_MGWCOINS; coinid++)
-        if ( strcmp(coinid_str(coinid),name) == 0 )
-            return(coinid);
-    return(-1);
+    struct coin_info *cp;
+    if ( (cp= get_coin_info(coinstr)) != 0 && cp->assetid[0] != 0 )
+        return(calc_nxt64bits(cp->assetid));
+    return(0);
 }
 
-int32_t conv_assetid(char *assetid)
+struct coin_info *conv_assetid(char *assetid)
 {
     int32_t i;
-    for (i=0; i<MAX_MGWCOINS; i++)
-        if ( strcmp(assetid_str(i),assetid) == 0 )
-            return(i);
-    return(-1);
+    for (i=0; i<Numcoins; i++)
+        if ( strcmp(Daemons[i]->assetid,assetid) == 0 )
+            return(Daemons[i]);
+    return(0);
 }
 
 uint64_t get_orderbook_assetid(char *coinstr)
 {
-    char *assetidstr;
-    int32_t i,coinid;
+    struct coin_info *cp;
+    int32_t i;
     uint64_t virtassetid;
     if ( strcmp(coinstr,"NXT") == 0 )
         return(ORDERBOOK_NXTID);
-    if ( (coinid= conv_coinstr(coinstr)) >= 0 )
-    {
-        assetidstr = assetid_str(coinid);
-        if ( strcmp(assetidstr,ILLEGAL_COINASSET) != 0 )
-            return(calc_nxt64bits(assetidstr));
-    }
+    if ( (cp= get_coin_info(coinstr)) != 0 )
+        return(calc_nxt64bits(cp->assetid));
     virtassetid = 0;
     for (i=0; coinstr[i]!=0; i++)
     {
@@ -360,18 +82,166 @@ uint64_t get_orderbook_assetid(char *coinstr)
     return(virtassetid);
 }
 
+int32_t is_gateway_addr(char *addr)
+{
+    int32_t i;
+    if ( strcmp(addr,NXTISSUERACCT) == 0 )
+        return(1);
+    for (i=0; i<256; i++)
+    {
+        if ( Server_NXTaddrs[i][0] == 0 )
+            break;
+        if ( strcmp(addr,Server_NXTaddrs[i]) == 0 )
+            return(1);
+    }
+    return(0);
+}
+
+char *parse_conf_line(char *line,char *field)
+{
+    line += strlen(field);
+    for (; *line!='='&&*line!=0; line++)
+        break;
+    if ( *line == 0 )
+        return(0);
+    if ( *line == '=' )
+        line++;
+    stripstr(line,strlen(line));
+    printf("[%s]\n",line);
+    return(clonestr(line));
+}
+
+char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char *fname)
+{
+    FILE *fp;
+    char line[1024],*rpcuser,*rpcpassword,*str;
+    userpass[0] = 0;
+    if ( (fp= fopen(fname,"r")) != 0 )
+    {
+        printf("extract_userpass from (%s)\n",fname);
+        rpcuser = rpcpassword = 0;
+        while ( fgets(line,sizeof(line),fp) > 0 )
+        {
+            if ( line[0] == '#' )
+                continue;
+            //printf("line.(%s) %p %p\n",line,strstr(line,"rpcuser"),strstr(line,"rpcpassword"));
+            if ( (str= strstr(line,"rpcuser")) != 0 )
+                rpcuser = parse_conf_line(str,"rpcuser");
+            else if ( (str= strstr(line,"rpcpassword")) != 0 )
+                rpcpassword = parse_conf_line(str,"rpcpassword");
+        }
+        if ( rpcuser != 0 && rpcpassword != 0 )
+            sprintf(userpass,"%s:%s",rpcuser,rpcpassword);
+        else userpass[0] = 0;
+        printf("-> (%s):(%s) userpass.(%s)\n",rpcuser,rpcpassword,userpass);
+        if ( rpcuser != 0 )
+            free(rpcuser);
+        if ( rpcpassword != 0 )
+            free(rpcpassword);
+    }
+    else
+    {
+        printf("extract_userpass cant open.(%s)\n",fname);
+        return(0);
+    }
+    return(serverport);
+}
+
+struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,double txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,double NXTfee_equiv,int32_t forkblock)
+{
+    struct coin_info *cp = calloc(1,sizeof(*cp));
+    char userpass[512];
+    if ( forkblock == 0 )
+        forkblock = blockheight;
+    safecopy(cp->name,name,sizeof(cp->name));
+    cp->estblocktime = estblocktime;
+    cp->NXTfee_equiv = (NXTfee_equiv  * SATOSHIDEN);
+    safecopy(cp->assetid,asset,sizeof(cp->assetid));
+    cp->marker = clonestr(marker);
+    cp->blockheight = blockheight;
+    cp->min_confirms = minconfirms;
+    cp->markeramount = (uint64_t)(txfee * SATOSHIDEN);
+    cp->txfee = (uint64_t)(txfee  * SATOSHIDEN);
+    serverport = extract_userpass(cp,serverport,userpass,conf_fname);
+    if ( serverport != 0 )
+    {
+        cp->serverport = clonestr(serverport);
+        cp->userpass = clonestr(userpass);
+        printf("%s userpass.(%s) -> (%s)\n",cp->name,cp->userpass,cp->serverport);
+        cp->nohexout = nohexout;
+        cp->use_addmultisig = useaddmultisig;
+        cp->minconfirms = minconfirms;
+        cp->estblocktime = estblocktime;
+        cp->txfee = (uint64_t)(txfee  * SATOSHIDEN);
+        cp->forkheight = forkblock;
+        printf("%s minconfirms.%d txfee %.8f | marker %.8f NXTfee %.8f | firstblock.%ld fork.%d %d seconds\n",cp->name,cp->minconfirms,dstr(cp->txfee),dstr(cp->markeramount),dstr(cp->NXTfee_equiv),(long)cp->blockheight,cp->forkheight,cp->estblocktime);
+    }
+    else
+    {
+        free(cp);
+        cp = 0;
+    }
+    return(cp);
+}
+
+struct coin_info *init_coin_info(cJSON *json,char *coinstr)
+{
+    int32_t useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock;
+    char asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],*marker,*name;
+    double txfee,NXTfee_equiv;
+    struct coin_info *cp = 0;
+    if ( json != 0 )
+    {
+        nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),0);
+        useaddmultisig = get_API_int(cJSON_GetObjectItem(json,"useaddmultisig"),0);
+        blockheight = get_API_int(cJSON_GetObjectItem(json,"blockheight"),0);
+        forkblock = get_API_int(cJSON_GetObjectItem(json,"forkblock"),0);
+        pollseconds = get_API_int(cJSON_GetObjectItem(json,"pollseconds"),60);
+        minconfirms = get_API_int(cJSON_GetObjectItem(json,"minconfirms"),10);
+        estblocktime = get_API_int(cJSON_GetObjectItem(json,"estblocktime"),300);
+        txfee = get_API_float(cJSON_GetObjectItem(json,"txfee"));
+        NXTfee_equiv = get_API_float(cJSON_GetObjectItem(json,"NXTfee_equiv"));
+        if ( (marker = get_marker(coinstr)) == 0 )
+        {
+            extract_cJSON_str(_marker,sizeof(_marker),json,"marker");
+            marker = clonestr(_marker);
+        }
+        if ( marker != 0 && txfee != 0. && NXTfee_equiv != 0. &&
+            extract_cJSON_str(conf_filename,sizeof(conf_filename),json,"conf") > 0 &&
+            extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
+            extract_cJSON_str(serverip_port,sizeof(serverip_port),json,"rpc") > 0 )
+        {
+            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,name,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock);
+            if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
+                cp->tradebotfname = clonestr(tradebotfname);
+        }
+    }
+    return(cp);
+}
+
 void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
 {
     int32_t init_tradebots(cJSON *languagesobj);
     static int32_t exchangeflag;
     uint64_t nxt64bits;
+    //FILE *fp;
     cJSON *array,*item,*languagesobj = 0;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
-    int32_t i,n,coinid,ismainnet,timezone=0;
+    int32_t i,n,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
     exchangeflag = !strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
     //init_filtered_bufs(); crashed ubunty
+    ensure_directory("backups");
+    ensure_directory("backups/telepods");
+    /*if ( (fp= fopen("backups/tmp","rb")) == 0 )
+    {
+        if ( system("mkdir backups") != 0 )
+            printf("error making backup dir\n");
+        fp = fopen("backups/tmp","wb");
+        fclose(fp);
+    }
+    else fclose(fp);*/
     if ( 0 )
     {
         char *argv[1] = { "test" };
@@ -380,7 +250,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         getchar();
     }
     printf("load MGW.conf\n");
-    jsonstr = load_file("MGW.conf",&buf,&len,&allocsize);
+    jsonstr = load_file("jl777.conf",&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
         printf("loaded.(%s)\n",jsonstr);
@@ -394,8 +264,6 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
-            SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),0) - MULTIGATEWAY_VARIANT;
-            sprintf(SERVER_PORTSTR,"%d",SERVER_PORT);
             extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
@@ -442,21 +310,15 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                         break;
                     item = cJSON_GetArrayItem(array,i);
                     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
-                    coinid = conv_coinstr(coinstr);
-                    if ( coinid >= 0 )
+                    if ( coinstr[0] != 0 )
                     {
-#ifdef UNIVERSAL
-                        if ( coinid != BTC_COINID && coinid != LTC_COINID && coinid != DRK_COINID && coinid != BTCD_COINID )
-#endif
-                        {
-                            MGWcoins[coinid] = item;
-                            if ( extract_cJSON_str(Assetid_strs[coinid],sizeof(Assetid_strs[coinid]),item,"asset") <= 0 )
-                            {
-                                printf("coinid.%d %s missing asset!\n",coinid,coinstr);
-                                exit(1);
-                            }
-                            printf("i.%d coinid.%d %s asset.%s\n",i,coinid,coinstr,Assetid_strs[coinid]);
-                        }
+                        MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
+                        MGWcoins[Numcoins] = item;
+                        Daemons[Numcoins] = init_coin_info(item,coinstr);
+                        int32_t load_telepods(struct coin_info *);
+                        load_telepods(Daemons[Numcoins]);
+                        printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
+                        Numcoins++;
                     }
                 }
             }
@@ -482,7 +344,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                 printf("special_addrs.%d\n",n);
                 MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;
                 MGW_whitelist[n] = "";
-                MGW_blacklist[n++] = Assetid_strs[BTC_COINID];    // from accidental transfer
+                MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
                 MGW_blacklist[n++] = "";
             }
             void start_polling_exchanges(int32_t exchangeflag);
@@ -492,25 +354,10 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
         }
     }
     init_tradebots(languagesobj);
-    if ( GATEWAY_SIG == 0 || NXTISSUERACCT[0] == 0 || ORIGBLOCK[0] == 0 || SERVER_PORT == 0 )
+    if ( ORIGBLOCK[0] == 0 )
     {
-        printf("need a non-zero GATEWAY_SIG || no issuer.(%s) or no origblock.(%s) or null serverport.%d\n",NXTISSUERACCT,ORIGBLOCK,SERVER_PORT);
+        printf("need a non-zero origblock.(%s)\n",ORIGBLOCK);
         exit(1);
     }
-}
-
-int32_t is_gateway_addr(char *addr)
-{
-    int32_t i;
-    if ( strcmp(addr,NXTISSUERACCT) == 0 )
-        return(1);
-    for (i=0; i<256; i++)
-    {
-        if ( Server_NXTaddrs[i][0] == 0 )
-            break;
-        if ( strcmp(addr,Server_NXTaddrs[i]) == 0 )
-            return(1);
-    }
-    return(0);
 }
 #endif

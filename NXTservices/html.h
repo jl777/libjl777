@@ -488,17 +488,18 @@ int gen_pNXT_send_fields(char *NXTaddr,char *handler,char *name,char **fields,ch
     return(n);
 }
 
-int gen_pNXT_privatesend_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
+int gen_pNXT_teleport_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*dest,*amount,*secret,*coin;
-    secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
-    dest = construct_varname(fields,n++,name,"dest","dest NXT account:",0,0);
-    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    char script[16384],*dest,*amount,*secret,*coin,*walletpass;
+    secret = construct_varname(fields,n++,name,"secret","NXT secret:",0,0);
+    dest = construct_varname(fields,n++,name,"dest","dest account (BTCD, NXT or BTC):",0,0);
     coin = construct_varname(fields,n++,name,"coin","coin:",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"coin\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount,coin);
+    amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
+    walletpass = construct_varname(fields,n++,name,"walletpass","coin wallet password (if not enough telepods):",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"coin\":\"' + %s + '\",\"walletpass\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount,coin,walletpass);
     *scriptp = clonestr(script);
-    free(secret); free(dest); free(amount); free(coin);
+    free(secret); free(dest); free(amount); free(coin); free(walletpass);
     return(n);
 }
 
@@ -662,7 +663,7 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     
     forms[n] = make_form(NXTaddr,&scripts[n],"placeask","place ask","ask","127.0.0.1:7777","pNXT",gen_pNXT_placequote_fields);
     n++;
-    forms[n] = make_form(NXTaddr,&scripts[n],"privatesend","privatesend NXT (NXT -> pNXT -> dest privacyServer -> dest NXT addr)","privatesend","127.0.0.1:7777","pNXT",gen_pNXT_privatesend_fields);
+    forms[n] = make_form(NXTaddr,&scripts[n],"teleport","teleport funds","teleport","127.0.0.1:7777","pNXT",gen_pNXT_teleport_fields);
     n++;
 
     sprintf(buf,"pNXT cryptnote address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));

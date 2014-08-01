@@ -326,6 +326,58 @@ struct NXT_protocol
 };
 
 struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
+#define MAX_COINTXID_LEN 128
+#define MAX_COINADDR_LEN 128
+#define MAX_COIN_INPUTS 32
+#define MAX_COIN_OUTPUTS 2
+#define MAX_PRIVKEY_SIZE 256
+
+struct rawtransaction
+{
+    struct coin_value *inputs[MAX_COIN_INPUTS];
+    char *destaddrs[MAX_COIN_OUTPUTS],txid[MAX_COINADDR_LEN];
+    int64_t amount,change,inputsum,destamounts[MAX_COIN_OUTPUTS];
+    int32_t numoutputs,numinputs,completed,broadcast,confirmed;
+    char *rawtxbytes,*signedtx;
+};
+
+struct coin_value
+{
+    int64_t modified,value;
+    char *txid;
+    struct coin_txid *parent,*spent,*pendingspend;
+    union { char *script; char *coinbase; };
+    int32_t parent_vout,spent_vin,pending_spendvin,isconfirmed,iscoinbase,isinternal;
+    char coinaddr[MAX_COINADDR_LEN];
+};
+
+struct coin_txid
+{
+    int64_t modified;
+    uint64_t confirmedAMbits,NXTxferbits,redeemtxid;
+    char *decodedrawtx;
+    int32_t numvins,numvouts,hasinternal,height;
+    struct coin_value **vins,**vouts;
+    char txid[MAX_COINTXID_LEN];
+};
+
+struct coincache_info
+{
+    FILE *cachefp,*blocksfp;
+    struct hashtable *coin_txids;
+    char **blocks,*ignorelist;
+    int32_t ignoresize,lastignore,numblocks,purgedblock;
+};
+
+struct coin_info
+{
+    int32_t timestamps[100];
+    struct coincache_info CACHE;
+    struct telepod **telepods;
+    char name[64],*userpass,*serverport,assetid[64],*marker,*tradebotfname;
+    uint64_t NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
+    int32_t initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,numtelepods,savedtelepods;
+};
 
 #define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
 #define GETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
@@ -345,12 +397,10 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 void gen_testforms(char *secret);
 extern uv_loop_t *UV_loop;
-int SERVER_PORT;
 char Server_names[NUM_GATEWAYS+1][64];
-#define MAX_MGWCOINS 64
-char Server_NXTaddrs[256][64],Assetid_strs[MAX_MGWCOINS][64],SERVER_PORTSTR[64];
+char Server_NXTaddrs[256][64],SERVER_PORTSTR[64];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[64],NXTISSUERACCT[64];
-cJSON *MGWconf,*MGWcoins[64];
+cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
 int32_t MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;

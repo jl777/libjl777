@@ -8,7 +8,6 @@
 #ifndef xcode_orders_h
 #define xcode_orders_h
 
-#include "../NXTservices/atomic.h"
 
 #define ORDERBOOK_SIG 0x83746783
 
@@ -549,17 +548,6 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
     return(clonestr(buf));
 }
 
-char *privatesend(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,char *coinstr)
-{
-    char buf[1024];
-    uint64_t satoshis;
-    struct NXT_acct *np;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    satoshis = (amount * SATOSHIDEN);
-    sprintf(buf,"privatesend %.8f NXT from NXT.%s to NXT.%s",dstr(satoshis),NXTaddr,dest);
-    return(clonestr(buf));
-}
-
 char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
 {
     char buf[4096],pubkey[128];
@@ -693,7 +681,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
                 printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
                 exit(-1);
             }
-            if ( np != 0 )
+            if ( np != 0 && len < 1400 )
             {
                 printf("udpsend finalbuf.%d\n",len);
                 portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
@@ -701,6 +689,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
                 printf("Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
+                // jl777: must strip destination info!!
                 if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,finalbuf,len) == 0 )
                 {
                     sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);

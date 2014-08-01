@@ -5,6 +5,10 @@
 //  Created by jl777 on 7/16/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
+// is_relevant_coinvalue?
+// secure and redundant telepod storage
+// "telepod" JSON API -> auto trigger copy
+// jl777.conf options: privacyserver
 
 #ifndef xcode_atomic_h
 #define xcode_atomic_h
@@ -20,6 +24,289 @@ struct NXT_tx
     int32_t deadline,type,subtype,verify;
     char comment[128];
 };
+
+#define TELEPOD_CONTENTS_VOUT 0
+#define TELEPOD_CHANGE_VOUT 1   // vout 0 is for the pod contents and last one (1 if no change or 2) is marker
+
+struct telepod
+{
+    uint64_t satoshis;
+    uint16_t podsize,vout,saved;
+    uint32_t height;
+    char coinstr[8],txid[MAX_COINTXID_LEN],coinaddr[MAX_COINADDR_LEN],script[128];
+    char privkey[];
+};
+
+struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout)
+{
+    struct telepod *pod;
+    int32_t size,len;
+    len = (int32_t)strlen(privkey);
+    size = (int32_t)(sizeof(*pod) + len + 1);
+    pod = calloc(1,size);
+    pod->podsize = size;
+    pod->vout = vout;
+    safecopy(pod->coinstr,cp->name,sizeof(pod->coinstr));
+    safecopy(pod->coinaddr,podaddr,sizeof(pod->coinaddr));
+    safecopy(pod->script,script,sizeof(pod->script));
+    safecopy(pod->privkey,privkey,len+1);
+    safecopy(pod->txid,txid,sizeof(pod->txid));
+    pod->satoshis = satoshis;
+    return(pod);
+}
+
+struct telepod *search_telepods(struct coin_info *cp,char *coinaddr)
+{
+    int32_t i;
+    for (i=0; i<cp->numtelepods; i++)
+        if ( strcmp(cp->telepods[i]->coinaddr,coinaddr) == 0 )
+            return(cp->telepods[i]);
+    return(0);
+}
+
+void save_telepod(struct coin_info *cp,struct telepod *refpod)
+{
+    FILE *fp;
+    char fname[512];
+    struct telepod *pod;
+    if ( (pod= search_telepods(cp,refpod->coinaddr)) == 0 || pod->vout != refpod->vout )
+    {
+        cp->telepods = realloc(cp->telepods,sizeof(*cp->telepods) * (1 + cp->numtelepods));
+        cp->telepods[cp->numtelepods++] = refpod;
+        if ( refpod->saved == 0 )
+        {
+            sprintf(fname,"backups/telepods/%s.%d",cp->name,cp->savedtelepods);
+            if ( (fp= fopen(fname,"wb")) != 0 )
+            {
+                if ( fwrite(refpod,1,refpod->podsize,fp) != refpod->podsize )
+                    printf("error saving refpod.(%s)\n",fname);
+                else refpod->saved = 1;
+            }
+        }
+    }
+}
+
+int32_t load_telepods(struct coin_info *cp)
+{
+    FILE *fp;
+    long fsize;
+    char fname[512];
+    struct telepod *pod;
+    while ( 1 )
+    {
+        sprintf(fname,"backups/telepods/%s.%d",cp->name,cp->savedtelepods);
+        if ( (fp= fopen(fname,"rb")) != 0 )
+        {
+            cp->savedtelepods++;
+            fseek(fp,0,SEEK_END);
+            fsize = ftell(fp);
+            rewind(fp);
+            pod = calloc(1,fsize);
+            if ( fread(pod,1,fsize,fp) != fsize )
+                printf("error loading refpod.(%s)\n",fname);
+            else
+            {
+                pod->saved = 1;
+                save_telepod(cp,pod);
+            }
+        } else break;
+    }
+    return(cp->savedtelepods);
+}
+
+void conv_telepod(struct coin_value *vp,struct telepod *pod)
+{
+    memset(vp,0,sizeof(*vp));
+    vp->value = pod->satoshis;
+    vp->txid = pod->txid;
+    vp->parent_vout = pod->vout;
+    safecopy(vp->coinaddr,pod->coinaddr,sizeof(vp->coinaddr));
+    vp->script = pod->script;
+}
+
+void free_coin_value(struct coin_value *vp)
+{
+    if ( vp != 0 )
+    {
+       // if ( vp->script != 0 )
+       //     free(vp->script);
+        free(vp);
+    }
+}
+
+struct coin_value **select_telepods(int32_t *nump,uint64_t *balancep,struct telepod **pods,int32_t n,uint64_t satoshis)
+{
+    int32_t i,num = 0;
+    uint64_t total = 0;
+    struct coin_value **ups,*vp;
+    ups = calloc(n,sizeof(*ups));
+    for (i=0; i<n; i++)
+    {
+        vp = calloc(1,sizeof(*vp));
+        conv_telepod(vp,pods[i]);
+        ups[num++] = vp;
+        total += pods[i]->satoshis;
+        if ( total >= satoshis )
+            break;
+    }
+    *nump = num;
+    if ( num == 0 || total < satoshis )
+        free(ups), ups = 0;
+    return(ups);
+}
+
+uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
+{
+    if ( strcmp(cp->name,"BTCD") == 0 )
+        return(cp->txfee);
+    else return(cp->txfee + (satoshis>>10));
+}
+
+struct telepod *make_telepod(struct coin_info *cp,double amount,struct telepod **pods,int32_t num)
+{
+    char *podaddr,*txid,*privkey,*changeaddr,args[1024],script[1024];
+    struct telepod *pod = 0;
+    struct coin_value **ups;
+    int32_t i,n;
+    uint64_t balance,satoshis,fee;
+    struct rawtransaction RAW;
+    satoshis = amount * SATOSHIDEN;
+    podaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","telepods");
+    if ( podaddr != 0 )
+    {
+        sprintf(args,"\"%s\"",podaddr);
+        privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+        if ( privkey != 0 )
+        {
+            //jl777: set script, also maybe better to just teleport all telepods summing less than total?
+            if ( pods == 0 )
+            {
+                sprintf(args,"[{\"transporter\"},{\"%s\"},{%.8f}]",podaddr,amount);
+                if ( (txid= bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendfrom",args)) == 0 )
+                    printf("error funding telepod from transporter\n");
+                else pod = create_telepod(0,cp,satoshis,podaddr,script,privkey,txid,TELEPOD_CONTENTS_VOUT);
+            }
+            else
+            {
+                fee = calc_transporter_fee(cp,satoshis);
+                ups = select_telepods(&n,&balance,pods,num,satoshis+fee);
+                if ( ups != 0 )
+                {
+                    memset(&RAW,0,sizeof(RAW));
+                    if ( balance > satoshis+fee )
+                        changeaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","telepods");
+                    else changeaddr = 0;
+                    if ( (txid= calc_rawtransaction(cp,&RAW,podaddr,fee,changeaddr,ups,n,satoshis+fee,balance)) == 0 )
+                        printf("error funding telepod from telepods %p.num %d\n",pods,num);
+                    else pod = create_telepod(0,cp,satoshis,podaddr,script,privkey,txid,TELEPOD_CONTENTS_VOUT);
+                    purge_rawtransaction(&RAW);
+                    for (i=0; i<n; i++)
+                        free_coin_value(ups[i]);
+                    free(ups);
+                    if ( changeaddr != 0 )
+                    {
+                        // need to set script and privkey
+                        create_telepod(1,cp,balance - (satoshis+fee),changeaddr,script,privkey,txid,TELEPOD_CHANGE_VOUT);
+                    }
+                }
+            }
+            free(privkey);
+        }
+        free(podaddr);
+    }
+    return(pod);
+}
+
+int32_t get_privkeys(char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE],struct coin_info *cp,char **localcoinaddrs,int32_t num)
+{
+    char args[1024],*privkey;
+    int32_t i,n = 0;
+    struct telepod *pod;
+    for (i=0; i<num; i++)
+    {
+        if ( cp != 0 && localcoinaddrs[i] != 0 )
+        {
+            sprintf(args,"\"%s\"",localcoinaddrs[i]);
+            privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+            if ( privkey != 0 )
+            {
+                n++;
+                strcpy(privkeys[i],privkey);
+                free(privkey);
+            }
+            else
+            {
+                if ( (pod= search_telepods(cp,localcoinaddrs[i])) != 0 )
+                    strcpy(privkeys[i],pod->privkey);
+                else printf("cant dumpprivkey for (%s) nor is it a telepod we have\n",localcoinaddrs[i]);
+            }
+        }
+    }
+    return(n);
+}
+
+int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp) // jl777 this confusing vin vs vout?!
+{
+    struct telepod *pod;
+    if ( (pod= search_telepods(cp,vp->coinaddr)) != 0 && pod->vout == vp->parent_vout )
+    {
+        if ( pod->saved == 0 )
+            save_telepod(cp,pod);
+        return(1);
+    }
+    return(0);
+}
+
+char *transporter(char *NXTaddr,char *NXTACCTSECRET,char *dest,struct telepod *pod)
+{
+    cJSON *json;
+    struct NXT_acct *np;
+    char numstr[32],*msg,*retstr = 0;
+    np = search_addresses(dest);
+    if ( np != 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("telepod"));
+        cJSON_AddItemToObject(json,"c",cJSON_CreateString(pod->coinstr));
+        sprintf(numstr,"%.8f",(double)pod->satoshis/SATOSHIDEN);
+        cJSON_AddItemToObject(json,"v",cJSON_CreateString(numstr));
+        cJSON_AddItemToObject(json,"a",cJSON_CreateString(pod->coinaddr));
+        cJSON_AddItemToObject(json,"t",cJSON_CreateString(pod->txid));
+        cJSON_AddItemToObject(json,"o",cJSON_CreateNumber(pod->vout));
+        cJSON_AddItemToObject(json,"s",cJSON_CreateString(pod->script));
+        cJSON_AddItemToObject(json,"p",cJSON_CreateString(pod->privkey));
+        msg = cJSON_Print(json);
+        stripwhite_ns(msg,strlen(msg));
+        free_json(json);
+        retstr = sendmessage(NXTaddr,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,np->H.NXTaddr,msg);
+        free(msg);
+    }
+    return(retstr);
+}
+
+char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct coin_info *cp,char *walletpass)
+{
+    char buf[4096],*retstr;
+    struct telepod *pod = 0;
+    uint64_t satoshis;
+    struct NXT_acct *np;
+    prep_wallet(cp,walletpass,60);
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    satoshis = (amount * SATOSHIDEN);
+    if ( cp->telepods != 0 )
+        pod = make_telepod(cp,amount,cp->telepods,cp->numtelepods);
+    else pod = make_telepod(cp,amount,0,0);
+    if ( pod == 0 )
+        sprintf(buf,"{\"error\":\"cant create telepod for %.8f %s\"}",amount,cp->name);
+    else
+    {
+        if ( (retstr= transporter(NXTaddr,NXTACCTSECRET,dest,pod)) == 0 )
+            sprintf(buf,"{\"error\":\"transporter malfunction for %.8f %s to %s\"}",amount,cp->name,dest);
+        free(pod);
+        return(retstr);
+    }
+    return(clonestr(buf));
+}
 
 int32_t NXTutxcmp(struct NXT_tx *ref,struct NXT_tx *tx,double myshare)
 {
@@ -96,7 +383,7 @@ void set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int64_t
     U.feeNQT = MIN_NQTFEE;
     U.deadline = DEFAULT_NXT_DEADLINE;
     *tx = U;
-} 
+}
 
 void truncate_utxbytes(char *utxbytes)
 {
@@ -212,7 +499,7 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
             strcpy(utxbytes,errstr);
         }
         else if ( extract_cJSON_str(utxbytes,1024,txjson,"unsignedTransactionBytes") > 0 &&
-             extract_cJSON_str(signedtx,1024,txjson,"transactionBytes") > 0 )
+                 extract_cJSON_str(signedtx,1024,txjson,"transactionBytes") > 0 )
         {
             //truncate_utxbytes(utxbytes);
             if ( (parsed = issue_parseTransaction(0,signedtx)) != 0 )
@@ -278,125 +565,125 @@ struct NXT_tx *conv_txbytes(char *txbytes)
 }
 
 /*
-int32_t update_atomic(struct NXT_acct *np,struct subatomic_tx *atx)
-{
-    cJSON *txjson,*json;
-    int32_t j,status = 0;
-    char signedtx[1024],fullhash[128],*parsed,*retstr,*padded;
-    struct atomic_swap *sp;
-    struct NXT_tx *utx,*refutx = 0;
-    sp = &atx->swap;
-    if ( atx->longerflag != 1 )
-    {
-        //printf("atomixtx waiting.%d atx.%p\n",sp->atomictx_waiting,atx);
-        if ( sp->atomictx_waiting != 0 )
-        {
-            printf("GOT.(%s)\n",sp->signedtxbytes[1]);
-            if ( (parsed = issue_parseTransaction(Global_subatomic->curl_handle,sp->signedtxbytes[1])) != 0 )
-            {
-                json = cJSON_Parse(parsed);
-                if ( json != 0 )
-                {
-                    refutx = set_NXT_tx(sp->jsons[1]);
-                    utx = set_NXT_tx(json);
-                    //printf("refutx.%p utx.%p verified.%d\n",refutx,utx,utx->verify);
-                    if ( utx != 0 && refutx != 0 && utx->verify != 0 )
-                    {
-                        if ( NXTutxcmp(refutx,utx,1.) == 0 )
-                        {
-                            padded = malloc(strlen(sp->txbytes[0]) + 129);
-                            strcpy(padded,sp->txbytes[0]);
-                            for (j=0; j<128; j++)
-                                strcat(padded,"0");
-                            retstr = issue_signTransaction(Global_subatomic->curl_handle,padded);
-                            free(padded);
-                            printf("got signed tx that matches agreement submit.(%s) (%s)\n",padded,retstr);
-                            if ( retstr != 0 )
-                            {
-                                txjson = cJSON_Parse(retstr);
-                                if ( txjson != 0 )
-                                {
-                                    extract_cJSON_str(sp->signedtxbytes[0],sizeof(sp->signedtxbytes[0]),txjson,"transactionBytes");
-                                    if ( extract_cJSON_str(fullhash,sizeof(fullhash),txjson,"fullHash") > 0 )
-                                    {
-                                        if ( strcmp(fullhash,sp->fullhash[0]) == 0 )
-                                        {
-                                            printf("broadcast (%s) and (%s)\n",sp->signedtxbytes[0],sp->signedtxbytes[1]);
-                                            status = SUBATOMIC_COMPLETED;
-                                        }
-                                        else printf("ERROR: can't reproduct fullhash of trigger tx %s != %s\n",fullhash,sp->fullhash[0]);
-                                    }
-                                    free_json(txjson);
-                                }
-                                free(retstr);
-                            }
-                        } else printf("tx compare error\n");
-                    }
-                    if ( utx != 0 ) free(utx);
-                    if ( refutx != 0 ) free(refutx);
-                    free_json(json);
-                } else printf("error JSON parsing.(%s)\n",parsed);
-                free(parsed);
-            } else printf("error parsing (%s)\n",sp->signedtxbytes[1]);
-            sp->atomictx_waiting = 0;
-        }
-    }
-    else if ( atx->longerflag == 1 )
-    {
-        if ( sp->numfragis == 0 )
-        {
-            utx = set_NXT_tx(sp->jsons[0]);
-            if ( utx != 0 )
-            {
-                refutx = sign_NXT_tx(signedtx,NXTACCTSECRECT,nxt64bits,utx,sp->fullhash[1],1.);
-                if ( refutx != 0 )
-                {
-                    if ( NXTutxcmp(refutx,utx,1.) == 0 )
-                    {
-                        printf("signed and referenced tx verified\n");
-                        safecopy(sp->signedtxbytes[0],signedtx,sizeof(sp->signedtxbytes[0]));
-                        sp->numfragis = share_atomictx(np,sp->signedtxbytes[0],1);
-                        status = SUBATOMIC_COMPLETED;
-                    }
-                    free(refutx);
-                }
-                free(utx);
-            }
-        }
-        else
-        {
-            // wont get here now, eventually add checks for blockchain completion or direct xfer from other side
-            share_atomictx(np,sp->signedtxbytes[0],1);
-        }
-    }
-    return(status);
-}
-
-void foo()
-{
-    char signedtx[1024];
-    double myshare = .01;
-    struct NXT_tx *utx,*refutx = 0;
-    utx = set_NXT_tx(sp->jsons[0]);
-    if ( utx != 0 )
-    {
-        refutx = sign_NXT_tx(signedtx,NXTACCTSECRECT,nxt64bits,utx,sp->fullhash[1],myshare);
-        if ( refutx != 0 )
-        {
-            if ( NXTutxcmp(refutx,utx,myshare) == 0 )
-            {
-                printf("signed and referenced tx verified\n");
-                safecopy(sp->signedtxbytes[0],signedtx,sizeof(sp->signedtxbytes[0]));
-                //sp->numfragis = share_atomictx(np,sp->signedtxbytes[0],1);
-                //status = SUBATOMIC_COMPLETED;
-                sp->numfragis = 2;
-                sp->mytx = utx;
-                return(1);
-            }
-            free(refutx);
-        }
-        //free(utx);
-    }
-}
-*/
+ int32_t update_atomic(struct NXT_acct *np,struct subatomic_tx *atx)
+ {
+ cJSON *txjson,*json;
+ int32_t j,status = 0;
+ char signedtx[1024],fullhash[128],*parsed,*retstr,*padded;
+ struct atomic_swap *sp;
+ struct NXT_tx *utx,*refutx = 0;
+ sp = &atx->swap;
+ if ( atx->longerflag != 1 )
+ {
+ //printf("atomixtx waiting.%d atx.%p\n",sp->atomictx_waiting,atx);
+ if ( sp->atomictx_waiting != 0 )
+ {
+ printf("GOT.(%s)\n",sp->signedtxbytes[1]);
+ if ( (parsed = issue_parseTransaction(Global_subatomic->curl_handle,sp->signedtxbytes[1])) != 0 )
+ {
+ json = cJSON_Parse(parsed);
+ if ( json != 0 )
+ {
+ refutx = set_NXT_tx(sp->jsons[1]);
+ utx = set_NXT_tx(json);
+ //printf("refutx.%p utx.%p verified.%d\n",refutx,utx,utx->verify);
+ if ( utx != 0 && refutx != 0 && utx->verify != 0 )
+ {
+ if ( NXTutxcmp(refutx,utx,1.) == 0 )
+ {
+ padded = malloc(strlen(sp->txbytes[0]) + 129);
+ strcpy(padded,sp->txbytes[0]);
+ for (j=0; j<128; j++)
+ strcat(padded,"0");
+ retstr = issue_signTransaction(Global_subatomic->curl_handle,padded);
+ free(padded);
+ printf("got signed tx that matches agreement submit.(%s) (%s)\n",padded,retstr);
+ if ( retstr != 0 )
+ {
+ txjson = cJSON_Parse(retstr);
+ if ( txjson != 0 )
+ {
+ extract_cJSON_str(sp->signedtxbytes[0],sizeof(sp->signedtxbytes[0]),txjson,"transactionBytes");
+ if ( extract_cJSON_str(fullhash,sizeof(fullhash),txjson,"fullHash") > 0 )
+ {
+ if ( strcmp(fullhash,sp->fullhash[0]) == 0 )
+ {
+ printf("broadcast (%s) and (%s)\n",sp->signedtxbytes[0],sp->signedtxbytes[1]);
+ status = SUBATOMIC_COMPLETED;
+ }
+ else printf("ERROR: can't reproduct fullhash of trigger tx %s != %s\n",fullhash,sp->fullhash[0]);
+ }
+ free_json(txjson);
+ }
+ free(retstr);
+ }
+ } else printf("tx compare error\n");
+ }
+ if ( utx != 0 ) free(utx);
+ if ( refutx != 0 ) free(refutx);
+ free_json(json);
+ } else printf("error JSON parsing.(%s)\n",parsed);
+ free(parsed);
+ } else printf("error parsing (%s)\n",sp->signedtxbytes[1]);
+ sp->atomictx_waiting = 0;
+ }
+ }
+ else if ( atx->longerflag == 1 )
+ {
+ if ( sp->numfragis == 0 )
+ {
+ utx = set_NXT_tx(sp->jsons[0]);
+ if ( utx != 0 )
+ {
+ refutx = sign_NXT_tx(signedtx,NXTACCTSECRECT,nxt64bits,utx,sp->fullhash[1],1.);
+ if ( refutx != 0 )
+ {
+ if ( NXTutxcmp(refutx,utx,1.) == 0 )
+ {
+ printf("signed and referenced tx verified\n");
+ safecopy(sp->signedtxbytes[0],signedtx,sizeof(sp->signedtxbytes[0]));
+ sp->numfragis = share_atomictx(np,sp->signedtxbytes[0],1);
+ status = SUBATOMIC_COMPLETED;
+ }
+ free(refutx);
+ }
+ free(utx);
+ }
+ }
+ else
+ {
+ // wont get here now, eventually add checks for blockchain completion or direct xfer from other side
+ share_atomictx(np,sp->signedtxbytes[0],1);
+ }
+ }
+ return(status);
+ }
+ 
+ void foo()
+ {
+ char signedtx[1024];
+ double myshare = .01;
+ struct NXT_tx *utx,*refutx = 0;
+ utx = set_NXT_tx(sp->jsons[0]);
+ if ( utx != 0 )
+ {
+ refutx = sign_NXT_tx(signedtx,NXTACCTSECRECT,nxt64bits,utx,sp->fullhash[1],myshare);
+ if ( refutx != 0 )
+ {
+ if ( NXTutxcmp(refutx,utx,myshare) == 0 )
+ {
+ printf("signed and referenced tx verified\n");
+ safecopy(sp->signedtxbytes[0],signedtx,sizeof(sp->signedtxbytes[0]));
+ //sp->numfragis = share_atomictx(np,sp->signedtxbytes[0],1);
+ //status = SUBATOMIC_COMPLETED;
+ sp->numfragis = 2;
+ sp->mytx = utx;
+ return(1);
+ }
+ free(refutx);
+ }
+ //free(utx);
+ }
+ }
+ */
 #endif
