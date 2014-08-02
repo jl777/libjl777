@@ -373,10 +373,10 @@ struct coin_info
 {
     int32_t timestamps[100];
     struct coincache_info CACHE;
-    struct telepod **telepods;
+    struct hashtable *telepods;
     char name[64],*userpass,*serverport,assetid[64],*marker,*tradebotfname;
     uint64_t NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
-    int32_t initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,numtelepods,savedtelepods;
+    int32_t initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods;
 };
 
 #define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))

@@ -9,6 +9,10 @@
 #ifndef xcode_packets_h
 #define xcode_packets_h
 
+void query_pubkey(char *destNXTaddr)
+{
+    printf("need to implement query (and propagation) mechanism for pubkeys\n");
+}
 
 int32_t _encode_str(unsigned char *cipher,char *str,int32_t size,unsigned char *destpubkey,unsigned char *myprivkey)
 {
@@ -507,6 +511,97 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
     }
     else printf("process_packet got unexpected recvlen.%d NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",recvlen,np!=0?np->H.NXTaddr:"noaddr",np,I_am_server,udp,tcp,sender,port);
     return(0);
+}
+
+char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
+{
+    char buf[4096];
+    unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
+    int32_t len,createdflag;
+    struct NXT_acct *np = 0,*destnp;
+    //printf("sendmessage.(%s) -> NXT.(%s) (%s) (%s)\n",NXTaddr,destNXTaddr,msg,origargstr);
+    if ( Server_NXTaddr == 0 )
+    {
+        if ( Global_pNXT->privacyServer_NXTaddr[0] == 0 )
+        {
+            sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to null privacyServer\"}",verifiedNXTaddr,msg);
+            return(clonestr(buf));
+        }
+        np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
+    }
+    else if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
+    {
+        np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
+        queue_message(np,msg,origargstr);
+        sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,verifiedNXTaddr);
+        return(clonestr(buf));
+    }
+    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    memset(finalbuf,0,sizeof(finalbuf));
+    memset(encoded,0,sizeof(encoded));
+    memset(encoded2,0,sizeof(encoded2));
+    if ( origargstr != 0 )
+        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+    else
+    {
+        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded,destNXTaddr,(unsigned char *)msg,msglen);
+        msg = origargstr = "<encrypted>";
+    }
+    printf("sendmessage (%s) len.%d to %s\n",origargstr,msglen,destNXTaddr);
+    if ( len > sizeof(finalbuf)-256 )
+    {
+        printf("sendmessage, payload too big %d\n",len);
+        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
+    }
+    else if ( len > 0 )
+    {
+        outbuf = encoded;
+        printf("np.%p np->udp %p destnpudp.%p\n",np,np!=0?np->udp:0,destnp->udp);
+        if ( np != 0 && np->udp != 0 )// && destnp->udp == 0 )
+        {
+            printf("Must use indirection\n");
+            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encoded2,Global_pNXT->privacyServer_NXTaddr,encoded,len);
+            outbuf = encoded2;
+            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,Global_pNXT->privacyServer_NXTaddr,origargstr,msg,destNXTaddr);
+        }
+        else if ( Server_NXTaddr != 0 && destnp->udp != 0 )
+        {
+            printf("can do direct!\n");
+            np = destnp;
+            sprintf(buf,"{\"status\":\"%s sends direct encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
+        } else np = 0;  // have to use p2p network
+        if ( len > 0 )
+        {
+            len = crcize(finalbuf,outbuf,len);
+            if ( len > sizeof(finalbuf) )
+            {
+                printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+                exit(-1);
+            }
+            if ( np != 0 && len < 1400 )
+            {
+                int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
+                printf("udpsend finalbuf.%d\n",len);
+                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+            }
+            else if ( Server_NXTaddr != 0 ) // test to verify this is hub
+            {
+                uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
+                printf("Need to strip all plaintext info from broadcast! Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
+                // jl777: must strip destination info!!
+                if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,finalbuf,len) == 0 )
+                {
+                    sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
+                }
+                else
+                {
+                    sprintf(buf,"{\"status\":\"%s sends via p2p encrypted sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
+                }
+            }
+            else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s unexpected case\"}",verifiedNXTaddr,msg,destNXTaddr);
+        } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s error encoding 2nd layer\"}",verifiedNXTaddr,msg,destNXTaddr);
+    } else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s probably no pubkey\"}",verifiedNXTaddr,msg,destNXTaddr);
+    return(clonestr(buf));
 }
 
 #endif

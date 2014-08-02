@@ -1485,6 +1485,17 @@ int32_t get_API_int(cJSON *obj,int32_t val)
     return(val);
 }
 
+uint32_t get_API_uint(cJSON *obj,uint32_t val)
+{
+    char buf[1024];
+    if ( obj != 0 )
+    {
+        copy_cJSON(buf,obj);
+        val = atoi(buf);
+    }
+    return(val);
+}
+
 uint64_t get_API_nxt64bits(cJSON *obj)
 {
     uint64_t nxt64bits = 0;

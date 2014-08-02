@@ -169,6 +169,7 @@ void copy_cJSON(char *dest,cJSON *obj);
     uint64_t get_satoshi_obj(cJSON *json,char *field);
     
     int32_t get_API_int(cJSON *obj,int32_t val);
+    uint32_t get_API_uint(cJSON *obj,uint32_t val);
     uint64_t get_API_nxt64bits(cJSON *obj);
     double get_API_float(cJSON *obj);
     char *get_cJSON_fieldname(cJSON *obj);

@@ -39,6 +39,7 @@ struct hashtable *orderbook_txids;
 #include "../NXTservices/coincache.h"
 #include "../NXTservices/bitcoind.h"
 #include "../NXTservices/atomic.h"
+#include "../NXTservices/teleport.h"
 #include "../NXTservices/orders.h"
 #include "../NXTservices/tradebot.h"
 //#include "packets.h"
@@ -401,15 +402,16 @@ char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 {
     double amount;
     struct coin_info *cp;
-    char NXTACCTSECRET[512],destaddr[512],walletpass[512],coinstr[512],*retstr = 0;
+    char NXTACCTSECRET[512],destaddr[512],walletpass[512],minage[512],coinstr[512],*retstr = 0;
     amount = get_API_float(objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
     copy_cJSON(destaddr,objs[3]);
     copy_cJSON(coinstr,objs[4]);
     copy_cJSON(walletpass,objs[5]);
+    copy_cJSON(minage,objs[6]);
     cp = get_coin_info(coinstr);
     if ( cp != 0 && sender[0] != 0 && amount > 0 && valid != 0 && destaddr[0] != 0 )
-        retstr = teleport(sender,NXTACCTSECRET,amount,destaddr,cp,walletpass);
+        retstr = teleport(sender,NXTACCTSECRET,amount,destaddr,cp,walletpass,atoi(minage));
     else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
     return(retstr);
 }
@@ -559,15 +561,84 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-/*
 
-forms[n] = make_form(NXTaddr,&scripts[n],"buy","buy mgwBTC below maximum price and send to BTC address","send to BTC addr","127.0.0.1:7777","pNXT",gen_pNXT_buy_fields);
+char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t satoshis;
+    uint32_t crc,ind,height,vout;
+    char NXTACCTSECRET[512],coinstr[512],coinaddr[512],txid[512],pubkey[512],privkey[2048],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    crc = get_API_uint(objs[2],0);
+    ind = get_API_uint(objs[3],0);
+    height = get_API_uint(objs[4],0);
+    copy_cJSON(coinstr,objs[5]);
+    satoshis = SATOSHIDEN * get_API_float(objs[6]);
+    copy_cJSON(coinaddr,objs[7]);
+    copy_cJSON(txid,objs[8]);
+    vout = get_API_uint(objs[9],0);
+    copy_cJSON(pubkey,objs[10]);
+    copy_cJSON(privkey,objs[11]);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 )
+        retstr = telepod_received(sender,NXTACCTSECRET,coinstr,crc,ind,height,satoshis,coinaddr,txid,vout,pubkey,privkey);
+    else retstr = clonestr("{\"error\":\"invalid telepod received\"}");
+    return(retstr);
+}
 
-forms[n] = make_form(NXTaddr,&scripts[n],"sell","sell mgwBTC above minimum price and send privateNXT to NXT address","sell mgwBTC","127.0.0.1:7777","pNXT",gen_pNXT_sell_fields);
-*/
+char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t value;
+    uint32_t totalcrc,minage,height,i,n=0,*crcs = 0;
+    char NXTACCTSECRET[512],coinstr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(coinstr,objs[2]);
+    height = get_API_uint(objs[3],0);
+    minage = get_API_uint(objs[4],0);
+    value = get_API_nxt64bits(objs[5]);
+    totalcrc = get_API_uint(objs[6],0);
+    if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
+    {
+        crcs = calloc(n,sizeof(*crcs));
+        for (i=0; i<n; i++)
+            crcs[i] = get_API_uint(cJSON_GetArrayItem(objs[7],i),0);
+    }
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && n > 0 )
+        retstr = transporter_received(sender,NXTACCTSECRET,coinstr,totalcrc,height,value,minage,crcs,n);
+    else retstr = clonestr("{\"error\":\"invalid incoming transporter bundle\"}");
+    if ( crcs != 0 )
+        free(crcs);
+    return(retstr);
+}
+
+char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t value;
+    uint32_t totalcrc,status,i,num,n=0,*crcs = 0;
+    char NXTACCTSECRET[512],coinstr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    status = get_API_int(objs[2],0);
+    copy_cJSON(coinstr,objs[3]);
+    totalcrc = get_API_uint(objs[4],0);
+    value = get_API_nxt64bits(objs[5]);
+    num = get_API_int(objs[6],0);
+    if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
+    {
+        crcs = calloc(n,sizeof(*crcs));
+        for (i=0; i<n; i++)
+            crcs[i] = get_API_uint(cJSON_GetArrayItem(objs[7],i),0);
+    }
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && n > 0 )
+        retstr = got_transporter_status(NXTACCTSECRET,sender,coinstr,totalcrc,value,num,crcs,n);
+    else retstr = clonestr("{\"error\":\"invalid incoming transporter status\"}");
+    if ( crcs != 0 )
+        free(crcs);
+    return(retstr);
+}
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", 0 };
+    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "NXT", "secret", "coin", "height", "minage", "value", "totalcrc", "telepods", 0 };
+    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "NXT", "secret", "status", "coin", "totalcrc", "value", "num", "crcs", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
@@ -578,14 +649,14 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
-    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "amount", "secret", "dest", "coin", "walletpass", 0 };
+    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "amount", "secret", "dest", "coin", "walletpass", "minage", 0 };
     static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "polarity", "allfields", "secret", 0 };
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { getpubkey, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
+    static char **commands[] = { getpubkey, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[16];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;

@@ -71,6 +71,11 @@ struct NXT_acct
     //int32_t recvid,sentid;
     queue_t incoming;
     char *signedtx;
+    
+    uint64_t expect;
+    uint32_t *incomingteleport,gotstatus,numincoming,*statuscrcs,totalcrc;
+    void **intransit;
+    
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;

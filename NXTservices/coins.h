@@ -315,8 +315,6 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
                         Daemons[Numcoins] = init_coin_info(item,coinstr);
-                        int32_t load_telepods(struct coin_info *);
-                        load_telepods(Daemons[Numcoins]);
                         printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
                         Numcoins++;
                     }

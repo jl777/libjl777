@@ -284,6 +284,17 @@ int sha256_done(hash_state * md, unsigned char *out)
     return CRYPT_OK;
 }
 
+void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len)
+{
+    int32_t j;
+    hash_state md;
+    sha256_init(&md);
+    sha256_process(&md,src,len);
+    sha256_done(&md,hash);
+    if ( hashstr != 0 )
+        init_hexbytes(hashstr,hash,256 >> 3);
+}
+
 /**
   Self-test the hash
   @return CRYPT_OK if successful, CRYPT_NOP if self-tests have been disabled

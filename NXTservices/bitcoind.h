@@ -92,17 +92,15 @@ int32_t prep_wallet(struct coin_info *cp,char *walletpass,int32_t unlockseconds)
     return(0);
 }
 
-int32_t validate_coinaddr(char output[4096],struct coin_info *cp,char *coinaddr)
+int32_t validate_coinaddr(char pubkey[512],struct coin_info *cp,char *coinaddr)
 {
-    char quotes[128];
+    char quotes[512];
     int64_t len;
     if ( coinaddr[0] != '"' )
         sprintf(quotes,"\"%s\"",coinaddr);
     else safecopy(quotes,coinaddr,sizeof(quotes));
-    len = issue_bitcoind_command(output,cp,"validateaddress","isvalid",quotes);
-    if ( len != 0 && strcmp(output,"true") == 0 )
-        return(0);
-    else return(-1);
+    len = issue_bitcoind_command(pubkey,cp,"validateaddress","pubkey",quotes);
+    return((int32_t)len);
 }
 
 cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct rawtransaction *rp)
