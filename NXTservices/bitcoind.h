@@ -537,6 +537,8 @@ cJSON *script_has_address(int32_t *nump,cJSON *scriptobj)
     return(0);
 }
 
+#define OP_HASH160_OPCODE 0xa9
+#define OP_EQUAL_OPCODE 0x87
 int32_t add_opcode(char *hex,int32_t offset,int32_t opcode)
 {
     hex[offset + 0] = hexbyte((opcode >> 4) & 0xf);
@@ -544,29 +546,44 @@ int32_t add_opcode(char *hex,int32_t offset,int32_t opcode)
     return(offset+2);
 }
 
+void calc_script(char *script,char *pubkey)
+{
+    int32_t offset,len;
+    offset = 0;
+    len = (int32_t)strlen(pubkey);
+    offset = add_opcode(script,offset,OP_HASH160_OPCODE);
+    offset = add_opcode(script,offset,len/2);
+    memcpy(script+offset,pubkey,len), offset += len;
+    offset = add_opcode(script,offset,OP_EQUAL_OPCODE);
+    script[offset] = 0;
+}
+
 int32_t convert_to_bitcoinhex(char *scriptasm)
 {
-#define OP_HASH160_OPCODE 0xa9
-#define OP_EQUAL_OPCODE 0x87
     //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
-    char *hex;
-    int32_t middlelen,offset,len,OP_HASH160_len,OP_EQUAL_len;
+    char *hex,pubkey[512];
+    int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
     len = (int32_t)strlen(scriptasm);
     // worlds most silly assembler!
     OP_HASH160_len = strlen("OP_HASH160");
     OP_EQUAL_len = strlen("OP_EQUAL");
     if ( strncmp(scriptasm,"OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUAL",OP_EQUAL_len) == 0 )
     {
-        hex = calloc(1,len+1);
-        offset = 0;
-        offset = add_opcode(hex,offset,OP_HASH160_OPCODE);
         middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
+        memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
+        pubkey[middlelen] = 0;
+        
+        hex = calloc(1,len+1);
+        /*offset = 0;
+        offset = add_opcode(hex,offset,OP_HASH160_OPCODE);
         offset = add_opcode(hex,offset,middlelen/2);
         memcpy(hex+offset,scriptasm+OP_HASH160_len+1,middlelen);
-        hex[offset+middlelen] = hexbyte((OP_EQUAL_OPCODE >> 4) & 0xf);
-        hex[offset+middlelen+1] = hexbyte(OP_EQUAL_OPCODE & 0xf);
-        hex[offset+middlelen+2] = 0;
-        printf("(%s) -> (%s)\n",scriptasm,hex);
+        offset = add_opcode(hex,offset+middlelen,OP_EQUAL_OPCODE);
+        //hex[offset+middlelen] = hexbyte((OP_EQUAL_OPCODE >> 4) & 0xf);
+        //hex[offset+middlelen+1] = hexbyte(OP_EQUAL_OPCODE & 0xf);
+        hex[offset] = 0;*/
+        calc_script(hex,pubkey);
+        printf("(%s) -> pubkey(%s) (%s)\n",scriptasm,pubkey,hex);
         strcpy(scriptasm,hex);
         free(hex);
         return((int32_t)(2+middlelen+2));

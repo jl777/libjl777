@@ -9,7 +9,7 @@
 
 #define SYNC_MAXUNREPORTED 32
 #define SYNC_FRAGSIZE 1024
-#define MAX_MGWCOINS 64
+//#define MAX_MGWCOINS 64
 
 struct NXT_guid
 {

@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 // is_relevant_coinvalue?
-// secure and redundant telepod storage
+// secure and redundant telepod storage, but need to enforce deletions on xfer!
 // "telepod" JSON API -> auto trigger copy
 // jl777.conf options: privacyserver
 
@@ -21,7 +21,7 @@ struct NXT_tx
     uint64_t senderbits,recipientbits,assetidbits;
     int64_t feeNQT;
     union { int64_t amountNQT; int64_t quantityQNT; };
-    int32_t deadline,type,subtype,verify;
+    int32_t deadline,type,subtype,verify,number;
     char comment[128];
 };
 
@@ -30,14 +30,82 @@ struct NXT_tx
 
 struct telepod
 {
-    uint64_t satoshis;
-    uint16_t podsize,vout,saved;
-    uint32_t height;
-    char coinstr[8],txid[MAX_COINTXID_LEN],coinaddr[MAX_COINADDR_LEN],script[128];
+    uint64_t satoshis,dest64bits;
+    uint16_t podsize,vout,saved,xfered;
+    uint32_t height,filenum;
+    char coinstr[8],txid[MAX_COINTXID_LEN],coinaddr[MAX_COINADDR_LEN],pubkey[128];
     char privkey[];
 };
 
-struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout)
+void disp_telepod(char *msg,struct telepod *pod)
+{
+    printf("%6s %13.8f height.%-6d %6s %s %s/vout_%d dest.%llu\n",msg,dstr(pod->satoshis),pod->height,pod->coinstr,pod->coinaddr,pod->txid,pod->vout,(long long)pod->dest64bits);
+}
+
+void set_telepod_fname(char *fname,char *coinstr,int32_t podnumber)
+{
+    sprintf(fname,"backups/telepods/%s.%d",coinstr,podnumber);
+}
+
+struct telepod *_load_telepod(char *coinstr,int32_t podnumber)
+{
+    FILE *fp;
+    long fsize;
+    char fname[512];
+    struct telepod *pod = 0;
+    set_telepod_fname(fname,coinstr,podnumber);
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        fsize = ftell(fp);
+        rewind(fp);
+        pod = calloc(1,fsize);
+        if ( fread(pod,1,fsize,fp) != fsize )
+        {
+            printf("error loading refpod.(%s)\n",fname);
+            free(pod);
+            pod = 0;
+        }
+        else if ( pod->podsize != fsize )
+        {
+            printf("telepod corruption: podsize.%d != fsize.%ld\n",pod->podsize,fsize);
+            free(pod);
+            pod = 0;
+        }
+        else if ( pod->filenum != 0 && pod->filenum != podnumber )
+        {
+            printf("warning: pod number.%d -> %d\n",pod->filenum,podnumber);
+            pod->filenum = podnumber;
+        }
+        fclose(fp);
+    }
+    return(pod);
+}
+
+int32_t truncate_telepod_file(struct telepod *pod)
+{
+    long err;
+    struct telepod *loadpod;
+    if ( (loadpod= _load_telepod(pod->coinstr,pod->filenum)) != 0 )
+    {
+        if ( pod->podsize != loadpod->podsize )
+        {
+            printf("truncate telepod: loaded pod doesnt match size %d vs %d\n",pod->podsize,loadpod->podsize);
+            free(loadpod);
+            return(-1);
+        }
+        else if ( (err= memcmp(pod,loadpod,pod->podsize)) != 0 )
+        {
+            printf("truncate telepod: memcmp error at %ld\n",err);
+            free(loadpod);
+            return(-1);
+        }
+        return(0);
+    } else printf("no telepod file %s.%d??\n",pod->coinstr,pod->filenum);
+    return(-2);
+}
+
+struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *pubkey,char *privkey,char *txid,int32_t vout)
 {
     struct telepod *pod;
     int32_t size,len;
@@ -48,10 +116,11 @@ struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t sa
     pod->vout = vout;
     safecopy(pod->coinstr,cp->name,sizeof(pod->coinstr));
     safecopy(pod->coinaddr,podaddr,sizeof(pod->coinaddr));
-    safecopy(pod->script,script,sizeof(pod->script));
+    safecopy(pod->pubkey,pubkey,sizeof(pod->pubkey));
     safecopy(pod->privkey,privkey,len+1);
     safecopy(pod->txid,txid,sizeof(pod->txid));
     pod->satoshis = satoshis;
+    disp_telepod("create",pod);
     return(pod);
 }
 
@@ -64,9 +133,9 @@ struct telepod *search_telepods(struct coin_info *cp,char *coinaddr)
     return(0);
 }
 
-void save_telepod(struct coin_info *cp,struct telepod *refpod)
+int32_t save_telepod(struct coin_info *cp,struct telepod *refpod)
 {
-    FILE *fp;
+    FILE *fp = 0;
     char fname[512];
     struct telepod *pod;
     if ( (pod= search_telepods(cp,refpod->coinaddr)) == 0 || pod->vout != refpod->vout )
@@ -75,61 +144,90 @@ void save_telepod(struct coin_info *cp,struct telepod *refpod)
         cp->telepods[cp->numtelepods++] = refpod;
         if ( refpod->saved == 0 )
         {
-            sprintf(fname,"backups/telepods/%s.%d",cp->name,cp->savedtelepods);
+            do
+            {
+                if ( fp != 0 )
+                {
+                    fseek(fp,0,SEEK_END);
+                    if ( ftell(fp) == 0 )
+                    {
+                        fclose(fp);
+                        printf("found empty slot.%d for telepod\n",cp->savedtelepods);
+                        break;
+                    }
+                    fclose(fp);
+                    fp = 0;
+                    cp->savedtelepods++;
+                }
+                set_telepod_fname(fname,cp->name,cp->savedtelepods);
+                printf("check (%s)\n",fname);
+            }
+            while ( (fp= fopen(fname,"rb")) != 0 );
+            
             if ( (fp= fopen(fname,"wb")) != 0 )
             {
+                refpod->saved = 1;
+                refpod->filenum = cp->savedtelepods;
                 if ( fwrite(refpod,1,refpod->podsize,fp) != refpod->podsize )
+                {
+                    refpod->saved = 0;
                     printf("error saving refpod.(%s)\n",fname);
-                else refpod->saved = 1;
+                }
+                else
+                {
+                    cp->savedtelepods++;
+                    printf("(%s) ",fname);
+                    disp_telepod("save",refpod);
+                }
+                fclose(fp);
+                fp = 0;
             }
         }
     }
+    if ( fp != 0 )
+        fclose(fp);
+    if ( refpod->saved == 0 )
+        return(-1);
+    else return(0);
 }
 
 int32_t load_telepods(struct coin_info *cp)
 {
-    FILE *fp;
-    long fsize;
-    char fname[512];
+    int nofile = 0;
     struct telepod *pod;
-    while ( 1 )
+    while ( nofile < 100 )
     {
-        sprintf(fname,"backups/telepods/%s.%d",cp->name,cp->savedtelepods);
-        if ( (fp= fopen(fname,"rb")) != 0 )
+        if ( (pod= _load_telepod(cp->name,cp->savedtelepods)) != 0 )
         {
-            cp->savedtelepods++;
-            fseek(fp,0,SEEK_END);
-            fsize = ftell(fp);
-            rewind(fp);
-            pod = calloc(1,fsize);
-            if ( fread(pod,1,fsize,fp) != fsize )
-                printf("error loading refpod.(%s)\n",fname);
-            else
+            if ( pod->xfered == 0 )
             {
-                pod->saved = 1;
                 save_telepod(cp,pod);
-            }
-        } else break;
+                disp_telepod("load",pod);
+            } else disp_telepod("spent",pod);
+            cp->savedtelepods++;
+        } else nofile++;
     }
     return(cp->savedtelepods);
 }
 
 void conv_telepod(struct coin_value *vp,struct telepod *pod)
 {
+    char script[512];
     memset(vp,0,sizeof(*vp));
     vp->value = pod->satoshis;
     vp->txid = pod->txid;
     vp->parent_vout = pod->vout;
     safecopy(vp->coinaddr,pod->coinaddr,sizeof(vp->coinaddr));
-    vp->script = pod->script;
+    calc_script(script,pod->pubkey);
+    vp->script = clonestr(script);
 }
 
 void free_coin_value(struct coin_value *vp)
 {
     if ( vp != 0 )
     {
-       // if ( vp->script != 0 )
-       //     free(vp->script);
+        if ( vp->script != 0 )
+            free(vp->script);
         free(vp);
     }
 }
@@ -178,7 +276,6 @@ struct telepod *make_telepod(struct coin_info *cp,double amount,struct telepod *
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
         if ( privkey != 0 )
         {
-            //jl777: set script, also maybe better to just teleport all telepods summing less than total?
             if ( pods == 0 )
             {
                 sprintf(args,"[{\"transporter\"},{\"%s\"},{%.8f}]",podaddr,amount);
@@ -257,52 +354,97 @@ int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp) // jl7
     return(0);
 }
 
-char *transporter(char *NXTaddr,char *NXTACCTSECRET,char *dest,struct telepod *pod)
+int32_t sendandfree_jsonmessage(char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
 {
-    cJSON *json;
-    struct NXT_acct *np;
-    char numstr[32],*msg,*retstr = 0;
-    np = search_addresses(dest);
-    if ( np != 0 )
+    int32_t err = -1;
+    cJSON *retjson;
+    char *msg,*retstr,errstr[512];
+    msg = cJSON_Print(json);
+    stripwhite_ns(msg,strlen(msg));
+    retstr = sendmessage(sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,msg);
+    if ( retstr != 0 )
     {
-        json = cJSON_CreateObject();
-        cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("telepod"));
-        cJSON_AddItemToObject(json,"c",cJSON_CreateString(pod->coinstr));
-        sprintf(numstr,"%.8f",(double)pod->satoshis/SATOSHIDEN);
-        cJSON_AddItemToObject(json,"v",cJSON_CreateString(numstr));
-        cJSON_AddItemToObject(json,"a",cJSON_CreateString(pod->coinaddr));
-        cJSON_AddItemToObject(json,"t",cJSON_CreateString(pod->txid));
-        cJSON_AddItemToObject(json,"o",cJSON_CreateNumber(pod->vout));
-        cJSON_AddItemToObject(json,"s",cJSON_CreateString(pod->script));
-        cJSON_AddItemToObject(json,"p",cJSON_CreateString(pod->privkey));
-        msg = cJSON_Print(json);
-        stripwhite_ns(msg,strlen(msg));
-        free_json(json);
-        retstr = sendmessage(NXTaddr,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,np->H.NXTaddr,msg);
-        free(msg);
+        retjson = cJSON_Parse(retstr);
+        if ( retjson != 0 )
+        {
+            if ( extract_cJSON_str(errstr,sizeof(errstr),retjson,"error") > 0 )
+            {
+                printf("error.(%s) sending (%s)\n",errstr,msg);
+                err = -2;
+            } else err = 0;
+            free_json(retjson);
+        }
+        free(retstr);
     }
-    return(retstr);
+    free_json(json);
+    free(msg);
+    return(err);
 }
 
-char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct coin_info *cp,char *walletpass)
+int32_t transporter(char *NXTaddr,char *NXTACCTSECRET,char *destNXTaddr,struct telepod *pod,uint32_t totalcrc,int32_t ind,uint32_t height)
 {
-    char buf[4096],*retstr;
-    struct telepod *pod = 0;
-    uint64_t satoshis;
-    struct NXT_acct *np;
-    prep_wallet(cp,walletpass,60);
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    cJSON *json;
+    char numstr[32];
+    json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("telepod"));
+    cJSON_AddItemToObject(json,"crc",cJSON_CreateNumber(totalcrc));
+    cJSON_AddItemToObject(json,"i",cJSON_CreateNumber(ind));
+    cJSON_AddItemToObject(json,"h",cJSON_CreateNumber(height));
+    cJSON_AddItemToObject(json,"c",cJSON_CreateString(pod->coinstr));
+    sprintf(numstr,"%.8f",(double)pod->satoshis/SATOSHIDEN);
+    cJSON_AddItemToObject(json,"v",cJSON_CreateString(numstr));
+    cJSON_AddItemToObject(json,"a",cJSON_CreateString(pod->coinaddr));
+    cJSON_AddItemToObject(json,"t",cJSON_CreateString(pod->txid));
+    cJSON_AddItemToObject(json,"o",cJSON_CreateNumber(pod->vout));
+    cJSON_AddItemToObject(json,"p",cJSON_CreateString(pod->pubkey));
+    cJSON_AddItemToObject(json,"k",cJSON_CreateString(pod->privkey));
+    return(sendandfree_jsonmessage(NXTaddr,NXTACCTSECRET,json,destNXTaddr));
+}
+
+char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct coin_info *cp,char *walletpass,int32_t minage)
+{
+    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
+    char buf[4096],*retstr,*msg;
+    struct telepod **pods = 0;
+    uint64_t satoshis,avail;
+    struct NXT_acct *np,*destnp;
+    cJSON *json;
+    int32_t n,err;
     satoshis = (amount * SATOSHIDEN);
-    if ( cp->telepods != 0 )
-        pod = make_telepod(cp,amount,cp->telepods,cp->numtelepods);
-    else pod = make_telepod(cp,amount,0,0);
-    if ( pod == 0 )
-        sprintf(buf,"{\"error\":\"cant create telepod for %.8f %s\"}",amount,cp->name);
+    if ( (pods= evolve_telepod_bundle(&n,0,cp->telepods,cp->numtelepods,minage,satoshis)) == 0 )
+        sprintf(buf,"{\"error\":\"teleport: not enough available for %.8f %s to %s\"}",amount,cp->name,dest);
     else
     {
-        if ( (retstr= transporter(NXTaddr,NXTACCTSECRET,dest,pod)) == 0 )
-            sprintf(buf,"{\"error\":\"transporter malfunction for %.8f %s to %s\"}",amount,cp->name,dest);
-        free(pod);
+        free(pods), pods = 0;
+        //prep_wallet(cp,walletpass,60);
+        np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+        destnp = search_addresses(dest);
+        if ( memcmp(destnp->pubkey,zerokey,sizeof(zerokey)) == 0 )
+        {
+            request_pubkey(destnp->H.NXTaddr);
+            sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",dest);
+        }
+        else
+        {
+            pods = evolve_telepod_bundle(&n,1000,cp->telepods,cp->numtelepods,minage,satoshis);
+            if ( pods == 0 )
+                sprintf(buf,"{\"error\":\"unexpected bundle evolve failure for %.8f %s to %s\"}",amount,cp->name,dest);
+            else
+            {
+                json = create_telepod_bundle_json(cp->name,minage,satoshis,pods,n);
+                if ( json != 0 )
+                {
+                    err = sendandfree_jsonmessage(NXTaddr,NXTACCTSECRET,json,destnp->H.NXTaddr);
+                    if ( err < 0 )
+                        sprintf(buf,"{\"error\":\"sendandfree_jsonmessage telepod bundle failure for %.8f %s to %s\"}",amount,cp->name,dest);
+                    else
+                    {
+                        
+                    }
+                }
+                else sprintf(buf,"{\"error\":\"unexpected bundle evolve createjson error for %.8f %s to %s\"}",amount,cp->name,dest);
+            }
+        }
         return(retstr);
     }
     return(clonestr(buf));

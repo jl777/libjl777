@@ -1,0 +1,23 @@
+<uvlanConf>
+ <local>
+  <dev>output from uvlan.exe</dev>
+  <bindipaddr>10.x.y.z</bindipaddr>
+  <bindport>1337</bindport>
+  <protocol>UDP</protocol>
+  <privateKey>YOUR_PRIVATE_KEY_GOES_HERE</privateKey>
+ </local>
+ <peer>
+  <nickname>peer1</nickname>
+  <address>address here</address>
+  <port>1337</port>
+  <protocol>UDP</protocol>
+  <publicKey>gobbly gook here</publicKey>
+ </peer>
+ <peer>
+  <nickname>peer2</nickname>
+  <address>address here</address>
+  <port>1337</port>
+  <protocol>UDP</protocol>
+  <publicKey>gobbly gook here</publicKey>
+ </peer>
+</uvlanConf>
