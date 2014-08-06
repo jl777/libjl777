@@ -366,7 +366,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         //sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         np = process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
-        printf("after process_packet np.%p %p %p\n",np,Server_NXTaddr,Server_secret);
+        printf("after process_packet np.%p %p %p sentintro.%d\n",np,Server_NXTaddr,Server_secret,np->sentintro);
         ASSERT(addr->sa_family == AF_INET);
         if ( np != 0 && Server_NXTaddr != 0 && Server_secret != 0 )
         {
@@ -550,7 +550,11 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     port = set_peerinfo(&addr,sender,connect);
     printf(">>>>>>>>>>>>>>>>>>> got %ld bytes at %p.(%s) from %s/%d\n",nread,buf->base,buf->base,sender,port);
     if ( (np= process_packet(retjsonstr,np,1,(unsigned char *)buf->base,(int32_t)nread,connect,0,&addr,sender,port)) != 0 )
+    {
+        if ( connect->data == 0 )
+            np->sentintro = 0;
         connect->data = np;
+    }
     if ( retjsonstr[0] != 0 )
         portable_tcpwrite(connect,retjsonstr,(int32_t)strlen(retjsonstr)+1,ALLOCWR_ALLOCFREE);
     if ( buf->base != 0 )
@@ -773,15 +777,16 @@ int32_t start_libuv_servers(uv_tcp_t **tcp,uv_udp_t **udp,int32_t ip4_or_ip6,int
     return(0);
 }
 
+int Got_Server_UDP;
 void NXTprivacy_idler(uv_idle_t *handle)
 {
     void set_pNXT_privacyServer(uint64_t privacyServer);
     uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret);
-    static char NXTACCTSECRET[256],NXTADDR[64],secret[1024];
+    static char NXTACCTSECRET[256],NXTADDR[64],secret[1024],intro[4096];
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
     static uint64_t privacyServer,pNXT_privacyServer;
-    static int32_t counter,didintro; // numpings
+    static int32_t didintro; // numpings,counter
     static struct sockaddr addr;
     static double lastping,lastattempt;
     double millis;
@@ -789,7 +794,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     struct NXT_acct *np;
     int32_t activeflag;
     uint64_t nxt64bits;
-    char *jsonstr,**whitelist,**blacklist,intro[4096];
+    char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     if ( TCPserver_closed > 0 )
     {
@@ -797,10 +802,12 @@ void NXTprivacy_idler(uv_idle_t *handle)
         tcp = 0;
         didintro = 0;
         connect = 0;
+        Got_Server_UDP = 0;
         pNXT_privacyServer = privacyServer = 0;
         set_pNXT_privacyServer(0);
         TCPserver_closed = 0;
         server_xferred = 0;
+        memset(intro,0,sizeof(intro));
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
@@ -861,13 +868,13 @@ void NXTprivacy_idler(uv_idle_t *handle)
                         expand_nxt64bits(NXTADDR,nxt64bits);
                         gen_tokenjson(0,intro,NXTADDR,time(NULL),NXTACCTSECRET);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
-                        //if ( set_intro(intro,sizeof(intro),Global_mp->dispname,Global_mp->groupname,NXTADDR,NXTACCTSECRET) < 0 )
                         if ( intro[0] == 0 )
                         {
                             printf("connect_to_privacyServer: invalid intro.(%s), try again\n",intro);
                             return;
                         }
                         portable_tcpwrite((uv_stream_t *)tcp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
+                        Got_Server_UDP = 0;
                         portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
                         didintro = 1;
                     }
@@ -875,8 +882,10 @@ void NXTprivacy_idler(uv_idle_t *handle)
                 if ( (np= (void *)connect->data) != 0 )
                 {
                     udp = np->udp;
-                    if ( (counter++ % 10) == 0 && udp != 0 )
+                    if ( udp != 0 )
                     {
+                        if ( Got_Server_UDP == 0 )
+                            portable_udpwrite(&addr,(uv_udp_t *)udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
                         //printf("udp.%p send ping.%d total transferred.%ld\n",udp,numpings,server_xferred);
                         //portable_udpwrite(&addr,(uv_udp_t *)udp,"ping",5,ALLOCWR_ALLOCFREE);
                         //numpings++;

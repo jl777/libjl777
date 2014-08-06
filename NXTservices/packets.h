@@ -358,6 +358,8 @@ void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_
 {
     if ( udp != 0 )
     {
+        extern int Got_Server_UDP;
+        Got_Server_UDP = 1;
         printf("set UDP.%p %s/%d\n",udp,sender,port);
         np->Uaddr = *addr;
         np->udp = udp;
@@ -533,6 +535,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             return(clonestr(buf));
         }
         np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
+        printf("set np <- NXT.%s\n",Global_pNXT->privacyServer_NXTaddr);
     }
     else if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
     {
@@ -561,7 +564,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
     else if ( len > 0 )
     {
         outbuf = encoded;
-        printf("np.%p np->udp %p destnpudp.%p\n",np,np!=0?np->udp:0,destnp->udp);
+        printf("np.%p NXT.%s np->udp %p destnpudp.%p\n",np,np->H.NXTaddr,np!=0?np->udp:0,destnp->udp);
         if ( np != 0 && np->udp != 0 )// && destnp->udp == 0 )
         {
             printf("Must use indirection\n");

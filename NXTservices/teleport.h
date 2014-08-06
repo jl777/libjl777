@@ -429,7 +429,6 @@ struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct
                 if ( finished != 0 )
                     break;
             }
-            printf("i.%d j.%d k.%d finished.%d\n",i,j,k,finished);
             if ( finished != 0 )
                 break;
         }
@@ -488,12 +487,17 @@ int32_t sendandfree_jsonmessage(char *sender,char *NXTACCTSECRET,cJSON *json,cha
 {
     int32_t err = -1;
     cJSON *retjson;
-    char *msg,*retstr,errstr[512];
+    struct NXT_acct *np;
+    char *msg,*retstr,errstr[512],verifiedNXTaddr[64];
+    np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     msg = cJSON_Print(json);
     stripwhite_ns(msg,strlen(msg));
-    retstr = sendmessage(sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,msg);
+    //char *send_tokenized_cmd(char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
+    retstr = send_tokenized_cmd(verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+    //retstr = sendmessage(sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,msg);
     if ( retstr != 0 )
     {
+        printf("sendandfree_jsonmessage.(%s)\n",retstr);
         retjson = cJSON_Parse(retstr);
         if ( retjson != 0 )
         {
@@ -550,7 +554,7 @@ cJSON *create_telepod_bundle_json(uint32_t *totalcrcp,char *coinstr,uint32_t hei
     array = cJSON_CreateArray();
     for (i=0; i<n; i++)
     {
-        sprintf(numstr,"%x",pods[i]->crc);
+        sprintf(numstr,"%u",pods[i]->crc);
         cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
         totalcrc = _crc32(totalcrc,&pods[i]->crc,sizeof(pods[i]->crc));
     }
@@ -1275,9 +1279,11 @@ char *transporter_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     sprintf(retbuf,"transporter_received from NXT.%s totalcrc.%08x n.%d height.%d %.8f",sender,totalcrc,n,height,dstr(value));
     cp = get_coin_info(coinstr);
+    if ( cp->changepod == 0 )
+        cp->changepod = select_changepod(cp,minage);
     sendernp = get_NXTacct(&createdflag,Global_mp,sender);
     if ( cp == 0 || totalcrc == 0 || minage <= 0 || height == 0 || value == 0 || n <= 0 || cp->changepod == 0 )
-        strcat(retbuf," <<<<< ERROR"), errflag = -1;
+        sprintf(retbuf+strlen(retbuf)," <<<<< ERROR changepod.%p",cp->changepod), errflag = -1;
     else if ( sendernp->incomingcrcs == 0 )
     {
         if ( _crc32(0,crcs,n * sizeof(*crcs)) == totalcrc )

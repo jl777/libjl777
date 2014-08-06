@@ -464,6 +464,7 @@ void clear_NXT_networkinfo(struct NXT_acct *np)
 {
     if ( np != 0 )
     {
+        printf("clear_NXT_networkinfo\n");
         np->sentintro = 0;
         np->tcp = 0;
         np->udp = 0;

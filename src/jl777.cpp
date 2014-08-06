@@ -562,7 +562,6 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-
 char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t satoshis;
@@ -594,7 +593,7 @@ char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,c
     copy_cJSON(coinstr,objs[2]);
     height = get_API_uint(objs[3],0);
     minage = get_API_uint(objs[4],0);
-    value = get_API_nxt64bits(objs[5]);
+    value = (SATOSHIDEN * get_API_float(objs[5]));
     totalcrc = get_API_uint(objs[6],0);
     if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
     {
@@ -619,7 +618,7 @@ char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t num
     status = get_API_int(objs[2],0);
     copy_cJSON(coinstr,objs[3]);
     totalcrc = get_API_uint(objs[4],0);
-    value = get_API_nxt64bits(objs[5]);
+    value = (SATOSHIDEN * get_API_float(objs[5]));
     num = get_API_int(objs[6],0);
     if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
     {
