@@ -366,7 +366,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         //sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         np = process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
-        printf("after process_packet np.%p %p %p sentintro.%d\n",np,Server_NXTaddr,Server_secret,np->sentintro);
+        printf("after process_packet np.%p %p %p sentintro.%d\n",np,Server_NXTaddr,Server_secret,np!=0?np->sentintro:0);
         ASSERT(addr->sa_family == AF_INET);
         if ( np != 0 && Server_NXTaddr != 0 && Server_secret != 0 )
         {
@@ -387,7 +387,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
                 }
             }
          }
-        server_xferred += nread;
+         server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
         free(rcvbuf->base);

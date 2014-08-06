@@ -537,12 +537,15 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
         np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
         printf("set np <- NXT.%s\n",Global_pNXT->privacyServer_NXTaddr);
     }
-    else if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
+    else
     {
         np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
-        queue_message(np,msg,origargstr);
-        sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,verifiedNXTaddr);
-        return(clonestr(buf));
+        if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
+        {
+            queue_message(np,msg,origargstr);
+            sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,verifiedNXTaddr);
+            return(clonestr(buf));
+        }
     }
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     memset(finalbuf,0,sizeof(finalbuf));
@@ -564,7 +567,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
     else if ( len > 0 )
     {
         outbuf = encoded;
-        printf("np.%p NXT.%s np->udp %p destnpudp.%p\n",np,np->H.NXTaddr,np!=0?np->udp:0,destnp->udp);
+        printf("np.%p NXT.%s np->udp %p | destnp.%p destnp_udp.%p\n",np,np!=0?np->H.NXTaddr:"no np",np!=0?np->udp:0,destnp,destnp!=0?destnp->udp:0);
         if ( np != 0 && np->udp != 0 )// && destnp->udp == 0 )
         {
             printf("Must use indirection\n");
