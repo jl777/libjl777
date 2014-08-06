@@ -13,20 +13,27 @@
 #define TELEPORT_TRANSPORTER_TIMEOUT 10
 #define TELEPORT_TELEPOD_TIMEOUT 60
 
-#define TELEPOD_CONTENTS_VOUT 0
+#define TELEPOD_CONTENTS_VOUT 0 // must be 0
 #define TELEPOD_CHANGE_VOUT 1   // vout 0 is for the pod contents and last one (1 if no change or 2) is marker
 
-queue_t podQ;
 struct telepod
 {
-    uint32_t filenum,saved,xfered,height,sentheight,crc;
-    uint16_t podsize,vout,cloneout,inhwm;
-    uint64_t satoshis,modified;
-    struct telepod *localclone;
-    char coinstr[8],txid[MAX_COINTXID_LEN],clonetxid[MAX_COINTXID_LEN];
-    char coinaddr[MAX_COINADDR_LEN],cloneaddr[MAX_COINADDR_LEN],pubkey[128];
+    uint32_t filenum,xfered,height,sentheight,crc;
+    uint16_t cloneout,pad;
+    int8_t inhwm,ischange,saved,dir;
+    char clonetxid[MAX_COINTXID_LEN],cloneaddr[MAX_COINADDR_LEN];
+    struct telepod *abortion;
+    uint64_t modified,satoshis;
+    uint16_t podsize,vout;
+    char coinstr[8],txid[MAX_COINTXID_LEN],coinaddr[MAX_COINADDR_LEN],pubkey[128];
     char privkey[];
 };
+
+void beg_for_changepod(struct coin_info *cp,char *NXTACCTSECRET)
+{
+    // jl777: need to send request to faucet
+    printf("beg for changepod\n");
+}
 
 void disp_telepod(char *msg,struct telepod *pod)
 {
@@ -40,7 +47,7 @@ void set_telepod_fname(char *fname,char *coinstr,int32_t podnumber)
 
 uint32_t calc_telepodcrc(struct telepod *pod)
 {
-    return(_crc32(0,(void *)((long)&pod->crc + sizeof(pod->crc)),pod->podsize - ((long)&pod->crc - (long)pod)));
+    return(_crc32(0,(void *)((long)&pod->modified + sizeof(pod->modified)),pod->podsize - ((long)&pod->modified - (long)pod)));
 }
 
 int32_t update_telepod_file(char *coinstr,int32_t filenum,struct telepod *pod,char *NXTACCTSECRET)
@@ -136,7 +143,82 @@ int32_t truncate_telepod_file(struct telepod *pod,char *NXTACCTSECRET)
     return(-2);
 }
 
-struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *pubkey,char *privkey,char *txid,int32_t vout)
+struct telepod *find_telepod(struct coin_info *cp,char *pubkey)
+{
+    uint64_t hashval;
+    if ( cp == 0 )
+        return(0);
+    hashval = MTsearch_hashtable(&cp->telepods,pubkey);
+    if ( hashval == HASHSEARCH_ERROR )
+        return(0);
+    else return(cp->telepods->hashtable[hashval]);
+}
+
+int32_t find_telepod_slot(char *name,int32_t filenum)
+{
+    FILE *fp = 0;
+    char fname[512];
+    do
+    {
+        if ( fp != 0 )
+        {
+            fseek(fp,0,SEEK_END);
+            if ( ftell(fp) == 0 )
+            {
+                fclose(fp);
+                printf("found empty slot.%d for telepod\n",filenum);
+                break;
+            }
+            fclose(fp);
+            fp = 0;
+            filenum++;
+        }
+        set_telepod_fname(fname,name,filenum);
+        printf("check (%s)\n",fname);
+    }
+    while ( (fp= fopen(fname,"rb")) != 0 );
+    return(filenum);
+}
+
+int32_t ensure_telepod_has_backup(struct coin_info *cp,struct telepod *refpod,char *NXTACCTSECRET)
+{
+    struct telepod *pod,*newpod;
+    int32_t createdflag;
+    uint64_t hashval;
+    if ( refpod == 0 )
+        return(-1);
+    if ( refpod->saved == 0 )
+        cp->savedtelepods = find_telepod_slot(cp->name,cp->savedtelepods);
+    if ( update_telepod_file(cp->name,cp->savedtelepods,refpod,NXTACCTSECRET) == 0 )
+    {
+        if ( (newpod= _load_telepod(cp->name,cp->savedtelepods,NXTACCTSECRET)) == 0 )
+            printf("error verifying telepod.%d\n",cp->savedtelepods);
+        else
+        {
+            // WARNING: advanced hashtable replacement, be careful to mess with this
+            pod = MTadd_hashtable(&createdflag,&cp->telepods,refpod->pubkey);
+            hashval = MTsearch_hashtable(&cp->telepods,refpod->pubkey);
+            if ( hashval != HASHSEARCH_ERROR )
+            {
+                if ( pod == cp->telepods->hashtable[hashval] )
+                {
+                    cp->savedtelepods++;
+                    cp->telepods->hashtable[hashval] = newpod;
+                    free(pod);
+                    return(0);
+                }
+                else
+                {
+                    printf("unexpected newpod %p != %p in [%llu]\n",newpod,cp->telepods->hashtable[hashval],(long long)hashval);
+                }
+            }
+            free(newpod);
+        }
+    }
+    return(-1);
+}
+
+struct telepod *create_telepod(int32_t saveflag,char *NXTACCTSECRET,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *pubkey,char *privkey,char *txid,int32_t vout)
 {
     struct telepod *pod;
     int32_t size,len;
@@ -153,82 +235,26 @@ struct telepod *create_telepod(int32_t saveflag,struct coin_info *cp,uint64_t sa
     safecopy(pod->pubkey,pubkey,sizeof(pod->pubkey));
     safecopy(pod->privkey,privkey,len+1);
     pod->crc = calc_telepodcrc(pod);
+    if ( saveflag != 0 )
+        ensure_telepod_has_backup(cp,pod,NXTACCTSECRET);
+    
     disp_telepod("create",pod);
     return(pod);
 }
 
-struct telepod *find_telepod(struct coin_info *cp,char *pubkey)
+void update_minipod_info(struct coin_info *cp,struct telepod *pod)
 {
-    uint64_t hashval;
-    if ( cp == 0 )
-        return(0);
-    hashval = MTsearch_hashtable(&cp->telepods,pubkey);
-    if ( hashval == HASHSEARCH_ERROR )
-        return(0);
-    else return(cp->telepods->hashtable[hashval]);
-}
-
-int32_t ensure_telepod_has_backup(struct coin_info *cp,struct telepod *refpod,char *NXTACCTSECRET)
-{
-    FILE *fp = 0;
-    char fname[512];
-    struct telepod *pod;
-    int32_t createdflag;
-    if ( (pod= find_telepod(cp,refpod->pubkey)) == 0 || pod->vout != refpod->vout )
+    struct telepod *refpod;
+    if ( pod->satoshis <= cp->min_telepod_satoshis && pod->satoshis >= cp->txfee && pod->clonetxid[0] == 0 && pod->height > (uint32_t)(get_blockheight(cp) - cp->minconfirms) )
     {
-        pod = MTadd_hashtable(&createdflag,&cp->telepods,pod->pubkey);
-        if ( refpod->saved == 0 )
+        if ( (refpod= cp->changepod) == 0 || (pod->height != 0 && (refpod->height == 0 || pod->height < refpod->height)) )
         {
-            do
-            {
-                if ( fp != 0 )
-                {
-                    fseek(fp,0,SEEK_END);
-                    if ( ftell(fp) == 0 )
-                    {
-                        fclose(fp);
-                        printf("found empty slot.%d for telepod\n",cp->savedtelepods);
-                        break;
-                    }
-                    fclose(fp);
-                    fp = 0;
-                    cp->savedtelepods++;
-                }
-                set_telepod_fname(fname,cp->name,cp->savedtelepods);
-                printf("check (%s)\n",fname);
-            }
-            while ( (fp= fopen(fname,"rb")) != 0 );
-            if ( update_telepod_file(cp->name,cp->savedtelepods,refpod,NXTACCTSECRET) == 0 )
-                cp->savedtelepods++;
+            cp->changepod = pod;
+            if ( refpod != 0 )
+                refpod->ischange = 0;
+            pod->ischange = 1;
         }
     }
-    if ( fp != 0 )
-        fclose(fp);
-    if ( refpod->saved == 0 )
-        return(-1);
-    else return(0);
-}
-
-int32_t load_telepods(struct coin_info *cp,int32_t maxnofile,char *NXTACCTSECRET)
-{
-    int nofile = 0;
-    struct telepod *pod;
-    if ( cp->telepods != 0 )
-        return(cp->savedtelepods);
-    cp->telepods = hashtable_create("telepods",HASHTABLES_STARTSIZE,sizeof(*pod),((long)&pod->pubkey[0] - (long)pod),sizeof(pod->pubkey),((long)&pod->modified - (long)pod));
-    while ( nofile < maxnofile )
-    {
-        if ( (pod= _load_telepod(cp->name,cp->savedtelepods,NXTACCTSECRET)) != 0 )
-        {
-            if ( pod->xfered == 0 )
-            {
-                ensure_telepod_has_backup(cp,pod,NXTACCTSECRET);
-                disp_telepod("load",pod);
-            } else disp_telepod("spent",pod);
-            cp->savedtelepods++;
-        } else nofile++;
-    }
-    return(cp->savedtelepods);
 }
 
 struct telepod **gather_telepods(int32_t *nump,uint64_t *balancep,struct coin_info *cp,int32_t minage)
@@ -248,14 +274,16 @@ struct telepod **gather_telepods(int32_t *nump,uint64_t *balancep,struct coin_in
         for (i=0; i<changed; i++)
         {
             pod = rawlist[i];
-            if ( (height - pod->height) > minage )
+            if ( (height - pod->height) > minage && pod->ischange == 0 )
             {
                 (*balancep) += pod->satoshis;
                 pods[numactive++] = pod;
             }
+            else printf("reject telepod.%d height.%d - pod->height.%d minage.%d, ischange.%d\n",i,height,pod->height,minage,pod->ischange);
         }
     }
     free(rawlist);
+    //printf("numactive.%d\n",numactive);
     if ( pods != 0 && numactive > 0 )
     {
         pods = realloc(pods,sizeof(*pods) * numactive);
@@ -267,6 +295,52 @@ struct telepod **gather_telepods(int32_t *nump,uint64_t *balancep,struct coin_in
         free(pods);
         return(0);
     }
+}
+
+struct telepod *select_changepod(struct coin_info *cp,int32_t minage)
+{
+    int32_t i,n;
+    uint64_t balance;
+    struct telepod **allpods;
+    cp->changepod = 0;
+    allpods = gather_telepods(&n,&balance,cp,minage);
+    for (i=0; i<n; i++)
+        allpods[i]->ischange = 0;
+    for (i=0; i<n; i++)
+        update_minipod_info(cp,allpods[i]);
+    return(cp->changepod);
+}
+
+int32_t load_telepods(struct coin_info *cp,int32_t maxnofile,char *NXTACCTSECRET)
+{
+    int nofile = 0;
+    struct telepod *pod;
+    if ( cp->telepods != 0 )
+        return(cp->savedtelepods);
+    cp->telepods = hashtable_create("telepods",HASHTABLES_STARTSIZE,sizeof(*pod),((long)&pod->pubkey[0] - (long)pod),sizeof(pod->pubkey),((long)&pod->modified - (long)pod));
+    if ( cp->min_telepod_satoshis == 0 )
+        cp->min_telepod_satoshis = SATOSHIDEN/10;
+    while ( nofile < maxnofile )
+    {
+        if ( (pod= _load_telepod(cp->name,cp->savedtelepods,NXTACCTSECRET)) != 0 )
+        {
+            if ( pod->clonetxid[0] == 0 )
+            {
+                update_minipod_info(cp,pod);
+                ensure_telepod_has_backup(cp,pod,NXTACCTSECRET);
+                disp_telepod("load",pod);
+            }
+            else
+            {
+                disp_telepod("spent",pod);
+                cp->savedtelepods++;
+            }
+        } else nofile++;
+    }
+    if ( cp->changepod == 0 )
+        beg_for_changepod(cp,NXTACCTSECRET);
+    printf("after loaded %d telepods\n",cp->savedtelepods);
+    return(cp->savedtelepods);
 }
 
 double calc_telepod_metric(struct telepod **pods,int32_t n,uint64_t satoshis,uint32_t height)
@@ -283,10 +357,11 @@ double calc_telepod_metric(struct telepod **pods,int32_t n,uint64_t satoshis,uin
             youngest = age;
         sum += pods[i]->satoshis;
     }
-    if ( sum < satoshis )
-        return(-1.);
     agesum /= n;
-    metric = n * sqrt(agesum / (youngest + 1)) + (satoshis - sum);
+    metric = n * sqrt((double)agesum / (youngest + 1)) + (satoshis - sum + 1);
+    printf("metric.%f youngest.%lld agesum %llu n %d, (%lld - %lld)\n",metric,(long long)youngest,(long long)agesum,n,(long long)satoshis,(long long)sum);
+    if ( sum < satoshis || youngest < 0 )
+        return(-1.);
     return(metric);
 }
 
@@ -302,19 +377,25 @@ int32_t set_inhwm_flags(struct telepod **hwmpods,int32_t numhwm,struct telepod *
 
 struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct telepod **allpods,int32_t n,int32_t maxiters,uint64_t satoshis,uint32_t height)
 {
-    int32_t i,j,k,finished,numtestpods,replacei,numhwm = *hwmnump;
+    int32_t i,j,k,finished,numtestpods,nohwm,replacei,numhwm = *hwmnump;
     struct telepod **testlist;
     double metric,bestmetric;
     bestmetric = calc_telepod_metric(hwmpods,numhwm,satoshis,height);
     testlist = calloc(n,sizeof(*testlist));
     set_inhwm_flags(hwmpods,numhwm,allpods,n);
     finished = 0;
+    if ( numhwm == 0 || n == 0 )
+        return(0);
+    nohwm = 0;
     for (i=0; i<maxiters; i++)
     {
+        if ( ++nohwm > 100 )
+            break;
         memcpy(testlist,hwmpods,sizeof(*testlist) * numhwm);
         replacei = (rand() % numhwm);
         for (j=0; j<n; j++)
         {
+            printf("i.%d of %d, replacei.%d j.%d inhwm.%d\n",i,maxiters,replacei,j,allpods[j]->inhwm);
             if ( allpods[j]->inhwm == 0 )
             {
                 testlist[replacei] = allpods[j];
@@ -322,13 +403,15 @@ struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct
                 for (k=0; k<2; k++)
                 {
                     metric = calc_telepod_metric(testlist,numtestpods,satoshis,height);
+                    printf("i.%d of %d, replacei.%d j.%d k.%d metric %f\n",i,maxiters,replacei,j,k,metric);
                     if ( metric >= 0 && (bestmetric < 0 || metric < bestmetric) )
                     {
                         bestmetric = metric;
                         memcpy(hwmpods,testlist,numtestpods * sizeof(*hwmpods));
                         *hwmnump = numhwm = numtestpods;
                         printf("new HWM i.%d j.%d k.%d replacei.%d bestmetric %f, numtestpods.%d\n",i,j,k,replacei,bestmetric,numtestpods);
-                        if ( set_inhwm_flags(hwmpods,numhwm,allpods,n) == 0 )
+                        nohwm = 0;
+                        if ( metric <= 1.0 )//set_inhwm_flags(hwmpods,numhwm,allpods,n) == 0 )
                         {
                             finished = 1;
                             break;
@@ -346,6 +429,7 @@ struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct
                 if ( finished != 0 )
                     break;
             }
+            printf("i.%d j.%d k.%d finished.%d\n",i,j,k,finished);
             if ( finished != 0 )
                 break;
         }
@@ -375,19 +459,27 @@ struct telepod **evolve_telepod_bundle(int32_t *nump,int32_t maxiters,struct coi
             if ( sum >= satoshis )
                 break;
         }
+        //printf("i.%d of n.%d\n",i,n);
         if ( i == n )
         {
             free(allpods);
             return(0);
         }
-        else n++;
+        else n = (i+1);
     }
-    bestn = n;
-    hwmpods = calloc(n+1,sizeof(*hwmpods));
-    memcpy(hwmpods,allpods,n * sizeof(*hwmpods));
-    if ( maxiters > 0 )
-        hwmpods = evolve_podlist(&bestn,hwmpods,allpods,n,maxiters,satoshis,height);
-    free(allpods);
+    printf("evolve maxiters.%d with n.%d\n",maxiters,n);
+    if ( n > 0 )
+    {
+        bestn = n;
+        hwmpods = calloc(n+1,sizeof(*hwmpods));
+        memcpy(hwmpods,allpods,n * sizeof(*hwmpods));
+        if ( maxiters > 0 )
+            hwmpods = evolve_podlist(&bestn,hwmpods,allpods,n,maxiters,satoshis,height);
+        for (i=0; i<bestn; i++)
+            disp_telepod("hwm",hwmpods[i]);
+        free(allpods);
+    }
+    printf("-> evolved with bestn.%d %p\n",bestn,hwmpods);
     *nump = bestn;
     return(hwmpods);
 }
@@ -499,7 +591,7 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,uint
             if ( crcs[i] != 0 )
             {
                 destnp->statuscrcs[i] = crcs[i];
-                if ( crcs[i] == ((struct telepod *)destnp->intransit[i])->crc )
+                if ( crcs[i] == ((struct telepod *)destnp->outbound[i])->crc )
                     completed++;
                 else mismatches++;
             }
@@ -535,36 +627,42 @@ void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NX
     }
 }
 
-char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct coin_info *cp,char *walletpass,int32_t minage)
+char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *dest,struct coin_info *cp,int32_t minage)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
-    char buf[4096],*retstr;
+    char buf[4096];
     struct telepod **pods = 0;
-    uint64_t satoshis;
     struct NXT_acct *np,*destnp;
     cJSON *json;
     double startmilli;
     int32_t i,n,err,pending;
-    uint32_t totalcrc,height;
+    uint32_t totalcrc,height,startheight;
+    printf("%s -> teleport %.8f %s -> %s minage.%d\n",NXTaddr,dstr(satoshis),cp->name,dest,minage);
+    if ( minage == 0 )
+        minage = cp->minconfirms;
     destnp = search_addresses(dest);
-    if ( destnp->intransit != 0 )
+    if ( destnp->outbound != 0 )
     {
         sprintf(buf,"{\"error\":\"teleport: have to wait for current transport to complete\"}");
         return(clonestr(buf));
     }
-    load_telepods(cp,100,NXTACCTSECRET);
+    //prep_wallet(cp,walletpass,60);
+    if ( load_telepods(cp,100,NXTACCTSECRET) == 0 )
+    {
+        int32_t make_traceable_telepods(struct coin_info *cp,char *NXTACCTSECRET,uint64_t satoshis);
+        make_traceable_telepods(cp,NXTACCTSECRET,SATOSHIDEN/5);
+    }
+
     height = (uint32_t)get_blockheight(cp);
-    satoshis = (amount * SATOSHIDEN);
     if ( (pods= evolve_telepod_bundle(&n,0,cp,minage,satoshis,height)) == 0 )
-        sprintf(buf,"{\"error\":\"teleport: not enough available for %.8f %s to %s\"}",amount,cp->name,dest);
+        sprintf(buf,"{\"error\":\"teleport: not enough available for %.8f %s to %s\"}",dstr(satoshis),cp->name,dest);
     else
     {
         free(pods), pods = 0;
-        //prep_wallet(cp,walletpass,60);
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
         if ( memcmp(destnp->pubkey,zerokey,sizeof(zerokey)) == 0 )
         {
-            query_pubkey(destnp->H.NXTaddr);
+            query_pubkey(destnp->H.NXTaddr,NXTACCTSECRET);
             sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",dest);
         }
         else
@@ -573,17 +671,17 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct
             pods = evolve_telepod_bundle(&n,100000,cp,minage,satoshis,height);
             printf("finished evolving at %f\n",milliseconds());
             if ( pods == 0 )
-                sprintf(buf,"{\"error\":\"unexpected bundle evolve failure for %.8f %s to %s\"}",amount,cp->name,dest);
+                sprintf(buf,"{\"error\":\"unexpected bundle evolve failure for %.8f %s to %s\"}",dstr(satoshis),cp->name,dest);
             else
             {
                 json = create_telepod_bundle_json(&totalcrc,cp->name,height,minage,satoshis,pods,n);
                 if ( json != 0 )
                 {
                     destnp->gotstatus = 0;
-                    destnp->intransit = (void **)pods;
+                    destnp->outbound = (void **)pods;
                     err = sendandfree_jsonmessage(NXTaddr,NXTACCTSECRET,json,destnp->H.NXTaddr);
                     if ( err < 0 )
-                        sprintf(buf,"{\"error\":\"sendandfree_jsonmessage telepod bundle failure for %.8f %s to %s\"}",amount,cp->name,dest);
+                        sprintf(buf,"{\"error\":\"sendandfree_jsonmessage telepod bundle failure for %.8f %s to %s\"}",dstr(satoshis),cp->name,dest);
                     else
                     {
                         for (i=0; i<TELEPORT_TRANSPORTER_TIMEOUT; i++)
@@ -594,10 +692,11 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct
                         }
                         if ( i == 0 || destnp->gotstatus != totalcrc || destnp->expect != satoshis || destnp->numincoming != n )
                         {
-                            sprintf(buf,"{\"error\":\"no response or badcrc %08x vs %08x from %s for: %.8f %s to %s or expect %.8f vs %.8f or num %d vs %d\"}",destnp->gotstatus,totalcrc,destnp->H.NXTaddr,amount,cp->name,dest,dstr(destnp->expect),dstr(satoshis),destnp->numincoming,n);
+                            sprintf(buf,"{\"error\":\"no response or badcrc %08x vs %08x from %s for: %.8f %s to %s or expect %.8f vs %.8f or num %d vs %d\"}",destnp->gotstatus,totalcrc,destnp->H.NXTaddr,dstr(satoshis),cp->name,dest,dstr(destnp->expect),dstr(satoshis),destnp->numincoming,n);
                         }
                         else
                         {
+                            startheight = (uint32_t)get_blockheight(cp);
                             startmilli = milliseconds();
                             pending = 0;
                             while ( milliseconds() < (startmilli + TELEPORT_TELEPOD_TIMEOUT*1000) )
@@ -605,51 +704,118 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,double amount,char *dest,struct
                                 for (i=pending=0; i<n; i++)
                                 {
                                     if ( destnp->statuscrcs != 0 && destnp->statuscrcs[i] == pods[i]->crc )
+                                    {
+                                        //if ( pods[i]->satoshis == cp->min_telepod_satoshis )
+                                        //    cp->numunitpods--;
                                         continue;
+                                    }
                                     pending++;
                                     if ( transporter(NXTaddr,NXTACCTSECRET,destnp->H.NXTaddr,pods[i],totalcrc,i) != 0 )
                                     {
-                                        sprintf(buf,"{\"error\":\"transporter error on %d of %d: %.8f %s to %s\"}",i,n,amount,cp->name,dest);
+                                        sprintf(buf,"{\"error\":\"transporter error on %d of %d: %.8f %s to %s\"}",i,n,dstr(satoshis),cp->name,dest);
                                         printf("%s\n",buf);
                                         break;
                                     }
+                                    else
+                                    {
+                                        pods[i]->sentheight = startheight;
+                                        pods[i]->dir = 1;
+                                        if ( cp->enabled == 0 )
+                                        {
+                                            strcpy(cp->NXTACCTSECRET,NXTACCTSECRET);
+                                            cp->blockheight = startheight, cp->enabled = 1;
+                                        }
+                                    }
                                 }
+                                if ( i == n && pending == 0 )
+                                    break;
+                                sleep(3);
                             }
                             if ( pending == 0 )
                             {
-                                sprintf(buf,"{\"result\":\"transporter sent all %d telepods: %.8f %s to %s\"}",n,amount,cp->name,dest);
+                                sprintf(buf,"{\"result\":\"transporter sent all %d telepods: %.8f %s to %s\"}",n,dstr(satoshis),cp->name,dest);
                             }
                             else
                             {
-                                struct telepod *clone_telepod(struct coin_info *cp,struct telepod *pod);
+                                struct telepod *clone_telepod(struct coin_info *cp,char *NXTACCTSECRET,struct telepod *pod);
                                 printf("ABORTING Teleport, cloning all pending telepods\n");
                                 for (i=0; i<n; i++)
-                                    pods[i]->localclone = clone_telepod(cp,pods[i]);
+                                    pods[i]->abortion = clone_telepod(cp,NXTACCTSECRET,pods[i]);
                             }
-                            queue_enqueue(&podQ,pods);
+                            for (i=0; i<n; i++)
+                                queue_enqueue(&cp->podQ.pingpong[0],pods[i]); // jl777: monitor status on blockchain
                         }
                     }
                 }
-                else sprintf(buf,"{\"error\":\"unexpected bundle evolve createjson error for %.8f %s to %s\"}",amount,cp->name,dest);
+                else sprintf(buf,"{\"error\":\"unexpected bundle evolve createjson error for %.8f %s to %s\"}",dstr(satoshis),cp->name,dest);
             }
         }
-        return(retstr);
     }
     return(clonestr(buf));
 }
 
-// Receive
-
-void conv_telepod(struct coin_value *vp,struct telepod *pod)
+// other thread
+int32_t process_podQ(void *ptr)
 {
-    char script[512];
-    memset(vp,0,sizeof(*vp));
+    struct telepod *pod = ptr;
+    if ( pod->dir > 0 && pod->clonetxid[0] != 0 ) // outbound telepod
+        return(1);
+    else if ( pod->dir < 0 && pod->height != 0 ) // cloned telepod
+        return(1);
+    return(0);
+}
+
+int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp,uint32_t blocknum,struct coin_txid *utxo,int32_t utx_out) // jl777: this confusing vin vs vout?!
+{
+    char pubkey[512];
+    struct telepod *pod;
+    if ( validate_coinaddr(pubkey,cp,vp->coinaddr) > 0 )
+    {
+        if ( (pod= find_telepod(cp,pubkey)) != 0 && pod->vout == vp->parent_vout )
+        {
+            printf("found relevant telepod dir.%d block.%d txid.(%s) vout.%d %p %d\n",pod->dir,blocknum,vp->txid!=0?vp->txid:"notxid",vp->parent_vout,utxo,utx_out);
+            if ( utxo != 0 )
+            {
+                if ( pod->dir <= 0 )
+                    printf("WARNING: unexpected dir.%d unset in vin telepod\n",pod->dir);
+                safecopy(pod->clonetxid,utxo->txid,sizeof(pod->clonetxid)), pod->cloneout = utx_out;
+                if ( update_telepod_file(cp->name,pod->filenum,pod,cp->NXTACCTSECRET) != 0 )
+                    printf("ERROR saving cloned refpod\n");
+            }
+            else
+            {
+                if ( pod->dir >= 0 || pod->height == 0 )
+                    printf("WARNING: unexpected dir.%d set in vout telepod or height.%d set\n",pod->dir,pod->height);
+                pod->height = blocknum;
+                if ( update_telepod_file(cp->name,pod->filenum,pod,cp->NXTACCTSECRET) != 0 )
+                    printf("ERROR saving cloned refpod\n");
+            }
+            return(1);
+        }
+    } printf("warning: couldnt find pubkey for (%s)\n",vp->coinaddr);
+    return(0);
+}
+
+// Receive
+uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
+{
+    if ( strcmp(cp->name,"BTCD") == 0 )
+        return(cp->txfee);
+    else return(cp->txfee + (satoshis>>10));
+}
+
+struct coin_value *conv_telepod(struct telepod *pod)
+{
+    char script[1024];
+    struct coin_value *vp;
+    vp = calloc(1,sizeof(*vp));
     vp->value = pod->satoshis;
     vp->txid = pod->txid;
     vp->parent_vout = pod->vout;
     safecopy(vp->coinaddr,pod->coinaddr,sizeof(vp->coinaddr));
     calc_script(script,pod->pubkey);
     vp->script = clonestr(script);
+    return(vp);
 }
 
 void free_coin_value(struct coin_value *vp)
@@ -662,123 +828,401 @@ void free_coin_value(struct coin_value *vp)
     }
 }
 
-uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
+void purge_rawtransaction(struct rawtransaction *raw)
 {
-    if ( strcmp(cp->name,"BTCD") == 0 )
-        return(cp->txfee);
-    else return(cp->txfee + (satoshis>>10));
+    int32_t i;
+    if ( raw->rawtxbytes != 0 )
+        free(raw->rawtxbytes);
+    if ( raw->signedtx != 0 )
+        free(raw->signedtx);
+    for (i=0; i<raw->numinputs; i++)
+        if ( raw->inputs[i] != 0 )
+            free_coin_value(raw->inputs[i]);
 }
 
-int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp) // jl777: this confusing vin vs vout?!
+char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
 {
-    char pubkey[512];
-    struct telepod *pod;
-    if ( validate_coinaddr(pubkey,cp,vp->coinaddr) > 0 )
-    {
-        if ( (pod= find_telepod(cp,pubkey)) != 0 && pod->vout == vp->parent_vout )
-            return(1);
-    } printf("warning: couldnt find pubkey for (%s)\n",vp->coinaddr);
-    return(0);
-}
-
-int32_t get_privkeys(char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE],struct coin_info *cp,char **localcoinaddrs,int32_t num)
-{
-    char args[1024],pubkey[512],*privkey;
-    int32_t i,n = 0;
-    struct telepod *pod;
-    for (i=0; i<num; i++)
-    {
-        if ( cp != 0 && localcoinaddrs[i] != 0 )
-        {
-            sprintf(args,"\"%s\"",localcoinaddrs[i]);
-            privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
-            if ( privkey != 0 )
-            {
-                n++;
-                strcpy(privkeys[i],privkey);
-                free(privkey);
-            }
-            else
-            {
-                if ( validate_coinaddr(pubkey,cp,localcoinaddrs[i]) > 0 )
-                {
-                    if ( (pod= find_telepod(cp,pubkey)) != 0 )
-                        strcpy(privkeys[i],pod->privkey);
-                    else
-                    {
-                        printf("cant dumpprivkey for (%s) pubkey.(%s) nor is it a telepod we have\n",localcoinaddrs[i],pubkey);
-                        return(-1);
-                    }
-                }
-                else
-                {
-                    printf("cant get pubkey for (%s) \n",localcoinaddrs[i]);
-                    return(-2);
-                }
-            }
-        }
-    }
-    return(n);
-}
-
-struct telepod *clone_telepod(struct coin_info *cp,struct telepod *pod)
-{
-    /*char *podaddr,*txid,*privkey,*changeaddr,args[1024],script[1024];
-    struct coin_value **ups;
-    int32_t i,n;
-    uint64_t balance,satoshis,fee;
-    struct rawtransaction RAW;
-    podaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","telepods");
+    char *podaddr,*privkey,args[1024];
+    (*podaddrp) = privkey = 0;
+    pubkey[0] = 0;
+    podaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"telepods\"]");
     if ( podaddr != 0 )
     {
         sprintf(args,"\"%s\"",podaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+        printf("got podaddr.(%s) privkey.%p\n",podaddr,privkey);
         if ( privkey != 0 )
         {
-            if ( pods == 0 )
+            if ( validate_coinaddr(pubkey,cp,podaddr) > 0 )
+                (*podaddrp) = podaddr;
+            else
             {
-                sprintf(args,"[{\"transporter\"},{\"%s\"},{%.8f}]",podaddr,amount);
-                if ( (txid= bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendfrom",args)) == 0 )
-                    printf("error funding telepod from transporter\n");
-                else pod = create_telepod(0,cp,satoshis,podaddr,script,privkey,txid,TELEPOD_CONTENTS_VOUT);
+                free(podaddr);
+                free(privkey);
+                privkey = 0;
+            }
+        } else free(podaddr);
+    } else printf("error getnewaddress telepods\n");
+    return(privkey);
+}
+
+struct telepod *make_traceable_telepod(struct coin_info *cp,char *NXTACCTSECRET,uint64_t satoshis)
+{
+    char args[1024],pubkey[1024],*podaddr,*txid,*privkey;
+    struct telepod *pod = 0;
+    printf("make_traceable_telepod %.8f\n",dstr(satoshis));
+    if ( (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
+    {
+        sprintf(args,"[\"transporter\",\"%s\",%.8f]",podaddr,dstr(satoshis));
+        printf("args.(%s)\n",args);
+        if ( (txid= bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendfrom",args)) == 0 )
+            printf("error funding %.8f telepod.(%s) from transporter\n",dstr(satoshis),podaddr);
+        else pod = create_telepod(1,NXTACCTSECRET,cp,satoshis,podaddr,pubkey,privkey,txid,TELEPOD_CONTENTS_VOUT);
+        free(privkey);
+        free(podaddr);
+    }
+    return(pod);
+}
+
+int32_t make_traceable_telepods(struct coin_info *cp,char *NXTACCTSECRET,uint64_t satoshis)
+{
+    int32_t i,n,standard_denominations[] = { 10000, 5000, 1000, 500, 100, 50, 20, 10, 5, 1 };
+    uint64_t incr,amount;
+    struct telepod *pod;
+    n = 0;
+    while ( satoshis > 0 )
+    {
+        amount = satoshis;
+        for (i=0; i<(int)(sizeof(standard_denominations)/sizeof(*standard_denominations)); i++)
+        {
+            incr = (cp->min_telepod_satoshis * standard_denominations[i]);
+            if ( satoshis > incr )
+            {
+                amount = incr;
+                break;
+            }
+        }
+        pod = make_traceable_telepod(cp,NXTACCTSECRET,amount);
+        if ( pod == 0 )
+        {
+            printf("error making traceable telepod of %.8f\n",dstr(amount));
+            break;
+        }
+        satoshis -= amount;
+        n++;
+    }
+    return(n);
+}
+
+cJSON *create_privkeys_json_params(struct coin_info *cp,char **privkeys,int32_t numinputs)
+{
+    int32_t i,nonz = 0;
+    cJSON *array;
+    array = cJSON_CreateArray();
+    for (i=0; i<numinputs; i++)
+    {
+        if ( cp != 0 && privkeys[i] != 0 )
+        {
+            nonz++;
+            //printf("%s ",localcoinaddrs[i]);
+            cJSON_AddItemToArray(array,cJSON_CreateString(privkeys[i]));
+        }
+    }
+    if ( nonz == 0 )
+        free_json(array), array = 0;
+    //else printf("privkeys.%d of %d: %s\n",nonz,numinputs,cJSON_Print(array));
+    return(array);
+}
+
+char *createsignraw_json_params(struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char **privkeys)
+{
+    char *paramstr = 0;
+    cJSON *array,*rawobj,*vinsobj,*keysobj;
+    rawobj = cJSON_CreateString(rawbytes);
+    if ( rawobj != 0 )
+    {
+        vinsobj = create_vins_json_params(0,cp,rp);
+        if ( vinsobj != 0 )
+        {
+            keysobj = create_privkeys_json_params(cp,privkeys,rp->numinputs);
+            if ( keysobj != 0 )
+            {
+                array = cJSON_CreateArray();
+                cJSON_AddItemToArray(array,rawobj);
+                cJSON_AddItemToArray(array,vinsobj);
+                cJSON_AddItemToArray(array,keysobj);
+                paramstr = cJSON_Print(array);
+                free_json(array);
+            }
+            else free_json(vinsobj);
+        }
+        else free_json(rawobj);
+    }
+    return(paramstr);
+}
+
+char *createrawtxid_json_params(struct coin_info *cp,struct rawtransaction *rp)
+{
+    char *paramstr = 0;
+    cJSON *array,*vinsobj,*voutsobj;
+    vinsobj = create_vins_json_params(0,cp,rp);
+    if ( vinsobj != 0 )
+    {
+        voutsobj = create_vouts_json_params(rp);
+        if ( voutsobj != 0 )
+        {
+            array = cJSON_CreateArray();
+            cJSON_AddItemToArray(array,vinsobj);
+            cJSON_AddItemToArray(array,voutsobj);
+            paramstr = cJSON_Print(array);
+            free_json(array);   // this frees both vinsobj and voutsobj
+        }
+        else free_json(vinsobj);
+    } else printf("error create_vins_json_params\n");
+    printf("createrawtxid_json_params.%s\n",paramstr);
+    return(paramstr);
+}
+
+uint64_t calc_telepod_inputs(char **coinaddrs,char **privkeys,struct coin_info *cp,struct rawtransaction *rp,struct telepod *srcpod,struct telepod *changepod,uint64_t amount,uint64_t fee,uint64_t change)
+{
+    rp->inputsum = srcpod->satoshis;
+    if ( changepod != 0 )
+        rp->inputsum += changepod->satoshis;
+    if ( rp->inputsum != (amount + fee + change) )
+    {
+        printf("calc_telepod_inputs: unspent inputs total %.8f != %.8f\n",dstr(rp->inputsum),dstr(amount + fee + change));
+        return(0);
+    }
+    rp->amount = amount;
+    rp->change = change;
+    rp->numinputs = 0;
+    coinaddrs[rp->numinputs] = srcpod->coinaddr;
+    privkeys[rp->numinputs] = srcpod->privkey;
+    rp->inputs[rp->numinputs++] = conv_telepod(srcpod);
+    if ( changepod != 0 )
+    {
+        coinaddrs[rp->numinputs] = changepod->coinaddr;
+        privkeys[rp->numinputs] = changepod->privkey;
+        rp->inputs[rp->numinputs++] = conv_telepod(changepod);
+    }
+    printf("numinputs %d sum %.8f vs amount %.8f change %.8f -> miners %.8f\n",rp->numinputs,dstr(rp->inputsum),dstr(amount),dstr(rp->change),dstr(rp->inputsum - rp->change - rp->amount));
+    return(rp->inputsum);
+}
+
+int64_t calc_telepod_outputs(struct coin_info *cp,struct rawtransaction *rp,char *cloneaddr,uint64_t amount,uint64_t change,char *changeaddr)
+{
+    int32_t n = 0;
+    if ( rp->amount == (amount - cp->txfee) && rp->amount <= rp->inputsum )
+    {
+        rp->destaddrs[TELEPOD_CONTENTS_VOUT] = cloneaddr;
+        rp->destamounts[TELEPOD_CONTENTS_VOUT] = rp->amount;
+        n++;
+        if ( change > 0 )
+        {
+            if ( changeaddr != 0 )
+            {
+                rp->destaddrs[TELEPOD_CHANGE_VOUT] = changeaddr;
+                rp->destamounts[TELEPOD_CHANGE_VOUT] = rp->change;
+                n++;
             }
             else
             {
-                fee = calc_transporter_fee(cp,satoshis);
-                ups = 0;//select_telepods(&n,&balance,pods,num,satoshis+fee);
-                if ( ups != 0 )
+                printf("no place to send the change of %.8f\n",dstr(amount));
+                rp->numoutputs = 0;
+                return(0);
+            }
+        }
+        if ( cp->marker != 0 && (rp->inputsum - rp->amount) > cp->txfee )
+        {
+            rp->destaddrs[n] = cp->marker;
+            rp->destamounts[n] = (rp->inputsum - rp->amount) - cp->txfee;
+            n++;
+        }
+    }
+    else printf("not enough inputsum %.8f for withdrawal %.8f %.8f\n",dstr(rp->inputsum),dstr(rp->amount),dstr(amount));
+    rp->numoutputs = n;
+    printf("numoutputs.%d\n",n);
+    return(rp->amount);
+}
+
+int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char **privkeys)
+{
+    cJSON *json,*hexobj,*compobj;
+    int32_t completed = -1;
+    char *retstr,*signparams;
+    deststr[0] = 0;
+    printf("sign_rawtransaction rawbytes.(%s)\n",rawbytes);
+    signparams = createsignraw_json_params(cp,rp,rawbytes,privkeys);
+    if ( signparams != 0 )
+    {
+        stripwhite(signparams,strlen(signparams));
+        printf("got signparams.(%s)\n",signparams);
+        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"signrawtransaction",signparams);
+        if ( retstr != 0 )
+        {
+            printf("got retstr.(%s)\n",retstr);
+            json = cJSON_Parse(retstr);
+            if ( json != 0 )
+            {
+                hexobj = cJSON_GetObjectItem(json,"hex");
+                compobj = cJSON_GetObjectItem(json,"complete");
+                if ( compobj != 0 )
+                    completed = ((compobj->type&0xff) == cJSON_True);
+                copy_cJSON(deststr,hexobj);
+                if ( strlen(deststr) > destsize )
+                    printf("sign_rawtransaction: strlen(deststr) %ld > %ld destize\n",strlen(deststr),destsize);
+                //printf("got signedtransaction.(%s) ret.(%s)\n",deststr,retstr);
+                free_json(json);
+            } else printf("json parse error.(%s)\n",retstr);
+            free(retstr);
+        } else printf("error signing rawtx\n");
+        //free(signparams);
+    } else printf("error generating signparams\n");
+    return(completed);
+}
+
+char *calc_telepod_transaction(struct coin_info *cp,struct rawtransaction *rp,struct telepod *srcpod,char *destaddr,uint64_t fee,struct telepod *changepod,uint64_t change,char *changeaddr)
+{
+    long len;
+    int64_t retA,retB;
+    uint64_t amount = srcpod->satoshis;
+    char *rawparams,*localcoinaddrs[3],*privkeys[3],*retstr = 0;
+    if ( calc_telepod_inputs(localcoinaddrs,privkeys,cp,rp,srcpod,changepod,amount,fee,change) == (srcpod->satoshis + fee + change) )
+    {
+        if ( (retB= calc_telepod_outputs(cp,rp,destaddr,amount,change,changeaddr)) == (srcpod->satoshis + fee) )
+        {
+            rawparams = createrawtxid_json_params(cp,rp);
+            if ( rawparams != 0 )
+            {
+                printf("rawparams.(%s)\n",rawparams);
+                stripwhite(rawparams,strlen(rawparams));
+                retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"createrawtransaction",rawparams);
+                if ( retstr != 0 && retstr[0] != 0 )
                 {
-                    memset(&RAW,0,sizeof(RAW));
-                    if ( balance > satoshis+fee )
-                        changeaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","telepods");
-                    else changeaddr = 0;
-                    if ( (txid= calc_rawtransaction(cp,&RAW,podaddr,fee,changeaddr,ups,n,satoshis+fee,balance)) == 0 )
-                        printf("error funding telepod from telepods %p.num %d\n",pods,num);
-                    else pod = create_telepod(0,cp,satoshis,podaddr,script,privkey,txid,TELEPOD_CONTENTS_VOUT);
-                    purge_rawtransaction(&RAW);
-                    for (i=0; i<n; i++)
-                        free_coin_value(ups[i]);
-                    free(ups);
-                    if ( changeaddr != 0 )
+                    printf("calc_rawtransaction retstr.(%s)\n",retstr);
+                    if ( rp->rawtxbytes != 0 )
+                        free(rp->rawtxbytes);
+                    rp->rawtxbytes = retstr;
+                    len = strlen(retstr) + 4096;
+                    if ( rp->signedtx != 0 )
+                        free(rp->signedtx);
+                    rp->signedtx = calloc(1,len);
+                    if ( sign_rawtransaction(rp->signedtx,len,cp,rp,rp->rawtxbytes,privkeys) != 0 )
                     {
-                        // need to set script and privkey
-                        create_telepod(1,cp,balance - (satoshis+fee),changeaddr,script,privkey,txid,TELEPOD_CHANGE_VOUT);
+                        //jl777: broadcast and save record
                     }
+                    else
+                    {
+                        retstr = 0;
+                        printf("error signing rawtransaction\n");
+                    }
+                } else printf("error creating rawtransaction\n");
+                free(rawparams);
+            } else printf("error creating rawparams\n");
+        } else printf("error calculating rawinputs.%.8f or outputs.%.8f\n",dstr(retA),dstr(retB));
+    } //else printf("not enough %s balance %.8f for withdraw %.8f -> %s\n",cp->name,dstr(bp->balance),dstr(amount),destaddr);
+    return(retstr);
+}
+
+struct telepod *clone_telepod(struct coin_info *cp,char *NXTACCTSECRET,struct telepod *refpod)
+{
+    char *change_podaddr,*change_privkey,*podaddr,*txid,*privkey,pubkey[1024],change_pubkey[1024];
+    struct rawtransaction RAW;
+    struct telepod *pod,*changepod;
+    uint64_t satoshis,fee,change,availchange;
+    changepod = cp->changepod;
+    change_privkey = change_podaddr = 0;
+    availchange = fee = change_pubkey[0] = 0;
+    if ( (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
+    {
+        if ( changepod != 0 )
+        {
+            availchange = changepod->satoshis;
+            change_privkey = get_telepod_privkey(&change_podaddr,change_pubkey,cp);
+            fee = calc_transporter_fee(cp,satoshis);
+        }
+        if ( fee <= availchange )
+        {
+            change = (availchange - fee);
+            memset(&RAW,0,sizeof(RAW));
+            if ( (txid= calc_telepod_transaction(cp,&RAW,refpod,podaddr,fee,changepod,change,change_podaddr)) == 0 )
+                printf("error cloning %.8f telepod.(%s) to %s\n",dstr(satoshis),refpod->coinaddr,podaddr);
+            else
+            {
+                pod = create_telepod(1,NXTACCTSECRET,cp,satoshis,podaddr,pubkey,privkey,txid,TELEPOD_CONTENTS_VOUT);
+                safecopy(refpod->clonetxid,txid,sizeof(refpod->clonetxid)), refpod->cloneout = TELEPOD_CONTENTS_VOUT;
+                pod->dir = -1;
+                pod->height = 0;
+                if ( update_telepod_file(cp->name,refpod->filenum,refpod,NXTACCTSECRET) != 0 )
+                    printf("ERROR saving cloned refpod\n");
+                queue_enqueue(&cp->podQ.pingpong[0],pod);
+                if ( change != 0 )
+                {
+                    changepod = create_telepod(1,NXTACCTSECRET,cp,change,change_podaddr,change_pubkey,change_privkey,txid,TELEPOD_CHANGE_VOUT);
+                    safecopy(changepod->clonetxid,txid,sizeof(changepod->clonetxid)), changepod->cloneout = TELEPOD_CHANGE_VOUT;
+                    changepod->dir = -1;
+                    changepod->height = 0;
+                    if ( update_telepod_file(cp->name,changepod->filenum,changepod,NXTACCTSECRET) != 0 )
+                        printf("ERROR saving changepod after used\n");
+                    queue_enqueue(&cp->podQ.pingpong[0],changepod);
+                    if ( (cp->changepod= select_changepod(cp,cp->minconfirms)) == 0 )
+                        cp->changepod = changepod;
                 }
             }
-            free(privkey);
+            if ( cp->enabled == 0 )
+            {
+                strcpy(cp->NXTACCTSECRET,NXTACCTSECRET);
+                cp->blockheight = (uint32_t)get_blockheight(cp), cp->enabled = 1;
+            }
+            purge_rawtransaction(&RAW);
+            if ( change_privkey != 0 )
+                free(change_privkey);
+            if ( change_podaddr != 0 )
+                free(change_podaddr);
         }
+        free(privkey);
         free(podaddr);
     }
-     return(pod);*/ return(0);
+    return(pod);
+}
+
+void update_transporter_summary(cJSON *array,struct coin_info *cp,int32_t i,int32_t n,struct NXT_acct *sendernp,struct telepod *clone,struct telepod *pod)
+{
+    cJSON *item;
+    char numstr[32];
+    item = cJSON_CreateObject();
+    sprintf(numstr,"%.8f",dstr(clone->satoshis));
+    cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
+    cJSON_AddItemToObject(item,"clonecrc",cJSON_CreateNumber(clone->crc));
+    cJSON_AddItemToObject(item,"origcrc",cJSON_CreateNumber(pod->crc));
+    cJSON_AddItemToArray(array,item);
+}
+
+char *calc_transporter_summary(struct coin_info *cp,struct NXT_acct *sendernp,struct telepod **clones,struct telepod **incoming,int32_t num)
+{
+    int32_t i;
+    char *retstr,numstr[32];
+    cJSON *json,*array;
+    json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"coin",cJSON_CreateString(cp->name));
+    sprintf(numstr,"%.8f",dstr(sendernp->expect));
+    cJSON_AddItemToObject(json,"value",cJSON_CreateString(numstr));
+    array = cJSON_CreateArray();
+    for (i=0; i<num; i++)
+        update_transporter_summary(array,cp,i,num,sendernp,clones[i],incoming[i]);
+    cJSON_AddItemToObject(json,"telepods",array);
+    retstr = cJSON_Print(json);
+    stripwhite_ns(retstr,strlen(retstr));
+    return(retstr);
 }
 
 char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t crc,int32_t ind,uint32_t height,uint64_t satoshis,char *coinaddr,char *txid,int32_t vout,char *pubkey,char *privkey)
 {
-    char retbuf[4096],verifiedNXTaddr[64];
+    char retbuf[4096],verifiedNXTaddr[64],*retstr = 0;
     struct NXT_acct *sendernp,*np;
     struct coin_info *cp;
-    int32_t createdflag,errflag = -1;
+    struct telepod *pod;
+    int32_t i,createdflag,errflag = -1;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     sendernp = get_NXTacct(&createdflag,Global_mp,sender);
     sprintf(retbuf,"telepod_received from NXT.%s crc.%08x ind.%d height.%d %.8f %s %s/%d (%s) (%s)",sender,crc,ind,height,dstr(satoshis),coinaddr,txid,vout,pubkey,privkey);
@@ -788,10 +1232,37 @@ char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t c
     else
     {
         errflag = 0;
-        sendernp->incomingteleport[ind] = crc;
-        // jl777: need to verify its a valid telepod
+        pod = create_telepod(0,NXTACCTSECRET,cp,satoshis,coinaddr,pubkey,privkey,txid,vout);
+        sendernp->incomingcrcs[ind] = crc;
+        ((struct telepod **)sendernp->incoming)[ind] = pod;
+
+        // jl777: need to verify its a valid telepod with matching unspent
+        // if all recevied, start cloning
+        if ( _crc32(0,sendernp->incomingcrcs,sendernp->numincoming*sizeof(uint32_t)) == sendernp->totalcrc )
+        {
+            // jl777: eventually pick random schedule
+            for (i=0; i<sendernp->numincoming; i++)
+            {
+                if ( (pod= ((struct telepod **)sendernp->incoming)[i]) != 0 )
+                {
+                    sendernp->clones[i] = clone_telepod(cp,NXTACCTSECRET,pod);
+                    update_minipod_info(cp,sendernp->clones[i]);
+                    if ( ensure_telepod_has_backup(cp,sendernp->clones[i],NXTACCTSECRET) < 0 )
+                    {
+                        printf("error cloning pod[%d] from NXT.%s\n",i,sender);
+                        errflag++;
+                    }
+                }
+            }
+            retstr = calc_transporter_summary(cp,sendernp,(struct telepod **)sendernp->clones,(struct telepod **)sendernp->incoming,sendernp->numincoming);
+        } else errflag = -1;
     }
-    send_transporter_status(verifiedNXTaddr,NXTACCTSECRET,sendernp,cp,sendernp->totalcrc,satoshis,errflag,sendernp->numincoming,sendernp->incomingteleport);
+    send_transporter_status(verifiedNXTaddr,NXTACCTSECRET,sendernp,cp,sendernp->totalcrc,satoshis,errflag,sendernp->numincoming,sendernp->incomingcrcs);
+    if ( retstr != 0 )
+    {
+        strcpy(retbuf,sendmessage(verifiedNXTaddr,NXTACCTSECRET,retstr,(int32_t)strlen(retstr)+1,sender,retstr));
+        free(retstr);
+    }
     return(clonestr(retbuf));
 }
 
@@ -805,20 +1276,21 @@ char *transporter_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32
     sprintf(retbuf,"transporter_received from NXT.%s totalcrc.%08x n.%d height.%d %.8f",sender,totalcrc,n,height,dstr(value));
     cp = get_coin_info(coinstr);
     sendernp = get_NXTacct(&createdflag,Global_mp,sender);
-    if ( cp == 0 || totalcrc == 0 || minage <= 0 || height == 0 || value == 0 || n <= 0)
-        strcat(retbuf," <<<<< ERROR");
-    else if ( sendernp->incomingteleport == 0 )
+    if ( cp == 0 || totalcrc == 0 || minage <= 0 || height == 0 || value == 0 || n <= 0 || cp->changepod == 0 )
+        strcat(retbuf," <<<<< ERROR"), errflag = -1;
+    else if ( sendernp->incomingcrcs == 0 )
     {
         if ( _crc32(0,crcs,n * sizeof(*crcs)) == totalcrc )
         {
             sendernp->totalcrc = totalcrc;
             sendernp->numincoming = n;
-            sendernp->incomingteleport = calloc(n,sizeof(*crcs));
-            memcpy(sendernp->incomingteleport,crcs,n*sizeof(*crcs));
+            sendernp->clones = calloc(n,sizeof(*sendernp->clones));
+            sendernp->incomingcrcs = calloc(n,sizeof(*crcs));
+            memcpy(sendernp->incomingcrcs,crcs,n*sizeof(*crcs));
             errflag = 0;
         } else sprintf(retbuf + strlen(retbuf)," totalcrc %08x vs %08x ERROR",totalcrc,_crc32(0,crcs,n * sizeof(*crcs)));
     }
-    else strcat(retbuf," <<<<< ERROR already have incomingteleport");
+    else strcat(retbuf," <<<<< ERROR already have incomingcrcs");
     send_transporter_status(verifiedNXTaddr,NXTACCTSECRET,sendernp,cp,totalcrc,value,errflag,n,0);
     return(clonestr(retbuf));
 }

@@ -400,18 +400,19 @@ char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 
 char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    //static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", 0 };
     double amount;
     struct coin_info *cp;
-    char NXTACCTSECRET[512],destaddr[512],walletpass[512],minage[512],coinstr[512],*retstr = 0;
-    amount = get_API_float(objs[1]);
-    copy_cJSON(NXTACCTSECRET,objs[2]);
+    char NXTACCTSECRET[512],destaddr[512],minage[512],coinstr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    amount = get_API_float(objs[2]);
     copy_cJSON(destaddr,objs[3]);
     copy_cJSON(coinstr,objs[4]);
-    copy_cJSON(walletpass,objs[5]);
-    copy_cJSON(minage,objs[6]);
+    copy_cJSON(minage,objs[5]);
+    printf("amount.(%.8f) minage.(%s) %d\n",amount,minage,atoi(minage));
     cp = get_coin_info(coinstr);
     if ( cp != 0 && sender[0] != 0 && amount > 0 && valid != 0 && destaddr[0] != 0 )
-        retstr = teleport(sender,NXTACCTSECRET,amount,destaddr,cp,walletpass,atoi(minage));
+        retstr = teleport(sender,NXTACCTSECRET,(uint64_t)(SATOSHIDEN * amount),destaddr,cp,atoi(minage));
     else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
     return(retstr);
 }
@@ -636,6 +637,7 @@ char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t num
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", 0 };
     static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", 0 };
     static char *transporter[] = { (char *)transporter_func, "transporter", "V", "NXT", "secret", "coin", "height", "minage", "value", "totalcrc", "telepods", 0 };
     static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "NXT", "secret", "status", "coin", "totalcrc", "value", "num", "crcs", 0 };
@@ -649,7 +651,6 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
-    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "amount", "secret", "dest", "coin", "walletpass", "minage", 0 };
     static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "polarity", "allfields", "secret", 0 };
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };

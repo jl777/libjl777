@@ -373,8 +373,10 @@ struct coin_info
 {
     int32_t timestamps[100];
     struct coincache_info CACHE;
-    struct hashtable *telepods;
-    char name[64],*userpass,*serverport,assetid[64],*marker,*tradebotfname;
+    struct pingpong_queue podQ;
+    struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
+    
+    char name[64],NXTACCTSECRET[256],*userpass,*serverport,assetid[64],*marker,*tradebotfname;
     uint64_t NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
     int32_t initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods;
 };

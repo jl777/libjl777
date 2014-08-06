@@ -597,7 +597,7 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
     if ( senderNXTaddr != 0 && senderNXTaddr[0] != 0 )
     {
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-        msgs = &np->incoming;
+        msgs = &np->incomingQ;
     }
     else msgs = &ALL_messages;
     while ( (str= queue_dequeue(msgs)) != 0 ) //queue_size(msgs) > 1 &&

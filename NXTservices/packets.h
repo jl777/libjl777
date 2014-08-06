@@ -9,8 +9,13 @@
 #ifndef xcode_packets_h
 #define xcode_packets_h
 
-void query_pubkey(char *destNXTaddr)
+void query_pubkey(char *destNXTaddr,char *NXTACCTSECRET)
 {
+    struct NXT_acct *np;
+    char NXTaddr[64];
+    NXTaddr[0] = 0;
+    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+    memcpy(np->pubkey,Global_mp->session_pubkey,sizeof(np->pubkey));
     printf("need to implement query (and propagation) mechanism for pubkeys\n");
 }
 
@@ -376,8 +381,8 @@ void queue_message(struct NXT_acct *np,char *msg,char *origmsg)
     queue_enqueue(&ALL_messages,clonestr(origmsg));
     if ( msg[0] != 0 )
     {
-        queue_enqueue(&np->incoming,clonestr(msg));
-        printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,msg,queue_size(&np->incoming));
+        queue_enqueue(&np->incomingQ,clonestr(msg));
+        printf("QUEUE MESSAGES from NXT.%s (%s) size.%d\n",np->H.NXTaddr,msg,queue_size(&np->incomingQ));
     }
 }
 

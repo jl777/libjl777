@@ -69,12 +69,12 @@ struct NXT_acct
     // fields for RT comms
     //portable_udp_t Usock;
     //int32_t recvid,sentid;
-    queue_t incoming;
+    queue_t incomingQ;
     char *signedtx;
     
     uint64_t expect;
-    uint32_t *incomingteleport,gotstatus,numincoming,*statuscrcs,totalcrc;
-    void **intransit;
+    uint32_t *incomingcrcs,gotstatus,numincoming,*statuscrcs,totalcrc;
+    void **incoming,**outbound,**clones;
     
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;

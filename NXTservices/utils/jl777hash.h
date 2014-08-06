@@ -108,7 +108,7 @@ int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*acti
 // seems a bit wastefull to do all the two iter queueing/dequeuing with threadlock overhead
 // however, there is assumed to be plenty of CPU time relative to actual blockchain events
 // also this method allows for adding of parallel threads without worry
-void process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
+int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
 {
     int32_t iter,retval;
     void *ptr;
@@ -138,6 +138,7 @@ void process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
             else free(ptr);
         }
     }
+    return(queue_size(&ppq->pingpong[0]) + queue_size(&ppq->pingpong[0]));
 }
 
 uint64_t calc_decimalhash(char *key)
@@ -338,7 +339,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
             sleep(60);
     }
 #endif
-    if ( Historical_done != 0 )
+    if ( 0 && Historical_done != 0 )
         return(add_hashtable(createdflagp,hp_ptr,key));
     else
     {
@@ -370,7 +371,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
     uint64_t hashval;
     struct hashtable *hp = *hp_ptr;
     struct hashpacket *ptr;
-    if ( Historical_done != 0 )
+    if ( 0 && Historical_done != 0 )
         return(search_hashtable(hp,key));
     else
     {

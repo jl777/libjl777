@@ -147,7 +147,7 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
     return(serverport);
 }
 
-struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,double txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,double NXTfee_equiv,int32_t forkblock)
+struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,uint64_t txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,uint64_t NXTfee_equiv,int32_t forkblock)
 {
     struct coin_info *cp = calloc(1,sizeof(*cp));
     char userpass[512];
@@ -155,13 +155,12 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
         forkblock = blockheight;
     safecopy(cp->name,name,sizeof(cp->name));
     cp->estblocktime = estblocktime;
-    cp->NXTfee_equiv = (NXTfee_equiv  * SATOSHIDEN);
+    cp->NXTfee_equiv = NXTfee_equiv;
     safecopy(cp->assetid,asset,sizeof(cp->assetid));
     cp->marker = clonestr(marker);
     cp->blockheight = blockheight;
     cp->min_confirms = minconfirms;
-    cp->markeramount = (uint64_t)(txfee * SATOSHIDEN);
-    cp->txfee = (uint64_t)(txfee  * SATOSHIDEN);
+    cp->markeramount = cp->txfee = txfee;
     serverport = extract_userpass(cp,serverport,userpass,conf_fname);
     if ( serverport != 0 )
     {
@@ -172,7 +171,7 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
         cp->use_addmultisig = useaddmultisig;
         cp->minconfirms = minconfirms;
         cp->estblocktime = estblocktime;
-        cp->txfee = (uint64_t)(txfee  * SATOSHIDEN);
+        cp->txfee = txfee;
         cp->forkheight = forkblock;
         printf("%s minconfirms.%d txfee %.8f | marker %.8f NXTfee %.8f | firstblock.%ld fork.%d %d seconds\n",cp->name,cp->minconfirms,dstr(cp->txfee),dstr(cp->markeramount),dstr(cp->NXTfee_equiv),(long)cp->blockheight,cp->forkheight,cp->estblocktime);
     }
@@ -184,11 +183,12 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
     return(cp);
 }
 
+extern int32_t process_podQ(void *ptr);
 struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 {
     int32_t useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock;
-    char asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],*marker,*name;
-    double txfee,NXTfee_equiv;
+    char asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],*marker;
+    uint64_t txfee,NXTfee_equiv,min_telepod_satoshis;
     struct coin_info *cp = 0;
     if ( json != 0 )
     {
@@ -199,8 +199,14 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
         pollseconds = get_API_int(cJSON_GetObjectItem(json,"pollseconds"),60);
         minconfirms = get_API_int(cJSON_GetObjectItem(json,"minconfirms"),10);
         estblocktime = get_API_int(cJSON_GetObjectItem(json,"estblocktime"),300);
-        txfee = get_API_float(cJSON_GetObjectItem(json,"txfee"));
-        NXTfee_equiv = get_API_float(cJSON_GetObjectItem(json,"NXTfee_equiv"));
+        min_telepod_satoshis = get_API_nxt64bits(cJSON_GetObjectItem(json,"min_telepod_satoshis"));
+
+        txfee = get_API_nxt64bits(cJSON_GetObjectItem(json,"txfee_satoshis"));
+        if ( txfee == 0 )
+            txfee = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"txfee")));
+        NXTfee_equiv = get_API_nxt64bits(cJSON_GetObjectItem(json,"NXTfee_equiv_satoshis"));
+        if ( NXTfee_equiv == 0 )
+            NXTfee_equiv = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"NXTfee_equiv")));
         if ( (marker = get_marker(coinstr)) == 0 )
         {
             extract_cJSON_str(_marker,sizeof(_marker),json,"marker");
@@ -211,9 +217,15 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
             extract_cJSON_str(serverip_port,sizeof(serverip_port),json,"rpc") > 0 )
         {
-            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,name,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock);
-            if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
-                cp->tradebotfname = clonestr(tradebotfname);
+            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock);
+            if ( cp != 0 )
+            {
+                if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
+                    cp->tradebotfname = clonestr(tradebotfname);
+                cp->min_telepod_satoshis = min_telepod_satoshis;
+                init_pingpong_queue(&cp->podQ,"podQ",process_podQ,0,0);
+            }
+            else printf("create_coin_info failed for (%s)\n",coinstr);
         }
     }
     return(cp);
@@ -225,6 +237,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
     static int32_t exchangeflag;
     uint64_t nxt64bits;
     //FILE *fp;
+    struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
     char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock;
     int32_t i,n,ismainnet,timezone=0;
@@ -310,11 +323,12 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                         break;
                     item = cJSON_GetArrayItem(array,i);
                     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
-                    if ( coinstr[0] != 0 )
+                    if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
                     {
+                        Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
-                        Daemons[Numcoins] = init_coin_info(item,coinstr);
+                        Daemons[Numcoins] = cp;
                         printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
                         Numcoins++;
                     }

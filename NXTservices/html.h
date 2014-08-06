@@ -491,15 +491,15 @@ int gen_pNXT_send_fields(char *NXTaddr,char *handler,char *name,char **fields,ch
 int gen_pNXT_teleport_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*dest,*amount,*secret,*coin,*walletpass;
+    char script[16384],*dest,*amount,*secret,*coin,*minage;
     secret = construct_varname(fields,n++,name,"secret","NXT secret:",0,0);
     dest = construct_varname(fields,n++,name,"dest","dest account (BTCD, NXT or BTC):",0,0);
     coin = construct_varname(fields,n++,name,"coin","coin:",0,0);
     amount = construct_varname(fields,n++,name,"amount","amount:",0,0);
-    walletpass = construct_varname(fields,n++,name,"walletpass","coin wallet password (if not enough telepods):",0,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"coin\":\"' + %s + '\",\"walletpass\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount,coin,walletpass);
+    minage = construct_varname(fields,n++,name,"minage","minimum block age for telepods:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"amount\":\"' + %s + '\",\"coin\":\"' + %s + '\",\"minage\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,amount,coin,minage);
     *scriptp = clonestr(script);
-    free(secret); free(dest); free(amount); free(coin); free(walletpass);
+    free(secret); free(dest); free(amount); free(coin); free(minage);
     return(n);
 }
 

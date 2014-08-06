@@ -73,7 +73,6 @@ int32_t prep_wallet(struct coin_info *cp,char *walletpass,int32_t unlockseconds)
     char walletkey[512],*retstr = 0;
     if ( walletpass != 0 && walletpass[0] != 0 )
     {
-        sprintf(walletkey,"[\"%s\",%d]",walletpass,unlockseconds);
         // locking first avoids error, hacky but no time for wallet fiddling now
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"walletlock",0);
         if ( retstr != 0 )
@@ -82,6 +81,7 @@ int32_t prep_wallet(struct coin_info *cp,char *walletpass,int32_t unlockseconds)
             free(retstr);
         }
         // jl777: add some error handling!
+        sprintf(walletkey,"[\"%s\",%d]",walletpass,unlockseconds);
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"walletpassphrase",walletkey);
         if ( retstr != 0 )
         {
@@ -158,83 +158,7 @@ cJSON *create_vouts_json_params(struct rawtransaction *rp)
     return(json);
 }
 
-char *createrawtxid_json_params(char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE],char **localcoinaddrs,struct coin_info *cp,struct rawtransaction *rp)
-{
-    extern int32_t get_privkeys(char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE],struct coin_info *cp,char **localcoinaddrs,int32_t num);
-    char *paramstr = 0;
-    cJSON *array,*vinsobj,*voutsobj;
-    vinsobj = create_vins_json_params(localcoinaddrs,cp,rp);
-    if ( vinsobj != 0 )
-    {
-        if ( get_privkeys(privkeys,cp,localcoinaddrs,rp->numinputs) >= 0 )
-        {
-            voutsobj = create_vouts_json_params(rp);
-            if ( voutsobj != 0 )
-            {
-                array = cJSON_CreateArray();
-                cJSON_AddItemToArray(array,vinsobj);
-                cJSON_AddItemToArray(array,voutsobj);
-                paramstr = cJSON_Print(array);
-                free_json(array);   // this frees both vinsobj and voutsobj
-            }
-            else free_json(vinsobj);
-        }
-        else
-        {
-            free_json(vinsobj);
-            printf("createrawtxid_json_params: error getting privkeys\n");
-        }
-    } else printf("error create_vins_json_params\n");
-    printf("createrawtxid_json_params.%s\n",paramstr);
-    return(paramstr);
-}
-
-cJSON *create_privkeys_json_params(struct coin_info *cp,char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE],int32_t numinputs)
-{
-    int32_t i,nonz = 0;
-    cJSON *array;
-    array = cJSON_CreateArray();
-    for (i=0; i<numinputs; i++)
-    {
-        if ( cp != 0 && privkeys[i][0] != 0 )
-        {
-            nonz++;
-            //printf("%s ",localcoinaddrs[i]);
-            cJSON_AddItemToArray(array,cJSON_CreateString(privkeys[i]));
-        }
-    }
-    if ( nonz == 0 )
-        free_json(array), array = 0;
-    //else printf("privkeys.%d of %d: %s\n",nonz,numinputs,cJSON_Print(array));
-    return(array);
-}
-
-char *createsignraw_json_params(struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE])
-{
-    char *paramstr = 0;
-    cJSON *array,*rawobj,*vinsobj,*keysobj;
-    rawobj = cJSON_CreateString(rawbytes);
-    if ( rawobj != 0 )
-    {
-        vinsobj = create_vins_json_params(0,cp,rp);
-        if ( vinsobj != 0 )
-        {
-            keysobj = create_privkeys_json_params(cp,privkeys,rp->numinputs);
-            if ( keysobj != 0 )
-            {
-                array = cJSON_CreateArray();
-                cJSON_AddItemToArray(array,rawobj);
-                cJSON_AddItemToArray(array,vinsobj);
-                cJSON_AddItemToArray(array,keysobj);
-                paramstr = cJSON_Print(array);
-                free_json(array);
-            }
-            else free_json(vinsobj);
-        }
-        else free_json(rawobj);
-    }
-    return(paramstr);
-}
+#ifdef after_testing
 
 int64_t calc_rawinputs(struct coin_info *cp,struct rawtransaction *rp,struct coin_value **ups,int32_t num,int64_t amount)
 {
@@ -303,14 +227,14 @@ int64_t calc_rawoutputs(struct coin_info *cp,struct rawtransaction *rp,char *wit
     return(rp->amount);
 }
 
-int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE])
+int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char *signparams)
 {
     cJSON *json,*hexobj,*compobj;
     int32_t completed = -1;
-    char *retstr,*signparams;
+    char *retstr;
     deststr[0] = 0;
     printf("sign_rawtransaction rawbytes.(%s)\n",rawbytes);
-    signparams = createsignraw_json_params(cp,rp,rawbytes,privkeys);
+    //signparams = createsignraw_json_params(cp,rp,rawbytes,privkeys);
     if ( signparams != 0 )
     {
         stripwhite(signparams,strlen(signparams));
@@ -334,7 +258,7 @@ int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_inf
             } else printf("json parse error.(%s)\n",retstr);
             free(retstr);
         } else printf("error signing rawtx\n");
-        free(signparams);
+        //free(signparams);
     } else printf("error generating signparams\n");
     return(completed);
 }
@@ -344,7 +268,7 @@ char *calc_rawtransaction(struct coin_info *cp,struct rawtransaction *rp,char *d
     char *localcoinaddrs[MAX_COIN_INPUTS],privkeys[MAX_COIN_INPUTS][MAX_PRIVKEY_SIZE];
     long len;
     int64_t retA,retB;
-    char *rawparams,*retstr = 0;
+    char *rawparams,*signparams,*retstr = 0;
     printf("calc rawtransaction.%s %.8f -> %s balance %.8f\n",cp->name,dstr(amount),destaddr,dstr(balance));
     memset(privkeys,0,sizeof(privkeys));
     memset(localcoinaddrs,0,sizeof(localcoinaddrs));
@@ -369,15 +293,19 @@ char *calc_rawtransaction(struct coin_info *cp,struct rawtransaction *rp,char *d
                     if ( rp->signedtx != 0 )
                         free(rp->signedtx);
                     rp->signedtx = calloc(1,len);
-                    if ( sign_rawtransaction(rp->signedtx,len,cp,rp,rp->rawtxbytes,privkeys) != 0 )
+                    signparams = createsignraw_json_params(cp,rp,rp->rawtxbytes,privkeys);
+                    if ( signparams != 0 && sign_rawtransaction(rp->signedtx,len,cp,rp,rp->rawtxbytes,signparams) != 0 )
                     {
-                        //jl777 broadcast and save record
+                        //jl777: broadcast and save record
+                        printf("signed transaction completed\n");
                     }
                     else
                     {
                         retstr = 0;
                         printf("error signing rawtransaction\n");
                     }
+                    if ( signparams != 0 )
+                        free(signparams);
                 } else printf("error creating rawtransaction\n");
                 free(rawparams);
             } else printf("error creating rawparams\n");
@@ -385,14 +313,7 @@ char *calc_rawtransaction(struct coin_info *cp,struct rawtransaction *rp,char *d
     } //else printf("not enough %s balance %.8f for withdraw %.8f -> %s\n",cp->name,dstr(bp->balance),dstr(amount),destaddr);
     return(retstr);
 }
-
-void purge_rawtransaction(struct rawtransaction *raw)
-{
-    if ( raw->rawtxbytes != 0 )
-        free(raw->rawtxbytes);
-    if ( raw->signedtx != 0 )
-        free(raw->signedtx);
-}
+#endif
 
 struct coin_value *update_coin_value(int32_t height,int32_t numoutputs,struct coin_info *cp,int32_t isinternal,int32_t isconfirmed,struct coin_txid *tp,int32_t i,struct coin_value *vp,int64_t value,char *coinaddr,char *script)
 {
@@ -434,9 +355,9 @@ struct coin_txid *find_coin_txid(struct coin_info *cp,char *txid)
     else return(cp->CACHE.coin_txids->hashtable[hashval]);
 }
 
-extern int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp);
+extern int32_t is_relevant_coinvalue(struct coin_info *cp,struct coin_value *vp,uint32_t blocknum,struct coin_txid *utxo,int32_t utx_vout);
 
-int32_t process_vins(struct coin_info *cp,struct coin_txid *tp,int32_t isconfirmed,cJSON *vins)
+int32_t process_vins(struct coin_info *cp,uint32_t height,struct coin_txid *tp,int32_t isconfirmed,cJSON *vins)
 {
     cJSON *obj,*txidobj,*coinbaseobj;
     int32_t i,vout,oldnumvins,flag = 0;
@@ -478,7 +399,7 @@ int32_t process_vins(struct coin_info *cp,struct coin_txid *tp,int32_t isconfirm
                 vintp = find_coin_txid(cp,txid);
                 if ( vintp != 0 && vintp->vouts != 0 )
                 {
-                    if ( vout >= 0 && vout < vintp->numvouts && is_relevant_coinvalue(cp,vintp->vouts[vout]) != 0 )
+                    if ( vout >= 0 && vout < vintp->numvouts && is_relevant_coinvalue(cp,vintp->vouts[vout],height,tp,i) != 0 )
                     {
                         printf("got txid.%s in i.%d: vintp.%p vouts.%p (%s)\n",txid,i,vintp,vintp!=0?vintp->vouts:0,vintp->vouts[vout]->coinaddr);
                         vintp->vouts[vout]->spent = tp;
@@ -640,7 +561,7 @@ uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct
                     tp->vouts[i] = vp;
                     if ( vp->spent == 0 && vp->pendingspend == 0 )
                         unspent += value;
-                    if ( is_relevant_coinvalue(cp,vp) != 0 )
+                    if ( is_relevant_coinvalue(cp,vp,height,0,0) != 0 )
                         flag = 1;
                 }
                 // else if ( value > 0 )   // OP_RETURN has no value and no address
@@ -728,7 +649,7 @@ void update_coin_values(struct coin_info *cp,struct coin_txid *tp,int64_t blockh
         {
             if ( process_vouts((int32_t)blockheight,retstr,cp,tp,isconfirmed,cJSON_GetObjectItem(json,"vout")) != 0 )
                 cp->CACHE.ignorelist[blockheight] = 0;
-            if ( process_vins(cp,tp,isconfirmed,cJSON_GetObjectItem(json,"vin")) != 0 )
+            if ( process_vins(cp,(uint32_t)blockheight,tp,isconfirmed,cJSON_GetObjectItem(json,"vin")) != 0 )
                 cp->CACHE.ignorelist[blockheight] = 0;
             free_json(json);
         }
@@ -868,7 +789,15 @@ void *Coinloop(void *ptr)
                     cp->blockheight += flag;
                     if ( flag == 0 )
                         printf("error processing %s %d of %d\n",cp->name,(int)cp->blockheight,(int)cp->RTblockheight);
-                    else purge_coincache(&cp->CACHE,cp->name,(int32_t)cp->blockheight - 100);
+                    else
+                    {
+                        purge_coincache(&cp->CACHE,cp->name,(int32_t)cp->blockheight - 100);
+                        if ( process_pingpong_queue(&cp->podQ,cp) == 0 )
+                        {
+                            printf("Nothing left to process in %s podQ\n",cp->name);
+                            cp->enabled = 0;
+                        }
+                    }
                 }
             }
         }
