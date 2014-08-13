@@ -473,33 +473,27 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     return(cp);
 }
 
-void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
+void init_MGWconf(char *JSON_or_fname)
 {
     int32_t init_tradebots(cJSON *languagesobj);
     static int32_t exchangeflag;
     uint64_t nxt64bits;
-    //FILE *fp;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char coinstr[512],NXTaddr[64],*buf=0,*jsonstr,*origblock,*str;
+    char coinstr[512],NXTACCTSECRET[512],NXTADDR[64],*buf=0,*jsonstr,*origblock,*str;
     int32_t i,n,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
-    exchangeflag = !strcmp(NXTACCTSECRET,"exchanges");
+    exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
     //init_filtered_bufs(); crashed ubunty
     ensure_directory("backups");
     ensure_directory("backups/telepods");
     ensure_directory("archive");
     ensure_directory("archive/telepods");
-    if ( 0 )
-    {
-        char *argv[1] = { "test" };
-        double picoc(int argc,char **argv,char *codestr);
-        picoc(1,argv,clonestr("double main(){ double val = 1.234567890123456; printf(\"hello world val %.20f\\n\",val); return(val);}"));
-        getchar();
-    }
-    printf("load MGW.conf\n");
-    jsonstr = load_file("jl777.conf",&buf,&len,&allocsize);
+    printf("load MGW.conf (%s)\n",JSON_or_fname);
+    if ( JSON_or_fname[0] == '{' )
+        jsonstr = clonestr(JSON_or_fname);
+    else jsonstr = load_file("jl777.conf",&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
         printf("loaded.(%s)\n",jsonstr);
@@ -552,7 +546,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
             array = cJSON_GetObjectItem(MGWconf,"coins");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
             {
-                char *pubNXT,*BTCDaddr,*BTCaddr,*pNXTaddr,pubkey[sizeof(mp->session_pubkey)*2+1];
+                char *pubNXT,*BTCDaddr,*BTCaddr,*pNXTaddr,pubkey[crypto_box_PUBLICKEYBYTES*2+1];
                 pubNXT = BTCDaddr = BTCaddr = pNXTaddr = "";
                 n = cJSON_GetArraySize(array);
                 for (i=0; i<n; i++)
@@ -584,7 +578,7 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                     }
                 }
                 char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr);
-                init_hexbytes(pubkey,mp->session_pubkey,sizeof(mp->session_pubkey));
+                init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                 if ( pubNXT[0] == 0 )
                     pubNXT = NXTADDR;
                 str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
@@ -600,15 +594,15 @@ void init_MGWconf(char *NXTADDR,char *NXTACCTSECRET,struct NXThandler_info *mp)
                     if ( array == 0 || n == 0 )
                         break;
                     item = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(NXTaddr,item);
-                    if ( NXTaddr[0] == 0 )
+                    copy_cJSON(NXTADDR,item);
+                    if ( NXTADDR[0] == 0 )
                     {
                         printf("Illegal special NXTaddr.%d\n",i);
                         exit(1);
                     }
-                    printf("%s ",NXTaddr);
-                    strcpy(Server_NXTaddrs[i],NXTaddr);
-                    MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTaddr);
+                    printf("%s ",NXTADDR);
+                    strcpy(Server_NXTaddrs[i],NXTADDR);
+                    MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
                 }
                 printf("special_addrs.%d\n",n);
                 MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;

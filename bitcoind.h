@@ -779,10 +779,10 @@ void *Coinloop(void *ptr)
             if ( strcmp(cp->name,"BTCD") == 0 )
             {
                 char *str;
-                char *select_privacyServer(char *ipaddr,char *portstr,char *secret);
+                char *select_privacyServer(char *ipaddr,char *portstr);
                 printf(">>>>>> %s %s %s\n",cp->name,cp->NXTACCTSECRET,cp->privacyserver);
                 if ( cp->NXTACCTSECRET[0] != 0 && cp->privacyserver[0] != 0 )
-                    if ( (str= select_privacyServer(cp->privacyserver,0,cp->NXTACCTSECRET)) != 0 )
+                    if ( (str= select_privacyServer(cp->privacyserver,0)) != 0 )
                     {
                         printf("select privacyserver.(%s) -> (%s)\n",cp->privacyserver,str);
                         free(str);

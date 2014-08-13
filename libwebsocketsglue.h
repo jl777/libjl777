@@ -63,10 +63,9 @@ void run_NXTservices(void *arg)
     while ( 1 ) sleep(60);
 }
 
-void init_NXTservices(int _argc,char **_argv,char *NXTADDR,char *secret)
+void init_NXTservices(char *JSON_or_fname)
 {
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
-    //Global_mp = mp;
     char *ipaddr;
     UV_loop = uv_default_loop();
     portable_mutex_init(&mp->hash_mutex);
@@ -75,7 +74,7 @@ void init_NXTservices(int _argc,char **_argv,char *NXTADDR,char *secret)
  
     init_NXThashtables(mp);
     init_NXTAPI(mp->curl_handle);
-    ipaddr = 0;//get_ipaddr();
+    ipaddr = 0;
     if ( ipaddr != 0 )
     {
         strcpy(MY_IPADDR,get_ipaddr());
@@ -84,18 +83,17 @@ void init_NXTservices(int _argc,char **_argv,char *NXTADDR,char *secret)
     safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
     mp->pollseconds = POLL_SECONDS;
-    //safecopy(mp->NXTAPISERVER,NXTSERVER,sizeof(mp->NXTAPISERVER));
     crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
     init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     if ( portable_thread_create(process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    init_MGWconf(NXTADDR,secret,Global_mp);
+    init_MGWconf(JSON_or_fname);
 
     if ( portable_thread_create(getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
-    if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
+    if ( portable_thread_create(init_NXTprivacy,"") == 0 )
         printf("ERROR init_NXTprivacy\n");
-    gen_testforms(_argc>1 ? _argv[1] : 0);
+    gen_testforms(0);
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
@@ -104,7 +102,7 @@ void init_NXTservices(int _argc,char **_argv,char *NXTADDR,char *secret)
     void *Coinloop(void *arg);
     if ( portable_thread_create(Coinloop,mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
- }
+}
 
 
 #endif

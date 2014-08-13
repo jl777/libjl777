@@ -121,13 +121,6 @@ void usleep(int32_t);
 #define MGW_INSTANTDEX_TONXTAE -4
 
 #define NXT_COINASSET "0"
-/*#define CGB_COINASSET "3033014595361865200"
-#define DOGE_COINASSET "8011756047853511145"   //"17694574681003862481"
-#define USD_COINASSET "4562283093369359331"
-#define CNY_COINASSET "13983943517283353302"
-
-#define MIXER_NXTADDR "1234567890123456789"
-#define NODECOIN_POOLSERVER_ADDR "11445347041779652448"*/
 
 #define GENESISACCT "1739068987193023818"
 #define NODECOIN_SIG 0x63968736
@@ -146,10 +139,6 @@ void usleep(int32_t);
 #define GENESISBLOCK "2680262203532249785"
 
 #define DEFAULT_NXT_DEADLINE 720
-
-//#define SERVER_PORT 3013
-//#define SERVER_PORTSTR "3013"
-
 #define SATOSHIDEN 100000000L
 //#define MIN_NQTFEE SATOSHIDEN
 #define NXT_TOKEN_LEN 160
@@ -212,18 +201,14 @@ struct NXThandler_info
     cJSON *accountjson;
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
-    //void *pm;NXTADDR[64],nxt64bits
     uint64_t *privacyServers;
-    //uv_tty_t *stdoutput;
     CURL *curl_handle,*curl_handle2,*curl_handle3;
     portable_tcp_t Punch_tcp;
     uv_udp_t Punch_udp;
-    //uv_connect_t Punch_connect;
     int32_t initassets;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers;
     char ipaddr[64],dispname[128],groupname[128];
-    //char NXTURL[128],Punch_servername[128],Punch_connect_id[512],otherNXTaddr[MAX_NXTADDR_LEN];//,terminationblock[128];
 };
 struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr);
 extern struct NXThandler_info *Global_mp;

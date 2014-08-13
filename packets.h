@@ -634,10 +634,10 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             }
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
-                uint64_t pNXT_submit_tx(void *m_core,void *wallet,unsigned char *txbytes,int16_t size);
+                uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size);
                 printf("Need to strip all plaintext info from broadcast! Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
                 // jl777: must strip destination info!!
-                if ( pNXT_submit_tx(Global_pNXT->core,Global_pNXT->wallet,finalbuf,len) == 0 )
+                if ( pNXT_submit_tx(Global_pNXT->coinptrs,finalbuf,len) == 0 )
                 {
                     sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
                 }

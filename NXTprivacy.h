@@ -25,8 +25,8 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
 
 struct pNXT_info
 {
-    void *wallet,*core,*p2psrv,*upnp,*rpc_server;
-    char walletaddr[512],privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16],NXTACCTSECRET[256];
+    void **coinptrs;
+    char privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16];
     uint64_t privacyServer;
     struct hashtable **orderbook_txidsp;
 };
@@ -782,7 +782,7 @@ int Got_Server_UDP;
 void NXTprivacy_idler(uv_idle_t *handle)
 {
     void set_pNXT_privacyServer(uint64_t privacyServer);
-    uint64_t get_pNXT_privacyServer(int32_t *activeflagp,char *secret);
+    uint64_t get_pNXT_privacyServer(int32_t *activeflagp);
     static char NXTACCTSECRET[256],NXTADDR[64],secret[1024],intro[4096];
     static uv_tcp_t *tcp;
     static uv_connect_t *connect;
@@ -844,7 +844,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     {
         if ( millis > (lastping+1000) )
         {
-            if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag,secret)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
+            if ( (pNXT_privacyServer= get_pNXT_privacyServer(&activeflag)) != 0 && (pNXT_privacyServer != privacyServer || activeflag == 0) )
             {
                 if ( privacyServer != 0 )
                 {

@@ -736,7 +736,7 @@ void sighandler(int sig)
 	libwebsocket_cancel_service(context);
 }
 
-static struct option options[] = {
+struct option options[] = {
 	{ "help",	no_argument,		NULL, 'h' },
 	{ "debug",	required_argument,	NULL, 'd' },
 	{ "port",	required_argument,	NULL, 'p' },
@@ -751,15 +751,13 @@ static struct option options[] = {
 	{ NULL, 0, 0, 0 }
 };
 
-int init_libjl777(int argc, char **argv)
+int init_libjl777(void **coinptrs,char *JSON_or_fname)
 {
-    static char *_argv[3];
 	char cert_path[1024];
 	char key_path[1024];
 	int n = 0;
 	int use_ssl = 0;
 	int opts = 0;
-	char interface_name[128] = "";
 	const char *iface = NULL;
 #ifndef WIN32
 	int syslog_options = LOG_PID | LOG_PERROR;
@@ -771,23 +769,22 @@ int init_libjl777(int argc, char **argv)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-    if ( argc == 1 )
-    {
-        _argv[0] = "pNXTd"; _argv[1] = (argv[0]==0?"password":argv[0]); _argv[2] = 0;
-        argc = 2;
-        argv = _argv;
-    }
-    char NXTADDR[128],secret[256];
+    struct NXT_str *tp = 0;
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    if ( argc > 1 )
-        safecopy(secret,argv[1],sizeof(secret));
-    printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,_argv[1]);
-    init_NXTservices(argc,argv,NXTADDR,secret);
+    if ( Global_pNXT == 0 )
+    {
+        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+        Global_pNXT->orderbook_txidsp = &orderbook_txids;
+        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
+    }
+    Global_pNXT->coinptrs = coinptrs;
+    init_NXTservices(JSON_or_fname);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
-	while (n >= 0) {
+	/*while (n >= 0) {
 		n = getopt_long(argc, argv, "ci:hsap:d:Dr:", options, NULL);
 		if (n < 0)
 			continue;
@@ -834,7 +831,7 @@ int init_libjl777(int argc, char **argv)
 					"[--resource_path <path>]\n");
 			exit(1);
 		}
-	}
+	}*/
 
 #if !defined(LWS_NO_DAEMONIZE) && !defined(WIN32)
 	/* 
