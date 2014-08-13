@@ -751,7 +751,22 @@ struct option options[] = {
 	{ NULL, 0, 0, 0 }
 };
 
-int init_libjl777(void **coinptrs,char *JSON_or_fname)
+char *libjl777_JSON(char *JSONstr)
+{
+    return(0);
+}
+
+int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
+{
+    return(0);
+}
+
+char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
+{
+    return(0);
+}
+
+int libjl777_start(void **coinptrs,char *JSON_or_fname)
 {
 	char cert_path[1024];
 	char key_path[1024];
