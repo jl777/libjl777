@@ -635,11 +635,11 @@ int gen_pNXT_tradebot_fields(char *NXTaddr,char *handler,char *name,char **field
 int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
 {
     char *get_pNXT_addr();
-    uint64_t get_pNXT_confbalance();
-    uint64_t get_pNXT_rawbalance();
-    uint64_t get_privateNXT_balance(char *NXTaddr);
+    //uint64_t get_pNXT_confbalance();
+    //uint64_t get_pNXT_rawbalance();
+    //uint64_t get_privateNXT_balance(char *NXTaddr);
     int n = 0;
-    char buf[512];
+    //char buf[512];
     forms[n] = make_form(NXTaddr,&scripts[n],"select","select my privacyServer","choose server","127.0.0.1:7777","pNXT",gen_pNXT_select_fields);
     n++;
     
@@ -668,9 +668,9 @@ int pNXT_forms(char *NXTaddr,char **forms,char **scripts)
     forms[n] = make_form(NXTaddr,&scripts[n],"teleport","teleport funds","teleport","127.0.0.1:7777","pNXT",gen_pNXT_teleport_fields);
     n++;
 
-    sprintf(buf,"pNXT cryptnote address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
-    forms[n] = make_form(NXTaddr,&scripts[n],"sellpNXT",buf,"sell pNXT","127.0.0.1:7777","pNXT",gen_pNXT_depwith_fields);
-    n++;
+    //sprintf(buf,"pNXT cryptnote address \"%s\" has raw %.8f confirmed %.8f",get_pNXT_addr(),dstr(get_pNXT_rawbalance()),dstr(get_pNXT_confbalance()));
+    //forms[n] = make_form(NXTaddr,&scripts[n],"sellpNXT",buf,"sell pNXT","127.0.0.1:7777","pNXT",gen_pNXT_depwith_fields);
+    //n++;
     //sprintf(buf,"NXT address \"%s\" has %.8f privateNXT assets",NXTaddr,dstr(get_privateNXT_balance(NXTaddr)));
     forms[n] = make_form(NXTaddr,&scripts[n],"buypNXT","convert NXT into pNXT cryptonotes","buy pNXT","127.0.0.1:7777","pNXT",gen_pNXT_depwith_fields);
     n++;
