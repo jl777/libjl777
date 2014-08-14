@@ -1302,6 +1302,7 @@ void *getNXTblocks(void *ptr)
     char blockidstr[4096],nextblock[1024],tmpblock[1024],prevblock[1024];
     mp->origblockidstr = ORIGBLOCK;
     strcpy(blockidstr,mp->origblockidstr);
+    strcpy(mp->blockidstr,mp->origblockidstr);
     mp->firsttimestamp = issue_getTime(mp->curl_handle2);
     numblocks = set_current_NXTblock(&isrescan,mp->curl_handle2,tmpblock);
     mp->height = height = numblocks - 1;

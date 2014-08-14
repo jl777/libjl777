@@ -766,8 +766,9 @@ char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t durat
     return(0);
 }
 
-int libjl777_start(void **coinptrs,char *JSON_or_fname)
+void *libjl777_threads(void *arg)
 {
+    char *JSON_or_fname = arg;
 	char cert_path[1024];
 	char key_path[1024];
 	int n = 0;
@@ -784,17 +785,6 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-    struct NXT_str *tp = 0;
-    Global_mp = calloc(1,sizeof(*Global_mp));
-    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    if ( Global_pNXT == 0 )
-    {
-        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
-        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
-        Global_pNXT->orderbook_txidsp = &orderbook_txids;
-        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
-    }
-    Global_pNXT->coinptrs = coinptrs;
     init_NXTservices(JSON_or_fname);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
@@ -856,7 +846,7 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 	 */
 	if (daemonize && lws_daemonize("/tmp/.lwsts-lock")) {
 		fprintf(stderr, "Failed to daemonize\n");
-		return 1;
+		return(0);
 	}
 #endif
 
@@ -880,7 +870,7 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 	fd_lookup = malloc(max_poll_elements * sizeof (int32_t));
 	if (pollfds == NULL || fd_lookup == NULL) {
 		lwsl_err("Out of memory pollfds=%d\n", max_poll_elements);
-		return -1;
+		return(0);
 	}
 #endif
 
@@ -895,13 +885,13 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 	} else {
 		if (strlen(resource_path) > sizeof(cert_path) - 32) {
 			lwsl_err("resource path too long\n");
-			return -1;
+            return(0);
 		}
 		sprintf(cert_path, "%s/libwebsockets-test-server.pem",
 								resource_path);
 		if (strlen(resource_path) > sizeof(key_path) - 32) {
 			lwsl_err("resource path too long\n");
-			return -1;
+            return(0);
 		}
 		sprintf(key_path, "%s/libwebsockets-test-server.key.pem",
 								resource_path);
@@ -916,7 +906,7 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 	context = libwebsocket_create_context(&info);
 	if (context == NULL) {
 		lwsl_err("libwebsocket init failed\n");
-		return -1;
+		return(0);
 	}
 
 	n = 0;
@@ -981,20 +971,31 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
 		n = libwebsocket_service(context, LIBWEBSOCKETS_MILLIS);
 #endif
 	}
-
 #ifdef EXTERNAL_POLL
 done:
 #endif
-
 	libwebsocket_context_destroy(context);
-
 	lwsl_notice("libwebsockets-test-server exited cleanly\n");
-
 #ifndef WIN32
 	closelog();
 #endif
-
 	return 0;
 }
 
-
+int libjl777_start(void **coinptrs,char *JSON_or_fname)
+{
+    struct NXT_str *tp = 0;
+    Global_mp = calloc(1,sizeof(*Global_mp));
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    if ( Global_pNXT == 0 )
+    {
+        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+        Global_pNXT->orderbook_txidsp = &orderbook_txids;
+        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
+    }
+    Global_pNXT->coinptrs = coinptrs;
+    if ( portable_thread_create(libjl777_threads,JSON_or_fname) == 0 )
+        printf("ERROR libjl777_threads\n");
+        return(0);
+}

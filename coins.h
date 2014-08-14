@@ -383,6 +383,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     cJSON *ciphersobj;
     uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust;
     struct coin_info *cp = 0;
+    printf("init_coin.(%s)\n",cJSON_Print(json));
     if ( json != 0 )
     {
         nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),0);
@@ -410,7 +411,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 strcpy(_marker,get_backupmarker(coinstr));
             marker = clonestr(_marker);
         }
-        if ( marker != 0 && txfee != 0. && NXTfee_equiv != 0. &&
+        if ( //marker != 0 && txfee != 0. && NXTfee_equiv != 0. &&
             extract_cJSON_str(conf_filename,sizeof(conf_filename),json,"conf") > 0 &&
             extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
             extract_cJSON_str(serverip_port,sizeof(serverip_port),json,"rpc") > 0 )
@@ -480,9 +481,11 @@ void init_MGWconf(char *JSON_or_fname)
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char coinstr[512],NXTACCTSECRET[512],NXTADDR[64],*buf=0,*jsonstr,*origblock,*str;
+    char coinstr[512],NXTACCTSECRET[512],NXTADDR[64],*buf=0,*jsonstr,*str;
     int32_t i,n,ismainnet,timezone=0;
     int64_t len=0,allocsize=0;
+    NXTACCTSECRET[0] = 0;
+    NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d\n",exchangeflag);
     //init_filtered_bufs(); crashed ubunty
@@ -490,7 +493,7 @@ void init_MGWconf(char *JSON_or_fname)
     ensure_directory("backups/telepods");
     ensure_directory("archive");
     ensure_directory("archive/telepods");
-    printf("load MGW.conf (%s)\n",JSON_or_fname);
+    //printf("load MGW.conf (%s)\n",JSON_or_fname);
     if ( JSON_or_fname[0] == '{' )
         jsonstr = clonestr(JSON_or_fname);
     else jsonstr = load_file("jl777.conf",&buf,&len,&allocsize);
@@ -518,7 +521,7 @@ void init_MGWconf(char *JSON_or_fname)
                     strcpy(NXTAPIURL,"http://127.0.0.1:7876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"7117166754336896747");
-                origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
+                //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
             }
             else
             {
@@ -526,20 +529,16 @@ void init_MGWconf(char *JSON_or_fname)
                     strcpy(NXTAPIURL,"http://127.0.0.1:6876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"18232225178877143084");
-                origblock = "16787696303645624065";   //"91889681853055765";//"16787696303645624065";
+                //origblock = "16787696303645624065";   //"91889681853055765";//"16787696303645624065";
             }
-            if ( ORIGBLOCK[0] == 0 )
-                strcpy(ORIGBLOCK,origblock);
+            //if ( ORIGBLOCK[0] == 0 )
+             //   strcpy(ORIGBLOCK,origblock);
             strcpy(NXTSERVER,NXTAPIURL);
             strcat(NXTSERVER,"?requestType");
             extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
             extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
-            if ( NXTACCTSECRET[0] == 0 )
-                gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
-            nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
-            expand_nxt64bits(NXTADDR,nxt64bits);
             for (i=0; i<3; i++)
                 printf("%s | ",Server_names[i]);
             printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK);
@@ -557,9 +556,12 @@ void init_MGWconf(char *JSON_or_fname)
                     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
                     if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
                     {
+                        printf("coinstr.(%s)\n",coinstr);
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
                             BTCDaddr = cp->pubaddr;
+                            strcpy(NXTACCTSECRET,cp->NXTACCTSECRET);
+                            printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->pubnxt64bits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->pubnxt64bits);
                         }
@@ -585,6 +587,10 @@ void init_MGWconf(char *JSON_or_fname)
                 if ( str != 0 )
                     printf("publish.(%s)\n",str), free(str);
             }
+            if ( NXTACCTSECRET[0] == 0 )
+                gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
+            nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+            expand_nxt64bits(NXTADDR,nxt64bits);
             array = cJSON_GetObjectItem(MGWconf,"special_NXTaddrs");
             if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
             {
@@ -615,12 +621,23 @@ void init_MGWconf(char *JSON_or_fname)
             if ( init_exchanges(MGWconf,exchangeflag) > 0 )
                 start_polling_exchanges(exchangeflag);
         }
+        else printf("PARSE ERROR\n");
+        free(jsonstr);
     }
     init_tradebots(languagesobj);
     if ( ORIGBLOCK[0] == 0 )
     {
-        printf("need a non-zero origblock.(%s)\n",ORIGBLOCK);
-        exit(1);
+        char blockidstr[64];
+        int32_t isrescan,height,timestamp;
+        set_current_NXTblock(&isrescan,0,blockidstr);
+        set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
+        printf("height.%d block.(%s)\n",height,blockidstr);
+        if ( ORIGBLOCK[0] == 0 )
+        {
+            printf("need a non-zero origblock.(%s)\n",ORIGBLOCK);
+            exit(1);
+        }
+        else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
     }
 }
 #endif
