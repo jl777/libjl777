@@ -296,10 +296,12 @@ struct coin_info
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
     void **logs;
     cJSON *ciphersobj;
+    char pubaddr[128],NXTACCTSECRET[2048],coinpubkey[1024];
+    char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024];
     
-    char name[64],pubaddr[128],NXTACCTSECRET[2048],coinpubkey[1024],backupdir[512],privacyserver[32];
+    char name[64],backupdir[512],privacyserver[32];
     char *userpass,*serverport,assetid[64],*marker,*tradebotfname;
-    uint64_t pubnxt64bits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
+    uint64_t srvpubnxt64bits,pubnxt64bits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
     int32_t maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods[3],M,N,numlogs,clonesmear;
 };
 

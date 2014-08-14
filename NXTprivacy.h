@@ -401,7 +401,7 @@ void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const 
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        if ( server_xferred == 0 )
+        //if ( server_xferred == 0 )
             printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
         process_packet(retjsonstr,0,0,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         server_xferred += nread;
@@ -798,7 +798,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     void teleport_idler();
-    usleep(1000);
+    usleep(5000);
     if ( TCPserver_closed > 0 )
     {
         //printf("idler noticed TCPserver_closed.%d!\n",TCPserver_closed);
@@ -812,6 +812,12 @@ void NXTprivacy_idler(uv_idle_t *handle)
         server_xferred = 0;
         memset(intro,0,sizeof(intro));
         return;
+    }
+    if ( NXTACCTSECRET[0] == 0 )
+    {
+        struct coin_info *cp = get_coin_info("BTCD");
+        if ( cp != 0 )
+            safecopy(NXTACCTSECRET,cp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
     }
     millis = ((double)uv_hrtime() / 1000000);
 //#ifndef __linux__

@@ -482,7 +482,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         decoded[len] = 0;
         parmstxt = clonestr((char *)decoded);//rcvbuf->base;
         argjson = cJSON_Parse(parmstxt);
-       // printf("[%s] argjson.%p\n",parmstxt,argjson);
+       printf("[%s] argjson.%p\n",parmstxt,argjson);
         if ( argjson != 0 )
         {
             parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
@@ -494,7 +494,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 else
                 {
                     np = tokenized_np;
-                    update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
+                    if ( tcp != 0 || udp != 0 )
+                        update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
                     if ( 0 && decrypted != 0 && memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 ) // we dont do it above to prevent spoofing
                     {
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
@@ -604,7 +605,7 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
     else if ( len > 0 )
     {
         outbuf = encoded;
-        //printf("np.%p NXT.%s np->udp %p | destnp.%p destnp_udp.%p\n",np,np!=0?np->H.NXTaddr:"no np",np!=0?np->udp:0,destnp,destnp!=0?destnp->udp:0);
+        printf("np.%p NXT.%s np->udp %p | destnp.%p destnp_udp.%p\n",np,np!=0?np->H.NXTaddr:"no np",np!=0?np->udp:0,destnp,destnp!=0?destnp->udp:0);
         if ( np != 0 && np->udp != 0 )// && destnp->udp == 0 )
         {
             //printf("Must use indirection\n");
@@ -629,13 +630,13 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             if ( np != 0 && len < 1400 )
             {
                 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
-                //printf("udpsend finalbuf.%d\n",len);
+                printf("udpsend finalbuf.%d\n",len);
                 portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
             }
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
                 uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size);
-                printf("Need to strip all plaintext info from broadcast! Server_NXTaddr.(%s) broadcast %d via p2p\n",Server_NXTaddr,len);
+                printf("len.%d Server_NXTaddr.(%s) broadcast %d via p2p\n",len,Server_NXTaddr,len);
                 // jl777: must strip destination info!!
                 if ( pNXT_submit_tx(Global_pNXT->coinptrs,finalbuf,len) == 0 )
                 {

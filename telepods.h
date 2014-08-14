@@ -257,7 +257,7 @@ void set_privkey_share(struct telepod *pod,char *privkey,int32_t sharei)
     privkey_share[pod->len_plus1-1] = 0;
 }
 
-struct telepod *create_telepod(int32_t saveflag,char *refcipher,cJSON *ciphersobj,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout,uint8_t M,uint8_t N,uint8_t sharenrs[255],uint8_t sharei)
+struct telepod *create_telepod(int32_t saveflag,char *refcipher,cJSON *ciphersobj,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout,uint8_t M,uint8_t N,uint8_t sharenrs[255],uint8_t sharei,int32_t height)
 {
     struct telepod *pod;
     int32_t size,len;
@@ -265,7 +265,9 @@ struct telepod *create_telepod(int32_t saveflag,char *refcipher,cJSON *ciphersob
     size = (int32_t)(sizeof(*pod) + (N+1)*(len + 1));
     pod = calloc(1,size);
     pod->len_plus1 = (len + 1);
-    pod->height = (uint32_t)get_blockheight(cp);
+    if ( height == 0 )
+        pod->height = (uint32_t)get_blockheight(cp);
+    else pod->height = height;
     pod->podsize = size;
     pod->vout = vout;
     pod->cloneout = -1;
@@ -468,7 +470,7 @@ struct telepod *clone_telepod(struct coin_info *cp,char *refcipher,cJSON *cipher
                     printf("ERROR saving cloned refpod\n");
                 
                 init_sharenrs(sharenrs,0,cp->N,cp->N);
-                pod = create_telepod(1,refcipher,ciphersobj,cp,satoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT,M,N,sharenrs,N);
+                pod = create_telepod(1,refcipher,ciphersobj,cp,satoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT,M,N,sharenrs,N,0);
                 pod->height = (uint32_t)get_blockheight(cp);
                 printf("SET CLONE HEIGHT <- %d\n",pod->height);
                 if ( change != 0 )
@@ -478,7 +480,7 @@ struct telepod *clone_telepod(struct coin_info *cp,char *refcipher,cJSON *cipher
                     if ( update_telepod_file(cp->name,changepod->filenum,changepod,refcipher,ciphersobj) != 0 )
                         printf("ERROR saving changepod after used\n");
                     init_sharenrs(sharenrs,0,N,N);
-                    changepod = create_telepod(1,refcipher,ciphersobj,cp,change,change_podaddr,"",change_privkey,txid,TELEPOD_CHANGE_VOUT,M,N,sharenrs,N);
+                    changepod = create_telepod(1,refcipher,ciphersobj,cp,change,change_podaddr,"",change_privkey,txid,TELEPOD_CHANGE_VOUT,M,N,sharenrs,N,0);
                     changepod->dir = TRANSPORTER_RECV;
                     changepod->height = 0;
                     //queue_enqueue(&cp->podQ.pingpong[0],changepod);
@@ -527,7 +529,7 @@ struct telepod *make_traceable_telepod(struct coin_info *cp,char *refcipher,cJSO
                     if ( (value= get_txid_vout(&n,cp,txid,vout)) == satoshis )
                     {
                         init_sharenrs(sharenrs,0,N,N);
-                        pod = create_telepod(0,refcipher,ciphersobj,cp,satoshis,podaddr,pubkey,privkey,txid,vout,M,N,sharenrs,0xff);
+                        pod = create_telepod(0,refcipher,ciphersobj,cp,satoshis,podaddr,pubkey,privkey,txid,vout,M,N,sharenrs,0xff,0);
                         pod->height = (uint32_t)get_blockheight(cp);
                         pod->dir = TRANSPORTER_RECV;
                         ensure_telepod_has_backup(cp,pod,cp->name,cp->ciphersobj);

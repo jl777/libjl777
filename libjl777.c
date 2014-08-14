@@ -753,17 +753,50 @@ struct option options[] = {
 
 char *libjl777_JSON(char *JSONstr)
 {
-    return(0);
+    cJSON *json;
+    char *retstr = 0;
+    if ( (json= cJSON_Parse(JSONstr)) != 0 )
+    {
+        retstr = pNXT_jsonhandler(&json,JSONstr,0);
+        free_json(json);
+    }
+    if ( retstr == 0 )
+        retstr = clonestr("{\"result\":null}");
+    return(retstr);
 }
 
-int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
+int32_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
 {
-    return(0);
+    int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration);
+    uint64_t txid;
+    uint8_t hash[256/8];
+    txid = calc_txid(hash,sizeof(hash));
+    return(libjl777_broadcast(Global_pNXT->coinptrs,packet,len,txid,duration));
 }
 
 char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
 {
-    return(0);
+    int i;
+    char retjsonstr[4096];
+    uint64_t obookid;
+    display_orderbook_tx((struct orderbook_tx *)packet);
+    for (i=0; i<len; i++)
+        printf("%02x ",packet[i]);
+    printf("C libjl777_gotpacket.%p size.%d\n",packet,len);
+    if ( is_encrypted_packet(packet,len) != 0 )
+        process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
+    else
+    {
+        if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
+        {
+            if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
+            {
+                ((struct orderbook_tx *)packet)->txid = txid;
+                sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket got obbokid.%llu packet txid.%llu\"}",(long long)obookid,(long long)txid);
+            } else sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket error updating obookid.%llu\"}",(long long)obookid);
+        } else sprintf(retjsonstr,"{\"error\":\"libjl777_gotpacket cant find obookid\"}");
+    }
+    return(clonestr(retjsonstr));
 }
 
 void *libjl777_threads(void *arg)

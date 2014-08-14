@@ -1456,7 +1456,7 @@ void NXTloop(struct NXThandler_info *mp)
         {
             sleep(3);
             numconfirms = MIN_NXTCONFIRMS + mp->extraconfirms;
-            //printf("height.%d mp->height.%d\n",height,mp->height);
+        //printf("height.%d mp->height.%d\n",height,mp->height);
         }
         if ( (block= mp->blocks[height]) != 0 )
         {

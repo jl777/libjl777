@@ -100,6 +100,7 @@ int32_t is_relevant_coinvalue(int32_t spentflag,struct coin_info *cp,char *txid,
                 //else
                 {
                     pod->spentflag = 1;
+                    pod->confirmheight = blocknum;
                     safecopy(pod->clonetxid,txid,sizeof(pod->clonetxid)), pod->cloneout = vout;
                     if ( update_telepod_file(cp->name,pod->filenum,pod,cp->name,cp->ciphersobj) != 0 )
                         printf("ERROR saving cloned refpod\n");
@@ -138,7 +139,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
         return(0);
     np = search_addresses(log->cp->pubaddr);
     destnp = search_addresses(log->otherpubaddr);
-    printf("log recv %f complete %f\n",log->recvmilli,log->completemilli);
+    printf("log send %f complete %f\n",log->recvmilli,log->completemilli);
     if ( log->recvmilli != 0. && log->completemilli == 0. )
     {
         for (i=0; i<log->numpods; i++)
@@ -204,6 +205,19 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
     }
     else
     {
+        for (i=0; i<log->numpods; i++)
+        {
+            //printf("check %d'th pod\n",i);
+            if ( (pod= log->pods[i]) != 0 )
+            {
+                if ( pod->completemilli == 0. && pod->confirmheight != 0 )
+                {
+                    pod->completemilli = milliseconds();
+                    disp_telepod("confirm",pod);
+                    return(1);
+                }
+            }
+        }
         if ( log->recvmilli == 0. && (milliseconds() - log->startmilli) > TELEPORT_TRANSPORTER_TIMEOUT )
             return(-1);
         else if ( log->recvmilli != 0. && (milliseconds() - log->recvmilli) > TELEPORT_TELEPODS_TIMEOUT )
@@ -280,7 +294,7 @@ void init_Teleport()
 void complete_telepod_reception(struct coin_info *cp,struct telepod *pod,int32_t height)
 {
     pod->unspent = get_unspent_value(pod->script,cp,pod);
-    pod->completemilli = milliseconds();
+    //pod->completemilli = milliseconds();
     pod->cloneblock = height + (rand() % cp->clonesmear) + 1;
     if ( pod->unspent != pod->satoshis )
     {
@@ -325,6 +339,7 @@ void complete_transporter_reception(struct coin_info *cp,struct transporter_log 
     char verifiedNXTaddr[64],*retstr;
     int32_t i;
     struct NXT_acct *destnp,*np;
+    verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     //expand_nxt64bits(destNXTaddr,log->otherpubaddr);
     //sendernp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
@@ -388,7 +403,7 @@ char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t c
             if ( (pod= log->pods[ind]) == 0 )
             {
                 //init_sharenrs(sharenrs,0,N,N);
-                pod = create_telepod(0,cp->name,cp->ciphersobj,cp,satoshis,coinaddr,script,privkey,txid,vout,M,N,log->sharenrs,sharei);
+                pod = create_telepod(0,cp->name,cp->ciphersobj,cp,satoshis,coinaddr,script,privkey,txid,vout,M,N,log->sharenrs,sharei,height);
                 if ( (pod->destnxt64bits= np->H.nxt64bits) == 0 ) // the destination is us! This is flag for cloning
                 {
                     np->H.nxt64bits = calc_nxt64bits(verifiedNXTaddr);
@@ -409,7 +424,7 @@ char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t c
             }
             if ( log->M == M && log->N == N && pod->satoshis == satoshis && strcmp(pod->coinaddr,coinaddr) == 0 && strcmp(pod->script,script) == 0 && strcmp(pod->txid,txid) == 0 && pod->vout == vout && strcmp(pod->coinstr,cp->name) == 0 )
             {
-                if ( pod->completemilli == 0. )
+                if ( pod->cloneblock == 0 )
                 {
                     if ( N > 1 && count_numshares(haveshares,pod,log->sharenrs) == M )
                     {
@@ -419,7 +434,7 @@ char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t c
                         {
                             char hexstr[4096];
                             init_hexbytes(hexstr,_get_privkeyptr(pod,log->N),pod->len_plus1-1);
-                            printf("DECODED.(%s)\n",hexstr);
+                            printf("DECODED.(%s) len.%d %ld\n",hexstr,pod->len_plus1,strlen(hexstr));
                             //getchar();
                         }
                     }
@@ -475,7 +490,7 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     if ( N > 1 )
         init_sharenrs(sharenrs,0,N,N);
     
-    printf("%s -> teleport %.8f %s -> %s minage.%d | M.%d N.%d dest.(%s)\n",NXTaddr,dstr(satoshis),cp->name,otherpubaddr,minage,M,N,otherpubaddr);
+    sprintf(buf,"%s -> teleport %.8f %s -> %s minage.%d | M.%d N.%d dest.(%s)\n",NXTaddr,dstr(satoshis),cp->name,otherpubaddr,minage,M,N,otherpubaddr);
     if ( minage == 0 )
         minage = cp->minconfirms;
     destnp = search_addresses(otherpubaddr);
@@ -510,6 +525,7 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
                 else
                 {
                     err = 0;
+                    sprintf(buf,"{\"result\":\"teleport AFTER CREATE BUNDLE to %s err.%d\"}",destnp->H.NXTaddr,err);
                     printf("teleport AFTER CREATE BUNDLE to %s err.%d\n",destnp->H.NXTaddr,err);
                     process_pingpong_queue(&Transporter_sendQ,log);
                 }

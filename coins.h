@@ -305,6 +305,11 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
 {
     FILE *fp;
     char line[1024],*rpcuser,*rpcpassword,*str;
+    if ( userpass[0] != 0 )
+    {
+        printf("use: (%s) userpass.(%s)\n",serverport,userpass);
+        return(serverport);
+    }
     userpass[0] = 0;
     if ( (fp= fopen(fname,"r")) != 0 )
     {
@@ -337,10 +342,10 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
     return(serverport);
 }
 
-struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,uint64_t txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,uint64_t NXTfee_equiv,int32_t forkblock)
+struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,uint64_t txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,uint64_t NXTfee_equiv,int32_t forkblock,char *userpass)
 {
     struct coin_info *cp = calloc(1,sizeof(*cp));
-    char userpass[512];
+    //char userpass[512];
     if ( forkblock == 0 )
         forkblock = blockheight;
     safecopy(cp->name,name,sizeof(cp->name));
@@ -378,7 +383,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 {
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
-    char asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
+    char rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*privkey,*coinaddr,**privkeys;
     cJSON *ciphersobj;
     uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust;
@@ -416,7 +421,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
             extract_cJSON_str(serverip_port,sizeof(serverip_port),json,"rpc") > 0 )
         {
-            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock);
+            extract_cJSON_str(rpcuserpass,sizeof(rpcuserpass),json,"rpcuserpass");
+            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
                 if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
@@ -433,6 +439,18 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 
                         printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->pubnxt64bits);
                         free(privkey);
+                    }
+                    if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
+                    {
+                        coinaddr = cp->srvpubaddr;
+                        if ( (privkey= get_telepod_privkey(&coinaddr,cp->srvcoinpubkey,cp)) != 0 )
+                        {
+                            safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
+                            cp->srvpubnxt64bits = issue_getAccountId(0,privkey);
+                            
+                            printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxt64bits);
+                            free(privkey);
+                        }
                     }
                 }
                 else if ( strcmp(cp->name,"BTCD") == 0 )
@@ -629,9 +647,13 @@ void init_MGWconf(char *JSON_or_fname)
     {
         char blockidstr[64];
         int32_t isrescan,height,timestamp;
-        set_current_NXTblock(&isrescan,0,blockidstr);
-        set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
-        printf("height.%d block.(%s)\n",height,blockidstr);
+        set_current_NXTblock(&isrescan,0,ORIGBLOCK);
+        for (i=0; i<MIN_NXTCONFIRMS; i++)
+        {
+            strcpy(blockidstr,ORIGBLOCK);
+            set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
+            printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
+        }
         if ( ORIGBLOCK[0] == 0 )
         {
             printf("need a non-zero origblock.(%s)\n",ORIGBLOCK);
