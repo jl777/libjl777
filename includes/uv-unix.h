@@ -39,8 +39,9 @@
 #include <pthread.h>
 #ifdef __ANDROID__
 #include "pthread-fixes.h"
-#endif
-#ifdef __MINGW__
+#elif __MINGW32__
+#include "pthread-fixes.h"
+#elif __MINGW64__
 #include "pthread-fixes.h"
 #endif
 #include <signal.h>
