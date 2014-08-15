@@ -453,9 +453,9 @@ struct NXT_acct *search_addresses(char *addr)
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,addr);
         expand_nxt64bits(NXTaddr,op->nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( strcmp(np->BTCDaddr,addr) == 0 || strcmp(np->BTCaddr,addr) == 0 || strcmp(np->pNXTaddr,addr) == 0 )
+        if ( strcmp(np->BTCDaddr,addr) == 0 || strcmp(np->BTCaddr,addr) == 0 )
             return(np);
-        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s) (%s)\n",addr,np->H.NXTaddr,np->BTCDaddr,np->BTCaddr,np->pNXTaddr);
+        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s)\n",addr,np->H.NXTaddr,np->BTCDaddr,np->BTCaddr);
         return(0);
     }
     return(0);

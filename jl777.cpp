@@ -362,15 +362,14 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
 
 char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],pNXTaddr[1024],*retstr = 0;
+    char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
     copy_cJSON(pubNXT,objs[2]);
     copy_cJSON(pubkey,objs[3]);
     copy_cJSON(BTCDaddr,objs[4]);
     copy_cJSON(BTCaddr,objs[5]);
-    copy_cJSON(pNXTaddr,objs[6]);
     if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
+        retstr = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr);
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
@@ -594,7 +593,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "pNXT", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
@@ -821,10 +820,10 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     return(gp);
 }
 
-uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size)
+/*uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size)
 {
     void *tx = malloc(size);
     memcpy(tx,txbytes,size);
     return(add_jl777_tx(0,tx,size,txbytes,8));
-}
+}*/
 

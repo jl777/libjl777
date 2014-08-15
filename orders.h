@@ -603,11 +603,11 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
     printf("in getpubkey(%s)\n",addr);
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"pNXT\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->pNXTaddr,pubnp->BTCaddr,time(NULL));
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->BTCaddr,time(NULL));
     return(clonestr(buf));
 }
 
-char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
+char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr)
 {
     int32_t createdflag;
     struct NXT_acct *np;
@@ -628,13 +628,13 @@ char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,
         safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    if ( pNXTaddr[0] != 0 )
-    {
-        safecopy(np->pNXTaddr,pNXTaddr,sizeof(np->pNXTaddr));
-        op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,pNXTaddr),op->nxt64bits = np->H.nxt64bits;
-    }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 )
+    {
+        void broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET);
+        broadcast_publishpacket(np,NXTACCTSECRET);
+    } else printf("unexpected mismatch (%s) != (%s)\n",np->H.NXTaddr,pubNXT);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
 
@@ -871,7 +871,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
     return(0);
 }
 
-uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
+/*uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
     char retjsonstr[4096];
@@ -895,7 +895,7 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
         }
     }
     return(txid);
-}
+}*/
 
 void remove_jl777_tx(void *tx,int32_t size)
 {

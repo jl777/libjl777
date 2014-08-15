@@ -563,8 +563,8 @@ void init_MGWconf(char *JSON_or_fname)
             array = cJSON_GetObjectItem(MGWconf,"coins");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
             {
-                char *pubNXT,*BTCDaddr,*BTCaddr,*pNXTaddr,pubkey[crypto_box_PUBLICKEYBYTES*2+1];
-                pubNXT = BTCDaddr = BTCaddr = pNXTaddr = "";
+                char *pubNXT,*BTCDaddr,*BTCaddr,pubkey[crypto_box_PUBLICKEYBYTES*2+1];
+                pubNXT = BTCDaddr = BTCaddr = "";
                 n = cJSON_GetArraySize(array);
                 for (i=0; i<n; i++)
                 {
@@ -587,8 +587,6 @@ void init_MGWconf(char *JSON_or_fname)
                             BTCaddr = cp->pubaddr;
                         else if ( strcmp(coinstr,"NXT") == 0 )
                             pubNXT = cp->pubaddr;
-                        else if ( strcmp(coinstr,"BBR") == 0 )
-                            pNXTaddr = cp->pubaddr;
                         Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
@@ -597,11 +595,11 @@ void init_MGWconf(char *JSON_or_fname)
                         Numcoins++;
                     }
                 }
-                char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr);
+                char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr);
                 init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                 if ( pubNXT[0] == 0 )
                     pubNXT = NXTADDR;
-                str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
+                str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr);
                 if ( str != 0 )
                     printf("publish.(%s)\n",str), free(str);
             }

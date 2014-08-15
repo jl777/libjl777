@@ -44,6 +44,7 @@
 #include <float.h>
 //#include <limits.h>
 #include <zlib.h>
+#include <pthread.h>
 
 #ifndef WIN32
 //#include <getopt.h>
@@ -53,7 +54,6 @@
 //#include <sys/socket.h>
 #include <sys/wait.h>
 //#include <sys/time.h>
-//#include <pthread.h>
 #include <sys/mman.h>
 
 #include <fcntl.h>

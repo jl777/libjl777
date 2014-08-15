@@ -767,16 +767,25 @@ char *libjl777_JSON(char *JSONstr)
 
 int32_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
 {
+    void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
     int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration);
     uint64_t txid;
     uint8_t hash[256/8];
+    calc_sha256(0,hash,packet,len);
     txid = calc_txid(hash,sizeof(hash));
     return(libjl777_broadcast(Global_pNXT->coinptrs,packet,len,txid,duration));
+}
+
+void broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET)
+{
+    char cmd[1024];
+    
 }
 
 char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
 {
     int i;
+    cJSON *json;
     char retjsonstr[4096];
     uint64_t obookid;
     display_orderbook_tx((struct orderbook_tx *)packet);
@@ -787,7 +796,11 @@ char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t durat
         process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
     else
     {
-        if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
+        if ( (json= cJSON_Parse((char *)packet)) != 0 )
+        {
+            
+        }
+        else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
         {
             if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
             {
