@@ -1409,6 +1409,9 @@ int search_uint32_ts(int32_t *ints,int32_t val)
 }
 
 #ifdef WIN32
+#ifdef __MINGW32__
+#elif __MINGW64__
+#else
 void usleep(int utimeout)
 {
     utimeout /= 1000;
@@ -1421,6 +1424,7 @@ void sleep(int seconds)
 {
     Sleep(seconds * 1000);
 }
+#endif
 #endif
 
 int is_printable(const char *s)

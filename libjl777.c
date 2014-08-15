@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 #include <io.h>

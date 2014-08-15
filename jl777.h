@@ -76,9 +76,15 @@
 //#include "utils/pthread.h"
 #include "includes/uv.h"
 #include "includes/gettimeofday.h"
+
+#ifdef __MINGW32__
+#elif __MINGW64__
+#else
 #define STDIN_FILENO 0
 void sleep(int32_t);
 void usleep(int32_t);
+#endif
+
 #endif
 
 #ifdef UDP_OLDWAY
