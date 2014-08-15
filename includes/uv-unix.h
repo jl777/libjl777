@@ -40,6 +40,9 @@
 #ifdef __ANDROID__
 #include "pthread-fixes.h"
 #endif
+#ifdef __MINGW__
+#include "pthread-fixes.h"
+#endif
 #include <signal.h>
 
 #include "uv-threadpool.h"
