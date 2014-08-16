@@ -349,5 +349,6 @@ char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
 #include "NXTprivacy.h"
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
+uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration);
 
 #endif

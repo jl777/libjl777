@@ -482,7 +482,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         decoded[len] = 0;
         parmstxt = clonestr((char *)decoded);//rcvbuf->base;
         argjson = cJSON_Parse(parmstxt);
-       printf("[%s] argjson.%p\n",parmstxt,argjson);
+        printf("[%s] argjson.%p\n",parmstxt,argjson);
         if ( argjson != 0 )
         {
             parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
@@ -560,6 +560,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
 
 char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
 {
+    uint64_t txid;
     char buf[4096];
     unsigned char encoded[2048],encoded2[2048],finalbuf[2048],*outbuf;
     int32_t len,createdflag;
@@ -635,10 +636,11 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             }
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
-                uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size);
+                uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration);
                 printf("len.%d Server_NXTaddr.(%s) broadcast %d via p2p\n",len,Server_NXTaddr,len);
                 // jl777: must strip destination info!!
-                if ( pNXT_submit_tx(Global_pNXT->coinptrs,finalbuf,len) == 0 )
+                txid = call_libjl777_broadcast((uint8_t *)finalbuf,len,600);
+                if ( txid == 0 )
                 {
                     sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);
                 }

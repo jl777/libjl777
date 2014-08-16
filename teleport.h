@@ -38,6 +38,7 @@
 #define TELEPORT_TRANSPORTER_TIMEOUT (10. * 1000.)
 #define TELEPORT_TELEPODS_TIMEOUT (60. * 1000.)
 #define TELEPORT_MAX_CLONETIME (3600. * 1000.)
+#define PUBADDRS_MSGDURATION 3600
 
 #define TELEPOD_CONTENTS_VOUT 0 // must be 0
 #define TELEPOD_CHANGE_VOUT 1   // vout 0 is for the pod contents and last one (1 if no change or 2) is marker

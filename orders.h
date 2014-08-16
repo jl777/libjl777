@@ -603,20 +603,24 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
     printf("in getpubkey(%s)\n",addr);
     pubnp = search_addresses(addr);
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->BTCaddr,time(NULL));
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%s\"}",pubkey,pubnp->H.NXTaddr,pubnp->BTCDaddr,pubnp->BTCaddr,time(NULL),Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
     return(clonestr(buf));
 }
 
-char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr)
+char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
 {
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
     char verifiedNXTaddr[64];
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
-    printf("in publishaddrs.(%s) np.%p %llu\n",pubNXT,np,(long long)np->H.nxt64bits);
     if ( pubkey != 0 && pubkey[0] != 0 )
         decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+    if ( srvNXTaddr != 0 && srvipaddr != 0 )
+    {
+        printf("publish SRV.(%s %s/%d) | ",srvNXTaddr,srvipaddr,srvport);
+    }
+    printf("in publishaddrs.(%s) np.%p %llu\n",pubNXT,np,(long long)np->H.nxt64bits);
     if ( BTCDaddr[0] != 0 )
     {
         safecopy(np->BTCDaddr,BTCDaddr,sizeof(np->BTCDaddr));
@@ -632,8 +636,10 @@ char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     if ( strcmp(np->H.NXTaddr,pubNXT) == 0 )
     {
-        void broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET);
-        broadcast_publishpacket(np,NXTACCTSECRET);
+        if ( srvNXTaddr != 0 && srvipaddr != 0 && srvport != 0 )
+        {
+            broadcast_publishpacket(np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
+        }
     } else printf("unexpected mismatch (%s) != (%s)\n",np->H.NXTaddr,pubNXT);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
@@ -871,7 +877,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
     return(0);
 }
 
-/*uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
+uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
     char retjsonstr[4096];
@@ -895,7 +901,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
         }
     }
     return(txid);
-}*/
+}
 
 void remove_jl777_tx(void *tx,int32_t size)
 {

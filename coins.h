@@ -595,11 +595,11 @@ void init_MGWconf(char *JSON_or_fname)
                         Numcoins++;
                     }
                 }
-                char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr);
+                char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
                 init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                 if ( pubNXT[0] == 0 )
                     pubNXT = NXTADDR;
-                str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr);
+                str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,0,0,0);
                 if ( str != 0 )
                     printf("publish.(%s)\n",str), free(str);
             }

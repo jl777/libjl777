@@ -22,10 +22,25 @@ struct hashtable *orderbook_txids;
 
 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
 {
+    uint16_t port;
+    uint32_t ipbits;
+    int32_t createdflag;
+    char ipaddr[32],pubNXTaddr[64];
+    struct NXT_acct *mynp;
+    struct coin_info *cp;
     if ( Global_pNXT != 0 && NXTaddr != 0 && NXTaddr[0] != 0 )
     {
         strcpy(Global_pNXT->privacyServer_NXTaddr,NXTaddr);
-        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s)\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr);
+        ipbits = (uint32_t)Global_pNXT->privacyServer;
+        port = (uint16_t)(Global_pNXT->privacyServer >> 32);
+        expand_ipbits(ipaddr,ipbits);
+        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s) [%s/%d]\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr,ipaddr,port);
+        if ( (cp= get_coin_info("BTCD")) != 0 && cp->NXTACCTSECRET[0] != 0 && cp->pubnxt64bits != 0 )
+        {
+            expand_nxt64bits(pubNXTaddr,cp->pubnxt64bits);
+            mynp = get_NXTacct(&createdflag,Global_mp,pubNXTaddr);
+            broadcast_publishpacket(mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
+        }
     }
 }
 
@@ -56,10 +71,9 @@ char *select_privacyServer(char *ipaddr,char *portstr)
     char buf[1024];
     uint16_t port;
     if ( portstr != 0 && portstr[0] != 0 )
-    {
         port = atoi(portstr);
-        sprintf(Global_pNXT->privacyServer_port,"%u",port);
-    }
+    else port = NXT_PUNCH_PORT;
+    sprintf(Global_pNXT->privacyServer_port,"%u",port);
     if ( ipaddr[0] != 0 )
         strcpy(Global_pNXT->privacyServer_ipaddr,ipaddr);
     sprintf(buf,"{\"privacyServer\":\"%s\",\"ipaddr\":\"%s\",\"port\":\"%s\"}",Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
@@ -192,7 +206,7 @@ char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
 char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t polarity;
-    uint64_t obookid,nxt64bits,assetA,assetB,txid;
+    uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
     double price,volume;
     struct orderbook_tx tx;
     char buf[1024],txidstr[512],*retstr = 0;
@@ -210,11 +224,12 @@ char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_
     {
         if ( price != 0. && volume != 0. && dir != 0 )
         {
-            uint64_t pNXT_submit_tx(void **coinptrs,unsigned char *txbytes,int16_t size);
             if ( dir*polarity > 0 )
                 bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
             else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
-            txid = pNXT_submit_tx(Global_pNXT->coinptrs,(unsigned char *)&tx,sizeof(tx));
+            printf("need to finish porting this\n");
+            //len = construct_tokenized_req(tx,cmd,NXTACCTSECRET);
+            //txid = call_libjl777_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
             if ( txid != 0 )
             {
                 expand_nxt64bits(txidstr,txid);
@@ -363,13 +378,17 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
 char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
+    char srvNXTaddr[512],srvipaddr[512],srvport[512];
     copy_cJSON(NXTACCTSECRET,objs[1]);
     copy_cJSON(pubNXT,objs[2]);
     copy_cJSON(pubkey,objs[3]);
     copy_cJSON(BTCDaddr,objs[4]);
     copy_cJSON(BTCaddr,objs[5]);
+    copy_cJSON(srvNXTaddr,objs[6]);
+    copy_cJSON(srvipaddr,objs[7]);
+    copy_cJSON(srvport,objs[8]);
     if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr);
+        retstr = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
@@ -593,7 +612,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };

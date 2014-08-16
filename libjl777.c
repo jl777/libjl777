@@ -766,7 +766,7 @@ char *libjl777_JSON(char *JSONstr)
     return(retstr);
 }
 
-int32_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
+uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
 {
     void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
     int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration);
@@ -774,20 +774,31 @@ int32_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
     uint8_t hash[256/8];
     calc_sha256(0,hash,packet,len);
     txid = calc_txid(hash,sizeof(hash));
-    return(libjl777_broadcast(Global_pNXT->coinptrs,packet,len,txid,duration));
+    if ( libjl777_broadcast(Global_pNXT->coinptrs,packet,len,txid,duration) == 0 )
+        return(txid);
+    else return(0);
 }
 
-void broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET)
+uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
 {
-    char cmd[1024];
-    
+    struct coin_info *cp;
+    char cmd[1024],packet[2048],hexstr[512];
+    int32_t len;
+    init_hexbytes(hexstr,np->pubkey,sizeof(np->pubkey));
+    if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
+    {
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"}",srvipaddr,srvport,srvNXTaddr,hexstr,np->BTCDaddr,np->H.NXTaddr,np->BTCaddr);
+        len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
+        return(call_libjl777_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION));
+    } else printf("broadcast_publishpacket error: no public nxt addr\n");
+    return(-1);
 }
 
 char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
 {
     int i;
     cJSON *json;
-    char retjsonstr[4096];
+    char retjsonstr[4096],*retstr;
     uint64_t obookid;
     display_orderbook_tx((struct orderbook_tx *)packet);
     for (i=0; i<len; i++)
@@ -799,7 +810,9 @@ char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t durat
     {
         if ( (json= cJSON_Parse((char *)packet)) != 0 )
         {
-            
+            retstr = pNXT_jsonhandler(&json,(char *)packet,0);
+            free_json(json);
+            return(retstr);
         }
         else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
         {
