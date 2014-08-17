@@ -795,28 +795,33 @@ uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *s
 
 char *libjl777_gotpacket(char *msg,int32_t duration)
 {
-    int32_t len;
     cJSON *json;
     uint64_t txid;
+    int32_t len,createdflag;
     unsigned char packet[4096],hash[256>>3];
+    char txidstr[64];
     char retjsonstr[4096],*retstr;
     uint64_t obookid;
     //display_orderbook_tx((struct orderbook_tx *)packet);
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
     len = (int32_t)strlen(msg);
-    printf("C libjl777_gotpacket.%s size.%d\n",msg,len);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( is_hexstr(msg) != 0 )
     {
         len >>= 1;
         decode_hex(packet,len,msg);
+        calc_sha256(0,hash,packet,len);
+        txid = calc_txid(hash,sizeof(hash));
+        sprintf(txidstr,"%llu",(long long)txid);
+        MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
+        if ( createdflag == 0 )
+            return(clonestr("{\"error\":\"duplicate msg\"}"));
+        printf("C libjl777_gotpacket.%s size.%d hexencoded txid.%llu\n",msg,len<<1,(long long)txid);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
         else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
         {
-            calc_sha256(0,hash,packet,len);
-            txid = calc_txid(hash,sizeof(hash));
             if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
             {
                 ((struct orderbook_tx *)packet)->txid = txid;
@@ -826,6 +831,13 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     }
     else
     {
+        calc_sha256(0,hash,(uint8_t *)msg,len);
+        txid = calc_txid(hash,sizeof(hash));
+        sprintf(txidstr,"%llu",(long long)txid);
+        MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
+        if ( createdflag == 0 )
+            return(clonestr("{\"error\":\"duplicate msg\"}"));
+        printf("C libjl777_gotpacket.%s size.%d ascii txid.%llu\n",msg,len,(long long)txid);
         if ( (json= cJSON_Parse((char *)packet)) != 0 )
         {
             retstr = pNXT_jsonhandler(&json,(char *)packet,0);
@@ -1062,6 +1074,7 @@ int libjl777_start(char *JSON_or_fname)
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
         orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
         Global_pNXT->orderbook_txidsp = &orderbook_txids;
+        Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
     if ( portable_thread_create(libjl777_threads,JSON_or_fname) == 0 )

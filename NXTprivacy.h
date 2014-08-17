@@ -28,7 +28,7 @@ struct pNXT_info
     void **coinptrs;
     char privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16];
     uint64_t privacyServer;
-    struct hashtable **orderbook_txidsp;
+    struct hashtable **orderbook_txidsp,*msg_txids;
 };
 struct pNXT_info *Global_pNXT;
 #include "packets.h"
