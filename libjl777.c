@@ -21,6 +21,7 @@
 #ifdef CMAKE_BUILD
 #include "lws_config.h"
 #endif
+#define EXTERNAL_POLL
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -212,6 +213,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 	char b64[64];
 	struct timeval tv;
 	//int n, m;
+    int32_t m;
     int64_t mylen;
 	//unsigned char *p;
     struct NXT_protocol *nxtprotocol;
@@ -256,6 +258,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                             "HTTP/1.0 200 OK\x0d\x0a"
                             "Server: libwebsockets\x0d\x0a"
                             "Content-Type: image/jpeg\x0d\x0a"
+                            "Access-Control-Allow-Origin: *\x0d\x0a"
                             "Content-Length: %u\x0d\x0a\x0d\x0a",
                             (unsigned int)testimagelen);
                     memcpy(space+strlen((char *)space),testimage,testimagelen);
@@ -868,7 +871,7 @@ void *libjl777_threads(void *arg)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-    init_NXTservices(JSON_or_fname);
+   // init_NXTservices(JSON_or_fname);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
