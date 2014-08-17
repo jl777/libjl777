@@ -427,7 +427,7 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
             //printf("%s\n",cJSON_Print(retval.json));
             message = cJSON_GetObjectItem(attachment,"message");
             assetjson = cJSON_GetObjectItem(attachment,"asset");
-            if ( message != 0 )
+            if ( message != 0 && type != 2 )
             {
                 copy_cJSON(AMstr,message);
                 //printf("AM message.(%s).%ld\n",AMstr,strlen(AMstr));
@@ -448,6 +448,8 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
                         free(tp->comment), tp->comment = 0;
                     tp->timestamp = timestamp;
                     commentobj = cJSON_GetObjectItem(attachment,"comment");
+                    if ( commentobj == 0 )
+                        commentobj = message;
                     copy_cJSON(comment,commentobj);
                     if ( comment[0] != 0 )
                         tp->comment = replace_backslashquotes(comment);

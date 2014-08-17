@@ -543,6 +543,7 @@ void init_MGWconf(char *JSON_or_fname)
             }
             else
             {
+                DGSBLOCK = 0;
                 if ( NXTAPIURL[0] == 0 )
                     strcpy(NXTAPIURL,"http://127.0.0.1:6876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
@@ -602,7 +603,7 @@ void init_MGWconf(char *JSON_or_fname)
                 str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,0,0,0);
                 if ( str != 0 )
                     printf("publish.(%s)\n",str), free(str);
-            }
+            } else printf("no coins array.%p ?\n",array);
             if ( NXTACCTSECRET[0] == 0 )
                 gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);

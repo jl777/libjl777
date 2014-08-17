@@ -336,8 +336,13 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     if ( retstrp != 0 )
         *retstrp = 0;
     sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
-    if ( comment != 0 )  
-        strcat(cmd,"&comment="),strcat(cmd,comment);
+    if ( comment != 0 )
+    {
+        if ( Global_mp->NXTheight >= DGSBLOCK )
+            strcat(cmd,"&message=");
+        else strcat(cmd,"&comment=");
+        strcat(cmd,comment);
+    }
     jsontxt = issue_NXTPOST(curl_handle,cmd);
     if ( jsontxt != 0 )
     {
