@@ -806,6 +806,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     //    printf("%02x ",packet[i]);
     len = (int32_t)strlen(msg);
     printf("C libjl777_gotpacket.%s size.%d\n",msg,len);
+    strcpy(retjsonstr,"{\"result\":null}");
     if ( is_hexstr(msg) != 0 )
     {
         len >>= 1;
@@ -829,7 +830,8 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         {
             retstr = pNXT_jsonhandler(&json,(char *)packet,0);
             free_json(json);
-            return(retstr);
+            if ( retstr != 0 )
+                return(retstr);
         }
     }
     return(clonestr(retjsonstr));
@@ -926,10 +928,8 @@ void *libjl777_threads(void *arg)
 	setlogmask(LOG_UPTO (LOG_DEBUG));
 	openlog("lwsts", syslog_options, LOG_DAEMON);
 #endif
-
 	/* tell the library what debug level to emit and to send it to syslog */
 	lws_set_log_level(debug_level, lwsl_emit_syslog);
-
 	lwsl_notice("libwebsockets test server - "
 			"(C) Copyright 2010-2013 Andy Green <andy@warmcat.com> - "
 						    "licensed under LGPL2.1\n");
@@ -1051,10 +1051,11 @@ done:
 	return 0;
 }
 
-int libjl777_start(void **coinptrs,char *JSON_or_fname)
+int libjl777_start(char *JSON_or_fname)
 {
     struct NXT_str *tp = 0;
     Global_mp = calloc(1,sizeof(*Global_mp));
+    printf("libjl777_start(%s)\n",JSON_or_fname);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
     {
@@ -1063,7 +1064,6 @@ int libjl777_start(void **coinptrs,char *JSON_or_fname)
         Global_pNXT->orderbook_txidsp = &orderbook_txids;
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
-    Global_pNXT->coinptrs = coinptrs;
     if ( portable_thread_create(libjl777_threads,JSON_or_fname) == 0 )
         printf("ERROR libjl777_threads\n");
         return(0);
