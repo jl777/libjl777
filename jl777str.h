@@ -185,13 +185,32 @@ char *clonestr(char *str)
     return(i);
 }*/
 
-int32_t unhex(char c)
+int32_t _unhex(char c)
 {
     if ( c >= '0' && c <= '9' )
         return(c - '0');
     else if ( c >= 'a' && c <= 'f' )
         return(c - 'a' + 10);
-    else return(0);
+    return(-1);
+}
+
+int32_t is_hexstr(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(0);
+    for (i=0; str[i]!=0; i++)
+        if ( _unhex(str[i]) < 0 )
+            return(0);
+    return(1);
+}
+
+int32_t unhex(char c)
+{
+    int32_t hex;
+    if ( (hex= _unhex(c)) < 0 )
+        printf("unhex: illegal hexchar.(%c)\n",c);
+    return(hex);
 }
 
 unsigned char _decode_hex(char *hex)
@@ -257,9 +276,12 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
 
 char hexbyte(int32_t c)
 {
+    c &= 0xf;
     if ( c < 10 )
         return('0'+c);
-    else return('a'+c-10);
+    else if ( c < 16 )
+        return('a'+c-10);
+    else return(0);
 }
 
 int32_t init_hexbytes(char *hexbytes,unsigned char *message,long len)

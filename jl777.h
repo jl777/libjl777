@@ -342,14 +342,17 @@ int32_t DGSBLOCK = 213000;
 int32_t NXT_FORKHEIGHT;
 char NXTAPIURL[64] = { "http://127.0.0.1:6876/nxt" };
 char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
+
+double picoc(int argc,char **argv,char *codestr);
+int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
+uint64_t call_libjl777_broadcast(char *msg,int32_t duration);
+void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
+
 #include "NXTservices.h"
 #include "jl777hash.h"
 #include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
 #include "NXTprivacy.h"
-double picoc(int argc,char **argv,char *codestr);
-int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
-uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration);
 
 #endif

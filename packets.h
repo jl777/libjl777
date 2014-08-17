@@ -636,10 +636,9 @@ char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t ms
             }
             else if ( Server_NXTaddr != 0 ) // test to verify this is hub
             {
-                uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration);
                 printf("len.%d Server_NXTaddr.(%s) broadcast %d via p2p\n",len,Server_NXTaddr,len);
                 // jl777: must strip destination info!!
-                txid = call_libjl777_broadcast((uint8_t *)finalbuf,len,600);
+                txid = call_libjl777_broadcast((char *)finalbuf,600);
                 if ( txid == 0 )
                 {
                     sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) [%s] to %s pending\"}",verifiedNXTaddr,origargstr,msg,destNXTaddr);

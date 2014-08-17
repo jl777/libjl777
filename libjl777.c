@@ -766,15 +766,14 @@ char *libjl777_JSON(char *JSONstr)
     return(retstr);
 }
 
-uint64_t call_libjl777_broadcast(uint8_t *packet,int32_t len,int32_t duration)
+uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
 {
-    void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
-    int32_t libjl777_broadcast(void **coinptrs,uint8_t *packet,int32_t len,uint64_t txid,int32_t duration);
+    int32_t libjl777_broadcast(char *msg,int32_t duration);
+    unsigned char hash[256>>3];
     uint64_t txid;
-    uint8_t hash[256/8];
-    calc_sha256(0,hash,packet,len);
+    calc_sha256(0,hash,(uint8_t *)msg,(int32_t)strlen(msg));
     txid = calc_txid(hash,sizeof(hash));
-    if ( libjl777_broadcast(Global_pNXT->coinptrs,packet,len,txid,duration) == 0 )
+    if ( libjl777_broadcast(msg,duration) == 0 )
         return(txid);
     else return(0);
 }
@@ -789,23 +788,41 @@ uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *s
     {
         sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"}",srvipaddr,srvport,srvNXTaddr,hexstr,np->BTCDaddr,np->H.NXTaddr,np->BTCaddr);
         len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
-        return(call_libjl777_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION));
+        return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
     } else printf("broadcast_publishpacket error: no public nxt addr\n");
     return(-1);
 }
 
-char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t duration)
+char *libjl777_gotpacket(char *msg,int32_t duration)
 {
-    int i;
+    int32_t len;
     cJSON *json;
+    uint64_t txid;
+    unsigned char packet[4096],hash[256>>3];
     char retjsonstr[4096],*retstr;
     uint64_t obookid;
-    display_orderbook_tx((struct orderbook_tx *)packet);
-    for (i=0; i<len; i++)
-        printf("%02x ",packet[i]);
-    printf("C libjl777_gotpacket.%p size.%d\n",packet,len);
-    if ( is_encrypted_packet(packet,len) != 0 )
-        process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
+    //display_orderbook_tx((struct orderbook_tx *)packet);
+    //for (i=0; i<len; i++)
+    //    printf("%02x ",packet[i]);
+    len = (int32_t)strlen(msg);
+    printf("C libjl777_gotpacket.%s size.%d\n",msg,len);
+    if ( is_hexstr(msg) != 0 )
+    {
+        len >>= 1;
+        decode_hex(packet,len,msg);
+        if ( is_encrypted_packet(packet,len) != 0 )
+            process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
+        else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
+        {
+            calc_sha256(0,hash,packet,len);
+            txid = calc_txid(hash,sizeof(hash));
+            if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
+            {
+                ((struct orderbook_tx *)packet)->txid = txid;
+                sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket got obbokid.%llu packet txid.%llu\"}",(long long)obookid,(long long)txid);
+            } else sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket error updating obookid.%llu\"}",(long long)obookid);
+        } else sprintf(retjsonstr,"{\"error\":\"libjl777_gotpacket cant find obookid\"}");
+    }
     else
     {
         if ( (json= cJSON_Parse((char *)packet)) != 0 )
@@ -814,14 +831,6 @@ char *libjl777_gotpacket(uint8_t *packet,int32_t len,uint64_t txid,int32_t durat
             free_json(json);
             return(retstr);
         }
-        else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
-        {
-            if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
-            {
-                ((struct orderbook_tx *)packet)->txid = txid;
-                sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket got obbokid.%llu packet txid.%llu\"}",(long long)obookid,(long long)txid);
-            } else sprintf(retjsonstr,"{\"result\":\"libjl777_gotpacket error updating obookid.%llu\"}",(long long)obookid);
-        } else sprintf(retjsonstr,"{\"error\":\"libjl777_gotpacket cant find obookid\"}");
     }
     return(clonestr(retjsonstr));
 }
