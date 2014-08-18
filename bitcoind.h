@@ -788,7 +788,7 @@ void *Coinloop(void *ptr)
                         free(str);
                    }
 
-              make_traceable_telepod(cp,"BTCD",cp->ciphersobj,SATOSHIDEN/10);
+              //make_traceable_telepod(cp,"BTCD",cp->ciphersobj,SATOSHIDEN/10);
             }
             //printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
         }
