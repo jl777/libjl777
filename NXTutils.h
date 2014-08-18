@@ -1068,6 +1068,7 @@ int32_t init_NXTAPI(CURL *curl_handle)
     int32_t timestamp;
     char cmd[4096],dest[1024],*jsonstr;
     init_jsoncodec(0);
+    return(0);
     sprintf(cmd,"%s=getTime",_NXTSERVER);
     while ( 1 )
     {
