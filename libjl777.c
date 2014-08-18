@@ -776,6 +776,7 @@ uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
     uint64_t txid;
     calc_sha256(0,hash,(uint8_t *)msg,(int32_t)strlen(msg));
     txid = calc_txid(hash,sizeof(hash));
+    printf("BROADCAST.(%s) txid.%llu\n",msg,(long long)txid);
     if ( libjl777_broadcast(msg,duration) == 0 )
         return(txid);
     else return(0);

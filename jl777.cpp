@@ -25,7 +25,7 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
     uint16_t port;
     uint32_t ipbits;
     int32_t createdflag;
-    char ipaddr[32],pubNXTaddr[64];
+    char ipaddr[32];
     struct NXT_acct *mynp;
     struct coin_info *cp;
     if ( Global_pNXT != 0 && NXTaddr != 0 && NXTaddr[0] != 0 )
@@ -34,13 +34,13 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
         ipbits = (uint32_t)Global_pNXT->privacyServer;
         port = (uint16_t)(Global_pNXT->privacyServer >> 32);
         expand_ipbits(ipaddr,ipbits);
-        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s) [%s/%d]\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr,ipaddr,port);
-        if ( (cp= get_coin_info("BTCD")) != 0 && cp->NXTACCTSECRET[0] != 0 && cp->pubnxt64bits != 0 )
+        cp= get_coin_info("BTCD");
+        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s) [%s/%d] pub.(%s) privacyserver.(%s)\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr,ipaddr,port,cp->pubaddr,cp->privacyserver);
+        if ( cp != 0 && cp->NXTACCTSECRET[0] != 0 )
         {
-            expand_nxt64bits(pubNXTaddr,cp->pubnxt64bits);
-            mynp = get_NXTacct(&createdflag,Global_mp,pubNXTaddr);
+            mynp = get_NXTacct(&createdflag,Global_mp,cp->pubaddr);
             broadcast_publishpacket(mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
-        }
+        } else printf("set_pNXT_privacyServer_NXTaddr cp.%p (%s) %llu\n",cp,cp!=0?cp->NXTACCTSECRET:"null",cp!=0?(long long)cp->pubnxt64bits:0);
     }
 }
 
