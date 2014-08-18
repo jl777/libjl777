@@ -39,6 +39,7 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
         if ( cp != 0 && cp->NXTACCTSECRET[0] != 0 && cp->pubnxt64bits != 0 )
         {
             expand_nxt64bits(pubNXTaddr,cp->pubnxt64bits);
+            printf("pubNXTaddr.(%s)\n",pubNXTaddr);
             mynp = get_NXTacct(&createdflag,Global_mp,pubNXTaddr);
             broadcast_publishpacket(mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
         } else printf("set_pNXT_privacyServer_NXTaddr cp.%p (%s) %llu\n",cp,cp!=0?cp->NXTACCTSECRET:"null",cp!=0?(long long)cp->pubnxt64bits:0);
