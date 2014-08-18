@@ -450,6 +450,8 @@ struct NXT_acct *search_addresses(char *addr)
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
+    if ( addr == 0 || addr[0] == 0 )
+        return(0);
     NXTaddr[0] = 0;
     if ( strlen(addr) < MAX_NXTADDR_LEN && search_hashtable(*Global_mp->NXTaccts_tablep,addr) != HASHSEARCH_ERROR )
         return(get_NXTacct(&createdflag,Global_mp,addr));
