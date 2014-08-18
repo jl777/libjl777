@@ -866,12 +866,12 @@ void *libjl777_threads(void *arg)
 #endif
 	unsigned int oldus = 0;
 	struct lws_context_creation_info info;
-
 	int debug_level = 7;
+
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
-   // init_NXTservices(JSON_or_fname);
+    init_NXTservices(JSON_or_fname);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
