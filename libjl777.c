@@ -840,7 +840,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
             return(clonestr("{\"error\":\"duplicate msg\"}"));
-        printf("C libjl777_gotpacket.%s size.%d ascii txid.%llu\n",msg,len,(long long)txid);
+        printf("C libjl777_gotpacket.(%s) size.%d ascii txid.%llu\n",msg,len,(long long)txid);
         if ( (json= cJSON_Parse((char *)packet)) != 0 )
         {
             retstr = pNXT_jsonhandler(&json,(char *)packet,0);

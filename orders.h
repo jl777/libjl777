@@ -862,7 +862,7 @@ uint64_t calc_txid(unsigned char *hash,long hashsize)
     if ( hashsize >= sizeof(txid) )
         memcpy(&txid,hash,sizeof(txid));
     else memcpy(&txid,hash,hashsize);
-    printf("calc_txid.(%llu)\n",(long long)txid);
+    //printf("calc_txid.(%llu)\n",(long long)txid);
     return(txid);
 }
 
