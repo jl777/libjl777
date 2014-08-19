@@ -434,12 +434,14 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     coinaddr = cp->pubaddr;
                     if ( (privkey= get_telepod_privkey(&coinaddr,cp->coinpubkey,cp)) != 0 )
                     {
+                        printf("copy key <- (%s)\n",privkey);
                         safecopy(cp->NXTACCTSECRET,privkey,sizeof(cp->NXTACCTSECRET));
                         cp->pubnxt64bits = issue_getAccountId(0,privkey);
 
                         printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->pubnxt64bits);
                         free(privkey);
                     }
+                    printf("check srvpubaddr\n");
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
                     {
                         coinaddr = cp->srvpubaddr;
@@ -452,6 +454,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             free(privkey);
                         }
                     }
+                    printf("end check srvpubaddr\n");
                 }
                 else if ( strcmp(cp->name,"BTCD") == 0 )
                 {

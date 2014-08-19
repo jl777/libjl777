@@ -197,7 +197,7 @@ union NXTtype extract_NXTfield(CURL *curl_handle,char *origoutput,char *cmd,char
     if ( jsonstr != 0 )
     {
         //if ( field != 0 && strcmp(field,"transactionId") == 0 )
-        //    printf("jsonstr.(%s)\n",jsonstr);
+           printf("jsonstr.(%s)\n",jsonstr);
         json = cJSON_Parse(jsonstr);
         if ( json == 0 ) printf("Error before: (%s) -> [%s]\n",jsonstr,cJSON_GetErrorPtr());
         else
