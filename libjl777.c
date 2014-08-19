@@ -799,6 +799,7 @@ uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *s
 
 char *libjl777_gotpacket(char *msg,int32_t duration)
 {
+    static int flood;
     cJSON *json;
     uint64_t txid;
     int32_t len,createdflag;
@@ -821,7 +822,9 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
             return(clonestr("{\"error\":\"duplicate msg\"}"));
-        printf("C libjl777_gotpacket.%s size.%d hexencoded txid.%llu\n",msg,len<<1,(long long)txid);
+        if ( len != 30 ) // hack against flood
+            printf("C libjl777_gotpacket.%s size.%d txid.%llu | flood.%d\n",msg,len<<1,(long long)txid,flood);
+        else flood++;
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
         else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
@@ -841,7 +844,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
             return(clonestr("{\"error\":\"duplicate msg\"}"));
-        printf("C libjl777_gotpacket.(%s) size.%d ascii txid.%llu\n",msg,len,(long long)txid);
+        printf("C libjl777_gotpacket.(%s) size.%d ascii txid.%llu | flood.%d\n",msg,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)packet)) != 0 )
         {
             retstr = pNXT_jsonhandler(&json,(char *)packet,0);
@@ -875,19 +878,6 @@ void *libjl777_threads(void *arg)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
     printf("back from init_NXTservices\n");
-    /*if ( portable_thread_create(process_hashtablequeues,Global_mp) == 0 )
-        printf("ERROR hist process_hashtablequeues\n");
-    if ( portable_thread_create(getNXTblocks,Global_mp) == 0 )
-        printf("ERROR start_Histloop\n");
-    if ( portable_thread_create(init_NXTprivacy,"") == 0 )
-        printf("ERROR init_NXTprivacy\n");
-    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",Global_mp,Global_mp->dispname,PC_USERNAME,Global_mp->ipaddr);
-    void run_NXTservices(void *arg);
-    if ( portable_thread_create(run_NXTservices,Global_mp) == 0 )
-        printf("ERROR hist process_hashtablequeues\n");
-    void *Coinloop(void *arg);
-    if ( portable_thread_create(Coinloop,Global_mp) == 0 )
-        printf("ERROR Coin_genaddrloop\n");*/
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
