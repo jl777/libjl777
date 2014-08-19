@@ -34,7 +34,8 @@
 
 #ifdef LTC_RIJNDAEL
 
-#ifndef ENCRYPT_ONLY 
+#define ENCRYPT_ONLY
+#ifndef ENCRYPT_ONLY
 
 #define SETUP    rijndael_setup
 #define ECB_ENC  rijndael_ecb_encrypt

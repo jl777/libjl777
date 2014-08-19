@@ -56,7 +56,7 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
     {
         sprintf(args,"\"%s\"",podaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
-        printf("got podaddr.(%s) privkey.%p\n",podaddr,privkey);
+        //printf("got podaddr.(%s) privkey.%p\n",podaddr,privkey);
         if ( privkey != 0 )
         {
             if ( validate_coinaddr(pubkey,cp,podaddr) > 0 )
