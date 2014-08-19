@@ -109,20 +109,17 @@ char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char
     double starttime;
     
     numretries=0;
-    printf("%s bitcoind_RPC.(%s)\n",debugstr,url);
+    
 try_again:
     starttime = milliseconds();
-    printf("bitcoind_RPC 1\n");
-
+    
     curl_handle = curl_easy_init();
     
     struct return_string s;
     init_string(&s);
-    printf("bitcoind_RPC.%p 2\n",curl_handle);
-
+    
     headers = curl_slist_append(0,"Expect:");
-    printf("bitcoind_RPC 3\n");
-
+    
     curl_easy_setopt(curl_handle,CURLOPT_HTTPHEADER,	headers);
     curl_easy_setopt(curl_handle,CURLOPT_URL,		url);
     curl_easy_setopt(curl_handle,CURLOPT_WRITEFUNCTION,	accumulate); 		// send all data to this function
@@ -131,8 +128,7 @@ try_again:
 	curl_easy_setopt(curl_handle,CURLOPT_NOPROGRESS,	1L);			// no progress callback
     if ( userpass != 0 )
         curl_easy_setopt(curl_handle,CURLOPT_USERPWD,	userpass);
-    printf("bitcoind_RPC 4\n");
-
+    
     databuf = 0;
     if ( params != 0 )
     {
@@ -155,24 +151,19 @@ try_again:
         else
             curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,params);
     }
-    printf("bitcoind_RPC 5\n");
-  laststart = milliseconds();
-    printf("bitcoind_RPC 6\n");
- 
+    laststart = milliseconds();
+    
     res = curl_easy_perform(curl_handle);
-    printf("bitcoind_RPC 7\n");
- 
+    
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl_handle);
-    printf("bitcoind_RPC 8\n");
-
+    
     // clean up temporary buffer
     if ( databuf != 0 ) {
         free(databuf);
         databuf = 0;
     }
-    printf("bitcoind_RPC 9\n");
-
+    
     if ( res != CURLE_OK ) {
         numretries++;
         if (numretries >= 10) {
@@ -192,8 +183,7 @@ try_again:
             elapsedsum += (milliseconds() - starttime);
             if ( (count % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
-            printf("bitcoind_RPC 10\n");
-          return(post_process_bitcoind_RPC(debugstr,command,s.ptr));
+            return(post_process_bitcoind_RPC(debugstr,command,s.ptr));
         } else {
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
@@ -203,8 +193,7 @@ try_again:
             return(s.ptr);
         }
     }
-    printf("bitcoind_RPC 11\n");
-  
+    
     free(s.ptr);
     return(0);
 }
