@@ -109,7 +109,7 @@ char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char
     double starttime;
     
     numretries=0;
-    printf("bitcoind_RPC 0\n");
+    printf("%s bitcoind_RPC.(%s)\n",debugstr,url);
 try_again:
     starttime = milliseconds();
     printf("bitcoind_RPC 1\n");
@@ -118,7 +118,7 @@ try_again:
     
     struct return_string s;
     init_string(&s);
-    printf("bitcoind_RPC 2\n");
+    printf("bitcoind_RPC.%p 2\n",curl_handle);
 
     headers = curl_slist_append(0,"Expect:");
     printf("bitcoind_RPC 3\n");
