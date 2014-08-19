@@ -872,7 +872,22 @@ void *libjl777_threads(void *arg)
 #ifndef LWS_NO_DAEMONIZE
 	int daemonize = 0;
 #endif
+    printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
+    printf("back from init_NXTservices\n");
+    /*if ( portable_thread_create(process_hashtablequeues,Global_mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    if ( portable_thread_create(getNXTblocks,Global_mp) == 0 )
+        printf("ERROR start_Histloop\n");
+    if ( portable_thread_create(init_NXTprivacy,"") == 0 )
+        printf("ERROR init_NXTprivacy\n");
+    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",Global_mp,Global_mp->dispname,PC_USERNAME,Global_mp->ipaddr);
+    void run_NXTservices(void *arg);
+    if ( portable_thread_create(run_NXTservices,Global_mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    void *Coinloop(void *arg);
+    if ( portable_thread_create(Coinloop,Global_mp) == 0 )
+        printf("ERROR Coin_genaddrloop\n");*/
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 

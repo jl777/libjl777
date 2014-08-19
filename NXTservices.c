@@ -1438,6 +1438,7 @@ void NXTloop(struct NXThandler_info *mp)
     uint64_t block;
     char nextblock[1024],blockidstr[1024];
     int32_t tmp,height=0,timestamp,numconfirms = MIN_NXTCONFIRMS;
+    printf("start of NXTloop\n");
     if ( 1 )
     {
         process_NXTblock(&tmp,nextblock,mp,height,GENESISBLOCK);

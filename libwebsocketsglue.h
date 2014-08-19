@@ -88,11 +88,13 @@ void init_NXTservices(char *JSON_or_fname)
     if ( portable_thread_create(process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     init_MGWconf(JSON_or_fname);
-
+    printf("start getNXTblocks\n");
     if ( portable_thread_create(getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
+    printf("start init_NXTprivacy\n");
     if ( portable_thread_create(init_NXTprivacy,"") == 0 )
         printf("ERROR init_NXTprivacy\n");
+    printf("start gen_testforms\n");
     gen_testforms(0);
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
@@ -100,6 +102,7 @@ void init_NXTservices(char *JSON_or_fname)
     if ( portable_thread_create(run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     void *Coinloop(void *arg);
+    printf("start Coinloop\n");
     if ( portable_thread_create(Coinloop,mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
 }
