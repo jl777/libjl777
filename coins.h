@@ -458,17 +458,14 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 }
                 else if ( strcmp(cp->name,"BTCD") == 0 )
                 {
-                    char args[1024],*addr;
+                    char args[1024],*addr,*pubaddr,*srvpubaddr;
                     sprintf(args,"[\"transporter\"]");
                     addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
-                    printf("Transporter address.(%s)\n",addr);
                     sprintf(args,"[\"pubaddr\"]");
-                    addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
-                    printf("Public address.(%s)\n",addr);
+                    pubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
                     sprintf(args,"[\"srvpubaddr\"]");
-                    addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
-                    printf("srvPublic address.(%s)\n",addr);
-                    printf("You must have a \"pubaddr\" for %s\n",cp->name);
+                    srvpubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    printf("Withdraw directly from an exchange to your transporter address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
                     exit(1);
                 }
                 cp->dust = dust;
