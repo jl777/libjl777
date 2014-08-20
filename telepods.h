@@ -67,8 +67,15 @@ int32_t update_telepod_file(char *coinstr,int32_t filenum,struct telepod *pod,ch
 {
     //jl777: encrypt with ciphersobj
     FILE *fp;
+    //uint8_t *encrypted;
     int32_t iter,retval = -1;
     char fname[512];
+    struct coin_info *cp;
+    if ( (cp= get_coin_info(refcipher)) == 0 || cp->ciphersobj != ciphersobj )
+    {
+        printf("cant find cp for (%s) or ciphersobj mismatch %p vs %p\n",refcipher,cp->ciphersobj,ciphersobj);
+        return(-1);
+    }
     set_telepod_fname(1,fname,coinstr,filenum,refcipher);
     if ( (fp= fopen(fname,"rb")) != 0 )
     {
@@ -79,11 +86,12 @@ int32_t update_telepod_file(char *coinstr,int32_t filenum,struct telepod *pod,ch
     for (; iter<2; iter++)
     {
         set_telepod_fname(iter^1,fname,coinstr,filenum,refcipher);
+        pod->saved = 1;
+        pod->filenum = filenum;
+        pod->crc = calc_telepodcrc(pod);
+        //if ( (encrypted= save_encrypted(fname,cp,uint8_t *data,int32_t *lenp)
         if ( (fp= fopen(fname,"wb")) != 0 )
         {
-            pod->saved = 1;
-            pod->filenum = filenum;
-            pod->crc = calc_telepodcrc(pod);
             printf(">>>>>>>>> UPDATE to height.%d\n",pod->height);
             if ( fwrite(pod,1,pod->podsize,fp) != pod->podsize )
             {

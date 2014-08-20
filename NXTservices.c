@@ -1496,7 +1496,8 @@ void NXTloop(struct NXThandler_info *mp)
         else
         {
             printf("ERROR!!!!!!!! no block at height.%d nextblock.(%s)?\n",height,nextblock); //getchar();
-            sleep(30);
+            sleep(3);
+            height--;
         }
     }
 }
