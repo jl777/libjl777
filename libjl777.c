@@ -822,7 +822,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
             return(clonestr("{\"error\":\"duplicate msg\"}"));
-        if ( len != 30 ) // hack against flood
+        if ( (len<<1) != 30 ) // hack against flood
             printf("C libjl777_gotpacket.%s size.%d txid.%llu | flood.%d\n",msg,len<<1,(long long)txid,flood);
         else flood++;
         if ( is_encrypted_packet(packet,len) != 0 )
