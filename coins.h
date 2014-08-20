@@ -534,7 +534,7 @@ void init_MGWconf(char *JSON_or_fname)
             extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
-            ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),0);
+            ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
             if ( ismainnet != 0 )
             {
                 NXT_FORKHEIGHT = 173271;
