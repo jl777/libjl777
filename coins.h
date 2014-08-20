@@ -458,13 +458,16 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 }
                 else if ( strcmp(cp->name,"BTCD") == 0 )
                 {
-                    char args[1024];
+                    char args[1024],*addr;
                     sprintf(args,"[\"transporter\"]");
-                    bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    printf("Transporter address.(%s)\n",addr);
                     sprintf(args,"[\"pubaddr\"]");
-                    bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    printf("Public address.(%s)\n",addr);
                     sprintf(args,"[\"srvpubaddr\"]");
-                    bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
+                    printf("srvPublic address.(%s)\n",addr);
                     printf("You must have a \"pubaddr\" for %s\n",cp->name);
                     exit(1);
                 }
