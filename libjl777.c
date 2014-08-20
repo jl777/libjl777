@@ -823,7 +823,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         if ( createdflag == 0 )
             return(clonestr("{\"error\":\"duplicate msg\"}"));
         if ( (len<<1) != 30 ) // hack against flood
-            printf("C libjl777_gotpacket.%s size.%d txid.%llu | flood.%d\n",msg,len<<1,(long long)txid,flood);
+            printf("C libjl777_gotpacket.%s size.%d txid.%llu | >> flood.%d\n",msg,len<<1,(long long)txid,flood);
         else flood++;
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
