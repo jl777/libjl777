@@ -562,13 +562,14 @@ int gen_pNXT_getmsg_fields(char *NXTaddr,char *handler,char *name,char **fields,
 int gen_pNXT_sendmsg_fields(char *NXTaddr,char *handler,char *name,char **fields,char **scriptp)
 {
     int n = 0;
-    char script[16384],*secret,*dest,*msg;
+    char script[16384],*secret,*dest,*msg,*L;
     secret = construct_varname(fields,n++,name,"secret","secret:",0,0);
     dest = construct_varname(fields,n++,name,"dest","dest NXT address:",0,0);
     msg = construct_varname(fields,n++,name,"msg","encrypted message:",60,0);
-    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"msg\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,msg);
+    L = construct_varname(fields,n++,name,"L","max additional onion layers:",0,0);
+    sprintf(script,"function click_%s()\n{\n\tlocation.href = 'http://127.0.0.1:7777/%s?{\"requestType\":\"%s\",\"secret\":\"' + %s + '\",\"dest\":\"' + %s + '\",\"msg\":\"' + %s + '\",\"L\":\"' + %s + '\"}';\n}\n",name,handler,name,secret,dest,msg,L);
     *scriptp = clonestr(script);
-    free(secret); free(dest); free(msg);
+    free(secret); free(dest); free(msg); free(L);
     return(n);
 }
 

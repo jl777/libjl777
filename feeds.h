@@ -847,7 +847,7 @@ void *poll_exchanges(void *flagp)
                     recalc_bars(&ep->P.PTRS,orders,n,&ep->P,jdatetime);
                     ep->P.calctime = jdatetime;
                     
-                    tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->obookid,0,1L << j);
+                    tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->obookid,0,1L << exchangeid);
                 }
             }
             sleep(1);
@@ -897,7 +897,7 @@ void start_polling_exchanges(int32_t exchangeflag)
     for (i=0; i<=NUM_EXCHANGES; i++)
     {
         pollargs[i] = ((i<<1) | exchangeflag);
-        if ( portable_thread_create(poll_exchanges,&pollargs[i]) == 0 )
+        if ( portable_thread_create((void *)poll_exchanges,&pollargs[i]) == 0 )
             printf("ERROR poll_exchanges\n");
     }
 }

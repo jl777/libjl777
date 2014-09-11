@@ -148,7 +148,7 @@ int32_t init_jsoncodec(char *jsontext)
     if ( Num_JSONwords == 0 && (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
-        while ( fgets(line,sizeof(line),fp) > 0 )
+        while ( fgets(line,sizeof(line),fp) != 0 )
         {
             word = 0;
             for (i=0; line[i]!=0; i++)

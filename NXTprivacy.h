@@ -21,7 +21,7 @@
 
 char *Server_secret,*Server_NXTaddr;
 queue_t RPC_6777_response,ALL_messages;
-char *sendmessage(char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr);
+char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr);
 
 struct pNXT_info
 {
@@ -32,7 +32,7 @@ struct pNXT_info
 };
 struct pNXT_info *Global_pNXT;
 #include "packets.h"
-uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport);
+uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport);
 
 typedef struct {
     union { uv_udp_send_t ureq; uv_write_t req; };
@@ -350,7 +350,7 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
     write_req_t *wr;
     wr = alloc_wr(buf,len,allocflag);
     ASSERT(wr != NULL);
-    r = uv_udp_send(&wr->ureq,handle,&wr->buf,1,addr,(void *)after_write);
+    r = uv_udp_send(&wr->ureq,handle,&wr->buf,1,addr,(uv_udp_send_cb)after_write);
     if ( r != 0 )
         printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->ureq,buf,len);
     return(r);
@@ -381,7 +381,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             else if ( retjsonstr[0] != 0 )
             {
                 printf("%s.%s send tokenized.(%s) to %s\n",Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr);
-                if ( 1 && (retstr= send_tokenized_cmd(Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
                     free(retstr);
@@ -487,7 +487,7 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
         fprintf(stderr,"Bind error %d (%s)\n",r,uv_err_name(r));
         return(0);
     }
-    r = uv_listen(srv,SOMAXCONN,handler);
+    r = uv_listen(srv,SOMAXCONN,(uv_connection_cb)handler);
     if ( r != 0 )
     {
         fprintf(stderr,"Listen error %d %s\n",r,uv_err_name(r));
@@ -571,7 +571,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
     struct NXT_acct *np = 0;
     uv_udp_t *udp = 0;
     uv_stream_t *connect = 0;
-    uint16_t port;
+    uint16_t port = 0;
     if ( (udp= (uv_udp_t *)tcp->data) != 0 )
     {
         connect = (uv_stream_t *)udp->data;
@@ -755,16 +755,16 @@ int32_t start_libuv_servers(uv_tcp_t **tcp,uv_udp_t **udp,int32_t ip4_or_ip6,int
     if ( ip4_or_ip6 == 6 )
     {
         if ( tcp != 0 )
-            *tcp = start_libuv_tcp6server(port,client_connected);
+            *tcp = start_libuv_tcp6server(port,(void *)client_connected);
         if ( udp != 0 )
-            *udp = start_libuv_udp6server(port,on_udprecv);
+            *udp = start_libuv_udp6server(port,(void *)on_udprecv);
     }
     else
     {
         if ( tcp != 0 )
-            *tcp = start_libuv_tcp4server(port,client_connected);
+            *tcp = start_libuv_tcp4server(port,(void *)client_connected);
         if ( udp != 0 )
-            *udp = start_libuv_udp4server(port,on_udprecv);
+            *udp = start_libuv_udp4server(port,(void *)on_udprecv);
     }
     if ( (tcp != 0 && *tcp == 0) || (udp != 0 && *udp == 0) )
     {

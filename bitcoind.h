@@ -808,6 +808,7 @@ void *Coinloop(void *ptr)
         for (i=0; i<Numcoins; i++)
         {
             cp = Daemons[i];
+            printf("i.%d initdone.%d enabled.%d\n",i,cp->initdone,cp->enabled);
             if ( cp == 0 )
                 cp->initdone = 2;
             else
@@ -830,7 +831,7 @@ void *Coinloop(void *ptr)
                 cp->RTblockheight = (int32_t)height;
                 if ( cp->blockheight < (height - cp->min_confirms) )
                 {
-                    //printf("historical block.%ld when height.%ld\n",(long)gp->blockheight[coinid],(long)height);
+                    printf("historical block.%ld when height.%ld\n",(long)cp->blockheight,(long)height);
                     if ( (cp->CACHE.ignorelist != 0 && cp->blockheight < cp->CACHE.lastignore && cp->CACHE.ignorelist[cp->blockheight] != 0) || add_bitcoind_uniquetxids(cp,cp->blockheight) == 0 )
                     {
                         counter++;

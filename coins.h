@@ -48,6 +48,9 @@
 #define EAC_COINID 36
 #define MAX_COINID 37
 #define START_COINID 38
+#define BBR_COINID 39
+#define XMR_COINID 40
+#define BTM_COINID 41
 
 #define BTC_MARKER "17outUgtsnLkguDuXm14tcQ7dMbdD8KZGK"
 #define LTC_MARKER "Le9hFCEGKDKp7qYpzfWyEFAq58kSQsjAqX"
@@ -87,6 +90,9 @@
 #define EAC_MARKER "eYyTgezT256CstvUiZ3TobkaY4obhrefsR"
 #define MAX_MARKER "mXRm6wDYZFZsPzFwGKSaNuXPczSEfLi67Y"
 #define START_MARKER "sXWgrDSE6ugt5uAfJnLWGiN7yYrk97DSNH"
+#define BBR_MARKER "1D9hJ1nEjwuhxZMk6fupoTjKLtS2KzkfCQ7kF25k5B6Sc4UJjt9FrvDNYomVd4ZVHv36FskVRJGZa1JZAnZ35GiuAHf7gBy" //"99c9794748071f0a557e8152a99fc47ff1d47b86e056fe85baa50c80b3fd5e5f"
+#define XMR_MARKER "47sghzufGhJJDQEbScMCwVBimTuq6L5JiRixD8VeGbpjCTA12noXmi4ZyBZLc99e66NtnKff34fHsGRoyZk3ES1s1V4QVcB" //6e1eb2b0abe3cef6acb62facff7a2f070e40b4898a0d7c0f1f6f09654fc3552b
+#define BTM_MARKER "bX4cpvqvfHB87YiDJAHB656TwVZBpD1VR2"
 
 int32_t Numcoins;
 struct coin_info **Daemons;
@@ -161,6 +167,9 @@ char *coinid_str(int32_t coinid)
         case EAC_COINID: return("EAC");
         case MAX_COINID: return("MAX");
         case START_COINID: return("START");
+        case BBR_COINID: return("BBR");
+        case XMR_COINID: return("XMR");
+        case BTM_COINID: return("BTM");
     }
     return(ILLEGAL_COIN);
 }
@@ -225,6 +234,9 @@ char *get_backupmarker(char *coinstr)
         case EAC_COINID: return(EAC_MARKER);
         case MAX_COINID: return(MAX_MARKER);
         case START_COINID: return(START_MARKER);
+        case BBR_COINID: return(BBR_MARKER);
+        case XMR_COINID: return(XMR_MARKER);
+        case BTM_COINID: return(BTM_MARKER);
     }
     return(0);
 }
@@ -315,7 +327,7 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
     {
         printf("extract_userpass from (%s)\n",fname);
         rpcuser = rpcpassword = 0;
-        while ( fgets(line,sizeof(line),fp) > 0 )
+        while ( fgets(line,sizeof(line),fp) != 0 )
         {
             if ( line[0] == '#' )
                 continue;
@@ -400,8 +412,6 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
         estblocktime = get_API_int(cJSON_GetObjectItem(json,"estblocktime"),300);
         min_telepod_satoshis = get_API_nxt64bits(cJSON_GetObjectItem(json,"min_telepod_satoshis"));
         dust = get_API_nxt64bits(cJSON_GetObjectItem(json,"dust"));
-        if ( dust == 0 )
-            dust = 60000;
 
         txfee = get_API_nxt64bits(cJSON_GetObjectItem(json,"txfee_satoshis"));
         if ( txfee == 0 )
@@ -425,6 +435,16 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
+                cp->coinid = conv_coinstr(coinstr);
+                if ( cp->coinid >= 0 && cp->coinid < 256 )
+                    Global_mp->corecoins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
+                if ( strcmp(cp->name,"BTCD") == 0 )
+                {
+                    Global_mp->Lfactor = (int32_t)get_API_int(cJSON_GetObjectItem(json,"Lfactor"),1);
+                    if ( Global_mp->Lfactor > MAX_LFACTOR )
+                        Global_mp->Lfactor = MAX_LFACTOR;
+                    cp->srvport = get_API_int(cJSON_GetObjectItem(json,"srvport"),NXT_PUNCH_PORT);
+                }
                 if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
                     cp->tradebotfname = clonestr(tradebotfname);
                 if ( extract_cJSON_str(cp->privacyserver,sizeof(cp->privacyserver),json,"privacyServer") > 0 )
@@ -468,9 +488,12 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     printf("Withdraw directly from an exchange to your transporter address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
                     exit(1);
                 }
+                if ( (cp->min_telepod_satoshis= min_telepod_satoshis) == 0 )
+                    min_telepod_satoshis = (dust == 0) ? SATOSHIDEN/10000 : dust;
+                if ( dust == 0 )
+                    dust = 100000;
                 cp->dust = dust;
-                cp->min_telepod_satoshis = min_telepod_satoshis;
-                
+           
                 cp->maxevolveiters = get_API_int(cJSON_GetObjectItem(json,"maxevolveiters"),100);
                 cp->M = get_API_int(cJSON_GetObjectItem(json,"telepod_M"),1);
                 cp->N = get_API_int(cJSON_GetObjectItem(json,"telepod_N"),1);
@@ -504,14 +527,17 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 
 void init_MGWconf(char *JSON_or_fname)
 {
+    int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxt64bits,char *pubBTC);
+    struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
     int32_t init_tradebots(cJSON *languagesobj);
     static int32_t exchangeflag;
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
     char coinstr[512],NXTACCTSECRET[512],NXTADDR[64],*buf=0,*jsonstr,*str;
-    int32_t i,n,ismainnet,timezone=0;
+    int32_t i,n,ismainnet,createdflag,timezone=0;
     int64_t len=0,allocsize=0;
+    struct peerinfo *refpeer,peer;
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
@@ -593,6 +619,14 @@ void init_MGWconf(char *JSON_or_fname)
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->pubnxt64bits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->pubnxt64bits);
+                            set_pubpeerinfo(cp->srvpubaddr,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxt64bits,0);
+                            refpeer = update_peerinfo(&createdflag,&peer);
+                            if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
+                            {
+                                printf("loopback privacyServer\n");
+                                set_pubpeerinfo(cp->srvpubaddr,cp->privacyserver,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
+                                update_peerinfo(&createdflag,&peer);
+                            }
                         }
                         else if ( strcmp(coinstr,"BTC") == 0 )
                             BTCaddr = cp->pubaddr;
@@ -606,11 +640,11 @@ void init_MGWconf(char *JSON_or_fname)
                         Numcoins++;
                     }
                 }
-                char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
+                char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
                 init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                 if ( pubNXT[0] == 0 )
                     pubNXT = NXTADDR;
-                str = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,0,0,0);
+                str = publishaddrs(Global_mp->corecoins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,0,0,0);
                 if ( str != 0 )
                     printf("publish.(%s)\n",str), free(str);
             } else printf("no coins array.%p ?\n",array);

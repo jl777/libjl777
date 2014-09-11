@@ -9,6 +9,7 @@
 
 #define NXT_GENESISTIME 1385294400
 #define SMALLVAL .000000000000001
+#define MAX_LFACTOR 3
 
 //#define MAINNET
 //#define DEBUG_MODE
@@ -193,6 +194,15 @@ struct NXT_str
     union { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
 };
 
+struct peerinfo
+{
+    uint64_t srvnxtbits,pubnxtbits,corecoins[4];
+    uint32_t srvipbits;
+    uint16_t srvport;
+    uint8_t pubkey[256>>3];
+    char pubBTCD[36],pubBTC[36];
+};
+
 struct NXThandler_info
 {
     double fractured_prob;  // probability NXT network is fractured, eg. major fork or attack in progress
@@ -207,11 +217,11 @@ struct NXThandler_info
     cJSON *accountjson;
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
-    uint64_t *privacyServers;
+    uint64_t *privacyServers,corecoins[4];
     CURL *curl_handle,*curl_handle2,*curl_handle3;
     portable_tcp_t Punch_tcp;
     uv_udp_t Punch_udp;
-    int32_t initassets;
+    int32_t initassets,Lfactor;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers;
     char ipaddr[64],dispname[128],groupname[128];
@@ -306,9 +316,9 @@ struct coin_info
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024];
     
     char name[64],backupdir[512],privacyserver[32];
-    char *userpass,*serverport,assetid[64],*marker,*tradebotfname;
+    char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
     uint64_t srvpubnxt64bits,pubnxt64bits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
-    int32_t maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods[3],M,N,numlogs,clonesmear;
+    int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport;
 };
 
 #define TELEPORT_DEFAULT_SMEARTIME 3600

@@ -2,7 +2,6 @@
 // Created by jl777, Feb-Mar 2014
 // MIT License
 //
-#include "jl777.h"
 
 int32_t Numtransfers,Historical_done;
 struct NXThandler_info *Global_mp;

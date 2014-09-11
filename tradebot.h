@@ -176,7 +176,7 @@ int32_t pico_tradebot_runtime(uint32_t jdatetime,struct tradebot *bot,struct Ins
                     val = condition_item(val,item,bot->intypes[i],bot->inconditioners[i]);
                     memcpy((void *)((long)dataptr + bitoffset),&val,sizeof(val));
                 }
-                else memcpy(dataptr + (bitoffset>>3),item,insize);
+                else memcpy((void *)((long)dataptr + (bitoffset>>3)),item,insize);
                 bitoffset += (insize << 3);
             }
         }
@@ -424,7 +424,7 @@ int32_t pico_tradebot_compiler(int32_t *iosizep,void **inputs,struct tradebot_ty
     else codelen = 0;
     *compiledptr = calloc(1,iosize + codelen);
     if ( codelen != 0 )
-        memcpy(*compiledptr + iosize,codeobj->valuestring,codelen);
+        memcpy((void *)((long)*compiledptr + iosize),codeobj->valuestring,codelen);
     sprintf(retbuf,"{\"metalevel\":%d,\"numinputs\":%d,\"numoutputs\":%d,\"IOsize\":\"%d\",\"codelen\":\"%d\"}",maxmetalevel,numinputs,numoutputs,iosize,codelen);
     *metalevelp = maxmetalevel;
     *iosizep = iosize;

@@ -245,7 +245,7 @@ int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_inf
 char *calc_telepod_transaction(struct coin_info *cp,struct rawtransaction *rp,struct telepod *srcpod,char *destaddr,uint64_t fee,struct telepod *changepod,uint64_t change,char *changeaddr)
 {
     long len;
-    int64_t retA,retB;
+    int64_t retA=0,retB=0;
     uint64_t amount = srcpod->satoshis;
     char *rawparams,*localcoinaddrs[3],*privkeys[3],*retstr = 0;
     if ( calc_telepod_inputs(localcoinaddrs,privkeys,cp,rp,srcpod,changepod,amount,fee,change) == (srcpod->satoshis + fee + change) )

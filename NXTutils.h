@@ -446,7 +446,7 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
 
 struct NXT_acct *search_addresses(char *addr)
 {
-    char NXTaddr[64];
+    char NXTaddr[64],*BTCDaddr,*BTCaddr;
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
@@ -460,9 +460,14 @@ struct NXT_acct *search_addresses(char *addr)
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,addr);
         expand_nxt64bits(NXTaddr,op->nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( strcmp(np->BTCDaddr,addr) == 0 || strcmp(np->BTCaddr,addr) == 0 )
+        if ( np != 0 && np->mypeerinfo != 0 )
+        {
+            BTCDaddr = np->mypeerinfo->pubBTCD;
+            BTCaddr = np->mypeerinfo->pubBTC;
+        } else BTCDaddr = BTCaddr = "";
+        if ( (BTCDaddr[0] != 0 && strcmp(BTCDaddr,addr) == 0) || (BTCaddr[0] != 0 && strcmp(BTCaddr,addr) == 0) )
             return(np);
-        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s)\n",addr,np->H.NXTaddr,np->BTCDaddr,np->BTCaddr);
+        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s)\n",addr,np->H.NXTaddr,BTCDaddr,BTCaddr);
         return(0);
     }
     return(0);

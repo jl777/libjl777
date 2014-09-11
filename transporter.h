@@ -9,6 +9,30 @@
 #ifndef xcode_televolve_h
 #define xcode_televolve_h
 
+char *set_Pendingjson(int32_t *maxlenp,char **pending_ptrp,cJSON *json)
+{
+    long len;
+    char *pending_jsonstr,*jsonstr = 0;
+    pending_jsonstr = *pending_ptrp;
+    if ( json != 0 )
+        jsonstr = cJSON_Print(json);
+    if ( pending_jsonstr == 0 )
+        pending_jsonstr = jsonstr;
+    else if ( jsonstr != 0 )
+    {
+        len = strlen(jsonstr);
+        if ( (len+1) > *maxlenp )
+        {
+            *maxlenp = (int32_t)(len + 1);
+            pending_jsonstr = realloc(pending_jsonstr,*maxlenp);
+        }
+        strcpy(pending_jsonstr,jsonstr);
+        free(jsonstr);
+    }
+    *pending_ptrp = pending_jsonstr;
+    return(pending_jsonstr);
+}
+
 struct transporter_log *find_transporter_log(struct coin_info *cp,char *otherpubaddr,uint32_t totalcrc,int32_t dir)
 {
     struct transporter_log *log = 0;
@@ -175,26 +199,19 @@ struct telepod **evolve_transporter(int32_t *nump,int32_t maxiters,struct coin_i
     return(hwmpods);
 }
 
-int32_t save_transporter_log(struct transporter_log *log,char *refcipher,cJSON *ciphersobj)
+cJSON *gen_podjson(struct telepod *pod)
 {
-    FILE *fp;
-    int32_t numerrs = 0;
-    char fname[512];
-    // jl777: encrypt with ciphersobj
-    ensure_directory("backups/logs");
-    sprintf(fname,"backups/logs/%s.%u",log->otherpubaddr,log->totalcrc);
-    if ( (fp= fopen(fname,"wb")) != 0 )
-    {
-        if ( fwrite(log,1,sizeof(*log),fp) != sizeof(*log) )
-            numerrs++;
-        fclose(fp);
-    }
-    if ( numerrs != 0 )
-        printf("numerrs.%d saving transporter_log (%s)\n",numerrs,fname);
-    return(-numerrs);
+    char numstr[64];
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"podstate",cJSON_CreateNumber(pod->podstate));
+    cJSON_AddItemToObject(json,"filenum",cJSON_CreateNumber(pod->filenum));
+    cJSON_AddItemToObject(json,"crc",cJSON_CreateNumber(pod->crc));
+    sprintf(numstr,"%.8f",dstr(pod->satoshis));
+    cJSON_AddItemToObject(json,"value",cJSON_CreateString(numstr));
+    return(json);
 }
 
-cJSON *create_transporter_json(uint32_t *totalcrcp,char *coinstr,uint32_t height,int32_t minage,uint64_t satoshis,struct telepod **pods,int32_t n,int32_t M,int32_t N,uint8_t *sharenrs)
+cJSON *create_transporter_json(uint32_t *totalcrcp,char *coinstr,uint32_t height,int32_t minage,uint64_t satoshis,struct telepod **pods,int32_t n,int32_t M,int32_t N,uint8_t *sharenrs,int32_t logstate)
 {
     int32_t i;
     struct coin_info *cp;
@@ -232,7 +249,65 @@ cJSON *create_transporter_json(uint32_t *totalcrcp,char *coinstr,uint32_t height
     cJSON_AddItemToObject(json,"telepods",array);
     *totalcrcp = totalcrc;
     cJSON_AddItemToObject(json,"totalcrc",cJSON_CreateNumber(totalcrc));
+    if ( logstate != 0 )
+        cJSON_AddItemToObject(json,"state",cJSON_CreateNumber(logstate));
     return(json);
+}
+
+cJSON *gen_logjson(struct transporter_log *log)
+{
+    cJSON *array,*item,*logjson = cJSON_CreateObject();
+    int32_t i;
+    logjson = create_transporter_json(&log->totalcrc,log->cp->name,log->createheight,log->minage,log->satoshis,log->pods,log->numpods,log->M,log->N,log->sharenrs,log->logstate);
+    array = cJSON_CreateArray();
+    for (i=0; i<log->numpods; i++)
+        if ( (item= gen_podjson(log->pods[i])) != 0 )
+            cJSON_AddItemToArray(array,item);
+    cJSON_AddItemToObject(logjson,"telepods",array);
+    return(logjson);
+}
+
+cJSON *gen_coin_logjsons(struct coin_info *cp)
+{
+    int32_t i;
+    cJSON *item,*array = cJSON_CreateArray();
+    for (i=0; i<cp->numlogs; i++)
+        if ( (item= gen_logjson(cp->logs[i])) != 0 )
+            cJSON_AddItemToArray(array,item);
+    return(array);
+}
+
+int32_t save_transporter_log(struct transporter_log *log)
+{
+    int32_t loglen,numerrs = 0;
+    char fname[512];
+    cJSON *json;
+    long len;
+    struct coin_info *cp = log->cp;
+    uint8_t *encrypted,*data;
+    if ( cp == 0 )
+    {
+        printf("illegal cp in save_transporter_log\n");
+        return(-1);
+    }
+    ensure_directory("backups/logs");
+    sprintf(fname,"backups/logs/%s.%u",log->otherpubaddr,log->totalcrc);
+    if ( (json= gen_coin_logjsons(cp)) != 0 )
+        set_Pendingjson(&cp->pending_ptrmaxlen,&cp->pending_ptr,json);
+    len = cp->pending_ptr != 0 ? strlen(cp->pending_ptr) : 0;
+    loglen = (int32_t)len + 1 + sizeof(*log) + (log->numpods * (sizeof(*log->crcs) + sizeof(*log->filenums)));
+    data = calloc(1,loglen);
+    if ( cp->pending_ptr != 0 )
+        memcpy(data,cp->pending_ptr,len+1);
+    memcpy(data+len+1,log,sizeof(*log));
+    memcpy(data+len+1+sizeof(*log),log->crcs,sizeof(*log->crcs)*log->numpods);
+    memcpy(data+len+1+sizeof(*log)+sizeof(*log->crcs)*log->numpods,log->filenums,sizeof(*log->filenums)*log->numpods);
+    if ( (encrypted= save_encrypted(fname,cp,data,&loglen)) != 0 )
+        free(encrypted);
+    else printf("ERROR saving %s\n",fname), numerrs++;
+    if ( json != 0 )
+        free_json(json);
+    return(-numerrs);
 }
 
 struct transporter_log *create_transporter_log(char *NXTaddr,char *refcipher,cJSON *ciphersobj,int32_t dir,struct NXT_acct *othernp,struct coin_info *cp,int32_t minage,uint64_t satoshis,struct telepod **pods,int32_t n,int32_t M,int32_t N,uint8_t *sharenrs,char *otherpubaddr)
@@ -248,8 +323,8 @@ struct transporter_log *create_transporter_log(char *NXTaddr,char *refcipher,cJS
     log->pods = calloc(n,sizeof(*log->pods));
     if ( pods != 0 )
         memcpy(log->pods,pods,n*sizeof(*log->pods));
-    safecopy(log->refcipher,refcipher,sizeof(log->refcipher));
-    log->ciphersobj = ciphersobj;
+    //safecopy(log->refcipher,refcipher,sizeof(log->refcipher));
+    //log->ciphersobj = ciphersobj;
     log->numpods = n;
     log->M = M;
     log->N = N;
@@ -260,25 +335,26 @@ struct transporter_log *create_transporter_log(char *NXTaddr,char *refcipher,cJS
     return(log);
 }
 
-struct transporter_log *send_transporter_log(char *NXTaddr,char *NXTACCTSECRET,char *refcipher,cJSON *ciphersobj,struct NXT_acct *destnp,struct coin_info *cp,int32_t minage,uint64_t satoshis,struct telepod **pods,int32_t n,int32_t M,int32_t N,uint8_t *sharenrs,char *otherpubaddr)
+struct transporter_log *send_transporter_log(char *NXTaddr,char *NXTACCTSECRET,struct NXT_acct *destnp,struct coin_info *cp,int32_t minage,uint64_t satoshis,struct telepod **pods,int32_t n,int32_t M,int32_t N,uint8_t *sharenrs,char *otherpubaddr)
 {
     int32_t i,err;
     cJSON *json;
     struct transporter_log *log;
-    log = create_transporter_log(NXTaddr,refcipher,ciphersobj,TRANSPORTER_SEND,destnp,cp,minage,satoshis,pods,n,M,N,sharenrs,otherpubaddr);
+    log = create_transporter_log(NXTaddr,cp->name,cp->ciphersobj,TRANSPORTER_SEND,destnp,cp,minage,satoshis,pods,n,M,N,sharenrs,otherpubaddr);
     for (i=0; i<n; i++)
     {
         pods[i]->dir = TRANSPORTER_SEND;
-        update_telepod_file(cp->name,pods[i]->filenum,pods[i],refcipher,ciphersobj);
+        update_telepod_file(cp,pods[i]->filenum,pods[i]);
         log->crcs[i] = pods[i]->crc;
         log->filenums[i] = pods[i]->filenum;
     }
-    save_transporter_log(log,refcipher,ciphersobj);
-    json = create_transporter_json(&log->totalcrc,cp->name,log->createheight,minage,satoshis,pods,n,M,N,sharenrs);
+    log->logstate = TRANSPORTER_SEND;
+    save_transporter_log(log);
+    json = create_transporter_json(&log->totalcrc,cp->name,log->createheight,minage,satoshis,pods,n,M,N,sharenrs,0);
     add_transporter_log(cp,log);
     if ( json != 0 )
     {
-        err = sendandfree_jsoncmd(NXTaddr,NXTACCTSECRET,json,destnp->H.NXTaddr);
+        err = sendandfree_jsoncmd(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,json,destnp->H.NXTaddr);
         printf("AFTER send_transporter_log.%u to %s err.%d height.%d %d at %f\n",log->totalcrc,destnp->H.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
         if ( err == 0 )
         {
@@ -314,6 +390,9 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,int3
         {
             log->status = status;
             log->recvmilli = milliseconds();
+            log->logstate |= TRANSPORTER_GOTACK;
+            save_transporter_log(log);
+
             printf("RECV LOG from receiver %02x %02x %02x\n",sharenrs[0],sharenrs[1],sharenrs[2]);
             sprintf(retbuf,"{\"result\":\"%s\",\"status\":%d,\"num\":%d,\"totalcrc\":%u,\"value\":%.8f}",status==0?"ready to start teleporting":"error reported from other side",status,num,totalcrc,dstr(value));
         }
@@ -332,7 +411,7 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,int3
                         if ( log->pods[i]->gotack == 0 )
                         {
                             log->pods[i]->gotack = 1;
-                            update_telepod_file(cp->name,log->pods[i]->filenum,log->pods[i],log->refcipher,log->ciphersobj);
+                            change_podstate(cp,log->pods[i],PODSTATE_GOTACK);
                         }
                         completed++;
                     }
@@ -341,6 +420,8 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,int3
                 if ( completed == log->numpods && log->completemilli == 0. )
                 {
                     log->completemilli = milliseconds();
+                    log->logstate |= TRANSPORTER_TRANSFERRED;
+                    save_transporter_log(log);
                     printf(">>>>>>>>>>>> completed send and ack of all telepods to NXT.%s for %s %.8f | elapsed %.2f seconds\n",sender,cp->name,dstr(value),(log->completemilli - log->recvmilli)/1000.);
                 }
                 sprintf(retbuf,"{\"result\":\"got crcs\",\"completed\":%d,\"mismatch\":%d,\"num\":%d,\"totalcrc\":%u}",completed,mismatches,num,totalcrc);
@@ -374,7 +455,7 @@ void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NX
         strcat(msg,"]}");
     }
     else strcat(msg,"}");
-    retstr = send_tokenized_cmd(verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.NXTaddr);
+    retstr = send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.NXTaddr);
     if ( retstr != 0 )
     {
         printf("send_transporter_ACK.(%s)\n",retstr);
@@ -404,8 +485,9 @@ char *transporter_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32
             log->totalcrc = totalcrc;
             memcpy(log->crcs,crcs,num*sizeof(*crcs));
             errflag = 0;
-            save_transporter_log(log,cp->name,cp->ciphersobj);
+            log->logstate = TRANSPORTER_RECV;
             log->startmilli = milliseconds();
+            save_transporter_log(log);
             add_transporter_log(cp,log);
             queue_enqueue(&Transporter_recvQ.pingpong[0],log);
             printf(">>>>>>>>>> No errors, allocated transporter_log.%u\n",log->totalcrc);

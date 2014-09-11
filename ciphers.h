@@ -244,7 +244,7 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
         return 0;
     }
     
-    l = len;
+    l = (int)len;
     bits = 8;
     acc  = a = b = 0;
     while (len--) {

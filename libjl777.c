@@ -1,759 +1,981 @@
-/*
- * libwebsockets-test-server - libwebsockets test implementation
- *
- * Copyright (C) 2010-2011 Andy Green <andy@warmcat.com>
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation:
- *  version 2.1 of the License.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- *  MA  02110-1301  USA
- */
-#ifdef CMAKE_BUILD
-#include "lws_config.h"
-#endif
-#define EXTERNAL_POLL
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <getopt.h>
-#include <signal.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <stdint.h>
-
-#ifdef _WIN32
-#include <io.h>
-#ifdef EXTERNAL_POLL
-#define poll WSAPoll
-#endif
-#else
-#include <syslog.h>
-#include <sys/time.h>
-#include <unistd.h>
-#endif
-
-#define LIBWEBSOCKETS_MILLIS 250
-#define LIBWEBSOCKETS_PORT 7777
-extern int testimagelen;
-extern char testforms[1024*1024];
-unsigned char NXTprotocol_parms[4096],testimage[1024*1024*sizeof(int32_t)];
 
 
-#include "includes/libwebsockets.h"
+//
+//  jl777.cpp
+//  glue code for pNXT
+//
+//  Created by jl777 on 7/6/14.
+//  Copyright (c) 2014 jl777. All rights reserved.
+//
+#include "jl777.h"
 
-#include "libwebsocketsglue.h"
-#define INSIDE_CCODE
-#include "jl777.cpp"
-#undef INSIDE_CCODE
+#define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x) / SATOSHIDEN)
 
+struct hashtable *orderbook_txids;
 
+#include "coincache.h"
+#include "bitcoind.h"
+#include "atomic.h"
+#include "teleport.h"
+#include "orders.h"
+#include "tradebot.h"
 
-static int close_testing;
-int max_poll_elements;
+char dispstr[65536];
+char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
+int Finished_loading,Historical_done;
+#define pNXT_SIG 0x99999999
 
-struct pollfd *pollfds;
-int *fd_lookup;
-int count_pollfds;
-static volatile int force_exit = 0;
-static struct libwebsocket_context *context;
+#include "NXTservices.c"
+uv_loop_t *UV_loop;
 
-/*
- * This demo server shows how to use libwebsockets for one or more
- * websocket protocols in the same server
- *
- * It defines the following websocket protocols:
- *
- *  dumb-increment-protocol:  once the socket is opened, an incrementing
- *				ascii string is sent down it every 50ms.
- *				If you send "reset\n" on the websocket, then
- *				the incrementing number is reset to 0.
- *
- *  lws-mirror-protocol: copies any received packet to every connection also
- *				using this protocol, including the sender
- */
+//#include "../../NXTservices/InstantDEX/InstantDEX.h"
+//#include "../../NXTservices/multigateway/multigateway.h"
+//#include "../../NXTservices/NXTorrent.h"
+//#include "../../NXTservices/NXTsubatomic.h"
+//#include "../../NXTservices/NXTcoinsco.h"
+//#include "NXTmixer.h"
+//#include "../NXTservices/NXTprivacy.h"
+#include "html.h"
 
-enum demo_protocols {
-	/* always first */
-	PROTOCOL_HTTP = 0,
-
-	PROTOCOL_DUMB_INCREMENT,
-	PROTOCOL_LWS_MIRROR,
-
-	/* always last */
-	DEMO_PROTOCOL_COUNT
-};
-
-#ifndef INSTALL_DATADIR
-#define INSTALL_DATADIR "~"
-#endif
-
-#define LOCAL_RESOURCE_PATH INSTALL_DATADIR
-char *resource_path = LOCAL_RESOURCE_PATH;
-
-/*
- * We take a strict whitelist approach to stop ../ attacks
- */
-
-struct serveable {
-	const char *urlpath;
-	const char *mimetype;
-}; 
-
-struct per_session_data__http {
-	int fd;
-};
-
-/*
- * this is just an example of parsing handshake headers, you don't need this
- * in your code unless you will filter allowing connections by the header
- * content
- */
-
-static void
-dump_handshake_info(struct libwebsocket *wsi)
+void NXTservices_idler(uv_idle_t *handle)
 {
-	int n;
-	static const char *token_names[] = {
-		/*[WSI_TOKEN_GET_URI]		=*/ "GET URI",
-		/*[WSI_TOKEN_POST_URI]		=*/ "POST URI",
-		/*[WSI_TOKEN_HOST]		=*/ "Host",
-		/*[WSI_TOKEN_CONNECTION]	=*/ "Connection",
-		/*[WSI_TOKEN_KEY1]		=*/ "key 1",
-		/*[WSI_TOKEN_KEY2]		=*/ "key 2",
-		/*[WSI_TOKEN_PROTOCOL]		=*/ "Protocol",
-		/*[WSI_TOKEN_UPGRADE]		=*/ "Upgrade",
-		/*[WSI_TOKEN_ORIGIN]		=*/ "Origin",
-		/*[WSI_TOKEN_DRAFT]		=*/ "Draft",
-		/*[WSI_TOKEN_CHALLENGE]		=*/ "Challenge",
-
-		/* new for 04 */
-		/*[WSI_TOKEN_KEY]		=*/ "Key",
-		/*[WSI_TOKEN_VERSION]		=*/ "Version",
-		/*[WSI_TOKEN_SWORIGIN]		=*/ "Sworigin",
-
-		/* new for 05 */
-		/*[WSI_TOKEN_EXTENSIONS]	=*/ "Extensions",
-
-		/* client receives these */
-		/*[WSI_TOKEN_ACCEPT]		=*/ "Accept",
-		/*[WSI_TOKEN_NONCE]		=*/ "Nonce",
-		/*[WSI_TOKEN_HTTP]		=*/ "Http",
-
-		"Accept:",
-		"If-Modified-Since:",
-		"Accept-Encoding:",
-		"Accept-Language:",
-		"Pragma:",
-		"Cache-Control:",
-		"Authorization:",
-		"Cookie:",
-		"Content-Length:",
-		"Content-Type:",
-		"Date:",
-		"Range:",
-		"Referer:",
-		"Uri-Args:",
-
-		/*[WSI_TOKEN_MUXURL]	=*/ "MuxURL",
-	};
-	char buf[4096];
-
-	for (n = 0; n < sizeof(token_names) / sizeof(token_names[0]); n++) {
-		if (!lws_hdr_total_length(wsi, n))
-			continue;
-
-		lws_hdr_copy(wsi, buf, sizeof buf, n);
-        if ( strcmp(token_names[n],"Uri-Args:") == 0 )
-            strcpy((char *)NXTprotocol_parms,buf);
-		//fprintf(stderr, "    %s = %s n.%d\n", token_names[n], buf,n);
-	}
-}
-
-const char * get_mimetype(const char *file)
-{
-	int n = (int32_t)strlen(file);
-
-	if (n < 5)
-		return NULL;
-
-	if (!strcmp(&file[n - 4], ".ico"))
-		return "image/x-icon";
-
-	if (!strcmp(&file[n - 4], ".png"))
-		return "image/png";
-
-	if (!strcmp(&file[n - 5], ".html"))
-		return "text/html";
-
-	return NULL;
-}
-
-/* this protocol server (always the first one) just knows how to do HTTP */
-
-static int callback_http(struct libwebsocket_context *context,struct libwebsocket *wsi,enum libwebsocket_callback_reasons reason, void *user,void *in, size_t len)
-{
-#if 0
-	char client_name[128];
-	char client_ip[128];
-#endif
-	char buf[256];
-	char leaf_path[1024];
-	char b64[64];
-	struct timeval tv;
-	//int n, m;
-    int32_t m;
-    int64_t mylen;
-	//unsigned char *p;
-    struct NXT_protocol *nxtprotocol;
-	char *other_headers;
-	static unsigned char buffer[4096];
-	//struct stat stat_buf;
-	struct per_session_data__http *pss = (struct per_session_data__http *)user;
-	const char *mimetype;
-#ifdef EXTERNAL_POLL
-	struct libwebsocket_pollargs *pa = (struct libwebsocket_pollargs *)in;
-#endif
-
-	switch (reason)
+    static int64_t nexttime;
+    //void call_handlers(struct NXThandler_info *mp,int32_t mode,int32_t height);
+    static uint64_t counter;
+    usleep(1000);
+    if ( (counter++ % 1000) == 0 && microseconds() > nexttime )
     {
-        case LWS_CALLBACK_HTTP:
-            dump_handshake_info(wsi);
-            if ( len < 1 )
+        call_handlers(Global_mp,NXTPROTOCOL_IDLETIME,0);
+        nexttime = (microseconds() + 1000000);
+    }
+}
+
+void run_UVloop(void *arg)
+{
+    uv_idle_t idler;
+    uv_idle_init(UV_loop,&idler);
+    //uv_idle_init(UV_loop,&idler);
+    uv_idle_start(&idler,NXTprivacy_idler);
+    uv_idle_start(&idler,NXTservices_idler);
+    uv_run(UV_loop,UV_RUN_DEFAULT);
+    printf("end of uv_run\n");
+}
+
+void run_NXTservices(void *arg)
+{
+    void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
+    struct NXThandler_info *mp = arg;
+    printf("inside run_NXTservices %p\n",mp);
+    register_NXT_handler("pNXT",mp,2,NXTPROTOCOL_ILLEGALTYPE,pNXT_handler,pNXT_SIG,1,0,0);
+    printf("NXTloop\n");
+    NXTloop(mp);
+    printf("NXTloop done\n");
+    while ( 1 ) sleep(60);
+}
+
+void init_NXTservices(char *JSON_or_fname)
+{
+    struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
+    char *ipaddr;
+    UV_loop = uv_default_loop();
+    portable_mutex_init(&mp->hash_mutex);
+    portable_mutex_init(&mp->hashtable_queue[0].mutex);
+    portable_mutex_init(&mp->hashtable_queue[1].mutex);
+    
+    init_NXThashtables(mp);
+    init_NXTAPI(mp->curl_handle);
+    ipaddr = 0;
+    if ( ipaddr != 0 )
+    {
+        strcpy(MY_IPADDR,get_ipaddr());
+        strcpy(mp->ipaddr,MY_IPADDR);
+    }
+    safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
+    mp->upollseconds = 333333 * 0;
+    mp->pollseconds = POLL_SECONDS;
+    crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
+    init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+    if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    init_MGWconf(JSON_or_fname);
+    printf("start getNXTblocks\n");
+    if ( portable_thread_create((void *)getNXTblocks,mp) == 0 )
+        printf("ERROR start_Histloop\n");
+    printf("start init_NXTprivacy\n");
+    if ( portable_thread_create((void *)init_NXTprivacy,"") == 0 )
+        printf("ERROR init_NXTprivacy\n");
+    printf("start gen_testforms\n");
+    gen_testforms(0);
+    
+    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
+    void run_NXTservices(void *arg);
+    if ( portable_thread_create((void *)run_NXTservices,mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    void *Coinloop(void *arg);
+    printf("start Coinloop\n");
+    if ( portable_thread_create((void *)Coinloop,mp) == 0 )
+        printf("ERROR Coin_genaddrloop\n");
+}
+
+void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
+{
+    uint16_t port;
+    uint32_t ipbits;
+    int32_t createdflag;
+    char ipaddr[32],pubNXTaddr[64];
+    struct NXT_acct *mynp;
+    struct coin_info *cp;
+    if ( Global_pNXT != 0 && NXTaddr != 0 && NXTaddr[0] != 0 )
+    {
+        strcpy(Global_pNXT->privacyServer_NXTaddr,NXTaddr);
+        ipbits = (uint32_t)Global_pNXT->privacyServer;
+        port = (uint16_t)(Global_pNXT->privacyServer >> 32);
+        expand_ipbits(ipaddr,ipbits);
+        cp= get_coin_info("BTCD");
+        printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s) [%s/%d] pub.(%s) privacyserver.(%s)\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr,ipaddr,port,cp->pubaddr,cp->privacyserver);
+        if ( cp != 0 && cp->NXTACCTSECRET[0] != 0 && cp->pubnxt64bits != 0 )
+        {
+            expand_nxt64bits(pubNXTaddr,cp->pubnxt64bits);
+            printf("pubNXTaddr.(%s)\n",pubNXTaddr);
+            mynp = get_NXTacct(&createdflag,Global_mp,pubNXTaddr);
+            broadcast_publishpacket(Global_mp->corecoins,mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
+        } else printf("set_pNXT_privacyServer_NXTaddr cp.%p (%s) %llu\n",cp,cp!=0?cp->NXTACCTSECRET:"null",cp!=0?(long long)cp->pubnxt64bits:0);
+    }
+}
+
+void set_pNXT_privacyServer(uint64_t privacyServer)
+{
+    if ( Global_pNXT != 0 && privacyServer != 0 )
+    {
+        char tmp[32];
+        expand_ipbits(tmp,(uint32_t)privacyServer);
+        printf("SETTING PRIVACY SERVER IPADDR.(%s)\n",tmp);
+        Global_pNXT->privacyServer = privacyServer;
+    }
+}
+
+uint64_t get_pNXT_privacyServer(int32_t *activeflagp)
+{
+    uint64_t privacyServer;
+    privacyServer = calc_privacyServer(Global_pNXT->privacyServer_ipaddr,atoi(Global_pNXT->privacyServer_port));
+    *activeflagp = Global_pNXT->privacyServer == privacyServer;
+    //char tmp[32];
+    //expand_ipbits(tmp,(uint32_t)privacyServer);
+    //printf("pNXT ipaddr.(%s) %llx %s\n",Global_pNXT->privacyServer_ipaddr,(long long)privacyServer,tmp);
+    return(privacyServer);
+}
+
+char *select_privacyServer(char *ipaddr,char *portstr)
+{
+    char buf[1024];
+    uint16_t port;
+    if ( portstr != 0 && portstr[0] != 0 )
+        port = atoi(portstr);
+    else port = NXT_PUNCH_PORT;
+    sprintf(Global_pNXT->privacyServer_port,"%u",port);
+    if ( ipaddr[0] != 0 )
+        strcpy(Global_pNXT->privacyServer_ipaddr,ipaddr);
+    sprintf(buf,"{\"privacyServer\":\"%s\",\"ipaddr\":\"%s\",\"port\":\"%s\"}",Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
+    return(clonestr(buf));
+}
+
+int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
+{
+    char cmd[4096],assetid[512];
+    union NXTtype retval;
+    int32_t i,n,iter;
+    cJSON *array,*item,*obj;
+    int64_t quantity,qty;
+    quantity = *unconfirmedp = 0;
+    sprintf(cmd,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
+    retval = extract_NXTfield(0,0,cmd,0,0);
+    if ( retval.json != 0 )
+    {
+        for (iter=0; iter<2; iter++)
+        {
+            qty = 0;
+            array = cJSON_GetObjectItem(retval.json,iter==0?"assetBalances":"unconfirmedAssetBalances");
+            if ( is_cJSON_Array(array) != 0 )
             {
-                libwebsockets_return_http_status(context, wsi,HTTP_STATUS_BAD_REQUEST, NULL);
-                return -1;
-            }
-            if ( strchr((const char *)in + 1, '/') != 0 ) // this server has no concept of directories
-            {
-                libwebsockets_return_http_status(context, wsi,HTTP_STATUS_FORBIDDEN, NULL);
-                return -1;
-            }
-            // if a legal POST URL, let it continue and accept data
-            if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
-                return 0;
-#ifdef GRAPHICS_SUPPORT
-            if ( (testimagelen= search_images(testimage,(char *)in+1)) != 0 )
-            {
-                static int counter;
-                static uint64_t lastmicro;
-                if ( testimagelen != 0 )
+                n = cJSON_GetArraySize(array);
+                for (i=0; i<n; i++)
                 {
-                    counter++;
-                    //printf("%d IN.(%s) testimagelen.%d\n",counter,in,testimagelen);
-                    unsigned char *space;
-                    space = malloc(testimagelen+512);
-                    sprintf((char *)space,
-                            "HTTP/1.0 200 OK\x0d\x0a"
-                            "Server: libwebsockets\x0d\x0a"
-                            "Content-Type: image/jpeg\x0d\x0a"
-                            "Access-Control-Allow-Origin: *\x0d\x0a"
-                            "Content-Length: %u\x0d\x0a\x0d\x0a",
-                            (unsigned int)testimagelen);
-                    memcpy(space+strlen((char *)space),testimage,testimagelen);
-                    //printf("buffer.(%s)\n",buffer);
-                    libwebsocket_write(wsi,space,strlen((char *)buffer)+testimagelen,LWS_WRITE_HTTP);
-                    free(space);
-                    lastmicro = microseconds();
-                }
-                return(-1);
-            }
-#endif
-            if ( (nxtprotocol= get_NXTprotocol((char *)in)) != 0 )
-            {
-                char *retstr;
-                retstr = NXTprotocol_json_handler(nxtprotocol,(char *)NXTprotocol_parms);
-                //printf("GOT.(%s) for (%s)\n",retstr,(char *)in);
-                if ( retstr != 0 )
-                {
-                    len = strlen(retstr);
-                    sprintf((char *)buffer,
-                            "HTTP/1.0 200 OK\x0d\x0a"
-                            "Server: NXTprotocol.jl777\x0d\x0a"
-                            "Content-Type: text/html\x0d\x0a"
-                            "Access-Control-Allow-Origin: *\x0d\x0a"
-                            "Content-Length: %u\x0d\x0a\x0d\x0a",
-                            (unsigned int)len);
-                    //printf("html hdr.(%s)\n",buffer);
-                    libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                    libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
-                }
-                return(-1);
-            }
-            else
-            {
-                /*static char *fileptr; static int64_t allocsize;
-                if ( 1 && load_file(NXTPROTOCOL_HTMLFILE,&fileptr,&mylen,&allocsize) != 0 )
-                {
-                    printf("loaded NXTprotocol, len.%ld + forms.%ld\n",(long)mylen,strlen(testforms));
-                    if ( URL_changed == 0 )
-                        len = mylen + strlen(testforms);
-                    else len = mylen;
-                    sprintf((char *)buffer,
-                            "HTTP/1.0 200 OK\x0d\x0a"
-                            "Server: NXTprotocol.jl777\x0d\x0a"
-                            "Content-Type: text/html\x0d\x0a"
-                            "Access-Control-Allow-Origin: *\x0d\x0a"
-                            "Content-Length: %u\x0d\x0a\x0d\x0a",
-                            (unsigned int)len);
-                    printf("html hdr.(%s)\n",buffer);
-                    libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                    if ( URL_changed == 0 && testforms[0] != 0 )
-                       libwebsocket_write(wsi,(unsigned char *)testforms,strlen(testforms),LWS_WRITE_HTTP);
-                    libwebsocket_write(wsi,(unsigned char *)fileptr,mylen,LWS_WRITE_HTTP);
-                    return(-1);
-                }
-                else*/
-                    if ( URL_changed == 0 && testforms[0] != 0 )
-                {
-                    mylen = strlen(testforms);
-                    //printf("testforms len %ld\n",(long)mylen);
-                    if ( mylen != 0 )
+                    item = cJSON_GetArrayItem(array,i);
+                    obj = cJSON_GetObjectItem(item,"asset");
+                    copy_cJSON(assetid,obj);
+                    //printf("i.%d of %d: %s(%s)\n",i,n,assetid,cJSON_Print(item));
+                    if ( strcmp(assetid,assetidstr) == 0 )
                     {
-                        sprintf((char *)buffer,
-                                "HTTP/1.0 200 OK\x0d\x0a"
-                                "Server: NXTprotocol.jl777\x0d\x0a"
-                                "Content-Type: text/html\x0d\x0a"
-                                "Access-Control-Allow-Origin: *\x0d\x0a"
-                                "Content-Length: %u\x0d\x0a\x0d\x0a",
-                                (unsigned int)mylen);
-                        libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                        //printf("html hdr.(%s)\n",buffer);
-                        libwebsocket_write(wsi,(unsigned char *)testforms,strlen(testforms),LWS_WRITE_HTTP);
-                        return(-1);
+                        qty = get_cJSON_int(item,iter==0?"balanceQNT":"unconfirmedBalanceQNT");
+                        break;
                     }
                 }
             }
-
-		// if not, send a file the easy way
-		strcpy(buf, resource_path);
-		if ( strcmp(in, "/") != 0)
-        {
-			if ( *((const char *)in) != '/' )
-				strcat(buf, "/");
-			strncat(buf,in,sizeof(buf) - strlen(resource_path));
-		} else // default file to serve 
-			strcat(buf, "/NXTprotocol.html");
-		buf[sizeof(buf) - 1] = '\0';
-
-		// refuse to serve files we don't understand 
-		mimetype = get_mimetype(buf);
-		if ( mimetype == 0 )
-        {
-			lwsl_err("Unknown mimetype for %s\n", buf);
-			libwebsockets_return_http_status(context, wsi,HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE, NULL);
-			return -1;
-		}
-            printf("mimetype.%s\n",mimetype);
-		other_headers = NULL;
-		if ( strcmp((const char *)in, "/") == 0 && lws_hdr_total_length(wsi,WSI_TOKEN_HTTP_COOKIE) == 0 )
-        {
-			// this isn't very unguessable but it'll do for us 
-			gettimeofday(&tv, NULL);
-			sprintf(b64, "LWS_%u_%u_COOKIE",(unsigned int)tv.tv_sec,(unsigned int)tv.tv_usec);
-			sprintf(leaf_path,"Set-Cookie: test=LWS_%u_%u_COOKIE;Max-Age=360000\x0d\x0a",(unsigned int)tv.tv_sec,(unsigned int)tv.tv_usec);
-			other_headers = leaf_path;
-			lwsl_err(other_headers);
-		}
-		if ( libwebsockets_serve_http_file(context,wsi,buf,mimetype,other_headers) != 0 )
-			return -1; // through completion or error, close the socket 
-//notice that the sending of the file completes async, we'll get a LWS_CALLBACK_HTTP_FILE_COMPLETION callback when it's done
-		break;
-	case LWS_CALLBACK_HTTP_BODY:
-		strncpy(buf,in,20);
-		buf[20] = '\0';
-		if ( len < 20 )
-			buf[len] = '\0';
-		lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s... len %d\n",(const char *)buf,(int32_t)len);
-		break;
-        case LWS_CALLBACK_HTTP_BODY_COMPLETION: // the whole sent body arried, close the connection
-
-		lwsl_notice("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
-		libwebsockets_return_http_status(context, wsi,HTTP_STATUS_OK, NULL);
-		return -1;
-	case LWS_CALLBACK_HTTP_FILE_COMPLETION:     // kill the connection after we sent one file
-//		lwsl_info("LWS_CALLBACK_HTTP_FILE_COMPLETION seen\n");
-		 
-		return -1;
-	case LWS_CALLBACK_HTTP_WRITEABLE:           // we can send more of whatever it is we were sending
-		/*do
-        {
-			n = (int32_t)read(pss->fd,buffer,sizeof buffer);
-			if ( n < 0 ) // problem reading, close conn
-				goto bail;
-			if ( n == 0 ) // sent it all, close conn
-				goto flush_bail;
-			// because it's HTTP and not websocket, don't need to take care about pre and postamble
-			m = libwebsocket_write(wsi,buffer,n,LWS_WRITE_HTTP);
-			if ( m < 0 ) // write failed, close conn
-				goto bail;
-			if ( m != n ) // partial write, adjust
-				lseek(pss->fd,m - n,SEEK_CUR);
-		} while ( lws_send_pipe_choked(wsi) == 0 );*/
-        //if ( testimagelen != 0 )
-        //    libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
-
-		libwebsocket_callback_on_writable(context,wsi);
-		break;
-flush_bail:
-		if ( lws_send_pipe_choked(wsi) == 0 )   // true if still partial pending
-        {
-			libwebsocket_callback_on_writable(context, wsi);
-			break;
-		}
-bail:
-		close(pss->fd);
-		return -1;
-	/*
-	 * callback for confirming to continue with client IP appear in
-	 * protocol 0 callback since no websocket protocol has been agreed
-	 * yet.  You can just ignore this if you won't filter on client IP
-	 * since the default uhandled callback return is 0 meaning let the
-	 * connection continue.
-	 */
-	case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-#if 0
-		libwebsockets_get_peer_addresses(context, wsi, (int32_t)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
-		fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
-#endif
-		// if we returned non-zero from here, we kill the connection 
-		break;
-#ifdef EXTERNAL_POLL
-	//callbacks for managing the external poll() array appear in protocol 0 callback
-	case LWS_CALLBACK_LOCK_POLL:
-		// lock mutex to protect pollfd state called before any other POLL related callback
-		break;
-	case LWS_CALLBACK_UNLOCK_POLL:
-		// unlock mutex to protect pollfd state when called after any other POLL related callback
-		break;
-	case LWS_CALLBACK_ADD_POLL_FD:
-		if ( count_pollfds >= max_poll_elements )
-        {
-			lwsl_err("LWS_CALLBACK_ADD_POLL_FD: too many sockets to track\n");
-			return 1;
-		}
-		fd_lookup[pa->fd] = count_pollfds;
-		pollfds[count_pollfds].fd = pa->fd;
-		pollfds[count_pollfds].events = pa->events;
-		pollfds[count_pollfds++].revents = 0;
-		break;
-	case LWS_CALLBACK_DEL_POLL_FD:
-		if ( --count_pollfds <= 0 )
-			break;
-		m = fd_lookup[pa->fd];
-		// have the last guy take up the vacant slot 
-		pollfds[m] = pollfds[count_pollfds];
-		fd_lookup[pollfds[count_pollfds].fd] = m;
-		break;
-	case LWS_CALLBACK_CHANGE_MODE_POLL_FD:
-	        pollfds[fd_lookup[pa->fd]].events = pa->events;
-		break;
-#endif
-	case LWS_CALLBACK_GET_THREAD_ID:
-		/*
-		 * if you will call "libwebsocket_callback_on_writable"
-		 * from a different thread, return the caller thread ID
-		 * here so lws can use this information to work out if it
-		 * should signal the poll() loop to exit and restart early
-		 */
-		/* return pthread_getthreadid_np(); */
-		break;
-	default:
-		break;
-	}
-	return 0;
+            if ( iter == 0 )
+                quantity = qty;
+            else *unconfirmedp = qty;
+        }
+    }
+    return(quantity);
 }
 
-
-/* dumb_increment protocol */
-
-/*
- * one of these is auto-created for each connection and a pointer to the
- * appropriate instance is passed to the callback in the user parameter
- *
- * for this example protocol we use it to individualize the count for each
- * connection.
- */
-
-struct per_session_data__dumb_increment {
-	int number;
-};
-
-
-static int
-callback_dumb_increment(struct libwebsocket_context *context,
-			struct libwebsocket *wsi,
-			enum libwebsocket_callback_reasons reason,
-					       void *user, void *in, size_t len)
+char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-	int32_t n, m;
-	struct per_session_data__dumb_increment *pss = (struct per_session_data__dumb_increment *)user;
-
-	switch (reason) {
-
-	case LWS_CALLBACK_ESTABLISHED:
-		lwsl_info("callback_dumb_increment: "
-						 "LWS_CALLBACK_ESTABLISHED\n");
-		pss->number = 0;
-		break;
-  
-	case LWS_CALLBACK_SERVER_WRITEABLE:
-            if ( 1 )//0 && testimagelen == 0 )
+    int32_t i,polarity,allflag;
+    uint64_t obookid;
+    cJSON *json,*bids,*asks,*item;
+    struct orderbook *op;
+    char obook[512],buf[512],assetA[64],assetB[64],*retstr = 0;
+    obookid = get_API_nxt64bits(objs[1]);
+    expand_nxt64bits(obook,obookid);
+    polarity = get_API_int(objs[2],1);
+    if ( polarity == 0 )
+        polarity = 1;
+    allflag = get_API_int(objs[3],0);
+    if ( obookid != 0 && (op= create_orderbook(obookid,polarity,0,0)) != 0 )
+    {
+        if ( op->numbids == 0 && op->numasks == 0 )
+            retstr = clonestr("{\"error\":\"no bids or asks\"}");
+        else
+        {
+            json = cJSON_CreateObject();
+            bids = cJSON_CreateArray();
+            for (i=0; i<op->numbids; i++)
             {
-                n = (int32_t)strlen((char *)dispstr);
-                if ( n > 0 )
-                {
-                    m = libwebsocket_write(wsi, (unsigned char *)dispstr, n, LWS_WRITE_TEXT);
-                    //printf("wrote (%s).%d to wsi, got %d\n",dispstr,n,m);
-                    if (m < n) {
-                        lwsl_err("ERROR %d writing to di socket\n", n);
-                        return -1;
-                    }
-                }
+                item = create_order_json(&op->bids[i],1,allflag);
+                cJSON_AddItemToArray(bids,item);
+            }
+            asks = cJSON_CreateArray();
+            for (i=0; i<op->numasks; i++)
+            {
+                item = create_order_json(&op->asks[i],1,allflag);
+                cJSON_AddItemToArray(asks,item);
+            }
+            expand_nxt64bits(assetA,op->assetA);
+            expand_nxt64bits(assetB,op->assetB);
+            cJSON_AddItemToObject(json,"orderbook",cJSON_CreateString(obook));
+            cJSON_AddItemToObject(json,"assetA",cJSON_CreateString(assetA));
+            cJSON_AddItemToObject(json,"assetB",cJSON_CreateString(assetB));
+            cJSON_AddItemToObject(json,"polarity",cJSON_CreateNumber(polarity));
+            cJSON_AddItemToObject(json,"bids",bids);
+            cJSON_AddItemToObject(json,"asks",asks);
+            retstr = cJSON_Print(json);
+        }
+        free_orderbook(op);
+    } else
+    {
+        sprintf(buf,"{\"error\":\"no such orderbook.(%llu)\"}",(long long)obookid);
+        retstr = clonestr(buf);
+    }
+    return(retstr);
+}
+
+char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    cJSON *json;
+    char *retstr = 0;
+    json = create_orderbooks_json();
+    if ( json != 0 )
+    {
+        retstr = cJSON_Print(json);
+        free_json(json);
+    }
+    else retstr = clonestr("{\"error\":\"no orderbooks\"}");
+    return(retstr);
+}
+
+char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    int32_t n = 0;
+    char ipaddr[512],port[512],secret[512],*retstr = 0;
+    copy_cJSON(ipaddr,objs[1]);
+    copy_cJSON(port,objs[2]);
+    copy_cJSON(secret,objs[3]);
+    if ( sender[0] != 0 && valid != 0 )
+    {
+        retstr = select_privacyServer(ipaddr,port);
+        while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
+            usleep(10000);
+        if ( n == 1000 )
+            printf("TIMEOUT: selectserver_func no response\n");
+    }
+    return(retstr);
+}
+
+char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    int32_t polarity;
+    uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
+    double price,volume;
+    struct orderbook_tx tx;
+    char buf[1024],txidstr[512],*retstr = 0;
+    nxt64bits = calc_nxt64bits(sender);
+    obookid = get_API_nxt64bits(objs[1]);
+    polarity = get_API_int(objs[2],1);
+    if ( polarity == 0 )
+        polarity = 1;
+    volume = get_API_float(objs[3]);
+    price = get_API_float(objs[4]);
+    assetA = get_API_nxt64bits(objs[5]);
+    assetB = get_API_nxt64bits(objs[6]);
+    printf("PLACE QUOTE polarity.%d dir.%d\n",polarity,dir);
+    if ( sender[0] != 0 && find_raw_orders(obookid) != 0 && valid != 0 )
+    {
+        if ( price != 0. && volume != 0. && dir != 0 )
+        {
+            if ( dir*polarity > 0 )
+                bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
+            else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
+            printf("need to finish porting this\n");
+            //len = construct_tokenized_req(tx,cmd,NXTACCTSECRET);
+            //txid = call_libjl777_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
+            if ( txid != 0 )
+            {
+                expand_nxt64bits(txidstr,txid);
+                sprintf(buf,"{\"txid\":\"%s\"}",txidstr);
+                retstr = clonestr(buf);
+            }
+        }
+        if ( retstr == 0 )
+        {
+            sprintf(buf,"{\"error submitting\":\"place%s error obookid.%llx polarity.%d volume %f price %f\"}",dir>0?"bid":"ask",(long long)obookid,polarity,volume,price);
+            retstr = clonestr(buf);
+        }
+    }
+    else if ( assetA != 0 && assetB != 0 && assetA != assetB )
+    {
+        if ( (obookid= create_raw_orders(assetA,assetB)) != 0 )
+        {
+            sprintf(buf,"{\"obookid\":\"%llu\"}",(long long)obookid);
+            retstr = clonestr(buf);
+        }
+        else
+        {
+            sprintf(buf,"{\"error\":\"couldnt create orderbook for assets %llu and %llu\"}",(long long)assetA,(long long)assetB);
+            retstr = clonestr(buf);
+        }
+    }
+    else
+    {
+        sprintf(buf,"{\"error\":\"place%s error obookid.%llx polarity.%d volume %f price %f\"}",polarity>0?"bid":"ask",(long long)obookid,polarity,volume,price);
+        retstr = clonestr(buf);
+    }
+    return(retstr);
+}
+
+char *placebid_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(placequote_func(1,sender,valid,objs,numobjs,origargstr));
+}
+
+char *placeask_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(placequote_func(-1,sender,valid,objs,numobjs,origargstr));
+}
+
+char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    double amount;
+    char NXTACCTSECRET[512],*retstr = 0;
+    amount = get_API_float(objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && amount > 0 && valid != 0 )
+        retstr = sellpNXT(sender,NXTACCTSECRET,amount);
+    else retstr = clonestr("{\"error\":\"invalid sellpNXT request\"}");
+    return(retstr);
+}
+
+char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    double amount;
+    char NXTACCTSECRET[512],*retstr = 0;
+    amount = get_API_float(objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && amount > 0 && valid != 0 )
+        retstr = buypNXT(sender,NXTACCTSECRET,amount);
+    else retstr = clonestr("{\"error\":\"invalid buypNXT request\"}");
+    return(retstr);
+}
+
+char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    double amount;
+    int32_t level;
+    char NXTACCTSECRET[512],paymentid[256],dest[256],*retstr = 0;
+    amount = get_API_float(objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    copy_cJSON(dest,objs[3]);
+    level = get_API_int(objs[4],0);
+    copy_cJSON(paymentid,objs[5]);
+    if ( sender[0] != 0 && amount > 0 && valid != 0 && dest[0] != 0 )
+        retstr = send_pNXT(sender,NXTACCTSECRET,amount,level,dest,paymentid);
+    else retstr = clonestr("{\"error\":\"invalid send request\"}");
+    return(retstr);
+}
+
+char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    double amount;
+    int32_t M,N;
+    struct coin_info *cp;
+    char NXTACCTSECRET[512],destaddr[512],minage[512],coinstr[512],*retstr = 0;
+    if ( Historical_done == 0 )
+        return(clonestr("historical processing is not done yet"));
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    amount = get_API_float(objs[2]);
+    copy_cJSON(destaddr,objs[3]);
+    copy_cJSON(coinstr,objs[4]);
+    copy_cJSON(minage,objs[5]);
+    M = get_API_int(objs[6],1);
+    N = get_API_int(objs[7],1);
+    if ( M > N || N >= 0xff || M <= 0 )
+        M = N = 1;
+    printf("amount.(%.8f) minage.(%s) %d | M.%d N.%d\n",amount,minage,atoi(minage),M,N);
+    cp = get_coin_info(coinstr);
+    if ( cp != 0 && sender[0] != 0 && amount > 0 && valid != 0 && destaddr[0] != 0 )
+        retstr = teleport(sender,NXTACCTSECRET,(uint64_t)(SATOSHIDEN * amount),destaddr,cp,atoi(minage),M,N);
+    else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
+    return(retstr);
+}
+
+char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],destNXTaddr[256],msg[1024],*retstr = 0;
+    int32_t L;
+    copy_cJSON(destNXTaddr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    copy_cJSON(msg,objs[3]);
+    L = (int32_t)get_API_int(objs[4],1);
+    //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
+    if ( sender[0] != 0 && valid != 0 && destNXTaddr[0] != 0 )
+        retstr = sendmessage(L,sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
+    else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
+    return(retstr);
+}
+
+char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],senderNXTaddr[256],*retstr = 0;
+    copy_cJSON(senderNXTaddr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && valid != 0 )
+        retstr = checkmessages(sender,NXTACCTSECRET,senderNXTaddr);
+    else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
+    return(retstr);
+}
+
+char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],addr[256],*retstr = 0;
+    copy_cJSON(addr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    if ( sender[0] != 0 && valid != 0 && addr[0] != 0 )
+        retstr = getpubkey(sender,NXTACCTSECRET,addr);
+    else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
+    return(retstr);
+}
+
+char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
+    char srvNXTaddr[512],srvipaddr[512],srvport[512],coinstr[512];
+    uint64_t corecoins[4];
+    int32_t i,m=0,coinid,n=0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(pubNXT,objs[2]);
+    copy_cJSON(pubkey,objs[3]);
+    copy_cJSON(BTCDaddr,objs[4]);
+    copy_cJSON(BTCaddr,objs[5]);
+    copy_cJSON(srvNXTaddr,objs[6]);
+    copy_cJSON(srvipaddr,objs[7]);
+    copy_cJSON(srvport,objs[8]);
+    memset(corecoins,0,sizeof(corecoins));
+    if ( is_cJSON_Array(objs[9]) != 0 && (n= cJSON_GetArraySize(objs[9])) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            copy_cJSON(coinstr,cJSON_GetArrayItem(objs[9],i));
+            coinid = conv_coinstr(coinstr);
+            if ( coinid >= 0 )
+                corecoins[i>>6] |= (1L << (i&63)), m++;
+            else printf("unknown.%d coind.(%s)\n",i,coinstr);
+        }
+    }
+    if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
+        retstr = publishaddrs(m!=0?corecoins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
+    else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
+    return(retstr);
+}
+
+char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t assetA,assetB;
+    double qtyA,qtyB;
+    int32_t type;
+    char NXTACCTSECRET[512],otherNXTaddr[256],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(otherNXTaddr,objs[2]);
+    assetA = get_API_nxt64bits(objs[3]);
+    qtyA = get_API_float(objs[4]);
+    assetB = get_API_nxt64bits(objs[5]);
+    qtyB = get_API_float(objs[6]);
+    type = get_API_int(objs[7],0);
+    
+    if ( sender[0] != 0 && valid != 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
+        retstr = makeoffer(sender,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
+
+char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],utx[4096],full[1024],sig[1024],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(utx,objs[2]);
+    copy_cJSON(sig,objs[3]);
+    copy_cJSON(full,objs[4]);
+    if ( sender[0] != 0 && valid != 0 )
+        retstr = processutx(sender,utx,sig,full);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
+
+char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char signedtx[4096],*retstr = 0;
+    copy_cJSON(signedtx,objs[1]);
+    if ( sender[0] != 0 && valid != 0 && signedtx[0] != 0 )
+        retstr = respondtx(sender,signedtx);
+    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    return(retstr);
+}
+
+char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static char *buf;
+    static int64_t filelen,allocsize;
+    long len;
+    cJSON *botjson;
+    char NXTACCTSECRET[512],code[4096],retbuf[4096],*str,*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    copy_cJSON(code,objs[2]);
+    printf("tradebotfunc.(%s) sender.(%s) valid.%d code.(%s)\n",origargstr,sender,valid,code);
+    if ( sender[0] != 0 && valid != 0 && code[0] != 0 )
+    {
+        len = strlen(code);
+        if ( code[0] == '(' && code[len-1] == ')' )
+        {
+            code[len-1] = 0;
+            str = load_file(code+1,&buf,&filelen,&allocsize);
+            if ( str == 0 )
+            {
+                sprintf(retbuf,"{\"error\":\"cant open (%s)\"}",code+1);
+                return(clonestr(retbuf));
+            }
+        }
+        else
+        {
+            str = code;
+            //printf("str is (%s)\n",str);
+        }
+        if ( str != 0 )
+        {
+            //printf("before.(%s) ",str);
+            replace_singlequotes(str);
+            //printf("after.(%s)\n",str);
+            if ( (botjson= cJSON_Parse(str)) != 0 )
+            {
+                retstr = start_tradebot(sender,NXTACCTSECRET,botjson);
+                free_json(botjson);
             }
             else
             {
-                unsigned char buffer[512];
-                sprintf((char *)buffer,
-                        "HTTP/1.0 200 OK\x0d\x0a"
-                        "Server: libwebsockets\x0d\x0a"
-                        "Content-Type: image/jpeg\x0d\x0a"
-                        "Content-Length: %u\x0d\x0a\x0d\x0a",
-                        (unsigned int)testimagelen);
-                printf("buffer.(%s)\n",buffer);
-                libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                libwebsocket_write(wsi,(unsigned char *)testimage,testimagelen,LWS_WRITE_HTTP);
+                str[sizeof(retbuf)-128] = 0;
+                sprintf(retbuf,"{\"error\":\"couldnt parse (%s)\"}",str);
+                printf("%s\n",retbuf);
             }
-            break;
-
-	case LWS_CALLBACK_RECEIVE:
-//		fprintf(stderr, "rx %d\n", (int32_t)len);
-		//if (len < 6)
-		//	break;
-            printf("button.(%s)\n",(char *)in);
-            if (strcmp((const char *)in, "reset\n") == 0)
-                pss->number = 10000000;
-            else if (strcmp((const char *)in, "big\n") == 0)
-                pss->number = 0;
-		break;
-	/*
-	 * this just demonstrates how to use the protocol filter. If you won't
-	 * study and reject connections based on header content, you don't need
-	 * to handle this callback
-	 */
-
-	case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-		dump_handshake_info(wsi);
-		/* you could return non-zero here and kill the connection */
-		break;
-
-	default:
-		break;
-	}
-
-	return 0;
+            if ( str != code )
+                free(str);
+        }
+    }
+    else retstr = clonestr("{\"result\":\"invalid tradebot request\"}");
+    return(retstr);
 }
 
-
-/* lws-mirror_protocol */
-
-#define MAX_MESSAGE_QUEUE 32
-
-struct per_session_data__lws_mirror {
-	struct libwebsocket *wsi;
-	int ringbuffer_tail;
-};
-
-struct a_message {
-	void *payload;
-	size_t len;
-};
-
-static struct a_message ringbuffer[MAX_MESSAGE_QUEUE];
-static int ringbuffer_head;
-
-static int
-callback_lws_mirror(struct libwebsocket_context *context,
-			struct libwebsocket *wsi,
-			enum libwebsocket_callback_reasons reason,
-					       void *user, void *in, size_t len)
+char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-	int n;
-	struct per_session_data__lws_mirror *pss = (struct per_session_data__lws_mirror *)user;
-
-	switch (reason) {
-
-	case LWS_CALLBACK_ESTABLISHED:
-		lwsl_info("callback_lws_mirror: LWS_CALLBACK_ESTABLISHED\n");
-		pss->ringbuffer_tail = ringbuffer_head;
-		pss->wsi = wsi;
-		break;
-
-	case LWS_CALLBACK_PROTOCOL_DESTROY:
-		lwsl_notice("mirror protocol cleaning up\n");
-		for (n = 0; n < sizeof ringbuffer / sizeof ringbuffer[0]; n++)
-			if (ringbuffer[n].payload)
-				free(ringbuffer[n].payload);
-		break;
-
-	case LWS_CALLBACK_SERVER_WRITEABLE:
-		if (close_testing)
-			break;
-		while (pss->ringbuffer_tail != ringbuffer_head) {
-
-			n = libwebsocket_write(wsi, (unsigned char *)
-				   ringbuffer[pss->ringbuffer_tail].payload +
-				   LWS_SEND_BUFFER_PRE_PADDING,
-				   ringbuffer[pss->ringbuffer_tail].len,
-								LWS_WRITE_TEXT);
-			if (n < 0) {
-				lwsl_err("ERROR %d writing to mirror socket\n", n);
-				return -1;
-			}
-			if (n < ringbuffer[pss->ringbuffer_tail].len)
-				lwsl_err("mirror partial write %d vs %d\n",
-				       n, ringbuffer[pss->ringbuffer_tail].len);
-
-			if (pss->ringbuffer_tail == (MAX_MESSAGE_QUEUE - 1))
-				pss->ringbuffer_tail = 0;
-			else
-				pss->ringbuffer_tail++;
-
-			if (((ringbuffer_head - pss->ringbuffer_tail) &
-				  (MAX_MESSAGE_QUEUE - 1)) == (MAX_MESSAGE_QUEUE - 15))
-				libwebsocket_rx_flow_allow_all_protocol(
-					       libwebsockets_get_protocol(wsi));
-
-			// lwsl_debug("tx fifo %d\n", (ringbuffer_head - pss->ringbuffer_tail) & (MAX_MESSAGE_QUEUE - 1));
-
-			if (lws_send_pipe_choked(wsi)) {
-				libwebsocket_callback_on_writable(context, wsi);
-				break;
-			}
-			/*
-			 * for tests with chrome on same machine as client and
-			 * server, this is needed to stop chrome choking
-			 */
-#ifdef _WIN32
-			Sleep(1);
-#else
-			usleep(1);
-#endif
-		}
-		break;
-
-	case LWS_CALLBACK_RECEIVE:
-
-		if (((ringbuffer_head - pss->ringbuffer_tail) &
-				  (MAX_MESSAGE_QUEUE - 1)) == (MAX_MESSAGE_QUEUE - 1)) {
-			lwsl_err("dropping!\n");
-			goto choke;
-		}
-
-		if (ringbuffer[ringbuffer_head].payload)
-			free(ringbuffer[ringbuffer_head].payload);
-
-		ringbuffer[ringbuffer_head].payload =
-				malloc(LWS_SEND_BUFFER_PRE_PADDING + len +
-						  LWS_SEND_BUFFER_POST_PADDING);
-		ringbuffer[ringbuffer_head].len = len;
-		memcpy((char *)ringbuffer[ringbuffer_head].payload +
-					  LWS_SEND_BUFFER_PRE_PADDING, in, len);
-		if (ringbuffer_head == (MAX_MESSAGE_QUEUE - 1))
-			ringbuffer_head = 0;
-		else
-			ringbuffer_head++;
-
-		if (((ringbuffer_head - pss->ringbuffer_tail) &
-				  (MAX_MESSAGE_QUEUE - 1)) != (MAX_MESSAGE_QUEUE - 2))
-			goto done;
-
-choke:
-		lwsl_debug("LWS_CALLBACK_RECEIVE: throttling %p\n", wsi);
-		libwebsocket_rx_flow_control(wsi, 0);
-
-//		lwsl_debug("rx fifo %d\n", (ringbuffer_head - pss->ringbuffer_tail) & (MAX_MESSAGE_QUEUE - 1));
-done:
-		libwebsocket_callback_on_writable_all_protocol(
-					       libwebsockets_get_protocol(wsi));
-		break;
-
-	/*
-	 * this just demonstrates how to use the protocol filter. If you won't
-	 * study and reject connections based on header content, you don't need
-	 * to handle this callback
-	 */
-
-	case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-		dump_handshake_info(wsi);
-		/* you could return non-zero here and kill the connection */
-		break;
-
-	default:
-		break;
-	}
-
-	return 0;
+    uint64_t satoshis;
+    struct coin_info *cp;
+    uint32_t crc,ind,height,vout,totalcrc,sharei,M,N;
+    char NXTACCTSECRET[1024],coinstr[512],coinaddr[512],receipt[1024],otherpubaddr[512],txid[512],pubkey[512],privkey[2048],privkeyhex[2048],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+    crc = get_API_uint(objs[2],0);
+    ind = get_API_uint(objs[3],0);
+    height = get_API_uint(objs[4],0);
+    copy_cJSON(coinstr,objs[5]);
+    satoshis = SATOSHIDEN * get_API_float(objs[6]);
+    copy_cJSON(coinaddr,objs[7]);
+    copy_cJSON(txid,objs[8]);
+    vout = get_API_uint(objs[9],0);
+    copy_cJSON(pubkey,objs[10]);
+    copy_cJSON(privkeyhex,objs[11]);
+    decode_hex((unsigned char *)privkey,(int32_t)strlen(privkeyhex)/2,privkeyhex);
+    privkey[strlen(privkeyhex)/2] = 0;
+    totalcrc = get_API_uint(objs[12],0);
+    sharei = get_API_uint(objs[13],0);
+    M = get_API_uint(objs[14],1);
+    N = get_API_uint(objs[15],1);
+    copy_cJSON(otherpubaddr,objs[16]);
+    memset(receipt,0,sizeof(receipt));
+    safecopy(receipt,origargstr,sizeof(receipt)-32);
+    strcpy(receipt+strlen(receipt)+1,sender);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 )
+        retstr = telepod_received(sender,NXTACCTSECRET,coinstr,crc,ind,height,satoshis,coinaddr,txid,vout,pubkey,privkey,totalcrc,sharei,M,N,otherpubaddr,receipt);
+    else retstr = clonestr("{\"error\":\"invalid telepod received\"}");
+    return(retstr);
 }
 
-
-/* list of supported protocols and callbacks */
-
-static struct libwebsocket_protocols protocols[] = {
-	/* first protocol must always be HTTP handler */
-
-	{
-		"http-only",		/* name */
-		callback_http,		/* callback */
-		sizeof (struct per_session_data__http),	/* per_session_data_size */
-		0,			/* max frame size / rx buffer */
-	},
-	{
-		"dumb-increment-protocol",
-		callback_dumb_increment,
-		sizeof(struct per_session_data__dumb_increment),
-		65536,
-	},
-	{
-		"lws-mirror-protocol",
-		callback_lws_mirror,
-		sizeof(struct per_session_data__lws_mirror),
-		128,
-	},
-	{ NULL, NULL, 0, 0 } /* terminator */
-};
-
-void sighandler(int sig)
+char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-	force_exit = 1;
-	libwebsocket_cancel_service(context);
+    uint64_t value;
+    struct coin_info *cp;
+    uint8_t sharenrs[255];
+    uint32_t totalcrc,M,N,minage,height,i,n=0,*crcs = 0;
+    char NXTACCTSECRET[1024],sharenrsbuf[1024],coinstr[512],otherpubaddr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+    copy_cJSON(coinstr,objs[2]);
+    height = get_API_uint(objs[3],0);
+    minage = get_API_uint(objs[4],0);
+    value = (SATOSHIDEN * get_API_float(objs[5]));
+    totalcrc = get_API_uint(objs[6],0);
+    if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
+    {
+        crcs = calloc(n,sizeof(*crcs));
+        for (i=0; i<n; i++)
+            crcs[i] = get_API_uint(cJSON_GetArrayItem(objs[7],i),0);
+    }
+    M = get_API_int(objs[8],0);
+    N = get_API_int(objs[9],0);
+    copy_cJSON(sharenrsbuf,objs[10]);
+    memset(sharenrs,0,sizeof(sharenrs));
+    if ( M <= N && N < 0xff && M > 0 )
+        decode_hex(sharenrs,N,sharenrsbuf);
+    else M = N = 1;
+    copy_cJSON(otherpubaddr,objs[11]);
+    printf("transporterstatus_func M.%d N.%d [%s] otherpubaddr.(%s)\n",M,N,sharenrsbuf,otherpubaddr);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && n > 0 )
+        retstr = transporter_received(sender,NXTACCTSECRET,coinstr,totalcrc,height,value,minage,crcs,n,M,N,sharenrs,otherpubaddr);
+    else retstr = clonestr("{\"error\":\"invalid incoming transporter bundle\"}");
+    if ( crcs != 0 )
+        free(crcs);
+    return(retstr);
 }
 
-struct option options[] = {
-	{ "help",	no_argument,		NULL, 'h' },
-	{ "debug",	required_argument,	NULL, 'd' },
-	{ "port",	required_argument,	NULL, 'p' },
-	{ "ssl",	no_argument,		NULL, 's' },
-	{ "allow-non-ssl",	no_argument,		NULL, 'a' },
-	{ "interface",  required_argument,	NULL, 'i' },
-	{ "closetest",  no_argument,		NULL, 'c' },
-#ifndef LWS_NO_DAEMONIZE
-	{ "daemonize", 	no_argument,		NULL, 'D' },
-#endif
-	{ "resource_path", required_argument,		NULL, 'r' },
-	{ NULL, 0, 0, 0 }
-};
+char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t value;
+    cJSON *array;
+    struct coin_info *cp;
+    int32_t minage;
+    uint8_t sharenrs[255];
+    uint32_t totalcrc,status,i,sharei,M,N,height,ind,num,n=0,*crcs = 0;
+    char NXTACCTSECRET[1024],sharenrsbuf[1024],otherpubaddr[512],coinstr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+    status = get_API_int(objs[2],0);
+    copy_cJSON(coinstr,objs[3]);
+    totalcrc = get_API_uint(objs[4],0);
+    value = (SATOSHIDEN * get_API_float(objs[5]));
+    num = get_API_int(objs[6],0);
+    minage = get_API_int(objs[7],0);
+    height = get_API_int(objs[8],0);
+    array = objs[9];
+    if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        crcs = calloc(n,sizeof(*crcs));
+        for (i=0; i<n; i++)
+            crcs[i] = get_API_uint(cJSON_GetArrayItem(array,i),0);
+    }
+    sharei = get_API_int(objs[9],0);
+    M = get_API_int(objs[11],0);
+    N = get_API_int(objs[12],0);
+    copy_cJSON(sharenrsbuf,objs[13]);
+    memset(sharenrs,0,sizeof(sharenrs));
+    if ( M <= N && N < 0xff && M > 0 )
+        decode_hex(sharenrs,N,sharenrsbuf);
+    else M = N = 1;
+    ind = get_API_int(objs[14],0);
+    copy_cJSON(otherpubaddr,objs[15]);
+    //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && num > 0 )
+        retstr = got_transporter_status(NXTACCTSECRET,sender,coinstr,status,totalcrc,value,num,crcs,ind,minage,height,sharei,M,N,sharenrs,otherpubaddr);
+    else retstr = clonestr("{\"error\":\"invalid incoming transporter status\"}");
+    if ( crcs != 0 )
+        free(crcs);
+    return(retstr);
+}
+
+char *maketelepods_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t value;
+    struct coin_info *cp;
+    char NXTACCTSECRET[1024],coinstr[512],*retstr = 0;
+    copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+    value = (SATOSHIDEN * get_API_float(objs[2]));
+    copy_cJSON(coinstr,objs[3]);
+    //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 )
+        retstr = maketelepods(NXTACCTSECRET,sender,coinstr,value);
+    else retstr = clonestr("{\"error\":\"invalid maketelepods_func arguments\"}");
+    return(retstr);
+}
+
+// add create telepod
+char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+{
+    static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "NXT", "secret", "amount", "coin", 0 };
+    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", "M", "N", 0 };
+    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
+    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "NXT", "secret", "coin", "height", "minage", "value", "totalcrc", "telepods", "M", "N", "sharenrs", "pubaddr", 0 };
+    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "NXT", "secret", "status", "coin", "totalcrc", "value", "num", "minage", "height", "crcs", "sharei", "M", "N", "sharenrs", "ind", "pubaddr", 0 };
+    static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
+    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
+    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
+    static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
+    static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
+    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", "L", 0 };
+    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
+    static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
+    static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "NXT", "obookid", "polarity", "allfields", "secret", 0 };
+    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", "NXT", "secret", 0 };
+    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
+    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
+    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
+    static char **commands[] = { getpubkey, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
+    int32_t i,j;
+    cJSON *obj,*nxtobj,*objs[64];
+    char NXTaddr[64],command[4096],**cmdinfo,*retstr;
+    memset(objs,0,sizeof(objs));
+    command[0] = 0;
+    memset(NXTaddr,0,sizeof(NXTaddr));
+    if ( argjson != 0 )
+    {
+        obj = cJSON_GetObjectItem(argjson,"requestType");
+        nxtobj = cJSON_GetObjectItem(argjson,"NXT");
+        copy_cJSON(NXTaddr,nxtobj);
+        copy_cJSON(command,obj);
+        //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
+    }
+    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
+    for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
+    {
+        cmdinfo = commands[i];
+        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+        if ( strcmp(cmdinfo[1],command) == 0 )
+        {
+            if ( cmdinfo[2][0] != 0 )
+            {
+                if ( NXTaddr[0] == 0 )
+                    strcpy(NXTaddr,sender);
+                if ( sender[0] == 0 || valid != 1 || (strcmp(NXTaddr,sender) != 0 && strcmp(sender,Global_pNXT->privacyServer_NXTaddr) != 0) )
+                {
+                    printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],sender,NXTaddr);
+                    return(0);
+                }
+            }
+            for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
+                objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
+            retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3,origargstr);
+            if ( 0 && retstr != 0 )
+                printf("json_handler returns.(%s)\n",retstr);
+            return(retstr);
+        }
+    }
+    return(0);
+}
+
+char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+{
+    return(pNXT_json_commands(Global_mp,Global_pNXT,argjson,sender,valid,origargstr));
+}
+
+char *remove_secret(cJSON **argjsonp,char *parmstxt)
+{
+    long len;
+    cJSON_DeleteItemFromObject(*argjsonp,"secret");
+    if ( parmstxt != 0 )
+        free(parmstxt);
+    parmstxt = cJSON_Print(*argjsonp);
+    len = strlen(parmstxt);
+    stripwhite_ns(parmstxt,len);
+    return(parmstxt);
+}
+
+char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender)
+{
+    struct NXThandler_info *mp = Global_mp;
+    long len;
+    struct coin_info *cp;
+    int32_t valid,firsttime = 1;
+    cJSON *secretobj = 0,*json;
+    char NXTACCTSECRET[1024],sender[64],*origparmstxt,*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
+again:
+    sender[0] = 0;
+    if ( verifiedsender != 0 && verifiedsender[0] != 0 )
+        safecopy(sender,verifiedsender,sizeof(sender));
+    valid = -1;
+    //printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
+    if ( *argjsonp != 0 )
+    {
+        secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
+        copy_cJSON(NXTACCTSECRET,secretobj);
+        if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        {
+            safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+            cJSON_ReplaceItemInObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
+        }
+        parmstxt = cJSON_Print(*argjsonp);
+        len = strlen(parmstxt);
+        stripwhite_ns(parmstxt,len);
+        //printf("parmstxt.(%s)\n",parmstxt);
+    }
+    if ( *argjsonp == 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"error",cJSON_CreateString("cant parse"));
+        cJSON_AddItemToObject(json,"argstr",cJSON_CreateString(argstr));
+        retstr = cJSON_Print(json);
+        free_json(json);
+        return(retstr);
+    }
+    else
+    {
+        origparmstxt = parmstxt;
+        parmstxt = verify_tokenized_json(sender,&valid,argjsonp,parmstxt);
+    }
+    retstr = pNXT_json_commands(mp,Global_pNXT,*argjsonp,sender,valid,argstr);
+    //printf("back from pNXT_json_commands\n");
+    if ( firsttime != 0 && retstr == 0 && *argjsonp != 0 && parmstxt == 0 )
+    {
+        cJSON *reqobj;
+        uint64_t nxt64bits;
+        char _tokbuf[4096],NXTaddr[64],buf[1024];//,*str;
+        firsttime = 0;
+        reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
+        copy_cJSON(buf,reqobj);
+        if ( cJSON_GetObjectItem(*argjsonp,"requestType") != 0 )
+            cJSON_ReplaceItemInObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
+        else cJSON_AddItemToObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
+        nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
+        printf("replace NXT.(%s)\n",NXTaddr);
+        //#ifndef __linux__
+        if ( strcmp(buf,"maketelepods") != 0 && strcmp(buf,"getpukey") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        {
+            parmstxt = remove_secret(argjsonp,parmstxt);
+            issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
+            encoded[NXT_TOKEN_LEN] = 0;
+            sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
+            retstr = sendmessage(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+        }
+        else
+            //#endif
+        {
+            issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
+            encoded[NXT_TOKEN_LEN] = 0;
+            sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",origparmstxt,encoded);
+            if ( *argjsonp != 0 )
+                free_json(*argjsonp);
+            *argjsonp = cJSON_Parse(_tokbuf);
+            if ( origparmstxt != 0 )
+                free(origparmstxt), origparmstxt = 0;
+            goto again;
+        }
+    }
+    //printf("free parmstxt.%p, argjson.%p\n",parmstxt,*argjsonp);
+    if ( parmstxt != 0 )
+        free(parmstxt);
+    return(retstr);
+}
+
+void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
+{
+    cJSON *argjson;
+    struct json_AM *ap;
+    char NXTaddr[64],*sender,*receiver;
+    sender = parms->sender; receiver = parms->receiver; ap = parms->AMptr;
+    expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
+    if ( strcmp(NXTaddr,sender) != 0 )
+    {
+        printf("unexpected NXTaddr %s != sender.%s when receiver.%s\n",NXTaddr,sender,receiver);
+        return;
+    }
+    if ( (argjson = parse_json_AM(ap)) != 0 )
+    {
+        printf("process_pNXT_AM got jsontxt.(%s)\n",ap->jsonstr);
+        free_json(argjson);
+    }
+}
+
+void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
+{
+    char NXTaddr[64],*sender,*receiver,*txid;
+    sender = parms->sender; receiver = parms->receiver; txid = parms->txid;
+    safecopy(NXTaddr,sender,sizeof(NXTaddr));
+    printf("got txid.(%s) type.%d subtype.%d sender.(%s) -> (%s)\n",txid,parms->type,parms->subtype,sender,receiver);
+}
+
+void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height)
+{
+    struct pNXT_info *gp = handlerdata;
+    if ( parms->txid == 0 )     // indicates non-transaction event
+    {
+        if ( parms->mode == NXTPROTOCOL_WEBJSON )
+            return(pNXT_jsonhandler(&parms->argjson,parms->argstr,0));
+        else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
+        {
+            printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
+        }
+        else if ( parms->mode == NXTPROTOCOL_IDLETIME )
+        {
+            //printf("pNXT new idletime %d time %ld microseconds %lld \n",mp->RTflag,time(0),(long long)microseconds());
+        }
+        else if ( parms->mode == NXTPROTOCOL_INIT )
+        {
+            printf("pNXT NXThandler_info init %d\n",mp->RTflag);
+            if ( Global_pNXT == 0 )
+            {
+                /*struct NXT_str *tp = 0;
+                 Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+                 orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
+                 Global_pNXT->orderbook_txidsp = &orderbook_txids;
+                 printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);*/
+                fatal("pNXT_handler: NO GLOBALS!!!");
+            }
+            gp = Global_pNXT;
+            printf("return gp.%p\n",gp);
+        }
+        return(gp);
+    }
+    else if ( parms->mode == NXTPROTOCOL_AMTXID )
+        process_pNXT_AM(gp,parms);
+    else if ( parms->mode == NXTPROTOCOL_TYPEMATCH )
+        process_pNXT_typematch(gp,parms);
+    return(gp);
+}
 
 char *libjl777_JSON(char *JSONstr)
 {
@@ -782,15 +1004,43 @@ uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
     else return(0);
 }
 
-uint64_t broadcast_publishpacket(struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
+char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
+{
+    int32_t i,n = 0;
+    char *str;
+    strcpy(coinsjson,",\"coins\":[");
+    for (i=0; i<4*64; i++)
+        if ( (corecoins[i>>6] & (1L << (i&63))) != 0 )
+        {
+            str = coinid_str(i);
+            if ( strcmp(str,ILLEGAL_COIN) != 0 )
+            {
+                if ( n++ != 0 )
+                    strcat(coinsjson,",");
+                strcat(coinsjson,str);
+            }
+        }
+    if ( n == 0 )
+        coinsjson[0] = 0;
+    else strcat(coinsjson,"]");
+    return(coinsjson);
+}
+
+uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
 {
     struct coin_info *cp;
-    char cmd[1024],packet[2048],hexstr[512];
+    char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
     int32_t len;
     init_hexbytes(hexstr,np->pubkey,sizeof(np->pubkey));
+    if ( np != 0 && np->mypeerinfo != 0 )
+    {
+        BTCDaddr = np->mypeerinfo->pubBTCD;
+        BTCaddr = np->mypeerinfo->pubBTC;
+    } else BTCDaddr = BTCaddr = "";
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
     {
-        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"}",srvipaddr,srvport,srvNXTaddr,hexstr,np->BTCDaddr,np->H.NXTaddr,np->BTCaddr);
+        _corecoins_jsonstr(coinsjson,corecoins);
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
         len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
         return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
     } else printf("broadcast_publishpacket error: no public nxt addr\n");
@@ -858,222 +1108,6 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     return(clonestr(retjsonstr));
 }
 
-void *libjl777_threads(void *arg)
-{
-    char *JSON_or_fname = arg;
-	char cert_path[1024];
-	char key_path[1024];
-	int n = 0;
-	int use_ssl = 0;
-	int opts = 0;
-	const char *iface = NULL;
-#ifndef WIN32
-	int syslog_options = LOG_PID | LOG_PERROR;
-#endif
-	unsigned int oldus = 0;
-	struct lws_context_creation_info info;
-	int debug_level = 7;
-
-#ifndef LWS_NO_DAEMONIZE
-	int daemonize = 0;
-#endif
-    printf("call init_NXTservices\n");
-    init_NXTservices(JSON_or_fname);
-    printf("back from init_NXTservices\n");
-	memset(&info, 0, sizeof info);
-	info.port = LIBWEBSOCKETS_PORT;
-
-	/*while (n >= 0) {
-		n = getopt_long(argc, argv, "ci:hsap:d:Dr:", options, NULL);
-		if (n < 0)
-			continue;
-		switch (n) {
-#ifndef LWS_NO_DAEMONIZE
-		case 'D':
-			daemonize = 1;
-			#ifndef WIN32
-			syslog_options &= ~LOG_PERROR;
-			#endif
-			break;
-#endif
-		case 'd':
-			debug_level = atoi(optarg);
-			break;
-		case 's':
-			use_ssl = 1;
-			break;
-		case 'a':
-			opts |= LWS_SERVER_OPTION_ALLOW_NON_SSL_ON_SSL_PORT;
-			break;
-		case 'p':
-			info.port = atoi(optarg);
-			break;
-		case 'i':
-			strncpy(interface_name, optarg, sizeof interface_name);
-			interface_name[(sizeof interface_name) - 1] = '\0';
-			iface = interface_name;
-			break;
-		case 'c':
-			close_testing = 1;
-			fprintf(stderr, " Close testing mode -- closes on "
-					   "client after 50 dumb increments"
-					   "and suppresses lws_mirror spam\n");
-			break;
-		case 'r':
-			resource_path = optarg;
-			printf("Setting resource path to \"%s\"\n", resource_path);
-			break;
-		case 'h':
-			fprintf(stderr, "Usage: test-server "
-					"[--port=<p>] [--ssl] "
-					"[-d <log bitfield>] "
-					"[--resource_path <path>]\n");
-			exit(1);
-		}
-	}*/
-
-#if !defined(LWS_NO_DAEMONIZE) && !defined(WIN32)
-	/* 
-	 * normally lock path would be /var/lock/lwsts or similar, to
-	 * simplify getting started without having to take care about
-	 * permissions or running as root, set to /tmp/.lwsts-lock
-	 */
-	if (daemonize && lws_daemonize("/tmp/.lwsts-lock")) {
-		fprintf(stderr, "Failed to daemonize\n");
-		return(0);
-	}
-#endif
-
-	signal(SIGINT, sighandler);
-
-#ifndef WIN32
-	/* we will only try to log things according to our debug_level */
-	setlogmask(LOG_UPTO (LOG_DEBUG));
-	openlog("lwsts", syslog_options, LOG_DAEMON);
-#endif
-	/* tell the library what debug level to emit and to send it to syslog */
-	lws_set_log_level(debug_level, lwsl_emit_syslog);
-	lwsl_notice("libwebsockets test server - "
-			"(C) Copyright 2010-2013 Andy Green <andy@warmcat.com> - "
-						    "licensed under LGPL2.1\n");
-#ifdef EXTERNAL_POLL
-	max_poll_elements = getdtablesize();
-	pollfds = malloc(max_poll_elements * sizeof (struct pollfd));
-	fd_lookup = malloc(max_poll_elements * sizeof (int32_t));
-	if (pollfds == NULL || fd_lookup == NULL) {
-		lwsl_err("Out of memory pollfds=%d\n", max_poll_elements);
-		return(0);
-	}
-#endif
-
-	info.iface = iface;
-	info.protocols = protocols;
-#ifndef LWS_NO_EXTENSIONS
-	info.extensions = libwebsocket_get_internal_extensions();
-#endif
-	if (!use_ssl) {
-		info.ssl_cert_filepath = NULL;
-		info.ssl_private_key_filepath = NULL;
-	} else {
-		if (strlen(resource_path) > sizeof(cert_path) - 32) {
-			lwsl_err("resource path too long\n");
-            return(0);
-		}
-		sprintf(cert_path, "%s/libwebsockets-test-server.pem",
-								resource_path);
-		if (strlen(resource_path) > sizeof(key_path) - 32) {
-			lwsl_err("resource path too long\n");
-            return(0);
-		}
-		sprintf(key_path, "%s/libwebsockets-test-server.key.pem",
-								resource_path);
-
-		info.ssl_cert_filepath = cert_path;
-		info.ssl_private_key_filepath = key_path;
-	}
-	info.gid = -1;
-	info.uid = -1;
-	info.options = opts;
-
-	context = libwebsocket_create_context(&info);
-	if (context == NULL) {
-		lwsl_err("libwebsocket init failed\n");
-		return(0);
-	}
-
-	n = 0;
-	while (n >= 0 && !force_exit)
-    {
-        static int started_UV;
-		struct timeval tv;
-        usleep(5000);
-        if ( Finished_loading != 0 && started_UV == 0 )
-        {
-            printf("run_UVloop\n");
-            if ( portable_thread_create(run_UVloop,Global_mp) == 0 )
-                printf("ERROR hist process_hashtablequeues\n");
-            started_UV = 1;
-        }
- 
-		gettimeofday(&tv, NULL);
-
-		/*
-		 * This provokes the LWS_CALLBACK_SERVER_WRITEABLE for every
-		 * live websocket connection using the DUMB_INCREMENT protocol,
-		 * as soon as it can take more packets (usually immediately)
-		 */
-
-		if (((unsigned int)tv.tv_usec - oldus) > LIBWEBSOCKETS_MILLIS*1000) {
-			libwebsocket_callback_on_writable_all_protocol(&protocols[PROTOCOL_DUMB_INCREMENT]);
-			oldus = tv.tv_usec;
-		}
-
-#ifdef EXTERNAL_POLL
-
-		/*
-		 * this represents an existing server's single poll action
-		 * which also includes libwebsocket sockets
-		 */
-
-		n = poll(pollfds, count_pollfds, LIBWEBSOCKETS_MILLIS);
-		if (n < 0)
-			continue;
-
-
-		if (n)
-			for (n = 0; n < count_pollfds; n++)
-				if (pollfds[n].revents)
-					/*
-					* returns immediately if the fd does not
-					* match anything under libwebsockets
-					* control
-					*/
-					if (libwebsocket_service_fd(context,&pollfds[n]) < 0)
-						goto done;
-#else
-		/*
-		 * If libwebsockets sockets are all we care about,
-		 * you can use this api which takes care of the poll()
-		 * and looping through finding who needed service.
-		 *
-		 * If no socket needs service, it'll return anyway after
-		 * the number of ms in the second argument.
-		 */
-
-		n = libwebsocket_service(context, LIBWEBSOCKETS_MILLIS);
-#endif
-	}
-#ifdef EXTERNAL_POLL
-done:
-#endif
-	libwebsocket_context_destroy(context);
-	lwsl_notice("libwebsockets-test-server exited cleanly\n");
-#ifndef WIN32
-	closelog();
-#endif
-	return 0;
-}
-
 int libjl777_start(char *JSON_or_fname)
 {
     struct NXT_str *tp = 0;
@@ -1088,7 +1122,16 @@ int libjl777_start(char *JSON_or_fname)
         Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
-    if ( portable_thread_create(libjl777_threads,JSON_or_fname) == 0 )
-        printf("ERROR libjl777_threads\n");
-        return(0);
+    printf("call init_NXTservices\n");
+    init_NXTservices(JSON_or_fname);
+    printf("back from init_NXTservices\n");
+	while ( Finished_loading == 0 )
+        sleep(1);
+    printf("run_UVloop\n");
+    if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    sleep(3);
+    while ( get_coin_info("BTCD") == 0 )
+        sleep(1);
+    return(0);
 }
