@@ -7,5 +7,4 @@ clang -c *.c
 cd ../picoc
 make
 cd ..
-cp libjl777.a ~/dark-test-v2/src
 

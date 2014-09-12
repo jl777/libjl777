@@ -808,7 +808,7 @@ void *Coinloop(void *ptr)
         for (i=0; i<Numcoins; i++)
         {
             cp = Daemons[i];
-            printf("i.%d initdone.%d enabled.%d\n",i,cp->initdone,cp->enabled);
+            //printf("i.%d initdone.%d enabled.%d\n",i,cp->initdone,cp->enabled);
             if ( cp == 0 )
                 cp->initdone = 2;
             else
