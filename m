@@ -1,3 +1,4 @@
+./clean
 git pull
 rm libjl777.a
 cd gzip
