@@ -335,7 +335,7 @@ uint64_t get_unspent_value(char *script,struct coin_info *cp,struct telepod *pod
     //script[0] = 0;
     while ( cp->initdone < 2 )
     {
-        printf("get_unspent_value %s initdone.%d\n",cp->name,cp->initdone);
+        printf(" get_unspent_value %s initdone.%d\n",cp->name,cp->initdone);
         sleep(10);
     }
     tp = MTadd_hashtable(&createdflag,&cp->CACHE.coin_txids,pod->txid);
