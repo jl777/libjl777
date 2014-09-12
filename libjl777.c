@@ -1060,6 +1060,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     //display_orderbook_tx((struct orderbook_tx *)packet);
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
+    printf("gotpacket.(%s) %d\n",msg,duration);
     len = (int32_t)strlen(msg);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( is_hexstr(msg) != 0 )
