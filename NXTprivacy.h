@@ -472,6 +472,7 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
         srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0);
         if ( srv != 0 )
             printf("UDP.%p server started on port %d\n",srv,port);
+        else printf("couldnt open_udp on port.%d\n",port);
         return(srv);
     }
     srv = malloc(sizeof(uv_tcp_t));
