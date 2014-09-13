@@ -1471,7 +1471,7 @@ void NXTloop(struct NXThandler_info *mp)
                     Historical_done = 1;
                     printf("Historical processing done, now RT mode height.%d\n",height);
                 }
-                if ( Historical_done != 0 || (height % 100) == 0 )
+                if ( (height % 100) == 0 ) //Historical_done != 0 || 
                     printf("F.%d H.%d t.%d height.%d %d lastblock.(%s) -> nextblock.(%s)\n",Finished_loading,Historical_done,timestamp,height,mp->height,blockidstr,nextblock);
                 if ( Historical_done != 0 )
                 {

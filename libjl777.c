@@ -947,7 +947,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
             return(pNXT_jsonhandler(&parms->argjson,parms->argstr,0));
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
-            printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
+            //printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
         }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
         {
@@ -1098,9 +1098,9 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         if ( len != 30 ) // hack against flood
             printf("C libjl777_gotpacket.(%s) size.%d ascii txid.%llu | flood.%d\n",msg,len,(long long)txid,flood);
         else flood++;
-        if ( (json= cJSON_Parse((char *)packet)) != 0 )
+        if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
-            retstr = pNXT_jsonhandler(&json,(char *)packet,0);
+            retstr = pNXT_jsonhandler(&json,(char *)msg,0);
             free_json(json);
             if ( retstr != 0 )
                 return(retstr);
