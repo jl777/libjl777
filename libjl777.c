@@ -1040,7 +1040,7 @@ uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char 
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
     {
         _corecoins_jsonstr(coinsjson,corecoins);
-        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
         len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
         return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
     } else printf("broadcast_publishpacket error: no public nxt addr\n");
