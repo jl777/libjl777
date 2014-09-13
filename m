@@ -1,5 +1,5 @@
 #./clean
-#git pull
+git pull
 rm libjl777.so
 cd gzip
 gcc -fPIC -c *.c
