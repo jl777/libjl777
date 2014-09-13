@@ -1105,7 +1105,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
             if ( retstr != 0 )
                 return(retstr);
             else printf("pNXT_jsonhandler returns null\n");
-        }
+        } printf("cJSON_Parse error.(%s)\n",msg);
     }
     return(clonestr(retjsonstr));
 }
