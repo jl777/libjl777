@@ -482,7 +482,10 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     char srvNXTaddr[512],srvipaddr[512],srvport[512],coinstr[512];
     uint64_t corecoins[4];
     int32_t i,m=0,coinid,n=0;
+    struct coin_info *cp;
     copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
     copy_cJSON(pubNXT,objs[2]);
     copy_cJSON(pubkey,objs[3]);
     copy_cJSON(BTCDaddr,objs[4]);

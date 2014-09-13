@@ -638,18 +638,8 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
     }
     if ( refpeer != 0 && corecoins != 0 )
         memcpy(refpeer->corecoins,corecoins,sizeof(refpeer->corecoins));
-    /*if ( srvNXTaddr != 0 && srvipaddr != 0 )
-    {
-        printf("publish SRV.(%s %s/%d) | ",srvNXTaddr,srvipaddr,srvport);
-        if ( refpeer != 0 )
-        {
-            refpeer->srvnxtbits = calc_nxt64bits(srvNXTaddr);
-            refpeer->srvipbits = calc_ipbits(srvipaddr);
-            refpeer->srvport = srvport;
-        }
-    }*/
     np->mypeerinfo = refpeer;
-    printf("in publishaddrs.(%s) np.%p %llu\n",pubNXT,np,(long long)np->H.nxt64bits);
+    printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
     if ( BTCDaddr[0] != 0 )
     {
         //safecopy(np->BTCDaddr,BTCDaddr,sizeof(np->BTCDaddr));
