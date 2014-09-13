@@ -2,10 +2,9 @@
 git pull
 rm libjl777.a
 cd gzip
-clang -c *.c
+gcc -fPIC -c *.c
 cd ../libtom
-clang -c *.c
+gcc -fPIC -c *.c
 cd ../picoc
 make
 cd ..
-

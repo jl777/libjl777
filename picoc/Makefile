@@ -15,7 +15,8 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	ar rcu  ../libjl777.a  $(OBJS) ../gzip/*.o ../libtom/*.o ../libs/randombytes.o
+	#ar rcu  ../libjl777.a  $(OBJS) ../gzip/*.o ../libtom/*.o ../libs/randombytes.o
+	gcc -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o -luv -lcurl -lm 
 
 test:	all
 	(cd tests; make test)
