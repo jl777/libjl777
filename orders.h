@@ -608,7 +608,7 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
         BTCaddr = pubnp->mypeerinfo->pubBTC;
     } else BTCDaddr = BTCaddr = "";
     init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%s\"}",pubkey,pubnp->H.NXTaddr,BTCDaddr,BTCaddr,time(NULL),Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%s\"}",NXTaddr,pubkey,pubnp->H.NXTaddr,BTCDaddr,BTCaddr,time(NULL),Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
     return(clonestr(buf));
 }
 
