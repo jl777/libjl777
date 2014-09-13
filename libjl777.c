@@ -835,7 +835,7 @@ again:
     if ( verifiedsender != 0 && verifiedsender[0] != 0 )
         safecopy(sender,verifiedsender,sizeof(sender));
     valid = -1;
-    //printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
+printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
     if ( *argjsonp != 0 )
     {
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
@@ -849,7 +849,7 @@ again:
         parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
-        //printf("parmstxt.(%s)\n",parmstxt);
+printf("parmstxt.(%s)\n",parmstxt);
     }
     if ( *argjsonp == 0 )
     {
@@ -1104,6 +1104,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
             free_json(json);
             if ( retstr != 0 )
                 return(retstr);
+            else printf("pNXT_jsonhandler returns null\n");
         }
     }
     return(clonestr(retjsonstr));
