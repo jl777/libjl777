@@ -1017,7 +1017,7 @@ char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
             {
                 if ( n++ != 0 )
                     strcat(coinsjson,",");
-                strcat(coinsjson,str);
+                sprintf(coinsjson+strlen(str),"\"%s\"",str);
             }
         }
     if ( n == 0 )
