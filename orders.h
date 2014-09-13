@@ -595,21 +595,21 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
     return(clonestr(buf));
 }
 
-char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
+char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr)
 {
-    char buf[4096],pubkey[128],*BTCDaddr,*BTCaddr;
-    struct NXT_acct *np,*pubnp;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    printf("in getpubkey(%s)\n",addr);
-    pubnp = search_addresses(addr);
-    if ( pubnp != 0 && pubnp->mypeerinfo != 0 )
+    char buf[4096],pubkey[128],srvipaddr[64],srvnxtaddr[64];
+    struct NXT_acct *pubnp;
+    struct peerinfo *pi;
+    printf("in getpubkey(%s)\n",pubaddr);
+    pubnp = search_addresses(pubaddr);
+    if ( pubnp != 0 && (pi= pubnp->mypeerinfo) != 0 )
     {
-        BTCDaddr = pubnp->mypeerinfo->pubBTCD;
-        BTCaddr = pubnp->mypeerinfo->pubBTC;
-    } else BTCDaddr = BTCaddr = "";
-    init_hexbytes(pubkey,pubnp->pubkey,sizeof(pubnp->pubkey));
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%s\"}",NXTaddr,pubkey,pubnp->H.NXTaddr,BTCDaddr,BTCaddr,time(NULL),Global_pNXT->privacyServer_NXTaddr,Global_pNXT->privacyServer_ipaddr,Global_pNXT->privacyServer_port);
-    return(clonestr(buf));
+        expand_ipbits(srvipaddr,pi->srvipbits);
+        expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
+        init_hexbytes(pubkey,pi->pubkey,sizeof(pi->pubkey));
+        sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"}",NXTaddr,pubkey,pubnp->H.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport);
+        return(clonestr(buf));
+    } else return(clonestr("{\"error\":\"cant find pubaddr\"}"));
 }
 
 char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
@@ -653,13 +653,8 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
     }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 )
-    {
-        if ( srvNXTaddr != 0 && srvipaddr != 0 && srvport != 0 )
-        {
-            broadcast_publishpacket(Global_mp->corecoins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
-        }
-    } else printf("unexpected mismatch (%s) != (%s)\n",np->H.NXTaddr,pubNXT);
+    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 && srvNXTaddr != 0 && srvipaddr != 0 && srvport != 0 ) // this is this node so broadcast
+        broadcast_publishpacket(Global_mp->corecoins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
 

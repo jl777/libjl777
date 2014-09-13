@@ -58,6 +58,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
         np->mypeerinfo = peer;
     } else printf("Warning: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
     Peers[Numpeers] = peer, Numpeers++;
+    printf("Numpeers.%d added %llu srv.%llu\n",Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
     return(peer);
 }
 

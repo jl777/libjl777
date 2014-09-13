@@ -5,5 +5,5 @@ rm *.o
 cd ../picoc
 make clean
 cd ..
-rm *.a *.o
+rm *.a *.so *.o
 

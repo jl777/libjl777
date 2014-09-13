@@ -118,6 +118,49 @@ void init_NXTservices(char *JSON_or_fname)
         printf("ERROR Coin_genaddrloop\n");
 }
 
+char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
+{
+    int32_t i,n = 0;
+    char *str;
+    strcpy(coinsjson,",\"coins\":[");
+    for (i=0; i<4*64; i++)
+        if ( (corecoins[i>>6] & (1L << (i&63))) != 0 )
+        {
+            str = coinid_str(i);
+            if ( strcmp(str,ILLEGAL_COIN) != 0 )
+            {
+                if ( n++ != 0 )
+                    strcat(coinsjson,",");
+                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
+            }
+        }
+    if ( n == 0 )
+        coinsjson[0] = 0;
+    else strcat(coinsjson,"]");
+    return(coinsjson);
+}
+
+uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
+{
+    struct coin_info *cp;
+    char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
+    int32_t len;
+    init_hexbytes(hexstr,np->pubkey,sizeof(np->pubkey));
+    if ( np != 0 && np->mypeerinfo != 0 )
+    {
+        BTCDaddr = np->mypeerinfo->pubBTCD;
+        BTCaddr = np->mypeerinfo->pubBTC;
+    } else BTCDaddr = BTCaddr = "";
+    if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
+    {
+        _corecoins_jsonstr(coinsjson,corecoins);
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
+        len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
+        return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
+    } else printf("broadcast_publishpacket error: no public nxt addr\n");
+    return(-1);
+}
+
 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
 {
     uint16_t port;
@@ -132,7 +175,7 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
         ipbits = (uint32_t)Global_pNXT->privacyServer;
         port = (uint16_t)(Global_pNXT->privacyServer >> 32);
         expand_ipbits(ipaddr,ipbits);
-        cp= get_coin_info("BTCD");
+        cp = get_coin_info("BTCD");
         printf("SETTING PRIVACY SERVER NXT ADDR.(%s) (%s) [%s/%d] pub.(%s) privacyserver.(%s)\n",Global_pNXT->privacyServer_NXTaddr,NXTaddr,ipaddr,port,cp->pubaddr,cp->privacyserver);
         if ( cp != 0 && cp->NXTACCTSECRET[0] != 0 && cp->pubnxt64bits != 0 )
         {
@@ -1005,49 +1048,6 @@ uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
     if ( libjl777_broadcast(msg,duration) == 0 )
         return(txid);
     else return(0);
-}
-
-char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
-{
-    int32_t i,n = 0;
-    char *str;
-    strcpy(coinsjson,",\"coins\":[");
-    for (i=0; i<4*64; i++)
-        if ( (corecoins[i>>6] & (1L << (i&63))) != 0 )
-        {
-            str = coinid_str(i);
-            if ( strcmp(str,ILLEGAL_COIN) != 0 )
-            {
-                if ( n++ != 0 )
-                    strcat(coinsjson,",");
-                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
-            }
-        }
-    if ( n == 0 )
-        coinsjson[0] = 0;
-    else strcat(coinsjson,"]");
-    return(coinsjson);
-}
-
-uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
-{
-    struct coin_info *cp;
-    char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
-    int32_t len;
-    init_hexbytes(hexstr,np->pubkey,sizeof(np->pubkey));
-    if ( np != 0 && np->mypeerinfo != 0 )
-    {
-        BTCDaddr = np->mypeerinfo->pubBTCD;
-        BTCaddr = np->mypeerinfo->pubBTC;
-    } else BTCDaddr = BTCaddr = "";
-    if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
-    {
-        _corecoins_jsonstr(coinsjson,corecoins);
-        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
-        len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
-        return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
-    } else printf("broadcast_publishpacket error: no public nxt addr\n");
-    return(-1);
 }
 
 char *libjl777_gotpacket(char *msg,int32_t duration)
