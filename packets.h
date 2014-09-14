@@ -358,7 +358,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     struct NXT_acct *np;
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-    if ( memcmp(np->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
+    if ( 0 && memcmp(np->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] != 0 )
         {
