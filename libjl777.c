@@ -102,6 +102,9 @@ void init_NXTservices(char *JSON_or_fname)
     printf("start getNXTblocks\n");
     if ( portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
+    printf("start init_NXTprivacy\n");
+    if ( portable_thread_create((void *)init_NXTprivacy,"") == 0 )
+        printf("ERROR init_NXTprivacy\n");
     printf("start gen_testforms\n");
     gen_testforms(0);
     
@@ -1133,9 +1136,6 @@ int libjl777_start(char *JSON_or_fname)
         Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->txid[0] - (long)tp),sizeof(tp->txid),((long)&tp->modified - (long)tp));
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
-    printf("start init_NXTprivacy\n");
-    if ( portable_thread_create((void *)init_NXTprivacy,"") == 0 )
-        printf("ERROR init_NXTprivacy\n");
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
     printf("back from init_NXTservices\n");
