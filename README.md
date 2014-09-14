@@ -24,3 +24,9 @@ libuv.a is from /usr/local/lib
 randombytes.o is from libnacl
 
 
+You might have to update boost:
+sudo apt-get remove boost*
+sudo add-apt-repository ppa:boost-latest/ppa
+sudo apt-get update
+aptitude search boost
+sudo apt-get install libboost1.55-dev
