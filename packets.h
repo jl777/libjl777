@@ -445,6 +445,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
 {
     //void *origencoded = encoded;
     int32_t err;
+    struct coin_info *cp;
     uint16_t payload_len;
     if ( mynxtbits == 0 || memcmp(&mynxtbits,encoded,sizeof(mynxtbits)) == 0 )
     {
@@ -460,8 +461,18 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
             err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
             if ( err == 0 )
             {
-               // printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                // printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
+            }
+            cp = get_coin_info("BTCD");
+            if ( cp != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
+            {
+                err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
+                if ( err == 0 )
+                {
+                    // printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                    return(len);
+                }
             }
         } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)),len);
     }
@@ -489,8 +500,11 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
 
 int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET,char *ipaddr,uint32_t port)
 {
+    int32_t createdflag;
+    struct NXT_acct *np;
     char argstr[1024],pubkey[1024],token[1024];
-    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    init_hexbytes(pubkey,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
@@ -619,10 +633,10 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                 {
                     //printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
                     //printf("got (%s)\n",retbuf);
-                    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",cp->srvNXTADDR,pubkey,time(NULL));
+                    init_hexbytes(pubkey,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
+                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",np->H.NXTaddr,pubkey,time(NULL));
                     //printf("got argstr.(%s)\n",argstr);
-                    issue_generateToken(0,token,argstr,cp->srvNXTACCTSECRET);
+                    issue_generateToken(0,token,argstr,cp->NXTACCTSECRET);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     //printf("send back.(%s)\n",retbuf);

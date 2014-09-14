@@ -654,6 +654,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         printf("publish.(%s) privacyserver.(%s)\n",str,cp->privacyserver), free(str);
                     if ( strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                     {
+                        init_hexbytes(pubkey,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                         str = publishaddrs(Global_mp->coins,NXTACCTSECRET,cp->srvNXTADDR,pubkey,cp->srvpubaddr,0,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
                         if ( str != 0 )
                             printf("publish loopback privacyserver.(%s)\n",str), free(str);
