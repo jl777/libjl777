@@ -943,7 +943,7 @@ void init_NXTprivacy(void *ptr)
 //#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
-    start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
+   // start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
 }
 
 
