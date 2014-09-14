@@ -81,7 +81,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         coins = cJSON_Parse(coinsjsonstr+9);
         if ( coins != 0 )
         {
-            printf("coins.(%s)\n",cJSON_Print(coins));
+            //printf("coins.(%s)\n",cJSON_Print(coins));
             cJSON_AddItemToObject(json,"coins",coins);
         }
         else printf("error parsing.(%s)\n",coinsjsonstr);
@@ -94,7 +94,7 @@ cJSON *gen_peers_json(int32_t only_privacyServers)
     int32_t i,n;
     struct peerinfo **peers;
     cJSON *json,*array;
-    printf("inside gen_peer_json.%d\n",only_privacyServers);
+    //printf("inside gen_peer_json.%d\n",only_privacyServers);
     json = cJSON_CreateObject();
     array = cJSON_CreateArray();
     if ( only_privacyServers != 0 )
