@@ -833,8 +833,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     void teleport_idler();
-    extern int Finished_loading;
-    if ( Finished_loading == 0 )
+    extern int Finished_init;
+    if ( Finished_init == 0 )
         return;
     usleep(5000);
     if ( TCPserver_closed > 0 )
@@ -964,7 +964,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
 
 void init_NXTprivacy(void *ptr)
 {
-    extern int32_t Finished_loading;
+    extern int32_t Finished_init;
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
 //#ifdef __linux__
@@ -978,7 +978,7 @@ void init_NXTprivacy(void *ptr)
 //#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
-    if ( Finished_loading == 0 )
+    if ( Finished_init == 0 )
         sleep(1);
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
 }

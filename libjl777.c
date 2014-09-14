@@ -23,7 +23,7 @@ struct hashtable *orderbook_txids;
 
 char dispstr[65536];
 char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
-int Finished_loading,Historical_done;
+int Finished_loading,Historical_done,Finished_init;
 #define pNXT_SIG 0x99999999
 
 #include "NXTservices.c"
@@ -1147,5 +1147,6 @@ int libjl777_start(char *JSON_or_fname)
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
         sleep(1);
+    Finished_init = 1;
     return(0);
 }
