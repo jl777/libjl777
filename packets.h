@@ -37,7 +37,7 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
                 return(peer);
         }
     }
-    return(peer);
+    return(0);
 }
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
