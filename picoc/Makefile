@@ -1,5 +1,5 @@
-CC=g++
-CFLAGS=-Wall -pedantic -g -fPIC -Wc11-extensions
+CC=gcc
+CFLAGS=-Wall -pedantic -g -fPIC 
 LIBS=-lm -lreadline
 
 TARGET	= picoc
@@ -16,7 +16,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 	#ar rcu  ../libjl777.a  $(OBJS) ../gzip/*.o ../libtom/*.o ../libs/randombytes.o
-	g++ -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o /usr/local/lib/libuv.so -lcurl -lm 
+	g++ -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o /usr/local/lib/libuv.so -lcurl -lm
 
 test:	all
 	(cd tests; make test)
