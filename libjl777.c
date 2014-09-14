@@ -114,29 +114,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("ERROR hist process_hashtablequeues\n");
 }
 
-char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
-{
-    int32_t i,n = 0;
-    char *str;
-    strcpy(coinsjson,",\"coins\":[");
-    for (i=0; i<4*64; i++)
-        if ( (corecoins[i>>6] & (1L << (i&63))) != 0 )
-        {
-            str = coinid_str(i);
-            if ( strcmp(str,ILLEGAL_COIN) != 0 )
-            {
-                if ( n++ != 0 )
-                    strcat(coinsjson,",");
-                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
-            }
-        }
-    if ( n == 0 )
-        coinsjson[0] = 0;
-    else strcat(coinsjson,"]");
-    return(coinsjson);
-}
-
-uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
+uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
 {
     struct coin_info *cp;
     char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
@@ -149,7 +127,7 @@ uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char 
     } else BTCDaddr = BTCaddr = "";
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
     {
-        _corecoins_jsonstr(coinsjson,corecoins);
+        _coins_jsonstr(coinsjson,coins);
         sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
         len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
         return(call_libjl777_broadcast(packet,PUBADDRS_MSGDURATION));
@@ -178,7 +156,7 @@ void set_pNXT_privacyServer_NXTaddr(char *NXTaddr)
             expand_nxt64bits(pubNXTaddr,cp->pubnxt64bits);
             printf("pubNXTaddr.(%s)\n",pubNXTaddr);
             mynp = get_NXTacct(&createdflag,Global_mp,pubNXTaddr);
-            broadcast_publishpacket(Global_mp->corecoins,mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
+            broadcast_publishpacket(Global_mp->coins,mynp,cp->NXTACCTSECRET,NXTaddr,ipaddr,port);
         } else printf("set_pNXT_privacyServer_NXTaddr cp.%p (%s) %llu\n",cp,cp!=0?cp->NXTACCTSECRET:"null",cp!=0?(long long)cp->pubnxt64bits:0);
     }
 }
@@ -519,7 +497,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
 {
     char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
     char srvNXTaddr[512],srvipaddr[512],srvport[512],coinstr[512];
-    uint64_t corecoins[4];
+    uint64_t coins[4];
     int32_t i,m=0,coinid,n=0;
     struct coin_info *cp;
     copy_cJSON(NXTACCTSECRET,objs[1]);
@@ -532,7 +510,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     copy_cJSON(srvNXTaddr,objs[6]);
     copy_cJSON(srvipaddr,objs[7]);
     copy_cJSON(srvport,objs[8]);
-    memset(corecoins,0,sizeof(corecoins));
+    memset(coins,0,sizeof(coins));
     if ( is_cJSON_Array(objs[9]) != 0 && (n= cJSON_GetArraySize(objs[9])) > 0 )
     {
         for (i=0; i<n; i++)
@@ -540,12 +518,12 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
             copy_cJSON(coinstr,cJSON_GetArrayItem(objs[9],i));
             coinid = conv_coinstr(coinstr);
             if ( coinid >= 0 )
-                corecoins[i>>6] |= (1L << (i&63)), m++;
+                coins[i>>6] |= (1L << (i&63)), m++;
             else printf("unknown.%d coind.(%s)\n",i,coinstr);
         }
     }
     if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(m!=0?corecoins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
+        retstr = publishaddrs(m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }

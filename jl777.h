@@ -196,7 +196,7 @@ struct NXT_str
 
 struct peerinfo
 {
-    uint64_t srvnxtbits,pubnxtbits,corecoins[4];
+    uint64_t srvnxtbits,pubnxtbits,coins[4];
     uint32_t srvipbits,numsent,numrecv;
     uint16_t srvport;
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
@@ -217,7 +217,7 @@ struct NXThandler_info
     cJSON *accountjson;
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
-    uint64_t *privacyServers,corecoins[4];
+    uint64_t *privacyServers,coins[4];
     CURL *curl_handle,*curl_handle2,*curl_handle3;
     portable_tcp_t Punch_tcp;
     uv_udp_t Punch_udp;

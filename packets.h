@@ -28,10 +28,32 @@ int32_t is_privacyServer(struct peerinfo *peer)
     return(0);
 }
 
+char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
+{
+    int32_t i,n = 0;
+    char *str;
+    strcpy(coinsjson,",\"coins\":[");
+    for (i=0; i<4*64; i++)
+        if ( (coins[i>>6] & (1L << (i&63))) != 0 )
+        {
+            str = coinid_str(i);
+            if ( strcmp(str,ILLEGAL_COIN) != 0 )
+            {
+                if ( n++ != 0 )
+                    strcat(coinsjson,",");
+                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
+            }
+        }
+    if ( n == 0 )
+        coinsjson[0] = 0;
+    else strcat(coinsjson,"]");
+    return(coinsjson);
+}
+
 cJSON *gen_peerinfo_json(struct peerinfo *peer)
 {
-    char srvipaddr[64],srvnxtaddr[64],numstr[64],pubNXT[64],hexstr[512];
-    cJSON *json = cJSON_CreateObject();
+    char srvipaddr[64],srvnxtaddr[64],numstr[64],pubNXT[64],hexstr[512],coinsjsonstr[1024];
+    cJSON *coins,*json = cJSON_CreateObject();
     expand_ipbits(srvipaddr,peer->srvipbits);
     expand_nxt64bits(srvnxtaddr,peer->srvnxtbits);
     expand_nxt64bits(pubNXT,peer->pubnxtbits);
@@ -53,6 +75,15 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
     init_hexbytes(hexstr,peer->pubkey,sizeof(peer->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
+    if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
+    {
+        coins = cJSON_Parse(coinsjsonstr);
+        if ( coins != 0 )
+        {
+            cJSON_AddItemToObject(json,"coins",coins);
+            free_json(coins);
+        }
+    }
     return(json);
 }
 

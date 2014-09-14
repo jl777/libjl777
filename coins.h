@@ -438,7 +438,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
                 cp->coinid = conv_coinstr(coinstr);
                 if ( cp->coinid >= 0 && cp->coinid < 256 )
-                    Global_mp->corecoins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
+                    Global_mp->coins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
                 if ( strcmp(cp->name,"BTCD") == 0 )
                 {
                     Global_mp->Lfactor = (int32_t)get_API_int(cJSON_GetObjectItem(json,"Lfactor"),1);
@@ -646,11 +646,11 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 }
                 if ( (cp= get_coin_info("BTCD")) != 0 )
                 {
-                    char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
+                    char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     if ( pubNXT[0] == 0 )
                         pubNXT = NXTADDR;
-                    str = publishaddrs(Global_mp->corecoins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
+                    str = publishaddrs(Global_mp->coins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
                     if ( str != 0 )
                         printf("publish.(%s)\n",str), free(str);
                 }
