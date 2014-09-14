@@ -761,7 +761,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
         fprintf(stderr, "no address\n");
     else
     {
-        //printf("connect to %s/%d\n",servername,port);
+printf("connect to (%s/%d)\n",servername,port);
         tcp = calloc(1,sizeof(*tcp));
         *connectp = calloc(1,sizeof(**connectp));
         uv_tcp_init(UV_loop,tcp);
