@@ -514,12 +514,12 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     {
         free(pods), pods = 0;
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-        if ( memcmp(destnp->pubkey,zerokey,sizeof(zerokey)) == 0 )
+        if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
         {
             query_pubkey(destnp->H.NXTaddr,NXTACCTSECRET);
             sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",otherpubaddr);
         }
-        if ( memcmp(destnp->pubkey,zerokey,sizeof(zerokey)) != 0 )
+        if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) != 0 )
         {
             printf("start evolving at %f\n",milliseconds());
             pods = evolve_transporter(&n,cp->maxevolveiters,cp,minage,satoshis,height);

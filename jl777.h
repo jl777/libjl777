@@ -197,9 +197,9 @@ struct NXT_str
 struct peerinfo
 {
     uint64_t srvnxtbits,pubnxtbits,corecoins[4];
-    uint32_t srvipbits;
+    uint32_t srvipbits,numsent,numrecv;
     uint16_t srvport;
-    uint8_t pubkey[256>>3];
+    uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
     char pubBTCD[36],pubBTC[36];
 };
 

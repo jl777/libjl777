@@ -28,6 +28,77 @@ int32_t is_privacyServer(struct peerinfo *peer)
     return(0);
 }
 
+cJSON *gen_peerinfo_json(struct peerinfo *peer)
+{
+    char srvipaddr[64],srvnxtaddr[64],numstr[64],pubNXT[64],hexstr[512];
+    cJSON *json = cJSON_CreateObject();
+    expand_ipbits(srvipaddr,peer->srvipbits);
+    expand_nxt64bits(srvnxtaddr,peer->srvnxtbits);
+    expand_nxt64bits(pubNXT,peer->pubnxtbits);
+    if ( is_privacyServer(peer) != 0 )
+    {
+        cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
+        cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
+    }
+    else
+    {
+        cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(0));
+        cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
+        cJSON_AddItemToObject(json,"srvNXTaddr",cJSON_CreateString(srvnxtaddr));
+    }
+    cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
+    sprintf(numstr,"%d",peer->srvport);
+    cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
+    cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->numsent));
+    cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
+    init_hexbytes(hexstr,peer->pubkey,sizeof(peer->pubkey));
+    cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
+    return(json);
+}
+
+cJSON *gen_peers_json(int32_t only_privacyServers)
+{
+    int32_t i,n;
+    struct peerinfo **peers;
+    cJSON *json,*array;
+    json = cJSON_CreateObject();
+    array = cJSON_CreateArray();
+    if ( only_privacyServers != 0 )
+    {
+        peers = Pservers;
+        n = Numpservers;
+    }
+    else
+    {
+        peers = Peers;
+        n = Numpeers;
+    }
+    cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
+    cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
+    for (i=0; i<n; i++)
+    {
+        if ( peers != 0 && peers[i] != 0 )
+            cJSON_AddItemToArray(array,gen_peerinfo_json(peers[i]));
+    }
+    cJSON_AddItemToObject(json,"peers",array);
+    return(json);
+}
+
+struct peerinfo *find_privacyserver(struct peerinfo *refpeer)
+{
+    struct peerinfo *peer = 0;
+    int32_t i;
+    for (i=0; i<Numpservers; i++)
+    {
+        if ( (peer= Pservers[i]) != 0 )
+        {
+            if ( refpeer->srvnxtbits == peer->srvnxtbits && refpeer->srvipbits == peer->srvipbits && refpeer->srvport == peer->srvport )
+                return(peer);
+        }
+    }
+    return(0);
+}
+
 struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 {
     struct peerinfo *peer = 0;
@@ -56,19 +127,26 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
     if ( (peer= find_peerinfo(refpeer->pubnxtbits,refpeer->pubBTCD,refpeer->pubBTC)) != 0 )
         return(peer);
     Peers = realloc(Peers,sizeof(*Peers) * (Numpeers + 1));
-    peer = calloc(1,sizeof(*peer));
-    *peer = *refpeer;
     if ( refpeer->pubnxtbits != 0 )
     {
         expand_nxt64bits(NXTaddr,refpeer->pubnxtbits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        np->mypeerinfo = peer;
-    } else printf("Warning: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
+        peer = &np->mypeerinfo;
+    }
+    else
+    {
+        printf("Warning: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
+        peer = calloc(1,sizeof(*peer));
+    }
+    *peer = *refpeer;
     Peers[Numpeers] = peer, Numpeers++;
     if ( (isPserver= is_privacyServer(peer)) != 0 )
     {
-        Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
-        Pservers[Numpservers] = peer, Numpservers++;
+        if ( find_privacyserver(peer) == 0 )
+        {
+            Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
+            Pservers[Numpservers] = peer, Numpservers++;
+        }
     }
     printf("isPserver.%d add_peerinfo Numpeers.%d added %llu srv.%llu\n",isPserver,Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
     return(peer);
@@ -129,7 +207,7 @@ void query_pubkey(char *destNXTaddr,char *NXTACCTSECRET)
     char NXTaddr[64];
     NXTaddr[0] = 0;
     np = find_NXTacct(destNXTaddr,NXTACCTSECRET);
-    memcpy(np->pubkey,Global_mp->session_pubkey,sizeof(np->pubkey));
+    memcpy(np->mypeerinfo.pubkey,Global_mp->session_pubkey,sizeof(np->mypeerinfo.pubkey));
     printf("(%s) [%s] need to implement query (and propagation) mechanism for pubkeys\n",destNXTaddr,np->H.NXTaddr);
 }
 
@@ -240,7 +318,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     struct NXT_acct *np;
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-    if ( memcmp(np->pubkey,zerokey,sizeof(zerokey)) == 0 )
+    if ( memcmp(np->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] != 0 )
         {
@@ -260,7 +338,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
     //printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->pubkey,len);
-    len = _encode_str(encoded,(char *)payload,len,np->pubkey,onetime_privkey);
+    len = _encode_str(encoded,(char *)payload,len,np->mypeerinfo.pubkey,onetime_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
     printf("new len.%d + %ld = %ld\n",len,sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits),sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)+len);
@@ -303,10 +381,10 @@ int32_t add_random_onionlayers(int32_t numlayers,char *verifiedNXTaddr,char *NXT
                 printf("FATAL: %s %s %s is unknown account\n",peer->pubBTCD,destNXTaddr,peer->pubBTC);
                 return(-1);
             }
-            if ( memcmp(np->pubkey,peer->pubkey,sizeof(np->pubkey)) != 0 )
+            if ( memcmp(np->mypeerinfo.pubkey,peer->pubkey,sizeof(np->mypeerinfo.pubkey)) != 0 )
             {
-                printf("Warning: (%s %s %s) pubkey updated %llx -> %llx\n",peer->pubBTCD,destNXTaddr,peer->pubBTC,*(long long *)np->pubkey,*(long long *)peer->pubkey);
-                memcpy(np->pubkey,peer->pubkey,sizeof(np->pubkey));
+                printf("Warning: (%s %s %s) pubkey updated %llx -> %llx\n",peer->pubBTCD,destNXTaddr,peer->pubBTC,*(long long *)np->mypeerinfo.pubkey,*(long long *)peer->pubkey);
+                memcpy(np->mypeerinfo.pubkey,peer->pubkey,sizeof(np->mypeerinfo.pubkey));
             }
             printf("add layer %d: NXT.%s\n",numlayers,np->H.NXTaddr);
             len = onionize(verifiedNXTaddr,NXTACCTSECRET,dest,np->H.NXTaddr,src,len);
@@ -493,7 +571,7 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
         if ( np != 0 )
         {
-            n = decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+            n = decode_hex(np->mypeerinfo.pubkey,(int32_t)sizeof(np->mypeerinfo.pubkey),pubkey);
             if ( n == crypto_box_PUBLICKEYBYTES )
             {
                 printf("np.%p created.%d NXT.%s pubkey.%s (len.%d) connect.%p sendresponse.%d\n",np,createdflag,NXTaddr,pubkey,n,connect,sendresponse);
@@ -672,10 +750,10 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     np = tokenized_np;
                     if ( tcp != 0 || udp != 0 )
                         update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
-                    if ( 0 && decrypted != 0 && memcmp(np->pubkey,pubkey,sizeof(pubkey)) != 0 ) // we dont do it above to prevent spoofing
+                    if ( 0 && decrypted != 0 && memcmp(np->mypeerinfo.pubkey,pubkey,sizeof(pubkey)) != 0 ) // we dont do it above to prevent spoofing
                     {
                         printf("update pubkey for NXT.%s to %llx\n",senderNXTaddr,*(long long *)pubkey);
-                        memcpy(np->pubkey,pubkey,sizeof(np->pubkey));
+                        memcpy(np->mypeerinfo.pubkey,pubkey,sizeof(np->mypeerinfo.pubkey));
                     }
                     /*if ( I_am_server == 0 )
                     {

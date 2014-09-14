@@ -526,7 +526,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     return(cp);
 }
 
-void init_MGWconf(char *JSON_or_fname)
+void init_MGWconf(char *JSON_or_fname,char *myipaddr)
 {
     int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxt64bits,char *pubBTC);
     struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
@@ -613,6 +613,8 @@ void init_MGWconf(char *JSON_or_fname)
                     if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
                     {
                         printf("coinstr.(%s)\n",coinstr);
+                        if ( myipaddr != 0 && myipaddr[0] != 0 )
+                            safecopy(cp->myipaddr,myipaddr,sizeof(cp->myipaddr));
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
                             BTCDaddr = cp->pubaddr;

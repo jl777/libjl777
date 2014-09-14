@@ -74,7 +74,7 @@ void run_NXTservices(void *arg)
     while ( 1 ) sleep(60);
 }
 
-void init_NXTservices(char *JSON_or_fname)
+void init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
     char *ipaddr;
@@ -98,7 +98,7 @@ void init_NXTservices(char *JSON_or_fname)
     init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    init_MGWconf(JSON_or_fname);
+    init_MGWconf(JSON_or_fname,myipaddr);
     printf("start getNXTblocks\n");
     if ( 1 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
@@ -141,11 +141,11 @@ uint64_t broadcast_publishpacket(uint64_t corecoins[4],struct NXT_acct *np,char 
     struct coin_info *cp;
     char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
     int32_t len;
-    init_hexbytes(hexstr,np->pubkey,sizeof(np->pubkey));
-    if ( np != 0 && np->mypeerinfo != 0 )
+    init_hexbytes(hexstr,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
+    if ( np != 0 )
     {
-        BTCDaddr = np->mypeerinfo->pubBTCD;
-        BTCaddr = np->mypeerinfo->pubBTC;
+        BTCDaddr = np->mypeerinfo.pubBTCD;
+        BTCaddr = np->mypeerinfo.pubBTC;
     } else BTCDaddr = BTCaddr = "";
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
     {
@@ -780,9 +780,24 @@ char *maketelepods_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     return(retstr);
 }
 
+char *getpeers_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    cJSON *json;
+    char numstr[512],*jsonstr = 0;
+    copy_cJSON(numstr,objs[2]);
+    json = gen_peers_json(atoi(numstr));
+    if ( json != 0 )
+    {
+        jsonstr = cJSON_Print(json);
+        free_json(json);
+    }
+    return(jsonstr);
+}
+
 // add create telepod
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
+    static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V", "NXT", "secret", "only_privacyServer", 0 };
     static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "NXT", "secret", "amount", "coin", 0 };
     static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", "M", "N", 0 };
     static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
@@ -804,7 +819,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { getpubkey, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
+    static char **commands[] = { getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[64];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -1123,6 +1138,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
 
 int libjl777_start(char *JSON_or_fname)
 {
+    char *myipaddr;
     struct NXT_str *tp = 0;
     Global_mp = calloc(1,sizeof(*Global_mp));
     printf("libjl777_start(%s)\n",JSON_or_fname);
@@ -1136,7 +1152,7 @@ int libjl777_start(char *JSON_or_fname)
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
     printf("call init_NXTservices\n");
-    init_NXTservices(JSON_or_fname);
+    init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
     init_NXTprivacy("");
 	while ( Finished_loading == 0 )

@@ -602,8 +602,9 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr)
     struct peerinfo *pi;
     printf("in getpubkey(%s)\n",pubaddr);
     pubnp = search_addresses(pubaddr);
-    if ( pubnp != 0 && (pi= pubnp->mypeerinfo) != 0 )
+    if ( pubnp != 0 )
     {
+        pi = &pubnp->mypeerinfo;
         expand_ipbits(srvipaddr,pi->srvipbits);
         expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
         init_hexbytes(pubkey,pi->pubkey,sizeof(pi->pubkey));
@@ -623,13 +624,13 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
     pubnxt64bits = calc_nxt64bits(np->H.NXTaddr);
     if ( pubkey != 0 && pubkey[0] != 0 )
-        decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
+        decode_hex(np->mypeerinfo.pubkey,(int32_t)sizeof(np->mypeerinfo.pubkey),pubkey);
     if ( (refpeer= find_peerinfo(pubnxt64bits,BTCDaddr,BTCaddr)) != 0 )
     {
         safecopy(refpeer->pubBTCD,BTCDaddr,sizeof(refpeer->pubBTCD));
         safecopy(refpeer->pubBTC,BTCDaddr,sizeof(refpeer->pubBTC));
         if ( pubkey != 0 && pubkey[0] != 0 )
-            memcpy(refpeer->pubkey,np->pubkey,sizeof(refpeer->pubkey));
+            memcpy(refpeer->pubkey,np->mypeerinfo.pubkey,sizeof(refpeer->pubkey));
         printf("found and updated %s\n",np->H.NXTaddr);
     }
     else
@@ -640,7 +641,7 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
     }
     if ( refpeer != 0 && corecoins != 0 )
         memcpy(refpeer->corecoins,corecoins,sizeof(refpeer->corecoins));
-    np->mypeerinfo = refpeer;
+    np->mypeerinfo = *refpeer;
     //printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
     if ( BTCDaddr[0] != 0 )
     {

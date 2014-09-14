@@ -71,9 +71,8 @@ struct NXT_acct
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;
-    struct peerinfo *mypeerinfo;
-    char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64];//,pubNXT[24],BTCaddr[80],BTCDaddr[80];
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
+    struct peerinfo mypeerinfo;
+    char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 
