@@ -625,6 +625,7 @@ void init_MGWconf(char *JSON_or_fname)
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                             {
                                 printf("loopback privacyServer\n");
+                                refpeer->srvipbits = calc_ipbits(cp->myipaddr);
                                 set_pubpeerinfo(cp->srvNXTADDR,cp->myipaddr,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
                                 update_peerinfo(&createdflag,&peer);
                             }
@@ -641,13 +642,16 @@ void init_MGWconf(char *JSON_or_fname)
                         Numcoins++;
                     }
                 }
-                char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
-                init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                if ( pubNXT[0] == 0 )
-                    pubNXT = NXTADDR;
-                str = publishaddrs(Global_mp->corecoins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,0,0,0);
-                if ( str != 0 )
-                    printf("publish.(%s)\n",str), free(str);
+                if ( (cp= get_coin_info("BTCD")) != 0 )
+                {
+                    char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
+                    init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+                    if ( pubNXT[0] == 0 )
+                        pubNXT = NXTADDR;
+                    str = publishaddrs(Global_mp->corecoins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
+                    if ( str != 0 )
+                        printf("publish.(%s)\n",str), free(str);
+                }
             } else printf("no coins array.%p ?\n",array);
             if ( NXTACCTSECRET[0] == 0 )
                 gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
