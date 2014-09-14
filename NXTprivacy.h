@@ -19,7 +19,7 @@
 #define DEFAULT_PRIVACY_SERVERIP "127.0.0.1"
 #define INTRO_SIZE 1400
 
-char *Server_secret,*Server_NXTaddr;
+//char *Server_secret,*Server_NXTaddr;
 queue_t RPC_6777_response,ALL_messages;
 char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr);
 
@@ -368,6 +368,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
 {
     uint16_t port;
     struct NXT_acct *np;
+    struct coin_info *cp = get_coin_info("BTCD");
     char sender[256],retjsonstr[4096],intro[4096],*retstr;
     if ( nread > 0 )
     {
@@ -375,21 +376,21 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         //sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         np = process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
-        printf("after process_packet np.%p %p %p sentintro.%d\n",np,Server_NXTaddr,Server_secret,np!=0?np->sentintro:0);
+        printf("after process_packet np.%p %p %p sentintro.%d\n",np,cp->srvpubaddr,cp->srvNXTACCTSECRET,np!=0?np->sentintro:0);
         ASSERT(addr->sa_family == AF_INET);
-        if ( np != 0 && Server_NXTaddr != 0 && Server_secret != 0 )
+        if ( cp != 0 && np != 0 && cp->srvpubaddr[0] != 0 && cp->srvNXTACCTSECRET[0] != 0 )
         {
             if ( np->sentintro == 0 )
             {
-                gen_tokenjson(0,intro,Server_NXTaddr,time(NULL),Server_secret);
+                gen_tokenjson(0,intro,cp->srvpubaddr,time(NULL),cp->srvNXTACCTSECRET);
                 printf(">>>>>>>> send UDP intro\n");
                 ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE));
                 np->sentintro = 1;
             }
             else if ( retjsonstr[0] != 0 )
             {
-                printf("%s.%s send tokenized.(%s) to %s\n",Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr);
-                if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                printf("%s.%s send tokenized.(%s) to %s\n",cp->srvpubaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr);
+                if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,cp->srvpubaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,cp->srvNXTACCTSECRET,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);
@@ -968,13 +969,13 @@ void init_NXTprivacy(void *ptr)
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
 //#ifdef __linux__
-    uint64_t nxt64bits;
-    if ( (Server_secret= ptr) == 0 )
-        Server_secret = "password";
-    nxt64bits = issue_getAccountId(0,Server_secret);
-    Server_NXTaddr = calloc(1,64);
-    expand_nxt64bits(Server_NXTaddr,nxt64bits);
-    printf("init_NXTprivacy.(%s) -> %llu (%s)\n",(char *)ptr,(long long)nxt64bits,Server_NXTaddr);
+    //uint64_t nxt64bits;
+    //if ( (Server_secret= ptr) == 0 )
+    //    Server_secret = "password";
+    //nxt64bits = issue_getAccountId(0,Server_secret);
+    //Server_NXTaddr = calloc(1,64);
+    //expand_nxt64bits(Server_NXTaddr,nxt64bits);
+    //printf("init_NXTprivacy.(%s) -> %llu (%s)\n",(char *)ptr,(long long)nxt64bits,Server_NXTaddr);
 //#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
