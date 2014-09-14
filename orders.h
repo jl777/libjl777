@@ -655,6 +655,7 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
     }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    printf("np %s vs pub %s\n",np->H.NXTaddr,pubNXT);
     if ( strcmp(np->H.NXTaddr,pubNXT) == 0 && srvNXTaddr != 0 && srvipaddr != 0 && srvport != 0 ) // this is this node so broadcast
         broadcast_publishpacket(Global_mp->corecoins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
