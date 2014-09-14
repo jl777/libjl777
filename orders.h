@@ -637,13 +637,13 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
             refpeer->srvipbits = calc_ipbits(srvipaddr);
         if ( srvNXTaddr != 0 && srvNXTaddr[0] != 0 )
             refpeer->srvnxtbits = calc_nxt64bits(srvNXTaddr);
-        printf("found and updated %s\n",np->H.NXTaddr);
+        printf("found and updated %s | coins.%p\n",np->H.NXTaddr,coins);
     }
     else
     {
         set_pubpeerinfo(srvNXTaddr,srvipaddr,srvport,&peer,BTCDaddr,pubkey,pubnxt64bits,BTCaddr);
         refpeer = update_peerinfo(&createdflag,&peer);
-        printf("created path for (%s)\n",pubNXT);
+        printf("created path for (%s) | coins.%p\n",pubNXT,coins);
     }
     if ( refpeer != 0 && coins != 0 )
     {
