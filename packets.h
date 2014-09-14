@@ -45,7 +45,7 @@ char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
             }
         }
     if ( n == 0 )
-        coinsjson[0] = 0;
+        coinsjson[0] = coinsjson[1] = 0;
     else strcat(coinsjson,"]");
     return(coinsjson);
 }
@@ -77,12 +77,13 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
-        coins = cJSON_Parse(coinsjsonstr+1);
+        printf("got.(%s)\n",coinsjsonstr);
+        /*coins = cJSON_Parse(coinsjsonstr+1);
         if ( coins != 0 )
         {
             cJSON_AddItemToObject(json,"coins",coins);
             free_json(coins);
-        } else printf("error parsing.(%s)\n",coinsjsonstr);
+        } else printf("error parsing.(%s)\n",coinsjsonstr);*/
     }
     return(json);
 }
