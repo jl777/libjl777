@@ -21,6 +21,13 @@ struct peerinfo *get_random_pserver()
     return(0);
 }
 
+int32_t is_privacyServer(struct peerinfo *peer)
+{
+    if ( peer->srvnxtbits == peer->pubnxtbits && peer->srvipbits != 0 && peer->srvport != 0 )
+        return(1);
+    return(0);
+}
+
 struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 {
     struct peerinfo *peer = 0;
@@ -43,7 +50,7 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
 {
     char NXTaddr[64];
-    int32_t createdflag;
+    int32_t createdflag,isPserver;
     struct NXT_acct *np;
     struct peerinfo *peer = 0;
     if ( (peer= find_peerinfo(refpeer->pubnxtbits,refpeer->pubBTCD,refpeer->pubBTC)) != 0 )
@@ -58,7 +65,12 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
         np->mypeerinfo = peer;
     } else printf("Warning: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
     Peers[Numpeers] = peer, Numpeers++;
-    printf("add_peerinfo Numpeers.%d added %llu srv.%llu\n",Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
+    if ( (isPserver= is_privacyServer(peer)) != 0 )
+    {
+        Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
+        Pservers[Numpservers] = peer, Numpservers++;
+    }
+    printf("isPserver.%d add_peerinfo Numpeers.%d added %llu srv.%llu\n",isPserver,Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
     return(peer);
 }
 
@@ -626,7 +638,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         {
             printf("process_intro got NXT.(%s) np.%p <- I_am_server.%d UDP %p TCP.%p %s/%d\n",np->H.NXTaddr,np,I_am_server,udp,tcp,sender,port);
             update_np_connectioninfo(np,I_am_server,tcp,udp,addr,sender,port);
-            if ( I_am_server == 0 )
+            if ( I_am_server == 0 && strcmp(cp->privacyserver,sender) == 0 )
             {
                 void set_pNXT_privacyServer_NXTaddr(char *NXTaddr);
                 set_pNXT_privacyServer_NXTaddr(np->H.NXTaddr);

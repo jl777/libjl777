@@ -619,12 +619,12 @@ void init_MGWconf(char *JSON_or_fname)
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->pubnxt64bits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->pubnxt64bits);
-                            set_pubpeerinfo(cp->srvpubaddr,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxt64bits,0);
+                            set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxt64bits,0);
                             refpeer = update_peerinfo(&createdflag,&peer);
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                             {
                                 printf("loopback privacyServer\n");
-                                set_pubpeerinfo(cp->srvpubaddr,cp->privacyserver,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
+                                set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
                                 update_peerinfo(&createdflag,&peer);
                             }
                         }
