@@ -1135,7 +1135,7 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
     printf("back from init_NXTservices\n");
-    init_NXTprivacy("");
+    //init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
