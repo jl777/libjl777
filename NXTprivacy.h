@@ -676,7 +676,7 @@ void connected_to_server(uv_connect_t *connect,int status)
     struct sockaddr addr;
     int32_t r,addrlen = sizeof(addr);
     char servername[32];
-printf("connected_to_server %p tcp.%p\n",connect,connect->handle);
+    printf("connected_to_server %p tcp.%p\n",connect,connect!=0?connect->handle:0);
     tcp = (uv_tcp_t *)connect->handle;
     if ( status < 0 )
     {
