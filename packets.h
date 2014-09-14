@@ -146,9 +146,9 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
         {
             if ( pubnxtbits != 0 && peer->pubnxtbits == pubnxtbits )
                 return(peer);
-            if ( pubBTCD != 0 && strcmp(peer->pubBTCD,pubBTCD) == 0 )
+            if ( pubBTCD != 0 && pubBTCD[0] != 0 && strcmp(peer->pubBTCD,pubBTCD) == 0 )
                 return(peer);
-            if ( pubBTC != 0 && strcmp(peer->pubBTC,pubBTC) == 0 )
+            if ( pubBTC != 0 && pubBTC[0] != 0 && strcmp(peer->pubBTC,pubBTC) == 0 )
                 return(peer);
         }
     }
