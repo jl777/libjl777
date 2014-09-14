@@ -646,7 +646,10 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
         printf("created path for (%s)\n",pubNXT);
     }
     if ( refpeer != 0 && coins != 0 )
+    {
         memcpy(refpeer->coins,coins,sizeof(refpeer->coins));
+        printf("set coins.%llx\n",(long long)coins[0]);
+    }
     np->mypeerinfo = *refpeer;
     //printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
     if ( BTCDaddr[0] != 0 )
@@ -662,9 +665,9 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    printf("np %s vs pub %s\n",np->H.NXTaddr,pubNXT);
+    printf("np %s vs pub %s %s\n",np->H.NXTaddr,pubNXT,srvNXTaddr);
     if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 ) // this is this node
-        broadcast_publishpacket(Global_mp->coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
+        broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
 

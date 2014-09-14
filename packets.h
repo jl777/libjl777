@@ -32,6 +32,8 @@ char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
 {
     int32_t i,n = 0;
     char *str;
+    if ( coins == 0 )
+        return("");
     strcpy(coinsjson,",\"coins\":[");
     for (i=0; i<4*64; i++)
         if ( (coins[i>>6] & (1L << (i&63))) != 0 )
