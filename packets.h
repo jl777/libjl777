@@ -77,7 +77,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
-        coins = cJSON_Parse(coinsjsonstr);
+        coins = cJSON_Parse(coinsjsonstr+1);
         if ( coins != 0 )
         {
             cJSON_AddItemToObject(json,"coins",coins);
