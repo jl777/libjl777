@@ -1387,19 +1387,21 @@ int32_t process_NXTblock(int32_t *heightp,char *nextblock,struct NXThandler_info
     *heightp = 0;
     //sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
     //retval = extract_NXTfield(0,cmd,0,0);
+    printf("process_NXTblock.(%s)\n",blockidstr);
     if ( strlen(blockidstr) == 0 )
     {
         printf("process_NXTblock null blockidstr???\n");
         return(0);
     }
     sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
+    printf("issue curl.(%s)\n",cmd);
     jsonstr = issue_curl(mp->curl_handle,cmd);
     if ( jsonstr != 0 )
         retval.json = cJSON_Parse(jsonstr);
     else retval.json = 0;
     if ( retval.json != 0 )
     {
-        //printf("%s\n",cJSON_Print(retval.json));
+printf("%s\n",cJSON_Print(retval.json));
         errcode = (int32_t)get_cJSON_int(retval.json,"errorCode");
         if ( errcode == 0 )
         {

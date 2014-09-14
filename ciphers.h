@@ -887,7 +887,7 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
 {
     FILE *fp;
     long fsize;
-    uint8_t *encrypted,*decoded = 0;
+    uint8_t *encrypted=0,*decoded = 0;
     char **privkeys;
     int32_t *cipherids,newlen;
     *lenp = 0;
@@ -906,7 +906,7 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
             {
                 newlen = (int32_t)fsize;
                 decoded = ciphers_codec(1,privkeys,cipherids,encrypted,&newlen);
-                printf("free_cipherptrs %p %p\n",privkeys,cipherids);
+                printf("free_cipherptrs %p %p decoded.%p\n",privkeys,cipherids,decoded);
                 free_cipherptrs(0,privkeys,cipherids);
                 if ( newlen != 0 )
                     *lenp = newlen;
@@ -914,8 +914,9 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
                     free(decoded);
             }
         }
-        free(encrypted);
         fclose(fp);
+        printf("free encrypted.%p\n",encrypted);
+        free(encrypted);
     }
     printf("encrypted.%p fp.%p decoded.%p\n",encrypted,fp,decoded);
     return(decoded);
