@@ -612,7 +612,7 @@ printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,ud
         if ( buf->base != 0 )
         {
             printf("tcp_client_gotbytes dontfree.%p\n",buf->base);
-            free(buf->base);
+            //free(buf->base);
         }
         if ( udp != 0 )
         {
