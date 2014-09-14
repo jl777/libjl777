@@ -92,6 +92,7 @@ uint64_t decode_privacyServer(char *jsonstr)
             if ( extract_cJSON_str(ipaddr,sizeof(ipaddr),json,"ipaddr") > 0 )
                 ipbits = calc_ipbits(ipaddr);
         }
+        printf("decode_privacyServer free json.%p\n",json);
         free_json(json);
     }
     if ( port != 0 && ipbits != 0 )
@@ -309,7 +310,7 @@ write_req_t *alloc_wr(void *buf,long len,int32_t allocflag)
 
 void on_close(uv_handle_t *peer)
 {
-    printf("on_close %p\n",peer);
+    printf("on_close free %p\n",peer);
     free(peer);
 }
 
@@ -325,6 +326,7 @@ void after_server_shutdown(uv_shutdown_t *req,int status)
     if ( status != -57 )
         printf("after_server_shutdown %p status.%d %s\n",req->handle,status,uv_err_name(status));
     uv_close((uv_handle_t *)req->handle,on_server_close);
+    printf("after_server_shutdown free.%p\n",req);
     free(req);
 }
 
@@ -336,7 +338,11 @@ void after_write(uv_write_t *req,int status)
         printf("after write status.%d %s\n",status,uv_err_name(status));
     wr = (write_req_t *)req;
     if ( wr->allocflag != ALLOCWR_DONTFREE )
+    {
+        printf("after write buf.base %p\n",wr->buf.base);
         free(wr->buf.base);
+    }
+    printf("after write %p\n",wr);
     free(wr);
     if ( status == 0 )
         return;
@@ -383,7 +389,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
                 printf("%s.%s send tokenized.(%s) to %s\n",Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr);
                 if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,Server_NXTaddr,Server_secret,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,Server_secret,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
-                    printf("sent back via UDP.(%s) got (%s)\n",retjsonstr,retstr);
+                    printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);
                 }
             }
@@ -391,7 +397,10 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
          server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
+    {
+        printf("on_duprecv free.%p\n",rcvbuf->base);
         free(rcvbuf->base);
+    }
 }
 
 void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
@@ -410,7 +419,10 @@ void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const 
         //ASSERT(0 == portable_udpwrite(addr,handle,rcvbuf->base,nread,ALLOCWR_ALLOCFREE));
     }
     if ( rcvbuf->base != 0 )
+    {
+        printf("on_client_udprecv free %p\n",rcvbuf->base);
         free(rcvbuf->base);
+    }
 }
 
 uv_udp_t *open_udp(struct sockaddr *addr)
@@ -537,7 +549,10 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     {
         printf("nread.%ld UV_EOF %d\n",nread,UV_EOF);
         if ( buf->base != 0 )
+        {
+            printf("after serverread %p\n",buf->base);
             free(buf->base);
+        }
         //req = (uv_shutdown_t *)malloc(sizeof *req); causes problems?!
         //uv_shutdown(req,connect,after_shutdown);
         uv_close((uv_handle_t *)connect,on_close);
@@ -547,6 +562,7 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     if ( nread == 0 )
     {
         // Everything OK, but nothing read.
+        printf("after serverreadB %p\n",buf->base);
         free(buf->base);
         return;
     }
@@ -561,7 +577,10 @@ void after_server_read(uv_stream_t *connect,ssize_t nread,const uv_buf_t *buf)
     if ( retjsonstr[0] != 0 )
         portable_tcpwrite(connect,retjsonstr,(int32_t)strlen(retjsonstr)+1,ALLOCWR_ALLOCFREE);
     if ( buf->base != 0 )
+    {
+        printf("after serverreadC %p\n",buf->base);
         free(buf->base);
+    }
 }
 
 void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
@@ -588,7 +607,10 @@ printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,ud
         printf("Lost contact with Server! np.%p nread.%ld\n",np,nread);
         //ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
+        {
+            printf("tcp_client_gotbytes free.%p\n",buf->base);
             free(buf->base);
+        }
         if ( udp != 0 )
         {
             printf("stop and close udp %p\n",udp);
@@ -636,7 +658,10 @@ printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,ud
          */
     }
     if ( buf->base != 0 )
+    {
+        printf("tcp_client_gotbytes: free bufbase %p\n",buf->base);
         free(buf->base);
+    }
 }
 
 void client_connected(uv_stream_t *tcp,int status)
@@ -705,6 +730,7 @@ void connected_to_server(uv_connect_t *connect,int status)
         if ( r != 0 )
         {
             fprintf(stderr, "uv_udp_init: %d %s\n",r,uv_err_name(r));
+            printf("connected_to_server: free udp.%p\n",udp);
             free(udp);
             udp = 0;
         }
@@ -712,6 +738,7 @@ void connected_to_server(uv_connect_t *connect,int status)
         if ( r != 0 )
         {
             fprintf(stderr, "uv_udp_recv_start: %d %s\n",r,uv_err_name(r));
+            printf("connected_to_server 2: free udp.%p\n",udp);
             free(udp);
             udp = 0;
         }
@@ -742,6 +769,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
         if ( (r= uv_tcp_connect(*connectp,tcp,(struct sockaddr *)addr,connected_to_server)) != 0 )
         {
             fprintf(stderr,"no TCP connection to %s/%d err %d %s\n",servername,port,r,uv_err_name(r));
+            printf("connected_to_privacyserver: free tcp.%p, connect.%p\n",tcp,*connectp);
             free(tcp);
             free(*connectp);
             tcp = 0;
