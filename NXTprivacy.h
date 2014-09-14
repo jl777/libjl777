@@ -676,6 +676,7 @@ void connected_to_server(uv_connect_t *connect,int status)
     struct sockaddr addr;
     int32_t r,addrlen = sizeof(addr);
     char servername[32];
+    servername[0] = 0;
     printf("connected_to_server %p tcp.%p\n",connect,connect!=0?connect->handle:0);
     tcp = (uv_tcp_t *)connect->handle;
     if ( status < 0 )
@@ -737,6 +738,7 @@ uv_tcp_t *connect_to_privacyServer(struct sockaddr_in *addr,uv_connect_t **conne
         tcp = calloc(1,sizeof(*tcp));
         *connectp = calloc(1,sizeof(**connectp));
         uv_tcp_init(UV_loop,tcp);
+        (*connectp)->handle = (uv_stream_t *)tcp;
         if ( (r= uv_tcp_connect(*connectp,tcp,(struct sockaddr *)addr,connected_to_server)) != 0 )
         {
             fprintf(stderr,"no TCP connection to %s/%d err %d %s\n",servername,port,r,uv_err_name(r));
