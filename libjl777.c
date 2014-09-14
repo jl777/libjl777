@@ -84,7 +84,7 @@ void init_NXTservices(char *JSON_or_fname)
     portable_mutex_init(&mp->hashtable_queue[1].mutex);
     
     init_NXThashtables(mp);
-    init_NXTAPI(mp->curl_handle);
+    init_NXTAPI(0);
     ipaddr = 0;
     if ( ipaddr != 0 )
     {
@@ -105,16 +105,16 @@ void init_NXTservices(char *JSON_or_fname)
     //printf("start init_NXTprivacy\n");
     //if ( 0 && portable_thread_create((void *)init_NXTprivacy,"") == 0 )
     //    printf("ERROR init_NXTprivacy\n");
-    printf("start gen_testforms\n");
-    gen_testforms(0);
+    //printf("start gen_testforms\n");
+    //gen_testforms(0);
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
-    if ( portable_thread_create((void *)run_NXTservices,mp) == 0 )
+    if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     void *Coinloop(void *arg);
     printf("start Coinloop\n");
-    if ( portable_thread_create((void *)Coinloop,mp) == 0 )
+    if ( 0 && portable_thread_create((void *)Coinloop,mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
 }
 
@@ -932,7 +932,7 @@ again:
         if ( strcmp(buf,"maketelepods") != 0 && strcmp(buf,"getpukey") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             parmstxt = remove_secret(argjsonp,parmstxt);
-            issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
+            issue_generateToken(0,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
             retstr = sendmessage(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
@@ -940,7 +940,7 @@ again:
         else
             //#endif
         {
-            issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
+            issue_generateToken(0,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",origparmstxt,encoded);
             if ( *argjsonp != 0 )
@@ -1139,7 +1139,7 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
     printf("back from init_NXTservices\n");
-    init_NXTprivacy("");
+    //init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     printf("run_UVloop\n");
