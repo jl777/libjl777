@@ -630,13 +630,13 @@ char *publishaddrs(uint64_t corecoins[4],char *NXTACCTSECRET,char *pubNXT,char *
         safecopy(refpeer->pubBTC,BTCDaddr,sizeof(refpeer->pubBTC));
         if ( pubkey != 0 && pubkey[0] != 0 )
             memcpy(refpeer->pubkey,np->pubkey,sizeof(refpeer->pubkey));
-        //printf("found and updated %s\n",np->H.NXTaddr);
+        printf("found and updated %s\n",np->H.NXTaddr);
     }
     else
     {
         set_pubpeerinfo(srvNXTaddr,srvipaddr,srvport,&peer,BTCDaddr,pubkey,pubnxt64bits,BTCaddr);
         refpeer = update_peerinfo(&createdflag,&peer);
-        //printf("created path for (%s)\n",pubNXT);
+        printf("created path for (%s)\n",pubNXT);
     }
     if ( refpeer != 0 && corecoins != 0 )
         memcpy(refpeer->corecoins,corecoins,sizeof(refpeer->corecoins));
