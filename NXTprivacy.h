@@ -376,21 +376,21 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
         //sprintf(buf,"buf.%p udp.%p on_udprecv %s/%d nread.%ld flags.%d | total %ld\n",rcvbuf->base,udp,sender,port,nread,flags,server_xferred);
         np = process_packet(retjsonstr,0,1,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
-        printf("after process_packet np.%p %p %p sentintro.%d\n",np,cp->srvpubaddr,cp->srvNXTACCTSECRET,np!=0?np->sentintro:0);
+        printf("after process_packet np.%p %p %p sentintro.%d\n",np,cp->srvNXTADDR,cp->srvNXTACCTSECRET,np!=0?np->sentintro:0);
         ASSERT(addr->sa_family == AF_INET);
-        if ( cp != 0 && np != 0 && cp->srvpubaddr[0] != 0 && cp->srvNXTACCTSECRET[0] != 0 )
+        if ( cp != 0 && np != 0 && cp->srvNXTADDR[0] != 0 && cp->srvNXTACCTSECRET[0] != 0 )
         {
             if ( np->sentintro == 0 )
             {
-                gen_tokenjson(0,intro,cp->srvpubaddr,time(NULL),cp->srvNXTACCTSECRET);
+                gen_tokenjson(0,intro,cp->srvNXTADDR,time(NULL),cp->srvNXTACCTSECRET);
                 printf(">>>>>>>> send UDP intro\n");
                 ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE));
                 np->sentintro = 1;
             }
             else if ( retjsonstr[0] != 0 )
             {
-                printf("%s.%s send tokenized.(%s) to %s\n",cp->srvpubaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr);
-                if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,cp->srvpubaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,cp->srvNXTACCTSECRET,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
+                printf("%s.%s send tokenized.(%s) to %s\n",cp->srvNXTADDR,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr);
+                if ( 1 && (retstr= send_tokenized_cmd(Global_mp->Lfactor,cp->srvNXTADDR,cp->srvNXTACCTSECRET,retjsonstr,np->H.NXTaddr)) != 0 )//sendmessage(Server_NXTaddr,cp->srvNXTACCTSECRET,retjsonstr,(int32_t)strlen(retjsonstr)+1,np->H.NXTaddr,retjsonstr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);

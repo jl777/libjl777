@@ -490,7 +490,7 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                     //printf("call set_intro handle.%p %s.(%s)\n",connect,Server_NXTaddr,Server_secret);
                     //printf("got (%s)\n",retbuf);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",cp->srvpubaddr,pubkey,time(NULL));
+                    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",cp->srvNXTADDR,pubkey,time(NULL));
                     //printf("got argstr.(%s)\n",argstr);
                     issue_generateToken(0,token,argstr,cp->srvNXTACCTSECRET);
                     token[NXT_TOKEN_LEN] = 0;
@@ -702,10 +702,10 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                if ( cp->srvpubaddr[0] != 0 && (np->udp != 0 || np->tcp != 0) )
+                if ( cp->srvNXTADDR[0] != 0 && (np->udp != 0 || np->tcp != 0) )
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
-                    strcpy(retjsonstr,sendmessage(Global_mp->Lfactor,cp->srvpubaddr,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0));
+                    strcpy(retjsonstr,sendmessage(Global_mp->Lfactor,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0));
                     //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                     //len = crcize(crcbuf,decoded,len);
                     //portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
@@ -787,7 +787,7 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
             outbuf = encodedP;
             sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage to %s pending\"}",verifiedNXTaddr,Global_pNXT->privacyServer_NXTaddr,destNXTaddr);
         }
-        else if ( cp->srvpubaddr[0] != 0 && destnp->udp != 0 )
+        else if ( cp->srvNXTADDR[0] != 0 && destnp->udp != 0 )
         {
             printf("can do direct!\n");
             np = destnp;
@@ -807,9 +807,9 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
                 printf("udpsend finalbuf.%d\n",len);
                 portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
             }
-            else if ( cp->srvpubaddr[0] != 0 ) // test to verify this is hub
+            else if ( cp->srvNXTADDR[0] != 0 ) // test to verify this is hub
             {
-                printf("len.%d Server_NXTaddr.(%s) broadcast %d via p2p\n",len,cp->srvpubaddr,len);
+                printf("len.%d Server_NXTaddr.(%s) broadcast %d via p2p\n",len,cp->srvNXTADDR,len);
                 txid = call_libjl777_broadcast((char *)finalbuf,600);
                 if ( txid == 0 )
                 {

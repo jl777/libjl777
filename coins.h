@@ -469,7 +469,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         {
                             safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
                             cp->srvpubnxt64bits = issue_getAccountId(0,privkey);
-                            
+                            expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxt64bits);
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxt64bits);
                             free(privkey);
                         }
