@@ -676,16 +676,17 @@ void connected_to_server(uv_connect_t *connect,int status)
     struct sockaddr addr;
     int32_t r,addrlen = sizeof(addr);
     char servername[32];
-printf("connected_to_server\n");
+printf("connected_to_server %p tcp.%p\n",connect,connect->handle);
     tcp = (uv_tcp_t *)connect->handle;
     if ( status < 0 )
     {
         if ( status != -61 )
             printf("got on_client_connect error status.%d (%s) tcp.%p\n",status,uv_err_name(status),tcp);
-        uv_shutdown(malloc(sizeof(uv_shutdown_t)),(uv_stream_t *)tcp,after_server_shutdown);
+        if ( tcp != 0 )
+            uv_shutdown(malloc(sizeof(uv_shutdown_t)),(uv_stream_t *)tcp,after_server_shutdown);
         return;
     }
-    if ( uv_tcp_getpeername(tcp,(struct sockaddr *)&addr,&addrlen) == 0 )
+    if ( tcp != 0 && uv_tcp_getpeername(tcp,(struct sockaddr *)&addr,&addrlen) == 0 )
     {
         if ( (port= extract_nameport(servername,sizeof(servername),(struct sockaddr_in *)&addr)) == 0 )
         {
@@ -694,9 +695,9 @@ printf("connected_to_server\n");
         }
     } else port = 0;
     printf("CONNECTED to %s/%d connect.%p tcp.%p\n",servername,port,connect,tcp);
-    if ( uv_read_start(connect->handle,portable_alloc,tcp_client_gotbytes) != 0 )
+    if ( tcp != 0 && uv_read_start((void *)tcp,portable_alloc,tcp_client_gotbytes) != 0 )
         printf("uv_read_start failed\n");
-    else
+    else if ( tcp != 0 && tcp->data == 0 )
     {
         udp = malloc(sizeof(uv_udp_t));
         r = uv_udp_init(UV_loop,udp);
