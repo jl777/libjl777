@@ -648,8 +648,8 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 {
                     char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-                    expand_nxt64bits(pubNXT,cp->pubnxt64bits);
-                    str = publishaddrs(Global_mp->coins,NXTACCTSECRET,pubNXT,pubkey,cp->pubaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
+                    expand_nxt64bits(NXTADDR,cp->pubnxt64bits);
+                    str = publishaddrs(Global_mp->coins,NXTACCTSECRET,NXTADDR,pubkey,cp->pubaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
                     if ( str != 0 )
                         printf("publish.(%s) privacyserver.(%s)\n",str,cp->privacyserver), free(str);
                     if ( strcmp(cp->privacyserver,"127.0.0.1") == 0 )
