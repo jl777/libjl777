@@ -11,9 +11,7 @@ sudo apt-get install libnacl-dev
 
 git clone https://github.com/joyent/libuv
 
-cd libuv; sh autogen.sh; ./configure; make; make check
-
-sudo make install
+cd libuv; sh autogen.sh; ./configure; make; make check; sudo make install
 
 Now all the required libraries should be in the system
 there is a shell script "m"
@@ -22,6 +20,9 @@ there is a shell script "m"
 That should build libjl777.so
 copy it to /usr/lib or wherever the linker is looking for it and you can link your project against it
 
-make sure to add -lnacl randombytes.o from the nacl project to your project
+make sure to add -ljl777 libuv.a randombytes.o -lnacl -lm -ldl to the linker line
+
+libuv.a is from /usr/local/lib
+randombytes.o is from libnacl
 
 
