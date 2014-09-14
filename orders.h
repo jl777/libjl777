@@ -619,7 +619,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     struct NXT_acct *np;
     struct other_addr *op;
     struct peerinfo *refpeer,peer;
-    char verifiedNXTaddr[64];
+    char verifiedNXTaddr[64],mysrvNXTaddr[64];
     uint64_t pubnxt64bits;
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
     pubnxt64bits = calc_nxt64bits(np->H.NXTaddr);
@@ -665,8 +665,9 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    printf("np %s vs pub %s %s\n",np->H.NXTaddr,pubNXT,srvNXTaddr);
-    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 ) // this is this node
+    expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
+    printf("np %s -> %s vs pub %s %s\n",np->H.NXTaddr,mysrvNXTaddr,pubNXT,srvNXTaddr);
+    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
         broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
