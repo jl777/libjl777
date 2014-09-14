@@ -382,8 +382,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         {
             if ( np->sentintro == 0 )
             {
-                gen_tokenjson(0,intro,cp->srvNXTADDR,time(NULL),cp->srvNXTACCTSECRET);
-                printf(">>>>>>>> send UDP intro\n");
+                gen_tokenjson(0,intro,cp->srvNXTADDR,time(NULL),cp->srvNXTACCTSECRET,sender,port);
+                printf(">>>>>>>> send UDP intro to %s/%d\n",sender,port);
                 ASSERT(0 == portable_udpwrite(addr,udp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE));
                 np->sentintro = 1;
             }
@@ -832,6 +832,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
     uv_stream_t *udp;
     struct NXT_acct *np;
     int32_t activeflag;
+    uint32_t ipbits,port;
+    char servername[64];
     uint64_t nxt64bits;
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
@@ -915,8 +917,11 @@ void NXTprivacy_idler(uv_idle_t *handle)
                     printf("nxt.%llu\n",(long long)nxt64bits);
                     if ( nxt64bits != 0 )
                     {
+                        ipbits = (uint32_t)privacyServer;
+                        port = (uint16_t)(privacyServer >> 32);
+                        expand_ipbits(servername,ipbits);
                         expand_nxt64bits(NXTADDR,nxt64bits);
-                        gen_tokenjson(0,intro,NXTADDR,time(NULL),NXTACCTSECRET);
+                        gen_tokenjson(0,intro,NXTADDR,time(NULL),NXTACCTSECRET,servername,port);
                         memset(NXTACCTSECRET,0,sizeof(NXTACCTSECRET));
                         if ( intro[0] == 0 )
                         {
