@@ -610,8 +610,8 @@ printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,ud
         //ASSERT(nread == UV_EOF);
         if ( buf->base != 0 )
         {
-            printf("tcp_client_gotbytes free.%p\n",buf->base);
-            free(buf->base);
+            printf("tcp_client_gotbytes dontfree.%p\n",buf->base);
+            //free(buf->base);
         }
         if ( udp != 0 )
         {
