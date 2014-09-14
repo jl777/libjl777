@@ -964,6 +964,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
 
 void init_NXTprivacy(void *ptr)
 {
+    extern int32_t Finished_loading;
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
 //#ifdef __linux__
@@ -977,6 +978,8 @@ void init_NXTprivacy(void *ptr)
 //#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
+    if ( Finished_loading == 0 )
+        sleep(1);
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
 }
 
