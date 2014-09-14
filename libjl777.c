@@ -110,7 +110,7 @@ void init_NXTservices(char *JSON_or_fname)
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
-    if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
+    if ( portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     void *Coinloop(void *arg);
     printf("start Coinloop\n");
