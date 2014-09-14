@@ -1139,15 +1139,15 @@ int libjl777_start(char *JSON_or_fname)
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
-    printf("start Coinloop\n");
-    if ( 0 && portable_thread_create((void *)Coinloop,Global_mp) == 0 )
-        printf("ERROR Coin_genaddrloop\n");
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
         sleep(1);
+    printf("start Coinloop\n");
+    if ( 1 && portable_thread_create((void *)Coinloop,Global_mp) == 0 )
+        printf("ERROR Coin_genaddrloop\n");
     Finished_init = 1;
     return(0);
 }
