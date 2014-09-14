@@ -612,7 +612,7 @@ printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,ud
         if ( buf->base != 0 )
         {
             printf("tcp_client_gotbytes dontfree.%p\n",buf->base);
-            //free(buf->base);
+            free(buf->base);
         }
         if ( udp != 0 )
         {
@@ -673,12 +673,12 @@ void client_connected(uv_stream_t *tcp,int status)
     char sender[32];
     int r,port,addrlen = sizeof(addr);
     uv_stream_t *connect;
-printf("client_connected\n");
+fprintf(stderr,"client_connected status.%d\n",status);
     if ( status != 0 )
         fprintf(stderr,"Connect error %s\n",uv_err_name(status));
     ASSERT(status == 0);
-    connect = malloc(sizeof(uv_tcp_t));
-    printf("on_connection %p (connect) status.%d | connect.%p\n",tcp,status,connect);
+    connect = calloc(1,sizeof(uv_tcp_t));
+    fprintf(stderr,"on_connection %p (connect) status.%d | connect.%p\n",tcp,status,connect);
     ASSERT(connect != NULL);
     r = uv_tcp_init(UV_loop,(uv_tcp_t *)connect);
     ASSERT(r == 0);
@@ -687,7 +687,7 @@ printf("client_connected\n");
     ASSERT(r == 0);
     r = uv_read_start(connect,portable_alloc,after_server_read);
     ASSERT(r == 0);
-    if ( uv_tcp_getpeername((uv_tcp_t *)connect,&addr,&addrlen) == 0 )
+    if ( 0 && uv_tcp_getpeername((uv_tcp_t *)connect,&addr,&addrlen) == 0 )
     {
         if ( (port= extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)&addr)) == 0 )
         {
