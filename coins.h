@@ -435,6 +435,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
+                extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
                 cp->coinid = conv_coinstr(coinstr);
                 if ( cp->coinid >= 0 && cp->coinid < 256 )
                     Global_mp->corecoins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
@@ -624,7 +625,7 @@ void init_MGWconf(char *JSON_or_fname)
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                             {
                                 printf("loopback privacyServer\n");
-                                set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
+                                set_pubpeerinfo(cp->srvNXTADDR,cp->myipaddr,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
                                 update_peerinfo(&createdflag,&peer);
                             }
                         }

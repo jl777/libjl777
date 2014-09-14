@@ -373,7 +373,7 @@ int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,c
 {
     char argstr[1024],pubkey[1024],token[1024];
     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\",\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
+    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
