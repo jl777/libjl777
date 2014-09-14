@@ -112,10 +112,6 @@ void init_NXTservices(char *JSON_or_fname)
     void run_NXTservices(void *arg);
     if ( portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    void *Coinloop(void *arg);
-    printf("start Coinloop\n");
-    if ( 0 && portable_thread_create((void *)Coinloop,mp) == 0 )
-        printf("ERROR Coin_genaddrloop\n");
 }
 
 char *_corecoins_jsonstr(char *coinsjson,uint64_t corecoins[4])
@@ -1142,6 +1138,10 @@ int libjl777_start(char *JSON_or_fname)
     //init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
+    void *Coinloop(void *arg);
+    printf("start Coinloop\n");
+    if ( 1 && portable_thread_create((void *)Coinloop,Global_mp) == 0 )
+        printf("ERROR Coin_genaddrloop\n");
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
