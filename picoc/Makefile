@@ -1,5 +1,5 @@
-CC=gcc
-CFLAGS=-Wall -pedantic -g -fPIC 
+CC=g++
+CFLAGS=-Wall -pedantic -g -fPIC
 LIBS=-lm -lreadline
 
 TARGET	= picoc
