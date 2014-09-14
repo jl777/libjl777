@@ -82,7 +82,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         {
             cJSON_AddItemToObject(json,"coins",coins);
             free_json(coins);
-        }
+        } else printf("error parsing.(%s)\n",coinsjsonstr);
     }
     return(json);
 }
