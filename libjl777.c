@@ -103,7 +103,7 @@ void init_NXTservices(char *JSON_or_fname)
     if ( portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
     printf("start init_NXTprivacy\n");
-    if ( portable_thread_create((void *)init_NXTprivacy,"") == 0 )
+    if ( 0 && portable_thread_create((void *)init_NXTprivacy,"") == 0 )
         printf("ERROR init_NXTprivacy\n");
     printf("start gen_testforms\n");
     gen_testforms(0);
