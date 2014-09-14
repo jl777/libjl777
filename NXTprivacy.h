@@ -582,7 +582,7 @@ void tcp_client_gotbytes(uv_stream_t *tcp,ssize_t nread,const uv_buf_t *buf)
             printf("connect.%p -> %p\n",connect,connect->data);
         }
     }
-    //printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
+printf("tcp_client_gotbytes tcp.%p (tcp) data.%p (udp) -> %p (connect)\n",tcp,udp,connect);
     if ( nread < 0 ) // Error or EOF
     {
         printf("Lost contact with Server! np.%p nread.%ld\n",np,nread);
@@ -645,6 +645,7 @@ void client_connected(uv_stream_t *tcp,int status)
     char sender[32];
     int r,port,addrlen = sizeof(addr);
     uv_stream_t *connect;
+printf("client_connected\n");
     if ( status != 0 )
         fprintf(stderr,"Connect error %s\n",uv_err_name(status));
     ASSERT(status == 0);
@@ -675,6 +676,7 @@ void connected_to_server(uv_connect_t *connect,int status)
     struct sockaddr addr;
     int32_t r,addrlen = sizeof(addr);
     char servername[32];
+printf("connected_to_server\n");
     tcp = (uv_tcp_t *)connect->handle;
     if ( status < 0 )
     {
