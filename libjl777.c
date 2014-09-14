@@ -517,8 +517,8 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
         {
             copy_cJSON(coinstr,cJSON_GetArrayItem(objs[9],i));
             coinid = conv_coinstr(coinstr);
-            if ( coinid >= 0 )
-                coins[i>>6] |= (1L << (i&63)), m++;
+            if ( coinid >= 0 && coinid < 256 )
+                coins[coinid>>6] |= (1L << (coinid & 63)), m++;
             else printf("unknown.%d coind.(%s)\n",i,coinstr);
         }
     }
