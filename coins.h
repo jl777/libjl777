@@ -652,7 +652,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         pubNXT = NXTADDR;
                     str = publishaddrs(Global_mp->coins,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
                     if ( str != 0 )
-                        printf("publish.(%s)\n",str), free(str);
+                        printf("publish.(%s) privacyserver.(%s)\n",str,cp->privacyserver), free(str);
                     if ( strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                     {
                         str = publishaddrs(Global_mp->coins,NXTACCTSECRET,cp->srvNXTADDR,pubkey,cp->srvpubaddr,0,cp->srvNXTADDR,cp->myipaddr,cp->srvport);

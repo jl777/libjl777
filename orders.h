@@ -608,7 +608,7 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr)
         expand_ipbits(srvipaddr,pi->srvipbits);
         expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
         init_hexbytes(pubkey,pi->pubkey,sizeof(pi->pubkey));
-        sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"BTCD\":\"%s\",\"BTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"}",NXTaddr,pubkey,pubnp->H.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport);
+        sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"}",NXTaddr,pubkey,pubnp->H.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport);
         return(clonestr(buf));
     } else return(clonestr("{\"error\":\"cant find pubaddr\"}"));
 }
@@ -628,7 +628,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     if ( (refpeer= find_peerinfo(pubnxt64bits,BTCDaddr,BTCaddr)) != 0 )
     {
         safecopy(refpeer->pubBTCD,BTCDaddr,sizeof(refpeer->pubBTCD));
-        safecopy(refpeer->pubBTC,BTCDaddr,sizeof(refpeer->pubBTC));
+        safecopy(refpeer->pubBTC,BTCaddr,sizeof(refpeer->pubBTC));
         if ( pubkey != 0 && pubkey[0] != 0 )
             memcpy(refpeer->pubkey,np->mypeerinfo.pubkey,sizeof(refpeer->pubkey));
         if ( srvport != 0 )
@@ -663,7 +663,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     printf("np %s vs pub %s\n",np->H.NXTaddr,pubNXT);
-    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 && srvNXTaddr != 0 && srvipaddr != 0 && strcmp(srvipaddr,"127.0.0.1") != 0 && srvport != 0 ) // this is this node so broadcast
+    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 ) // this is this node
         broadcast_publishpacket(Global_mp->coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }

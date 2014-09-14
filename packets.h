@@ -78,9 +78,12 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
         //printf("got.(%s)\n",coinsjsonstr);
-        coins = cJSON_Parse(coinsjsonstr+1);
+        coins = cJSON_Parse(coinsjsonstr+9);
         if ( coins != 0 )
+        {
+            printf("coins.(%s)\n",cJSON_Print(coins));
             cJSON_AddItemToObject(json,"coins",coins);
+        }
         else printf("error parsing.(%s)\n",coinsjsonstr);
     }
     return(json);
