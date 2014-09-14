@@ -668,7 +668,11 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
     printf("np %s -> %s vs pub %s %s\n",np->H.NXTaddr,mysrvNXTaddr,pubNXT,srvNXTaddr);
     if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
+    {
+        if ( strcmp(srvNXTaddr,pubNXT) == 0 )
+            np = get_NXTacct(&createdflag,Global_mp,srvNXTaddr);
         broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
+    }
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
 
