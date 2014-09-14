@@ -114,7 +114,7 @@ void init_NXTservices(char *JSON_or_fname)
         printf("ERROR hist process_hashtablequeues\n");
     void *Coinloop(void *arg);
     printf("start Coinloop\n");
-    if ( 0 && portable_thread_create((void *)Coinloop,mp) == 0 )
+    if ( portable_thread_create((void *)Coinloop,mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
 }
 

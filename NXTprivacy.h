@@ -836,8 +836,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     void teleport_idler();
-    if ( Servers_started == 0 )
-        return;
+    //if ( Servers_started == 0 )
+    //    return;
     usleep(5000);
     if ( TCPserver_closed > 0 )
     {
