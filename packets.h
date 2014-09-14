@@ -78,12 +78,12 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
         printf("got.(%s)\n",coinsjsonstr);
-        /*coins = cJSON_Parse(coinsjsonstr+1);
+        coins = cJSON_Parse(coinsjsonstr+1);
         if ( coins != 0 )
         {
             cJSON_AddItemToObject(json,"coins",coins);
             free_json(coins);
-        } else printf("error parsing.(%s)\n",coinsjsonstr);*/
+        } else printf("error parsing.(%s)\n",coinsjsonstr);
     }
     return(json);
 }
@@ -93,6 +93,7 @@ cJSON *gen_peers_json(int32_t only_privacyServers)
     int32_t i,n;
     struct peerinfo **peers;
     cJSON *json,*array;
+    printf("inside gen_peer_json.%d\n",only_privacyServers);
     json = cJSON_CreateObject();
     array = cJSON_CreateArray();
     if ( only_privacyServers != 0 )
@@ -105,14 +106,17 @@ cJSON *gen_peers_json(int32_t only_privacyServers)
         peers = Peers;
         n = Numpeers;
     }
-    cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
-    cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
-    for (i=0; i<n; i++)
+    if ( peers != 0 && n > 0 )
     {
-        if ( peers != 0 && peers[i] != 0 )
-            cJSON_AddItemToArray(array,gen_peerinfo_json(peers[i]));
+        cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
+        cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
+        for (i=0; i<n; i++)
+        {
+            if ( peers[i] != 0 )
+                cJSON_AddItemToArray(array,gen_peerinfo_json(peers[i]));
+        }
+        cJSON_AddItemToObject(json,"peers",array);
     }
-    cJSON_AddItemToObject(json,"peers",array);
     return(json);
 }
 
@@ -178,6 +182,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
         {
             Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
             Pservers[Numpservers] = peer, Numpservers++;
+            printf("ADDED privacyServer.%d\n",Numpservers);
         }
     }
     printf("isPserver.%d add_peerinfo Numpeers.%d added %llu srv.%llu\n",isPserver,Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
