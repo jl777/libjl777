@@ -1135,15 +1135,15 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname);
     printf("back from init_NXTservices\n");
-    //init_NXTprivacy("");
+    init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
     printf("start Coinloop\n");
-    if ( 0 && portable_thread_create((void *)Coinloop,Global_mp) == 0 )
+    if ( portable_thread_create((void *)Coinloop,Global_mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
     printf("run_UVloop\n");
-    if ( 0 && portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
+    if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
