@@ -655,7 +655,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCDaddr),op->nxt64bits = np->H.nxt64bits;
         printf("op.%p for %s\n",op,BTCDaddr);
     }
-    if ( BTCaddr[0] != 0 )
+    if ( BTCaddr != 0 && BTCaddr[0] != 0 )
     {
         //safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
