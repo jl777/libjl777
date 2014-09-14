@@ -103,7 +103,7 @@ void init_NXTservices(char *JSON_or_fname)
     if ( portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
     printf("start init_NXTprivacy\n");
-    if ( 0 && portable_thread_create((void *)init_NXTprivacy,"") == 0 )
+    if ( portable_thread_create((void *)init_NXTprivacy,"") == 0 )
         printf("ERROR init_NXTprivacy\n");
     printf("start gen_testforms\n");
     gen_testforms(0);
@@ -881,7 +881,7 @@ again:
     if ( verifiedsender != 0 && verifiedsender[0] != 0 )
         safecopy(sender,verifiedsender,sizeof(sender));
     valid = -1;
-printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
+//printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
     if ( *argjsonp != 0 )
     {
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
@@ -895,7 +895,7 @@ printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
         parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
-printf("parmstxt.(%s)\n",parmstxt);
+//printf("parmstxt.(%s)\n",parmstxt);
     }
     if ( *argjsonp == 0 )
     {
@@ -1052,7 +1052,7 @@ uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
 
 char *libjl777_gotpacket(char *msg,int32_t duration)
 {
-    static int flood;
+    static int flood,duplicates;
     cJSON *json;
     uint64_t txid;
     int32_t len,createdflag;
@@ -1063,7 +1063,6 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     //display_orderbook_tx((struct orderbook_tx *)packet);
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
-    printf("gotpacket.(%s) %d | Finished_loading.%d\n",msg,duration,Finished_loading);
 	while ( Finished_loading == 0 )
         sleep(1);
     len = (int32_t)strlen(msg);
@@ -1077,10 +1076,14 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
+        {
+            duplicates++;
             return(clonestr("{\"error\":\"duplicate msg\"}"));
+        }
         if ( (len<<1) != 30 ) // hack against flood
             printf("C libjl777_gotpacket.%s size.%d txid.%llu | >> flood.%d\n",msg,len<<1,(long long)txid,flood);
         else flood++;
+        printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,0,0,packet,len,0,0,0,0,0);
         else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
@@ -1099,10 +1102,14 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
         if ( createdflag == 0 )
+        {
+            duplicates++;
             return(clonestr("{\"error\":\"duplicate msg\"}"));
+        }
         if ( len != 30 ) // hack against flood
             printf("C libjl777_gotpacket.(%s) size.%d ascii txid.%llu | flood.%d\n",msg,len,(long long)txid,flood);
         else flood++;
+        printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
             retstr = pNXT_jsonhandler(&json,(char *)msg,0);
