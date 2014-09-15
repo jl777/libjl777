@@ -377,7 +377,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    //printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->pubkey,len);
+    printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->mypeerinfo.pubkey,onetime_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -453,7 +453,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
-        //printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%ld) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,(long)encoded - (long)origencoded,payload_len,payload_len);
+        printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)) == len )
         {
@@ -461,7 +461,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
             err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
             if ( err == 0 )
             {
-                // printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
             }
             cp = get_coin_info("BTCD");
@@ -470,7 +470,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
                 if ( err == 0 )
                 {
-                    // printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                    printf("2nd payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                     return(len);
                 }
             }
