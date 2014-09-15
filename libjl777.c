@@ -490,6 +490,8 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     copy_cJSON(NXTACCTSECRET,objs[2]);
     copy_cJSON(destcoin,objs[2]);
     printf("getpubkey_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
+    if ( valid < 0 )
+        return(0);
     if ( sender[0] != 0 && valid > 0 && addr[0] != 0 )
         retstr = getpubkey(sender,NXTACCTSECRET,addr,destcoin);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
