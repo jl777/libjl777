@@ -826,9 +826,9 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             {
                 if ( NXTaddr[0] == 0 )
                     strcpy(NXTaddr,sender);
-                if ( sender[0] == 0 || valid != 1 || (strcmp(NXTaddr,sender) != 0 && strcmp(sender,Global_pNXT->privacyServer_NXTaddr) != 0) )
+                if ( sender[0] == 0 || valid == 0 || (strcmp(NXTaddr,sender) != 0 && strcmp(sender,Global_pNXT->privacyServer_NXTaddr) != 0) )
                 {
-                    //if ( strcmp(NXTaddr,sender) != 0 )
+                    if ( strcmp(NXTaddr,sender) != 0 )
                     {
                         printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],sender,NXTaddr);
                         return(0);
