@@ -453,7 +453,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
-        printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
+        //printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(mynxtbits)) == len )
         {
@@ -461,7 +461,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
             err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
             if ( err == 0 )
             {
-                printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                //printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
             }
             cp = get_coin_info("BTCD");
@@ -471,7 +471,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
                 if ( err == 0 )
                 {
-                    printf("2nd payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                    //printf("2nd payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                     return(len);
                 }
             }
@@ -754,7 +754,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         return(0);
     memset(decoded,0,sizeof(decoded));
     memset(tmpdecoded,0,sizeof(tmpdecoded));
-    sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
+    retjsonstr[0] = 0;
+    //sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
     if ( is_encrypted_packet(recvbuf,recvlen) != 0 )
     {
         recvbuf += sizeof(uint32_t);
@@ -832,7 +833,9 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                         char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                         jsonstr = issue_pNXT_json_commands(argjson,np->H.NXTaddr,valid,parmstxt);//(char *)decoded);
                         if ( jsonstr == 0 )
-                            sprintf(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null from (%s)\"}",(char *)decoded);
+                        {
+                            //sprintf(retjsonstr,"{\"result\":\"pNXT_jsonhandler returns null from (%s)\"}",(char *)decoded);
+                        }
                         else
                         {
                             strcpy(retjsonstr,jsonstr);
@@ -845,7 +848,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             else
             {
                 printf("valid.%d routine non-tokenized message.(%s)\n",valid,decoded);
-                strcpy(retjsonstr,(char *)decoded);
+                //strcpy(retjsonstr,(char *)decoded);
             }
             free_json(argjson);
             return(np);
@@ -884,8 +887,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             }
             else
             {
-                sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
-                printf("(%s)\n",retjsonstr);
+                printf("{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
             }
         }
         if ( parmstxt != 0 )
