@@ -931,6 +931,7 @@ again:
             issue_generateToken(0,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
+            expand_nxt64bits(srvNXTaddr,cp->srvpubnxt64bits);
             retstr = sendmessage(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,srvNXTaddr,_tokbuf);
         }
         else
@@ -1031,7 +1032,7 @@ char *libjl777_JSON(char *JSONstr)
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
-            retstr = pNXT_jsonhandler(&json,cmdstr,0);
+            retstr = pNXT_jsonhandler(&json,cmdstr,NXTaddr);
             free(cmdstr);
         }
         free_json(json);
