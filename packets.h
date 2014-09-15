@@ -77,8 +77,8 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
     init_hexbytes(hexstr,peer->pubkey,sizeof(peer->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
-    init_hexbytes(hexstr,(void *)peer->udp,sizeof(peer->udp));
-    cJSON_AddItemToObject(json,"udp",cJSON_CreateString(hexstr));
+    //init_hexbytes(hexstr,(void *)peer->udp,sizeof(peer->udp));
+    cJSON_AddItemToObject(json,"udp",cJSON_CreateNumber((long long)peer->udp));
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
         //printf("got.(%s)\n",coinsjsonstr);
