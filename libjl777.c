@@ -922,7 +922,7 @@ again:
         cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
         printf("replace NXT.(%s)\n",NXTaddr);
         //#ifndef __linux__
-        if ( strcmp(buf,"getpeers") != 0 && strcmp(buf,"maketelepods") != 0 && strcmp(buf,"getpukey") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"getpeers") != 0 && strcmp(buf,"maketelepods") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             parmstxt = remove_secret(argjsonp,parmstxt);
             issue_generateToken(0,encoded,parmstxt,NXTACCTSECRET);
