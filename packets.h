@@ -770,7 +770,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                 len = tmp;
                 memcpy(decoded,tmpdecoded,len);
                 memcpy(pubkey,tmppubkey,sizeof(pubkey));
-                //printf("decrypted2 len.%d dest.(%llu)\n",len,(long long)destbits);
+                printf("decrypted2 len.%d dest.(%llu)\n",len,(long long)destbits);
             } else printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
         }
         else return(0);
@@ -857,10 +857,10 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                if ( cp->srvNXTADDR[0] != 0 && (np->udp != 0 || np->tcp != 0) )
+                if ( cp->srvNXTADDR[0] != 0 )//&& (np->udp != 0 || np->tcp != 0) )
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
-                    strcpy(retjsonstr,sendmessage(Global_mp->Lfactor,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0));
+                    strcpy(retjsonstr,sendmessage(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0));
                     //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                     //len = crcize(crcbuf,decoded,len);
                     //portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
