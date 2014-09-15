@@ -570,9 +570,13 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
                         printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
                         retcode = valid;
                     }
+                    else
+                    {
+                        printf("diff sender vs NXTaddr\n");
+                    }
                 }
                 if ( retcode < 0 )
-                    printf("err: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld\n",sender,NXTaddr,valid,(long long)diff);
+                    printf("err: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld, buf.(%s)\n",sender,NXTaddr,valid,(long long)diff,buf);
                 free(firstjsontxt);
             }
         }
