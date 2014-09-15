@@ -209,7 +209,9 @@ int32_t unhex(char c)
 {
     int32_t hex;
     if ( (hex= _unhex(c)) < 0 )
-        printf("unhex: illegal hexchar.(%c)\n",c);
+    {
+        //printf("unhex: illegal hexchar.(%c)\n",c);
+    }
     return(hex);
 }
 
