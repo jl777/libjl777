@@ -3,8 +3,9 @@ libjl777
 
 Build instructions for ubuntu
 
-libcurl, libnacl and libuv are required.
+clang, libcurl, libnacl and libuv are required.
 
+sudo apt-get install clang
 sudo apt-get install libcurl4-gnutls-dev
 sudo apt-get install libnacl-dev
 
