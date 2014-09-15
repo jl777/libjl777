@@ -465,8 +465,9 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 return(len);
             }
             cp = get_coin_info("BTCD");
-            if ( cp != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
+            if ( cp != 0 )//&& strcmp(cp->privacyserver,"127.0.0.1") == 0 )
             {
+                len = payload_len;
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
                 if ( err == 0 )
                 {
