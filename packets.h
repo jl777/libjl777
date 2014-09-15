@@ -377,7 +377,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
+    printf("ONIONIZE: np.%p npudp.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->udp,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->mypeerinfo.pubkey,onetime_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -858,6 +858,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                printf("destaddr.(%s) np->udp %p\n",destNXTaddr,np->udp);
                 if ( np->udp != 0 )
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
