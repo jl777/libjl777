@@ -682,7 +682,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = pubnxt64bits;
     }
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
-    if ( refpeer != &np->mypeerinfo )
+    //if ( refpeer != &np->mypeerinfo )
     {
         if ( pubkey != 0 && pubkey[0] != 0 )
             decode_hex(np->mypeerinfo.pubkey,(int32_t)sizeof(np->mypeerinfo.pubkey),pubkey);
@@ -703,12 +703,13 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
             broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
         }
     }
-    else
+    /*else
     {
         verifiedNXTaddr[0] = 0;
         np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
         np->mypeerinfo.knowsme = 1;
-    }
+        printf(">>>>>>>>>>>>>>>>>>>> %s knowsme!!!!!!!\n",verifiedNXTaddr);
+    }*/
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }
 
