@@ -575,7 +575,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
                     }
                     else
                     {
-                        printf("diff sender vs NXTaddr\n");
+                        printf("diff sender.(%s) vs NXTaddr.(%s)\n",sender,NXTaddr);
                         if ( strcmp(NXTaddr,buf) == 0 )
                             retcode = valid;
                     }
