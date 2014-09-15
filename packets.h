@@ -801,7 +801,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         decoded[len] = 0;
         parmstxt = clonestr((char *)decoded);//rcvbuf->base;
         argjson = cJSON_Parse(parmstxt);
-        printf("[%s] argjson.%p\n",parmstxt,argjson);
+        printf("[%s] argjson.%p I_am_server.%d tcp.%p udp.%p\n",parmstxt,argjson,I_am_server,tcp,udp);
         if ( argjson != 0 )
         {
             parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
@@ -852,7 +852,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         }
         else if ( I_am_server != 0 && (tcp != 0 || udp != 0) ) // test to make sure we are hub and not p2p broadcast
         {
-            memcpy(&destbits,parmstxt,sizeof(destbits));
+            memcpy(&destbits,decoded,sizeof(destbits));
             if ( destbits != 0 ) // route packet
             {
                 expand_nxt64bits(destNXTaddr,destbits);
@@ -868,7 +868,11 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                     return(np);
                 }
             }
-            else sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
+            else
+            {
+                sprintf(retjsonstr,"{\"error\":\"unknown dest.%llu %d bytes from %s/%d\"}",(long long)destbits,recvlen,sender,port);
+                printf("(%s)\n",retjsonstr);
+            }
         }
         if ( parmstxt != 0 )
             free(parmstxt);
