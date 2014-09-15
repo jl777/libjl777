@@ -111,7 +111,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
-    if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
+    if ( 1 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
 }
 
@@ -1118,6 +1118,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
     strcpy(retjsonstr,"{\"result\":null}");
+return(clonestr(retjsonstr));
     if ( Finished_loading == 0 )
     {
         printf("QUEUE.(%s)\n",msg);
@@ -1185,6 +1186,7 @@ int libjl777_start(char *JSON_or_fname)
     struct NXT_str *tp = 0;
     Global_mp = calloc(1,sizeof(*Global_mp));
     printf("libjl777_start(%s)\n",JSON_or_fname);
+    return(0);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
     {
@@ -1197,7 +1199,7 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
-    //init_NXTprivacy("");
+    init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
@@ -1205,7 +1207,7 @@ int libjl777_start(char *JSON_or_fname)
     if ( portable_thread_create((void *)Coinloop,Global_mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
     printf("run_UVloop\n");
-    if ( 0 && portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
+    if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
