@@ -198,7 +198,7 @@ struct peerinfo
 {
     uint64_t srvnxtbits,pubnxtbits,coins[4];
     uint32_t srvipbits,numsent,numrecv;
-    uint16_t srvport;
+    uint16_t srvport,knowsme;
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
     char pubBTCD[36],pubBTC[36];
 };

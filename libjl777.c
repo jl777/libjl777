@@ -498,6 +498,21 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
+char *sendpeerinfo_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char NXTACCTSECRET[512],addr[256],destcoin[512],*retstr = 0;
+    copy_cJSON(addr,objs[1]);
+    copy_cJSON(NXTACCTSECRET,objs[2]);
+    copy_cJSON(destcoin,objs[2]);
+    printf("sendpeerinfo_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
+    if ( valid < 0 )
+        return(0);
+    if ( sender[0] != 0 && valid > 0 && addr[0] != 0 )
+        retstr = sendpeerinfo(sender,NXTACCTSECRET,addr,destcoin);
+    else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
+    return(retstr);
+}
+
 char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
@@ -791,6 +806,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
     static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", "destcoin", 0 };
+    static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", "L", 0 };
@@ -802,7 +818,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "NXT", "obookid", "polarity", "volume", "price", "assetA", "assetB", "secret", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
+    static char **commands[] = { sendpeerinfo, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
     int32_t i,j;
     cJSON *obj,*nxtobj,*objs[64];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
@@ -983,8 +999,32 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
     printf("got txid.(%s) type.%d subtype.%d sender.(%s) -> (%s)\n",txid,parms->type,parms->subtype,sender,receiver);
 }
 
+char *libjl777_JSON(char *JSONstr)
+{
+    cJSON *json;
+    char NXTaddr[64],*cmdstr,*retstr = 0;
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( (json= cJSON_Parse(JSONstr)) != 0 )
+    {
+        expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+        cmdstr = cJSON_Print(json);
+        if ( cmdstr != 0 )
+        {
+            retstr = pNXT_jsonhandler(&json,cmdstr,NXTaddr);
+            free(cmdstr);
+        }
+        free_json(json);
+    }
+    if ( retstr == 0 )
+        retstr = clonestr("{\"result\":null}");
+    return(retstr);
+}
+
 void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height)
 {
+    int32_t i;
+    char jsonstr[1024],destNXTaddr[64];
     struct pNXT_info *gp = handlerdata;
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
@@ -993,6 +1033,13 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             //printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
+            for (i=0; i<Numpeers; i++)
+                if ( is_privacyServer(Peers[i]) != 0 && Peers[i]->knowsme == 0 )
+                {
+                    expand_nxt64bits(destNXTaddr,Peers[i]->pubnxtbits);
+                    sprintf(jsonstr,"{\"requestType\":\"sendpeerinfo\",\"addr\":\"%s\"}",destNXTaddr);
+                    libjl777_JSON(jsonstr);
+                }
         }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
         {
@@ -1020,28 +1067,6 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     else if ( parms->mode == NXTPROTOCOL_TYPEMATCH )
         process_pNXT_typematch(gp,parms);
     return(gp);
-}
-
-char *libjl777_JSON(char *JSONstr)
-{
-    cJSON *json;
-    char NXTaddr[64],*cmdstr,*retstr = 0;
-    struct coin_info *cp = get_coin_info("BTCD");
-    if ( (json= cJSON_Parse(JSONstr)) != 0 )
-    {
-        expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
-        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-        cmdstr = cJSON_Print(json);
-        if ( cmdstr != 0 )
-        {
-            retstr = pNXT_jsonhandler(&json,cmdstr,NXTaddr);
-            free(cmdstr);
-        }
-        free_json(json);
-    }
-    if ( retstr == 0 )
-        retstr = clonestr("{\"result\":null}");
-    return(retstr);
 }
 
 uint64_t call_libjl777_broadcast(char *msg,int32_t duration)
