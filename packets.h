@@ -350,7 +350,7 @@ int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *js
 
 int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
 {
-    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
+    //static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     unsigned char onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES];
     uint64_t nxt64bits;
     int32_t createdflag;
@@ -358,7 +358,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     struct NXT_acct *np;
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-    if ( 0 && memcmp(np->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
+    /*if ( 0 && memcmp(np->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
     {
         if ( Global_pNXT->privacyServer_NXTaddr[0] != 0 )
         {
@@ -369,7 +369,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
             //sendmessage(verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
         }
         return(0);
-    }
+    }*/
     crypto_box_keypair(onetime_pubkey,onetime_privkey);
     memcpy(encoded,&nxt64bits,sizeof(nxt64bits));
     encoded += sizeof(nxt64bits);
@@ -937,9 +937,9 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
                 len = add_random_onionlayers(L,verifiedNXTaddr,NXTACCTSECRET,encodedL,outbuf,len);
                 outbuf = encodedL;
             }
-            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedP,Global_pNXT->privacyServer_NXTaddr,outbuf,len);
+            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedP,cp->srvNXTADDR,outbuf,len);
             outbuf = encodedP;
-            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage to %s pending\"}",verifiedNXTaddr,Global_pNXT->privacyServer_NXTaddr,destNXTaddr);
+            sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage to %s pending\"}",verifiedNXTaddr,cp->srvNXTADDR,destNXTaddr);
         }
         else if ( cp->srvNXTADDR[0] != 0 && destnp->udp != 0 )
         {

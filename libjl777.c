@@ -912,7 +912,8 @@ again:
     {
         cJSON *reqobj;
         uint64_t nxt64bits;
-        char _tokbuf[4096],NXTaddr[64],buf[1024];//,*str;
+        struct coin_info *cp = get_coin_info("BTCD");
+        char _tokbuf[4096],srvNXTaddr[64],NXTaddr[64],buf[1024];//,*str;
         firsttime = 0;
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
@@ -924,13 +925,13 @@ again:
         cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
         printf("replace NXT.(%s)\n",NXTaddr);
         //#ifndef __linux__
-        if ( strcmp(buf,"getpeers") != 0 && strcmp(buf,"maketelepods") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
+        if ( strcmp(buf,"getpeers") != 0 && strcmp(buf,"maketelepods") != 0 && strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && cp != 0 )
         {
             parmstxt = remove_secret(argjsonp,parmstxt);
             issue_generateToken(0,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-            retstr = sendmessage(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
+            retstr = sendmessage(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,srvNXTaddr,_tokbuf);
         }
         else
             //#endif
