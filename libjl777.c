@@ -1023,9 +1023,13 @@ char *libjl777_JSON(char *JSONstr)
 
 void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height)
 {
-    int32_t i;
-    char jsonstr[1024],destNXTaddr[64];
+    int32_t i,createdflag;
+    struct NXT_acct *np;
+    uint64_t privacyServer;
+    struct coin_info *cp = get_coin_info("BTCD");
+    char destNXTaddr[64],servername[64],intro[4096];
     struct pNXT_info *gp = handlerdata;
+    uv_connect_t **connectp;
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
         if ( parms->mode == NXTPROTOCOL_WEBJSON )
@@ -1034,12 +1038,29 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         {
             //printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
             for (i=0; i<Numpeers; i++)
-                if ( is_privacyServer(Peers[i]) != 0 && Peers[i]->udp == 0 && Peers[i]->numsent < 3 )
+                if ( cp != 0 && is_privacyServer(Peers[i]) != 0 && Peers[i]->udp == 0 && Peers[i]->numsent < 3 )
                 {
                     expand_nxt64bits(destNXTaddr,Peers[i]->pubnxtbits);
-                    sprintf(jsonstr,"{\"requestType\":\"sendpeerinfo\",\"addr\":\"%s\"}",destNXTaddr);
-                    libjl777_JSON(jsonstr);
-                    Peers[i]->numsent++;
+                    np = get_NXTacct(&createdflag,mp,destNXTaddr);
+                    if ( &np->mypeerinfo == Peers[i] )
+                    {
+                    //sprintf(jsonstr,"{\"requestType\":\"sendpeerinfo\",\"addr\":\"%s\"}",destNXTaddr);
+                    //libjl777_JSON(jsonstr);
+                        Peers[i]->numsent++;
+                        privacyServer = (((long long)Peers[i]->srvport << 32) | Peers[i]->srvipbits);
+                        connectp = (uv_connect_t **)&np->connect;
+                        np->tcp = (uv_stream_t *)connect_to_privacyServer((struct sockaddr_in *)&np->addr,connectp,privacyServer);
+                        
+                        expand_ipbits(servername,Peers[i]->srvipbits);
+                        gen_tokenjson(0,intro,destNXTaddr,time(NULL),cp->NXTACCTSECRET,servername,Peers[i]->srvport);
+                        if ( intro[0] != 0 )
+                        {
+                            printf("send intro to %s\n",destNXTaddr);
+                            portable_tcpwrite((uv_stream_t *)np->tcp,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
+                            if ( np->tcp->data != 0 )
+                                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->tcp->data,intro,strlen(intro)+1,ALLOCWR_ALLOCFREE);
+                        }
+                     }
                 }
         }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
