@@ -573,6 +573,8 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
                     else
                     {
                         printf("diff sender vs NXTaddr\n");
+                        if ( strcmp(sender,buf) == 0 )
+                            retcode = valid;
                     }
                 }
                 if ( retcode < 0 )
