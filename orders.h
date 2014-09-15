@@ -595,7 +595,7 @@ char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,ch
     return(clonestr(buf));
 }
 
-char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr)
+char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
 {
     char buf[4096],pubkey[128],srvipaddr[64],srvnxtaddr[64];
     struct NXT_acct *pubnp;
@@ -679,7 +679,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
         }
         broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
     }
-    return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
+    return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }
 
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)

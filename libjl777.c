@@ -485,11 +485,13 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 
 char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char NXTACCTSECRET[512],addr[256],*retstr = 0;
+    char NXTACCTSECRET[512],addr[256],destcoin[512],*retstr = 0;
     copy_cJSON(addr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
+    copy_cJSON(destcoin,objs[2]);
+    printf("getpubkey_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
     if ( sender[0] != 0 && valid != 0 && addr[0] != 0 )
-        retstr = getpubkey(sender,NXTACCTSECRET,addr);
+        retstr = getpubkey(sender,NXTACCTSECRET,addr,destcoin);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
     return(retstr);
 }
@@ -786,7 +788,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
     static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
-    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", 0 };
+    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", "L", 0 };
