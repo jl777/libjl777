@@ -850,7 +850,7 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             free_json(argjson);
             return(np);
         }
-        else if ( I_am_server != 0 && (tcp != 0 || udp != 0) ) // test to make sure we are hub and not p2p broadcast
+        else if ( udp != 0 || (I_am_server != 0 && tcp != 0) ) // test to make sure we are hub and not p2p broadcast
         {
             memcpy(&destbits,decoded,sizeof(destbits));
             if ( destbits != 0 ) // route packet
