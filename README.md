@@ -6,7 +6,9 @@ Build instructions for ubuntu
 clang, libcurl, libnacl and libuv are required.
 
 sudo apt-get install clang
+
 sudo apt-get install libcurl4-gnutls-dev
+
 sudo apt-get install libnacl-dev
 
 git clone https://github.com/joyent/libuv
