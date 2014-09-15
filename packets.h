@@ -852,21 +852,34 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
         }
         else if ( udp != 0 || (I_am_server != 0 && tcp != 0) ) // test to make sure we are hub and not p2p broadcast
         {
+            unsigned char finalbuf[4096];
             memcpy(&destbits,decoded,sizeof(destbits));
             if ( destbits != 0 ) // route packet
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                if ( cp->srvNXTADDR[0] != 0 )//&& (np->udp != 0 || np->tcp != 0) )
+                if ( np->udp != 0 )
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
-                    strcpy(retjsonstr,sendmessage(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0));
+                    len = crcize(finalbuf,decoded,len);
+                    if ( len > sizeof(finalbuf) )
+                    {
+                        printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+                        exit(-1);
+                    }
+                    if ( np != 0 && len < 1400 && np->udp != 0 )
+                    {
+                        int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
+                        printf("udpsend finalbuf.%d\n",len);
+                        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+                    }
+                    //else sendmessage(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0);
                     //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                     //len = crcize(crcbuf,decoded,len);
                     //portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,crcbuf,len,ALLOCWR_ALLOCFREE);
                     //sprintf(retjsonstr,"{\"result\":\"routed packet from %s/%d to dest.%llu %d bytes from %s/%d\"}",sender,port,(long long)destbits,len,sender,port);
-                    return(np);
                 }
+                return(np);
             }
             else
             {
