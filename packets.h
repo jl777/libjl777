@@ -636,7 +636,11 @@ struct NXT_acct *process_intro(uv_stream_t *connect,char *bufbase,int32_t sendre
                     init_hexbytes(pubkey,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
                     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld}",np->H.NXTaddr,pubkey,time(NULL));
                     //printf("got argstr.(%s)\n",argstr);
-                    issue_generateToken(0,token,argstr,cp->NXTACCTSECRET);
+                    char pubNXT[64];
+                    expand_nxt64bits(pubNXT,np->mypeerinfo.pubnxtbits);
+                    if ( strcmp(NXTaddr,pubNXT) == 0 )
+                        issue_generateToken(0,token,argstr,cp->NXTACCTSECRET);
+                    else issue_generateToken(0,token,argstr,cp->srvNXTACCTSECRET);
                     token[NXT_TOKEN_LEN] = 0;
                     sprintf(retbuf,"[%s,{\"token\":\"%s\"}]",argstr,token);
                     //printf("send back.(%s)\n",retbuf);
