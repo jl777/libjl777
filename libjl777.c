@@ -310,7 +310,7 @@ char *selectserver_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     copy_cJSON(ipaddr,objs[1]);
     copy_cJSON(port,objs[2]);
     copy_cJSON(secret,objs[3]);
-    if ( sender[0] != 0 && valid > 0 )
+    if ( sender[0] != 0 && valid >= 0 )
     {
         retstr = select_privacyServer(ipaddr,port);
         while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
@@ -338,7 +338,7 @@ char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_
     assetA = get_API_nxt64bits(objs[5]);
     assetB = get_API_nxt64bits(objs[6]);
     printf("PLACE QUOTE polarity.%d dir.%d\n",polarity,dir);
-    if ( sender[0] != 0 && find_raw_orders(obookid) != 0 && valid > 0 )
+    if ( sender[0] != 0 && find_raw_orders(obookid) != 0 && valid >= 0 )
     {
         if ( price != 0. && volume != 0. && dir != 0 )
         {
@@ -398,7 +398,7 @@ char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     char NXTACCTSECRET[512],*retstr = 0;
     amount = get_API_float(objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
-    if ( sender[0] != 0 && amount > 0 && valid > 0 )
+    if ( sender[0] != 0 && amount > 0 && valid >= 0 )
         retstr = sellpNXT(sender,NXTACCTSECRET,amount);
     else retstr = clonestr("{\"error\":\"invalid sellpNXT request\"}");
     return(retstr);
@@ -410,7 +410,7 @@ char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     char NXTACCTSECRET[512],*retstr = 0;
     amount = get_API_float(objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
-    if ( sender[0] != 0 && amount > 0 && valid > 0 )
+    if ( sender[0] != 0 && amount > 0 && valid >= 0 )
         retstr = buypNXT(sender,NXTACCTSECRET,amount);
     else retstr = clonestr("{\"error\":\"invalid buypNXT request\"}");
     return(retstr);
@@ -426,7 +426,7 @@ char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     copy_cJSON(dest,objs[3]);
     level = get_API_int(objs[4],0);
     copy_cJSON(paymentid,objs[5]);
-    if ( sender[0] != 0 && amount > 0 && valid > 0 && dest[0] != 0 )
+    if ( sender[0] != 0 && amount > 0 && valid >= 0 && dest[0] != 0 )
         retstr = send_pNXT(sender,NXTACCTSECRET,amount,level,dest,paymentid);
     else retstr = clonestr("{\"error\":\"invalid send request\"}");
     return(retstr);
@@ -451,7 +451,7 @@ char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
         M = N = 1;
     printf("amount.(%.8f) minage.(%s) %d | M.%d N.%d\n",amount,minage,atoi(minage),M,N);
     cp = get_coin_info(coinstr);
-    if ( cp != 0 && sender[0] != 0 && amount > 0 && valid > 0 && destaddr[0] != 0 )
+    if ( cp != 0 && sender[0] != 0 && amount > 0 && valid >= 0 && destaddr[0] != 0 )
         retstr = teleport(sender,NXTACCTSECRET,(uint64_t)(SATOSHIDEN * amount),destaddr,cp,atoi(minage),M,N);
     else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
     return(retstr);
@@ -466,7 +466,7 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(msg,objs[3]);
     L = (int32_t)get_API_int(objs[4],1);
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
-    if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && destNXTaddr[0] != 0 )
         retstr = sendmessage(L,sender,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
@@ -477,7 +477,7 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     char NXTACCTSECRET[512],senderNXTaddr[256],*retstr = 0;
     copy_cJSON(senderNXTaddr,objs[1]);
     copy_cJSON(NXTACCTSECRET,objs[2]);
-    if ( sender[0] != 0 && valid > 0 )
+    if ( sender[0] != 0 && valid >= 0 )
         retstr = checkmessages(sender,NXTACCTSECRET,senderNXTaddr);
     else retstr = clonestr("{\"result\":\"invalid checkmessages request\"}");
     return(retstr);
@@ -492,7 +492,7 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     printf("getpubkey_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
     if ( valid < 0 )
         return(0);
-    if ( sender[0] != 0 && valid > 0 && addr[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && addr[0] != 0 )
         retstr = getpubkey(sender,NXTACCTSECRET,addr,destcoin);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
     return(retstr);
@@ -507,7 +507,7 @@ char *sendpeerinfo_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     printf("sendpeerinfo_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
     if ( valid < 0 )
         return(0);
-    if ( sender[0] != 0 && valid > 0 && addr[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && addr[0] != 0 )
         retstr = sendpeerinfo(sender,NXTACCTSECRET,addr,destcoin);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
     return(retstr);
@@ -542,7 +542,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
             else printf("unknown.%d coind.(%s)\n",i,coinstr);
         }
     }
-    if ( sender[0] != 0 && valid > 0 && pubNXT[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && pubNXT[0] != 0 )
         retstr = publishaddrs(m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
@@ -562,7 +562,7 @@ char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     qtyB = get_API_float(objs[6]);
     type = get_API_int(objs[7],0);
     
-    if ( sender[0] != 0 && valid > 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
+    if ( sender[0] != 0 && valid >= 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
         retstr = makeoffer(sender,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
@@ -575,7 +575,7 @@ char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,ch
     copy_cJSON(utx,objs[2]);
     copy_cJSON(sig,objs[3]);
     copy_cJSON(full,objs[4]);
-    if ( sender[0] != 0 && valid > 0 )
+    if ( sender[0] != 0 && valid >= 0 )
         retstr = processutx(sender,utx,sig,full);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
@@ -585,7 +585,7 @@ char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
 {
     char signedtx[4096],*retstr = 0;
     copy_cJSON(signedtx,objs[1]);
-    if ( sender[0] != 0 && valid > 0 && signedtx[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && signedtx[0] != 0 )
         retstr = respondtx(sender,signedtx);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
@@ -601,7 +601,7 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     copy_cJSON(NXTACCTSECRET,objs[1]);
     copy_cJSON(code,objs[2]);
     printf("tradebotfunc.(%s) sender.(%s) valid.%d code.(%s)\n",origargstr,sender,valid,code);
-    if ( sender[0] != 0 && valid > 0 && code[0] != 0 )
+    if ( sender[0] != 0 && valid >= 0 && code[0] != 0 )
     {
         len = strlen(code);
         if ( code[0] == '(' && code[len-1] == ')' )
@@ -672,7 +672,7 @@ char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     memset(receipt,0,sizeof(receipt));
     safecopy(receipt,origargstr,sizeof(receipt)-32);
     strcpy(receipt+strlen(receipt)+1,sender);
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 )
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid >= 0 )
         retstr = telepod_received(sender,NXTACCTSECRET,coinstr,crc,ind,height,satoshis,coinaddr,txid,vout,pubkey,privkey,totalcrc,sharei,M,N,otherpubaddr,receipt);
     else retstr = clonestr("{\"error\":\"invalid telepod received\"}");
     return(retstr);
@@ -708,7 +708,7 @@ char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,c
     else M = N = 1;
     copy_cJSON(otherpubaddr,objs[11]);
     printf("transporterstatus_func M.%d N.%d [%s] otherpubaddr.(%s)\n",M,N,sharenrsbuf,otherpubaddr);
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 && n > 0 )
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid >= 0 && n > 0 )
         retstr = transporter_received(sender,NXTACCTSECRET,coinstr,totalcrc,height,value,minage,crcs,n,M,N,sharenrs,otherpubaddr);
     else retstr = clonestr("{\"error\":\"invalid incoming transporter bundle\"}");
     if ( crcs != 0 )
@@ -753,7 +753,7 @@ char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t num
     ind = get_API_int(objs[14],0);
     copy_cJSON(otherpubaddr,objs[15]);
     //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 && num > 0 )
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid >= 0 && num > 0 )
         retstr = got_transporter_status(NXTACCTSECRET,sender,coinstr,status,totalcrc,value,num,crcs,ind,minage,height,sharei,M,N,sharenrs,otherpubaddr);
     else retstr = clonestr("{\"error\":\"invalid incoming transporter status\"}");
     if ( crcs != 0 )
@@ -772,7 +772,7 @@ char *maketelepods_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     value = (SATOSHIDEN * get_API_float(objs[2]));
     copy_cJSON(coinstr,objs[3]);
     //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 )
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid >= 0 )
         retstr = maketelepods(NXTACCTSECRET,sender,coinstr,value);
     else retstr = clonestr("{\"error\":\"invalid maketelepods_func arguments\"}");
     return(retstr);
