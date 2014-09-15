@@ -111,7 +111,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
-    if ( 1 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
+    if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
 }
 
@@ -1197,7 +1197,7 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
-    init_NXTprivacy("");
+    //init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
