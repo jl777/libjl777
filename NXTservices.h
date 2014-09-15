@@ -70,7 +70,7 @@ struct NXT_acct
     
     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
-    uv_stream_t *tcp,*connect,*udp;
+    uv_stream_t *tcp,*connect;
     struct peerinfo mypeerinfo;
     char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64];
 };

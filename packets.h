@@ -77,6 +77,8 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
     init_hexbytes(hexstr,peer->pubkey,sizeof(peer->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
+    init_hexbytes(hexstr,(void *)peer->udp,sizeof(peer->udp));
+    cJSON_AddItemToObject(json,"udp",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
         //printf("got.(%s)\n",coinsjsonstr);
@@ -377,7 +379,7 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("ONIONIZE: np.%p npudp.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->udp,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
+    printf("ONIONIZE: np.%p npudp.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->mypeerinfo.udp,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->mypeerinfo.pubkey,onetime_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -711,10 +713,10 @@ void update_np_connectioninfo(struct NXT_acct *np,int32_t I_am_server,uv_stream_
     {
         extern int Got_Server_UDP;
         Got_Server_UDP = 1;
-        if ( np->udp == 0 )
+        if ( np->mypeerinfo.udp == 0 )
             printf("set UDP.%p %s/%d\n",udp,sender,port);
         np->Uaddr = *addr;
-        np->udp = udp;
+        np->mypeerinfo.udp = udp;
         np->udp_port = port;
         safecopy(np->udp_sender,sender,sizeof(np->udp_sender));
     }
@@ -861,8 +863,8 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
             {
                 expand_nxt64bits(destNXTaddr,destbits);
                 np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                printf("destaddr.(%s) np->udp %p\n",destNXTaddr,np->udp);
-                if ( np->udp != 0 )
+                printf("destaddr.(%s) np->udp %p\n",destNXTaddr,np->mypeerinfo.udp);
+                if ( np->mypeerinfo.udp != 0 )
                 {
                     printf("route packet to NXT.%s\n",destNXTaddr);
                     len = crcize(finalbuf,decoded,len);
@@ -871,11 +873,11 @@ struct NXT_acct *process_packet(char *retjsonstr,struct NXT_acct *np,int32_t I_a
                         printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
                         exit(-1);
                     }
-                    if ( np != 0 && len < 1400 && np->udp != 0 )
+                    if ( np != 0 && len < 1400 && np->mypeerinfo.udp != 0 )
                     {
                         int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                         printf("udpsend finalbuf.%d\n",len);
-                        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+                        portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->mypeerinfo.udp,finalbuf,len,ALLOCWR_ALLOCFREE);
                     }
                     //else sendmessage(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,(char *)decoded,len,destNXTaddr,0);
                     //int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
@@ -950,8 +952,8 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
     else if ( len > 0 )
     {
         outbuf = encodedD;
-        printf("np.%p NXT.%s np->udp %p | destnp.%p destnp_udp.%p\n",np,np!=0?np->H.NXTaddr:"no np",np!=0?np->udp:0,destnp,destnp!=0?destnp->udp:0);
-        if ( np != 0 && np->udp != 0 )
+        printf("np.%p NXT.%s np->udp %p | destnp.%p destnp_udp.%p\n",np,np!=0?np->H.NXTaddr:"no np",np!=0?np->mypeerinfo.udp:0,destnp,destnp!=0?destnp->mypeerinfo.udp:0);
+        if ( np != 0 && np->mypeerinfo.udp != 0 )
         {
             if ( L > 0 )
             {
@@ -962,7 +964,7 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
             outbuf = encodedP;
             sprintf(buf,"{\"status\":\"%s sends via %s encrypted sendmessage to %s pending\"}",verifiedNXTaddr,cp->srvNXTADDR,destNXTaddr);
         }
-        else if ( cp->srvNXTADDR[0] != 0 && destnp->udp != 0 )
+        else if ( cp->srvNXTADDR[0] != 0 && destnp->mypeerinfo.udp != 0 )
         {
             printf("can do direct!\n");
             np = destnp;
@@ -980,7 +982,7 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
             {
                 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
                 printf("udpsend finalbuf.%d\n",len);
-                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+                portable_udpwrite(&np->Uaddr,(uv_udp_t *)np->mypeerinfo.udp,finalbuf,len,ALLOCWR_ALLOCFREE);
             }
             else if ( cp->srvNXTADDR[0] != 0 ) // test to verify this is hub
             {

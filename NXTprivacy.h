@@ -936,7 +936,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
                 }
                 if ( (np= (void *)connect->data) != 0 )
                 {
-                    udp = np->udp;
+                    udp = np->mypeerinfo.udp;
                     if ( udp != 0 )
                     {
                         if ( Got_Server_UDP == 0 )

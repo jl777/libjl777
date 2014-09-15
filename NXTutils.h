@@ -480,7 +480,7 @@ void clear_NXT_networkinfo(struct NXT_acct *np)
         printf("clear_NXT_networkinfo\n");
         np->sentintro = 0;
         np->tcp = 0;
-        np->udp = 0;
+        np->mypeerinfo.udp = 0;
         np->udp_port = 0;
         memset(&np->Uaddr,0,sizeof(np->Uaddr));
         memset(np->udp_sender,0,sizeof(np->udp_sender));

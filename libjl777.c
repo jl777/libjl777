@@ -1034,11 +1034,12 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
         {
             //printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
             for (i=0; i<Numpeers; i++)
-                if ( is_privacyServer(Peers[i]) != 0 && Peers[i]->knowsme == 0 )
+                if ( is_privacyServer(Peers[i]) != 0 && Peers[i]->udp == 0 && Peers[i]->numsent < 3 )
                 {
                     expand_nxt64bits(destNXTaddr,Peers[i]->pubnxtbits);
                     sprintf(jsonstr,"{\"requestType\":\"sendpeerinfo\",\"addr\":\"%s\"}",destNXTaddr);
                     libjl777_JSON(jsonstr);
+                    Peers[i]->numsent++;
                 }
         }
         else if ( parms->mode == NXTPROTOCOL_IDLETIME )
