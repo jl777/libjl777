@@ -1021,11 +1021,21 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
 char *libjl777_JSON(char *JSONstr)
 {
     cJSON *json;
-    char *retstr = 0;
+    char _tokbuf[4096],NXTaddr[64],*cmdstr,*retstr = 0;
+    struct coin_info *cp = get_coin_info("BTCD");
+    int32_t n;
     if ( (json= cJSON_Parse(JSONstr)) != 0 )
     {
-        retstr = pNXT_jsonhandler(&json,JSONstr,0);
+        expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+        cmdstr = cJSON_Print(json);
         free_json(json);
+        n = construct_tokenized_req(_tokbuf,cmdstr,cp->NXTACCTSECRET);
+        if ( (json= cJSON_Parse(_tokbuf)) != 0 )
+        {
+            retstr = pNXT_jsonhandler(&json,_tokbuf,0);
+            free_json(json);
+        }
     }
     if ( retstr == 0 )
         retstr = clonestr("{\"result\":null}");
