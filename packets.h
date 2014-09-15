@@ -898,16 +898,16 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *msg,
         np = get_NXTacct(&createdflag,Global_mp,Global_pNXT->privacyServer_NXTaddr);
         printf("set np <- NXT.%s\n",Global_pNXT->privacyServer_NXTaddr);
     }
-    else
+    else*/
     {
         np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
-        if ( strcmp(Server_NXTaddr,destNXTaddr) == 0 )
+        /*if ( strcmp(cp->srvNXTaddr,destNXTaddr) == 0 )
         {
             queue_message(np,msg,origargstr);
             sprintf(buf,"{\"result\":\"msg.(%s) from NXT.%s queued\"}",msg,verifiedNXTaddr);
             return(clonestr(buf));
-        }
-    }*/
+        }*/
+    }
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     memset(finalbuf,0,sizeof(finalbuf));
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
