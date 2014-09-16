@@ -12,19 +12,32 @@ sudo apt-get install libcurl4-gnutls-dev
 sudo apt-get install libnacl-dev
 
 git clone https://github.com/joyent/libuv
+
 cd libuv; sh autogen.sh; ./configure; make; make check; sudo make install
+
+To build libnacl.a and randombytes.o:
+
+wget http://hyperelliptic.org/nacl/nacl-20090405.tar.bz2
+
+bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -
+
+cd nacl-20090405
+
+./do 
+
+This will make it in the build directory
+ 
 
 Now all the required libraries should be in the system
 there is a shell script "m"
 ./m
 
-That should build libjl777.so
-copy it to /usr/lib or wherever the linker is looking for it and you can link your project against it
+That should build libjl777.a
+copy it to your project directory
 
-make sure to add -ljl777 libuv.a randombytes.o -lnacl -lm -ldl to the linker line
+make sure to add the following to the linker line: libjl777.a libuv.a libnacl.a -lcurl -lm -ldl 
 
 libuv.a is from /usr/local/lib
-randombytes.o is from libnacl
 
 
 You might have to update boost:
