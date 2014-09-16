@@ -1,6 +1,6 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -fPIC -fms-extensions -mcmodel=large
-LIBS=-lm -lreadline -mcmodel=large
+CFLAGS=-Wall -pedantic -g -fPIC
+LIBS=-lm -lreadline 
 
 TARGET	= picoc
 SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
