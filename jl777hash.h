@@ -353,19 +353,19 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
         ptr->hp_ptr = hp_ptr;
         ptr->key = key;
         ptr->funcid = 'A';
-        //while ( Global_mp->hashprocessing != 0 )
-        //    usleep(100);
-        //Global_mp->hashprocessing = 1;
+        while ( Global_mp->hashprocessing != 0 )
+            usleep(100);
+        Global_mp->hashprocessing = 1;
         //printf("A Queue %p\n",ptr);
         queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
         //printf("A Queued %p\n",ptr);
-        //Global_mp->hashprocessing = 0;
-        //portable_mutex_unlock(&Global_mp->hash_mutex);
         while ( ptr->doneflag == 0 )
-            usleep(100);
+            usleep(1);
         //printf("A Done %p\n",ptr);
         result = ptr->result;
         free(ptr);
+        Global_mp->hashprocessing = 0;
+       // portable_mutex_unlock(&Global_mp->hash_mutex);
         return(result);
     }
 }
@@ -384,19 +384,19 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
         ptr->hp_ptr = hp_ptr;
         ptr->key = key;
         ptr->funcid = 'S';
-        //while ( Global_mp->hashprocessing != 0 )
-        //    usleep(100);
-        //Global_mp->hashprocessing = 1;
+        while ( Global_mp->hashprocessing != 0 )
+            usleep(100);
+        Global_mp->hashprocessing = 1;
         //printf("B Queue %p\n",ptr);
         queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
-        //Global_mp->hashprocessing = 0;
-        //portable_mutex_unlock(&Global_mp->hash_mutex);
         //printf("B Queued %p\n",ptr);
         while ( ptr->doneflag == 0 )
             usleep(1);
         //printf("B Done %p\n",ptr);
         hashval = ptr->hashval;
         free(ptr);
+        Global_mp->hashprocessing = 0;
+        //portable_mutex_unlock(&Global_mp->hash_mutex);
         return(hashval);
     }
 }
@@ -408,7 +408,7 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
     while ( 1 )//Historical_done == 0 )
     {
         usleep(1 + Historical_done*1000);
-        portable_mutex_lock(&Global_mp->hash_mutex);
+        //portable_mutex_lock(&Global_mp->hash_mutex);
         //Global_mp->hashprocessing = 1;
         for (iter=0; iter<2; iter++)
         {
@@ -427,7 +427,7 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
             }
         }
         //Global_mp->hashprocessing = 0;
-        portable_mutex_unlock(&Global_mp->hash_mutex);
+        //portable_mutex_unlock(&Global_mp->hash_mutex);
     }
     printf("finished processing hashtable MT queues\n");
     exit(0);

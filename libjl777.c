@@ -1117,7 +1117,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
     char txidstr[64];
     char retjsonstr[4096],*retstr;
     uint64_t obookid;
-    //display_orderbook_tx((struct orderbook_tx *)packet);
+    printf("gotpacket\n");
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
     strcpy(retjsonstr,"{\"result\":null}");
