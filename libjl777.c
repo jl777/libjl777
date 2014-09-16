@@ -1004,7 +1004,8 @@ char *libjl777_JSON(char *JSONstr)
     cJSON *json;
     char NXTaddr[64],*cmdstr,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
-    if ( (json= cJSON_Parse(JSONstr)) != 0 )
+    printf("got JSON.(%s)\n",JSONstr);
+    if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
