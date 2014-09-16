@@ -2,8 +2,10 @@ cd libuv
 sh autogen.sh
 ./configure
 cd ..
+echo "expanding nacl"
 bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -;
 cd nacl-20090405;
+echo "compiling nacl, this will take some time"
 ./do
 cd ..
 echo "randombytes.o and libnacl.a are in the build directory of nacl-20090405"
