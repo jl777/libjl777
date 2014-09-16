@@ -463,6 +463,7 @@ uv_udp_t *open_udp(struct sockaddr *addr)
     return(udp);
 }
 
+int Got_Server_UDP,Servers_started;
 void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
 {
     void *srv;
@@ -488,6 +489,7 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
         if ( srv != 0 )
             printf("UDP.%p server started on port %d\n",srv,port);
         else printf("couldnt open_udp on port.%d\n",port);
+        Servers_started |= 2;
         return(srv);
     }
     srv = malloc(sizeof(uv_tcp_t));
@@ -509,6 +511,7 @@ void *start_libuv_server(int32_t ip4_or_ip6,int port,void *handler)
         fprintf(stderr,"Listen error %d %s\n",r,uv_err_name(r));
         return(0);
     }
+    Servers_started |= 1;
     printf("TCP server started on port %d\n",port);
     return(srv);
 }
@@ -816,7 +819,6 @@ int32_t start_libuv_servers(uv_tcp_t **tcp,uv_udp_t **udp,int32_t ip4_or_ip6,int
     return(0);
 }
 
-int Got_Server_UDP,Servers_started;
 void NXTprivacy_idler(uv_idle_t *handle)
 {
     void set_pNXT_privacyServer(uint64_t privacyServer);
@@ -838,8 +840,8 @@ void NXTprivacy_idler(uv_idle_t *handle)
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
     void teleport_idler();
-    //if ( Servers_started == 0 )
-    //    return;
+    if ( Servers_started != 3 )
+        return;
     usleep(5000);
     if ( TCPserver_closed > 0 )
     {
@@ -865,6 +867,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
 //#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
+        printf("Servers_started.%d\n",Servers_started);
         teleport_idler();
         if ( privacyServer == 0 )
             privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer:get_random_privacyServer(whitelist,blacklist);
@@ -985,7 +988,6 @@ void init_NXTprivacy(void *ptr)
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);
-    Servers_started = 1;
 }
 
 

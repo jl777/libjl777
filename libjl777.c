@@ -1204,7 +1204,6 @@ int libjl777_start(char *JSON_or_fname)
     printf("call init_NXTservices\n");
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
-    init_NXTprivacy("");
 	while ( Finished_loading == 0 )
         sleep(1);
     void *Coinloop(void *arg);
@@ -1217,6 +1216,7 @@ int libjl777_start(char *JSON_or_fname)
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
         sleep(1);
+    init_NXTprivacy("");
     Finished_init = 1;
     return(0);
 }
