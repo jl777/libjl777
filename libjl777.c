@@ -1191,7 +1191,7 @@ int libjl777_start(char *JSON_or_fname)
     Global_mp = calloc(1,sizeof(*Global_mp));
     printf("libjl777_start(%s)\n",JSON_or_fname);
     
-return(0);
+//return(0);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
     {
