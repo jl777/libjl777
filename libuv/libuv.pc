@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=/usr/local
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libuv
+Version: 0.11.25
+Description: multi-platform support library with a focus on asynchronous I/O.
+
+Libs: -L${libdir} -luv -lrt -lpthread -lnsl -ldl 
+Cflags: -I${includedir}
