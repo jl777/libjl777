@@ -776,7 +776,7 @@ void *Coinloop(void *ptr)
         {
             //printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
             load_telepods(cp,maxnofile);
-            if ( strcmp(cp->name,"BTCD") == 0 )
+            /*if ( strcmp(cp->name,"BTCD") == 0 )
             {
                 char *str;
                 char *select_privacyServer(char *ipaddr,char *portstr);
@@ -789,7 +789,7 @@ void *Coinloop(void *ptr)
                    }
 
               //make_traceable_telepod(cp,"BTCD",cp->ciphersobj,SATOSHIDEN/10);
-            }
+            }*/
             //printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
         }
     }
