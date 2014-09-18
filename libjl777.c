@@ -792,12 +792,12 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
-    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", "L", 0 };
+    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "", "NXT", "dest", "secret", "msg", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
     //static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
@@ -891,9 +891,10 @@ again:
         if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
         {
             safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
-            if ( secretobj == 0 )
-                cJSON_AddItemToObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
-            else cJSON_ReplaceItemInObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //if ( secretobj == 0 )
+            //    cJSON_AddItemToObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //else
+                cJSON_ReplaceItemInObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
             //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
         }
         parmstxt = cJSON_Print(*argjsonp);
