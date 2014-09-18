@@ -1008,9 +1008,9 @@ char *libjl777_JSON(char *JSONstr)
             //else cJSON_ReplaceItemInObject(json,"secret",cJSON_CreateString(NXTACCTSECRET));
             //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
         }
+        cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
-            cmdstr = cJSON_Print(json);
             stripwhite_ns(cmdstr,strlen(cmdstr));
             issue_generateToken(0,encoded,cmdstr,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
