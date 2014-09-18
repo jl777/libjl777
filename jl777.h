@@ -194,12 +194,19 @@ struct NXT_str
     union { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
 };
 
+struct Uaddr
+{
+    struct sockaddr addr;
+    uint32_t numsent,numrecv,lastcontact;
+    float metric;
+};
+
 struct peerinfo
 {
     uint64_t srvnxtbits,pubnxtbits,coins[4];
-    uv_stream_t *udp;
+    struct Uaddr *Uaddrs;
     uint32_t srvipbits,numsent,numrecv;
-    uint16_t srvport;
+    uint16_t srvport,numUaddrs;
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
     char pubBTCD[36],pubBTC[36];
 };
@@ -216,13 +223,14 @@ struct NXThandler_info
     queue_t hashtable_queue[2];
     struct hashtable **NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep;
     cJSON *accountjson;
+    uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
     uint64_t *privacyServers,coins[4];
     CURL *curl_handle,*curl_handle2,*curl_handle3;
     portable_tcp_t Punch_tcp;
-    uv_udp_t Punch_udp;
+    //uv_udp_t Punch_udp;
     int32_t initassets,Lfactor;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers;
@@ -357,7 +365,7 @@ char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
 
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
-uint64_t call_libjl777_broadcast(char *msg,int32_t duration);
+uint64_t call_libjl777_broadcast(char *destip,char *msg,int32_t len,int32_t duration);
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
 
 #include "NXTservices.h"
@@ -365,6 +373,7 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
 #include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
-#include "NXTprivacy.h"
+#include "packets.h"
+#include "udp.h"
 
 #endif

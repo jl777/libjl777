@@ -139,7 +139,6 @@ int _decreasing_signedint64(const void *a,const void *b)
 #undef int_b
 }
 
-
 static int _decreasing_double(const void *a,const void *b)
 {
 #define double_a (*(double *)a)
@@ -164,6 +163,12 @@ static int _increasing_double(const void *a,const void *b)
 	return(0);
 #undef double_a
 #undef double_b
+}
+
+int32_t revsortfs(float *buf,uint32_t num,int32_t size)
+{
+	qsort(buf,num,size,_decreasing_float);
+	return(0);
 }
 
 int32_t revsortds(double *buf,uint32_t num,int32_t size)

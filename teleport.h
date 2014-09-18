@@ -286,12 +286,19 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
     return(0);
 }
 
-void teleport_idler()
+void teleport_idler(uv_idle_t *handle)
 {
+    static double lastattempt;
+    double millis;
     //printf("teleport_idler\n");
-    process_pingpong_queue(&Transporter_sendQ,0);
-    process_pingpong_queue(&Transporter_recvQ,0);
-    process_pingpong_queue(&CloneQ,0);
+    millis = ((double)uv_hrtime() / 1000000);
+    if ( millis > (lastattempt + 500) )
+    {
+        process_pingpong_queue(&Transporter_sendQ,0);
+        process_pingpong_queue(&Transporter_recvQ,0);
+        process_pingpong_queue(&CloneQ,0);
+        lastattempt = millis;
+    }
 }
 
 void init_Teleport()

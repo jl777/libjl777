@@ -68,11 +68,10 @@ struct NXT_acct
     queue_t incomingQ;
     char *signedtx;
     
-    struct sockaddr Uaddr,addr;
-    uint16_t udp_port,tcp_port;
-    uv_stream_t *tcp,*connect;
+    //uint16_t udp_port;
+    //uv_stream_t *tcp,*connect;
     struct peerinfo mypeerinfo;
-    char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64];
+    char dispname[128],NXTACCTSECRET[128];//,udp_sender[64];//,tcp_sender[64];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 

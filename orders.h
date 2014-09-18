@@ -635,6 +635,27 @@ char *sendpeerinfo(char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destco
     } else return(clonestr("{\"error\":\"sendpeerinfo cant find pubaddr\"}"));
 }
 
+uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
+{
+    struct coin_info *cp;
+    char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
+    int32_t len;
+    init_hexbytes(hexstr,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
+    if ( np != 0 )
+    {
+        BTCDaddr = np->mypeerinfo.pubBTCD;
+        BTCaddr = np->mypeerinfo.pubBTC;
+    } else BTCDaddr = BTCaddr = "";
+    if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
+    {
+        _coins_jsonstr(coinsjson,coins);
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
+        len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
+        return(call_libjl777_broadcast(0,packet,len+1,PUBADDRS_MSGDURATION));
+    } else printf("broadcast_publishpacket error: no public nxt addr\n");
+    return(-1);
+}
+
 char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
 {
     int32_t createdflag;
@@ -909,20 +930,10 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         }
         n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
         othernp->signedtx = clonestr(signedtx);
-        return(sendmessage(0,verifiedNXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
+        return(sendmessage(0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));
-}
-
-uint64_t calc_txid(unsigned char *hash,long hashsize)
-{
-    uint64_t txid = 0;
-    if ( hashsize >= sizeof(txid) )
-        memcpy(&txid,hash,sizeof(txid));
-    else memcpy(&txid,hash,hashsize);
-    //printf("calc_txid.(%llu)\n",(long long)txid);
-    return(txid);
 }
 
 uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
@@ -936,7 +947,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
     return(0);
 }
 
-uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
+/*uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
     char retjsonstr[4096];
@@ -949,7 +960,7 @@ uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char
     txid = calc_txid(hash,hashsize);
     if ( is_encrypted_packet(tx,size) != 0 )
     {
-        process_packet(retjsonstr,0,0,tx,size,0,0,0,0,0);
+        process_packet(retjsonstr,tx,size,0,0,0,0);
     }
     else
     {
@@ -968,6 +979,6 @@ void remove_jl777_tx(void *tx,int32_t size)
     printf("C remove_jl777_tx.%p size.%d\n",tx,size);
     if ( (obookid= is_orderbook_tx(tx,size)) != 0 )
         update_orderbook_tx(-1,obookid,(struct orderbook_tx *)tx,0);
-}
+}*/
 
 #endif

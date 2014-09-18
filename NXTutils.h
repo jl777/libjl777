@@ -473,19 +473,42 @@ struct NXT_acct *search_addresses(char *addr)
     return(0);
 }
 
-void clear_NXT_networkinfo(struct NXT_acct *np)
+uint64_t calc_txid(unsigned char *hash,long hashsize)
 {
-    if ( np != 0 )
+    uint64_t txid = 0;
+    if ( hashsize >= sizeof(txid) )
+        memcpy(&txid,hash,sizeof(txid));
+    else memcpy(&txid,hash,hashsize);
+    //printf("calc_txid.(%llu)\n",(long long)txid);
+    return(txid);
+}
+
+int server_address(char *server,int port,struct sockaddr_in *addr)
+{
+    struct hostent *hp = gethostbyname(server);
+    if ( hp == NULL )
     {
-        printf("clear_NXT_networkinfo\n");
-        np->sentintro = 0;
-        np->tcp = 0;
-        np->mypeerinfo.udp = 0;
-        np->udp_port = 0;
-        memset(&np->Uaddr,0,sizeof(np->Uaddr));
-        memset(np->udp_sender,0,sizeof(np->udp_sender));
-        np->connect = 0;
+        perror("gethostbyname");
+        return -1;
     }
+    addr->sin_port = htons(port);
+    addr->sin_family = AF_INET;
+    memcpy(&addr->sin_addr.s_addr, hp->h_addr, hp->h_length);
+    return(0);
+}
+
+uint16_t extract_nameport(char *name,long namesize,struct sockaddr_in *addr)
+{
+    int32_t r;
+    uint16_t port;
+    if ( (r= uv_ip4_name(addr,name,namesize)) != 0 )
+    {
+        fprintf(stderr,"uv_ip4_name error %d (%s)\n",r,uv_err_name(r));
+        return(0);
+    }
+    port = ntohs(addr->sin_port);
+    //printf("sender.(%s) port.%d\n",name,port);
+    return(port);
 }
 
 struct NXT_acct *find_NXTacct(char *NXTaddr,char *NXTACCTSECRET)
@@ -1571,5 +1594,123 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
         fclose(fp);
     }
     else fclose(fp);
+}
+
+int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET,char *ipaddr,uint32_t port)
+{
+    int32_t createdflag;
+    struct NXT_acct *np;
+    char argstr[1024],pubkey[1024],token[1024];
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    init_hexbytes(pubkey,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
+    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
+    //printf("got argstr.(%s)\n",argstr);
+    issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
+    token[NXT_TOKEN_LEN] = 0;
+    sprintf(jsonstr,"[%s,{\"token\":\"%s\"}]",argstr,token);
+    //printf("tokenized.(%s)\n",jsonstr);
+    return((int32_t)strlen(jsonstr));
+}
+
+int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
+{
+    cJSON *array=0,*firstitem=0,*tokenobj,*obj;
+    int64_t timeval,diff = 0;
+    int32_t valid,retcode = -13;
+    char buf[4096],sender[64],*firstjsontxt = 0;
+    unsigned char encoded[4096];
+    array = cJSON_Parse(tokenizedtxt);
+    if ( array == 0 )
+    {
+        printf("couldnt validate.(%s)\n",tokenizedtxt);
+        return(-2);
+    }
+    if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
+    {
+        firstitem = cJSON_GetArrayItem(array,0);
+        if ( pubkey != 0 )
+        {
+            obj = cJSON_GetObjectItem(firstitem,"pubkey");
+            copy_cJSON(pubkey,obj);
+        }
+        obj = cJSON_GetObjectItem(firstitem,"NXT"), copy_cJSON(buf,obj);
+        if ( NXTaddr[0] != 0 && strcmp(buf,NXTaddr) != 0 )
+            retcode = -3;
+        else
+        {
+            strcpy(NXTaddr,buf);
+            if ( strictflag != 0 )
+            {
+                timeval = get_cJSON_int(firstitem,"time");
+                diff = timeval - time(NULL);
+                if ( diff < 0 )
+                    diff = -diff;
+                if ( diff > strictflag )
+                {
+                    printf("time diff %lld too big %lld vs %ld\n",(long long)diff,(long long)timeval,time(NULL));
+                    retcode = -5;
+                }
+            }
+            if ( retcode != -5 )
+            {
+                firstjsontxt = cJSON_Print(firstitem), stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
+                tokenobj = cJSON_GetArrayItem(array,1);
+                obj = cJSON_GetObjectItem(tokenobj,"token");
+                copy_cJSON((char *)encoded,obj);
+                memset(sender,0,sizeof(sender));
+                valid = -1;
+                if ( issue_decodeToken(curl_handle,sender,&valid,firstjsontxt,encoded) > 0 )
+                {
+                    if ( NXTaddr[0] == 0 )
+                        strcpy(NXTaddr,sender);
+                    if ( strcmp(sender,NXTaddr) == 0 )
+                    {
+                        printf("signed by valid NXT.%s valid.%d diff.%lld\n",sender,valid,(long long)diff);
+                        retcode = valid;
+                    }
+                    else
+                    {
+                        printf("diff sender.(%s) vs NXTaddr.(%s)\n",sender,NXTaddr);
+                        if ( strcmp(NXTaddr,buf) == 0 )
+                            retcode = valid;
+                    }
+                }
+                if ( retcode < 0 )
+                    printf("err: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld, buf.(%s)\n",sender,NXTaddr,valid,(long long)diff,buf);
+                free(firstjsontxt);
+            }
+        }
+    }
+    if ( array != 0 )
+        free_json(array);
+    return(retcode);
+}
+
+char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt)
+{
+    long len;
+    unsigned char encoded[NXT_TOKEN_LEN+1];
+    cJSON *secondobj,*tokenobj,*parmsobj;
+    if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
+    {
+        secondobj = cJSON_GetArrayItem(*argjsonp,1);
+        tokenobj = cJSON_GetObjectItem(secondobj,"token");
+        copy_cJSON((char *)encoded,tokenobj);
+        parmsobj = cJSON_DetachItemFromArray(*argjsonp,0);
+        if ( parmstxt != 0 )
+            free(parmstxt);
+        parmstxt = cJSON_Print(parmsobj);
+        len = strlen(parmstxt);
+        stripwhite_ns(parmstxt,len);
+        
+        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+        if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
+            issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
+        if ( *argjsonp != 0 )
+            free_json(*argjsonp);
+        *argjsonp = parmsobj;
+        return(parmstxt);
+    }
+    return(0);
 }
 #endif

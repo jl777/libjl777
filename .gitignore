@@ -7,3 +7,11 @@ src/src/libcommon.a
 src/src/CMakeFiles/wallet.dir/link.txt
 
 u
+
+libs/macosx/libcurl.dylib
+
+libs/macosx/randombytes.o
+
+NXTprivacy copy.h
+
+packets copy.h
