@@ -883,7 +883,7 @@ again:
     if ( verifiedsender != 0 && verifiedsender[0] != 0 )
         safecopy(sender,verifiedsender,sizeof(sender));
     valid = -1;
-printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
+//printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
     if ( *argjsonp != 0 )
     {
         secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
@@ -990,18 +990,32 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
 
 char *libjl777_JSON(char *JSONstr)
 {
-    cJSON *json;
-    char NXTaddr[64],*cmdstr,*retstr = 0;
+    cJSON *json,*secretobj;
+    char NXTaddr[64],NXTACCTSECRET[1024],_tokbuf[4096],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-        cmdstr = cJSON_Print(json);
+        secretobj = cJSON_GetObjectItem(json,"secret");
+        copy_cJSON(NXTACCTSECRET,secretobj);
+        if ( NXTACCTSECRET[0] == 0 && cp != 0 )
+        {
+            safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+            //if ( secretobj == 0 )
+            //    cJSON_AddItemToObject(json,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //else cJSON_ReplaceItemInObject(json,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
+        }
         if ( cmdstr != 0 )
         {
-            retstr = pNXT_jsonhandler(&json,cmdstr,NXTaddr);
+            cmdstr = cJSON_Print(json);
+            stripwhite_ns(cmdstr,strlen(cmdstr));
+            issue_generateToken(0,encoded,cmdstr,NXTACCTSECRET);
+            encoded[NXT_TOKEN_LEN] = 0;
+            sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
+            retstr = pNXT_jsonhandler(&json,_tokbuf,NXTaddr);
             free(cmdstr);
         }
         free_json(json);
