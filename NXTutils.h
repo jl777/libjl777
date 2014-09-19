@@ -1691,6 +1691,8 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
     long len;
     unsigned char encoded[NXT_TOKEN_LEN+1];
     cJSON *secondobj,*tokenobj,*parmsobj;
+    *validp = -2;
+    sender[0] = 0;
     if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
     {
         secondobj = cJSON_GetArrayItem(*argjsonp,1);
@@ -1703,7 +1705,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
         
-        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+        printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
         if ( *argjsonp != 0 )
