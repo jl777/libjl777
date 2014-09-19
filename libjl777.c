@@ -226,7 +226,7 @@ int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
     return(quantity);
 }
 
-char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *orderbook_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t i,polarity,allflag;
     uint64_t obookid;
@@ -277,7 +277,7 @@ char *orderbook_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
-char *getorderbooks_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getorderbooks_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     char *retstr = 0;
@@ -370,17 +370,17 @@ char *placequote_func(int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_
     return(retstr);
 }
 
-char *placebid_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *placebid_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     return(placequote_func(1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *placeask_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *placeask_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     return(placequote_func(-1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sellpNXT_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char NXTACCTSECRET[512],*retstr = 0;
@@ -392,7 +392,7 @@ char *sellpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *buypNXT_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char NXTACCTSECRET[512],*retstr = 0;
@@ -404,7 +404,7 @@ char *buypNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     return(retstr);
 }
 
-char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendpNXT_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     int32_t level;
@@ -420,7 +420,7 @@ char *sendpNXT_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *teleport_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     int32_t M,N;
@@ -445,7 +445,7 @@ char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendmsg_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],destNXTaddr[256],msg[1024],*retstr = 0;
     int32_t L;
@@ -455,12 +455,16 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     L = (int32_t)get_API_int(objs[4],1);
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
-        retstr = sendmessage(L,sender,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
+    {
+        if ( received != 0 )
+            printf("received message.(%s)\n",origargstr);
+        else retstr = sendmessage(L,sender,origargstr,(int32_t)strlen(origargstr)+1,destNXTaddr,origargstr);
+    }
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
 }
 
-char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *checkmsg_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],senderNXTaddr[256],*retstr = 0;
     copy_cJSON(senderNXTaddr,objs[1]);
@@ -471,7 +475,7 @@ char *checkmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getpubkey_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],addr[256],destcoin[512],*retstr = 0;
     copy_cJSON(addr,objs[1]);
@@ -486,7 +490,7 @@ char *getpubkey_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
-char *sendpeerinfo_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendpeerinfo_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],addr[256],destcoin[512],*retstr = 0;
     copy_cJSON(addr,objs[1]);
@@ -501,7 +505,7 @@ char *sendpeerinfo_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     return(retstr);
 }
 
-char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *publishaddrs_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],pubNXT[1024],pubkey[1024],BTCDaddr[1024],BTCaddr[1024],*retstr = 0;
     char srvNXTaddr[512],srvipaddr[512],srvport[512],coinstr[512];
@@ -536,7 +540,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     return(retstr);
 }
 
-char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *makeoffer_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t assetA,assetB;
     double qtyA,qtyB;
@@ -556,7 +560,7 @@ char *makeoffer_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
-char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *processutx_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char NXTACCTSECRET[512],utx[4096],full[1024],sig[1024],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
@@ -569,7 +573,7 @@ char *processutx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,ch
     return(retstr);
 }
 
-char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *respondtx_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char signedtx[4096],*retstr = 0;
     copy_cJSON(signedtx,objs[1]);
@@ -579,7 +583,7 @@ char *respondtx_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,cha
     return(retstr);
 }
 
-char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *tradebot_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf;
     static int64_t filelen,allocsize;
@@ -631,7 +635,7 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
     return(retstr);
 }
 
-char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *telepod_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t satoshis;
     struct coin_info *cp;
@@ -666,7 +670,7 @@ char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     return(retstr);
 }
 
-char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *transporter_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
     struct coin_info *cp;
@@ -704,7 +708,7 @@ char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,c
     return(retstr);
 }
 
-char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *transporterstatus_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
     cJSON *array;
@@ -749,7 +753,7 @@ char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t num
     return(retstr);
 }
 
-char *maketelepods_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *maketelepods_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
     struct coin_info *cp;
@@ -766,7 +770,7 @@ char *maketelepods_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     return(retstr);
 }
 
-char *getpeers_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getpeers_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     char numstr[512],*jsonstr = 0;
@@ -781,7 +785,7 @@ char *getpeers_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 }
 
 // add create telepod
-char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V", "NXT", "secret", "only_privacyServer", 0 };
     static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "NXT", "secret", "amount", "coin", 0 };
@@ -845,7 +849,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             }
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
-            retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3,origargstr);
+            retstr = (*(json_handler)cmdinfo[0])(received,sender,valid,objs,j-3,origargstr);
             if ( 0 && retstr != 0 )
                 printf("json_handler returns.(%s)\n",retstr);
             return(retstr);
@@ -854,10 +858,10 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     return(0);
 }
 
-char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+/*char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
     return(pNXT_json_commands(Global_mp,Global_pNXT,argjson,sender,valid,origargstr));
-}
+}*/
 
 char *remove_secret(cJSON **argjsonp,char *parmstxt)
 {
@@ -1011,7 +1015,7 @@ char *libjl777_JSON(char *JSONstr)
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
             array = cJSON_Parse(_tokbuf);
             cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,cmdstr);
-            retstr = pNXT_json_commands(Global_mp,Global_pNXT,array,NXTaddr,valid,cmdstr);
+            retstr = pNXT_json_commands(Global_mp,0,array,NXTaddr,valid,cmdstr);
             if ( cmdstr != 0 )
             {
                 printf("parms.(%s) valid.%d\n",cmdstr,valid);
@@ -1174,7 +1178,7 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
             int32_t valid;
             char verifiedNXTaddr[64],*cmdstr;
             cmdstr = verify_tokenized_json(verifiedNXTaddr,&valid,&json,0);
-            retstr = pNXT_json_commands(Global_mp,Global_pNXT,json,verifiedNXTaddr,valid,cmdstr);
+            retstr = pNXT_json_commands(Global_mp,1,json,verifiedNXTaddr,valid,cmdstr);
             if ( cmdstr != 0 )
             {
                 printf("got parms.(%s) valid.%d\n",cmdstr,valid);

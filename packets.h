@@ -651,8 +651,8 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                char *issue_pNXT_json_commands(cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                jsonstr = issue_pNXT_json_commands(argjson,tokenized_np->H.NXTaddr,valid,parmstxt);
+                char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+                jsonstr = pNXT_json_commands(Global_mp,1,argjson,tokenized_np->H.NXTaddr,valid,(char *)decoded);
                 if ( jsonstr != 0 )
                 {
                     strcpy(retjsonstr,jsonstr);

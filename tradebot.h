@@ -541,7 +541,7 @@ int32_t init_tradebots(cJSON *tradebot_languages)
     uv_lib_t lib;
     void *compiler,*runtime;
     char dyldfname[1024],*langname;
-    register_tradebot_language("ptl",pico_tradebot_compiler,pico_tradebot_runtime);
+    //register_tradebot_language("ptl",pico_tradebot_compiler,pico_tradebot_runtime);
     if ( tradebot_languages != 0 && is_cJSON_Array(tradebot_languages) != 0 )
     {
         n = cJSON_GetArraySize(tradebot_languages);
@@ -560,7 +560,9 @@ int32_t init_tradebots(cJSON *tradebot_languages)
                         if ( uv_dlsym(&lib,"compiler",&compiler) == 0 )
                         {
                             if ( uv_dlsym(&lib,"runtime",&runtime) == 0 )
-                                register_tradebot_language(langname,compiler,runtime);
+                            {
+                                //register_tradebot_language(langname,compiler,runtime);
+                            }
                             else printf("error (%s) trying to find runtime (%s)\n",uv_dlerror(&lib),dyldfname);
                         } else printf("error (%s) trying to find compiler (%s)\n",uv_dlerror(&lib),dyldfname);
                     } else printf("error (%s) trying to find langname (%s)\n",uv_dlerror(&lib),dyldfname);
