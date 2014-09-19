@@ -108,6 +108,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     struct coin_info *cp = get_coin_info("BTCD");
     char sender[256],retjsonstr[4096],NXTaddr[64],*retstr;
     retjsonstr[0] = 0;
+    printf("UDP RECEIVED\n");
     if ( cp != 0 && nread > 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
