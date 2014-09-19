@@ -828,9 +828,9 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
         //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
         if ( strcmp(cmdinfo[1],command) == 0 )
         {
-            if ( cmdinfo[2][0] != 0 )
+            if ( cmdinfo[2][0] != 0 && valid <= 0 )
             {
-                if ( NXTaddr[0] == 0 )
+                /*if ( NXTaddr[0] == 0 )
                     strcpy(NXTaddr,sender);
                 // jl777 the following is messed up
                 if ( sender[0] == 0 || valid == 0 || strcmp(NXTaddr,sender) != 0 )//&& strcmp(sender,Global_pNXT->privacyServer_NXTaddr) != 0) )
@@ -840,7 +840,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
                         printf("verification valid.%d missing for %s sender.(%s) vs NXT.(%s)\n",valid,cmdinfo[1],sender,NXTaddr);
                         return(0);
                     }
-                }
+                }*/
+                return(0);
             }
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
@@ -991,9 +992,9 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
 
 char *libjl777_JSON(char *JSONstr)
 {
-    cJSON *json;
+    cJSON *json,*array;
     int32_t valid;
-    char NXTaddr[64],_tokbuf[4096],encoded[NXT_TOKEN_LEN+1],*cmdstr,*parmstxt,*retstr = 0;
+    char NXTaddr[64],_tokbuf[4096],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
@@ -1007,14 +1008,14 @@ char *libjl777_JSON(char *JSONstr)
             issue_generateToken(0,encoded,cmdstr,cp->NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
-            parmstxt = verify_tokenized_json(NXTaddr,&valid,&json,parmstxt);
-            if ( parmstxt != 0 )
+            array = cJSON_Parse(_tokbuf);
+            cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,cmdstr);
+            retstr = pNXT_json_commands(Global_mp,Global_pNXT,array,NXTaddr,valid,cmdstr);
+            if ( cmdstr != 0 )
             {
-                printf("parms.(%s) valid.%d\n",parmstxt,valid);
-                free(parmstxt);
+                printf("parms.(%s) valid.%d\n",cmdstr,valid);
+                free(cmdstr);
             }
-            retstr = pNXT_jsonhandler(&json,_tokbuf,NXTaddr);
-            free(cmdstr);
         }
         free_json(json);
     }

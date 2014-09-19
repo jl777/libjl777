@@ -1712,7 +1712,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
             free_json(*argjsonp);
         *argjsonp = parmsobj;
         return(parmstxt);
-    }
+    } else printf("verify_tokenized_json not array of 2\n");
     return(0);
 }
 #endif
