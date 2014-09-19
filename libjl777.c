@@ -1089,6 +1089,16 @@ uint64_t call_libjl777_broadcast(char *destip,char *msg,int32_t len,int32_t dura
     }
     else
     {
+        char *cmdstr,NXTaddr[64];
+        cJSON *array;
+        int32_t valid;
+        array = cJSON_Parse(msg);
+        cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,cmdstr);
+        if ( cmdstr != 0 )
+        {
+            printf("BROADCAST parms.(%s) valid.%d\n",cmdstr,valid);
+            free(cmdstr);
+        }
         printf("BROADCAST.(%s) txid.%llu\n",msg,(long long)txid);
         if ( libjl777_broadcast(msg,duration) == 0 )
             return(txid);
