@@ -785,7 +785,7 @@ char *getpeers_func(int32_t received,char *sender,int32_t valid,cJSON **objs,int
 }
 
 // add create telepod
-char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
+char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V", "NXT", "secret", "only_privacyServer", 0 };
     static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "NXT", "secret", "amount", "coin", 0 };
@@ -812,11 +812,14 @@ char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argj
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
     static char **commands[] = { sendpeerinfo, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport  };
     int32_t i,j;
-    cJSON *obj,*nxtobj,*objs[64];
+    cJSON *argjson,*obj,*nxtobj,*objs[64];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
     memset(objs,0,sizeof(objs));
     command[0] = 0;
     memset(NXTaddr,0,sizeof(NXTaddr));
+    if ( is_cJSON_Array(origargjson) != 0 )
+        argjson = cJSON_GetArrayItem(origargjson,0);
+    else argjson = origargjson;
     if ( argjson != 0 )
     {
         obj = cJSON_GetObjectItem(argjson,"requestType");
