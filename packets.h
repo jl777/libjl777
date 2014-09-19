@@ -702,16 +702,7 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char 
     memset(encodedL,0,sizeof(encodedL)); // encoded to max L onion layers
     memset(encodedP,0,sizeof(encodedP)); // encoded to privacyserver
     strcpy(hopNXTaddr,destNXTaddr);
-    if ( origargstr != 0 )
-    {
-        len = onionize(verifiedNXTaddr,encodedD,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
-    }
-    else
-    {
-        len = onionize(verifiedNXTaddr,encodedD,destNXTaddr,(unsigned char *)msg,msglen);
-        msg = origargstr = "<encrypted>";
-        fatal("DEPRECATED PATH FOR SENDMESSAGE");
-    }
+    len = onionize(verifiedNXTaddr,encodedD,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
     printf("sendmessage (%s) len.%d to %s\n",origargstr,msglen,destNXTaddr);
     if ( len > sizeof(encodedP)-256 )
     {

@@ -1015,7 +1015,7 @@ char *libjl777_JSON(char *JSONstr)
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
             array = cJSON_Parse(_tokbuf);
             cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,cmdstr);
-            retstr = pNXT_json_commands(Global_mp,0,array,NXTaddr,valid,cmdstr);
+            retstr = pNXT_json_commands(Global_mp,0,array,NXTaddr,valid,_tokbuf);
             if ( cmdstr != 0 )
             {
                 printf("parms.(%s) valid.%d\n",cmdstr,valid);
