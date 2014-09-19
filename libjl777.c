@@ -1069,7 +1069,7 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
 
 int32_t libjl777_narrowcast(char *destip,unsigned char *msg,int32_t len)
 {
-    printf("narrocast %d bytes to %s not supported yet\n",len,destip);
+    printf("narrowcast %d bytes to %s not supported yet\n",len,destip);
     return(-1);
 }
 
@@ -1093,7 +1093,7 @@ uint64_t call_libjl777_broadcast(char *destip,char *msg,int32_t len,int32_t dura
         cJSON *array;
         int32_t valid;
         array = cJSON_Parse(msg);
-        cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,cmdstr);
+        cmdstr = verify_tokenized_json(NXTaddr,&valid,&array,0);
         if ( cmdstr != 0 )
         {
             printf("BROADCAST parms.(%s) valid.%d\n",cmdstr,valid);
