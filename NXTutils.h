@@ -1705,7 +1705,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
         
-        printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
+        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
         if ( *argjsonp != 0 )

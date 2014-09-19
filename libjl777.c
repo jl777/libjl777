@@ -454,8 +454,8 @@ char *sendmsg_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(msg,objs[3]);
     L = (int32_t)get_API_int(objs[4],1);
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
-    if ( sender[0] != 0 && destNXTaddr[0] != 0 )
-        retstr = sendmessage(L,NXTACCTSECRET,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
+    if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
+        retstr = sendmessage(L,sender,msg,(int32_t)strlen(msg)+1,destNXTaddr,origargstr);
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
 }
@@ -792,12 +792,12 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "NXT", "secret", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "NXT", "addr", "secret", "destcoin", 0 };
     static char *sellp[] = { (char *)sellpNXT_func, "sellpNXT", "V", "NXT", "amount", "secret", 0 };
     static char *buyp[] = { (char *)buypNXT_func, "buypNXT", "V", "NXT", "amount", "secret", 0 };
-    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "", "NXT", "dest", "secret", "msg", "L", 0 };
+    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "NXT", "dest", "secret", "msg", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "NXT", "sender", "secret", 0 };
     static char *send[] = { (char *)sendpNXT_func, "send", "V", "NXT", "amount", "secret", "dest", "level","paymentid", 0 };
     //static char *select[] = { (char *)selectserver_func, "select", "V", "NXT", "ipaddr", "port", "secret", 0 };
@@ -871,6 +871,7 @@ char *remove_secret(cJSON **argjsonp,char *parmstxt)
     return(parmstxt);
 }
 
+/*
 char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender)
 {
     struct NXThandler_info *mp = Global_mp;
@@ -961,7 +962,7 @@ printf("parmstxt.(%s)\n",parmstxt);
     if ( parmstxt != 0 )
         free(parmstxt);
     return(retstr);
-}
+}*/
 
 void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
 {
@@ -1030,7 +1031,10 @@ void *pNXT_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,v
     if ( parms->txid == 0 )     // indicates non-transaction event
     {
         if ( parms->mode == NXTPROTOCOL_WEBJSON )
-            return(pNXT_jsonhandler(&parms->argjson,parms->argstr,0));
+        {
+            printf(":7777 interface deprecated\n");
+            //return(pNXT_jsonhandler(&parms->argjson,parms->argstr,0));
+        }
         else if ( parms->mode == NXTPROTOCOL_NEWBLOCK )
         {
             //printf("pNXT new RTblock %d time %ld microseconds %lld\n",mp->RTflag,time(0),(long long)microseconds());
@@ -1157,7 +1161,16 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
         printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
-            retstr = pNXT_jsonhandler(&json,(char *)msg,0);
+            int32_t valid;
+            char verifiedNXTaddr[64],*cmdstr;
+            cmdstr = verify_tokenized_json(verifiedNXTaddr,&valid,&json,0);
+            retstr = pNXT_json_commands(Global_mp,Global_pNXT,json,verifiedNXTaddr,valid,cmdstr);
+            if ( cmdstr != 0 )
+            {
+                printf("got parms.(%s) valid.%d\n",cmdstr,valid);
+                free(cmdstr);
+            }
+            //retstr = pNXT_jsonhandler(&json,(char *)msg,0);
             free_json(json);
             if ( retstr != 0 )
                 return(retstr);

@@ -305,7 +305,7 @@ int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
     return(len + sizeof(crc));
 }
 
-int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
+int32_t onionize(char *verifiedNXTaddr,unsigned char *encoded,char *destNXTaddr,unsigned char *payload,int32_t len)
 {
     unsigned char onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES];
     uint64_t nxt64bits;
@@ -329,13 +329,12 @@ int32_t onionize(char *verifiedNXTaddr,char *NXTACCTSECRET,unsigned char *encode
     return(len + sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits));
 }
 
-int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,char *NXTACCTSECRET,uint8_t *final,uint8_t *src,int32_t len)
+int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,char *verifiedNXTaddr,uint8_t *final,uint8_t *src,int32_t len)
 {
-    char destNXTaddr[64],verifiedNXTaddr[64];
+    char destNXTaddr[64];
     uint8_t bufs[2][4096],*dest;
     struct peerinfo *peer;
     struct NXT_acct *np;
-    find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     if ( numlayers > 1 )
         numlayers = ((rand() >> 8) % numlayers);
     if ( numlayers > 0 )
@@ -372,7 +371,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,char *NXTACCTS
                 memcpy(np->mypeerinfo.pubkey,peer->pubkey,sizeof(np->mypeerinfo.pubkey));
             }
             printf("add layer %d: NXT.%s\n",numlayers,np->H.NXTaddr);
-            len = onionize(verifiedNXTaddr,NXTACCTSECRET,dest,np->H.NXTaddr,src,len);
+            len = onionize(verifiedNXTaddr,dest,np->H.NXTaddr,src,len);
             strcpy(hopNXTaddr,np->H.NXTaddr);
             if ( len > 4096 )
             {
@@ -682,16 +681,16 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     return(0);
 }
 
-char *sendmessage(int32_t L,char *NXTACCTSECRET,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
+char *sendmessage(int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
 {
     uint64_t txid;
-    char buf[4096],verifiedNXTaddr[64],destsrvNXTaddr[64],srvNXTaddr[64],hopNXTaddr[64];
+    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],hopNXTaddr[64];
     unsigned char encodedsrvD[4096],encodedD[4096],encodedL[4096],encodedP[4096],*outbuf;
     int32_t len,createdflag;
     struct NXT_acct *np,*destnp;
     //struct coin_info *cp = get_coin_info("BTCD");
     
-    np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->mypeerinfo.srvnxtbits == 0 )
         return(clonestr("\"error\":\"no np or global udp for sendmessage || destnp->mypeerinfo.srvnxtbits == 0\"}"));
@@ -703,11 +702,11 @@ char *sendmessage(int32_t L,char *NXTACCTSECRET,char *msg,int32_t msglen,char *d
     strcpy(hopNXTaddr,destNXTaddr);
     if ( origargstr != 0 )
     {
-        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedD,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
+        len = onionize(verifiedNXTaddr,encodedD,destNXTaddr,(unsigned char *)origargstr,(int32_t)strlen(origargstr)+1);
     }
     else
     {
-        len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedD,destNXTaddr,(unsigned char *)msg,msglen);
+        len = onionize(verifiedNXTaddr,encodedD,destNXTaddr,(unsigned char *)msg,msglen);
         msg = origargstr = "<encrypted>";
         fatal("DEPRECATED PATH FOR SENDMESSAGE");
     }
@@ -723,19 +722,19 @@ char *sendmessage(int32_t L,char *NXTACCTSECRET,char *msg,int32_t msglen,char *d
         printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.NXTaddr:"no np",destnp);
         if ( destnp->mypeerinfo.srvipbits != 0 && destnp->mypeerinfo.pubnxtbits != destnp->mypeerinfo.srvnxtbits )
         {
-            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedsrvD,destsrvNXTaddr,outbuf,len);
+            len = onionize(verifiedNXTaddr,encodedsrvD,destsrvNXTaddr,outbuf,len);
             outbuf = encodedsrvD;
             strcpy(hopNXTaddr,destsrvNXTaddr);
         }
         if ( L > 0 )
         {
-            len = add_random_onionlayers(hopNXTaddr,L,NXTACCTSECRET,encodedL,outbuf,len);
+            len = add_random_onionlayers(hopNXTaddr,L,verifiedNXTaddr,encodedL,outbuf,len);
             outbuf = encodedL;
         }
         if ( np->mypeerinfo.srvipbits != 0 && np->mypeerinfo.pubnxtbits != np->mypeerinfo.srvnxtbits )
         {
             expand_nxt64bits(srvNXTaddr,np->mypeerinfo.srvnxtbits);
-            len = onionize(verifiedNXTaddr,NXTACCTSECRET,encodedP,srvNXTaddr,outbuf,len);
+            len = onionize(verifiedNXTaddr,encodedP,srvNXTaddr,outbuf,len);
             outbuf = encodedP;
             strcpy(hopNXTaddr,srvNXTaddr);
         }
