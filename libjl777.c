@@ -991,31 +991,28 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
 
 char *libjl777_JSON(char *JSONstr)
 {
-    cJSON *json,*secretobj;
-    char NXTaddr[64],NXTACCTSECRET[1024],_tokbuf[4096],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
+    cJSON *json;
+    int32_t valid;
+    char NXTaddr[64],_tokbuf[4096],encoded[NXT_TOKEN_LEN+1],*cmdstr,*parmstxt,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-        secretobj = cJSON_GetObjectItem(json,"secret");
-        copy_cJSON(NXTACCTSECRET,secretobj);
-        if ( NXTACCTSECRET[0] == 0 && cp != 0 )
-        {
-            safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
-            //if ( secretobj == 0 )
-            //    cJSON_AddItemToObject(json,"secret",cJSON_CreateString(NXTACCTSECRET));
-            //else cJSON_ReplaceItemInObject(json,"secret",cJSON_CreateString(NXTACCTSECRET));
-            //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
-        }
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
             stripwhite_ns(cmdstr,strlen(cmdstr));
-            issue_generateToken(0,encoded,cmdstr,NXTACCTSECRET);
+            issue_generateToken(0,encoded,cmdstr,cp->NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
+            parmstxt = verify_tokenized_json(NXTaddr,&valid,&json,parmstxt);
+            if ( parmstxt != 0 )
+            {
+                printf("parms.(%s) valid.%d\n",parmstxt,valid);
+                free(parmstxt);
+            }
             retstr = pNXT_jsonhandler(&json,_tokbuf,NXTaddr);
             free(cmdstr);
         }
