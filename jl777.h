@@ -11,22 +11,6 @@
 #define SMALLVAL .000000000000001
 #define MAX_LFACTOR 3
 
-//#define MAINNET
-//#define DEBUG_MODE
-//#define PRODUCTION
-//#ifdef MAINNET
-//#define FIRST_NXT_HEIGHT 134999
-//#define ORIGBLOCK "14398161661982498695"    //"91889681853055765";//"16787696303645624065";
-
-
-//#define FIRST_NXT_HEIGHT 180000
-//#define ORIGBLOCK "14398161661982498695"    //"91889681853055765";//"16787696303645624065";
-//#else
-//#define FIRST_NXT_HEIGHT 159000
-//#define ORIGBLOCK "16787696303645624065"    //"91889681853055765";//"16787696303645624065";
-//#define ORIGBLOCK "5766707417914019248"
-//"13150177114724378433"    //"16369892481908412756"    //"91889681853055765";//"16787696303645624065";
-//#endif
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
 // system includes
@@ -147,7 +131,6 @@ void usleep(int32_t);
 
 #define DEFAULT_NXT_DEADLINE 720
 #define SATOSHIDEN 100000000L
-//#define MIN_NQTFEE SATOSHIDEN
 #define NXT_TOKEN_LEN 160
 #define MAX_NXT_STRLEN 24
 #define MAX_NXTTXID_LEN MAX_NXT_STRLEN
@@ -351,17 +334,17 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 //void gen_testforms(char *secret);
 extern uv_loop_t *UV_loop;
-char Server_names[NUM_GATEWAYS+1][64];
-char Server_NXTaddrs[256][64],SERVER_PORTSTR[64];
-char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[64],NXTISSUERACCT[64];
+char Server_names[NUM_GATEWAYS+1][MAX_JSON_FIELD];
+char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
+char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
 int32_t MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
 int32_t NXT_FORKHEIGHT;
-char NXTAPIURL[64] = { "http://127.0.0.1:6876/nxt" };
-char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
+char NXTAPIURL[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt" };
+char NXTSERVER[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt?requestType" };
 
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);

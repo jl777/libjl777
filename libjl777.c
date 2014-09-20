@@ -94,7 +94,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     printf("start getNXTblocks\n");
     if ( 1 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
-    mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,on_udprecv);
+    mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
 
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
