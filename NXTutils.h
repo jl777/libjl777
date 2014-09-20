@@ -467,7 +467,7 @@ struct NXT_acct *search_addresses(char *addr)
         } else BTCDaddr = BTCaddr = "";
         if ( (BTCDaddr[0] != 0 && strcmp(BTCDaddr,addr) == 0) || (BTCaddr[0] != 0 && strcmp(BTCaddr,addr) == 0) )
             return(np);
-        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s)\n",addr,np->H.NXTaddr,BTCDaddr,BTCaddr);
+        printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s)\n",addr,np->H.U.NXTaddr,BTCDaddr,BTCaddr);
         return(0);
     }
     return(0);
@@ -912,18 +912,18 @@ int32_t set_json_AM(struct json_AM *ap,int32_t sig,int32_t funcid,char *nxtaddr,
     ap->timestamp = timestamp;
     ap->jsonflag = jsonflag;
     if ( jsonflag == 1 )
-        strcpy(ap->jsonstr,jsonstr);//,999 - ((long)ap->jsonstr - (long)ap));
+        strcpy(ap->U.jsonstr,jsonstr);//,999 - ((long)ap->jsonstr - (long)ap));
     else if ( jsonflag > 1 )
     {
-        memcpy(&ap->jsn,jsn,sizeof(*jsn)+jsn->complen);
+        memcpy(&ap->U.jsn,jsn,sizeof(*jsn)+jsn->complen);
         free(jsn);
-        teststr = decode_json(&ap->jsn,jsonflag-2);
+        teststr = decode_json(&ap->U.jsn,jsonflag-2);
         if ( teststr != 0 )
         {
-            stripstr(teststr,(int64_t)ap->jsn.origlen);
+            stripstr(teststr,(int64_t)ap->U.jsn.origlen);
             if ( strcmp(teststr,jsonstr) != 0 )
                 printf("JSONcodec error (%s) != (%s)\n",teststr,jsonstr);
-            else printf("decoded.(%s) %d %d %d starting\n",teststr,ap->jsn.complen,ap->jsn.origlen,ap->jsn.sublen);
+            else printf("decoded.(%s) %d %d %d starting\n",teststr,ap->U.jsn.complen,ap->U.jsn.origlen,ap->U.jsn.sublen);
             free(teststr);
         }
     }
@@ -1507,7 +1507,7 @@ cJSON *parse_json_AM(struct json_AM *ap)
     char *jsontxt;
     if ( ap->jsonflag != 0 )
     {
-        jsontxt = (ap->jsonflag == 1) ? ap->jsonstr : decode_json(&ap->jsn,ap->jsonflag);
+        jsontxt = (ap->jsonflag == 1) ? ap->U.jsonstr : decode_json(&ap->U.jsn,ap->jsonflag);
         if ( jsontxt != 0 )
         {
             if ( jsontxt[0] == '"' && jsontxt[strlen(jsontxt)-1] == '"' )

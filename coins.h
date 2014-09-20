@@ -536,7 +536,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
     char coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr,*str;
-    int32_t i,n,ismainnet,createdflag,timezone=0;
+    int32_t i,j,n,ismainnet,createdflag,timezone=0;
     int64_t len=0,allocsize=0;
     struct peerinfo *refpeer,peer;
     NXTACCTSECRET[0] = 0;
@@ -551,7 +551,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     //printf("load MGW.conf (%s)\n",JSON_or_fname);
     if ( JSON_or_fname[0] == '{' )
         jsonstr = clonestr(JSON_or_fname);
-    else jsonstr = load_file("jl777.conf",&buf,&len,&allocsize);
+    else jsonstr = load_file(JSON_or_fname,&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
         printf("loaded.(%s)\n",jsonstr);
@@ -617,7 +617,13 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     {
                         printf("coinstr.(%s)\n",coinstr);
                         if ( myipaddr != 0 && myipaddr[0] != 0 )
+                        {
                             safecopy(cp->myipaddr,myipaddr,sizeof(cp->myipaddr));
+                            for (j=0; cp->myipaddr[j]!=0; j++)
+                                if ( cp->myipaddr[j] == ':' )
+                                    break;
+                            cp->myipaddr[j] = 0;
+                        }
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
                             BTCDaddr = cp->pubaddr;
@@ -629,7 +635,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             refpeer = update_peerinfo(&createdflag,&peer);
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                             {
-                                printf("loopback privacyServer\n");
+                                printf("loopback privacyServer (%s)\n",cp->myipaddr);
                                 refpeer->srvipbits = calc_ipbits(cp->myipaddr);
                                 set_pubpeerinfo(cp->srvNXTADDR,cp->myipaddr,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxt64bits,0);
                                 update_peerinfo(&createdflag,&peer);

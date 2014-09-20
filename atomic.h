@@ -15,12 +15,14 @@
 
 #define INSTANTDEX_ACCT "4383817337783094122"
 
+union _NXT_tx_num { int64_t amountNQT; int64_t quantityQNT; };
+
 struct NXT_tx
 {
     unsigned char refhash[32],sighash[32],fullhash[32];
     uint64_t senderbits,recipientbits,assetidbits;
     int64_t feeNQT;
-    union { int64_t amountNQT; int64_t quantityQNT; };
+    union _NXT_tx_num U;
     int32_t deadline,type,subtype,verify,number;
     char comment[128];
 };
@@ -33,12 +35,12 @@ int32_t NXTutxcmp(struct NXT_tx *ref,struct NXT_tx *tx,double myshare)
             return(-1);
         if ( ref->assetidbits != ORDERBOOK_NXTID )
         {
-            if ( ref->assetidbits == tx->assetidbits && fabs((ref->quantityQNT*myshare) - tx->quantityQNT) < 0.5 && strcmp(ref->comment,tx->comment) == 0 )
+            if ( ref->assetidbits == tx->assetidbits && fabs((ref->U.quantityQNT*myshare) - tx->U.quantityQNT) < 0.5 && strcmp(ref->comment,tx->comment) == 0 )
                 return(0);
         }
         else
         {
-            if ( fabs((ref->amountNQT*myshare) - tx->amountNQT) < 0.5 )
+            if ( fabs((ref->U.amountNQT*myshare) - tx->U.amountNQT) < 0.5 )
                 return(0);
         }
     }
@@ -54,11 +56,11 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
         expand_nxt64bits(destNXTaddr,utx->recipientbits);
         cmd[0] = 0;
         if ( utx->type == 0 && utx->subtype == 0 )
-            sprintf(cmd,"%s=sendMoney&amountNQT=%lld",_NXTSERVER,(long long)(utx->amountNQT*myshare));
+            sprintf(cmd,"%s=sendMoney&amountNQT=%lld",_NXTSERVER,(long long)(utx->U.amountNQT*myshare));
         else if ( utx->type == 2 && utx->subtype == 1 )
         {
             expand_nxt64bits(assetidstr,utx->assetidbits);
-            sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,assetidstr,(long long)(utx->quantityQNT*myshare));
+            sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,assetidstr,(long long)(utx->U.quantityQNT*myshare));
             if ( utx->comment[0] != 0 )
                 strcat(cmd,"&comment="),strcat(cmd,utx->comment);
         }
@@ -95,8 +97,8 @@ void set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int64_t
     {
         U.type = 2;
         U.subtype = 1;
-        U.quantityQNT = amount;
-    } else U.amountNQT = amount;
+        U.U.quantityQNT = amount;
+    } else U.U.amountNQT = amount;
     U.feeNQT = MIN_NQTFEE;
     U.deadline = DEFAULT_NXT_DEADLINE;
     *tx = U;
@@ -188,8 +190,8 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     utx->assetidbits = assetidbits;
     utx->feeNQT = calc_nxt64bits(feeNQT);
     if ( quantity != 0 )
-        utx->quantityQNT = quantity;
-    else utx->amountNQT = calc_nxt64bits(amountNQT);
+        utx->U.quantityQNT = quantity;
+    else utx->U.amountNQT = calc_nxt64bits(amountNQT);
     utx->deadline = atoi(deadline);
     utx->type = atoi(type);
     utx->subtype = atoi(subtype);
@@ -258,7 +260,7 @@ int32_t equiv_NXT_tx(struct NXT_tx *tx,char *comment)
         } else return(-2);
         if ( tx->assetidbits != asset )
             return(-3);
-        if ( tx->quantityQNT != qty ) // tx->quantityQNT is union as long as same assetid, then these can be compared directly
+        if ( tx->U.quantityQNT != qty ) // tx->quantityQNT is union as long as same assetid, then these can be compared directly
             return(-4);
         return(0);
     } else return(-1);

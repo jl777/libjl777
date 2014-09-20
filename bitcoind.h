@@ -125,7 +125,7 @@ cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct
         {
             if ( (txid= vp->txid) == 0 && vp->parent != 0 )
                 txid = vp->parent->txid;
-            if ( txid == 0 || vp->script == 0 )
+            if ( txid == 0 || vp->U.script == 0 )
             {
                 printf("unexpected missing txid or script\n");
                 free_json(array);
@@ -134,7 +134,7 @@ cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct
             json = cJSON_CreateObject();
             cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid));
             cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vp->parent_vout));
-            cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->script));
+            cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->U.script));
             //cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(vp->redeemScript));
             if ( localcoinaddrs != 0 )
                 localcoinaddrs[i] = vp->coinaddr;
@@ -353,9 +353,9 @@ struct coin_value *update_coin_value(int32_t height,int32_t numoutputs,struct co
     {
         if ( script[0] != 0 )
         {
-            if ( vp->script != 0 )
-                free(vp->script);
-            vp->script = clonestr(script);
+            if ( vp->U.script != 0 )
+                free(vp->U.script);
+            vp->U.script = clonestr(script);
         }
         else printf("update_coin_value: null script? %s.(%d)\n",coinaddr,i);
     }
@@ -408,7 +408,7 @@ int32_t process_vins(struct coin_info *cp,uint32_t height,struct coin_txid *tp,i
                     vp->parent_vout = 0;
                     vp->parent = tp;
                     vp->iscoinbase = 1;
-                    vp->coinbase = clonestr(coinbase);
+                    vp->U.coinbase = clonestr(coinbase);
                     tp->vins[0] = vp;
                     //printf("txid.%s is coinbase.%s\n",tp->txid,coinbase);
                     return(flag);

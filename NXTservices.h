@@ -17,12 +17,13 @@ struct NXT_guid
 };
 
 struct NXT_trade { uint64_t price,quantity,askorder,bidorder,blockbits,assetid; int32_t timestamp,decimals; };
+union _asset_price { uint64_t assetoshis,price; };
 
 struct NXT_assettxid
 {
     struct NXT_str H;
     uint64_t AMtxidbits,txidbits,assetbits,senderbits,receiverbits,quantity;
-    union { uint64_t assetoshis,price; }; // price 0 -> not buy/sell but might be deposit amount
+    union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
     struct NXT_guid *duplicatehash;
     char *cointxid,*redeemtxid;
     char *guid,*comment;

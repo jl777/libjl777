@@ -164,17 +164,21 @@ struct NXT_AMhdr
     uint64_t nxt64bits;
 };
 
+union _json_AM_data { unsigned char binarydata[sizeof(struct compressed_json)]; char jsonstr[sizeof(struct compressed_json)]; struct compressed_json jsn; };
+
 struct json_AM
 {
     struct NXT_AMhdr H;
 	uint32_t funcid,gatewayid,timestamp,jsonflag;
-    union { unsigned char binarydata[sizeof(struct compressed_json)]; char jsonstr[sizeof(struct compressed_json)]; struct compressed_json jsn; };
+    union _json_AM_data U;
 };
+
+union _NXT_str_buf { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
 
 struct NXT_str
 {
     uint64_t modified,nxt64bits;
-    union { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
+    union _NXT_str_buf U;
 };
 
 struct Uaddr
@@ -269,12 +273,14 @@ struct rawtransaction
     char *rawtxbytes,*signedtx;
 };
 
+union _coin_value_ptr { char *script; char *coinbase; };
+
 struct coin_value
 {
     int64_t modified,value;
     char *txid;
     struct coin_txid *parent,*spent,*pendingspend;
-    union { char *script; char *coinbase; };
+    union _coin_value_ptr U;
     int32_t parent_vout,spent_vin,pending_spendvin,isconfirmed,iscoinbase,isinternal;
     char coinaddr[MAX_COINADDR_LEN];
 };

@@ -604,7 +604,7 @@ void set_peer_json(char *buf,char *NXTaddr,struct NXT_acct *pubnp)
     expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
     init_hexbytes(pubkey,pi->pubkey,sizeof(pi->pubkey));
     _coins_jsonstr(coinsjson,pi->coins);
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,pubkey,pubnp->H.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport,coinsjson);
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,pubkey,pubnp->H.U.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport,coinsjson);
 }
 
 char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
@@ -631,7 +631,7 @@ char *sendpeerinfo(char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destco
     {
         set_peer_json(buf,NXTaddr,pubnp);
         printf("SENDPEERINFO >>>>>>>>>> (%s)\n",buf);
-        return(send_tokenized_cmd(0,NXTaddr,NXTACCTSECRET,buf,destnp->H.NXTaddr));
+        return(send_tokenized_cmd(0,NXTaddr,NXTACCTSECRET,buf,destnp->H.U.NXTaddr));
     } else return(clonestr("{\"error\":\"sendpeerinfo cant find pubaddr\"}"));
 }
 
@@ -649,7 +649,7 @@ uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXT
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
     {
         _coins_jsonstr(coinsjson,coins);
-        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.NXTaddr,BTCaddr,coinsjson);
+        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.U.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.U.NXTaddr,BTCaddr,coinsjson);
         len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
         return(call_libjl777_broadcast(0,packet,len+1,PUBADDRS_MSGDURATION));
     } else printf("broadcast_publishpacket error: no public nxt addr\n");
@@ -666,7 +666,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     char verifiedNXTaddr[64],mysrvNXTaddr[64];
     uint64_t pubnxt64bits;
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
-    pubnxt64bits = calc_nxt64bits(np->H.NXTaddr);
+    pubnxt64bits = calc_nxt64bits(np->H.U.NXTaddr);
     if ( pubkey != 0 && pubkey[0] != 0 )
         decode_hex(np->mypeerinfo.pubkey,(int32_t)sizeof(np->mypeerinfo.pubkey),pubkey);
     if ( (refpeer= find_peerinfo(pubnxt64bits,BTCDaddr,BTCaddr)) != 0 )
@@ -681,7 +681,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
             refpeer->srvipbits = calc_ipbits(srvipaddr);
         if ( srvNXTaddr != 0 && srvNXTaddr[0] != 0 )
             refpeer->srvnxtbits = calc_nxt64bits(srvNXTaddr);
-        printf("found and updated %s | coins.%p\n",np->H.NXTaddr,coins);
+        printf("found and updated %s | coins.%p\n",np->H.U.NXTaddr,coins);
     }
     else
     {
@@ -710,7 +710,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
-    if ( strcmp(np->H.NXTaddr,pubNXT) == 0 || strcmp(np->H.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
+    if ( strcmp(np->H.U.NXTaddr,pubNXT) == 0 || strcmp(np->H.U.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
     {
         if ( strcmp(srvNXTaddr,pubNXT) == 0 )
         {
@@ -781,7 +781,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                     {
                         offertx = set_NXT_tx(offerjson);
                         expand_nxt64bits(otherNXTaddr,offertx->senderbits);
-                        vol = conv_assetoshis(offertx->assetidbits,offertx->quantityQNT);
+                        vol = conv_assetoshis(offertx->assetidbits,offertx->U.quantityQNT);
                         if ( vol != 0. && offertx->comment[0] != 0 )
                         {
                             commentobj = cJSON_Parse(offertx->comment);
@@ -794,7 +794,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                 // jl777 need to make sure we want to do this trade
                                 free_json(commentobj);
                                 set_NXTtx(offertx->recipientbits,&T,assetB,qtyB,offertx->senderbits);
-                                sprintf(T.comment,"{\"assetA\":\"%llu\",\"qtyA\":\"%llu\"}",(long long)offertx->assetidbits,(long long)offertx->quantityQNT);
+                                sprintf(T.comment,"{\"assetA\":\"%llu\",\"qtyA\":\"%llu\"}",(long long)offertx->assetidbits,(long long)offertx->U.quantityQNT);
                                 expand_nxt64bits(NXTaddr,offertx->recipientbits);
                                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
                                 if ( np->NXTACCTSECRET[0] != 0 )
@@ -809,7 +809,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                     }
                                     else sprintf(buf,"{\"error\":\"from %s error signing responsutx.(%s)\"}",otherNXTaddr,NXTaddr);
                                 }
-                                else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,np->H.NXTaddr);
+                                else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,np->H.U.NXTaddr);
                             }
                             else sprintf(buf,"{\"error\":\"%s error parsing comment comment.(%s)\"}",otherNXTaddr,offertx->comment);
                         }

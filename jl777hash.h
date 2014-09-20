@@ -19,12 +19,14 @@ struct hashtable
     unsigned long keyoffset,keysize,modifiedoffset,structsize;
 };
 
+union _hashpacket_result { void *result; uint64_t hashval; };
+
 struct hashpacket
 {
     int32_t *createdflagp,doneflag,funcid;
     char *key;
     struct hashtable **hp_ptr;
-    union { void *result; uint64_t hashval; };
+    union _hashpacket_result U;
 };
 
 extern int32_t Historical_done;
@@ -362,7 +364,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
         while ( ptr->doneflag == 0 )
             usleep(1);
         //printf("A Done %p\n",ptr);
-        result = ptr->result;
+        result = ptr->U.result;
         free(ptr);
         Global_mp->hashprocessing = 0;
        // portable_mutex_unlock(&Global_mp->hash_mutex);
@@ -393,7 +395,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
         while ( ptr->doneflag == 0 )
             usleep(1);
         //printf("B Done %p\n",ptr);
-        hashval = ptr->hashval;
+        hashval = ptr->U.hashval;
         free(ptr);
         Global_mp->hashprocessing = 0;
         //portable_mutex_unlock(&Global_mp->hash_mutex);
@@ -417,9 +419,9 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
                 //printf("numitems.%ld process.%p hp %p\n",(long)(*ptr->hp_ptr)->hashsize,ptr,ptr->hp_ptr);
                 //printf(">>>>> Processs %p\n",ptr);
                 if ( ptr->funcid == 'A' )
-                    ptr->result = add_hashtable(ptr->createdflagp,ptr->hp_ptr,ptr->key);
+                    ptr->U.result = add_hashtable(ptr->createdflagp,ptr->hp_ptr,ptr->key);
                 else if ( ptr->funcid == 'S' )
-                    ptr->hashval = search_hashtable(*ptr->hp_ptr,ptr->key);
+                    ptr->U.hashval = search_hashtable(*ptr->hp_ptr,ptr->key);
                 else printf("UNEXPECTED MThashtable funcid.(%c) %d\n",ptr->funcid,ptr->funcid);
                 ptr->doneflag = 1;
                 //printf("<<<<<< Finished Processs %p\n",ptr);

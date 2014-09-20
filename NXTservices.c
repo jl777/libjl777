@@ -381,10 +381,10 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
             //printf("guid add hash.%s %p %p\n",(char *)buf,mp->NXTguid_tablep,mp->NXTguid_tablep);
             gp = MTadd_hashtable(&createdflag,mp->NXTguid_tablep,(char *)buf);
             if ( createdflag != 0 )
-                safecopy(gp->H.txid,txid,sizeof(gp->H.txid));
+                safecopy(gp->H.U.txid,txid,sizeof(gp->H.U.txid));
             else
             {
-                printf("duplicate transaction hash??: %s already there, new tx.%s both hash.%s | Probably from history thread\n",gp->H.txid,txid,gp->guid);
+                printf("duplicate transaction hash??: %s already there, new tx.%s both hash.%s | Probably from history thread\n",gp->H.U.txid,txid,gp->guid);
                 //mark_tx_hashconflict(mp,histmode,txid,gp);
                 free_json(retval.json);
                 return(0);
@@ -576,7 +576,7 @@ uint64_t update_assettxid_trade(struct NXT_trade *trade)
         tp->senderbits = find_quoting_NXTaddr(trade->askorder);
         tp->receiverbits = find_quoting_NXTaddr(trade->bidorder);
         tp->quantity = trade->quantity;
-        tp->price = trade->price;
+        tp->U.price = trade->price;
         tp->timestamp = trade->timestamp;
         tp->completed = 1;
        // if ( tp->senderbits != 0 && tp->receiverbits != 0 && tp->quantity != 0 && tp->price != 0 )
@@ -599,7 +599,7 @@ uint64_t get_asset_balance(struct NXT_acct *np,char *refassetid)
     int32_t i,n;
     cJSON *obj,*item,*array;
     char buf[2048],assetid[64];
-    sprintf(buf,"%s=getAccount&account=%s",_NXTSERVER,np->H.NXTaddr);
+    sprintf(buf,"%s=getAccount&account=%s",_NXTSERVER,np->H.U.NXTaddr);
     retval = extract_NXTfield(Global_mp->curl_handle,0,buf,0,0);
     if ( retval.json != 0 )
     {
@@ -674,24 +674,24 @@ cJSON *update_workingvars(struct NXT_acct *seller,struct NXT_acct *buyer,struct 
         buyer->quantity += txid->quantity;
     if ( seller != 0 && buyer == 0 )
         dir = -1.;
-    if ( txid->quantity != 0 && txid->price > 0 )
+    if ( txid->quantity != 0 && txid->U.price > 0 )
     {
         if ( buyer != 0 )
         {
             buyer->buyqty += txid->quantity;
-            buyer->buysum += txid->quantity*txid->price;
+            buyer->buysum += txid->quantity*txid->U.price;
         }
         if ( seller != 0 )
         {
             seller->sellqty += txid->quantity;
-            seller->sellsum += txid->quantity*txid->price;
+            seller->sellsum += txid->quantity*txid->U.price;
         }
         if ( buyer != 0 && seller != 0 )
         {
-            cJSON_AddItemToObject(json,"seller",cJSON_CreateString(seller->H.NXTaddr));
-            cJSON_AddItemToObject(json,"buyer",cJSON_CreateString(buyer->H.NXTaddr));
+            cJSON_AddItemToObject(json,"seller",cJSON_CreateString(seller->H.U.NXTaddr));
+            cJSON_AddItemToObject(json,"buyer",cJSON_CreateString(buyer->H.U.NXTaddr));
         }
-        sprintf(numstr,"%.8f",dstr(txid->price));
+        sprintf(numstr,"%.8f",dstr(txid->U.price));
         cJSON_AddItemToObject(json,"price",cJSON_CreateString(numstr));
     }
     else
@@ -702,19 +702,19 @@ cJSON *update_workingvars(struct NXT_acct *seller,struct NXT_acct *buyer,struct 
             if ( txid->comment == 0 )
                 commentobj = 0;
             else commentobj = cJSON_Parse(txid->comment);
-            if ( strcmp(seller->H.NXTaddr,NXTISSUERACCT) == 0 )
+            if ( strcmp(seller->H.U.NXTaddr,NXTISSUERACCT) == 0 )
             {
                 if ( txid->quantity != 0 )
                     cJSON_AddItemToObject(json,"MGW transfer",commentobj);
                 else
                 {
                     cJSON_AddItemToObject(json,"MGW deposit",commentobj);
-                    cJSON_AddItemToObject(json,"assetoshis",cJSON_CreateNumber(txid->assetoshis));
+                    cJSON_AddItemToObject(json,"assetoshis",cJSON_CreateNumber(txid->U.assetoshis));
                 }
                 if ( txid->cointxid != 0 )
                     cJSON_AddItemToObject(json,"MGW cointxid",cJSON_CreateString(txid->cointxid));
             }
-            else if ( strcmp(buyer->H.NXTaddr,NXTISSUERACCT) == 0 || strcmp(buyer->H.NXTaddr,seller->H.NXTaddr) == 0 )
+            else if ( strcmp(buyer->H.U.NXTaddr,NXTISSUERACCT) == 0 || strcmp(buyer->H.U.NXTaddr,seller->H.U.NXTaddr) == 0 )
             {
                 if ( txid->quantity != 0 )
                 {
@@ -724,13 +724,13 @@ cJSON *update_workingvars(struct NXT_acct *seller,struct NXT_acct *buyer,struct 
                 }
                 else
                 {
-                    cJSON_AddItemToObject(json,"seller",cJSON_CreateString(seller->H.NXTaddr));
-                    cJSON_AddItemToObject(json,"buyer",cJSON_CreateString(buyer->H.NXTaddr));
+                    cJSON_AddItemToObject(json,"seller",cJSON_CreateString(seller->H.U.NXTaddr));
+                    cJSON_AddItemToObject(json,"buyer",cJSON_CreateString(buyer->H.U.NXTaddr));
                     if ( txid->cointxid != 0 )
                     {
                         cJSON_AddItemToObject(json,"MGW redeem",cJSON_CreateString(txid->redeemtxid));
                         cJSON_AddItemToObject(json,"cointxid",cJSON_CreateString(txid->cointxid));
-                        sprintf(numstr,"%.8f",dstr(txid->price));
+                        sprintf(numstr,"%.8f",dstr(txid->U.price));
                         cJSON_AddItemToObject(json,"price",cJSON_CreateString(numstr));
                     }
                 }
@@ -743,10 +743,10 @@ cJSON *update_workingvars(struct NXT_acct *seller,struct NXT_acct *buyer,struct 
         cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(txid->timestamp));
     if ( txid->completed == MGW_PENDING_WITHDRAW )
     {
-        cJSON_AddItemToObject(json,"redeemtxid",cJSON_CreateString(txid->H.txid));
-        txid->redeemtxid = txid->H.txid;
+        cJSON_AddItemToObject(json,"redeemtxid",cJSON_CreateString(txid->H.U.txid));
+        txid->redeemtxid = txid->H.U.txid;
     }
-    else cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid->H.txid));
+    else cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid->H.U.txid));
     cJSON_AddItemToObject(json,"completed",cJSON_CreateNumber(txid->completed));
     //printf("%d) %-12s t%-8d NXT.%-21s %16.8f -> NXT.%-21s %16.8f %16.8f @ %13.8f\n",i,ap->name,txid->timestamp,sender,dstr(seller->quantity)*ap->mult,receiver,dstr(buyer->quantity)*ap->mult,dstr(txid->quantity)*ap->mult,dstr(txid->price));
     return(json);
@@ -832,7 +832,7 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
         for (i=0; i<n; i++)
         {
             np = accts[i];
-            if ( strcmp(np->H.NXTaddr,GENESISACCT) == 0 || np->quantity == 0 || (blacklist != 0 && listcmp(blacklist,np->H.NXTaddr) == 0) )
+            if ( strcmp(np->H.U.NXTaddr,GENESISACCT) == 0 || np->quantity == 0 || (blacklist != 0 && listcmp(blacklist,np->H.U.NXTaddr) == 0) )
                 continue;
             assetind = get_asset_in_acct(np,ap,0);
             if ( assetind < 0 )
@@ -851,11 +851,11 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
             if ( np->H.nxt64bits == ap->issuer )
             {
                 sprintf(issuerhas,"%.8f",dstr(np->quantity) * ap->mult);
-                printf("%s is issuer.%s\n",np->H.NXTaddr,nxt64str(ap->issuer));
+                printf("%s is issuer.%s\n",np->H.U.NXTaddr,nxt64str(ap->issuer));
                 continue;
             }
             item = cJSON_CreateObject();
-            cJSON_AddItemToObject(item,"NXT",cJSON_CreateString(np->H.NXTaddr));
+            cJSON_AddItemToObject(item,"NXT",cJSON_CreateString(np->H.U.NXTaddr));
             sprintf(numstr,"%.8f",dstr(np->quantity) * ap->mult);
             cJSON_AddItemToObject(item,"qty",cJSON_CreateString(numstr));
             sprintf(numstr,"%.8f",dstr(checkval) * ap->mult);
@@ -890,7 +890,7 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
         printf("%s num accts.%d sum %.8f RTbalances %.8f | changed %d %d\n",ap->name,n,dstr(sum)*ap->mult,dstr(checksum)*ap->mult,changed,err2);
         cJSON_AddItemToObject(json,"service",cJSON_CreateString("NXTservices"));
         cJSON_AddItemToObject(json,"name",cJSON_CreateString(ap->name));
-        cJSON_AddItemToObject(json,"asset",cJSON_CreateString(ap->H.assetid));
+        cJSON_AddItemToObject(json,"asset",cJSON_CreateString(ap->H.U.assetid));
         expand_nxt64bits(numstr,ap->issuer);
         cJSON_AddItemToObject(json,"issuer",cJSON_CreateString(numstr));
         cJSON_AddItemToObject(json,"issuerhas",cJSON_CreateString(issuerhas));
@@ -924,7 +924,7 @@ char *emit_asset_json(int64_t *totalp,char *assetidstr,int32_t maxtimestamp,char
     if ( accts != 0 )
         free(accts);
     if ( maxnp != 0 )
-        printf("maxprofits NXT %.8f by acct %s\n",maxnp->profits,maxnp->H.NXTaddr);
+        printf("maxprofits NXT %.8f by acct %s\n",maxnp->profits,maxnp->H.U.NXTaddr);
     return(jsonstr);
 }
 
@@ -974,7 +974,7 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
         for (i=0; i<np->numassets; i++)
         {
             ap = np->assets[i];
-            if ( assetidstr != 0 && assetidstr[0] != 0 && strcmp(ap->H.assetid,assetidstr) != 0 )
+            if ( assetidstr != 0 && assetidstr[0] != 0 && strcmp(ap->H.U.assetid,assetidstr) != 0 )
                 continue;
             txlist = np->txlists[i];
             //printf("compare.%s txs.%d\n",ap->name,txlist->num);
@@ -1014,7 +1014,7 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
                 }
             }
             item = cJSON_CreateObject();
-            cJSON_AddItemToObject(item,"asset",cJSON_CreateString(ap->H.assetid));
+            cJSON_AddItemToObject(item,"asset",cJSON_CreateString(ap->H.U.assetid));
             sprintf(numstr,"%.8f",dstr(np->quantity) * ap->mult);
             cJSON_AddItemToObject(item,"qty",cJSON_CreateString(numstr));
             if ( txarray != 0 )
@@ -1023,7 +1023,7 @@ char *emit_acct_json(char *NXTaddr,char *assetidstr,int32_t maxtimestamp,int32_t
             if ( json == 0 )
             {
                 json = cJSON_CreateObject();
-                cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(np->H.NXTaddr));
+                cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(np->H.U.NXTaddr));
                 cJSON_AddItemToObject(json,"name",cJSON_CreateString(ap->name));
                 cJSON_AddItemToObject(json,"maxtimestamp",cJSON_CreateNumber(maxtimestamp));
             }
@@ -1154,7 +1154,7 @@ int process_asset_trades(char *assetidstr,int32_t firstindex,int32_t lastindex)
 int32_t update_asset_trades(struct NXThandler_info *mp,struct NXT_asset *ap)
 {
     int32_t ind = 0;
-    while ( process_asset_trades(ap->H.assetid,ind,ind) != 0 )
+    while ( process_asset_trades(ap->H.U.assetid,ind,ind) != 0 )
         ind++;
     return(ind);
 }
@@ -1194,7 +1194,7 @@ void init_assets(struct NXThandler_info *mp)
                 txid = ap->txids[j];
                 expand_nxt64bits(sender,txid->senderbits);
                 expand_nxt64bits(receiver,txid->receiverbits);
-                printf("%d) %-12s t%-8d NXT.%-21s -> NXT.%-21s %13.8f @ %11.8f\n",j,ap->name,txid->timestamp,sender,receiver,dstr(txid->quantity)*ap->mult,dstr(txid->price));
+                printf("%d) %-12s t%-8d NXT.%-21s -> NXT.%-21s %13.8f @ %11.8f\n",j,ap->name,txid->timestamp,sender,receiver,dstr(txid->quantity)*ap->mult,dstr(txid->U.price));
             }
         }
         printf("total %d assetids\n",n);
@@ -1514,11 +1514,11 @@ void init_NXThashtables(struct NXThandler_info *mp)
     if ( NXTguids == 0 )
         NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
     if ( NXTasset_txids == 0 )
-        NXTasset_txids = hashtable_create("NXTasset_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_assettxid),((long)&tp->H.txid[0] - (long)tp),sizeof(tp->H.txid),((long)&tp->H.modified - (long)tp));
+        NXTasset_txids = hashtable_create("NXTasset_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_assettxid),((long)&tp->H.U.txid[0] - (long)tp),sizeof(tp->H.U.txid),((long)&tp->H.modified - (long)tp));
     if ( NXTassets == 0 )
-        NXTassets = hashtable_create("NXTassets",HASHTABLES_STARTSIZE,sizeof(struct NXT_asset),((long)&ap->H.assetid[0] - (long)ap),sizeof(ap->H.assetid),((long)&ap->H.modified - (long)ap));
+        NXTassets = hashtable_create("NXTassets",HASHTABLES_STARTSIZE,sizeof(struct NXT_asset),((long)&ap->H.U.assetid[0] - (long)ap),sizeof(ap->H.U.assetid),((long)&ap->H.modified - (long)ap));
     if ( NXTaddrs == 0 )
-        NXTaddrs = hashtable_create("NXTaddrs",HASHTABLES_STARTSIZE,sizeof(struct NXT_acct),((long)&np->H.NXTaddr[0] - (long)np),sizeof(np->H.NXTaddr),((long)&np->H.modified - (long)np));
+        NXTaddrs = hashtable_create("NXTaddrs",HASHTABLES_STARTSIZE,sizeof(struct NXT_acct),((long)&np->H.U.NXTaddr[0] - (long)np),sizeof(np->H.U.NXTaddr),((long)&np->H.modified - (long)np));
     if ( otheraddrs == 0 )
         otheraddrs = hashtable_create("otheraddrs",HASHTABLES_STARTSIZE,sizeof(struct other_addr),((long)&op->addr[0] - (long)op),sizeof(op->addr),((long)&op->modified - (long)op));
     if ( mp != 0 )

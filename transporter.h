@@ -354,12 +354,12 @@ struct transporter_log *send_transporter_log(char *NXTaddr,char *NXTACCTSECRET,s
     add_transporter_log(cp,log);
     if ( json != 0 )
     {
-        err = sendandfree_jsoncmd(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,json,destnp->H.NXTaddr);
-        printf("AFTER send_transporter_log.%u to %s err.%d height.%d %d at %f\n",log->totalcrc,destnp->H.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
+        err = sendandfree_jsoncmd(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,json,destnp->H.U.NXTaddr);
+        printf("AFTER send_transporter_log.%u to %s err.%d height.%d %d at %f\n",log->totalcrc,destnp->H.U.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
         if ( err == 0 )
         {
             log->startmilli = milliseconds();
-            printf("AFTER send_transporter_log to %s err.%d height.%d %d at %f\n",destnp->H.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
+            printf("AFTER send_transporter_log to %s err.%d height.%d %d at %f\n",destnp->H.U.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
             queue_enqueue(&Transporter_sendQ.pingpong[0],log);
         }
     }
@@ -455,7 +455,7 @@ void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NX
         strcat(msg,"]}");
     }
     else strcat(msg,"}");
-    retstr = send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.NXTaddr);
+    retstr = send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.U.NXTaddr);
     if ( retstr != 0 )
     {
         printf("send_transporter_ACK.(%s)\n",retstr);

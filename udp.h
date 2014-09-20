@@ -120,8 +120,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         {
             if ( retjsonstr[0] != 0 )
             {
-                printf("%s send tokenized.(%s) to %s\n",NXTaddr,retjsonstr,np->H.NXTaddr);
-                if ( (retstr= send_tokenized_cmd(Global_mp->Lfactor,NXTaddr,cp->NXTACCTSECRET,retjsonstr,np->H.NXTaddr)) != 0 )
+                printf("%s send tokenized.(%s) to %s\n",NXTaddr,retjsonstr,np->H.U.NXTaddr);
+                if ( (retstr= send_tokenized_cmd(Global_mp->Lfactor,NXTaddr,cp->NXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);

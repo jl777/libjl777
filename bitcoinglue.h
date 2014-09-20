@@ -18,7 +18,7 @@ struct coin_value *conv_telepod(struct telepod *pod)
     vp->txid = pod->txid;
     vp->parent_vout = pod->vout;
     safecopy(vp->coinaddr,pod->coinaddr,sizeof(vp->coinaddr));
-    vp->script = clonestr(pod->script);
+    vp->U.script = clonestr(pod->script);
     return(vp);
 }
 
@@ -26,8 +26,8 @@ void free_coin_value(struct coin_value *vp)
 {
     if ( vp != 0 )
     {
-        if ( vp->script != 0 )
-            free(vp->script);
+        if ( vp->U.script != 0 )
+            free(vp->U.script);
         free(vp);
     }
 }

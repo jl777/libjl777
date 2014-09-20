@@ -150,7 +150,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                         gfshare_extract(buffer+log->N*pod->len_plus1,log->sharenrs,log->N,buffer,pod->len_plus1-1,pod->len_plus1);
                         for (sharei=err=0; sharei<log->N; sharei++)
                         {
-                            if ( teleport_telepod(log->cp->pubaddr,np->H.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.NXTaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
+                            if ( teleport_telepod(log->cp->pubaddr,np->H.U.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.U.NXTaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
                             {
                                 err++;
                                 break;
@@ -167,7 +167,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                     else
                     {
                         sharei = log->N;
-                        if ( teleport_telepod(log->cp->pubaddr,np->H.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.NXTaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
+                        if ( teleport_telepod(log->cp->pubaddr,np->H.U.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.U.NXTaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
                             err++;
                     }
                     printf("sharei.%d N.%d err.%d\n",sharei,log->N,err);
@@ -366,7 +366,7 @@ void complete_transporter_reception(struct coin_info *cp,struct transporter_log 
     save_transporter_log(log);
     if ( retstr != 0 )
     {
-        send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,retstr,destnp->H.NXTaddr);
+        send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,retstr,destnp->H.U.NXTaddr);
         free(retstr);
     }
     for (i=0; i<log->numpods; i++)
@@ -523,7 +523,7 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
         if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
         {
-            query_pubkey(destnp->H.NXTaddr,NXTACCTSECRET);
+            query_pubkey(destnp->H.U.NXTaddr,NXTACCTSECRET);
             sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",otherpubaddr);
         }
         if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) != 0 )
@@ -545,8 +545,8 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
                 else
                 {
                     err = 0;
-                    sprintf(buf,"{\"result\":\"teleport AFTER CREATE BUNDLE to %s err.%d\"}",destnp->H.NXTaddr,err);
-                    printf("teleport AFTER CREATE BUNDLE to %s err.%d\n",destnp->H.NXTaddr,err);
+                    sprintf(buf,"{\"result\":\"teleport AFTER CREATE BUNDLE to %s err.%d\"}",destnp->H.U.NXTaddr,err);
+                    printf("teleport AFTER CREATE BUNDLE to %s err.%d\n",destnp->H.U.NXTaddr,err);
                     process_pingpong_queue(&Transporter_sendQ,log);
                 }
             }

@@ -247,7 +247,7 @@ void query_pubkey(char *destNXTaddr,char *NXTACCTSECRET)
     NXTaddr[0] = 0;
     np = find_NXTacct(destNXTaddr,NXTACCTSECRET);
     memcpy(np->mypeerinfo.pubkey,Global_mp->session_pubkey,sizeof(np->mypeerinfo.pubkey));
-    printf("(%s) [%s] need to implement query (and propagation) mechanism for pubkeys\n",destNXTaddr,np->H.NXTaddr);
+    printf("(%s) [%s] need to implement query (and propagation) mechanism for pubkeys\n",destNXTaddr,np->H.U.NXTaddr);
 }
 
 int32_t _encode_str(unsigned char *cipher,char *str,int32_t size,unsigned char *destpubkey,unsigned char *myprivkey)
@@ -321,7 +321,7 @@ int32_t onionize(char *verifiedNXTaddr,unsigned char *encoded,char *destNXTaddr,
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
+    printf("ONIONIZE: np.%p NXT.%s %s pubkey.%llx encode len.%d -> ",np,np->H.U.NXTaddr,destNXTaddr,*(long long *)np->mypeerinfo.pubkey,len);
     len = _encode_str(encoded,(char *)payload,len,np->mypeerinfo.pubkey,onetime_privkey);
     slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
@@ -370,9 +370,9 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,char *verified
                 printf("Warning: (%s %s %s) pubkey updated %llx -> %llx\n",peer->pubBTCD,destNXTaddr,peer->pubBTC,*(long long *)np->mypeerinfo.pubkey,*(long long *)peer->pubkey);
                 memcpy(np->mypeerinfo.pubkey,peer->pubkey,sizeof(np->mypeerinfo.pubkey));
             }
-            printf("add layer %d: NXT.%s\n",numlayers,np->H.NXTaddr);
-            len = onionize(verifiedNXTaddr,dest,np->H.NXTaddr,src,len);
-            strcpy(hopNXTaddr,np->H.NXTaddr);
+            printf("add layer %d: NXT.%s\n",numlayers,np->H.U.NXTaddr);
+            len = onionize(verifiedNXTaddr,dest,np->H.U.NXTaddr,src,len);
+            strcpy(hopNXTaddr,np->H.U.NXTaddr);
             if ( len > 4096 )
             {
                 printf("FATAL: onion layers too big.%d\n",len);
@@ -652,7 +652,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
                 char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                jsonstr = pNXT_json_commands(Global_mp,1,argjson,tokenized_np->H.NXTaddr,valid,(char *)decoded);
+                jsonstr = pNXT_json_commands(Global_mp,1,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
                 if ( jsonstr != 0 )
                 {
                     strcpy(retjsonstr,jsonstr);
@@ -710,7 +710,7 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char 
     else if ( len > 0 )
     {
         outbuf = encodedD;
-        printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.NXTaddr:"no np",destnp);
+        printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.U.NXTaddr:"no np",destnp);
         if ( destnp->mypeerinfo.srvipbits != 0 && destnp->mypeerinfo.pubnxtbits != destnp->mypeerinfo.srvnxtbits )
         {
             len = onionize(verifiedNXTaddr,encodedsrvD,destsrvNXTaddr,outbuf,len);
