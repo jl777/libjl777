@@ -1308,7 +1308,7 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
 int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET)
 {
     char encoded[NXT_TOKEN_LEN+1];
-    stripwhite_ns(cmdjson,strlen(cmdjson));
+    stripwhite(cmdjson,strlen(cmdjson));
     issue_generateToken(0,encoded,cmdjson,NXTACCTSECRET);
     encoded[NXT_TOKEN_LEN] = 0;
     sprintf(tokenized,"[%s,{\"token\":\"%s\"}]",cmdjson,encoded);
@@ -1690,23 +1690,26 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
 {
     long len;
     unsigned char encoded[MAX_JSON_FIELD+1];
-    char *parmstxt = 0;
+    char NXTaddr[MAX_JSON_FIELD],*parmstxt = 0;
     cJSON *secondobj,*tokenobj,*parmsobj;
     *validp = -2;
     sender[0] = 0;
     if ( (json->type&0xff) == cJSON_Array && cJSON_GetArraySize(json) == 2 )
     {
         parmsobj = cJSON_GetArrayItem(json,0);
+        copy_cJSON(NXTaddr,cJSON_GetObjectItem(parmsobj,"NXT"));
         secondobj = cJSON_GetArrayItem(json,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
         copy_cJSON((char *)encoded,tokenobj);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
-        stripwhite_ns(parmstxt,len);
+        stripwhite(parmstxt,len);
         
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
-        printf("sender.(%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,*validp,parmstxt,encoded,strlen((char *)encoded));
+        printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
+        if ( strcmp(sender,NXTaddr) != 0 )
+            *validp = -1;
         return(parmstxt);
     } else printf("verify_tokenized_json not array of 2\n");
     return(0);
