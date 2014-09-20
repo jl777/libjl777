@@ -739,6 +739,7 @@ char *libjl777_JSON(char *JSONstr)
             issue_generateToken(0,encoded,cmdstr,cp->NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
+            stripwhite_ns(_tokbuf,strlen(_tokbuf));
             array = cJSON_Parse(_tokbuf);
             if ( array != 0 )
             {
