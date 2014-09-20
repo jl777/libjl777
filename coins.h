@@ -561,8 +561,8 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
-    printf("back from init_jdatetime\n");
             languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
+            printf("back from init_jdatetime %p\n",languagesobj);
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);

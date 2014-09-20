@@ -660,7 +660,7 @@ void copy_cJSON(char *dest,cJSON *obj)
         if ( str != 0 )
         {
             offset = stripquotes(str);
-            safecopy(dest,str+offset,MAX_JSON_FIELD-1);
+            strncpy(dest,str+offset,MAX_JSON_FIELD-1);
             free(str);
         }
     }
