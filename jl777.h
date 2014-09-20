@@ -342,7 +342,7 @@ struct coin_info
 #ifndef MAX
 #define MAX(x,y) (((x)>=(y)) ? (x) : (y))
 #endif
-typedef char *(*json_handler)(int32_t received,char *NXTaddr,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr);
+typedef char *(*json_handler)(char *verifiedNXTaddr,char *NXTACCTSECRET,int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr);
 
 char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *args);
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)

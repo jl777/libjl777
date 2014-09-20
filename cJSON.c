@@ -630,23 +630,6 @@ void cJSON_Minify(char *json)
 }
 
 // the following written by jl777
-void copy_cJSON(char *dest,cJSON *obj)
-{
-    char *str;
-    long offset;
-    dest[0] = 0;
-    if ( obj != 0 )
-    {
-        str = cJSON_Print(obj);
-        if ( str != 0 )
-        {
-            offset = stripquotes(str);
-            strcpy(dest,str+offset);
-            free(str);
-        }
-    }
-}
-
 int32_t safecopy(char *dest,char *src,long len)
 {
     int32_t i = -1;
@@ -664,6 +647,23 @@ int32_t safecopy(char *dest,char *src,long len)
         dest[i] = 0;
     }
     return(i);
+}
+
+void copy_cJSON(char *dest,cJSON *obj)
+{
+    char *str;
+    long offset;
+    dest[0] = 0;
+    if ( obj != 0 )
+    {
+        str = cJSON_Print(obj);
+        if ( str != 0 )
+        {
+            offset = stripquotes(str);
+            safecopy(dest,str+offset,MAX_JSON_FIELD-1);
+            free(str);
+        }
+    }
 }
 
 int64_t conv_floatstr(char *numstr)

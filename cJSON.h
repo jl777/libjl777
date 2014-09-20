@@ -35,6 +35,7 @@
 
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x) / SATOSHIDEN)
+#define MAX_JSON_FIELD 2048 // on the big side
 
 #ifdef __cplusplus
 extern "C"

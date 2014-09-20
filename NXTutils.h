@@ -1686,21 +1686,20 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
     return(retcode);
 }
 
-char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *parmstxt)
+char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
 {
     long len;
     unsigned char encoded[NXT_TOKEN_LEN+1];
+    char *parmstxt = 0;
     cJSON *secondobj,*tokenobj,*parmsobj;
     *validp = -2;
     sender[0] = 0;
-    if ( ((*argjsonp)->type&0xff) == cJSON_Array && cJSON_GetArraySize(*argjsonp) == 2 )
+    if ( (json->type&0xff) == cJSON_Array && cJSON_GetArraySize(json) == 2 )
     {
-        secondobj = cJSON_GetArrayItem(*argjsonp,1);
+        parmsobj = cJSON_GetArrayItem(json,0);
+        secondobj = cJSON_GetArrayItem(json,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
         copy_cJSON((char *)encoded,tokenobj);
-        parmsobj = cJSON_DetachItemFromArray(*argjsonp,0);
-        if ( parmstxt != 0 )
-            free(parmstxt);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
@@ -1708,9 +1707,6 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON **argjsonp,char *
         //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
-        if ( *argjsonp != 0 )
-            free_json(*argjsonp);
-        *argjsonp = parmsobj;
         return(parmstxt);
     } else printf("verify_tokenized_json not array of 2\n");
     return(0);

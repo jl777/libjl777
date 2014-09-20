@@ -37,7 +37,7 @@ char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
     int32_t i,n = 0;
     char *str;
     if ( coins == 0 )
-        return("");
+        return(0);
     strcpy(coinsjson,",\"coins\":[");
     for (i=0; i<4*64; i++)
         if ( (coins[i>>6] & (1L << (i&63))) != 0 )
@@ -173,7 +173,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
     }
     else
     {
-        printf("Warning: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
+        printf("FATAL: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
         peer = calloc(1,sizeof(*peer));
     }
     *peer = *refpeer;
@@ -644,15 +644,13 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         decoded[len] = 0;
         parmstxt = clonestr((char *)decoded);
         argjson = cJSON_Parse(parmstxt);
-        printf("[%s] argjson.%p udp.%p\n",parmstxt,argjson,udp);
+        //printf("[%s] argjson.%p udp.%p\n",parmstxt,argjson,udp);
         if ( argjson != 0 ) // if it parses, we must have been the ultimate destination
         {
-            parmstxt = verify_tokenized_json(senderNXTaddr,&valid,&argjson,parmstxt);
+            parmstxt = verify_tokenized_json(senderNXTaddr,&valid,argjson);
             if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                free_json(argjson);
-                argjson = cJSON_Parse((char *)decoded);
                 char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                 jsonstr = pNXT_json_commands(Global_mp,1,argjson,tokenized_np->H.NXTaddr,valid,(char *)decoded);
                 if ( jsonstr != 0 )
