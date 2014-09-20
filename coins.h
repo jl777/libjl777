@@ -562,15 +562,15 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
             languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
-            printf("back from init_jdatetime %p\n",languagesobj);
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
+            printf("minfee\n");
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
+            printf("before extract str\n");
             extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
-            printf("before mainnet\n");
             if ( ismainnet != 0 )
             {
                 NXT_FORKHEIGHT = 173271;
@@ -593,7 +593,6 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
              //   strcpy(ORIGBLOCK,origblock);
             strcpy(NXTSERVER,NXTAPIURL);
             strcat(NXTSERVER,"?requestType");
-            printf("before extracts\n");
             extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
