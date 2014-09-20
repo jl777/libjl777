@@ -570,6 +570,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
+            printf("before mainnet\n");
             if ( ismainnet != 0 )
             {
                 NXT_FORKHEIGHT = 173271;
@@ -592,6 +593,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
              //   strcpy(ORIGBLOCK,origblock);
             strcpy(NXTSERVER,NXTAPIURL);
             strcat(NXTSERVER,"?requestType");
+            printf("before extracts\n");
             extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
