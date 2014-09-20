@@ -535,7 +535,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char coinstr[512],NXTACCTSECRET[512],NXTADDR[64],*buf=0,*jsonstr,*str;
+    char coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr,*str;
     int32_t i,n,ismainnet,createdflag,timezone=0;
     int64_t len=0,allocsize=0;
     struct peerinfo *refpeer,peer;
@@ -561,6 +561,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
+    printf("back from init_jdatetime\n");
             languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
