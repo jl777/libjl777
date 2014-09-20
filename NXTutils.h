@@ -1689,7 +1689,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
 char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
 {
     long len;
-    unsigned char encoded[NXT_TOKEN_LEN+1];
+    unsigned char encoded[MAX_JSON_FIELD+1];
     char *parmstxt = 0;
     cJSON *secondobj,*tokenobj,*parmsobj;
     *validp = -2;
@@ -1704,9 +1704,9 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
         
-        //printf("website.(%s) encoded.(%s) len.%ld\n",parmstxt,encoded,strlen(encoded));
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
+        printf("sender.(%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,*validp,parmstxt,encoded,strlen((char *)encoded));
         return(parmstxt);
     } else printf("verify_tokenized_json not array of 2\n");
     return(0);
