@@ -349,7 +349,7 @@ char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,cha
 #define issue_NXT(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"NXT",cmdstr,0,0,0)
 #define issue_NXTPOST(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",NXTAPIURL,0,0,cmdstr)
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
-void gen_testforms(char *secret);
+//void gen_testforms(char *secret);
 extern uv_loop_t *UV_loop;
 char Server_names[NUM_GATEWAYS+1][64];
 char Server_NXTaddrs[256][64],SERVER_PORTSTR[64];

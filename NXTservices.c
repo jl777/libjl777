@@ -1483,7 +1483,7 @@ void NXTloop(struct NXThandler_info *mp)
                     //printf("call_handlers\n");
                     call_handlers(mp,NXTPROTOCOL_NEWBLOCK,height);
                     //printf("calling gen_testforms\n");
-                    gen_testforms(0);
+                    //gen_testforms(0);
                     //printf("done calling gen_testforms\n");
                 }
                 mp->NXTheight = height++;
