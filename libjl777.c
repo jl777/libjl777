@@ -909,10 +909,10 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
             int32_t valid;
             char verifiedNXTaddr[64],*cmdstr;
             cmdstr = verify_tokenized_json(verifiedNXTaddr,&valid,json);
-            retstr = pNXT_json_commands(Global_mp,1,json,verifiedNXTaddr,valid,cmdstr);
+            retstr = pNXT_json_commands(Global_mp,1,json,verifiedNXTaddr,valid,(char *)msg);
             if ( cmdstr != 0 )
             {
-                printf("got parms.(%s) valid.%d\n",cmdstr,valid);
+                printf("got parms.(%s) valid.%d\n",(char *)msg,valid);
                 free(cmdstr);
             }
             free_json(json);
