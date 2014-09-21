@@ -620,40 +620,49 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
     } else return(clonestr("{\"error\":\"cant find pubaddr\"}"));
 }
 
-char *sendpeerinfo(char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destcoin)
+char *sendpeerinfo(char *hopNXTaddr,char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destcoin)
 {
     char buf[4096];
     struct NXT_acct *pubnp,*destnp;
     printf("in sendpeerinfo(%s)\n",destaddr);
     pubnp = search_addresses(NXTaddr);
     destnp = search_addresses(destaddr);
+    hopNXTaddr[0] = 0;
     if ( pubnp != 0 && destnp != 0 )
     {
         set_peer_json(buf,NXTaddr,pubnp);
         printf("SENDPEERINFO >>>>>>>>>> (%s)\n",buf);
-        return(send_tokenized_cmd(0,NXTaddr,NXTACCTSECRET,buf,destnp->H.U.NXTaddr));
+        return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destnp->H.U.NXTaddr));
     } else return(clonestr("{\"error\":\"sendpeerinfo cant find pubaddr\"}"));
 }
 
-uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET,char *srvNXTaddr,char *srvipaddr,uint16_t srvport)
+void say_hello(struct NXT_acct *np)
 {
-    struct coin_info *cp;
-    char cmd[1024],packet[2048],coinsjson[1024],hexstr[512],*BTCDaddr,*BTCaddr;
+    struct coin_info *cp = get_coin_info("BTCD");
+    char srvNXTaddr[64],hopNXTaddr[64],*retstr;
+    struct NXT_acct *hopnp;
+    int32_t createflag;
+    expand_nxt64bits(srvNXTaddr,cp->srvpubnxt64bits);
+    if ( (retstr= sendpeerinfo(hopNXTaddr,srvNXTaddr,cp->srvNXTACCTSECRET,np->H.U.NXTaddr,0)) != 0 )
+    {
+        printf("say_hello.(%s)\n",retstr);
+        if ( hopNXTaddr[0] != 0 )
+        {
+            hopnp = get_NXTacct(&createflag,Global_mp,hopNXTaddr);
+            update_peerstate(&np->mypeerinfo,&hopnp->mypeerinfo,PEER_HELLOSTATE,PEER_SENT);
+        }
+        else printf("say_hello no hopNXTaddr?\n");
+        free(retstr);
+    } else printf("say_hello error sendpeerinfo?\n");
+}
+
+uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET)
+{
+    char cmd[MAX_JSON_FIELD*4],packet[MAX_JSON_FIELD*4];
     int32_t len;
-    init_hexbytes(hexstr,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
-    if ( np != 0 )
-    {
-        BTCDaddr = np->mypeerinfo.pubBTCD;
-        BTCaddr = np->mypeerinfo.pubBTC;
-    } else BTCDaddr = BTCaddr = "";
-    if ( (cp= get_coin_info("BTCD")) != 0 && cp->pubnxt64bits != 0 )
-    {
-        _coins_jsonstr(coinsjson,coins);
-        sprintf(cmd,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\",\"srvNXTaddr\":\"%s\",\"pubkey\":\"%s\",\"pubBTCD\":\"%s\",\"pubNXT\":\"%s\",\"pubBTC\":\"%s\"%s}",np->H.U.NXTaddr,srvipaddr,srvport,srvNXTaddr,hexstr,BTCDaddr,np->H.U.NXTaddr,BTCaddr,coinsjson);
-        len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
-        return(call_libjl777_broadcast(0,packet,len+1,PUBADDRS_MSGDURATION));
-    } else printf("broadcast_publishpacket error: no public nxt addr\n");
-    return(-1);
+    set_peer_json(cmd,np->H.U.NXTaddr,np);
+    len = construct_tokenized_req(packet,cmd,NXTACCTSECRET);
+    return(call_libjl777_broadcast(0,packet,len+1,PUBADDRS_MSGDURATION));
 }
 
 char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
@@ -719,7 +728,7 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
                 strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
             np = get_NXTacct(&createdflag,Global_mp,srvNXTaddr);
         }
-        broadcast_publishpacket(coins,np,NXTACCTSECRET,srvNXTaddr,srvipaddr,srvport);
+        broadcast_publishpacket(coins,np,NXTACCTSECRET);
     }
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }
@@ -763,7 +772,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
     int32_t createdflag;
     double vol,price,amountB;
     uint64_t qtyB,assetB;
-    char *jsonstr,*parsed,buf[1024],calchash[1024],NXTaddr[64],responseutx[1024],signedtx[1024],otherNXTaddr[64];
+    char *jsonstr,*parsed,hopNXTaddr[64],buf[1024],calchash[1024],NXTaddr[64],responseutx[1024],signedtx[1024],otherNXTaddr[64];
     jsonstr = issue_calculateFullHash(0,utx,sig);
     if ( jsonstr != 0 )
     {
@@ -803,7 +812,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                     if ( tx != 0 )
                                     {
                                         sprintf(buf,"{\"requestType\":\"respondtx\",\"NXT\":\"%s\",\"signedtx\":\"%s\",\"time\":%ld}",NXTaddr,signedtx,time(NULL));
-                                        send_tokenized_cmd(0,NXTaddr,np->NXTACCTSECRET,buf,otherNXTaddr);
+                                        send_tokenized_cmd(hopNXTaddr,0,NXTaddr,np->NXTACCTSECRET,buf,otherNXTaddr);
                                         free(tx);
                                         sprintf(buf,"{\"results\":\"utx from NXT.%llu accepted with fullhash.(%s) %.8f of %llu for %.8f of %llu -> price %.11f\"}",(long long)offertx->senderbits,full,vol,(long long)offertx->assetidbits,amountB,(long long)assetB,price);
                                     }
@@ -881,7 +890,7 @@ char *respondtx(char *sender,char *signedtx)
 
 char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,double qtyA,uint64_t assetB,double qtyB,int32_t type)
 {
-    char buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],_tokbuf[4096];
+    char hopNXTaddr[64],buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65],_tokbuf[4096];
     struct NXT_tx T,*tx;
     struct NXT_acct *np,*othernp;
     long i,n;
@@ -930,7 +939,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         }
         n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
         othernp->signedtx = clonestr(signedtx);
-        return(sendmessage(0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
+        return(sendmessage(hopNXTaddr,0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));

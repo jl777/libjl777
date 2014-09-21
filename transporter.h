@@ -435,7 +435,7 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,int3
 void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NXT_acct *destnp,struct coin_info *cp,uint32_t height,uint32_t totalcrc,uint64_t value,int32_t errflag,int32_t num,uint32_t *crcs,int32_t minage,int32_t ind,int32_t sharei,int32_t M,int32_t N,uint8_t *sharenrs)
 {
     int32_t i;
-    char msg[1024],buf[1024],*retstr;
+    char msg[1024],buf[1024],hopNXTaddr[64],*retstr;
     sprintf(msg,"{\"requestType\":\"transporter_status\",\"status\":%d,\"coin\":\"%s\",\"totalcrc\":%u,\"height\":%u,\"minage\":%d,\"value\":%.8f,\"num\":%d,\"ind\":%d,\"sharei\":%d,\"M\":%d,\"N\":%d,\"pubaddr\":\"%s\"",errflag,cp!=0?cp->name:"ERROR",totalcrc,height,minage,dstr(value),num,ind,sharei,M,N,cp->pubaddr);
     if ( N > 1 )
     {
@@ -455,7 +455,7 @@ void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NX
         strcat(msg,"]}");
     }
     else strcat(msg,"}");
-    retstr = send_tokenized_cmd(Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.U.NXTaddr);
+    retstr = send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,msg,destnp->H.U.NXTaddr);
     if ( retstr != 0 )
     {
         printf("send_transporter_ACK.(%s)\n",retstr);

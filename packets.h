@@ -13,11 +13,90 @@
 #define ALLOCWR_ALLOCFREE 1
 #define ALLOCWR_FREE -1
 
+#define PEER_SENT 1
+#define PEER_RECV 2
+#define PEER_PENDINGRECV 4
+#define PEER_MASK (PEER_SENT|PEER_RECV|PEER_PENDINGRECV)
+#define PEER_TIMEOUT 0x40
+#define PEER_FINISHED 0x80
+#define PEER_EXPIRATION 60
+
+struct peer_queue_entry
+{
+    struct peerinfo *peer,*hop;
+    float startmilli,elapsed;
+    uint8_t stateid,state;
+};
+
+struct pingpong_queue PeerQ;
 struct peerinfo **Peers,**Pservers;
 int32_t Numpeers,Numpservers;
 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag);
 
 // single threaded peer functions
+int32_t process_PeerQ(void **ptrp,void *arg) // added when inbound transporter sequence is started
+{
+    struct peer_queue_entry *ptr = (*ptrp);
+    struct peerinfo *peer,*hop;
+    int32_t stateid;
+    double timediff;
+    peer = ptr->peer;
+    hop = ptr->hop;
+    timediff = (double)(milliseconds() - ptr->startmilli);
+    stateid = ptr->stateid;
+    if ( peer != 0 && hop != 0 && timediff >= -3 && stateid < NUM_PEER_STATES )
+    {
+        if ( timediff > PEER_EXPIRATION )
+        {
+            if ( (peer->states[stateid]&PEER_FINISHED) != PEER_FINISHED || (hop->states[stateid]&PEER_FINISHED) != PEER_FINISHED )
+            {
+                peer->states[ptr->stateid] |= PEER_TIMEOUT;
+                hop->states[ptr->stateid] |= PEER_TIMEOUT;
+            }
+            printf("process_peerQ: %s %llu state.%d -> %llu state.%d | elapsed.%.3f timediff.%.3f stateid.%d of %d\n",(timediff > PEER_EXPIRATION)?"EXPIRED!":"COMPLETED",(long long)peer->pubnxtbits,peer->states[stateid],(long long)hop->pubnxtbits,hop->states[stateid],ptr->elapsed,timediff,stateid,NUM_PEER_STATES);
+            return(1);
+        } else return(0);
+    }
+    else
+    {
+        printf("process_peerQ: illegal peer.%p or hop.%p | elapsed.%.3f timediff.%.3f stateid.%d of %d\n",peer,hop,hop->elapsed[stateid],timediff,stateid,NUM_PEER_STATES);
+        return(-1);
+    }
+}
+
+void update_peerstate(struct peerinfo *peer,struct peerinfo *hop,int32_t stateid,int32_t state)
+{
+    struct peer_queue_entry *ptr;
+    if ( stateid >= NUM_PEER_STATES )
+    {
+        printf("illegal stateid.%d of %d: state,%d\n",stateid,NUM_PEER_STATES,state);
+        return;
+    }
+    if ( state == PEER_SENT )
+    {
+        peer->states[stateid] = state;
+        hop->states[stateid] = PEER_PENDINGRECV;
+        ptr = calloc(1,sizeof(*ptr));
+        ptr->peer = peer;
+        ptr->hop = hop;
+        ptr->stateid = stateid;
+        ptr->state = state;
+        ptr->startmilli = peer->startmillis[stateid] = milliseconds();
+        queue_enqueue(&PeerQ.pingpong[0],ptr);
+    }
+    else if ( state == PEER_RECV )
+    {
+        if ( (peer->states[stateid]&PEER_MASK) == PEER_SENT && (hop->states[stateid]&PEER_MASK) == PEER_PENDINGRECV )
+        {
+            peer->states[stateid] |= PEER_FINISHED;
+            hop->states[stateid] |= PEER_FINISHED;
+            hop->elapsed[stateid] = (double)(milliseconds() - peer->startmillis[stateid]);
+        }
+        else printf("unexpected states[%d] NXT.%llu %d and hopNXT.%llu %d\n",stateid,(long long)peer->pubnxtbits,peer->states[stateid],(long long)hop->pubnxtbits,hop->states[stateid]);
+    }
+    else printf("update_peerstate unknown state.%d\n",state);
+}
+
 struct peerinfo *get_random_pserver()
 {
     if ( Numpservers != 0 )
@@ -158,9 +237,10 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
 {
+    void say_hello(struct NXT_acct *np);
     char NXTaddr[64];
     int32_t createdflag,isPserver;
-    struct NXT_acct *np;
+    struct NXT_acct *np = 0;
     struct peerinfo *peer = 0;
     if ( (peer= find_peerinfo(refpeer->pubnxtbits,refpeer->pubBTCD,refpeer->pubBTC)) != 0 )
         return(peer);
@@ -184,6 +264,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
         {
             Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
             Pservers[Numpservers] = peer, Numpservers++;
+            say_hello(np);
             printf("ADDED privacyServer.%d\n",Numpservers);
         }
     }
@@ -681,10 +762,10 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     return(0);
 }
 
-char *sendmessage(int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
+char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,char *origargstr)
 {
     uint64_t txid;
-    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],hopNXTaddr[64];
+    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
     unsigned char encodedsrvD[4096],encodedD[4096],encodedL[4096],encodedP[4096],*outbuf;
     int32_t len,createdflag;
     struct NXT_acct *np,*destnp;
@@ -744,11 +825,11 @@ char *sendmessage(int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char 
     return(clonestr(buf));
 }
 
-char *send_tokenized_cmd(int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
+char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
 {
     char _tokbuf[4096];
     int n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    return(sendmessage(L,NXTACCTSECRET,_tokbuf,(int32_t)n+1,destNXTaddr,_tokbuf));
+    return(sendmessage(hopNXTaddr,L,NXTACCTSECRET,_tokbuf,(int32_t)n+1,destNXTaddr,_tokbuf));
 }
 
 int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
@@ -756,12 +837,12 @@ int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *js
     int32_t err = -1;
     cJSON *retjson;
     struct NXT_acct *np;
-    char *msg,*retstr,errstr[512],verifiedNXTaddr[64];
+    char *msg,*retstr,errstr[512],hopNXTaddr[64],verifiedNXTaddr[64];
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     msg = cJSON_Print(json);
     stripwhite_ns(msg,strlen(msg));
-    retstr = send_tokenized_cmd(L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+    retstr = send_tokenized_cmd(hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
     if ( retstr != 0 )
     {
         // printf("sendandfree_jsoncmd.(%s)\n",retstr);

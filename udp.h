@@ -106,7 +106,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     uint16_t port;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    char sender[256],retjsonstr[4096],NXTaddr[64],*retstr;
+    char sender[256],retjsonstr[4096],NXTaddr[64],hopNXTaddr[64],*retstr;
     retjsonstr[0] = 0;
     printf("UDP RECEIVED\n");
     if ( cp != 0 && nread > 0 )
@@ -121,7 +121,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             if ( retjsonstr[0] != 0 )
             {
                 printf("%s send tokenized.(%s) to %s\n",NXTaddr,retjsonstr,np->H.U.NXTaddr);
-                if ( (retstr= send_tokenized_cmd(Global_mp->Lfactor,NXTaddr,cp->NXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
+                if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,NXTaddr,cp->NXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);
@@ -194,6 +194,8 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
         printf("UDP.%p server started on port %d\n",srv,port);
     else printf("couldnt open_udp on port.%d\n",port);
     Servers_started |= 1;
+    init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
+
     return(srv);
 }
 

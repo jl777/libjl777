@@ -9,7 +9,7 @@
 #define gateway_jsoncodec_h
 
 //#include <zlib.h>
-struct compressed_json { uint32_t complen,sublen,origlen; unsigned char encoded[]; };
+struct compressed_json { uint32_t complen,sublen,origlen; unsigned char encoded[128]; };
 
 
 struct jsonwords { const char *word; int32_t len,count; };

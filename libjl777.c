@@ -68,7 +68,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     void *Coinloop(void *arg);
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
-    char *ipaddr;
+    printf("init_NXTservices.(%s)\n",myipaddr);
     UV_loop = uv_default_loop();
     portable_mutex_init(&mp->hash_mutex);
     portable_mutex_init(&mp->hashtable_queue[0].mutex);
@@ -76,11 +76,10 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     
     init_NXThashtables(mp);
     init_NXTAPI(0);
-    ipaddr = 0;
-    if ( ipaddr != 0 )
+    if ( myipaddr != 0 )
     {
-        strcpy(MY_IPADDR,get_ipaddr());
-        strcpy(mp->ipaddr,MY_IPADDR);
+        //strcpy(MY_IPADDR,get_ipaddr());
+        strcpy(mp->ipaddr,myipaddr);
     }
     safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
@@ -91,7 +90,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     init_MGWconf(JSON_or_fname,myipaddr);
-    printf("start getNXTblocks\n");
+    printf("start getNXTblocks.(%s)\n",myipaddr);
     if ( 1 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
     mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
@@ -315,7 +314,7 @@ char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,int32_t received,char *sen
 
 char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char destNXTaddr[MAX_JSON_FIELD],msg[MAX_JSON_FIELD],*retstr = 0;
+    char hopNXTaddr[64],destNXTaddr[MAX_JSON_FIELD],msg[MAX_JSON_FIELD],*retstr = 0;
     int32_t L;
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(msg,objs[1]);
@@ -325,7 +324,7 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,int32_t received,char *send
     {
         if ( received != 0 )
             printf("received message.(%s)\n",origargstr);
-        else retstr = sendmessage(L,sender,origargstr,(int32_t)strlen(origargstr)+1,destNXTaddr,origargstr);
+        else retstr = sendmessage(hopNXTaddr,L,sender,origargstr,(int32_t)strlen(origargstr)+1,destNXTaddr,origargstr);
     }
     else retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
@@ -358,14 +357,14 @@ char *getpubkey_func(char *NXTaddr,char *NXTACCTSECRET,int32_t received,char *se
 
 char *sendpeerinfo_func(char *NXTaddr,char *NXTACCTSECRET,int32_t received,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char addr[MAX_JSON_FIELD],destcoin[MAX_JSON_FIELD],*retstr = 0;
+    char addr[MAX_JSON_FIELD],destcoin[MAX_JSON_FIELD],hopNXTaddr[64],*retstr = 0;
     copy_cJSON(addr,objs[0]);
     copy_cJSON(destcoin,objs[1]);
     printf("sendpeerinfo_func(sender.%s valid.%d addr.%s)\n",sender,valid,addr);
     if ( valid < 0 )
         return(0);
     if ( sender[0] != 0 && valid >= 0 && addr[0] != 0 )
-        retstr = sendpeerinfo(sender,NXTACCTSECRET,addr,destcoin);
+        retstr = sendpeerinfo(hopNXTaddr,sender,NXTACCTSECRET,addr,destcoin);
     else retstr = clonestr("{\"result\":\"invalid getpubkey request\"}");
     return(retstr);
 }
@@ -927,8 +926,9 @@ char *libjl777_gotpacket(char *msg,int32_t duration)
 int libjl777_start(char *JSON_or_fname,char *myipaddr)
 {
     struct NXT_str *tp = 0;
+    myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
-    printf("libjl777_start(%s) ipaddr.(%s)\n",JSON_or_fname,myipaddr);
+    printf("libjl777_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
     {
@@ -938,9 +938,10 @@ int libjl777_start(char *JSON_or_fname,char *myipaddr)
         Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
-    printf("call init_NXTservices\n");
+    printf("call init_NXTservices.(%s)\n",myipaddr);
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
     Finished_init = 1;
+    free(myipaddr);
     return(0);
 }
