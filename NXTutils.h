@@ -1714,4 +1714,19 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
     } else printf("verify_tokenized_json not array of 2\n");
     return(0);
 }
+
+int32_t parse_ipaddr(char *ipaddr,char *ip_port)
+{
+    int32_t j,port = 0;
+    if ( ip_port != 0 && ip_port[0] != 0 )
+    {
+        strcpy(ipaddr,ip_port);
+        for (j=0; ipaddr[j]!=0; j++)
+            if ( ipaddr[j] == ':' )
+                break;
+        ipaddr[j] = 0;
+        port = atoi(ipaddr+j+1);
+    } else strcpy(ipaddr,"127.0.0.1");
+    return(port);
+}
 #endif

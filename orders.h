@@ -562,40 +562,6 @@ uint64_t create_raw_orders(uint64_t assetA,uint64_t assetB)
     return(obookid);
 }
 
-char *sellpNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
-{
-    char buf[1024];
-    uint64_t satoshis;
-    struct NXT_acct *np;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    satoshis = (amount * SATOSHIDEN);
-    sprintf(buf,"NXT.%s sell %.8f NXT for pNXT",NXTaddr,dstr(satoshis));
-    return(clonestr(buf));
-}
-
-char *buypNXT(char *NXTaddr,char *NXTACCTSECRET,double amount)
-{
-    char buf[1024];
-    uint64_t satoshis;
-    struct NXT_acct *np;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    satoshis = (amount * SATOSHIDEN);
-    sprintf(buf,"NXT.%s buy %.8f pNXT for NXT",NXTaddr,dstr(satoshis));
-    return(clonestr(buf));
-}
-
-char *send_pNXT(char *NXTaddr,char *NXTACCTSECRET,double amount,int32_t level,char *dest,char *paymentid)
-{
-    char buf[1024];
-    uint64_t satoshis;
-    struct NXT_acct *np;
-    np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-    satoshis = (amount * SATOSHIDEN);
-    sprintf(buf,"send %.8f pNXT from NXT.%s to %s paymentid.(%s) using level.%d",dstr(satoshis),NXTaddr,dest,paymentid,level);
-    return(clonestr(buf));
-}
-
-
 void set_peer_json(char *buf,char *NXTaddr,struct NXT_acct *pubnp)
 {
     char pubkey[128],srvipaddr[64],srvnxtaddr[64],coinsjson[1024];
@@ -656,6 +622,14 @@ void say_hello(struct NXT_acct *np)
     } else printf("say_hello error sendpeerinfo?\n");
 }
 
+void ack_hello(struct NXT_acct *np,struct sockaddr *prevaddr)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    char srvNXTaddr[64];
+    expand_nxt64bits(srvNXTaddr,cp->srvpubnxt64bits);
+    printf("ack_hello to %s\n",np->H.U.NXTaddr);
+}
+
 uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET)
 {
     char cmd[MAX_JSON_FIELD*4],packet[MAX_JSON_FIELD*4];
@@ -665,7 +639,7 @@ uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXT
     return(call_libjl777_broadcast(0,packet,len+1,PUBADDRS_MSGDURATION));
 }
 
-char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
+char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
 {
     int32_t createdflag;
     struct NXT_acct *np;
@@ -716,6 +690,9 @@ char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubk
         //safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
     }
+    if ( prevaddr != 0 )
+        ack_hello(np,prevaddr);
+
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);

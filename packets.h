@@ -82,6 +82,7 @@ void update_peerstate(struct peerinfo *peer,struct peerinfo *hop,int32_t stateid
         ptr->stateid = stateid;
         ptr->state = state;
         ptr->startmilli = peer->startmillis[stateid] = milliseconds();
+        hop->elapsed[stateid] = 0;
         queue_enqueue(&PeerQ.pingpong[0],ptr);
     }
     else if ( state == PEER_RECV )
@@ -732,8 +733,8 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( valid != 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                char *pNXT_json_commands(struct NXThandler_info *mp,int32_t received,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                jsonstr = pNXT_json_commands(Global_mp,1,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+                jsonstr = pNXT_json_commands(Global_mp,addr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
                 if ( jsonstr != 0 )
                 {
                     strcpy(retjsonstr,jsonstr);

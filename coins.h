@@ -536,7 +536,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
     char coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr,*str;
-    int32_t i,j,n,ismainnet,createdflag,timezone=0;
+    int32_t i,n,ismainnet,createdflag,timezone=0;
     int64_t len=0,allocsize=0;
     struct peerinfo *refpeer,peer;
     NXTACCTSECRET[0] = 0;
@@ -613,14 +613,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
                     {
                         printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
-                        if ( myipaddr != 0 && myipaddr[0] != 0 )
-                        {
-                            safecopy(cp->myipaddr,myipaddr,sizeof(cp->myipaddr));
-                            for (j=0; cp->myipaddr[j]!=0; j++)
-                                if ( cp->myipaddr[j] == ':' )
-                                    break;
-                            cp->myipaddr[j] = 0;
-                        }
+                        parse_ipaddr(cp->myipaddr,myipaddr);
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
                             BTCDaddr = cp->pubaddr;
@@ -652,7 +645,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 }
                 if ( (cp= get_coin_info("BTCD")) != 0 )
                 {
-                    char *publishaddrs(uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
+                    char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport);
                     init_hexbytes(pubkey,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
                     expand_nxt64bits(NXTADDR,cp->pubnxt64bits);
                     //str = publishaddrs(Global_mp->coins,NXTACCTSECRET,NXTADDR,pubkey,cp->pubaddr,BTCaddr,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
@@ -661,7 +654,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     if ( strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                     {
                         init_hexbytes(pubkey,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
-                        str = publishaddrs(Global_mp->coins,cp->srvNXTACCTSECRET,cp->srvNXTADDR,pubkey,cp->srvpubaddr,0,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
+                        str = publishaddrs(0,Global_mp->coins,cp->srvNXTACCTSECRET,cp->srvNXTADDR,pubkey,cp->srvpubaddr,0,cp->srvNXTADDR,cp->myipaddr,cp->srvport);
                         if ( str != 0 )
                             printf("publish loopback privacyserver.(%s)\n",str), free(str);
                     }
