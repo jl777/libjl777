@@ -577,8 +577,8 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
 {
     char buf[4096];
     struct NXT_acct *pubnp;
-    printf("in getpubkey(%s)\n",pubaddr);
     pubnp = search_addresses(pubaddr);
+    printf("in getpubkey(%s) NXT.%s BTCD.(%s)\n",pubaddr,NXTaddr,pubnp->mypeerinfo.pubBTCD);
     if ( pubnp != 0 )
     {
         set_peer_json(buf,NXTaddr,pubnp);
@@ -605,10 +605,15 @@ char *sendpeerinfo(char *hopNXTaddr,char *NXTaddr,char *NXTACCTSECRET,char *dest
 void say_hello(struct NXT_acct *np)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    char srvNXTaddr[64],hopNXTaddr[64],*retstr;
+    char srvNXTaddr[64],NXTaddr[64],hopNXTaddr[64],*retstr;
     struct NXT_acct *hopnp;
     int32_t createflag;
+    return;
+    expand_nxt64bits(NXTaddr,cp->pubnxt64bits);
     expand_nxt64bits(srvNXTaddr,cp->srvpubnxt64bits);
+    if ( strcmp(np->H.U.NXTaddr,srvNXTaddr) == 0 || strcmp(np->H.U.NXTaddr,NXTaddr) == 0 )
+        return;
+    hopNXTaddr[0] = 0;
     if ( (retstr= sendpeerinfo(hopNXTaddr,srvNXTaddr,cp->srvNXTACCTSECRET,np->H.U.NXTaddr,0)) != 0 )
     {
         printf("say_hello.(%s)\n",retstr);
@@ -619,19 +624,17 @@ void say_hello(struct NXT_acct *np)
         }
         else printf("say_hello no hopNXTaddr?\n");
         free(retstr);
+        printf("retstr freed\n");
     } else printf("say_hello error sendpeerinfo?\n");
 }
 
 void ack_hello(struct NXT_acct *np,struct sockaddr *prevaddr)
 {
-    struct coin_info *cp = get_coin_info("BTCD");
-    char srvNXTaddr[64];
-    expand_nxt64bits(srvNXTaddr,cp->srvpubnxt64bits);
     printf("ack_hello to %s\n",np->H.U.NXTaddr);
 }
 
 uint64_t broadcast_publishpacket(uint64_t coins[4],struct NXT_acct *np,char *NXTACCTSECRET)
-{
+{ 
     char cmd[MAX_JSON_FIELD*4],packet[MAX_JSON_FIELD*4];
     int32_t len;
     set_peer_json(cmd,np->H.U.NXTaddr,np);
@@ -675,7 +678,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     if ( refpeer != 0 && coins != 0 )
     {
         memcpy(refpeer->coins,coins,sizeof(refpeer->coins));
-        printf("set coins.%llx\n",(long long)coins[0]);
+        //printf("set coins.%llx\n",(long long)coins[0]);
     }
     np->mypeerinfo = *refpeer;
     //printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
@@ -690,24 +693,30 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
         //safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    if ( prevaddr != 0 )
-        ack_hello(np,prevaddr);
 
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
-    if ( strcmp(np->H.U.NXTaddr,pubNXT) == 0 || strcmp(np->H.U.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
+    if ( prevaddr != 0 )
     {
-        if ( strcmp(srvNXTaddr,pubNXT) == 0 )
-        {
-            strcpy(verifiedNXTaddr,srvNXTaddr);
-            if ( (cp= get_coin_info("BTCD")) != 0 )
-                strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
-            np = get_NXTacct(&createdflag,Global_mp,srvNXTaddr);
-        }
-        broadcast_publishpacket(coins,np,NXTACCTSECRET);
+        ack_hello(np,prevaddr);
+        return(0);
     }
-    return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
+    else
+    {
+        expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
+        if ( strcmp(np->H.U.NXTaddr,pubNXT) == 0 || strcmp(np->H.U.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
+        {
+            if ( strcmp(srvNXTaddr,pubNXT) == 0 )
+            {
+                strcpy(verifiedNXTaddr,srvNXTaddr);
+                if ( (cp= get_coin_info("BTCD")) != 0 )
+                    strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
+                np = get_NXTacct(&createdflag,Global_mp,srvNXTaddr);
+                broadcast_publishpacket(coins,np,NXTACCTSECRET);
+            }
+        }
+        return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
+    }
 }
 
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
@@ -916,6 +925,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         }
         n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
         othernp->signedtx = clonestr(signedtx);
+        hopNXTaddr[0] = 0;
         return(sendmessage(hopNXTaddr,0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);

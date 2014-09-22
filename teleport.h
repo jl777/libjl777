@@ -288,16 +288,23 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
 
 void teleport_idler(uv_idle_t *handle)
 {
-    static double lastattempt;
+    extern int32_t Finished_init;
+    void say_hello(struct NXT_acct *np);
+    static double lastattempt,firsttime;
     double millis;
+    struct NXT_acct *np;
     //printf("teleport_idler\n");
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 500) )
+    if ( firsttime == 0 )
+        firsttime = millis;
+    if ( Finished_init != 0 && millis > (lastattempt + 500) )
     {
         process_pingpong_queue(&PeerQ,0);
         process_pingpong_queue(&Transporter_sendQ,0);
         process_pingpong_queue(&Transporter_recvQ,0);
         process_pingpong_queue(&CloneQ,0);
+        if ( 0 && millis > firsttime+60000 && (np= queue_dequeue(&HelloQ)) != 0 )
+            say_hello(np);
         lastattempt = millis;
     }
 }
@@ -350,7 +357,7 @@ char *calc_teleport_summary(struct coin_info *cp,struct NXT_acct *sendernp,struc
         update_teleport_summary(array,cp,i,log->numpods,sendernp,log->pods[i]->satoshis,log->crcs[i]);
     cJSON_AddItemToObject(json,"telepods",array);
     retstr = cJSON_Print(json);
-    stripwhite_ns(retstr,strlen(retstr));
+    stripwhite(retstr,strlen(retstr));
     return(retstr);
 }
 

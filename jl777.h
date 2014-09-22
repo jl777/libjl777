@@ -189,7 +189,7 @@ struct Uaddr
 };
 
 #define PEER_HELLOSTATE 1
-#define NUM_PEER_STATES PEER_HELLOSTATE
+#define NUM_PEER_STATES (PEER_HELLOSTATE+1)
 
 struct peerinfo
 {

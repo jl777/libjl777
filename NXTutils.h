@@ -1653,7 +1653,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
             }
             if ( retcode != -5 )
             {
-                firstjsontxt = cJSON_Print(firstitem), stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
+                firstjsontxt = cJSON_Print(firstitem), stripwhite(firstjsontxt,strlen(firstjsontxt));
                 tokenobj = cJSON_GetArrayItem(array,1);
                 obj = cJSON_GetObjectItem(tokenobj,"token");
                 copy_cJSON((char *)encoded,obj);
@@ -1707,7 +1707,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
         
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
-        printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
+        //printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
         if ( strcmp(sender,NXTaddr) != 0 )
             *validp = -1;
         return(parmstxt);
