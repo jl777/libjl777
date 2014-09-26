@@ -22,7 +22,7 @@ int main(int argc,const char *argv[])
 {
     void **coinptrs;
     coinptrs = calloc(1,sizeof(*coinptrs));
-    libjl777_start(coinptrs,confjson);
+    SuperNET_start(coinptrs,confjson);
     while ( 1 )
         sleep(60);
     return(0);
