@@ -844,7 +844,7 @@ int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *js
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     msg = cJSON_Print(json);
-    stripwhite_ns(msg,strlen(msg));
+    stripwhite(msg,strlen(msg));
     retstr = send_tokenized_cmd(hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
     if ( retstr != 0 )
     {

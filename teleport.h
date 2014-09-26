@@ -358,7 +358,7 @@ char *calc_teleport_summary(struct coin_info *cp,struct NXT_acct *sendernp,struc
         update_teleport_summary(array,cp,i,log->numpods,sendernp,log->pods[i]->satoshis,log->crcs[i]);
     cJSON_AddItemToObject(json,"telepods",array);
     retstr = cJSON_Print(json);
-    stripwhite_ns(retstr,strlen(retstr));
+    stripwhite(retstr,strlen(retstr));
     return(retstr);
 }
 

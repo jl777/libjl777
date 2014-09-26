@@ -1308,7 +1308,7 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
 int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET)
 {
     char encoded[NXT_TOKEN_LEN+1];
-    stripwhite_ns(cmdjson,strlen(cmdjson));
+    stripwhite(cmdjson,strlen(cmdjson));
     issue_generateToken(0,encoded,cmdjson,NXTACCTSECRET);
     encoded[NXT_TOKEN_LEN] = 0;
     sprintf(tokenized,"[%s,{\"token\":\"%s\"}]",cmdjson,encoded);
@@ -1653,7 +1653,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
             }
             if ( retcode != -5 )
             {
-                firstjsontxt = cJSON_Print(firstitem), stripwhite_ns(firstjsontxt,strlen(firstjsontxt));
+                firstjsontxt = cJSON_Print(firstitem), stripwhite(firstjsontxt,strlen(firstjsontxt));
                 tokenobj = cJSON_GetArrayItem(array,1);
                 obj = cJSON_GetObjectItem(tokenobj,"token");
                 copy_cJSON((char *)encoded,obj);
@@ -1703,7 +1703,7 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
         copy_cJSON((char *)encoded,tokenobj);
         parmstxt = cJSON_Print(parmsobj);
         len = strlen(parmstxt);
-        stripwhite_ns(parmstxt,len);
+        stripwhite(parmstxt,len);
         
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
             issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
