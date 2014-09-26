@@ -662,7 +662,7 @@ uint64_t route_packet(uv_udp_t *udp,char *hopNXTaddr,unsigned char *outbuf,int32
         if ( len < MAX_UDPLEN )
         {
             uv_ip4_addr(destip,np->mypeerinfo.srvport,&addr);
-            portable_udpwrite((struct sockaddr *)&addr,udp,finalbuf,MAX_UDPLEN,ALLOCWR_ALLOCFREE);
+            portable_udpwrite((struct sockaddr *)&addr,udp,finalbuf,len,ALLOCWR_ALLOCFREE);
         }
         else call_SuperNET_broadcast(destip,(char *)finalbuf,len,0);
     }
@@ -678,7 +678,7 @@ uint64_t route_packet(uv_udp_t *udp,char *hopNXTaddr,unsigned char *outbuf,int32
                 np->mypeerinfo.numsent++;
                 Uaddrs[i]->numsent++;
                 if ( len < MAX_UDPLEN )
-                    portable_udpwrite((struct sockaddr *)&Uaddrs[i]->addr,udp,finalbuf,MAX_UDPLEN,ALLOCWR_ALLOCFREE);
+                    portable_udpwrite((struct sockaddr *)&Uaddrs[i]->addr,udp,finalbuf,len,ALLOCWR_ALLOCFREE);
                 else
                 {
                     extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)&Uaddrs[i]->addr);
