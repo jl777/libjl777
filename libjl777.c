@@ -873,7 +873,8 @@ int32_t got_newpeer(char *ip_port)
         
         0 )
     {
-        return(broadcast_publishpacket(ip_port) != 0 ? 0 : -1);
+        queue_enqueue(&P2P_Q,clonestr(ip_port));
+        //return(broadcast_publishpacket(ip_port) != 0 ? 0 : -1);
     }
 	return(0);
 }

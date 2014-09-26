@@ -73,6 +73,7 @@ struct telepod
     unsigned char privkey_shares[];
 };
 struct pingpong_queue Transporter_sendQ,Transporter_recvQ,CloneQ;
+queue_t P2P_Q;
 
 uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 {
@@ -288,12 +289,19 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
 
 void teleport_idler(uv_idle_t *handle)
 {
+    uint64_t broadcast_publishpacket(char *ip_port);
     static double lastattempt;
     double millis;
+    char *ip_port;
     //printf("teleport_idler\n");
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 500) )
     {
+        if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
+        {
+            broadcast_publishpacket(ip_port);
+            free(ip_port);
+        }
         process_pingpong_queue(&PeerQ,0);
         process_pingpong_queue(&Transporter_sendQ,0);
         process_pingpong_queue(&Transporter_recvQ,0);
