@@ -538,7 +538,7 @@ int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
         n = MAX_UDPLEN - sizeof(crc);
     } else n = len;
     memcpy(final + sizeof(crc),encoded,len);
-    crc = _crc32(0,final + sizeof(crc),len);
+    crc = _crc32(0,final + sizeof(crc),n);
     memcpy(final,&crc,sizeof(crc));
     return(n + sizeof(crc));
 }
