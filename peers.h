@@ -830,14 +830,6 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
         myipbits = calc_ipbits(cp->myipaddr);
     if ( np->mypeerinfo.srvipbits != 0 )
     {
-        /*if ( Numpservers > 0 && Pservers != 0 )
-        {
-            for (i=0; i<Numpservers; i++)
-                if ( Pservers[i] != 0 )
-                    if ( Pservers[i]->srvipbits == np->mypeerinfo.srvipbits )
-                        break;
-            if ( i != Numpservers )
-        }*/
         for (i=0; i<n; i++)
         {
             if ( pservers[i] != 0 )
@@ -847,7 +839,7 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
                 expand_ipbits(ipaddr,pservers[i]);
                 addto_hasips(refipaddr,pservers[i]);
                 pserver = get_pserver(&createdflag,ipaddr,0,0);
-                printf("%d.(%s) ",i,ipaddr);
+                //printf("%d.(%s) ",i,ipaddr);
             }
         }
         if ( myipbits != 0 )
