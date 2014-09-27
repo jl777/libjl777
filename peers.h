@@ -525,11 +525,11 @@ int32_t sort_topaddrs(struct Uaddr **Uaddrs,int32_t max,struct peerinfo *peer)
 
 int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
 {
-    uint32_t i,n;//,crc = 0;
-    uint32_t crc = _crc32(0,encoded,len);
-    memcpy(final,&crc,sizeof(crc));
-    memcpy(final + sizeof(crc),encoded,len);
-    return(len + sizeof(crc));
+    uint32_t i,n,crc = 0;
+    //uint32_t crc = _crc32(0,encoded,len);
+    //memcpy(final,&crc,sizeof(crc));
+    //memcpy(final + sizeof(crc),encoded,len);
+    //return(len + sizeof(crc));
 
     if ( len + sizeof(crc) < MAX_UDPLEN )
     {
@@ -703,11 +703,8 @@ uint64_t broadcast_publishpacket(char *ip_port)
     if ( cp != 0 )
     {
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
-        printf("np.%p %s\n",np,cp->srvNXTADDR);
         set_peer_json(cmd,np->H.U.NXTaddr,np);
-        printf("set_peer_json\n");
         len = construct_tokenized_req(packet,cmd,cp->srvNXTACCTSECRET);
-        printf("cmd.(%s)\n",cmd);
         return(call_SuperNET_broadcast(ip_port,packet,len+1,PUBADDRS_MSGDURATION));
     }
     printf("ERROR: broadcast_publishpacket null cp\n");
