@@ -1029,9 +1029,9 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
 int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 {
     struct NXT_str *tp = 0;
+    printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
-    printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
     {
@@ -1042,6 +1042,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
     printf("call init_NXTservices.(%s)\n",myipaddr);
+getchar();
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
     Finished_init = 1;
