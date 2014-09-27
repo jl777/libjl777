@@ -922,7 +922,7 @@ uint64_t call_SuperNET_broadcast(char *destip,char *msg,int32_t len,int32_t dura
 
 int32_t got_newpeer(char *ip_port)
 {
-    queue_enqueue(&P2P_Q,clonestr(ip_port));
+    //queue_enqueue(&P2P_Q,clonestr(ip_port));
 	return(0);
 }
 

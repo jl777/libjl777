@@ -293,7 +293,6 @@ void add_SuperNET_peer(char *ip_port)
     char ipaddr[16];
     p2pport = parse_ipaddr(ipaddr,ip_port);
     printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
-    return;
     pp = get_pserver(&createdflag,ipaddr,0,p2pport);
     if ( strncmp("209.126.70",ip_port,strlen("209.126.70")) == 0 ||
         strncmp("104.40.137.20",ip_port,strlen("104.40.137.20")) == 0 ||
@@ -308,7 +307,7 @@ void add_SuperNET_peer(char *ip_port)
         strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
         0 )
     {
-        //broadcast_publishpacket(ip_port);
+        broadcast_publishpacket(ip_port);
     }
 }
 
