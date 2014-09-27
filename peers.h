@@ -25,6 +25,7 @@ struct peer_queue_entry
     uint8_t stateid,state;
 };
 
+queue_t P2P_Q;
 struct pingpong_queue PeerQ;
 struct peerinfo **Peers,**Pservers;
 int32_t Numpeers,Numpservers;
@@ -819,9 +820,8 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender,int32_t firsti,int32_t hasnum,uint32_t *pservers,int32_t n,uint32_t xorsum)
 {
     uint32_t myipbits = 0;
-    int32_t i,port,createdflag;
+    int32_t i,j,port,createdflag;
     char ipaddr[64],refipaddr[64];
-    struct pserver_info *pserver;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
     np = get_NXTacct(&createdflag,Global_mp,sender);
@@ -838,8 +838,18 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
                     myipbits = 0;
                 expand_ipbits(ipaddr,pservers[i]);
                 addto_hasips(refipaddr,pservers[i]);
-                pserver = get_pserver(&createdflag,ipaddr,0,0);
+                get_pserver(&createdflag,ipaddr,0,0);
                 //printf("%d.(%s) ",i,ipaddr);
+                for (j=0; j<Numpservers; j++)
+                {
+                    if ( Pservers[j] != 0 )
+                    {
+                        if ( Pservers[j]->srvipbits != 0 && Pservers[j]->srvipbits == pservers[i] )
+                            break;
+                    }
+                }
+                if ( j == Numpservers )
+                    queue_enqueue(&P2P_Q,clonestr(ipaddr));
             }
         }
         if ( myipbits != 0 )

@@ -72,7 +72,6 @@ struct telepod
     unsigned char privkey_shares[];
 };
 struct pingpong_queue Transporter_sendQ,Transporter_recvQ,CloneQ;
-queue_t P2P_Q;
 
 uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 {
