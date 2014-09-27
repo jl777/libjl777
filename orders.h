@@ -570,7 +570,7 @@ void set_peer_json(char *buf,char *NXTaddr,struct NXT_acct *pubnp)
     expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
     init_hexbytes(pubkey,pi->pubkey,sizeof(pi->pubkey));
     _coins_jsonstr(coinsjson,pi->coins);
-    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,pubkey,pubnp->H.U.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport,coinsjson);
+    sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"Numpservers\":\"%d\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,Numpservers,pubkey,pubnp->H.U.NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srvport,coinsjson);
 }
 
 char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
@@ -634,6 +634,21 @@ void ack_hello(struct NXT_acct *np,struct sockaddr *prevaddr)
     printf("ack_hello to %s\n",np->H.U.NXTaddr);
 }
 
+void ask_pservers(struct NXT_acct *np)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    char srvNXTaddr[64],hopNXTaddr[64],*retstr,cmd[512];
+    printf("in ask_pservers cp %p\n",cp);
+    if ( cp != 0 )
+    {
+        expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
+        hopNXTaddr[0] = 0;
+        sprintf(cmd,"{\"requestType\":\"getPservers\",\"NXT\":\"%s\"}",srvNXTaddr);
+        if ( (retstr= send_tokenized_cmd(hopNXTaddr,0,srvNXTaddr,cp->srvNXTACCTSECRET,cmd,np->H.U.NXTaddr)) != 0 )
+            free(retstr);
+    }
+}
+
 uint64_t broadcast_publishpacket(char *ip_port)
 {
     char cmd[MAX_JSON_FIELD*4],packet[MAX_JSON_FIELD*4];
@@ -650,7 +665,7 @@ uint64_t broadcast_publishpacket(char *ip_port)
     else return(0);
 }
 
-char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport)
+char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t haspservers)
 {
     int32_t createdflag,updatedflag = 0;
     struct NXT_acct *np;
@@ -716,20 +731,19 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     {
         if ( updatedflag != 0 )
             say_hello(np);
+        if ( haspservers >= Numpservers-1 ) // not perfect but if they have as many, maybe some are different?
+            ask_pservers(np);
         return(0);
     }
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     expand_nxt64bits(mysrvNXTaddr,np->mypeerinfo.srvnxtbits);
-    //if ( strcmp(np->H.U.NXTaddr,pubNXT) == 0 || strcmp(np->H.U.NXTaddr,srvNXTaddr) == 0 || strcmp(srvNXTaddr,mysrvNXTaddr) == 0 ) // this is this node
+    if ( strcmp(srvNXTaddr,pubNXT) == 0 )
     {
-        if ( strcmp(srvNXTaddr,pubNXT) == 0 )
-        {
-            strcpy(verifiedNXTaddr,srvNXTaddr);
-            if ( cp != 0 )
-                strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
-            broadcast_publishpacket(0);
-        }
+        strcpy(verifiedNXTaddr,srvNXTaddr);
+        if ( cp != 0 )
+            strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
+        broadcast_publishpacket(0);
     }
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }

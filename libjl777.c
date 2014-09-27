@@ -381,7 +381,7 @@ char *sendpeerinfo_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
 char *publishaddrs_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubNXT[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],BTCDaddr[MAX_JSON_FIELD],BTCaddr[MAX_JSON_FIELD],*retstr = 0;
-    char srvNXTaddr[MAX_JSON_FIELD],srvipaddr[MAX_JSON_FIELD],srvport[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD];
+    char srvNXTaddr[MAX_JSON_FIELD],srvipaddr[MAX_JSON_FIELD],srvport[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],haspservers[MAX_JSON_FIELD];
     uint64_t coins[4];
     int32_t i,m=0,coinid,n=0;
     copy_cJSON(pubNXT,objs[0]);
@@ -403,8 +403,9 @@ char *publishaddrs_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
             else printf("unknown.%d coind.(%s)\n",i,coinstr);
         }
     }
+    copy_cJSON(haspservers,objs[8]);
     if ( sender[0] != 0 && valid >= 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(prevaddr,m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport));
+        retstr = publishaddrs(prevaddr,m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport),atoi(haspservers));
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
@@ -661,7 +662,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
     static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };

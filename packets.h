@@ -173,6 +173,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
 cJSON *gen_Pservers_json(int32_t firstPserver)
 {
     int32_t i;
+    struct coin_info *cp = get_coin_info("BTCD");
     char srvipaddr[64];
     struct peerinfo *pserver;
     cJSON *json,*array;
@@ -187,6 +188,11 @@ cJSON *gen_Pservers_json(int32_t firstPserver)
                 expand_ipbits(srvipaddr,pserver->srvipbits);
                 cJSON_AddItemToArray(array,cJSON_CreateString(srvipaddr));
             }
+        }
+        if ( cp != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 && cp->srvNXTADDR[0] != 0 )
+        {
+            cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("publishPservers"));
+            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
         }
         cJSON_AddItemToObject(json,"Pservers",array);
         cJSON_AddItemToObject(json,"firstPserver",cJSON_CreateNumber(firstPserver));
