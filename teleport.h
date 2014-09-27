@@ -286,6 +286,31 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
     return(0);
 }
 
+void add_SuperNET_peer(char *ip_port)
+{
+    struct pserver_info *pp;
+    int32_t createdflag,p2pport;
+    char ipaddr[16];
+    p2pport = parse_ipaddr(ipaddr,ip_port);
+    pp = get_pserver(&createdflag,ipaddr,0,p2pport);
+    printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
+    if ( strncmp("209.126.70",ip_port,strlen("209.126.70")) == 0 ||
+        strncmp("104.40.137.20",ip_port,strlen("104.40.137.20")) == 0 ||
+        strncmp("104.41.129.107",ip_port,strlen("104.41.129.107")) == 0 ||
+        strncmp("162.248.163.43",ip_port,strlen("162.248.163.43")) == 0 ||
+        strncmp("23.97.66.164",ip_port,strlen("23.97.66.164")) == 0 ||
+        strncmp("100.79.14.220",ip_port,strlen("100.79.14.220")) == 0 ||
+        strncmp("137.116.193.215",ip_port,strlen("137.116.193.215")) == 0 ||
+        strncmp("80.82.64.135",ip_port,strlen("80.82.64.135")) == 0 ||
+        strncmp("185.21.192.9",ip_port,strlen("185.21.192.9")) == 0 ||
+        strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
+        strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
+        0 )
+    {
+        broadcast_publishpacket(ip_port);
+    }
+}
+
 void teleport_idler(uv_idle_t *handle)
 {
     uint64_t broadcast_publishpacket(char *ip_port);
@@ -298,7 +323,7 @@ void teleport_idler(uv_idle_t *handle)
     {
         if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
         {
-            broadcast_publishpacket(ip_port);
+            add_SuperNET_peer(ip_port);
             free(ip_port);
         }
         process_pingpong_queue(&PeerQ,0);
