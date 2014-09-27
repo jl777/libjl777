@@ -871,6 +871,17 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
         return(0);
     }
     n = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+    {
+        char sender[64];
+        int32_t valid;
+        cJSON *json = cJSON_Parse(_tokbuf);
+        if ( json != 0 )
+        {
+            verify_tokenized_json(sender,&valid,json);
+            printf("_tokbuf.%s valid.%d sender.(%s)\n",_tokbuf,valid,sender);
+            free_json(json);
+        }
+    }
     return(sendmessage(hopNXTaddr,L,verifiedNXTaddr,_tokbuf,(int32_t)n+1,destNXTaddr,_tokbuf));
 }
 
