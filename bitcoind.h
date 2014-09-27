@@ -785,12 +785,12 @@ void *Coinloop(void *ptr)
     }
     printf("Start coinloop\n");
     void init_Teleport();
-    //init_Teleport();
+    init_Teleport();
     printf("teleport initialized\n");
     while ( 1 )
     {
         processed = 0;
-        printf("top of coinloop\n");
+        //printf("top of coinloop\n");
         for (i=0; i<Numcoins; i++)
         {
             cp = Daemons[i];

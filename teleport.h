@@ -340,8 +340,8 @@ void init_Teleport()
     init_pingpong_queue(&Transporter_recvQ,"recvQ",process_recvQ,0,0);
 
     init_pingpong_queue(&CloneQ,"cloneQ",process_cloneQ,0,0);
-    if ( portable_thread_create((void *)teleport_idler,Global_mp) == 0 )
-        printf("ERROR teleport_idler\n");
+    //if ( portable_thread_create((void *)teleport_idler,Global_mp) == 0 )
+    //    printf("ERROR teleport_idler\n");
 }
 
 void complete_telepod_reception(struct coin_info *cp,struct telepod *pod,int32_t height)
