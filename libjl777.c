@@ -694,8 +694,16 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
         {
-            safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
-            expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+            if ( strcmp("127.0.0.1",cp->privacyserver) == 0 )
+            {
+                safecopy(NXTACCTSECRET,cp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
+                expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
+            }
+            else
+            {
+                safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+                expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+            }
         }
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
     }
