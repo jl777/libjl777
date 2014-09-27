@@ -14,6 +14,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ALLOCWR_DONTFREE 0
+#define ALLOCWR_ALLOCFREE 1
+#define ALLOCWR_FREE -1
+
 queue_t ALL_messages; //RPC_6777_response
 
 struct pNXT_info
@@ -83,19 +87,22 @@ void after_write(uv_write_t *req,int status)
     fprintf(stderr, "uv_write error: %d %s\n",status,uv_err_name(status));
 }
 
-// UDP funcs
 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
 {
-    int32_t r;
+    char ipaddr[64];
+    struct pserver_info *pserver;
+    int32_t r,supernet_port,createdflag;
     struct write_req_t *wr;
     wr = alloc_wr(buf,len,allocflag);
     ASSERT(wr != NULL);
     {
-        char destip[64]; int32_t port;
-        port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)addr);
+        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
+        pserver->numsent++;
+        pserver->sentmilli = milliseconds();
         //for (i=0; i<16; i++)
         //    printf("%02x ",((unsigned char *)buf)[i]);
-        printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",len,destip,port,_crc32(0,buf,len));
+        printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",len,ipaddr,supernet_port,_crc32(0,buf,len));
     }
     r = uv_udp_send(&wr->U.ureq,handle,&wr->buf,1,addr,(uv_udp_send_cb)after_write);
     if ( r != 0 )
@@ -105,24 +112,29 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
 
 void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
-    uint16_t port;
+    uint16_t supernet_port;
+    int32_t createdflag;
+    struct pserver_info *pserver;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    char sender[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64],hopNXTaddr[64],*retstr;
+    char ipaddr[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64],hopNXTaddr[64],*retstr;
     retjsonstr[0] = 0;
     if ( cp != 0 && nread > 0 )
     {
-        port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
+        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
+        pserver->numrecv++;
+        pserver->recvmilli = milliseconds();
         {
             //int i;
             //for (i=0; i<16; i++)
             //    printf("%02x ",((unsigned char *)rcvbuf->base)[i]);
-            printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,sender,port,_crc32(0,rcvbuf->base,nread));
+            printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         }
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
-        strcpy(sender,"unknown");
-        np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,sender,port);
+        strcpy(ipaddr,"unknown");
+        np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);
         if ( np != 0 )
         {
@@ -202,7 +214,6 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
         printf("UDP.%p server started on port %d\n",srv,port);
     else printf("couldnt open_udp on port.%d\n",port);
     Servers_started |= 1;
-    init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
 
     return(srv);
 }

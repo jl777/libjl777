@@ -108,7 +108,7 @@ struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct
         if ( ++nohwm > 100 )
             break;
         memcpy(testlist,hwmpods,sizeof(*testlist) * numhwm);
-        replacei = (rand() % numhwm);
+        replacei = ((rand()>>8) % numhwm);
         for (j=0; j<n; j++)
         {
             printf("i.%d of %d, replacei.%d j.%d inhwm.%d\n",i,maxiters,replacei,j,allpods[j]->inhwm);
@@ -137,7 +137,7 @@ struct telepod **evolve_podlist(int32_t *hwmnump,struct telepod **hwmpods,struct
                     {
                         if ( numtestpods > 1 )
                         {
-                            testlist[rand() % numtestpods] = testlist[numtestpods - 1];
+                            testlist[(rand()>>8) % numtestpods] = testlist[numtestpods - 1];
                             numtestpods--;
                         } else break;
                     }

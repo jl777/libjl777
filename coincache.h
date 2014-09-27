@@ -123,7 +123,7 @@ void purge_coincache(struct coincache_info *cache,char *name,int32_t blockid)
         }
         cache->purgedblock = j;
     }
-    if ( (rand() % 100) == 0 )
+    if ( ((rand()>>8) % 100) == 0 )
         printf("purging.%ld %s blockid.%d\n",totalpurged,name,blockid);
 }
 

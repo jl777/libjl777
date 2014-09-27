@@ -934,7 +934,7 @@ int test_ciphers_codec(int maxlen,int maxiters)
     printf("cp.%p\n",cp);
     for (i=0; i<maxiters; i++)
     {
-        len = (rand() % maxlen) + 16;
+        len = ((rand()>>8) % maxlen) + 16;
         data = malloc(len);
         randombytes(data,len);
         err = 1;

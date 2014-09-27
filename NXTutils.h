@@ -1368,6 +1368,50 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
     return(server_addr);
 }
 
+uint32_t _calc_xorsum(uint32_t *ipbits,int32_t n)
+{
+    uint32_t i,xorsum = 0;
+    if ( ipbits != 0 && n > 0 )
+    {
+        for (i=0; i<n; i++)
+            if ( ipbits[i] != 0 )
+                xorsum ^= ipbits[i];
+    }
+    return(xorsum);
+}
+
+uint32_t calc_xorsum(struct peerinfo **peers,int32_t n)
+{
+    uint32_t i,xorsum = 0;
+    if ( peers != 0 && n > 0 )
+    {
+        for (i=0; i<n; i++)
+            if ( peers[i] != 0 )
+                xorsum ^= peers[i]->srvipbits;
+    }
+    return(xorsum);
+}
+
+struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t supernet_port,uint16_t p2pport)
+{
+    void peer_link_ipaddr(struct pserver_info *pp);
+    int32_t createdflag = 0;
+    struct pserver_info *pp;
+    if ( createdp == 0 )
+        createdp = &createdflag;
+    pp = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
+    if ( *createdp != 0 || (supernet_port != 0 && supernet_port != SUPERNET_PORT && supernet_port != pp->supernet_port) )
+        pp->supernet_port = supernet_port;
+    if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != pp->p2pport) )
+        pp->p2pport = p2pport;
+    if ( *createdp != 0 )
+    {
+        pp->ipbits = calc_ipbits(ipaddr);
+        peer_link_ipaddr(pp);
+    }
+    return(pp);
+}
+
 //#ifndef WIN32
 
 //#endif

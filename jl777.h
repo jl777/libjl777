@@ -11,6 +11,7 @@
 #define SMALLVAL .000000000000001
 #define MAX_LFACTOR 10
 #define MAX_UDPLEN 1400
+#define PUBADDRS_MSGDURATION (3600 * 24)
 
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
@@ -116,10 +117,11 @@ void usleep(int32_t);
 
 #define GENESISACCT "1739068987193023818"
 #define NODECOIN_SIG 0x63968736
-#define NXTCOINSCO_PORT 8777
-#define NXTPROTOCOL_WEBJSON 7777
-#define NXT_PUNCH_PORT 6777
-#define NXTSYNC_PORT 5777
+//#define NXTCOINSCO_PORT 8777
+//#define NXTPROTOCOL_WEBJSON 7777
+#define SUPERNET_PORT 7777
+#define BTCD_PORT 14631
+//#define NXTSYNC_PORT 5777
 
 #define NUM_GATEWAYS 3
 #define _NXTSERVER "requestType"
@@ -192,12 +194,23 @@ struct Uaddr
 #define PEER_HELLOSTATE 1
 #define NUM_PEER_STATES (PEER_HELLOSTATE+1)
 
+struct pserver_info
+{
+    uint64_t modified;
+    uint32_t *hasips;
+    char ipaddr[16];
+    uint32_t ipbits,numips,numsent,numrecv,xorsum;
+    float recvmilli,sentmilli;
+    uint16_t p2pport,supernet_port;
+};
+
 struct peerinfo
 {
     uint64_t srvnxtbits,pubnxtbits,coins[4];
     struct Uaddr *Uaddrs;
-    uint32_t srvipbits,numsent,numrecv;
-    uint16_t srvport,p2pport,numUaddrs;
+    struct pserver_info *pserver;
+    uint32_t srvipbits,numsent,numrecv,numUaddrs;
+    uint16_t srvport,p2pport;
     float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES],states[NUM_PEER_STATES + 1];
     char pubBTCD[36],pubBTC[36];
@@ -213,7 +226,7 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep;
+    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep;
     cJSON *accountjson;
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
@@ -361,13 +374,16 @@ double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
 uint64_t call_SuperNET_broadcast(char *destip,char *msg,int32_t len,int32_t duration);
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
+struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *addr,char *sender,uint16_t port);
+char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
 
 #include "NXTservices.h"
 #include "jl777hash.h"
 #include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
-#include "packets.h"
 #include "udp.h"
+#include "peers.h"
+#include "packets.h"
 
 #endif

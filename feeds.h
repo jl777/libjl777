@@ -858,7 +858,7 @@ void *poll_exchanges(void *flagp)
         n = 0;
         obooks = calloc(Numactivefiles,sizeof(*obooks)); // maybe dynamically added
         changedmasks = calloc(Numactivefiles,sizeof(*changedmasks));
-        starti = (rand() % Numactivefiles);
+        starti = ((rand()>>8) % Numactivefiles);
         for (i=0; i<Numactivefiles; i++)
         {
             ep = Activefiles[(starti + i) % Numactivefiles];

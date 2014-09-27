@@ -138,7 +138,7 @@ void Cdelay(struct ParseState *Parser, struct Value *ReturnValue, struct Value *
 
 void Crand(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = (int)rand() % (unsigned int)(Param[0]->Val->Integer + 1);
+    ReturnValue->Val->Integer = (int)(rand()>>8) % (unsigned int)(Param[0]->Val->Integer + 1);
 }
 
 void Ctime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)

@@ -28,7 +28,6 @@
 #define TELEPORT_TRANSPORTER_TIMEOUT (10. * 1000.)
 #define TELEPORT_TELEPODS_TIMEOUT (60. * 1000.)
 #define TELEPORT_MAX_CLONETIME (3600. * 1000.)
-#define PUBADDRS_MSGDURATION 3600
 
 #define TELEPOD_CONTENTS_VOUT 0 // must be 0
 #define TELEPOD_CHANGE_VOUT 1   // vout 0 is for the pod contents and last one (1 if no change or 2) is marker
@@ -325,7 +324,7 @@ void complete_telepod_reception(struct coin_info *cp,struct telepod *pod,int32_t
 {
     pod->unspent = get_unspent_value(pod->script,cp,pod);
     //pod->completemilli = milliseconds();
-    pod->cloneblock = height + (rand() % cp->clonesmear) + 1;
+    pod->cloneblock = height + ((rand()>>8) % cp->clonesmear) + 1;
     if ( pod->unspent != pod->satoshis )
     {
         printf("unspent is %.8f instead of %.8f | Naughty sender detected!\n",dstr(pod->unspent),dstr(pod->satoshis));

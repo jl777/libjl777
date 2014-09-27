@@ -179,6 +179,7 @@ char *NXTprotocol_json(cJSON *argjson)
     return(retstr);
 }
 
+/*
 char *NXTprotocol_json_handler(struct NXT_protocol *p,char *argstr)
 {
     long len;
@@ -216,6 +217,7 @@ char *NXTprotocol_json_handler(struct NXT_protocol *p,char *argstr)
     else return("{\"result\":null}");
     return(retjsontxt);
 }
+*/
 
 int32_t process_NXT_event(struct NXThandler_info *mp,int32_t height,char *txid,int64_t type,int64_t subtype,struct NXT_AMhdr *AMhdr,char *sender,char *receiver,char *assetid,int64_t assetoshis,char *comment,cJSON *json)
 {
@@ -1510,7 +1512,10 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp = 0;
     struct NXT_guid *gp = 0;
-    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs;
+    struct pserver_info *pp = 0;
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs,*Pserver;
+    if ( Pserver == 0 )
+        Pserver = hashtable_create("Pservers",HASHTABLES_STARTSIZE,sizeof(struct pserver_info),((long)&pp->ipaddr[0] - (long)pp),sizeof(pp->ipaddr),((long)&pp->modified - (long)pp));
     if ( NXTguids == 0 )
         NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
     if ( NXTasset_txids == 0 )
@@ -1523,6 +1528,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
         otheraddrs = hashtable_create("otheraddrs",HASHTABLES_STARTSIZE,sizeof(struct other_addr),((long)&op->addr[0] - (long)op),sizeof(op->addr),((long)&op->modified - (long)op));
     if ( mp != 0 )
     {
+        mp->Pservers_tablep = &Pserver;
         mp->NXTguid_tablep = &NXTguids;
         mp->NXTaccts_tablep = &NXTaddrs;
         mp->otheraddrs_tablep = &otheraddrs;

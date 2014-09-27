@@ -61,7 +61,7 @@ void StdlibFree(struct ParseState *Parser, struct Value *ReturnValue, struct Val
 
 void StdlibRand(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = rand();
+    ReturnValue->Val->Integer = (rand()>>8);
 }
 
 void StdlibSrand(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
