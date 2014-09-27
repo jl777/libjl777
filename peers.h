@@ -818,24 +818,40 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 
 char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender,int32_t firsti,int32_t hasnum,uint32_t *pservers,int32_t n,uint32_t xorsum)
 {
+    uint32_t myipbits = 0;
     int32_t i,port,createdflag;
     char ipaddr[64],refipaddr[64];
     struct pserver_info *pserver;
     struct NXT_acct *np;
+    struct coin_info *cp = get_coin_info("BTCD");
     np = get_NXTacct(&createdflag,Global_mp,sender);
     expand_ipbits(refipaddr,np->mypeerinfo.srvipbits);
+    if ( cp != 0 && cp->myipaddr[0] != 0 )
+        myipbits = calc_ipbits(cp->myipaddr);
     if ( np->mypeerinfo.srvipbits != 0 )
     {
+        /*if ( Numpservers > 0 && Pservers != 0 )
+        {
+            for (i=0; i<Numpservers; i++)
+                if ( Pservers[i] != 0 )
+                    if ( Pservers[i]->srvipbits == np->mypeerinfo.srvipbits )
+                        break;
+            if ( i != Numpservers )
+        }*/
         for (i=0; i<n; i++)
         {
             if ( pservers[i] != 0 )
             {
+                if ( myipbits != 0 && pservers[i] == myipbits )
+                    myipbits = 0;
                 expand_ipbits(ipaddr,pservers[i]);
                 addto_hasips(refipaddr,pservers[i]);
                 pserver = get_pserver(&createdflag,ipaddr,0,0);
                 printf("%d.(%s) ",i,ipaddr);
             }
         }
+        if ( myipbits != 0 )
+            say_hello(np);
     }
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
     printf(">>>>>>>>>>>> publishPservers from sender.(%s) prevaddr.%s/%d first.%d hasnum.%d n.%d\n",sender,ipaddr,port,firsti,hasnum,n);

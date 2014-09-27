@@ -276,7 +276,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
     unsigned char encodedsrvD[4096],encodedD[4096],encodedL[4096],encodedP[4096],*outbuf;
-    int32_t len,createdflag,maxlen;
+    int32_t len,createdflag;//,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
     expand_nxt64bits(srvNXTaddr,np->mypeerinfo.srvnxtbits);
@@ -290,9 +290,9 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     memset(encodedP,0,sizeof(encodedP)); // encoded to privacyserver
     outbuf = (unsigned char *)origargstr;
     len = (int32_t)strlen(origargstr)+1;
-    maxlen = 1024 - sizeof(uint64_t) - crypto_box_PUBLICKEYBYTES - sizeof(uint16_t);
-    if ( len < maxlen )
-        len = maxlen;
+    //maxlen = 1024 - sizeof(uint64_t) - crypto_box_PUBLICKEYBYTES - sizeof(uint16_t);
+    //if ( len < maxlen )
+    //    len = maxlen;
     len = onionize(hopNXTaddr,encodedD,destNXTaddr,&outbuf,len);
     printf("\nsendmessage (%s) len.%d to %s crc.%x\n",origargstr,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(encodedP)-1024 )
