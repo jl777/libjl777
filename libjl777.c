@@ -95,6 +95,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( 1 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
     //mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
+    init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
 
     printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
     void run_NXTservices(void *arg);
@@ -111,7 +112,6 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
         sleep(1);
-    init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
 }
 
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
@@ -407,7 +407,7 @@ char *publishaddrs_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
     copy_cJSON(haspservers,objs[8]);
     copy_cJSON(xorsumstr,objs[9]);
     if ( sender[0] != 0 && valid > 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(prevaddr,m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport),atoi(haspservers),(int32_t)atol(xorsumstr));
+        retstr = publishaddrs(prevaddr,m!=0?coins:0,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,srvNXTaddr,srvipaddr,atoi(srvport),atoi(haspservers),(uint32_t)atol(xorsumstr));
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }

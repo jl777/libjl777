@@ -774,23 +774,8 @@ void *Coinloop(void *ptr)
     {
         if ( (cp= Daemons[i]) != 0 )
         {
-            //printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
+            printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
             load_telepods(cp,maxnofile);
-            /*if ( strcmp(cp->name,"BTCD") == 0 )
-            {
-                char *str;
-                char *select_privacyServer(char *ipaddr,char *portstr);
-                printf(">>>>>> %s %s %s\n",cp->name,cp->NXTACCTSECRET,cp->privacyserver);
-                if ( cp->NXTACCTSECRET[0] != 0 && cp->privacyserver[0] != 0 )
-                    if ( (str= select_privacyServer(cp->privacyserver,0)) != 0 )
-                    {
-                        printf("select privacyserver.(%s) -> (%s)\n",cp->privacyserver,str);
-                        free(str);
-                   }
-
-              //make_traceable_telepod(cp,"BTCD",cp->ciphersobj,SATOSHIDEN/10);
-            }*/
-            //printf("coin.%d (%s) %d\n",i,cp->name,strcmp(cp->name,"BTCD"));
         }
     }
     while ( Historical_done == 0 ) // must process all historical msig addresses and asset transfers
@@ -800,11 +785,12 @@ void *Coinloop(void *ptr)
     }
     printf("Start coinloop\n");
     void init_Teleport();
-    init_Teleport();
+    //init_Teleport();
+    printf("teleport initialized\n");
     while ( 1 )
     {
         processed = 0;
-        // printf("top of coinloop\n");
+        printf("top of coinloop\n");
         for (i=0; i<Numcoins; i++)
         {
             cp = Daemons[i];
