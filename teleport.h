@@ -307,7 +307,7 @@ void add_SuperNET_peer(char *ip_port)
         strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
         0 )
     {
-        broadcast_publishpacket(ip_port);
+        //broadcast_publishpacket(ip_port);
     }
 }
 
