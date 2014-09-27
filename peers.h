@@ -698,11 +698,15 @@ uint64_t broadcast_publishpacket(char *ip_port)
     if ( cp != 0 )
     {
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
+        printf("np.%p %s\n",np,cp->srvNXTADDR);
         set_peer_json(cmd,np->H.U.NXTaddr,np);
+        printf("set_peer_json\n");
         len = construct_tokenized_req(packet,cmd,cp->srvNXTACCTSECRET);
+        printf("cmd.(%s)\n",cmd);
         return(call_SuperNET_broadcast(ip_port,packet,len+1,PUBADDRS_MSGDURATION));
     }
-    else return(0);
+    printf("ERROR: broadcast_publishpacket null cp\n");
+    return(0);
 }
 
 char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t haspservers,uint32_t xorsum)

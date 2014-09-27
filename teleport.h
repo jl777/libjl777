@@ -313,7 +313,6 @@ void add_SuperNET_peer(char *ip_port)
 
 void teleport_idler(uv_idle_t *handle)
 {
-    uint64_t broadcast_publishpacket(char *ip_port);
     static double lastattempt;
     double millis;
     char *ip_port;
