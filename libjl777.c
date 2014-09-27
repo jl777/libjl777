@@ -893,7 +893,7 @@ uint64_t call_SuperNET_broadcast(char *destip,char *msg,int32_t len,int32_t dura
             strcat(ip_port,":14631");
         txid ^= calc_ipbits(destip);
         printf("%s NARROWCAST.(%s) txid.%llu\n",destip,msg,(long long)txid);
-        if ( SuperNET_narrowcast(destip,(unsigned char *)msg,len) == 0 )
+        if ( 0 && SuperNET_narrowcast(destip,(unsigned char *)msg,len) == 0 )
         {
             printf("A back from NARROWCAST\n");
             return(txid);
