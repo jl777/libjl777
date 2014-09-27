@@ -700,6 +700,7 @@ uint64_t broadcast_publishpacket(char *ip_port)
     int32_t len,createdflag;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
+return(0);
     if ( cp != 0 )
     {
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
