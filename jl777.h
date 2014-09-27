@@ -197,7 +197,7 @@ struct peerinfo
     uint64_t srvnxtbits,pubnxtbits,coins[4];
     struct Uaddr *Uaddrs;
     uint32_t srvipbits,numsent,numrecv;
-    uint16_t srvport,numUaddrs;
+    uint16_t srvport,p2pport,numUaddrs;
     float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES],states[NUM_PEER_STATES + 1];
     char pubBTCD[36],pubBTC[36];

@@ -634,9 +634,25 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(jsonstr);
 }
 
+char *getPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    cJSON *json;
+    char numstr[MAX_JSON_FIELD],*jsonstr = 0;
+    copy_cJSON(numstr,objs[0]);
+    json = gen_Pservers_json(atoi(numstr));
+    if ( json != 0 )
+    {
+        jsonstr = cJSON_Print(json);
+        stripwhite(jsonstr,strlen(jsonstr));
+        free_json(json);
+    }
+    return(jsonstr);
+}
+
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "only_privacyServer", 0 };
+    static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
     static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "amount", "coin", 0 };
     static char *teleport[] = { (char *)teleport_func, "teleport", "V", "amount", "dest", "coin", "minage", "M", "N", 0 };
     static char *telepod[] = { (char *)telepod_func, "telepod", "V", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
@@ -655,7 +671,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { sendpeerinfo, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
+    static char **commands[] = { sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
@@ -859,18 +875,15 @@ int32_t got_newpeer(char *ip_port)
 	printf("got_newpeer called. Now connected to.(%s)\n", ip_port);
     if ( strncmp("209.126.70",ip_port,strlen("209.126.70")) == 0 ||
          strncmp("104.40.137.20",ip_port,strlen("104.40.137.20")) == 0 ||
-        strncmp("104.41.129.107",ip_port,strlen("104.41.129.107")) == 0 ||
-        strncmp("162.248.163.43",ip_port,strlen("162.248.163.43")) == 0 ||
-        strncmp("23.97.66.164",ip_port,strlen("23.97.66.164")) == 0 ||
-        strncmp("100.79.14.220",ip_port,strlen("100.79.14.220")) == 0 ||
-        strncmp("137.116.193.215",ip_port,strlen("137.116.193.215")) == 0 ||
-        strncmp("80.82.64.135",ip_port,strlen("80.82.64.135")) == 0 ||
-        strncmp("185.21.192.9",ip_port,strlen("185.21.192.9")) == 0 ||
-        strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
-        strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
-        
-        
-        
+         strncmp("104.41.129.107",ip_port,strlen("104.41.129.107")) == 0 ||
+         strncmp("162.248.163.43",ip_port,strlen("162.248.163.43")) == 0 ||
+         strncmp("23.97.66.164",ip_port,strlen("23.97.66.164")) == 0 ||
+         strncmp("100.79.14.220",ip_port,strlen("100.79.14.220")) == 0 ||
+         strncmp("137.116.193.215",ip_port,strlen("137.116.193.215")) == 0 ||
+         strncmp("80.82.64.135",ip_port,strlen("80.82.64.135")) == 0 ||
+         strncmp("185.21.192.9",ip_port,strlen("185.21.192.9")) == 0 ||
+         strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
+         strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
         0 )
     {
         queue_enqueue(&P2P_Q,clonestr(ip_port));

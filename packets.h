@@ -170,6 +170,31 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
     return(json);
 }
 
+cJSON *gen_Pservers_json(int32_t firstPserver)
+{
+    int32_t i;
+    char srvipaddr[64];
+    struct peerinfo *pserver;
+    cJSON *json,*array;
+    json = cJSON_CreateObject();
+    array = cJSON_CreateArray();
+    if ( Pservers != 0 && Numpservers >= firstPserver )
+    {
+        for (i=firstPserver; i<Numpservers; i++)
+        {
+            if ( (pserver= Pservers[i]) != 0 )
+            {
+                expand_ipbits(srvipaddr,pserver->srvipbits);
+                cJSON_AddItemToArray(array,cJSON_CreateString(srvipaddr));
+            }
+        }
+        cJSON_AddItemToObject(json,"Pservers",array);
+        cJSON_AddItemToObject(json,"firstPserver",cJSON_CreateNumber(firstPserver));
+        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numpservers));
+    }
+    return(json);
+}
+
 cJSON *gen_peers_json(int32_t only_privacyServers)
 {
     int32_t i,n;
@@ -198,6 +223,7 @@ cJSON *gen_peers_json(int32_t only_privacyServers)
         cJSON_AddItemToObject(json,"peers",array);
         cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
         cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
+        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numpservers));
     }
     return(json);
 }
@@ -644,7 +670,7 @@ uint64_t route_packet(uv_udp_t *udp,char *hopNXTaddr,unsigned char *outbuf,int32
     struct sockaddr_in addr;
     struct Uaddr *Uaddrs[8];
     uint64_t txid = 0;
-    int32_t createdflag,i,n;
+    int32_t createdflag,port,i,n;
     struct NXT_acct *np;
     memset(finalbuf,0,sizeof(finalbuf));
     np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
@@ -664,7 +690,12 @@ uint64_t route_packet(uv_udp_t *udp,char *hopNXTaddr,unsigned char *outbuf,int32
             uv_ip4_addr(destip,np->mypeerinfo.srvport,&addr);
             portable_udpwrite((struct sockaddr *)&addr,udp,finalbuf,len,ALLOCWR_ALLOCFREE);
         }
-        else call_SuperNET_broadcast(destip,(char *)finalbuf,len,0);
+        else
+        {
+            if ( np->mypeerinfo.p2pport != 0 )
+                sprintf(destip+strlen(destip),":%u",np->mypeerinfo.p2pport);
+            call_SuperNET_broadcast(destip,(char *)finalbuf,len,0);
+        }
     }
     else
     {
@@ -681,7 +712,9 @@ uint64_t route_packet(uv_udp_t *udp,char *hopNXTaddr,unsigned char *outbuf,int32
                     portable_udpwrite((struct sockaddr *)&Uaddrs[i]->addr,udp,finalbuf,len,ALLOCWR_ALLOCFREE);
                 else
                 {
-                    extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)&Uaddrs[i]->addr);
+                    port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)&Uaddrs[i]->addr);
+                    if ( port != 0 )
+                        sprintf(destip+strlen(destip),":%u",port);
                     call_SuperNET_broadcast(destip,(char *)finalbuf,len,0);
                 }
             }
