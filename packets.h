@@ -304,7 +304,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         if ( L > 0 )
             len = add_random_onionlayers(hopNXTaddr,L,encodedL,&outbuf,len);
         if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
-            len = onionize(hopNXTaddr,encodedP,srvNXTaddr,&outbuf,len);
+            len = onionize(hopNXTaddr,encodedP,srvNXTaddr,&outbuf,MAX_UDPLEN-sizeof(uint64_t)-crypto_box_PUBLICKEYBYTES-sizeof(uint16_t));
         txid = route_packet(Global_mp->udp,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
         {

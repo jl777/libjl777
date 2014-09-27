@@ -525,11 +525,11 @@ int32_t sort_topaddrs(struct Uaddr **Uaddrs,int32_t max,struct peerinfo *peer)
 
 int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
 {
-    uint32_t i,n,crc = 0;
-    //uint32_t crc = _crc32(0,encoded,len);
-    //memcpy(final,&crc,sizeof(crc));
-    //memcpy(final + sizeof(crc),encoded,len);
-    //return(len + sizeof(crc));
+    uint32_t i,n;//,crc = 0;
+    uint32_t crc = _crc32(0,encoded,len);
+    memcpy(final,&crc,sizeof(crc));
+    memcpy(final + sizeof(crc),encoded,len);
+    return(len + sizeof(crc));
 
     if ( len + sizeof(crc) < MAX_UDPLEN )
     {
