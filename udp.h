@@ -108,7 +108,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     uint16_t port;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    char sender[256],retjsonstr[4096],NXTaddr[64],hopNXTaddr[64],*retstr;
+    char sender[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64],hopNXTaddr[64],*retstr;
     retjsonstr[0] = 0;
     if ( cp != 0 && nread > 0 )
     {
@@ -120,6 +120,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,sender,port,_crc32(0,rcvbuf->base,nread));
         }
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+        expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
         strcpy(sender,"unknown");
         np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,sender,port);
         ASSERT(addr->sa_family == AF_INET);
@@ -127,8 +128,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         {
             if ( retjsonstr[0] != 0 )
             {
-                printf("%s send tokenized.(%s) to %s\n",NXTaddr,retjsonstr,np->H.U.NXTaddr);
-                if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,NXTaddr,cp->NXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
+                printf("%s send tokenized.(%s) to %s\n",srvNXTaddr,retjsonstr,np->H.U.NXTaddr);
+                if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,srvNXTaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
                 {
                     printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
                     free(retstr);
