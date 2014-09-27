@@ -522,7 +522,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
-        printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
+        //printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
         encoded += sizeof(payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)) == len )
         {
@@ -750,7 +750,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-            printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
+            //printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
         }
         else return(0);
     }
@@ -832,7 +832,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     memset(encodedP,0,sizeof(encodedP)); // encoded to privacyserver
     outbuf = (unsigned char *)origargstr;
     len = onionize(hopNXTaddr,encodedD,destNXTaddr,&outbuf,(int32_t)strlen(origargstr)+1);
-    printf("sendmessage (%s) len.%d to %s crc.%x\n",origargstr,msglen,destNXTaddr,_crc32(0,outbuf,len));
+    printf("\nsendmessage (%s) len.%d to %s crc.%x\n",origargstr,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(encodedP)-1024 )
     {
         printf("sendmessage, payload too big %d\n",len);
@@ -878,7 +878,8 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
         if ( json != 0 )
         {
             verify_tokenized_json(sender,&valid,json);
-            printf("_tokbuf.%s valid.%d sender.(%s)\n",_tokbuf,valid,sender);
+            if ( valid <= 0 )
+                printf("_tokbuf.%s valid.%d sender.(%s)\n",_tokbuf,valid,sender);
             free_json(json);
         }
     }

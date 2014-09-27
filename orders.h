@@ -665,6 +665,23 @@ uint64_t broadcast_publishpacket(char *ip_port)
     else return(0);
 }
 
+char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender,int32_t firsti,int32_t hasnum,uint32_t *pservers,int32_t n)
+{
+    int32_t i,port;
+    char ipstr[64];
+    for (i=0; i<n; i++)
+    {
+        if ( pservers[i] != 0 )
+        {
+            expand_ipbits(ipstr,pservers[i]);
+            printf("%d.(%s) ",i,ipstr);
+        }
+    }
+    port = extract_nameport(ipstr,sizeof(ipstr),(struct sockaddr_in *)prevaddr);
+    printf(">>>>>>>>>>>> publishPservers from sender.(%s) prev.%s/%d first.%d hasnum.%d n.%d\n",sender,ipstr,port,firsti,hasnum,n);
+    return(0);
+}
+
 char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t haspservers)
 {
     int32_t createdflag,updatedflag = 0;
