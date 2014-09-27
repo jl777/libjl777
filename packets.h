@@ -276,7 +276,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
     unsigned char encodedsrvD[4096],encodedD[4096],encodedL[4096],encodedP[4096],*outbuf;
-    int32_t len,createdflag;
+    int32_t len,createdflag,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
     expand_nxt64bits(srvNXTaddr,np->mypeerinfo.srvnxtbits);
@@ -289,7 +289,11 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     memset(encodedL,0,sizeof(encodedL)); // encoded to max L onion layers
     memset(encodedP,0,sizeof(encodedP)); // encoded to privacyserver
     outbuf = (unsigned char *)origargstr;
-    len = onionize(hopNXTaddr,encodedD,destNXTaddr,&outbuf,(int32_t)strlen(origargstr)+1);
+    len = (int32_t)strlen(origargstr)+1;
+    maxlen = 1024 - sizeof(uint64_t) - crypto_box_PUBLICKEYBYTES - sizeof(uint16_t);
+    if ( len < maxlen )
+        len = maxlen;
+    len = onionize(hopNXTaddr,encodedD,destNXTaddr,&outbuf,len);
     printf("\nsendmessage (%s) len.%d to %s crc.%x\n",origargstr,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(encodedP)-1024 )
     {
@@ -304,7 +308,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         if ( L > 0 )
             len = add_random_onionlayers(hopNXTaddr,L,encodedL,&outbuf,len);
         if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
-            len = onionize(hopNXTaddr,encodedP,srvNXTaddr,&outbuf,MAX_UDPLEN-sizeof(uint64_t)-crypto_box_PUBLICKEYBYTES-sizeof(uint16_t));
+            len = onionize(hopNXTaddr,encodedP,srvNXTaddr,&outbuf,len);
         txid = route_packet(Global_mp->udp,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
         {
