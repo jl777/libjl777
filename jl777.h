@@ -199,7 +199,7 @@ struct pserver_info
     uint64_t modified;
     uint32_t *hasips;
     char ipaddr[16];
-    uint32_t ipbits,numips,numsent,numrecv,xorsum;
+    uint32_t ipbits,numips,numsent,numrecv,xorsum,hasnum;
     float recvmilli,sentmilli;
     uint16_t p2pport,supernet_port;
 };

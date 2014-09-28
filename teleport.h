@@ -304,6 +304,8 @@ void add_SuperNET_peer(char *ip_port)
         strncmp("185.21.192.9",ip_port,strlen("185.21.192.9")) == 0 ||
         strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
         strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
+        strncmp("199.193.252.103",ip_port,strlen("199.193.252.103")) == 0 ||
+        
         0 )
     {
         broadcast_publishpacket(ip_port);
@@ -380,7 +382,7 @@ char *calc_teleport_summary(struct coin_info *cp,struct NXT_acct *sendernp,struc
         update_teleport_summary(array,cp,i,log->numpods,sendernp,log->pods[i]->satoshis,log->crcs[i]);
     cJSON_AddItemToObject(json,"telepods",array);
     retstr = cJSON_Print(json);
-    stripwhite(retstr,strlen(retstr));
+    stripwhite_ns(retstr,strlen(retstr));
     return(retstr);
 }
 

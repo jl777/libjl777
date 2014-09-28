@@ -646,7 +646,7 @@ char *getPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     if ( json != 0 )
     {
         jsonstr = cJSON_Print(json);
-        stripwhite(jsonstr,strlen(jsonstr));
+        stripwhite_ns(jsonstr,strlen(jsonstr));
         free_json(json);
     }
     return(jsonstr);
@@ -894,11 +894,7 @@ uint64_t call_SuperNET_broadcast(char *destip,char *msg,int32_t len,int32_t dura
         txid ^= calc_ipbits(destip);
         printf("%s NARROWCAST.(%s) txid.%llu\n",destip,msg,(long long)txid);
         if ( SuperNET_narrowcast(destip,(unsigned char *)msg,len) == 0 )
-        {
-            printf("A back from NARROWCAST\n");
             return(txid);
-        }
-        printf("B back from NARROWCAST\n");
     }
     else
     {
