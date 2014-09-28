@@ -305,6 +305,8 @@ void add_SuperNET_peer(char *ip_port)
         strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
         strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
         strncmp("199.193.252.103",ip_port,strlen("199.193.252.103")) == 0 ||
+        strncmp("89.212.19.49",ip_port,strlen("89.212.19.49")) == 0 ||
+        strncmp("128.199.183.249",ip_port,strlen("128.199.183.249")) == 0 ||
         
         0 )
     {
