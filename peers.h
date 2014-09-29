@@ -101,7 +101,7 @@ struct peerinfo *get_random_pserver()
     return(0);
 }
 
-void addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
+uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
 {
     int32_t i;
     uint32_t xorsum = 0;
@@ -109,7 +109,7 @@ void addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbi
     {
         for (i=0; i<pserver->numips; i++)
             if ( pserver->hasips[i] == ipbits )
-                return;
+                return(0);
     }
     pserver->hasips = realloc(pserver->hasips,sizeof(*pserver->hasips) + (pserver->numips + 1));
     pserver->hasips[pserver->numips] = ipbits;
@@ -121,6 +121,7 @@ void addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbi
         pserver->xorsum = xorsum;
         pserver->hasnum = pserver->numips;
     }
+    return(xorsum);
 }
 
 void peer_link_ipaddr(struct pserver_info *pp)
@@ -374,7 +375,8 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
             expand_ipbits(ipaddr,peer->srvipbits);
             peer->pserver = get_pserver(0,ipaddr,peer->srvport,peer->p2pport);
             if ( cp != 0 && cp->myipaddr[0] != 0 )
-                addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srvipbits);
+                if ( addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srvipbits) != 0 )
+                    say_hello(np,1);
             printf("ADDED privacyServer.%d\n",Numpservers);
             if ( np != 0 )
                 say_hello(np,0);
@@ -682,6 +684,8 @@ void say_hello(struct NXT_acct *np,int32_t pservers_flag)
     char srvNXTaddr[64],hopNXTaddr[64],*retstr;
     struct NXT_acct *hopnp;
     int32_t createflag;
+    if ( np == 0 )
+        return;
     //printf("in say_hello.cp %p\n",cp);
     expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
     if ( (retstr= sendpeerinfo(pservers_flag,hopNXTaddr,srvNXTaddr,cp->srvNXTACCTSECRET,np->H.U.NXTaddr,0)) != 0 )
@@ -737,7 +741,7 @@ uint64_t broadcast_publishpacket(char *ip_port)
     return(0);
 }
 
-void update_pserver_xorsum(struct pserver_info *mypserver,struct NXT_acct *np,int32_t hasnum,uint32_t xorsum)
+int32_t update_pserver_xorsum(struct pserver_info *mypserver,struct NXT_acct *np,int32_t hasnum,uint32_t xorsum)
 {
     struct coin_info *cp;
     if ( mypserver == 0 )
@@ -750,7 +754,9 @@ void update_pserver_xorsum(struct pserver_info *mypserver,struct NXT_acct *np,in
     {
         printf("update_pserver_xorsum\n");
         say_hello(np,1);
+        return(1);
     }
+    return(0);
 }
 
 char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t hasnum,uint32_t xorsum)
