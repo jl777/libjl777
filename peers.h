@@ -962,7 +962,7 @@ void every_minute()
     struct peerinfo *peer;
     struct pserver_info *pserver,*mypserver = 0;
     cp = get_coin_info("BTCD");
-    printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
+    //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
     if ( cp != 0 && cp->myipaddr[0] != 0 )
         mypserver = get_pserver(0,cp->myipaddr,0,0);
     if ( Num_in_whitelist > 0 && SuperNET_whitelist != 0 )
@@ -971,7 +971,7 @@ void every_minute()
         {
             expand_ipbits(ipaddr,SuperNET_whitelist[i]);
             pserver = get_pserver(0,ipaddr,0,0);
-            printf("(%s) numrecv.%d numsent.%d\n",ipaddr,pserver->numrecv,pserver->numsent);
+            //printf("(%s) numrecv.%d numsent.%d\n",ipaddr,pserver->numrecv,pserver->numsent);
             if ( pserver->numrecv == 0 && pserver->numsent < 3 )
             {
                 sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
