@@ -101,9 +101,10 @@ struct peerinfo *get_random_pserver()
     return(0);
 }
 
-void addto_hasips(struct pserver_info *pserver,uint32_t ipbits)
+void addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
 {
     int32_t i;
+    uint32_t xorsum = 0;
     if ( pserver->hasips != 0 && pserver->numips > 0 )
     {
         for (i=0; i<pserver->numips; i++)
@@ -113,6 +114,13 @@ void addto_hasips(struct pserver_info *pserver,uint32_t ipbits)
     pserver->hasips = realloc(pserver->hasips,sizeof(*pserver->hasips) + (pserver->numips + 1));
     pserver->hasips[pserver->numips] = ipbits;
     pserver->numips++;
+    if ( recalc_flag != 0 )
+    {
+        for (i=0; i<pserver->numips; i++)
+            xorsum ^= pserver->hasips[i];
+        pserver->xorsum = xorsum;
+        pserver->hasnum = pserver->numips;
+    }
 }
 
 void peer_link_ipaddr(struct pserver_info *pp)
@@ -872,20 +880,15 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
         pserver = get_pserver(0,refipaddr,0,0);
         pserver->hasnum = hasnum;
         pserver->xorsum = xorsum;
-        update_pserver_xorsum(mypserver,np,hasnum,xorsum);
         if ( cp != 0 && cp->myipaddr[0] != 0 )
             mypserver = get_pserver(0,cp->myipaddr,0,0);
-        if ( mypserver != 0 && (mypserver->hasnum > hasnum || (mypserver->hasnum == hasnum && mypserver->xorsum != xorsum)) )
-        {
-            printf(">>>>>>>>>> need to send our Pservers to %s\n",refipaddr);
-            say_hello(np,1);
-        }
+        update_pserver_xorsum(mypserver,np,hasnum,xorsum);
         for (i=0; i<n; i++)
         {
             if ( pservers[i] != 0 )
             {
                 expand_ipbits(ipaddr,pservers[i]);
-                addto_hasips(pserver,pservers[i]);
+                addto_hasips(0,pserver,pservers[i]);
                 get_pserver(&createdflag,ipaddr,0,0);
                 //printf("%d.(%s) ",i,ipaddr);
                 for (j=0; j<Numpservers; j++)
