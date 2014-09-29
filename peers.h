@@ -971,11 +971,13 @@ void every_minute()
         {
             expand_ipbits(ipaddr,SuperNET_whitelist[i]);
             pserver = get_pserver(0,ipaddr,0,0);
+            printf("(%s) numrecv.%d numsent.%d\n",ipaddr,pserver->numrecv,pserver->numsent);
             if ( pserver->numrecv == 0 && pserver->numsent < 3 )
             {
                 sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
                 printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
                 broadcast_publishpacket(ip_port);
+                pserver->numsent++;
             }
         }
     }
