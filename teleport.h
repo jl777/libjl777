@@ -314,6 +314,7 @@ void teleport_idler(uv_idle_t *handle)
             add_SuperNET_peer(ip_port);
             free(ip_port);
         }
+        counter++;
         if ( (counter % 60) == 0 )
             every_minute();
         process_pingpong_queue(&PeerQ,0);
