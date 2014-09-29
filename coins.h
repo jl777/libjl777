@@ -601,6 +601,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             array = cJSON_GetObjectItem(MGWconf,"whitelist");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
             {
+                int32_t add_SuperNET_whitelist(char *ipaddr);
                 n = cJSON_GetArraySize(array);
                 for (i=0; i<n; i++)
                 {
