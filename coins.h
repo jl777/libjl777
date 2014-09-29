@@ -535,7 +535,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr,*str;
+    char ipaddr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr,*str;
     int32_t i,n,ismainnet,createdflag,timezone=0;
     int64_t len=0,allocsize=0;
     struct peerinfo *refpeer,peer;
@@ -598,6 +598,19 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             for (i=0; i<3; i++)
                 printf("%s | ",Server_names[i]);
             printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK);
+            array = cJSON_GetObjectItem(MGWconf,"whitelist");
+            if ( array != 0 && is_cJSON_Array(array) != 0 )
+            {
+                n = cJSON_GetArraySize(array);
+                for (i=0; i<n; i++)
+                {
+                    if ( array == 0 || n == 0 )
+                        break;
+                    item = cJSON_GetArrayItem(array,i);
+                    copy_cJSON(ipaddr,item);
+                    add_SuperNET_whitelist(ipaddr);
+                }
+            }
             array = cJSON_GetObjectItem(MGWconf,"coins");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
             {

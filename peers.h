@@ -28,7 +28,34 @@ struct peer_queue_entry
 queue_t P2P_Q;
 struct pingpong_queue PeerQ;
 struct peerinfo **Peers,**Pservers;
-int32_t Numpeers,Numpservers;
+int32_t Numpeers,Numpservers,Num_in_whitelist;
+uint32_t *SuperNET_whitelist;
+
+int32_t on_SuperNET_whitelist(char *ipaddr)
+{
+    uint32_t i,ipbits;
+    if ( Num_in_whitelist > 0 && SuperNET_whitelist != 0 )
+    {
+        ipbits = calc_ipbits(ipaddr);
+        for (i=0; i<Num_in_whitelist; i++)
+            if ( SuperNET_whitelist[i] == ipbits )
+                return(1);
+    }
+    return(0);
+}
+
+int32_t add_SuperNET_whitelist(char *ipaddr)
+{
+    if ( on_SuperNET_whitelist(ipaddr) == 0 )
+    {
+        SuperNET_whitelist = realloc(SuperNET_whitelist,sizeof(*SuperNET_whitelist) * (Num_in_whitelist + 1));
+        SuperNET_whitelist[Num_in_whitelist] = calc_ipbits(ipaddr);
+        printf(">>>>>>>>>>>>>>>>>> add to SuperNET_whitelist[%d] (%s)\n",Num_in_whitelist,ipaddr);
+        Num_in_whitelist++;
+        return(1);
+    }
+    return(0);
+}
 
 int32_t process_PeerQ(void **ptrp,void *arg) // added when inbound transporter sequence is started
 {
@@ -891,7 +918,6 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
     char ipaddr[64],refipaddr[64];
     struct NXT_acct *np;
     struct pserver_info *pserver;
-    struct coin_info *cp = get_coin_info("BTCD");
     np = get_NXTacct(&createdflag,Global_mp,sender);
     if ( np->mypeerinfo.srvipbits != 0 )
     {
