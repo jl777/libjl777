@@ -250,6 +250,22 @@ cJSON *gen_Pservers_json(int32_t firstPserver)
     return(json);
 }
 
+void set_pservers_json(char *buf,int32_t firstPserver)
+{
+    cJSON *json;
+    char *jsonstr;
+    if ( (json = gen_Pservers_json(firstPserver)) != 0 )
+    {
+        if ( (jsonstr = cJSON_Print(json)) != 0 )
+        {
+            stripwhite_ns(jsonstr,strlen(jsonstr));
+            strcpy(buf,jsonstr);
+            free(jsonstr);
+        }
+        free_json(json);
+    }
+}
+
 cJSON *gen_peers_json(int32_t only_privacyServers)
 {
     int32_t i,n;
@@ -319,7 +335,7 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
 {
-    void say_hello(struct NXT_acct *np);
+    void say_hello(struct NXT_acct *np,int32_t pservers_flag);
     char NXTaddr[64],ipaddr[16];
     int32_t createdflag,isPserver;
     struct coin_info *cp = get_coin_info("BTCD");
@@ -353,7 +369,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
                 addto_hasips(get_pserver(0,cp->myipaddr,0,0),peer->srvipbits);
             printf("ADDED privacyServer.%d\n",Numpservers);
             if ( np != 0 )
-                say_hello(np);
+                say_hello(np,0);
         }
     }
     printf("isPserver.%d add_peerinfo Numpeers.%d added %llu srv.%llu\n",isPserver,Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
@@ -631,7 +647,7 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *pubaddr,char *destcoin)
     } else return(clonestr("{\"error\":\"cant find pubaddr\"}"));
 }
 
-char *sendpeerinfo(char *hopNXTaddr,char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destcoin)
+char *sendpeerinfo(int32_t pservers_flag,char *hopNXTaddr,char *NXTaddr,char *NXTACCTSECRET,char *destaddr,char *destcoin)
 {
     char buf[4096];
     struct NXT_acct *pubnp,*destnp;
@@ -640,17 +656,19 @@ char *sendpeerinfo(char *hopNXTaddr,char *NXTaddr,char *NXTACCTSECRET,char *dest
     destnp = search_addresses(destaddr);
     if ( pubnp != 0 && destnp != 0 )
     {
-        set_peer_json(buf,NXTaddr,pubnp);
+        if ( pservers_flag <= 0 )
+            set_peer_json(buf,NXTaddr,pubnp);
+        else set_pservers_json(buf,pservers_flag-1);
         if ( hopNXTaddr != 0 )
         {
-            printf("SENDPEERINFO >>>>>>>>>> (%s)\n",buf);
+            printf("SENDPEERINFO.%d >>>>>>>>>> (%s)\n",pservers_flag,buf);
             hopNXTaddr[0] = 0;
             return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destnp->H.U.NXTaddr));
         } else return(0);
     } else return(clonestr("{\"error\":\"sendpeerinfo cant find pubaddr\"}"));
 }
 
-void say_hello(struct NXT_acct *np)
+void say_hello(struct NXT_acct *np,int32_t pservers_flag)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     char srvNXTaddr[64],hopNXTaddr[64],*retstr;
@@ -658,13 +676,13 @@ void say_hello(struct NXT_acct *np)
     int32_t createflag;
     //printf("in say_hello.cp %p\n",cp);
     expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
-    if ( (retstr= sendpeerinfo(hopNXTaddr,srvNXTaddr,cp->srvNXTACCTSECRET,np->H.U.NXTaddr,0)) != 0 )
+    if ( (retstr= sendpeerinfo(pservers_flag,hopNXTaddr,srvNXTaddr,cp->srvNXTACCTSECRET,np->H.U.NXTaddr,0)) != 0 )
     {
         printf("say_hello.(%s)\n",retstr);
         if ( hopNXTaddr[0] != 0 )
         {
             hopnp = get_NXTacct(&createflag,Global_mp,hopNXTaddr);
-            update_peerstate(&np->mypeerinfo,&hopnp->mypeerinfo,PEER_HELLOSTATE,PEER_SENT);
+            //update_peerstate(&np->mypeerinfo,&hopnp->mypeerinfo,PEER_HELLOSTATE,PEER_SENT);
         }
         else printf("say_hello no hopNXTaddr?\n");
         free(retstr);
@@ -776,7 +794,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     if ( prevaddr != 0 )
     {
         if ( updatedflag != 0 )
-            say_hello(np);
+            say_hello(np,0);
         if ( xorsum == 0 || haspservers > Numpservers || (haspservers == Numpservers && xorsum != calc_xorsum(Pservers,Numpservers)) )
             ask_pservers(np);
         return(0);
@@ -826,19 +844,17 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
     struct coin_info *cp = get_coin_info("BTCD");
     np = get_NXTacct(&createdflag,Global_mp,sender);
     if ( cp != 0 && cp->myipaddr[0] != 0 )
-    {
-        myipbits = calc_ipbits(cp->myipaddr);
         mypserver = get_pserver(0,cp->myipaddr,0,0);
-    }
     if ( np->mypeerinfo.srvipbits != 0 )
     {
         expand_ipbits(refipaddr,np->mypeerinfo.srvipbits);
         pserver = get_pserver(0,refipaddr,0,0);
         pserver->hasnum = hasnum;
         pserver->xorsum = xorsum;
-        if ( cp != 0 )
+        if ( mypserver != 0 && (mypserver->hasnum > hasnum || (mypserver->hasnum == hasnum && mypserver->xorsum != xorsum)) )
         {
-            
+            printf(">>>>>>>>>> need to send our Pservers to %s\n",refipaddr);
+            say_hello(np,1);
         }
         for (i=0; i<n; i++)
         {
@@ -862,8 +878,6 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
                     queue_enqueue(&P2P_Q,clonestr(ipaddr));
             }
         }
-        if ( myipbits != 0 )
-            say_hello(np);
     }
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
     printf(">>>>>>>>>>>> publishPservers from sender.(%s) prevaddr.%s/%d first.%d hasnum.%d n.%d\n",sender,ipaddr,port,firsti,hasnum,n);
