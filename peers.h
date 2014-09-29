@@ -729,7 +729,23 @@ uint64_t broadcast_publishpacket(char *ip_port)
     return(0);
 }
 
-char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t haspservers,uint32_t xorsum)
+void update_pserver_xorsum(struct pserver_info *mypserver,struct NXT_acct *np,int32_t hasnum,uint32_t xorsum)
+{
+    struct coin_info *cp;
+    if ( mypserver == 0 )
+    {
+        cp = get_coin_info("BTCD");
+        if ( cp != 0 && cp->myipaddr[0] != 0 )
+            mypserver = get_pserver(0,cp->myipaddr,0,0);
+    }
+    if ( mypserver != 0 && (mypserver->hasnum > hasnum || (mypserver->hasnum == hasnum && mypserver->xorsum != xorsum)) )
+    {
+        printf("update_pserver_xorsum\n");
+        say_hello(np,1);
+    }
+}
+
+char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECRET,char *pubNXT,char *pubkeystr,char *BTCDaddr,char *BTCaddr,char *srvNXTaddr,char *srvipaddr,int32_t srvport,int32_t hasnum,uint32_t xorsum)
 {
     int32_t createdflag,updatedflag = 0;
     struct NXT_acct *np;
@@ -778,6 +794,12 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
             memcpy(refpeer->coins,Global_mp->coins,sizeof(refpeer->coins));
         printf("set coins.%llx\n",(long long)coins[0]);
     }
+    if ( (refpeer->pserver= np->mypeerinfo.pserver) != 0 )
+    {
+        refpeer->pserver->hasnum = hasnum;
+        refpeer->pserver->xorsum = xorsum;
+        update_pserver_xorsum(0,np,hasnum,xorsum);
+    }
     np->mypeerinfo = *refpeer;
     //printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
     if ( BTCDaddr[0] != 0 )
@@ -795,7 +817,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     {
         if ( updatedflag != 0 )
             say_hello(np,0);
-        if ( xorsum == 0 || haspservers > Numpservers || (haspservers == Numpservers && xorsum != calc_xorsum(Pservers,Numpservers)) )
+        if ( xorsum == 0 || hasnum > Numpservers || (hasnum == Numpservers && xorsum != calc_xorsum(Pservers,Numpservers)) )
             ask_pservers(np);
         return(0);
     }
@@ -836,7 +858,6 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 
 char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender,int32_t firsti,int32_t hasnum,uint32_t *pservers,int32_t n,uint32_t xorsum)
 {
-    uint32_t myipbits = 0;
     int32_t i,j,port,createdflag;
     char ipaddr[64],refipaddr[64];
     struct NXT_acct *np;
@@ -851,6 +872,9 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
         pserver = get_pserver(0,refipaddr,0,0);
         pserver->hasnum = hasnum;
         pserver->xorsum = xorsum;
+        update_pserver_xorsum(mypserver,np,hasnum,xorsum);
+        if ( cp != 0 && cp->myipaddr[0] != 0 )
+            mypserver = get_pserver(0,cp->myipaddr,0,0);
         if ( mypserver != 0 && (mypserver->hasnum > hasnum || (mypserver->hasnum == hasnum && mypserver->xorsum != xorsum)) )
         {
             printf(">>>>>>>>>> need to send our Pservers to %s\n",refipaddr);
@@ -860,8 +884,6 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
         {
             if ( pservers[i] != 0 )
             {
-                if ( myipbits != 0 && pservers[i] == myipbits )
-                    myipbits = 0;
                 expand_ipbits(ipaddr,pservers[i]);
                 addto_hasips(pserver,pservers[i]);
                 get_pserver(&createdflag,ipaddr,0,0);
