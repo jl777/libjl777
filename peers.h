@@ -749,10 +749,11 @@ uint64_t broadcast_publishpacket(char *ip_port)
     return(0);
 }
 
-int32_t update_pserver_xorsum(struct pserver_info *mypserver,struct NXT_acct *othernp,int32_t hasnum,uint32_t xorsum)
+int32_t update_pserver_xorsum(struct NXT_acct *othernp,int32_t hasnum,uint32_t xorsum)
 {
     int32_t retflag = 0;
     struct coin_info *cp;
+    struct pserver_info *mypserver = 0;
     if ( mypserver == 0 )
     {
         cp = get_coin_info("BTCD");
@@ -843,8 +844,10 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     if ( prevaddr != 0 )
     {
         if ( updatedflag != 0 )
+        {
             say_hello(np,0);
-        update_pserver_xorsum(0,np,hasnum,xorsum);
+            update_pserver_xorsum(np,hasnum,xorsum);
+        }
         return(0);
     }
     verifiedNXTaddr[0] = 0;
@@ -887,20 +890,17 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
     int32_t i,j,port,createdflag;
     char ipaddr[64],refipaddr[64];
     struct NXT_acct *np;
-    struct pserver_info *pserver,*mypserver = 0;
+    struct pserver_info *pserver;
     struct coin_info *cp = get_coin_info("BTCD");
     np = get_NXTacct(&createdflag,Global_mp,sender);
-    if ( cp != 0 && cp->myipaddr[0] != 0 )
-        mypserver = get_pserver(0,cp->myipaddr,0,0);
     if ( np->mypeerinfo.srvipbits != 0 )
     {
         expand_ipbits(refipaddr,np->mypeerinfo.srvipbits);
         pserver = get_pserver(0,refipaddr,0,0);
         pserver->hasnum = hasnum;
         pserver->xorsum = xorsum;
-        if ( cp != 0 && cp->myipaddr[0] != 0 )
-            mypserver = get_pserver(0,cp->myipaddr,0,0);
-        update_pserver_xorsum(mypserver,np,hasnum,xorsum);
+        if ( prevaddr != 0 )
+            update_pserver_xorsum(np,hasnum,xorsum);
         for (i=0; i<n; i++)
         {
             if ( pservers[i] != 0 )
