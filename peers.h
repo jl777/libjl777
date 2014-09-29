@@ -374,7 +374,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
             expand_ipbits(ipaddr,peer->srvipbits);
             peer->pserver = get_pserver(0,ipaddr,peer->srvport,peer->p2pport);
             if ( cp != 0 && cp->myipaddr[0] != 0 )
-                addto_hasips(get_pserver(0,cp->myipaddr,0,0),peer->srvipbits);
+                addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srvipbits);
             printf("ADDED privacyServer.%d\n",Numpservers);
             if ( np != 0 )
                 say_hello(np,0);
