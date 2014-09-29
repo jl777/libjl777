@@ -953,4 +953,49 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
     return(0);
 }
 
+void every_minute()
+{
+    int32_t i,createdflag;
+    char ipaddr[64],ip_port[64],NXTaddr[64];
+    struct NXT_acct *np;
+    struct coin_info *cp;
+    struct peerinfo *peer;
+    struct pserver_info *pserver,*mypserver = 0;
+    cp = get_coin_info("BTCD");
+    printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
+    if ( cp != 0 && cp->myipaddr[0] != 0 )
+        mypserver = get_pserver(0,cp->myipaddr,0,0);
+    if ( Num_in_whitelist > 0 && SuperNET_whitelist != 0 )
+    {
+        for (i=0; i<Num_in_whitelist; i++)
+        {
+            expand_ipbits(ipaddr,SuperNET_whitelist[i]);
+            pserver = get_pserver(0,ipaddr,0,0);
+            if ( pserver->numrecv == 0 && pserver->numsent < 3 && pserver->p2pport != 0 )
+            {
+                sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport);
+                printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
+                broadcast_publishpacket(ip_port);
+            }
+        }
+    }
+    if ( mypserver != 0 && Numpservers > 0 && Pservers != 0 )
+    {
+        for (i=0; i<Numpservers; i++)
+        {
+            if ( (peer= Pservers[i]) != 0 && (pserver= peer->pserver) != 0 && peer->srvnxtbits != 0 )
+            {
+                expand_nxt64bits(NXTaddr,peer->srvnxtbits);
+                np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                if ( pserver->hasnum > mypserver->hasnum || (pserver->hasnum == mypserver->hasnum && pserver->xorsum != mypserver->xorsum) )
+                {
+                    expand_ipbits(ipaddr,pserver->ipbits);
+                    printf(">>>>>>>>>>>>> ASK CUZ %s has more than us %d.%u vs mine %d.%u\n",ipaddr,pserver->hasnum,pserver->xorsum,mypserver->hasnum,mypserver->xorsum);
+                    ask_pservers(np); // when other node has more pservers than we do
+                }
+            }
+        }
+    }
+}
+
 #endif

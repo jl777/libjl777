@@ -292,22 +292,6 @@ void add_SuperNET_peer(char *ip_port)
     char ipaddr[16];
     p2pport = parse_ipaddr(ipaddr,ip_port);
     pp = get_pserver(&createdflag,ipaddr,0,p2pport);
-    /*if ( strncmp("209.126.70",ip_port,strlen("209.126.70")) == 0 ||
-        strncmp("104.40.137.20",ip_port,strlen("104.40.137.20")) == 0 ||
-        strncmp("104.41.129.107",ip_port,strlen("104.41.129.107")) == 0 ||
-        strncmp("162.248.163.43",ip_port,strlen("162.248.163.43")) == 0 ||
-        strncmp("23.97.66.164",ip_port,strlen("23.97.66.164")) == 0 ||
-        strncmp("100.79.14.220",ip_port,strlen("100.79.14.220")) == 0 ||
-        strncmp("137.116.193.215",ip_port,strlen("137.116.193.215")) == 0 ||
-        strncmp("80.82.64.135",ip_port,strlen("80.82.64.135")) == 0 ||
-        strncmp("185.21.192.9",ip_port,strlen("185.21.192.9")) == 0 ||
-        strncmp("94.102.63.149",ip_port,strlen("94.102.63.149")) == 0 ||
-        strncmp("37.187.200.156",ip_port,strlen("37.187.200.156")) == 0 ||
-        strncmp("199.193.252.103",ip_port,strlen("199.193.252.103")) == 0 ||
-        strncmp("89.212.19.49",ip_port,strlen("89.212.19.49")) == 0 ||
-        strncmp("128.199.183.249",ip_port,strlen("128.199.183.249")) == 0 ||
-        
-        0 )*/
     if ( on_SuperNET_whitelist(ipaddr) != 0 )
     {
         printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
@@ -317,18 +301,21 @@ void add_SuperNET_peer(char *ip_port)
 
 void teleport_idler(uv_idle_t *handle)
 {
+    static int counter;
     static double lastattempt;
     double millis;
     char *ip_port;
     //printf("teleport_idler\n");
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 500) )
+    if ( millis > (lastattempt + 1000) )
     {
         if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
         {
             add_SuperNET_peer(ip_port);
             free(ip_port);
         }
+        if ( (counter % 60) == 0 )
+            every_minute();
         process_pingpong_queue(&PeerQ,0);
         process_pingpong_queue(&Transporter_sendQ,0);
         process_pingpong_queue(&Transporter_recvQ,0);
