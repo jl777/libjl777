@@ -248,11 +248,11 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
         if ( pserver->numsent != 0 )
             cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(pserver->numsent));
         if ( pserver->sentmilli != 0 )
-            cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber(pserver->sentmilli - millis));
+            cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber((millis - pserver->sentmilli)/60000.));
         if ( pserver->numrecv != 0 )
             cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(pserver->numrecv));
         if ( pserver->recvmilli != 0 )
-            cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber(pserver->recvmilli - millis));
+            cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - pserver->recvmilli)/60000.));
     }
     return(json);
 }
@@ -1006,7 +1006,7 @@ void every_minute()
         {
             if ( (peer= Pservers[i]) != 0 && (pserver= peer->pserver) != 0 && peer->srvnxtbits != 0 )
             {
-                if ( peer->numrecv == 0 )
+                if ( peer->numrecv == 0 || pserver->hasnum < mypserver->hasnum || (pserver->hasnum == mypserver->hasnum && pserver->xorsum != mypserver->xorsum) )
                 {
                     expand_ipbits(ipaddr,peer->srvipbits);
                     sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
