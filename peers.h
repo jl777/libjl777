@@ -870,13 +870,13 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
             refpeer->srvipbits = calc_ipbits(srvipaddr);
         if ( srvNXTaddr != 0 && srvNXTaddr[0] != 0 )
             refpeer->srvnxtbits = calc_nxt64bits(srvNXTaddr);
-        printf("found %s and updated.%d %s | coins.%p\n",pubNXT,updatedflag,np->H.U.NXTaddr,coins);
+        printf("prev.%p found %s and updated.%d %s | coins.%p\n",prevaddr,pubNXT,updatedflag,np->H.U.NXTaddr,coins);
     }
     else
     {
         set_pubpeerinfo(srvNXTaddr,srvipaddr,srvport,&peer,BTCDaddr,pubkeystr,pubnxtbits,BTCaddr);
         refpeer = update_peerinfo(&createdflag,&peer);
-        printf("created path for (%s) | coins.%p\n",pubNXT,coins);
+        printf("prev.%p created path for (%s) | coins.%p\n",prevaddr,pubNXT,coins);
     }
     if ( refpeer != 0 )
     {
