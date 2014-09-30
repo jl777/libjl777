@@ -282,7 +282,10 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     expand_nxt64bits(srvNXTaddr,np->mypeerinfo.srvnxtbits);
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->mypeerinfo.srvnxtbits == 0 )
-        return(clonestr("\"error\":\"no np or global udp for sendmessage || destnp->mypeerinfo.srvnxtbits == 0\"}"));
+    {
+        sprintf(buf,"\"error\":\"no np.%p or global udp.%p for sendmessage || %s destnp->mypeerinfo.srvnxtbits %llu == 0\"}",np,Global_mp->udp,destNXTaddr,(long long)destnp->mypeerinfo.srvnxtbits);
+        return(clonestr(buf));
+    }
     expand_nxt64bits(destsrvNXTaddr,destnp->mypeerinfo.srvnxtbits);
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
     memset(encodedsrvD,0,sizeof(encodedsrvD)); // encoded to privacyServer of dest

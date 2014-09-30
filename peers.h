@@ -269,9 +269,12 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
         cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
         sprintf(numstr,"%d",peer->srvport);
-        cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
-        cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->numsent));
-        cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
+        if ( peer->srvport != 0 && peer->srvport != SUPERNET_PORT )
+            cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
+        if ( peer->numsent != 0 )
+            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->numsent));
+        if ( peer->numrecv != 0 )
+            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
         if ( peer->pserver != 0 )
             cJSON_AddItemToObject(json,"pserver",gen_pserver_json(peer->pserver));
     }
@@ -901,13 +904,10 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
         //safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    if ( prevaddr != 0 )
+    if ( prevaddr == 0 )
     {
         if ( updatedflag != 0 )
-        {
-            //say_hello(np,0);
-            update_pserver_xorsum(np,hasnum,xorsum);
-        }
+            say_hello(np,0);
         return(0);
     }
     verifiedNXTaddr[0] = 0;
