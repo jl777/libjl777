@@ -62,7 +62,7 @@ struct NXT_acct
     uint64_t *quantities;
     int64_t buyqty,buysum,sellqty,sellsum,quantity;
     struct NXT_assettxid_list **txlists;    // one list for each asset in acct
-    int32_t maxassets,numassets,numcoinaccts,sentintro;
+    int32_t maxassets,numassets,numcoinaccts,sentintro,pserver_pending;
     double profits;
     // fields for NXTorrent
     double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
