@@ -167,7 +167,7 @@ void peer_link_ipaddr(struct pserver_info *pserver)
                 if ( pserver->ipbits == peer->srvipbits )
                 {
                     expand_nxt64bits(srvNXTaddr,peer->srvnxtbits);
-                    printf("LINK new ipaddr.(%s/%d %d) matches NXT.%s %d %d\n",pserver->ipaddr,pserver->p2pport,pserver->supernet_port,srvNXTaddr,peer->p2pport,peer->srvport);
+                    printf("LINK.%p new ipaddr.(%s/%d %d) matches NXT.%s %d %d\n",pserver,pserver->ipaddr,pserver->p2pport,pserver->supernet_port,srvNXTaddr,peer->p2pport,peer->srvport);
                     peer->pserver = pserver;
                     peer->p2pport = pserver->p2pport;
                     peer->srvport = pserver->supernet_port;
@@ -991,7 +991,7 @@ void every_minute()
             peer_link_ipaddr(pserver);
 
             //printf("(%s) numrecv.%d numsent.%d\n",ipaddr,pserver->numrecv,pserver->numsent);
-            if ( pserver->numrecv == 0 && pserver->numsent < 3 )
+            if ( pserver->numrecv == 0 )//&& pserver->numsent < 3 )
             {
                 sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
                 printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
