@@ -171,6 +171,7 @@ void peer_link_ipaddr(struct pserver_info *pserver)
                     peer->pserver = pserver;
                     peer->p2pport = pserver->p2pport;
                     peer->srvport = pserver->supernet_port;
+                    peer->pserver = pserver;
                }
             }
         }
