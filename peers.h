@@ -904,7 +904,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
         //safecopy(np->BTCaddr,BTCaddr,sizeof(np->BTCaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    if ( prevaddr == 0 )
+    if ( prevaddr != 0 )
     {
         if ( updatedflag != 0 )
             say_hello(np,0);
