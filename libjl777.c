@@ -1029,5 +1029,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("back from init_NXTservices\n");
     Finished_init = 1;
     free(myipaddr);
+    broadcast_publishpacket(0);
+
     return(0);
 }

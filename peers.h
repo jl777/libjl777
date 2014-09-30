@@ -918,7 +918,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
         strcpy(verifiedNXTaddr,srvNXTaddr);
         if ( cp != 0 )
             strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
-        broadcast_publishpacket(0);
+        //broadcast_publishpacket(0);
     }
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }
