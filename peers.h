@@ -241,9 +241,9 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
         }
         cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
         cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(pserver->xorsum));
-        if ( pserver->p2pport != 0 )
+        if ( pserver->p2pport != 0 && pserver->p2pport != BTCD_PORT )
             cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(pserver->p2pport));
-        if ( pserver->supernet_port != 0 )
+        if ( pserver->supernet_port != 0 && pserver->supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"port",cJSON_CreateNumber(pserver->supernet_port));
         if ( pserver->numsent != 0 )
             cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(pserver->numsent));
@@ -1006,14 +1006,21 @@ void every_minute()
         {
             if ( (peer= Pservers[i]) != 0 && (pserver= peer->pserver) != 0 && peer->srvnxtbits != 0 )
             {
-                expand_nxt64bits(NXTaddr,peer->srvnxtbits);
+                if ( peer->numrecv == 0 )
+                {
+                    expand_ipbits(ipaddr,peer->srvipbits);
+                    sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
+                    printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
+                    broadcast_publishpacket(ip_port);
+                }
+                /*expand_nxt64bits(NXTaddr,peer->srvnxtbits);
                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
                 if ( pserver->hasnum > mypserver->hasnum || (pserver->hasnum == mypserver->hasnum && pserver->xorsum != mypserver->xorsum) )
                 {
                     expand_ipbits(ipaddr,pserver->ipbits);
                     printf(">>>>>>>>>>>>> ASK CUZ %s has more than us %d.%u vs mine %d.%u\n",ipaddr,pserver->hasnum,pserver->xorsum,mypserver->hasnum,mypserver->xorsum);
                     ask_pservers(np); // when other node has more pservers than we do
-                }
+                }*/
             }
         }
     }
