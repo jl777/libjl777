@@ -1012,6 +1012,10 @@ void every_minute()
                     sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
                     printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
                     broadcast_publishpacket(ip_port);
+                    expand_nxt64bits(NXTaddr,peer->srvnxtbits);
+                    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                    say_hello(np,0);
+                    say_hello(np,1);
                 }
                 /*expand_nxt64bits(NXTaddr,peer->srvnxtbits);
                 np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
