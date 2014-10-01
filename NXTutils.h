@@ -1316,8 +1316,27 @@ int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRE
     // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
 }
 
-uint32_t calc_ipbits(char *ipaddr)
+int32_t parse_ipaddr(char *ipaddr,char *ip_port)
 {
+    int32_t j,port = 0;
+    if ( ip_port != 0 && ip_port[0] != 0 )
+    {
+        strcpy(ipaddr,ip_port);
+        for (j=0; ipaddr[j]!=0; j++)
+            if ( ipaddr[j] == ':' )
+            {
+                port = atoi(ipaddr+j+1);
+                break;
+            }
+        ipaddr[j] = 0;
+    } else strcpy(ipaddr,"127.0.0.1");
+    return(port);
+}
+
+uint32_t calc_ipbits(char *ip_port)
+{
+    char ipaddr[64];
+    parse_ipaddr(ipaddr,ip_port);
     return(inet_addr(ipaddr));
   /*  int32_t a,b,c,d;
     sscanf(ipaddr,"%d.%d.%d.%d",&a,&b,&c,&d);
@@ -1760,18 +1779,4 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
     return(0);
 }
 
-int32_t parse_ipaddr(char *ipaddr,char *ip_port)
-{
-    int32_t j,port = 0;
-    if ( ip_port != 0 && ip_port[0] != 0 )
-    {
-        strcpy(ipaddr,ip_port);
-        for (j=0; ipaddr[j]!=0; j++)
-            if ( ipaddr[j] == ':' )
-                break;
-        ipaddr[j] = 0;
-        port = atoi(ipaddr+j+1);
-    } else strcpy(ipaddr,"127.0.0.1");
-    return(port);
-}
 #endif
