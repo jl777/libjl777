@@ -277,7 +277,10 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         if ( peer->numrecv != 0 )
             cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
         if ( peer->pserver != 0 )
+        {
+            printf("%s pserver.%p\n",srvipaddr,peer->pserver);
             cJSON_AddItemToObject(json,"pserver",gen_pserver_json(peer->pserver));
+        }
     }
     else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
     init_hexbytes(hexstr,peer->pubkey,sizeof(peer->pubkey));
