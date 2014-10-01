@@ -382,4 +382,9 @@ int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *js
     free(msg);
     return(err);
 }
+
+char *onion_sendfile(int32_t L,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *dest,FILE *fp)
+{
+    return(0);
+}
 #endif

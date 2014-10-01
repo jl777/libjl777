@@ -47,7 +47,7 @@ void run_UVloop(void *arg)
     uv_idle_t idler;
     uv_idle_init(UV_loop,&idler);
     uv_idle_start(&idler,teleport_idler);
-    uv_idle_start(&idler,NXTservices_idler);
+    //uv_idle_start(&idler,NXTservices_idler);
     uv_run(UV_loop,UV_RUN_DEFAULT);
     printf("end of uv_run\n");
 }
@@ -92,7 +92,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
     init_MGWconf(JSON_or_fname,myipaddr);
     printf("start getNXTblocks.(%s)\n",myipaddr);
-    if ( 1 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
+    if ( 0 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
         printf("ERROR start_Histloop\n");
     //mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
     init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
@@ -102,8 +102,8 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     Finished_loading = 1;
-	while ( Finished_loading == 0 )
-        sleep(1);
+	//while ( Finished_loading == 0 )
+    //    sleep(1);
     printf("start Coinloop\n");
     if ( portable_thread_create((void *)Coinloop,Global_mp) == 0 )
         printf("ERROR Coin_genaddrloop\n");
@@ -685,6 +685,23 @@ char *publishPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *pr
     return(retstr);
 }
 
+char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    FILE *fp;
+    int32_t L;
+    char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],*retstr = 0;
+    copy_cJSON(fname,objs[0]);
+    copy_cJSON(dest,objs[1]);
+    L = get_API_int(objs[2],0);
+    fp = fopen(fname,"rb");
+    if ( fp != 0 && sender[0] != 0 && valid > 0 )
+        retstr = onion_sendfile(L,prevaddr,NXTaddr,NXTACCTSECRET,sender,dest,fp);
+    else retstr = clonestr("{\"error\":\"invalid sendfile_func arguments\"}");
+    if ( fp != 0 )
+        fclose(fp);
+    return(retstr);
+}
+
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
 
@@ -709,7 +726,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char **commands[] = { publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
+    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
+    static char **commands[] = { sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
@@ -801,6 +819,8 @@ char *SuperNET_JSON(char *JSONstr)
     int32_t valid;
     char NXTaddr[64],_tokbuf[2*MAX_JSON_FIELD],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
+    if ( Finished_init == 0 )
+        return(0);
     //printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
@@ -939,6 +959,8 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     //printf("gotpacket\n");
     //for (i=0; i<len; i++)
     //    printf("%02x ",packet[i]);
+    if ( Finished_init == 0 )
+        return(0);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
     {
@@ -1011,8 +1033,14 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
 
 int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 {
+    FILE *fp = 0;
     struct NXT_str *tp = 0;
-    printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
+    if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
+        fp = fopen(JSON_or_fname,"rb");
+    printf("SuperNET_start(%s) %p ipaddr.(%s) fp.%p\n",JSON_or_fname,myipaddr,myipaddr,fp);
+    if ( fp == 0 )
+        return(-1);
+    fclose(fp);
     myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
