@@ -1,0 +1,7 @@
+rm libjl777.so
+sudo rm /usr/lib/libjl777.so
+gcc -shared -Wl,-soname,libjl777.so \
+-o libjl777.so libjl777.o libtom/*.o \
+picoc/*.o picoc/cstdlib/*.o picoc/platform/*.o \
+libgfshare.o -lstdc++ -lc -lcurl
+sudo mv libjl777.so /usr/lib
