@@ -158,7 +158,7 @@ void peer_link_ipaddr(struct pserver_info *pserver)
     int32_t i;
     struct peerinfo *peer;
     char srvNXTaddr[64];
-    if ( Numpservers > 0 )
+    if ( pserver != 0 && Numpservers > 0 )
     {
         for (i=0; i<Numpservers; i++)
         {
@@ -414,6 +414,7 @@ void copy_peerinfo(struct peerinfo *dest,struct peerinfo *src)
     if ( src->pserver != 0 )
         pserver = src->pserver;
     *dest = *src;
+    dest->pserver = pserver;
 }
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
