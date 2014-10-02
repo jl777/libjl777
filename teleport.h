@@ -323,7 +323,7 @@ void teleport_idler(uv_idle_t *handle)
         process_pingpong_queue(&CloneQ,0);
         lastattempt = millis;
     }
-    usleep(5000);
+    usleep(10000);
 }
 
 void init_Teleport()
