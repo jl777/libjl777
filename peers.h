@@ -168,10 +168,15 @@ void peer_link_ipaddr(struct pserver_info *pserver)
                 {
                     expand_nxt64bits(srvNXTaddr,peer->srvnxtbits);
                     printf("LINK.%p new ipaddr.(%s/%d %d) matches NXT.%s %d %d\n",pserver,pserver->ipaddr,pserver->p2pport,pserver->supernet_port,srvNXTaddr,peer->p2pport,peer->srvport);
-                    peer->pserver = pserver;
-                    peer->p2pport = pserver->p2pport;
-                    peer->srvport = pserver->supernet_port;
-                    peer->pserver = pserver;
+                    if ( pserver->p2pport != 0 )
+                        peer->p2pport = pserver->p2pport;
+                    else if ( peer->p2pport != 0 )
+                        pserver->p2pport = peer->p2pport;
+
+                    if ( pserver->supernet_port != 0 )
+                        peer->srvport = pserver->supernet_port;
+                    else if ( peer->srvport != 0 )
+                        pserver->supernet_port = peer->srvport;
                }
             }
         }
@@ -261,6 +266,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
 {
     char srvipaddr[64],srvnxtaddr[64],numstr[64],pubNXT[64],hexstr[512],coinsjsonstr[1024];
     cJSON *coins,*json = cJSON_CreateObject();
+    struct pserver_info *pserver;
     expand_ipbits(srvipaddr,peer->srvipbits);
     expand_nxt64bits(srvnxtaddr,peer->srvnxtbits);
     expand_nxt64bits(pubNXT,peer->pubnxtbits);
@@ -276,10 +282,10 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
             cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->numsent));
         if ( peer->numrecv != 0 )
             cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->numrecv));
-        if ( peer->pserver != 0 )
+        if ( (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
         {
-            printf("%s pserver.%p\n",srvipaddr,peer->pserver);
-            cJSON_AddItemToObject(json,"pserver",gen_pserver_json(peer->pserver));
+            printf("%s pserver.%p\n",srvipaddr,pserver);
+            cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
         }
     }
     else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
@@ -410,11 +416,7 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 
 void copy_peerinfo(struct peerinfo *dest,struct peerinfo *src)
 {
-    struct pserver_info *pserver = dest->pserver;
-    if ( src->pserver != 0 )
-        pserver = src->pserver;
     *dest = *src;
-    dest->pserver = pserver;
 }
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
@@ -448,7 +450,6 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
             Pservers = realloc(Pservers,sizeof(*Pservers) * (Numpservers + 1));
             Pservers[Numpservers] = peer, Numpservers++;
             expand_ipbits(ipaddr,peer->srvipbits);
-            peer->pserver = get_pserver(0,ipaddr,peer->srvport,peer->p2pport);
             printf("ADDED privacyServer.%d\n",Numpservers);
             if ( cp != 0 && cp->myipaddr[0] != 0 )
                 addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srvipbits);
@@ -848,6 +849,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     struct NXT_acct *np;
     struct coin_info *cp;
     struct other_addr *op;
+    struct pserver_info *pserver;
     struct peerinfo *refpeer,peer;
     char verifiedNXTaddr[64],mysrvNXTaddr[64];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
@@ -891,10 +893,10 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
             memcpy(refpeer->coins,Global_mp->coins,sizeof(refpeer->coins));
         printf("set coins.%llx\n",(long long)coins[0]);
     }
-    if ( (refpeer->pserver= np->mypeerinfo.pserver) != 0 )
+    if ( srvipaddr != 0 && strcmp(srvipaddr,"127.0.0.1") != 0 && (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
     {
-        refpeer->pserver->hasnum = hasnum;
-        refpeer->pserver->xorsum = xorsum;
+        pserver->hasnum = hasnum;
+        pserver->xorsum = xorsum;
     }
     copy_peerinfo(&np->mypeerinfo,refpeer);
     //printf("in secret.(%s) publishaddrs.(%s) np.%p %llu\n",NXTACCTSECRET,pubNXT,np,(long long)np->H.nxt64bits);
@@ -998,7 +1000,7 @@ void every_minute()
             if ( pserver->numrecv == 0 )//&& pserver->numsent < 3 )
             {
                 sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
-                printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
+                printf(">>>>>>>>>>>>> A every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
                 broadcast_publishpacket(ip_port);
                 pserver->numsent++;
             }
@@ -1008,13 +1010,15 @@ void every_minute()
     {
         for (i=0; i<Numpservers; i++)
         {
-            if ( (peer= Pservers[i]) != 0 && (pserver= peer->pserver) != 0 && peer->srvnxtbits != 0 )
+            if ( (peer= Pservers[i]) != 0 && peer->srvnxtbits != 0 && peer->srvipbits != 0 )
             {
+                expand_ipbits(ipaddr,peer->srvipbits);
+                pserver = get_pserver(0,ipaddr,0,0);
                 if ( peer->numrecv == 0 || pserver->hasnum < mypserver->hasnum || (pserver->hasnum == mypserver->hasnum && pserver->xorsum != mypserver->xorsum) )
                 {
                     expand_ipbits(ipaddr,peer->srvipbits);
                     sprintf(ip_port,"%s:%d",ipaddr,pserver->p2pport!=0?pserver->p2pport:BTCD_PORT);
-                    printf(">>>>>>>>>>>>>>> every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
+                    printf(">>>>>>>>>>>>>>> B every_minute(%s) sent.%d recv.%d\n",ip_port,pserver->numsent,pserver->numrecv);
                     broadcast_publishpacket(ip_port);
                     expand_nxt64bits(NXTaddr,peer->srvnxtbits);
                     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);

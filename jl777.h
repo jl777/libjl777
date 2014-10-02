@@ -208,7 +208,7 @@ struct peerinfo
 {
     uint64_t srvnxtbits,pubnxtbits,coins[4];
     struct Uaddr *Uaddrs;
-    struct pserver_info *pserver;
+    //struct pserver_info *pserver;
     uint32_t srvipbits,numsent,numrecv,numUaddrs;
     uint16_t srvport,p2pport;
     float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];

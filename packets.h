@@ -136,7 +136,7 @@ int32_t onionize(char *hopNXTaddr,unsigned char *encoded,char *destNXTaddr,unsig
 
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *final,uint8_t **srcp,int32_t len)
 {
-    char destNXTaddr[64];
+    char destNXTaddr[64],ipaddr[64];
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct peerinfo *peer;
     struct pserver_info *pserver;
@@ -156,7 +156,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *final
                 printf("FATAL: cant get random peer!\n");
                 return(-1);
             }
-            if ( (pserver= peer->pserver) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
+            expand_ipbits(ipaddr,peer->srvipbits);
+            if ( (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
                 continue;
             np = search_addresses(peer->pubBTCD);
             if ( np == 0 && peer->pubnxtbits != 0 )
