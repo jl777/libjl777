@@ -594,7 +594,7 @@ void every_minute(int32_t counter)
     struct pserver_info *pserver,*mypserver = 0;
     now = (uint32_t)time(NULL);
     cp = get_coin_info("BTCD");
-    if ( cp == 0 )
+   // if ( cp == 0 )
         return;
     //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
     refresh_buckets(cp->srvNXTACCTSECRET);

@@ -1150,7 +1150,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("back from init_NXTservices\n");
     Finished_init = 1;
     free(myipaddr);
-    p2p_publishpacket(0,0);
+   // p2p_publishpacket(0,0);
 
     return(0);
 }
