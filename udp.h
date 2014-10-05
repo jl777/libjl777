@@ -419,7 +419,6 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *encoded,unsigned char **payloadp,int32_t len);
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     uint64_t txid = 0;
-    char ipaddr[64];
     int32_t port;
     struct sockaddr destaddr;
     struct nodestats *stats;
@@ -428,7 +427,7 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = BTCD_PORT;
-    uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
+    uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;

@@ -180,12 +180,13 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
 
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *value)
 {
-    int32_t createdflag,port;
+    int32_t createdflag;
     struct NXT_acct *np;
-    struct nodestats *stats;
+    struct coin_info *cp = get_coin_info("BTCD");
     char pubkeystr[1024],ipaddr[64],cmdstr[2048],verifiedNXTaddr[64],destNXTaddr[64];
-    if ( NXTACCTSECRET[0] == 0 )
+    if ( NXTACCTSECRET[0] == 0 || cp == 0 )
         return(0);
+    init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
     verifiedNXTaddr[0] = 0;
     find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     if ( pserver == 0 )
@@ -197,19 +198,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
-    if ( (stats= get_nodestats(nxt64bits)) != 0 )
-    {
-        init_hexbytes(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
-        if ( pubkeystr[0] != 0 )
-            port = (stats->supernet_port != 0) ? stats->supernet_port : SUPERNET_PORT;
-        else port = (stats->p2pport != 0) ? stats->p2pport : BTCD_PORT;
-    }
-    else
-    {
-        port = BTCD_PORT;
-        pubkeystr[0] = 0;
-    }
-    sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,pserver->ipaddr,port);
+    sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,SUPERNET_PORT);
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     if ( value != 0 && value[0] != 0 )
