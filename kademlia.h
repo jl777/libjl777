@@ -639,7 +639,7 @@ void every_minute(int32_t counter)
                     for (i=0; i<Num_in_whitelist; i++)
                     {
                         expand_ipbits(ipaddr,SuperNET_whitelist[i]);
-                        send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",cp->srvNXTACCTSECRET,0,0);
+                        //send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",cp->srvNXTACCTSECRET,0,0);
                     }
                     printf("PINGED.%d\n",Num_in_whitelist);
                 }
