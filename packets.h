@@ -267,7 +267,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     }
     else
     {
-        printf("process_packet got unexpected nonencrypted len.%d %s/%d\n",recvlen,sender,port);
+        printf("process_packet got unexpected nonencrypted len.%d %s/%d (%s)\n",recvlen,sender,port,recvbuf);
         len = recvlen;
         memcpy(decoded,recvbuf,recvlen);
         //return(0);
