@@ -470,6 +470,7 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
             if ( matchflag < 0 )
             {
                 buckets[j] = stats;
+                printf("bucket[%d] <- %llu then call pushstore\n",j,(long long)stats->nxt64bits);
                 kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
             }
             else if ( j > 0 )
@@ -477,6 +478,7 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
                 for (k=matchflag; k<j-1; k++)
                     buckets[k] = buckets[k+1];
                 buckets[k] = stats;
+                printf("bucket[%d] <- %llu\n",k,(long long)stats->nxt64bits);
             } else printf("update_Kbucket: impossible case matchflag.%d j.%d\n",matchflag,j);
             return;
         }
@@ -489,6 +491,7 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
         for (k=0; k<n-1; k++)
             buckets[k] = buckets[k+1];
         buckets[n-1] = stats;
+        printf("bucket[%d] <- %llu, check for eviction of %llu\n",n-1,(long long)stats->nxt64bits,(long long)eviction->nxt64bits);
         stats->eviction = eviction;
         kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
         if ( cp != 0 )
@@ -499,12 +502,49 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
     }
 }
 
-void update_Kbuckets(struct nodestats *stats)
+void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int32_t port,int32_t p2pflag)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     uint64_t xorbits;
     int32_t dist;
+    uint32_t ipbits;
     struct pserver_info *pserver;
+    if ( nxt64bits != 0 )
+    {
+        if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
+        {
+            printf("nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
+            stats->nxt64bits = nxt64bits;
+        }
+    }
+    if ( ipaddr != 0 && ipaddr[0] != 0 )
+    {
+        ipbits = calc_ipbits(ipaddr);
+        if ( stats->ipbits == 0 || stats->ipbits != ipbits )
+        {
+            printf("stats ipbits %u -> %u\n",stats->ipbits,ipbits);
+            stats->ipbits = ipbits;
+        }
+        if ( port != 0 )
+        {
+            if ( p2pflag != 0 )
+            {
+                if ( stats->p2pport == 0 || stats->p2pport != port )
+                {
+                    printf("p2pport %u -> %u\n",stats->p2pport,port);
+                    stats->p2pport = port;
+                }
+            }
+            else
+            {
+                if ( stats->supernet_port == 0 || stats->supernet_port != port )
+                {
+                    printf("supernet_port %u -> %u\n",stats->supernet_port,port);
+                    stats->supernet_port = port;
+                }
+            }
+        }
+    }
     if ( cp != 0 )
     {
         pserver = get_pserver(0,cp->myipaddr,0,0);
@@ -516,6 +556,7 @@ void update_Kbuckets(struct nodestats *stats)
             dist = bitweight(xorbits) - 1;
             Kbucket_updated[dist] = time(NULL);
             update_Kbucket(K_buckets[dist],KADEMLIA_NUMK,stats);
+            printf("Kbucket.%d updated\n",dist);
         }
     }
 }

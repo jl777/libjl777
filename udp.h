@@ -371,7 +371,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     struct sockaddr_in addr;
     struct Uaddr *Uaddrs[8];
     uint64_t txid = 0;
-    int32_t createdflag,i,n;
+    int32_t port,createdflag,i,n;
     struct NXT_acct *np;
     if ( len > sizeof(finalbuf) )
     {
@@ -386,7 +386,8 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     }
     if ( destaddr != 0 )
     {
-        printf("DIRECT send to %s finalbuf.%d\n",destip,len);
+        port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
+        printf("DIRECT send to (%s/%d) finalbuf.%d\n",destip,port,len);
         send_packet(0,destaddr,outbuf,len);
     }
     else
@@ -514,8 +515,8 @@ int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int3
     }
     if ( memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
-        void update_Kbuckets(struct nodestats *stats);
-        update_Kbuckets(stats);
+        void update_Kbuckets(struct nodestats *stats,uint64_t,char *,int32_t,int32_t);
+        update_Kbuckets(stats,nxt64bits,ipaddr,port,p2pflag);
     }
     return(modified);
 }
