@@ -173,6 +173,7 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
     char _tokbuf[4096];
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+    printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(pserver,_tokbuf,len);
     return(txid);
 }
@@ -633,7 +634,7 @@ void every_minute(int32_t counter)
             {
                 printf("only connected to %d of %d, lets broadcast\n",connected,Num_in_whitelist);
                 p2p_publishpacket(0,0);
-                if ( 0 && broadcast_count++ == 0 )
+                if ( broadcast_count++ == 0 )
                 {
                     for (i=0; i<Num_in_whitelist; i++)
                     {
