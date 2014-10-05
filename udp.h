@@ -375,8 +375,6 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
     int32_t createdflag,i,n;
     struct NXT_acct *np;
     memset(finalbuf,0,sizeof(finalbuf));
-    np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
-    expand_ipbits(destip,np->mypeerinfo.srv.ipbits);
     len = crcize(finalbuf,outbuf,len);
     if ( len > sizeof(finalbuf) )
     {
@@ -388,24 +386,29 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
         printf("DIRECT send to %s/%d finalbuf.%d\n",destip,np->mypeerinfo.srv.supernet_port,len);
         send_packet(0,destaddr,finalbuf,len);
     }
-    else if ( is_privacyServer(&np->mypeerinfo) != 0 )
-    {
-        printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
-        uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port,&addr);
-        send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
-    }
     else
     {
-        memset(Uaddrs,0,sizeof(Uaddrs));
-        n = sort_topaddrs(Uaddrs,(int32_t)(sizeof(Uaddrs)/sizeof(*Uaddrs)),&np->mypeerinfo);
-        printf("n.%d hopNXTaddr.(%s) narrowcast %s:%d %d via p2p\n",len,hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
-        if ( n > 0 )
+        np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
+        expand_ipbits(destip,np->mypeerinfo.srv.ipbits);
+        if ( is_privacyServer(&np->mypeerinfo) != 0 )
         {
-            for (i=0; i<n; i++)
+            printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
+            uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port,&addr);
+            send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
+        }
+        else
+        {
+            memset(Uaddrs,0,sizeof(Uaddrs));
+            n = sort_topaddrs(Uaddrs,(int32_t)(sizeof(Uaddrs)/sizeof(*Uaddrs)),&np->mypeerinfo);
+            printf("n.%d hopNXTaddr.(%s) narrowcast %s:%d %d via p2p\n",len,hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
+            if ( n > 0 )
             {
-                Uaddrs[i]->numsent++;
-                uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port==0?SUPERNET_PORT:np->mypeerinfo.srv.supernet_port,&addr);
-                send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
+                for (i=0; i<n; i++)
+                {
+                    Uaddrs[i]->numsent++;
+                    uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port==0?SUPERNET_PORT:np->mypeerinfo.srv.supernet_port,&addr);
+                    send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
+                }
             }
         }
     }
