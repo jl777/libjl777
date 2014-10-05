@@ -364,7 +364,7 @@ int32_t is_privacyServer(struct peerinfo *peer)
     return(0);
 }
 
-uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
+uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
 {
     unsigned char finalbuf[4096];
     char destip[64];
@@ -381,7 +381,7 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
     if ( destaddr != 0 )
     {
         printf("DIRECT send to %s finalbuf.%d\n",destip,len);
-        send_packet(0,destaddr,outbuf,len);//finalbuf,len);
+        send_packet(0,destaddr,(encrypted!=0)?finalbuf:outbuf,len);
     }
     else
     {
@@ -421,7 +421,7 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *encoded,unsigned char **payloadp,int32_t len);
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     uint64_t txid = 0;
-    int32_t port;
+    int32_t port,encrypted = 0;
     struct sockaddr destaddr;
     struct nodestats *stats;
     unsigned char encoded[4096],*outbuf;
@@ -435,13 +435,13 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
-        len = direct_onionize(stats->nxt64bits,stats->pubkey,encoded,&outbuf,len);
+        len = direct_onionize(stats->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
     printf("directsend to (%s).%d stats.%p\n",pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
     {
-        txid = route_packet(&destaddr,0,outbuf,len);
+        txid = route_packet(encrypted,&destaddr,0,outbuf,len);
         printf("got route_packet txid.%llu\n",(long long)txid);
     }
     else printf("directsend_packet: illegal len.%d\n",len);
