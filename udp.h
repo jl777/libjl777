@@ -436,7 +436,7 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
-        len = direct_onionize(0,stats->pubkey,encoded,&outbuf,len);
+        len = direct_onionize(stats->nxt64bits,stats->pubkey,encoded,&outbuf,len);
     printf("directsend to (%s).%d stats.%p\n",pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
