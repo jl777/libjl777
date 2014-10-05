@@ -352,10 +352,12 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
 
 char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key)
 {
+    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[1024],pubkeystr[256],numstr[64],ipaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,*sortbuf,txid = 0;
     int32_t i,n,createdflag;
     struct NXT_acct *keynp;
+    struct NXT_acct *destnp;
     cJSON *array,*item;
     struct kademlia_store *sp;
     struct nodestats *stats;
@@ -390,15 +392,27 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
                 {
                     expand_nxt64bits(destNXTaddr,sortbuf[(i<<1) + 1]);
-                    sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
-                    init_hexbytes(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
+                    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                    stats = &destnp->mypeerinfo.srv;
                     item = cJSON_CreateArray();
                     cJSON_AddItemToArray(item,cJSON_CreateString(destNXTaddr));
-                    cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
-                    cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
-                    cJSON_AddItemToArray(item,cJSON_CreateString(pubkeystr));
-                    sprintf(numstr,"%u",stats->lastcontact);
-                    cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
+                    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+                    {
+                        init_hexbytes(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
+                        cJSON_AddItemToArray(item,cJSON_CreateString(pubkeystr));
+                    }
+                    if ( stats->ipbits != 0 )
+                    {
+                        expand_ipbits(ipaddr,stats->ipbits);
+                        cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
+                        sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
+                        cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
+                        if ( stats->lastcontact != 0 )
+                        {
+                            sprintf(numstr,"%u",stats->lastcontact);
+                            cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
+                        }
+                    }
                     cJSON_AddItemToArray(array,item);
                 }
                 value = cJSON_Print(array);
@@ -479,10 +493,10 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
     }
     if ( matchflag < 0 ) // stats is new and the bucket is full
     {
-        eviction = buckets[k];
+        eviction = buckets[0];
         for (k=0; k<n-1; k++)
             buckets[k] = buckets[k+1];
-        buckets[k] = stats;
+        buckets[n-1] = stats;
         stats->eviction = eviction;
         kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
         if ( cp != 0 )
