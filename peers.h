@@ -151,7 +151,15 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
                 cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
             if ( stats->recvmilli != 0 )
                 cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - stats->recvmilli)/60000.));
-        }
+            if ( stats->numpings != 0 )
+                cJSON_AddItemToObject(json,"pings",cJSON_CreateNumber(stats->numpings));
+            if ( stats->numpongs != 0 )
+                cJSON_AddItemToObject(json,"pongs",cJSON_CreateNumber(stats->numpongs));
+            if ( stats->pingmilli != 0 && stats->pongmilli != 0 )
+                cJSON_AddItemToObject(json,"pingtime",cJSON_CreateNumber(stats->pongmilli - stats->pingmilli));
+            if ( stats->numpings != 0 && stats->numpongs != 0 && stats->pingpongsum != 0 )
+                cJSON_AddItemToObject(json,"avetime",cJSON_CreateNumber((2. * stats->pingpongsum)/(stats->numpings + stats->numpongs)));
+       }
     }
     return(json);
 }

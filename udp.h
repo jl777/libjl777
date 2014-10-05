@@ -264,7 +264,7 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     memcpy(&packet_crc,tx,sizeof(packet_crc));
     tx += sizeof(crc);
     crc = _crc32(0,tx,len);
-    printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
+    //printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
     return(packet_crc == crc);
 }
 

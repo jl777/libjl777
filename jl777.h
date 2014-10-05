@@ -198,8 +198,9 @@ struct nodestats
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
     struct nodestats *eviction;
     uint64_t nxt64bits;
-    uint32_t ipbits,numsent,numrecv,lastcontact;
-    float recvmilli,sentmilli;
+    uint32_t ipbits,numsent,numrecv,lastcontact,numpings,numpongs;
+    float recvmilli,sentmilli,pingmilli,pongmilli;
+    double pingpongsum;
     uint16_t p2pport,supernet_port;
     uint8_t BTCD_p2p,gotencrypted,modified,expired;
 };
