@@ -252,7 +252,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     if ( stats != 0 )
     {
         stats->pongmilli = milliseconds();
-        stats->pingpongsum += (stats->pongmilli + stats->pingmilli);
+        stats->pingpongsum += (stats->pongmilli - stats->pingmilli);
         stats->numpongs++;
         sprintf(retstr,"{\"result\":\"kademlia_pong from NXT.%s (%s/%d) %.3f millis | numpings.%d numpongs.%d ave %.3f\"}",sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
