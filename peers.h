@@ -504,11 +504,12 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     }
     if ( refpeer != 0 )
     {
+        refpeer->srv.nxt64bits = pubnxtbits;
         if ( coins != 0 )
             memcpy(refpeer->coins,coins,sizeof(refpeer->coins));
         else if ( cp != 0 && cp->pubnxtbits == refpeer->pubnxtbits )
             memcpy(refpeer->coins,Global_mp->coins,sizeof(refpeer->coins));
-        printf("set coins.%llx\n",(long long)coins[0]);
+        printf("set coins.%llx srv.nxt %llu\n",(long long)coins[0],(long long)refpeer->srv.nxt64bits);
     }
     if ( srvipaddr != 0 && strcmp(srvipaddr,"127.0.0.1") != 0 && (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
     {
