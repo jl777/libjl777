@@ -247,9 +247,9 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np = 0;
     int32_t valid,len=0,createdflag,encrypted = 1;//tmp
-    cJSON *argjson;
+    cJSON *argjson,*tmpjson;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],tmpbuf[4096]; //,tmppubkey[crypto_box_PUBLICKEYBYTES]
-    char senderNXTaddr[64],hopNXTaddr[64],*parmstxt=0,*jsonstr;
+    char senderNXTaddr[64],hopNXTaddr[64],checkstr[MAX_JSON_FIELD],*parmstxt=0,*jsonstr;
     memset(decoded,0,sizeof(decoded));
     memset(tmpbuf,0,sizeof(tmpbuf));
     retjsonstr[0] = 0;
@@ -287,9 +287,15 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             parmstxt = verify_tokenized_json(pubkey,senderNXTaddr,&valid,argjson);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
-                char checkstr[MAX_JSON_FIELD];
                 if ( encrypted == 0 )
-                    copy_cJSON(checkstr,cJSON_GetObjectItem(argjson,"requestType"));
+                {
+                    tmpjson = cJSON_Parse(parmstxt);
+                    if ( tmpjson != 0 )
+                    {
+                        copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
+                        free_json(tmpjson);
+                    }
+                }
                 else strcpy(checkstr,"ping");
                 if ( strcmp(checkstr,"ping") == 0 )
                 {
