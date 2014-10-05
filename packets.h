@@ -246,7 +246,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
 {
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np = 0;
-    int32_t valid,len=0,createdflag;//tmp
+    int32_t valid,len=0,createdflag,encrypted = 1;//tmp
     cJSON *argjson;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],tmpbuf[4096]; //,tmppubkey[crypto_box_PUBLICKEYBYTES]
     char senderNXTaddr[64],hopNXTaddr[64],*parmstxt=0,*jsonstr;
@@ -267,9 +267,10 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     }
     else
     {
-        printf("process_packet got unexpected nonencrypted len.%d %s/%d (%s)\n",recvlen,sender,port,recvbuf);
+        //printf("process_packet got nonencrypted len.%d %s/%d (%s)\n",recvlen,sender,port,recvbuf);
         len = recvlen;
         memcpy(decoded,recvbuf,recvlen);
+        encrypted = 0;
         //return(0);
     }
     if ( len > 0 )
@@ -286,22 +287,30 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             parmstxt = verify_tokenized_json(pubkey,senderNXTaddr,&valid,argjson);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
-                char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-                tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->mypeerinfo,sender,port,pubkey);
-                jsonstr = pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
-                if ( jsonstr != 0 )
+                char checkstr[MAX_JSON_FIELD];
+                if ( encrypted == 0 )
+                    copy_cJSON(checkstr,cJSON_GetObjectItem(argjson,"requestType"));
+                else strcpy(checkstr,"ping");
+                if ( strcmp(checkstr,"ping") == 0 )
                 {
-                    printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);
-                    /*if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,srvNXTaddr,cp->srvNXTACCTSECRET,retjsonstr,tokenized_np->H.U.NXTaddr)) != 0 )
+                    char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+                    tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+                    update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->mypeerinfo,sender,port,pubkey);
+                    jsonstr = pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                    if ( jsonstr != 0 )
                     {
-                        printf("sent back via UDP.(%s)\n",retstr);
-                        free(retstr);
-                    }*/
-                    free(jsonstr);
+                        //printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);
+                        /*if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,srvNXTaddr,cp->srvNXTACCTSECRET,retjsonstr,tokenized_np->H.U.NXTaddr)) != 0 )
+                         {
+                         printf("sent back via UDP.(%s)\n",retstr);
+                         free(retstr);
+                         }*/
+                        free(jsonstr);
+                    }
                 }
+                else printf("encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
             }
-            else printf("valid.%d unexpected non-tokenized message.(%s)\n",valid,decoded);
+            else printf("valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
             free_json(argjson);
             if ( parmstxt != 0 )
                 free(parmstxt);

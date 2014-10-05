@@ -710,7 +710,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(ipaddr,objs[2]);
     port = get_API_int(objs[3],0);
     copy_cJSON(destip,objs[4]);
-    printf("ping got pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",pubkey,ipaddr,port,destip);
+    //printf("ping got pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port,destip);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
@@ -724,7 +724,7 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(pubkey,objs[1]);
     copy_cJSON(ipaddr,objs[2]);
     port = get_API_int(objs[3],0);
-    printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
+    //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port);
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
