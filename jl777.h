@@ -119,7 +119,7 @@ void usleep(int32_t);
 #define NODECOIN_SIG 0x63968736
 //#define NXTCOINSCO_PORT 8777
 //#define NXTPROTOCOL_WEBJSON 7777
-#define SUPERNET_PORT 6777
+#define SUPERNET_PORT 7777
 #define BTCD_PORT 14631
 //#define NXTSYNC_PORT 5777
 
@@ -186,33 +186,40 @@ struct NXT_str
 
 struct Uaddr
 {
-    struct sockaddr addr;
-    uint32_t numsent,numrecv,lastcontact;
+    uint32_t ipbits,numsent,numrecv,lastcontact;
     float metric;
 };
 
 #define PEER_HELLOSTATE 1
 #define NUM_PEER_STATES (PEER_HELLOSTATE+1)
 
-struct pserver_info
+struct nodestats
 {
-    uint64_t modified;
-    uint32_t *hasips;
-    char ipaddr[16];
-    uint32_t ipbits,numips,numsent,numrecv,xorsum,hasnum;
+    uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
+    struct nodestats *eviction;
+    uint64_t nxt64bits;
+    uint32_t ipbits,numsent,numrecv,lastcontact;
     float recvmilli,sentmilli;
     uint16_t p2pport,supernet_port;
+    uint8_t BTCD_p2p,gotencrypted,modified,expired;
+};
+
+struct pserver_info
+{
+    uint64_t modified,nxt64bits;
+    uint32_t *hasips;
+    char ipaddr[16];
+    uint32_t numips,xorsum,hasnum;
 };
 
 struct peerinfo
 {
+    struct nodestats srv;
     uint64_t srvnxtbits,pubnxtbits,coins[4];
     struct Uaddr *Uaddrs;
-    //struct pserver_info *pserver;
-    uint32_t srvipbits,numsent,numrecv,numUaddrs;
-    uint16_t srvport,p2pport;
+    uint32_t numUaddrs,bestdist;
     float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];
-    uint8_t pubkey[crypto_box_PUBLICKEYBYTES],states[NUM_PEER_STATES + 1];
+    uint8_t states[NUM_PEER_STATES + 1];
     char pubBTCD[36],pubBTC[36];
 };
 
@@ -372,10 +379,11 @@ char NXTSERVER[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt?requestType" };
 
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
-uint64_t call_SuperNET_broadcast(char *destip,char *msg,int32_t len,int32_t duration);
+uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t len,int32_t duration);
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
 struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *addr,char *sender,uint16_t port);
 char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
+void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi);
 
 #include "NXTservices.h"
 #include "jl777hash.h"
@@ -383,6 +391,7 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
 #include "ciphers.h"
 #include "coins.h"
 #include "udp.h"
+#include "kademlia.h"
 #include "peers.h"
 #include "packets.h"
 

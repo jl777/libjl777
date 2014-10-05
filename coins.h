@@ -106,6 +106,14 @@ struct coin_info *get_coin_info(char *coinstr)
     return(0);
 }
 
+uint64_t mynxt64bits()
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 && cp->srvNXTADDR[0] != 0 )
+        return(calc_nxt64bits(cp->srvNXTADDR));
+    else return(0);
+}
+
 char *get_marker(char *coinstr)
 {
     struct coin_info *cp;
@@ -646,7 +654,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
                             {
                                 printf("loopback privacyServer (%s)\n",cp->myipaddr);
-                                refpeer->srvipbits = calc_ipbits(cp->myipaddr);
+                                refpeer->srv.ipbits = calc_ipbits(cp->myipaddr);
                                 set_pubpeerinfo(cp->srvNXTADDR,cp->myipaddr,cp->srvport,&peer,cp->srvpubaddr,cp->srvcoinpubkey,cp->srvpubnxtbits,0);
                                 update_peerinfo(&createdflag,&peer);
                                 printf("update_peerinfo loopback privacyServer (%s)\n",cp->myipaddr);

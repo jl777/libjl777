@@ -633,6 +633,7 @@ void cJSON_Minify(char *json)
 void copy_cJSON(char *dest,cJSON *obj)
 {
     char *str;
+    int i;
     long offset;
     dest[0] = 0;
     if ( obj != 0 )
@@ -641,7 +642,11 @@ void copy_cJSON(char *dest,cJSON *obj)
         if ( str != 0 )
         {
             offset = stripquotes(str);
-            strcpy(dest,str+offset);
+            //strcpy(dest,str+offset);
+            for (i=0; i<MAX_JSON_FIELD-1; i++)
+                if ( (dest[i]= str[offset+i]) == 0 )
+                    break;
+            dest[i] = 0;
             free(str);
         }
     }

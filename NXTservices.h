@@ -59,10 +59,10 @@ struct NXT_acct
     struct NXT_str H;
     struct coin_acct *coinaccts;
     struct NXT_asset **assets;
-    uint64_t *quantities;
+    uint64_t *quantities,bestbits;
     int64_t buyqty,buysum,sellqty,sellsum,quantity;
     struct NXT_assettxid_list **txlists;    // one list for each asset in acct
-    int32_t maxassets,numassets,numcoinaccts,sentintro,pserver_pending;
+    int32_t maxassets,numassets,numcoinaccts,bestdist;
     double profits;
     // fields for NXTorrent
     double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given

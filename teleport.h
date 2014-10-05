@@ -285,45 +285,25 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
     return(0);
 }
 
-void add_SuperNET_peer(char *ip_port)
-{
-    struct pserver_info *pp;
-    int32_t createdflag,p2pport;
-    char ipaddr[16];
-    p2pport = parse_ipaddr(ipaddr,ip_port);
-    pp = get_pserver(&createdflag,ipaddr,0,p2pport);
-    if ( on_SuperNET_whitelist(ipaddr) != 0 )
-    {
-        printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
-        broadcast_publishpacket(ip_port);
-    }
-}
-
 void teleport_idler(uv_idle_t *handle)
 {
     static int counter;
     static double lastattempt;
     double millis;
-    char *ip_port;
-    //printf("teleport_idler\n");
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 1000) )
     {
-        if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
-        {
-            add_SuperNET_peer(ip_port);
-            free(ip_port);
-        }
+        every_second(counter);
+        if ( (counter % 60) == 59 )
+            every_minute(counter/60);
         counter++;
-        if ( (counter % 60) == 0 )
-            every_minute();
         process_pingpong_queue(&PeerQ,0);
         process_pingpong_queue(&Transporter_sendQ,0);
         process_pingpong_queue(&Transporter_recvQ,0);
         process_pingpong_queue(&CloneQ,0);
         lastattempt = millis;
     }
-    usleep(10000);
+    usleep(100000);
 }
 
 void init_Teleport()
@@ -546,12 +526,12 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     {
         free(pods), pods = 0;
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-        if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) == 0 )
+        if ( memcmp(destnp->mypeerinfo.srv.pubkey,zerokey,sizeof(zerokey)) == 0 )
         {
             query_pubkey(destnp->H.U.NXTaddr,NXTACCTSECRET);
             sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",otherpubaddr);
         }
-        if ( memcmp(destnp->mypeerinfo.pubkey,zerokey,sizeof(zerokey)) != 0 )
+        if ( memcmp(destnp->mypeerinfo.srv.pubkey,zerokey,sizeof(zerokey)) != 0 )
         {
             printf("start evolving at %f\n",milliseconds());
             pods = evolve_transporter(&n,cp->maxevolveiters,cp,minage,satoshis,height);

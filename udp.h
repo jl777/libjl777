@@ -14,6 +14,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+#define PEER_SENT 1
+#define PEER_RECV 2
+#define PEER_PENDINGRECV 4
+#define PEER_MASK (PEER_SENT|PEER_RECV|PEER_PENDINGRECV)
+#define PEER_TIMEOUT 0x40
+#define PEER_FINISHED 0x80
+#define PEER_EXPIRATION (60 * 1000.)
+
+
 #define ALLOCWR_DONTFREE 0
 #define ALLOCWR_ALLOCFREE 1
 #define ALLOCWR_FREE -1
@@ -38,8 +48,20 @@ struct write_req_t
     int32_t allocflag;
 };
 
+struct peer_queue_entry
+{
+    struct peerinfo *peer,*hop;
+    float startmilli,elapsed;
+    uint8_t stateid,state;
+};
+
 static long server_xferred;
 int Servers_started;
+queue_t P2P_Q;
+struct pingpong_queue PeerQ;
+struct peerinfo **Peers,**Pservers;
+int32_t Numpeers,Numpservers,Num_in_whitelist;
+uint32_t *SuperNET_whitelist;
 
 // helper and completion funcs
 void portable_alloc(uv_handle_t *handle,size_t suggested_size,uv_buf_t *buf)
@@ -90,6 +112,7 @@ void after_write(uv_write_t *req,int status)
 int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
 {
     char ipaddr[64];
+    struct nodestats *stats;
     struct pserver_info *pserver;
     int32_t r,supernet_port,createdflag;
     struct write_req_t *wr;
@@ -98,8 +121,11 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-        pserver->numsent++;
-        pserver->sentmilli = milliseconds();
+        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        {
+            stats->numsent++;
+            stats->sentmilli = milliseconds();
+        }
         //for (i=0; i<16; i++)
         //    printf("%02x ",((unsigned char *)buf)[i]);
         printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",len,ipaddr,supernet_port,_crc32(0,buf,len));
@@ -114,17 +140,21 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
 {
     uint16_t supernet_port;
     int32_t createdflag;
+    struct nodestats *stats;
     struct pserver_info *pserver;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    char ipaddr[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64],hopNXTaddr[64],*retstr;
+    char ipaddr[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64];
     retjsonstr[0] = 0;
     if ( cp != 0 && nread > 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-        pserver->numrecv++;
-        pserver->recvmilli = milliseconds();
+        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        {
+            stats->numrecv++;
+            stats->recvmilli = milliseconds();
+        }
         {
             //int i;
             //for (i=0; i<16; i++)
@@ -136,18 +166,6 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         strcpy(ipaddr,"unknown");
         np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);
-        if ( np != 0 )
-        {
-            if ( retjsonstr[0] != 0 )
-            {
-                printf("%s send tokenized.(%s) to %s\n",srvNXTaddr,retjsonstr,np->H.U.NXTaddr);
-                if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,srvNXTaddr,cp->srvNXTACCTSECRET,retjsonstr,np->H.U.NXTaddr)) != 0 )
-                {
-                    printf("sent back via UDP.(%s) got (%s) free.%p\n",retjsonstr,retstr,retstr);
-                    free(retstr);
-                }
-            }
-         }
          server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
@@ -218,4 +236,322 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
     return(srv);
 }
 
+int32_t crcize(unsigned char *final,unsigned char *encoded,int32_t len)
+{
+    uint32_t i,n;//,crc = 0;
+    uint32_t crc = _crc32(0,encoded,len);
+    memcpy(final,&crc,sizeof(crc));
+    memcpy(final + sizeof(crc),encoded,len);
+    return(len + sizeof(crc));
+    
+    if ( len + sizeof(crc) < MAX_UDPLEN )
+    {
+        for (i=(uint32_t)(len + sizeof(crc)); i<MAX_UDPLEN; i++)
+            final[i] = (rand() >> 8);
+        n = MAX_UDPLEN - sizeof(crc);
+    } else n = len;
+    memcpy(final + sizeof(crc),encoded,len);
+    crc = _crc32(0,final + sizeof(crc),n);
+    memcpy(final,&crc,sizeof(crc));
+    return(n + sizeof(crc));
+}
+
+int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
+{
+    uint32_t crc,packet_crc;
+    len -= sizeof(crc);
+    if ( len <= 0 )
+        return(0);
+    memcpy(&packet_crc,tx,sizeof(packet_crc));
+    tx += sizeof(crc);
+    crc = _crc32(0,tx,len);
+    //printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
+    return(packet_crc == crc);
+}
+
+void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
+{
+    char ipaddr[64];
+    struct nodestats *stats;
+    struct pserver_info *pserver;
+    extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
+    if ( len <= MAX_UDPLEN && Global_mp->udp != 0 )
+        portable_udpwrite(destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+    else call_SuperNET_broadcast(get_pserver(0,ipaddr,0,0),(char *)finalbuf,len,0);
+    pserver = get_pserver(0,ipaddr,0,0);
+    if ( peerstats != 0 )
+    {
+        if ( pserver->nxt64bits == 0 )
+            pserver->nxt64bits = peerstats->nxt64bits;
+        peerstats->numsent++;
+        peerstats->sentmilli = milliseconds();
+    }
+    else
+    {
+        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        {
+            stats->sentmilli++;
+            stats->sentmilli = milliseconds();
+        }
+    }
+}
+
+static int _cmp_Uaddr(const void *a,const void *b)
+{
+#define val_a ((struct Uaddr *)a)->metric
+#define val_b ((struct Uaddr *)b)->metric
+	if ( val_b > val_a )
+		return(1);
+	else if ( val_b < val_a )
+		return(-1);
+	return(0);
+#undef val_a
+#undef val_b
+}
+
+double calc_Uaddr_metric(struct Uaddr *uaddr,uint32_t now)
+{
+    double elapsed,metric = 0.;
+    if ( uaddr->lastcontact != 0 && uaddr->numrecv > 0 )
+    {
+        if ( uaddr->lastcontact <= now )
+        {
+            elapsed = ((double)(now - uaddr->lastcontact) + 1) / 60.;
+            metric = (double)(uaddr->numsent + 1) / uaddr->numrecv;
+            if ( metric > 1. )
+                metric = 1.;
+            metric /= sqrt(elapsed);
+        }
+    }
+    return(metric);
+}
+
+int32_t sort_topaddrs(struct Uaddr **Uaddrs,int32_t max,struct peerinfo *peer)
+{
+    int32_t i,n;
+    void **ptrs;
+    uint32_t now = (uint32_t)time(NULL);
+    if ( peer->numUaddrs == 0 || peer->Uaddrs == 0 )
+        return(0);
+    n = (peer->numUaddrs > max) ? max : peer->numUaddrs;
+    if ( peer->numUaddrs > 1 )
+    {
+        ptrs = malloc(sizeof(*Uaddrs) * peer->numUaddrs);
+        for (i=0; i<peer->numUaddrs; i++)
+        {
+            peer->Uaddrs[i].metric = calc_Uaddr_metric(ptrs[i],now);
+            ptrs[i] = &peer->Uaddrs[i];
+        }
+        qsort(ptrs,peer->numUaddrs,sizeof(*Uaddrs),_cmp_Uaddr);
+        for (i=0; i<n; i++)
+        {
+            if ( ((struct Uaddr *)ptrs[i])->metric <= 0. )
+            {
+                n = i;
+                break;
+            }
+            Uaddrs[i] = ptrs[i];
+        }
+        free(ptrs);
+    }
+    else Uaddrs[0] = &peer->Uaddrs[0];
+    return(n);
+}
+
+int32_t is_privacyServer(struct peerinfo *peer)
+{
+    if ( peer->srvnxtbits == peer->pubnxtbits && peer->srv.ipbits != 0 && peer->srv.supernet_port != 0 )
+        return(1);
+    return(0);
+}
+
+uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
+{
+    unsigned char finalbuf[4096];
+    char destip[64];
+    struct sockaddr_in addr;
+    struct Uaddr *Uaddrs[8];
+    uint64_t txid = 0;
+    int32_t createdflag,i,n;
+    struct NXT_acct *np;
+    memset(finalbuf,0,sizeof(finalbuf));
+    np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
+    expand_ipbits(destip,np->mypeerinfo.srv.ipbits);
+    len = crcize(finalbuf,outbuf,len);
+    if ( len > sizeof(finalbuf) )
+    {
+        printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+        exit(-1);
+    }
+    if ( destaddr != 0 )
+    {
+        printf("DIRECT send to %s/%d finalbuf.%d\n",destip,np->mypeerinfo.srv.supernet_port,len);
+        send_packet(0,destaddr,finalbuf,len);
+    }
+    else if ( is_privacyServer(&np->mypeerinfo) != 0 )
+    {
+        printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
+        uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port,&addr);
+        send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
+    }
+    else
+    {
+        memset(Uaddrs,0,sizeof(Uaddrs));
+        n = sort_topaddrs(Uaddrs,(int32_t)(sizeof(Uaddrs)/sizeof(*Uaddrs)),&np->mypeerinfo);
+        printf("n.%d hopNXTaddr.(%s) narrowcast %s:%d %d via p2p\n",len,hopNXTaddr,destip,np->mypeerinfo.srv.supernet_port,len);
+        if ( n > 0 )
+        {
+            for (i=0; i<n; i++)
+            {
+                Uaddrs[i]->numsent++;
+                uv_ip4_addr(destip,np->mypeerinfo.srv.supernet_port==0?SUPERNET_PORT:np->mypeerinfo.srv.supernet_port,&addr);
+                send_packet(&np->mypeerinfo.srv,(struct sockaddr *)&addr,finalbuf,len);
+            }
+        }
+    }
+    //calc_sha256(0,hash,finalbuf,len);
+    txid = calc_txid(finalbuf,len);//hash,sizeof(hash));
+    return(txid);
+}
+
+uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t len)
+{
+    int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *encoded,unsigned char **payloadp,int32_t len);
+    static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
+    uint64_t txid = 0;
+    char ipaddr[64];
+    int32_t port;
+    struct sockaddr destaddr;
+    struct nodestats *stats;
+    unsigned char encoded[4096],*outbuf;
+    memset(encoded,0,sizeof(encoded)); // encoded to dest
+    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
+    else port = BTCD_PORT;
+    uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
+    len = (int32_t)strlen(origargstr)+1;
+    stripwhite_ns(origargstr,len);
+    len = (int32_t)strlen(origargstr)+1;
+    outbuf = (unsigned char *)origargstr;
+    if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
+        len = direct_onionize(0,stats->pubkey,encoded,&outbuf,len);
+    if ( len > sizeof(encoded)-1024 )
+        printf("directsend_packet: payload too big %d\n",len);
+    else if ( len > 0 )
+        txid = route_packet(&destaddr,0,outbuf,len);
+    else printf("directsend_packet: illegal len.%d\n",len);
+    return(txid);
+}
+
+uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
+{
+    char _cmd[MAX_JSON_FIELD*4],packet[MAX_JSON_FIELD*4];
+    int32_t len,createdflag;
+    struct NXT_acct *np;
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+    {
+        np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
+        if ( cmd == 0 )
+            set_peer_json(_cmd,np->H.U.NXTaddr,&np->mypeerinfo);
+        else strcpy(_cmd,cmd);
+        len = construct_tokenized_req(packet,_cmd,cp->srvNXTACCTSECRET);
+        return(call_SuperNET_broadcast(pserver,packet,len+1,PUBADDRS_MSGDURATION));
+    }
+    printf("ERROR: broadcast_publishpacket null cp\n");
+    return(0);
+}
+
+int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int32_t encryptedflag,int32_t p2pflag,unsigned char pubkey[crypto_box_PUBLICKEYBYTES])
+{
+    static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
+    int32_t modified = 0;
+    uint64_t nxt64bits = calc_nxt64bits(NXTaddr);
+    if ( encryptedflag != 0 )
+    {
+        stats->modified &= ~(1 << p2pflag);
+        stats->gotencrypted = 1;
+    }
+    if ( p2pflag != 0 )
+    {
+        stats->lastcontact = now;
+        stats->BTCD_p2p = 1;
+    }
+    stats->numrecv++;
+    if ( stats->nxt64bits == 0 )
+        stats->nxt64bits = nxt64bits;
+    else if ( stats->nxt64bits != nxt64bits )
+    {
+        printf("WARNING: update_nodestats %llu != %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
+        stats->nxt64bits = nxt64bits;
+    }
+    if ( pubkey != 0 && memcmp(zeropubkey,pubkey,sizeof(zeropubkey)) != 0 )
+    {
+        if ( memcmp(stats->pubkey,pubkey,sizeof(stats->pubkey)) != 0 )
+        {
+            char ipaddr[64];
+            expand_ipbits(ipaddr,stats->ipbits);
+            printf("pubkey.%llu updated from pserver %s/%d:%d | recv.%d send.%d\n",(long long)stats->nxt64bits,ipaddr,stats->supernet_port,stats->p2pport,stats->numrecv,stats->numsent);
+            memcpy(stats->pubkey,pubkey,sizeof(stats->pubkey));
+            modified = (1 << p2pflag);
+            stats->modified |= modified;
+            stats->lastcontact = now;
+        }
+    }
+    if ( memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
+    {
+        void update_Kbuckets(struct nodestats *stats);
+        update_Kbuckets(stats);
+    }
+    return(modified);
+}
+
+int32_t update_routing_probs(char *NXTaddr,int32_t encryptedflag,int32_t p2pflag,struct peerinfo *peer,char *ipaddr,int32_t port,unsigned char pubkey[crypto_box_PUBLICKEYBYTES])
+{
+    uint32_t now,modified = 0;
+    struct pserver_info *pserver;
+    struct nodestats *stats;
+    //struct Uaddr *uaddr;
+    //int32_t i;
+    //uint32_t ipbits;
+    now = (uint32_t)time(NULL);
+    if ( p2pflag != 0 )
+        pserver = get_pserver(0,ipaddr,0,port);
+    else pserver = get_pserver(0,ipaddr,port,0);
+    if ( peer != 0 )
+        modified = update_nodestats(NXTaddr,now,&peer->srv,encryptedflag,p2pflag,(is_privacyServer(peer) != 0 && peer->srv.ipbits == calc_ipbits(ipaddr)) ? pubkey : 0);
+    if ( (stats= get_nodestats(calc_nxt64bits(NXTaddr))) != 0 )
+        modified |= (update_nodestats(NXTaddr,now,stats,encryptedflag,p2pflag,pubkey) << 1);
+    return(modified);
+    /*if ( is_privacyServer(peer) != 0 )
+     {
+     }
+     else
+     {
+     i = 0;
+     uaddr = 0;
+     if ( peer->numUaddrs > 0 )
+     {
+     for (; i<peer->numUaddrs; i++)
+     {
+     uaddr = &peer->Uaddrs[i];
+     if ( uaddr->ipbits == ipbits )
+     break;
+     }
+     }
+     if ( i == peer->numUaddrs )
+     {
+     peer->Uaddrs = realloc(peer->Uaddrs,sizeof(*peer->Uaddrs) * (peer->numUaddrs+1));
+     uaddr = &peer->Uaddrs[peer->numUaddrs++];
+     memset(uaddr,0,sizeof(*uaddr));
+     uaddr->ipbits = ipbits;
+     printf("add.%d Uaddr.(%s/%d) to %llu\n",peer->numUaddrs,ipaddr,port,(long long)peer->pubnxtbits);
+     }
+     if ( uaddr != 0 )
+     {
+     uaddr->numrecv++;
+     uaddr->lastcontact = (uint32_t)time(NULL);
+     } else printf("update_routing_probs: unexpected null uaddr for %s/%d!\n",ipaddr,port);
+     }*/
+}
 #endif

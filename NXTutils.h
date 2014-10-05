@@ -473,13 +473,15 @@ struct NXT_acct *search_addresses(char *addr)
     return(0);
 }
 
-uint64_t calc_txid(unsigned char *hash,long hashsize)
+uint64_t calc_txid(unsigned char *buf,int32_t len)
 {
-    uint64_t txid = 0;
-    if ( hashsize >= sizeof(txid) )
+    uint64_t txid,hash[4];
+    calc_sha256(0,(unsigned char *)&hash[0],buf,len);
+    if ( sizeof(hash) >= sizeof(txid) )
         memcpy(&txid,hash,sizeof(txid));
-    else memcpy(&txid,hash,hashsize);
+    else memcpy(&txid,hash,sizeof(hash));
     //printf("calc_txid.(%llu)\n",(long long)txid);
+    //return(hash[0] ^ hash[1] ^ hash[2] ^ hash[3]);
     return(txid);
 }
 
@@ -1406,34 +1408,48 @@ uint32_t calc_xorsum(struct peerinfo **peers,int32_t n)
     {
         for (i=0; i<n; i++)
             if ( peers[i] != 0 )
-                xorsum ^= peers[i]->srvipbits;
+                xorsum ^= peers[i]->srv.ipbits;
     }
     return(xorsum);
 }
 
+struct nodestats *get_nodestats(uint64_t nxt64bits)
+{
+    struct nodestats *stats = 0;
+    int32_t createdflag;
+    struct NXT_acct *np;
+    char NXTaddr[64];
+    if ( nxt64bits != 0 )
+    {
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        return(&np->mypeerinfo.srv);
+    }
+    return(stats);
+}
+
 struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t supernet_port,uint16_t p2pport)
 {
-    void peer_link_ipaddr(struct pserver_info *pp);
     int32_t createdflag = 0;
-    struct pserver_info *pp;
+    struct nodestats *stats;
+    struct pserver_info *pserver;
     if ( createdp == 0 )
         createdp = &createdflag;
-    pp = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
-    if ( *createdp != 0 || (supernet_port != 0 && supernet_port != SUPERNET_PORT && supernet_port != pp->supernet_port) )
-        pp->supernet_port = supernet_port;
-    if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != pp->p2pport) )
-        pp->p2pport = p2pport;
-    if ( *createdp != 0 )
+    pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
+    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
     {
-        pp->ipbits = calc_ipbits(ipaddr);
-        peer_link_ipaddr(pp);
+        if ( *createdp != 0 || (supernet_port != 0 && supernet_port != SUPERNET_PORT && supernet_port != stats->supernet_port) )
+            stats->supernet_port = supernet_port;
+        if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != stats->p2pport) )
+            stats->p2pport = p2pport;
     }
-    return(pp);
+    return(pserver);
 }
 
 //#ifndef WIN32
 
 //#endif
+
 
 int64_t microseconds(void)
 {
@@ -1665,7 +1681,7 @@ int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,c
     struct NXT_acct *np;
     char argstr[1024],pubkey[1024],token[1024];
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    init_hexbytes(pubkey,np->mypeerinfo.pubkey,sizeof(np->mypeerinfo.pubkey));
+    init_hexbytes(pubkey,np->mypeerinfo.srv.pubkey,sizeof(np->mypeerinfo.srv.pubkey));
     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
@@ -1749,12 +1765,29 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
     return(retcode);
 }
 
-char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
+int32_t update_pubkey(unsigned char refpubkey[crypto_box_PUBLICKEYBYTES],char *pubkeystr)
+{
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
+    int32_t updatedflag = 0;
+    if ( refpubkey != 0 && pubkeystr != 0 && pubkeystr[0] != 0 )
+    {
+        memset(pubkey,0,sizeof(pubkey));
+        decode_hex(pubkey,(int32_t)sizeof(pubkey),pubkeystr);
+        if ( memcmp(refpubkey,pubkey,sizeof(pubkey)) != 0 )
+        {
+            memcpy(refpubkey,pubkey,sizeof(pubkey));
+            updatedflag = 1;
+        }
+    }
+    return(updatedflag);
+}
+
+char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,cJSON *json)
 {
     long len;
     unsigned char encoded[MAX_JSON_FIELD+1];
-    char NXTaddr[MAX_JSON_FIELD],*parmstxt = 0;
-    cJSON *secondobj,*tokenobj,*parmsobj;
+    char NXTaddr[MAX_JSON_FIELD],pubkeystr[MAX_JSON_FIELD],*parmstxt = 0;
+    cJSON *secondobj,*tokenobj,*parmsobj,*pubkeyobj;
     *validp = -2;
     sender[0] = 0;
     if ( (json->type&0xff) == cJSON_Array && cJSON_GetArraySize(json) == 2 )
@@ -1774,6 +1807,12 @@ char *verify_tokenized_json(char *sender,int32_t *validp,cJSON *json)
             printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
         if ( sender[0] != 0 && strcmp(sender,NXTaddr) != 0 )
             *validp = -1;
+        if ( pubkey != 0 && *validp > 0 && (pubkeyobj=cJSON_GetObjectItem(parmsobj,"pubkey")) != 0 )
+        {
+            copy_cJSON(pubkeystr,pubkeyobj);
+            if ( pubkeystr[0] != 0 )
+                update_pubkey(pubkey,pubkeystr);
+        }
         return(parmstxt);
     } else printf("verify_tokenized_json not array of 2\n");
     return(0);
