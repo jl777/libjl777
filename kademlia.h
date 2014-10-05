@@ -222,7 +222,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             stats = get_nodestats(pserver->nxt64bits);
             if ( stats != 0 )
             {
-                stats->pongmilli = milliseconds();
+                stats->pingmilli = milliseconds();
                 stats->numpings++;
             }
             txid = send_kademlia_cmd(0,get_pserver(0,destip,0,0),"ping",NXTACCTSECRET,0,0);
