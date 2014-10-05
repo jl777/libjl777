@@ -212,12 +212,14 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     uint64_t txid = 0;
     char retstr[1024];
     struct nodestats *stats;
+    struct pserver_info *pserver;
     if ( prevaddr == 0 ) // user invoked
     {
         if ( destip != 0 && destip[0] != 0 )
         {
             printf("inside ping.(%s)\n",destip);
-            stats = get_nodestats(calc_nxt64bits(sender));
+            pserver = get_pserver(0,destip,0,0);
+            stats = get_nodestats(pserver->nxt64bits);
             if ( stats != 0 )
             {
                 stats->pongmilli = milliseconds();
