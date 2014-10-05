@@ -516,6 +516,12 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
             printf("nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
             stats->nxt64bits = nxt64bits;
         }
+        pserver = get_pserver(0,ipaddr,p2pflag==0?port:0,p2pflag!=0?port:0);
+        if ( pserver->nxt64bits == 0 || pserver->nxt64bits != nxt64bits )
+        {
+            printf("pserver nxt64bits %llu -> %llu\n",(long long)pserver->nxt64bits,(long long)nxt64bits);
+            pserver->nxt64bits = nxt64bits;
+        }
     }
     if ( ipaddr != 0 && ipaddr[0] != 0 )
     {
