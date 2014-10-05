@@ -1006,8 +1006,8 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
-    //calc_sha256(0,hash,(uint8_t *)msg,(int32_t)strlen(msg));
-    txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));//hash,sizeof(hash));
+    printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
+    txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
     {
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
