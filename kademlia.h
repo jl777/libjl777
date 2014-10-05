@@ -633,7 +633,7 @@ void every_minute(int32_t counter)
             {
                 printf("only connected to %d of %d, lets broadcast\n",connected,Num_in_whitelist);
                 p2p_publishpacket(0,0);
-                if ( broadcast_count++ == 0 )
+                if ( 0 && broadcast_count++ == 0 )
                 {
                     for (i=0; i<Num_in_whitelist; i++)
                     {
