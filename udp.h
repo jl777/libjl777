@@ -163,7 +163,6 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         }
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
-        strcpy(ipaddr,"unknown");
         np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);
          server_xferred += nread;
