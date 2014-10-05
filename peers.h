@@ -617,6 +617,8 @@ void add_SuperNET_peer(char *ip_port)
 void every_second(int32_t counter)
 {
     char *ip_port;
+    if ( Finished_init == 0 )
+        return;
     if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
     {
         add_SuperNET_peer(ip_port);

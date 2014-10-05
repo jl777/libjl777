@@ -21,9 +21,8 @@ struct hashtable *orderbook_txids;
 #include "orders.h"
 #include "tradebot.h"
 
-char dispstr[65536];
-char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
-int Finished_loading,Historical_done,Finished_init;
+//char dispstr[65536];
+//char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
 #define pNXT_SIG 0x99999999
 uv_loop_t *UV_loop;
 
@@ -81,7 +80,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
         //strcpy(MY_IPADDR,get_ipaddr());
         strcpy(mp->ipaddr,myipaddr);
     }
-    safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
+    //safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
     mp->pollseconds = POLL_SECONDS;
     crypto_box_keypair(Global_mp->loopback_pubkey,Global_mp->loopback_privkey);
@@ -97,7 +96,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     //mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
     init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
 
-    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
+    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s\n",mp,mp->dispname,mp->ipaddr);
     void run_NXTservices(void *arg);
     if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");

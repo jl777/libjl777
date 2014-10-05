@@ -630,6 +630,8 @@ void every_minute(int32_t counter)
     //struct peerinfo *peer;
     struct nodestats *stats;
     struct pserver_info *pserver,*mypserver = 0;
+    if ( Finished_init == 0 )
+        return;
     now = (uint32_t)time(NULL);
     cp = get_coin_info("BTCD");
    // if ( cp == 0 )
