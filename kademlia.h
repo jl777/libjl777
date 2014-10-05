@@ -181,6 +181,7 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *value)
 {
     int32_t createdflag;
+    struct nodestats *stats;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
     char pubkeystr[1024],ipaddr[64],cmdstr[2048],verifiedNXTaddr[64],destNXTaddr[64];
@@ -198,6 +199,15 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
+    if ( strcmp(kadcmd,"ping") == 0 )
+    {
+        stats = get_nodestats(pserver->nxt64bits);
+        if ( stats != 0 )
+        {
+            stats->pingmilli = milliseconds();
+            stats->numpings++;
+        }
+    }
     sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,SUPERNET_PORT);
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
@@ -211,20 +221,11 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
-    struct nodestats *stats;
-    struct pserver_info *pserver;
     if ( prevaddr == 0 ) // user invoked
     {
         if ( destip != 0 && destip[0] != 0 )
         {
             printf("inside ping.(%s)\n",destip);
-            pserver = get_pserver(0,destip,0,0);
-            stats = get_nodestats(pserver->nxt64bits);
-            if ( stats != 0 )
-            {
-                stats->pingmilli = milliseconds();
-                stats->numpings++;
-            }
             txid = send_kademlia_cmd(0,get_pserver(0,destip,0,0),"ping",NXTACCTSECRET,0,0);
             sprintf(retstr,"{\"result\":\"kademlia_ping to %s\",\"txid\",\"%llu\"}",destip,(long long)txid);
         }
