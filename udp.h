@@ -374,8 +374,6 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
     uint64_t txid = 0;
     int32_t createdflag,i,n;
     struct NXT_acct *np;
-    memset(finalbuf,0,sizeof(finalbuf));
-    len = crcize(finalbuf,outbuf,len);
     if ( len > sizeof(finalbuf) )
     {
         printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
@@ -384,10 +382,12 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
     if ( destaddr != 0 )
     {
         printf("DIRECT send to %s finalbuf.%d\n",destip,len);
-        send_packet(0,destaddr,finalbuf,len);
+        send_packet(0,destaddr,outbuf,len);//finalbuf,len);
     }
     else
     {
+        memset(finalbuf,0,sizeof(finalbuf));
+        len = crcize(finalbuf,outbuf,len);
         np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
         expand_ipbits(destip,np->mypeerinfo.srv.ipbits);
         if ( is_privacyServer(&np->mypeerinfo) != 0 )
