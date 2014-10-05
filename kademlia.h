@@ -239,6 +239,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     char retstr[1024];
     // all the work is already done in update_Kbucket
     sprintf(retstr,"{\"result\":\"kademlia_pong from NXT.%s (%s/%d)\"}",sender,ipaddr,port);
+    printf("PONG.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 
