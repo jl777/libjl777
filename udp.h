@@ -378,15 +378,19 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
         printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
         exit(-1);
     }
-    if ( destaddr != 0 )
-    {
-        printf("DIRECT send to %s finalbuf.%d\n",destip,len);
-        send_packet(0,destaddr,(encrypted!=0)?finalbuf:outbuf,len);
-    }
-    else
+    if ( encrypted != 0 )
     {
         memset(finalbuf,0,sizeof(finalbuf));
         len = crcize(finalbuf,outbuf,len);
+        outbuf = finalbuf;
+    }
+    if ( destaddr != 0 )
+    {
+        printf("DIRECT send to %s finalbuf.%d\n",destip,len);
+        send_packet(0,destaddr,outbuf,len);
+    }
+    else
+    {
         np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
         expand_ipbits(destip,np->mypeerinfo.srv.ipbits);
         if ( is_privacyServer(&np->mypeerinfo) != 0 )
