@@ -706,10 +706,10 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
 {
     int32_t port;
     char pubkey[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    copy_cJSON(ipaddr,objs[1]);
-    port = get_API_int(objs[2],0);
-    copy_cJSON(destip,objs[3]);
+    copy_cJSON(pubkey,objs[1]);
+    copy_cJSON(ipaddr,objs[2]);
+    port = get_API_int(objs[3],0);
+    copy_cJSON(destip,objs[4]);
     printf("ping got pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port,destip);
@@ -721,9 +721,9 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
 {
     char pubkey[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],*retstr = 0;
     uint16_t port;
-    copy_cJSON(pubkey,objs[0]);
-    copy_cJSON(ipaddr,objs[1]);
-    port = get_API_int(objs[2],0);
+    copy_cJSON(pubkey,objs[1]);
+    copy_cJSON(ipaddr,objs[2]);
+    port = get_API_int(objs[3],0);
     printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port);
@@ -753,8 +753,8 @@ void set_kademlia_args(char *key,cJSON *keyobj,cJSON *nameobj)
 char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    set_kademlia_args(key,objs[1],objs[2]);
+    copy_cJSON(pubkey,objs[1]);
+    set_kademlia_args(key,objs[2],objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key);
     else retstr = clonestr("{\"error\":\"invalid findnode_func arguments\"}");
@@ -764,8 +764,8 @@ char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    set_kademlia_args(key,objs[1],objs[2]);
+    copy_cJSON(pubkey,objs[1]);
+    set_kademlia_args(key,objs[2],objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key);
     else retstr = clonestr("{\"error\":\"invalid findvalue_func arguments\"}");
@@ -775,9 +775,9 @@ char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
 char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    set_kademlia_args(key,objs[1],objs[2]);
-    copy_cJSON(value,objs[3]);
+    copy_cJSON(pubkey,objs[1]);
+    set_kademlia_args(key,objs[2],objs[3]);
+    copy_cJSON(value,objs[4]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = kademlia_havenode(0,prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenode_func arguments\"}");
@@ -787,9 +787,9 @@ char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    set_kademlia_args(key,objs[1],objs[2]);
-    copy_cJSON(value,objs[3]);
+    copy_cJSON(pubkey,objs[1]);
+    set_kademlia_args(key,objs[2],objs[3]);
+    copy_cJSON(value,objs[4]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = kademlia_havenode(1,prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenode_func arguments\"}");
@@ -799,9 +799,9 @@ char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
 char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
-    copy_cJSON(pubkey,objs[0]);
-    set_kademlia_args(key,objs[1],objs[2]);
-    copy_cJSON(value,objs[3]);
+    copy_cJSON(pubkey,objs[1]);
+    set_kademlia_args(key,objs[2],objs[3]);
+    copy_cJSON(value,objs[4]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 && value[0] != 0 && strlen(value) < 256 )
         retstr = kademlia_store(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
     else retstr = clonestr("{\"error\":\"invalid store_func arguments\"}");
