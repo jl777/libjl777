@@ -470,11 +470,13 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
     return(0);
 }
 
-int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int32_t encryptedflag,int32_t p2pflag,unsigned char pubkey[crypto_box_PUBLICKEYBYTES])
+int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int32_t encryptedflag,int32_t p2pflag,unsigned char pubkey[crypto_box_PUBLICKEYBYTES],char *ipaddr,int32_t port)
 {
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     int32_t modified = 0;
     uint64_t nxt64bits = calc_nxt64bits(NXTaddr);
+    if ( stats->ipbits == 0 )
+        stats->ipbits = calc_ipbits(ipaddr);
     if ( encryptedflag != 0 )
     {
         stats->modified &= ~(1 << p2pflag);
@@ -527,9 +529,9 @@ int32_t update_routing_probs(char *NXTaddr,int32_t encryptedflag,int32_t p2pflag
         pserver = get_pserver(0,ipaddr,0,port);
     else pserver = get_pserver(0,ipaddr,port,0);
     if ( peer != 0 )
-        modified = update_nodestats(NXTaddr,now,&peer->srv,encryptedflag,p2pflag,(is_privacyServer(peer) != 0 && peer->srv.ipbits == calc_ipbits(ipaddr)) ? pubkey : 0);
+        modified = update_nodestats(NXTaddr,now,&peer->srv,encryptedflag,p2pflag,(is_privacyServer(peer) != 0) ? pubkey : 0,ipaddr,port);
     if ( (stats= get_nodestats(calc_nxt64bits(NXTaddr))) != 0 )
-        modified |= (update_nodestats(NXTaddr,now,stats,encryptedflag,p2pflag,pubkey) << 1);
+        modified |= (update_nodestats(NXTaddr,now,stats,encryptedflag,p2pflag,pubkey,ipaddr,port) << 1);
     return(modified);
     /*if ( is_privacyServer(peer) != 0 )
      {
