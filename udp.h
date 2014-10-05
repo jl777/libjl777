@@ -423,6 +423,7 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     struct sockaddr destaddr;
     struct nodestats *stats;
     unsigned char encoded[4096],*outbuf;
+    printf("directsend to (%s)\n",pserver->ipaddr);
     memset(encoded,0,sizeof(encoded)); // encoded to dest
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
@@ -432,12 +433,20 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
+    printf("sending.(%s)\n",origargstr);
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
+    {
+        printf("direct onion\n");
         len = direct_onionize(0,stats->pubkey,encoded,&outbuf,len);
+    }
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
+    {
+        printf("call route_packet\n");
         txid = route_packet(&destaddr,0,outbuf,len);
+        printf("got route_packet txid.%llu\n",(long long)txid);
+    }
     else printf("directsend_packet: illegal len.%d\n",len);
     return(txid);
 }
