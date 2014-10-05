@@ -383,7 +383,7 @@ uint64_t route_packet(struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *
     }
     if ( destaddr != 0 )
     {
-        printf("DIRECT send to %s/%d finalbuf.%d\n",destip,np->mypeerinfo.srv.supernet_port,len);
+        printf("DIRECT send to %s finalbuf.%d\n",destip,len);
         send_packet(0,destaddr,finalbuf,len);
     }
     else
