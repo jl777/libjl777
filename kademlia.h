@@ -253,7 +253,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     {
         if ( destip != 0 && destip[0] != 0 )
         {
-            printf("inside ping.(%s)\n",destip);
+            //printf("inside ping.(%s)\n",destip);
             txid = send_kademlia_cmd(0,get_pserver(0,destip,0,0),"ping",NXTACCTSECRET,0,0);
             sprintf(retstr,"{\"result\":\"kademlia_ping to %s\",\"txid\",\"%llu\"}",destip,(long long)txid);
         }
