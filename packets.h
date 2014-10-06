@@ -131,7 +131,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         maxbuf += hdrlen;
         max_lenp = (uint16_t *)maxbuf;
         maxbuf += sizeof(*payload_lenp);
-    }
+    } else max_lenp = payload_lenp;
     encoded += sizeof(*payload_lenp);
     if ( 1 )
     {
@@ -143,16 +143,17 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     if ( onlymax != 0 )
     {
         len = _encode_str(encoded,(char *)payload,len+padlen,destpubkey,onetime_privkey);
-        slen = len;
+        slen = len+padlen;
     }
     else
     {
         len = _encode_str(encoded,(char *)payload,len,destpubkey,onetime_privkey);
-        slen = len;
+        slen = len + padlen;
         if ( padlen > 0 )
-            _encode_str(maxbuf,(char *)payload,len+padlen,destpubkey,onetime_privkey);
+            _encode_str(maxbuf,(char *)payload,slen,destpubkey,onetime_privkey);
         else memcpy(maxbuf,encoded,len);
         memcpy(max_lenp,&slen,sizeof(*max_lenp));
+        slen = len;
     }
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
     printf("new len.%d + %ld = %ld\n",len,sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits),sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)+len);
