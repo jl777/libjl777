@@ -403,7 +403,7 @@ int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct 
     peer->pubnxtbits = pubnxtbits;
     safecopy(peer->pubBTCD,pubBTCD,sizeof(peer->pubBTCD));
     safecopy(peer->pubBTC,pubBTC,sizeof(peer->pubBTC));
-    if ( decode_hex(peer->srv.pubkey,(int32_t)strlen(pubkey)/2,pubkey) != sizeof(peer->srv.pubkey) )
+    if ( pubkey != 0 && pubkey[0] != 0 && decode_hex(peer->srv.pubkey,(int32_t)strlen(pubkey)/2,pubkey) != sizeof(peer->srv.pubkey) )
     {
         printf("WARNING: (%s %llu %s) illegal pubkey.(%s)\n",pubBTCD,(long long)pubnxtbits,pubBTC,pubkey);
         return(-1);

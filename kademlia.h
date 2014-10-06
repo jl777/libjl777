@@ -578,10 +578,13 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
 
 void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int32_t port,int32_t p2pflag)
 {
+    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     struct coin_info *cp = get_coin_info("BTCD");
     uint64_t xorbits;
-    int32_t bucketid;
+    int32_t bucketid,createdflag;
+    char srvNXTaddr[64],pubkeystr[512];
     uint32_t ipbits;
+    struct peerinfo peer;
     struct pserver_info *pserver;
     if ( nxt64bits != 0 )
     {
@@ -596,6 +599,14 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
             printf("pserver nxt64bits %llu -> %llu\n",(long long)pserver->nxt64bits,(long long)nxt64bits);
             pserver->nxt64bits = nxt64bits;
         }
+        expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
+        if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+            init_hexbytes(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
+        else pubkeystr[0] = 0;
+        int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxtbits,char *pubBTC);
+        struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
+        set_pubpeerinfo(srvNXTaddr,ipaddr,port,&peer,0,pubkeystr,pserver->nxt64bits,0);
+        update_peerinfo(&createdflag,&peer);
     }
     if ( ipaddr != 0 && ipaddr[0] != 0 )
     {
