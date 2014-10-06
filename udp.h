@@ -420,9 +420,9 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     return(txid);
 }
 
-uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t len)
+uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t len,unsigned char *data,int32_t datalen)
 {
-    int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *encoded,unsigned char **payloadp,int32_t len);
+    int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len);
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     uint64_t txid = 0;
     int32_t port,encrypted = 0;
@@ -438,8 +438,13 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
+    if ( data != 0 && datalen > 0 )
+    {
+        memcpy(outbuf+len,data,datalen);
+        len += datalen;
+    }
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
-        len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
+        len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,0,&outbuf,len), encrypted = 1;
     //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);

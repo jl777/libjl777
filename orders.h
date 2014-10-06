@@ -769,7 +769,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         }
         n = construct_tokenized_req(_tokbuf,buf,NXTACCTSECRET);
         othernp->signedtx = clonestr(signedtx);
-        return(sendmessage(hopNXTaddr,0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr,_tokbuf));
+        return(sendmessage(hopNXTaddr,0,NXTACCTSECRET,_tokbuf,(int32_t)n+1,otherNXTaddr));
     }
     else sprintf(buf,"{\"error\":\"%s\",\"descr\":\"%s\",\"comment\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu, type.%d\"",utxbytes,signedtx,(long long)nxt64bits,otherNXTaddr,dstr(assetoshisA),(long long)assetA,dstr(assetoshisB),(long long)assetB,type);
     return(clonestr(buf));

@@ -318,7 +318,7 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
 {
     static int counter;
     char previp[64],nexthopNXTaddr[64],destNXTaddr[64],msg[MAX_JSON_FIELD],*retstr = 0;
-    int32_t L,port;
+    int32_t L,port,len;
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(msg,objs[1]);
     L = (int32_t)get_API_int(objs[2],Global_mp->Lfactor);
@@ -333,7 +333,13 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
             counter++;
             //retstr = clonestr("{\"result\":\"received message\"}");
         }
-        else retstr = sendmessage(nexthopNXTaddr,L,sender,origargstr,(int32_t)strlen(origargstr)+1,destNXTaddr,origargstr);
+        else
+        {
+            len = (int32_t)strlen(origargstr)+1;
+            stripwhite_ns(origargstr,len);
+            len = (int32_t)strlen(origargstr)+1;
+            retstr = sendmessage(nexthopNXTaddr,L,sender,origargstr,len,destNXTaddr);
+        }
     }
     //if ( retstr == 0 )
     //    retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
@@ -798,19 +804,21 @@ char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
 
 char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
+    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
+    int32_t len;
     copy_cJSON(pubkey,objs[1]);
     set_kademlia_args(key,objs[2],objs[3]);
-    copy_cJSON(value,objs[4]);
-    if ( key[0] != 0 && sender[0] != 0 && valid > 0 && value[0] != 0 && strlen(value) < 256 )
-        retstr = kademlia_store(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
+    copy_cJSON(datastr,objs[4]);
+    if ( key[0] != 0 && sender[0] != 0 && valid > 0 && datastr[0] != 0 && (len= (int32_t)strlen(datastr)) < 1024 && (len&1) == 0 )
+    {
+        retstr = kademlia_storedata(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,datastr);
+    }
     else retstr = clonestr("{\"error\":\"invalid store_func arguments\"}");
     return(retstr);
 }
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "only_privacyServer", 0 };
     static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
     static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
@@ -835,11 +843,11 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     static char *ping[] = { (char *)ping_func, "ping", "V", "NXT", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "NXT", "pubkey", "ipaddr", "port", 0 };
-    static char *store[] = { (char *)store_func, "store", "V", "NXT", "pubkey", "key", "name", "value", 0 };
+    static char *store[] = { (char *)store_func, "store", "V", "NXT", "pubkey", "key", "name", "data", 0 };
     static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "NXT", "pubkey", "key", "name", 0 };
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "NXT", "pubkey", "key", "name", 0 };
-    static char *havenode[] = { (char *)havenode_func, "havenode", "V", "NXT", "pubkey", "key", "name", "value", 0 };
-    static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "NXT", "pubkey", "key", "name", "value", 0 };
+    static char *havenode[] = { (char *)havenode_func, "havenode", "V", "NXT", "pubkey", "key", "name", "data", 0 };
+    static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "NXT", "pubkey", "key", "name", "data", 0 };
     static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
     int32_t i,j;
     struct coin_info *cp;

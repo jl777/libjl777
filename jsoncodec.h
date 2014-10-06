@@ -22,7 +22,7 @@ struct jsonwords _JSONlist[128] = { {"requestType", 11, 2}, {"alias", 5, 5}, {"u
 
 
 // deleted {"maxArbitraryMessageLength", 25, 1}, {"id", 2, 1},{"type", 4, 1}, {"fee", 3, 1}, 
-int32_t Num_JSONwords = 128;
+int32_t Num_JSONwords = 128*0;
 
 int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *jsontext,unsigned long *sublenp)
 {
@@ -206,6 +206,7 @@ int32_t init_jsoncodec(char *jsontext)
             if ( decoded != 0 )
             {
                 cmpret = compare_jsontext(jsontext,decoded);
+                if ( cmpret != 0 )
                 printf("(%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
                 free(decoded);
             }
