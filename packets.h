@@ -257,9 +257,9 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
 {
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np = 0;
-    int32_t valid,len=0,createdflag,datalen,parmslen,encrypted = 1;
+    int32_t valid,len=0,len2,createdflag,datalen,parmslen,encrypted = 1;
     cJSON *argjson,*tmpjson,*valueobj;
-    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],decoded[4096],tmpbuf[4096];
+    unsigned char pubkey[crypto_box_PUBLICKEYBYTES],pubkey2[crypto_box_PUBLICKEYBYTES],decoded[4096],decoded2[4096],tmpbuf[4096],maxbuf[4096],*outbuf;
     char senderNXTaddr[64],datastr[4096],hopNXTaddr[64],checkstr[MAX_JSON_FIELD],datalenstr[MAX_JSON_FIELD];
     char *parmstxt=0,*jsonstr;
     memset(decoded,0,sizeof(decoded));
@@ -273,7 +273,14 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-           // printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
+            memset(decoded2,0,sizeof(decoded2));
+            if ( (len2= deonionize(pubkey2,decoded2,decoded,len)) > 0 )
+            {
+                memcpy(&destbits,decoded2,sizeof(destbits));
+                printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
+                len = len2;
+                memcpy(decoded,decoded2,len);
+            }
         }
         else
         {
@@ -363,7 +370,9 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             {
                 expand_nxt64bits(hopNXTaddr,destbits);
                 //printf("Route to {%s}\n",hopNXTaddr);
-                route_packet(1,0,hopNXTaddr,decoded,len);
+                outbuf = decoded;
+                len = onionize(hopNXTaddr,maxbuf,0,hopNXTaddr,&outbuf,len);
+                route_packet(1,0,hopNXTaddr,maxbuf,len);//decoded,len);
                 return(0);
             }
         }
