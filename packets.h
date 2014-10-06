@@ -67,7 +67,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
     memcpy(&packetdest,encoded,sizeof(packetdest));
     if ( packetdest == 0 || ((packetdest == cp->srvpubnxtbits && strcmp(cp->privacyserver,"127.0.0.1") == 0) || packetdest == cp->pubnxtbits) )
     {
-        //printf("packedest.%llu srvpub.%llu (%s)\n",(long long)packetdest,(long long)cp->srvpubnxtbits,cp->privacyserver);
+        printf("packedest.%llu srvpub.%llu (%s)\n",(long long)packetdest,(long long)cp->srvpubnxtbits,cp->privacyserver);
         encoded += sizeof(packetdest);
         memcpy(pubkey,encoded,crypto_box_PUBLICKEYBYTES);
         encoded += crypto_box_PUBLICKEYBYTES;
@@ -103,10 +103,11 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
 
 int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len)
 {
-    unsigned char onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES],*payload = (*payloadp);
+    unsigned char *origencoded,onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES],*payload = (*payloadp);
     uint16_t *payload_lenp,slen;
     int32_t padlen,onlymax = 0;
-    
+    memset(maxbuf,0,MAX_UDPLEN);
+    origencoded = encoded;
     padlen = MAX_UDPLEN - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
     if ( padlen < 0 )
         padlen = 0;
@@ -123,7 +124,12 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
     encoded += sizeof(*payload_lenp);
-    if ( 0 )
+    if ( onlymax == 0 )
+    {
+        memcpy(maxbuf,origencoded,(encoded - origencoded));
+        maxbuf += (long)(encoded - origencoded);
+    }
+    if ( 1 )
     {
         char hexstr[1024];
         init_hexbytes(hexstr,destpubkey,crypto_box_PUBLICKEYBYTES);
