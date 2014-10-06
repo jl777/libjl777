@@ -143,12 +143,14 @@ char *decode_json(struct compressed_json *jsn,int32_t dictionaryid)
 
 int32_t init_jsoncodec(char *jsontext)
 {
+    static int didinit;
     FILE *fp;
     int32_t i,n;
     struct compressed_json *jsn = 0;
     char line[512],*word,*decoded;
     unsigned long origlen;//,encodelen,sublen;
     int32_t cmpret = 0;
+#ifdef notnow
     if ( Num_JSONwords == 0 && (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
@@ -190,16 +192,18 @@ int32_t init_jsoncodec(char *jsontext)
         Num_JSONwords = n;
         fclose(fp);
     }
-    else
+#endif
+    if ( didinit == 0 )
     {
         JSONlist = _JSONlist;
-        for (i=0; i<128&&i<(int)(sizeof(_JSONlist)/sizeof(*_JSONlist)); i++)
+        for (i=0; i<Num_JSONwords; i++)
         {
             if ( JSONlist[i].word == 0 )
                 break;
             JSONlist[i].len = (int32_t)strlen(JSONlist[i].word);
             printf("JSONlist[%d] = %s\n",i,JSONlist[i].word);
         }
+        didinit = 1;
     }
     if ( jsontext != 0 )
     {
