@@ -109,7 +109,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     long hdrlen;
     memset(maxbuf,0,MAX_UDPLEN);
     origencoded = encoded;
-    padlen = MAX_UDPLEN - 56 - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
+    padlen = MAX_UDPLEN - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
     if ( padlen < 0 )
         padlen = 0;
     if ( encoded == 0 )
@@ -433,8 +433,8 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
         if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
             len = onionize(hopNXTaddr,maxbuf,encodedP,srvNXTaddr,&outbuf,len);
-        txid = route_packet(1,0,hopNXTaddr,outbuf,len);
-        //txid = route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN - sizeof(uint32_t));
+        //txid = route_packet(1,0,hopNXTaddr,outbuf,len);
+        txid = route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN - sizeof(uint32_t));
         if ( txid == 0 )
         {
             sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) to %s\"}",verifiedNXTaddr,msg,destNXTaddr);
