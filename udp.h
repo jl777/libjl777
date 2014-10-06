@@ -264,7 +264,7 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     memcpy(&packet_crc,tx,sizeof(packet_crc));
     tx += sizeof(crc);
     crc = _crc32(0,tx,len);
-    //printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
+    printf("got crc of %08x vx packet_crc %08x\n",crc,packet_crc);
     return(packet_crc == crc);
 }
 
@@ -387,7 +387,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     if ( destaddr != 0 )
     {
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
-        printf("DIRECT send to (%s/%d) finalbuf.%d\n",destip,port,len);
+        printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
         send_packet(0,destaddr,outbuf,len);
     }
     else
@@ -416,8 +416,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
             }
         }
     }
-    //calc_sha256(0,hash,finalbuf,len);
-    txid = calc_txid(finalbuf,len);//hash,sizeof(hash));
+    txid = calc_txid(finalbuf,len);
     return(txid);
 }
 
@@ -434,14 +433,14 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = BTCD_PORT;
-    uv_ip4_addr(pserver->ipaddr,SUPERNET_PORT,(struct sockaddr_in *)&destaddr);
+    uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
-        len = direct_onionize(stats->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
-    //printf("directsend to (%s).%d stats.%p\n",pserver->ipaddr,port,stats);
+        len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
+    printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
