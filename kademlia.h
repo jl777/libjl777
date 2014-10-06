@@ -102,6 +102,7 @@ uint64_t *sort_all_buckets(int32_t *nump,uint64_t hash)
     uint64_t *sortbuf = 0;
     struct nodestats *stats;
     int32_t i,j,n;
+    //long now = time(NULL);
     sortbuf = calloc(2 * sizeof(*sortbuf),KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK);
     for (i=n=0; i<KADEMLIA_NUMBUCKETS; i++)
     {
@@ -109,8 +110,11 @@ uint64_t *sort_all_buckets(int32_t *nump,uint64_t hash)
         {
             if ( (stats= K_buckets[i][j]) == 0 )
                 break;
+            if ( stats->numsent > stats->numrecv+10 )//&& (now - stats->lastcontact) > 3600 )
+                continue;
             sortbuf[n<<1] = bitweight(stats->nxt64bits ^ hash);// + ((stats->gotencrypted == 0) ? 64 : 0);
             sortbuf[(n<<1) + 1] = stats->nxt64bits;
+            n++;
         }
     }
     *nump = n;
@@ -396,6 +400,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 keynp->bestbits = 0;
                 for (i=0; i<n&&i<KADEMLIA_ALPHA; i++)
                     txid = send_kademlia_cmd(sortbuf[(i<<1) + 1],0,cmd,NXTACCTSECRET,key,0);
+                printf("start %d %s\n",i,cmd);
             }
             else // need to respond to sender
             {
