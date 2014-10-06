@@ -348,6 +348,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                     copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,4));
                     port = (uint32_t)atol(portstr);
                     lastcontact = (uint32_t)atol(lastcontactstr);
+                    printf("[%s %s %s %d %d]\n",destNXTaddr,ipaddr,pubkeystr,port,lastcontact);
                     if ( destNXTaddr[0] != 0 && ipaddr[0] != 0 )
                     {
                         destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
@@ -355,9 +356,11 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                         dist = calc_np_dist(keynp,destnp);
                         if ( dist < keynp->bestdist )
                         {
+                            printf("%s new bestdist %d vs %d\n",destnp->H.U.NXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destnp->H.U.NXTaddr);
                         }
+                        printf("dist.%d vs best.%d\n",dist,calc_bestdist(keyhash));
                         if ( dist < calc_bestdist(keyhash) )
                             txid = send_kademlia_cmd(calc_nxt64bits(destnp->H.U.NXTaddr),0,valueflag!=0?"findvalue":"findnode",NXTACCTSECRET,key,0);
                     }
@@ -367,6 +370,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
         free_json(array);
     }
     sprintf(retstr,"{\"result\":\"kademlia_havenode from NXT.%s (%s:%s)\"}",sender,key,value);
+    printf("HAVENODE.%d %s\n",valueflag,retstr);
     return(clonestr(retstr));
 }
 
