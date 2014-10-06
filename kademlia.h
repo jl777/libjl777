@@ -176,7 +176,6 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
     int32_t len = (int32_t)strlen(cmdstr);
     char _tokbuf[4096];
     uint64_t txid;
-    stripwhite(cmdstr,len);
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(pserver,_tokbuf,len);
@@ -439,7 +438,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 }
                 value = cJSON_Print(array);
                 free_json(array);
-                stripwhite(value,strlen(value));
+                stripwhite_ns(value,strlen(value));
                 txid = send_kademlia_cmd(calc_nxt64bits(sender),0,strcmp(cmd,"findnode")==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
