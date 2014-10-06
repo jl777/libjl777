@@ -337,7 +337,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                                 init_hexbytes(datastr,decoded + parmslen,datalen);
                                 cJSON_ReplaceItemInObject(argjson,"data",cJSON_CreateString(datastr));
                             }
-                            else printf("datalen.%d mismatch.(%s) -> %d\n",datalen,datalenstr,atoi(datalenstr));
+                            else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
                         }
                         strcpy(checkstr,"ping");
                     }
