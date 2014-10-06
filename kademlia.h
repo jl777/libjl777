@@ -176,6 +176,7 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
     int32_t len = (int32_t)strlen(cmdstr);
     char _tokbuf[4096];
     uint64_t txid;
+    stripwhite(cmdstr,len);
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(pserver,_tokbuf,len);
