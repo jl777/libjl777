@@ -114,8 +114,8 @@ uint64_t *sort_all_buckets(int32_t *nump,uint64_t hash)
         {
             if ( (stats= K_buckets[i][j]) == 0 )
                 break;
-            if ( stats->numsent > stats->numrecv+10 )//&& (now - stats->lastcontact) > 3600 )
-                continue;
+            //if ( stats->numsent > stats->numrecv+10 )//&& (now - stats->lastcontact) > 3600 )
+            //    continue;
             sortbuf[n<<1] = bitweight(stats->nxt64bits ^ hash);// + ((stats->gotencrypted == 0) ? 64 : 0);
             sortbuf[(n<<1) + 1] = stats->nxt64bits;
             n++;
