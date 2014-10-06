@@ -332,9 +332,9 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                         if ( is_cJSON_Number(valueobj) != 0 )
                         {
                             copy_cJSON(datalenstr,valueobj);
-                            if ( datalen > 0 && datalen == atoi(datalenstr) )
+                            if ( datalen > 0 && datalen >= atoi(datalenstr) )
                             {
-                                init_hexbytes(datastr,decoded + parmslen,datalen);
+                                init_hexbytes(datastr,decoded + parmslen,atoi(datalenstr));
                                 cJSON_ReplaceItemInObject(argjson,"data",cJSON_CreateString(datastr));
                             }
                             else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
