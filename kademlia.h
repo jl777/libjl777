@@ -158,14 +158,14 @@ void kademlia_update_info(struct peerinfo *peer,char *ipaddr,int32_t port,char *
     {
         peer->srv.ipbits = ipbits;
         peer->srv.supernet_port = port;
-        if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(peer->srv.pubkey,pubkeystr) != 0 )
+        if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(peer->srv.pubkey,pubkeystr) != 0 && lastcontact != 0)
             peer->srv.lastcontact = lastcontact;
     }
     else if ( peer->srv.ipbits == ipbits )
     {
         if ( peer->srv.supernet_port == 0 )
             peer->srv.supernet_port = port;
-        if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(peer->srv.pubkey,pubkeystr) != 0 )
+        if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(peer->srv.pubkey,pubkeystr) != 0 && lastcontact != 0)
             peer->srv.lastcontact = lastcontact;
     }
     else printf("kademlia_update_info: NXT.%llu ipbits %u != %u\n",(long long)peer->srv.nxt64bits,peer->srv.ipbits,ipbits);
@@ -343,15 +343,15 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                 if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 5 )
                 {
                     copy_cJSON(destNXTaddr,cJSON_GetArrayItem(item,0));
-                    copy_cJSON(ipaddr,cJSON_GetArrayItem(item,1));
+                    copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,1));
+                    copy_cJSON(ipaddr,cJSON_GetArrayItem(item,2));
                     if ( ipaddr[0] != 0 )
                         addto_hasips(1,pserver,calc_ipbits(ipaddr));
-                    copy_cJSON(portstr,cJSON_GetArrayItem(item,2));
-                    copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,3));
+                    copy_cJSON(portstr,cJSON_GetArrayItem(item,3));
                     copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,4));
                     port = (uint32_t)atol(portstr);
                     lastcontact = (uint32_t)atol(lastcontactstr);
-                    printf("[%s %s %s %d %d]\n",destNXTaddr,ipaddr,pubkeystr,port,lastcontact);
+                    printf("[%s ip.%s %s port.%d lastcontact.%d]\n",destNXTaddr,ipaddr,pubkeystr,port,lastcontact);
                     if ( destNXTaddr[0] != 0 && ipaddr[0] != 0 )
                     {
                         destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
