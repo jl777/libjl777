@@ -153,8 +153,8 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
         if ( padlen > 0 )
         {
-            slen2 = len + padlen;
-            _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
+            //slen2 = len + padlen;
+            slen2 = _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
             memcpy(max_lenp,&slen2,sizeof(*max_lenp));
         }
         else memcpy(maxbuf,encoded,len);
