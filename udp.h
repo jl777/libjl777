@@ -441,13 +441,13 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     outbuf = (unsigned char *)origargstr;
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
         len = direct_onionize(stats->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
-    printf("directsend to (%s).%d stats.%p\n",pserver->ipaddr,port,stats);
+    //printf("directsend to (%s).%d stats.%p\n",pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
     {
         txid = route_packet(encrypted,&destaddr,0,outbuf,len);
-        printf("got route_packet txid.%llu\n",(long long)txid);
+        //printf("got route_packet txid.%llu\n",(long long)txid);
     }
     else printf("directsend_packet: illegal len.%d\n",len);
     return(txid);

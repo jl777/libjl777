@@ -119,7 +119,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         char hexstr[1024];
         init_hexbytes(hexstr,destpubkey,crypto_box_PUBLICKEYBYTES);
         hexstr[16] = 0;
-        printf("DIRECT ONIONIZE: pubkey.%s encode len.%d -> dest.%llu ",hexstr,len,(long long)nxt64bits);
+        //printf("DIRECT ONIONIZE: pubkey.%s encode len.%d -> dest.%llu ",hexstr,len,(long long)nxt64bits);
     }
     len = _encode_str(encoded,(char *)payload,len,destpubkey,onetime_privkey);
     slen = len;
@@ -261,7 +261,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-            printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
+            //printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
         }
         else return(0);
     }

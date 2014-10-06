@@ -470,7 +470,7 @@ int32_t kademlia_pushstore(uint64_t refbits,uint64_t newbits)
     return(n);
 }
 
-void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stats)
+void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struct nodestats *stats)
 {
     int32_t j,k,matchflag = -1;
     uint64_t txid;
@@ -484,7 +484,7 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
     {
         if ( buckets[j] != 0 && buckets[j]->eviction == stats )
         {
-            printf("Got pong back from eviction candidate in slot.%d\n",j);
+            printf("bucketid.%d: Got pong back from eviction candidate in slot.%d\n",bucketid,j);
             buckets[j] = buckets[j]->eviction;
             break;
         }
@@ -496,7 +496,7 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
             if ( matchflag < 0 )
             {
                 buckets[j] = stats;
-                printf("APPEND: bucket[%d] <- %llu %s then call pushstore\n",j,(long long)stats->nxt64bits,ipaddr);
+                printf("APPEND.%d: bucket[%d] <- %llu %s then call pushstore\n",bucketid,j,(long long)stats->nxt64bits,ipaddr);
                 kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
             }
             else if ( j > 0 )
@@ -508,9 +508,9 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
                     buckets[k] = stats;
                     for (k=0; k<j; j++)
                         printf("%llu ",(long long)buckets[k]->nxt64bits);
-                    printf("ROTATE.%d: bucket[%d] <- %llu %s\n",j-1,matchflag,(long long)stats->nxt64bits,ipaddr);
+                    printf("ROTATE.%d: bucket[%d] <- %llu %s | bucketid.%d\n",j-1,matchflag,(long long)stats->nxt64bits,ipaddr,bucketid);
                 }
-            } else printf("update_Kbucket: impossible case matchflag.%d j.%d\n",matchflag,j);
+            } else printf("update_Kbucket.%d: impossible case matchflag.%d j.%d\n",bucketid,matchflag,j);
             return;
         }
         else if ( buckets[j] == stats )
@@ -522,13 +522,13 @@ void update_Kbucket(struct nodestats *buckets[],int32_t n,struct nodestats *stat
         for (k=0; k<n-1; k++)
             buckets[k] = buckets[k+1];
         buckets[n-1] = stats;
-        printf("bucket[%d] <- %llu, check for eviction of %llu %s\n",n-1,(long long)stats->nxt64bits,(long long)eviction->nxt64bits,ipaddr);
+        printf("bucket[%d] <- %llu, check for eviction of %llu %s | bucketid.%d\n",n-1,(long long)stats->nxt64bits,(long long)eviction->nxt64bits,ipaddr,bucketid);
         stats->eviction = eviction;
         kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
         if ( cp != 0 )
         {
             txid = send_kademlia_cmd(eviction->nxt64bits,0,"ping",cp->srvNXTACCTSECRET,0,0);
-            printf("check for eviction with destip.%u txid.%llu\n",eviction->ipbits,(long long)txid);
+            printf("check for eviction with destip.%u txid.%llu | bucketid.%d\n",eviction->ipbits,(long long)txid,bucketid);
         }
     }
 }
@@ -537,7 +537,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
 {
     struct coin_info *cp = get_coin_info("BTCD");
     uint64_t xorbits;
-    int32_t dist;
+    int32_t bucketid;
     uint32_t ipbits;
     struct pserver_info *pserver;
     if ( nxt64bits != 0 )
@@ -590,10 +590,9 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
         if ( stats->nxt64bits != xorbits && stats->nxt64bits != 0 )
         {
             xorbits ^= stats->nxt64bits;
-            dist = bitweight(xorbits) - 1;
-            Kbucket_updated[dist] = time(NULL);
-            printf("Kbucket.%d updated: ",dist);
-            update_Kbucket(K_buckets[dist],KADEMLIA_NUMK,stats);
+            bucketid = bitweight(xorbits) - 1;
+            Kbucket_updated[bucketid] = time(NULL);
+            update_Kbucket(bucketid+1,K_buckets[bucketid],KADEMLIA_NUMK,stats);
         }
     }
 }
