@@ -109,7 +109,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     long hdrlen;
     memset(maxbuf,0,MAX_UDPLEN);
     origencoded = encoded;
-    padlen = MAX_UDPLEN - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
+    padlen = MAX_UDPLEN - 56 - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
     if ( padlen < 0 )
         padlen = 0;
     if ( encoded == 0 )
