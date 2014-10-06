@@ -335,9 +335,9 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                             if ( datalen > 0 && datalen >= atoi(datalenstr) )
                             {
                                 init_hexbytes(datastr,decoded + parmslen,atoi(datalenstr));
-                                cJSON_ReplaceItemInObject(argjson,"data",cJSON_CreateString(datastr));
+                                cJSON_ReplaceItemInObject(tmpjson,"data",cJSON_CreateString(datastr));
                                 free(parmstxt);
-                                parmstxt = cJSON_Print(argjson);
+                                parmstxt = cJSON_Print(tmpjson);
                                 stripwhite_ns(parmstxt,strlen(parmstxt));
                                 free_json(argjson);
                                 argjson = cJSON_Parse(parmstxt);
