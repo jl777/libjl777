@@ -805,11 +805,10 @@ char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
 char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
-    int32_t len;
     copy_cJSON(pubkey,objs[0]);
     set_kademlia_args(key,objs[1],objs[2]);
     copy_cJSON(datastr,objs[3]);
-    if ( key[0] != 0 && sender[0] != 0 && valid > 0 && datastr[0] != 0 && (len= (int32_t)strlen(datastr)) < 1024 && (len&1) == 0 )
+    if ( key[0] != 0 && sender[0] != 0 && valid > 0 && datastr[0] != 0 )
     {
         retstr = kademlia_storedata(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,datastr);
     }
