@@ -240,7 +240,11 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             memcpy(&destbits,decoded,sizeof(destbits));
            // printf("decrypted len.%d dest.(%llu)\n",len,(long long)destbits);
         }
-        else return(0);
+        else
+        {
+            printf("couldnt decrypt packet len.%d\n",recvlen);
+            return(0);
+        }
     }
     else
     {
