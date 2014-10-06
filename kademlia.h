@@ -331,12 +331,15 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
             pserver = get_pserver(0,ipaddr,0,0);
         } else if ( cp != 0 ) pserver = get_pserver(0,cp->myipaddr,0,0);
         keynp = get_NXTacct(&createdflag,Global_mp,key);
+        printf("parsed value array.%p\n",array);
         if ( is_cJSON_Array(array) != 0 )
         {
             n = cJSON_GetArraySize(array);
+            printf("is arraysize.%d\n",n);
             for (i=0; i<n; i++)
             {
                 item = cJSON_GetArrayItem(array,i);
+                printf("item.%p isarray.%d num.%d\n",item,is_cJSON_Array(item),cJSON_GetArraySize(item));
                 if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 5 )
                 {
                     copy_cJSON(destNXTaddr,cJSON_GetArrayItem(item,0));
@@ -369,7 +372,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
         }
         free_json(array);
     }
-    sprintf(retstr,"{\"result\":\"kademlia_havenode from NXT.%s (%s:%s)\"}",sender,key,value);
+    sprintf(retstr,"{\"result\":\"kademlia_havenode from NXT.%s key.(%s) value.(%s)\"}",sender,key,value);
     printf("HAVENODE.%d %s\n",valueflag,retstr);
     return(clonestr(retstr));
 }
