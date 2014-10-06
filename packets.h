@@ -82,8 +82,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
                 if ( err == 0 )
                 {
-                    //printf("2nd payload_len.%d err.%d new len.%d\n",payload_len,err,len);
-                    //if ( *(long long *)decoded != 0 )
+                    printf("srvpubnxtbits payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                     return(len);
                 }
             }
@@ -92,12 +91,11 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
                 if ( err == 0 )
                 {
-                    //printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
-                    //if ( *(long long *)decoded != 0 )
+                    printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                     return(len);
                 }
             }
-        } //else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)),len);
+        } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)),len);
     }
     else printf("deonionize onion for NXT.%llu not this address.(%llu)\n",(long long)packetdest,(long long)cp->srvpubnxtbits);
     return(0);
