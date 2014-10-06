@@ -216,7 +216,12 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     if ( value != 0 && value[0] != 0 )
-        sprintf(cmdstr+strlen(cmdstr),",\"value\":\"%s\"",value);
+    {
+        if ( value[0] == '[' )
+            sprintf(cmdstr+strlen(cmdstr),",\"value\":%s",value);
+        else
+            sprintf(cmdstr+strlen(cmdstr),",\"value\":\"%s\"",value);
+    }
     strcat(cmdstr,"}");
     return(_send_kademlia_cmd(pserver,cmdstr,NXTACCTSECRET));
 }
