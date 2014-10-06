@@ -294,7 +294,7 @@ void teleport_idler(uv_idle_t *handle)
     if ( millis > (lastattempt + 1000) )
     {
         every_second(counter);
-        if ( (counter % 60) == 59 )
+        if ( (counter % 60) == 17 )
             every_minute(counter/60);
         counter++;
         process_pingpong_queue(&PeerQ,0);

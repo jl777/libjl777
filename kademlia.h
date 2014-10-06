@@ -648,8 +648,8 @@ int32_t expire_nodestats(struct nodestats *stats,uint32_t now)
 void every_minute(int32_t counter)
 {
     static int broadcast_count;
-    uint32_t now;
-    int32_t i,createdflag,len,iter,connected,actionflag;
+    uint32_t now = (uint32_t)time(NULL);
+    int32_t i,n,createdflag,len,iter,connected,actionflag;
     char ipaddr[64],cmd[4096],packet[4096];//ip_port[64],NXTaddr[64],
     struct NXT_acct *mynp = 0;
     struct coin_info *cp;
@@ -664,6 +664,22 @@ void every_minute(int32_t counter)
         return;
     //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
     refresh_buckets(cp->srvNXTACCTSECRET);
+    if ( broadcast_count == 0 )
+        p2p_publishpacket(0,0);
+    if ( broadcast_count < 3 )
+    {
+        for (i=n=0; i<Num_in_whitelist; i++)
+        {
+            expand_ipbits(ipaddr,SuperNET_whitelist[i]);
+            pserver = get_pserver(0,ipaddr,0,0);
+            if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 && (broadcast_count == 0 || (now - stats->lastcontact) > NODESTATS_EXPIRATION) )
+                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0), n++;
+        }
+        printf("PINGED.%d\n",n);
+    }
+    broadcast_count++;
+    return;
+    
     if ( cp->myipaddr[0] != 0 )
         mypserver = get_pserver(0,cp->myipaddr,0,0);
     mynp = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
