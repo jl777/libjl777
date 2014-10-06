@@ -120,7 +120,7 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
     ASSERT(wr != NULL);
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
-        pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
+        pserver = get_pserver(&createdflag,ipaddr,0,0);
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
             stats->numsent++;
@@ -359,7 +359,7 @@ int32_t sort_topaddrs(struct Uaddr **Uaddrs,int32_t max,struct peerinfo *peer)
 
 int32_t is_privacyServer(struct peerinfo *peer)
 {
-    if ( peer->srvnxtbits == peer->pubnxtbits && peer->srv.ipbits != 0 && peer->srv.supernet_port != 0 )
+    if ( peer->srvnxtbits == peer->pubnxtbits && peer->srv.ipbits != 0 )//&& peer->srv.supernet_port != 0 )
         return(1);
     return(0);
 }
@@ -432,8 +432,8 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     memset(encoded,0,sizeof(encoded)); // encoded to dest
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
-    else port = BTCD_PORT;
-    port = SUPERNET_PORT;
+    //else port = BTCD_PORT;
+    //port = SUPERNET_PORT;
     
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;

@@ -1438,7 +1438,7 @@ struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t superne
     pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
     {
-        if ( *createdp != 0 || (supernet_port != 0 && supernet_port != SUPERNET_PORT && supernet_port != stats->supernet_port) )
+        if ( *createdp != 0 || (supernet_port != 0 && supernet_port != BTCD_PORT && supernet_port != stats->supernet_port) )
             stats->supernet_port = supernet_port;
         if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != stats->p2pport) )
             stats->p2pport = p2pport;

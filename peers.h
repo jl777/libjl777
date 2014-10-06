@@ -180,6 +180,9 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         sprintf(numstr,"%d",peer->srv.supernet_port);
         if ( peer->srv.supernet_port != 0 && peer->srv.supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
+        sprintf(numstr,"%d",peer->srv.p2pport);
+        if ( peer->srv.p2pport != 0 && peer->srv.p2pport != BTCD_PORT )
+            cJSON_AddItemToObject(json,"p2pport",cJSON_CreateString(numstr));
         if ( peer->srv.numsent != 0 )
             cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->srv.numsent));
         if ( peer->srv.numrecv != 0 )
@@ -198,7 +201,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         coins = cJSON_Parse(coinsjsonstr+9);
         if ( coins != 0 )
             cJSON_AddItemToObject(json,"coins",coins);
-        else printf("error parsing.(%s)\n",coinsjsonstr);
+        else printf("warning no coin networks.(%s) probably no peerinfo yet\n",coinsjsonstr);
     }
     return(json);
 }
@@ -290,7 +293,7 @@ struct peerinfo *find_privacyserver(struct peerinfo *refpeer)
     {
         if ( (peer= Pservers[i]) != 0 )
         {
-            if ( refpeer->srvnxtbits == peer->srvnxtbits && refpeer->srv.ipbits == peer->srv.ipbits && refpeer->srv.supernet_port == peer->srv.supernet_port )
+            if ( refpeer->srvnxtbits == peer->srvnxtbits && refpeer->srv.ipbits == peer->srv.ipbits )//&& refpeer->srv.supernet_port == peer->srv.supernet_port )
                 return(peer);
         }
     }
@@ -496,7 +499,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
         safecopy(refpeer->pubBTCD,BTCDaddr,sizeof(refpeer->pubBTCD));
         safecopy(refpeer->pubBTC,BTCaddr,sizeof(refpeer->pubBTC));
         updatedflag = update_pubkey(refpeer->srv.pubkey,pubkeystr);
-        if ( srvport != 0 )
+        if ( srvport != 0 && srvport != BTCD_PORT )
             refpeer->srv.supernet_port = srvport;
         if ( srvipaddr != 0 && strcmp(srvipaddr,"127.0.0.1") != 0 )
             refpeer->srv.ipbits = calc_ipbits(srvipaddr);

@@ -715,7 +715,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(ipaddr,objs[1]);
     port = get_API_int(objs[2],0);
     copy_cJSON(destip,objs[3]);
-    //printf("ping got pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",pubkey,ipaddr,port,destip);
+    printf("ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port,destip);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
@@ -1136,6 +1136,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
 int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 {
     FILE *fp = 0;
+    struct coin_info *cp;
     struct NXT_str *tp = 0;
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
         fp = fopen(JSON_or_fname,"rb");
@@ -1159,7 +1160,11 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("back from init_NXTservices\n");
     Finished_init = 1;
     free(myipaddr);
-   // p2p_publishpacket(0,0);
-
+    p2p_publishpacket(0,0);
+    if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
+    {
+        printf("need to have BTCD active and also srvpubaddr\n");
+        exit(-1);
+    }
     return(0);
 }
