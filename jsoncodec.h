@@ -223,7 +223,7 @@ int32_t init_jsoncodec(char *jsontext)
                 if ( cmpret != 0 )
                     numerrs++;
                 numcalls++;
-                if ( compsum != 0 && jsn->complen != 0 && (cmpret != 0 || (numcalls % 100) == 99) )
+                //if ( compsum != 0 && jsn->complen != 0 && (cmpret != 0 || (numcalls % 100) == 99) )
                 printf("[%.6f] numerrs.%d/%d (%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,numerrs,numcalls,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
                 free(decoded);
             }

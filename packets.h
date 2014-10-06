@@ -143,7 +143,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     if ( onlymax != 0 )
     {
         len = _encode_str(encoded,(char *)payload,len+padlen,destpubkey,onetime_privkey);
-        slen = len;
+        slen2 = slen = len;
         memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
     }
     else
@@ -255,6 +255,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
 
 struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *prevaddr,char *sender,uint16_t port)
 {
+    struct coin_info *cp = get_coin_info("BTCD");
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np = 0;
     int32_t valid,len=0,len2,createdflag,datalen,parmslen,encrypted = 1;
@@ -273,13 +274,17 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-            memset(decoded2,0,sizeof(decoded2));
-            if ( (len2= deonionize(pubkey2,decoded2,decoded,len)) > 0 )
+            if ( cp != 0 && (destbits == 0 || destbits == cp->pubnxtbits || destbits == cp->srvpubnxtbits) )
             {
-                memcpy(&destbits,decoded2,sizeof(destbits));
-                printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
-                len = len2;
-                memcpy(decoded,decoded2,len);
+                memset(decoded2,0,sizeof(decoded2));
+                if ( (len2= deonionize(pubkey2,decoded2,decoded,len)) > 0 )
+                {
+                    memcpy(&destbits,decoded2,sizeof(destbits));
+                    printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
+                    len = len2;
+                    memcpy(decoded,decoded2,len);
+                    memcpy(pubkey,pubkey2,sizeof(pubkey));
+                } else printf("couldnt decrypt2 packet len.%d\n",len);
             }
         }
         else
@@ -369,7 +374,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( destbits != 0 ) // route packet
             {
                 expand_nxt64bits(hopNXTaddr,destbits);
-                //printf("Route to {%s}\n",hopNXTaddr);
+                printf("Route to {%s}\n",hopNXTaddr);
                 outbuf = decoded;
                 len = onionize(hopNXTaddr,maxbuf,0,hopNXTaddr,&outbuf,len);
                 route_packet(1,0,hopNXTaddr,outbuf,len);//decoded,len);
