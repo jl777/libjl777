@@ -387,7 +387,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     if ( destaddr != 0 )
     {
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
-        printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
+        //printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
         send_packet(0,destaddr,outbuf,len);
     }
     else
@@ -440,7 +440,7 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     outbuf = (unsigned char *)origargstr;
     if ( stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
         len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,&outbuf,len), encrypted = 1;
-    printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
+    //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
     if ( len > sizeof(encoded)-1024 )
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
