@@ -335,10 +335,11 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
                 keynp->bestdist = 0;
             }
         }
-        sprintf(retstr,"{\"result\":\"kademlia_store key.(%s) value.(%s) -> txid.%llu\"}",key,datastr,(long long)txid);
+        sprintf(retstr,"{\"result\":\"kademlia_store key.(%s) data.(%s) len.%d -> txid.%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
         free(sortbuf);
     }
     else sprintf(retstr,"{\"error\":\"kademlia_store key.(%s) no peers\"}",key);
+    printf("STORE.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 
