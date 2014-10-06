@@ -433,6 +433,8 @@ uint64_t directsend_packet(struct pserver_info *pserver,char *origargstr,int32_t
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = BTCD_PORT;
+    port = SUPERNET_PORT;
+    
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
     stripwhite_ns(origargstr,len);
