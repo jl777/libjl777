@@ -372,7 +372,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                 //printf("Route to {%s}\n",hopNXTaddr);
                 outbuf = decoded;
                 len = onionize(hopNXTaddr,maxbuf,0,hopNXTaddr,&outbuf,len);
-                route_packet(1,0,hopNXTaddr,maxbuf,len);//decoded,len);
+                route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN-sizeof(uint32_t));//decoded,len);
                 return(0);
             }
         }
