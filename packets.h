@@ -104,7 +104,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
 int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len)
 {
     unsigned char *origencoded,onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES],*payload = (*payloadp);
-    uint16_t *payload_lenp,*max_lenp,slen;
+    uint16_t *payload_lenp,*max_lenp,slen,slen2;
     int32_t padlen,onlymax = 0;
     long hdrlen;
     memset(maxbuf,0,MAX_UDPLEN);
@@ -143,7 +143,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     if ( onlymax != 0 )
     {
         len = _encode_str(encoded,(char *)payload,len+padlen,destpubkey,onetime_privkey);
-        slen = len+padlen;
+        slen = len;
         memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
     }
     else
@@ -153,9 +153,8 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
         if ( padlen > 0 )
         {
-            _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
-            slen = len + padlen;
-            memcpy(max_lenp,&slen,sizeof(*max_lenp));
+            slen2 = _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
+            memcpy(max_lenp,&slen2,sizeof(*max_lenp));
         }
         else memcpy(maxbuf,encoded,len);
     }
@@ -417,9 +416,9 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         if ( L > 0 )
             len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
         if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
-            len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
-        txid = route_packet(1,0,hopNXTaddr,outbuf,len);
-        //txid = route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN - sizeof(uint32_t));
+            len = onionize(hopNXTaddr,maxbuf,encodedP,srvNXTaddr,&outbuf,len);
+        //txid = route_packet(1,0,hopNXTaddr,outbuf,len);
+        txid = route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN - sizeof(uint32_t));
         if ( txid == 0 )
         {
             sprintf(buf,"{\"error\":\"%s cant send via p2p sendmessage.(%s) to %s\"}",verifiedNXTaddr,msg,destNXTaddr);
