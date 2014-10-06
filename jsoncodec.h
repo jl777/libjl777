@@ -198,6 +198,7 @@ int32_t init_jsoncodec(char *jsontext)
             if ( JSONlist[i].word == 0 )
                 break;
             JSONlist[i].len = (int32_t)strlen(JSONlist[i].word);
+            printf("JSONlist[%d] = %s\n",i,JSONlist[i].word);
         }
     }
     if ( jsontext != 0 )
@@ -213,7 +214,7 @@ int32_t init_jsoncodec(char *jsontext)
             if ( decoded != 0 )
             {
                 cmpret = compare_jsontext(jsontext,decoded);
-                //if ( cmpret != 0 )
+                if ( compsum != 0 && jsn->complen != 0 )
                 printf("[%.6f] (%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
                 free(decoded);
             }
