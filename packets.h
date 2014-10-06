@@ -104,8 +104,9 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
 int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len)
 {
     unsigned char *origencoded,onetime_pubkey[crypto_box_PUBLICKEYBYTES],onetime_privkey[crypto_box_SECRETKEYBYTES],*payload = (*payloadp);
-    uint16_t *payload_lenp,slen;
+    uint16_t *payload_lenp,*max_lenp,slen;
     int32_t padlen,onlymax = 0;
+    long hdrlen;
     memset(maxbuf,0,MAX_UDPLEN);
     origencoded = encoded;
     padlen = MAX_UDPLEN - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
@@ -123,12 +124,15 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     memcpy(encoded,onetime_pubkey,sizeof(onetime_pubkey));
     encoded += sizeof(onetime_pubkey);
     payload_lenp = (uint16_t *)encoded;
-    encoded += sizeof(*payload_lenp);
     if ( onlymax == 0 )
     {
-        memcpy(maxbuf,origencoded,(encoded - origencoded));
-        maxbuf += (long)(encoded - origencoded);
+        hdrlen = (long)(encoded - origencoded - sizeof(*payload_lenp));
+        memcpy(maxbuf,origencoded,hdrlen);
+        maxbuf += hdrlen;
+        max_lenp = (uint16_t *)maxbuf;
+        maxbuf += sizeof(*payload_lenp);
     }
+    encoded += sizeof(*payload_lenp);
     if ( 1 )
     {
         char hexstr[1024];
@@ -139,15 +143,17 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     if ( onlymax != 0 )
     {
         len = _encode_str(encoded,(char *)payload,len+padlen,destpubkey,onetime_privkey);
+        slen = len;
     }
     else
     {
         len = _encode_str(encoded,(char *)payload,len,destpubkey,onetime_privkey);
+        slen = len;
         if ( padlen > 0 )
             _encode_str(maxbuf,(char *)payload,len+padlen,destpubkey,onetime_privkey);
         else memcpy(maxbuf,encoded,len);
+        memcpy(max_lenp,&slen,sizeof(*max_lenp));
     }
-    slen = len;
     memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
     printf("new len.%d + %ld = %ld\n",len,sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits),sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)+len);
     return(len + sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits));
