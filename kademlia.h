@@ -357,15 +357,13 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                         destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
                         kademlia_update_info(&destnp->mypeerinfo,ipaddr,port,pubkeystr,lastcontact);
                         dist = calc_np_dist(keynp,destnp);
-                        if ( dist < keynp->bestdist )
+                        if ( dist < (keynp->bestdist= calc_bestdist(keyhash)) )
                         {
                             printf("%s new bestdist %d vs %d\n",destnp->H.U.NXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destnp->H.U.NXTaddr);
-                        }
-                        printf("dist.%d vs best.%d\n",dist,calc_bestdist(keyhash));
-                        if ( dist < calc_bestdist(keyhash) )
                             txid = send_kademlia_cmd(calc_nxt64bits(destnp->H.U.NXTaddr),0,valueflag!=0?"findvalue":"findnode",NXTACCTSECRET,key,0);
+                        }
                     }
                 }
             }
