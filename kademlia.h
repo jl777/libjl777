@@ -435,11 +435,8 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                         cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
                         sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
                         cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
-                        if ( stats->lastcontact != 0 )
-                        {
-                            sprintf(numstr,"%u",stats->lastcontact);
-                            cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
-                        }
+                        sprintf(numstr,"%u",stats->lastcontact);
+                        cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
                     }
                     cJSON_AddItemToArray(array,item);
                 }
