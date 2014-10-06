@@ -143,14 +143,16 @@ char *decode_json(struct compressed_json *jsn,int32_t dictionaryid)
 
 int32_t init_jsoncodec(char *jsontext)
 {
-    static int didinit;
-    FILE *fp;
-    int32_t i,n;
+    static int didinit,numcalls,numerrs;
+    int i;
     struct compressed_json *jsn = 0;
-    char line[512],*word,*decoded;
-    unsigned long origlen;//,encodelen,sublen;
+    char *decoded;
+    unsigned long origlen;
     int32_t cmpret = 0;
 #ifdef notnow
+    FILE *fp;
+    int32_t n;
+    char line[512],*word;
     if ( Num_JSONwords == 0 && (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
@@ -218,8 +220,11 @@ int32_t init_jsoncodec(char *jsontext)
             if ( decoded != 0 )
             {
                 cmpret = compare_jsontext(jsontext,decoded);
-                if ( compsum != 0 && jsn->complen != 0 )
-                printf("[%.6f] (%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
+                if ( cmpret != 0 )
+                    numerrs++;
+                numcalls++;
+                if ( compsum != 0 && jsn->complen != 0 && (cmpret != 0 || (numcalls % 100) == 99) )
+                printf("[%.6f] numerrs.%d/%d (%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,numerrs,numcalls,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
                 free(decoded);
             }
             free(jsn);
