@@ -341,7 +341,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                                 stripwhite_ns(parmstxt,strlen(parmstxt));
                                 free_json(argjson);
                                 argjson = cJSON_Parse(parmstxt);
-                                //printf("replace data.%s with (%s)\n",datalenstr,datastr);
+                                printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
                             }
                             else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
                         }
