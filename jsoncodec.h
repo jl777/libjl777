@@ -193,7 +193,7 @@ int32_t init_jsoncodec(char *jsontext)
     else
     {
         JSONlist = _JSONlist;
-        for (i=0; i<128; i++)
+        for (i=0; i<128&&i<(int)(sizeof(_JSONlist)/sizeof(*_JSONlist)); i++)
         {
             if ( JSONlist[i].word == 0 )
                 break;
