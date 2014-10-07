@@ -28,16 +28,14 @@ struct jsonwords _JSONlist[128] = { {"requestType", 11, 2}, {"alias", 5, 5}, {"u
 // deleted {"maxArbitraryMessageLength", 25, 1}, {"id", 2, 1},{"type", 4, 1}, {"fee", 3, 1}, 
 int32_t Num_JSONwords = 128*0;*/
 
-int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *jsontext,unsigned long *sublenp)
+int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *src,unsigned long *sublenp)
 {
     int32_t i,j,k,flag,retval,level = 9;
     unsigned long len,sublen;
-    unsigned char *src,*substr;
-    len = strlen(jsontext);
-    src = (unsigned char *)clonestr(jsontext);
+    unsigned char *substr;
+    len = *lenp;
     substr = malloc(len+1);
-    stripstr((char *)src,len);
-    for (i=k=0; src[i]!=0; i++)
+    for (i=k=0; i<len; i++)
     {
         if ( src[i] == '"' && src[i+1] != '"' )
         {
@@ -57,9 +55,9 @@ int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *jsontext,unsi
         substr[k++] = src[i];
     }
     substr[k] = 0;
-    *sublenp = sublen = strlen((char *)substr);
+    *sublenp = sublen = k;
     retval = compress2(dest,lenp,substr,sublen,level);
-    free(src); free(substr);
+    free(substr);
     return(retval);
 }
 

@@ -395,6 +395,6 @@ void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi);
 #include "kademlia.h"
 #include "peers.h"
 #include "packets.h"
-#include "cloudfs.h"
+#include "mofnfs.h"
 
 #endif

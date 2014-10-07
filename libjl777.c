@@ -720,6 +720,66 @@ char *publishPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *pr
     return(retstr);
 }
 
+char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    FILE *fp;
+    int32_t L,M,N;
+    char fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(clonestr("{\"error\":\"savefile is only for local access\"}"));
+    
+    copy_cJSON(fname,objs[0]);
+    L = get_API_int(objs[1],0);
+    M = get_API_int(objs[2],1);
+    N = get_API_int(objs[3],1);
+    if ( N < 0 )
+        N = 0;
+    if ( M >= N )
+        M = N;
+    copy_cJSON(usbname,objs[4]);
+    copy_cJSON(password,objs[5]);
+    fp = fopen(fname,"rb");
+    if ( fp != 0 && sender[0] != 0 && valid > 0 )
+        retstr = mofn_savefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbname,password);
+    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
+    if ( fp != 0 )
+        fclose(fp);
+    return(retstr);
+}
+
+char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    FILE *fp;
+    int32_t L,M,N;
+    char fname[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(clonestr("{\"error\":\"savefile is only for local access\"}"));
+    copy_cJSON(fname,objs[0]);
+    L = get_API_int(objs[1],0);
+    M = get_API_int(objs[2],1);
+    N = get_API_int(objs[3],1);
+    if ( N < 0 )
+        N = 0;
+    if ( M >= N )
+        M = N;
+    copy_cJSON(usbname,objs[4]);
+    copy_cJSON(password,objs[5]);
+    copy_cJSON(destfname,objs[6]);
+    fp = fopen(destfname,"rb");
+    if ( fp != 0 )
+    {
+        fclose(fp);
+        return(clonestr("{\"error\":\"destfilename is already exists\"}"));
+    }
+    fp = fopen(destfname,"wb");
+    if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
+        retstr = mofn_restorefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbname,password);
+    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
+    if ( fp != 0 )
+        fclose(fp);
+    return(retstr);
+}
+
 char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;
@@ -862,6 +922,9 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
     static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", "pserver_flag", 0 };
+    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "usbname", "password", 0 };
+    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "usbname", "password", 0 };
+    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
     static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
@@ -870,7 +933,6 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
@@ -878,7 +940,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", 0 };
     static char *havenode[] = { (char *)havenode_func, "havenode", "V", "pubkey", "key", "name", "data", 0 };
     static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "pubkey", "key", "name", "data", 0 };
-    static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport  };
+    static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
