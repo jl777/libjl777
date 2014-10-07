@@ -168,7 +168,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                 }
             if ( word != 0 )
             {
-                for (i++; line[i]!='"'&&line[i]!=0; i++)
+                for (i++; line[i]!='"'&&line[i]!=0&&line[i]!='\n'; i++)
                     ;
                 line[i] = 0;
                 for (i=0; i<n; i++)
@@ -177,7 +177,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                         JSONlist[i].count++;
                         break;
                     }
-                if ( i == n )
+                if ( i == n && strlen(word) > 0 )
                 {
                     n++;
                     JSONlist = realloc(JSONlist,n * sizeof(*JSONlist) * n);
@@ -188,6 +188,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                     fprintf(stderr,"{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
                 }
             }
+            memset(line,0,sizeof(line));
         }
         fprintf(stderr,"};\nint32_t Num_JSONwords = %d;\n",n);
         //Num_JSONwords = n;
