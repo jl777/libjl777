@@ -59,7 +59,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
     cJSON *json,*result,*error;
     if ( command == 0 || rpcstr == 0 || rpcstr[0] == 0 )
         return(rpcstr);
-    //printf("%s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
+fprintf(stderr,"%s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
     json = cJSON_Parse(rpcstr);
     if ( json == 0 )
     {
@@ -111,6 +111,7 @@ char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char
     numretries=0;
     
 try_again:
+    fprintf(stderr,"url.%s userpass.(%s) command.(%s) params.(%s)\n",url,userpass,command,params);
     starttime = milliseconds();
     
     curl_handle = curl_easy_init();
