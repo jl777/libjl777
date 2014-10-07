@@ -179,13 +179,13 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                     }
                 if ( i == n )
                 {
+                    n++;
                     JSONlist = realloc(JSONlist,n * sizeof(*JSONlist) * n);
                     memset(&JSONlist[i],0,sizeof(JSONlist[i]));
                     JSONlist[i].word = clonestr(word);
                     JSONlist[i].len = (int32_t)strlen(word);
                     JSONlist[i].count = 1;
                     fprintf(stderr,"{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
-                    n++;
                 }
             }
         }
