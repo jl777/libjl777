@@ -14,8 +14,9 @@ struct compressed_json { uint32_t complen,sublen,origlen; unsigned char encoded[
 
 struct jsonwords { const char *word; int32_t len,count; };
 struct jsonwords *JSONlist = 0;
-struct jsonwords _JSONlist[] = { {"getpeers", 8, 1}, {"V", 1, 2}, {"only_privacyServer", 18, 1}, {"getPservers", 11, 1}, {"firsti", 6, 1}, {"publishPservers", 15, 1}, {"Pservers", 8, 1}, {"Numpservers", 11, 2}, {"firstPserver", 12, 1}, {"xorsum", 6, 2}, {"maketelepods", 12, 1}, {"amount", 6, 2}, {"coin", 4, 4}, {"teleport", 8, 1}, {"dest", 4, 3}, {"minage", 6, 3}, {"telepod", 7, 1},  {"crc", 3, 1}, {"transporter", 11, 1}, {"height", 6, 2}, {"value", 5, 2}, {"totalcrc", 8, 2}, {"telepods", 8, 1}, {"sharenrs", 8, 2}, {"pubaddr", 7, 2}, {"transporter_status", 18, 1}, {"status", 6, 1}, {"num", 3, 1}, {"crcs", 4, 1}, {"sharei", 6, 1}, {"ind", 3, 1}, {"tradebot", 8, 1}, {"code", 4, 1}, {"respondtx", 9, 1}, {"signedtx", 8, 1}, {"processutx", 10, 1}, {"utx", 3, 1}, {"sig", 3, 1}, {"full", 4, 1}, {"publishaddrs", 12, 1}, {"pubNXT", 6, 1}, {"pubkey", 6, 8}, {"BTCD", 4, 1}, {"BTC", 3, 1}, {"srvNXTaddr", 10, 1}, {"srvipaddr", 9, 1}, {"srvport", 7, 1}, {"coins", 5, 1}, {"getpubkey", 9, 1}, {"addr", 4, 2}, {"destcoin", 8, 2}, {"sendpeerinfo", 12, 1}, {"pserver_flag", 12, 1}, {"sendmessage", 11, 1}, {"msg", 3, 1}, {"checkmessages", 13, 1}, {"sender", 6, 1}, {"orderbook", 9, 1}, {"obookid", 7, 3}, {"polarity", 8, 3}, {"allfields", 9, 1}, {"getorderbooks", 13, 1}, {"placebid", 8, 1}, {"volume", 6, 2}, {"price", 5, 2}, {"assetA", 6, 3}, {"assetB", 6, 3}, {"placeask", 8, 1}, {"makeoffer", 9, 1}, {"other", 5, 1}, {"qtyA", 4, 1}, {"qtyB", 4, 1}, {"type", 4, 1}, {"sendfile", 8, 1}, {"filename", 8, 2}, {"ping", 4, 1}, {"NXT", 3, 7}, {"ipaddr", 6, 2}, {"port", 4, 2}, {"destip", 6, 1}, {"pong", 4, 1}, {"store", 5, 1}, {"key", 3, 5}, {"name", 4, 5}, {"data", 4, 3}, {"findvalue", 9, 1}, {"findnode", 8, 1}, {"havenode", 8, 1}, {"havenodeB", 9, 1}, {"restorefile", 11, 1}, {"L", 1, 1}, {"M", 1, 1}, {"N", 1, 1}, {"usbname", 7, 1}, };
-    int32_t Num_JSONwords = 97;
+struct jsonwords _JSONlist[] = { {"getpeers", 8, 1}, {"V", 1, 1}, {"only_privacyServer", 18, 1}, {"getPservers", 11, 1}, {"firsti", 6, 1}, {"publishPservers", 15, 1}, {"Pservers", 8, 1}, {"Numpservers", 11, 1}, {"firstPserver", 12, 1}, {"xorsum", 6, 1}, {"maketelepods", 12, 1}, {"amount", 6, 1}, {"coin", 4, 1}, {"teleport", 8, 1}, {"dest", 4, 1}, {"minage", 6, 1}, {"telepod", 7, 1}, {"crc", 3, 1}, {"transporter", 11, 1}, {"height", 6, 1}, {"value", 5, 1}, {"totalcrc", 8, 1}, {"telepods", 8, 1}, {"sharenrs", 8, 1}, {"pubaddr", 7, 1}, {"transporter_status", 18, 1}, {"status", 6, 1}, {"num", 3, 1}, {"crcs", 4, 1}, {"sharei", 6, 1}, {"ind", 3, 1}, {"tradebot", 8, 1}, {"code", 4, 1}, {"respondtx", 9, 1}, {"signedtx", 8, 1}, {"processutx", 10, 1}, {"utx", 3, 1}, {"sig", 3, 1}, {"full", 4, 1}, {"publishaddrs", 12, 1}, {"pubNXT", 6, 1}, {"pubkey", 6, 1}, {"BTCD", 4, 1}, {"BTC", 3, 1}, {"srvNXTaddr", 10, 1}, {"srvipaddr", 9, 1}, {"srvport", 7, 1}, {"coins", 5, 1}, {"getpubkey", 9, 1}, {"addr", 4, 1}, {"destcoin", 8, 1}, {"sendpeerinfo", 12, 1}, {"pserver_flag", 12, 1}, {"sendmessage", 11, 1}, {"msg", 3, 1}, {"checkmessages", 13, 1}, {"sender", 6, 1}, {"orderbook", 9, 1}, {"obookid", 7, 1}, {"polarity", 8, 1}, {"allfields", 9, 1}, {"getorderbooks", 13, 1}, {"placebid", 8, 1}, {"volume", 6, 1}, {"price", 5, 1}, {"assetA", 6, 1}, {"assetB", 6, 1}, {"placeask", 8, 1}, {"makeoffer", 9, 1}, {"other", 5, 1}, {"qtyA", 4, 1}, {"qtyB", 4, 1}, {"type", 4, 1}, {"sendfile", 8, 1}, {"filename", 8, 1}, {"ping", 4, 1}, {"NXT", 3, 1}, {"ipaddr", 6, 1}, {"port", 4, 1}, {"destip", 6, 1}, {"pong", 4, 1}, {"store", 5, 1}, {"key", 3, 1}, {"name", 4, 1}, {"data", 4, 1}, {"findvalue", 9, 1}, {"findnode", 8, 1}, {"havenode", 8, 1}, {"havenodeB", 9, 1}, {"restorefile", 11, 1}, {"L", 1, 1}, {"M", 1, 1}, {"N", 1, 1}, {"usbname", 7, 1}, };
+int32_t Num_JSONwords = 94;
+
 
 
 /*
@@ -149,7 +150,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
     struct compressed_json *jsn = 0;
     char *decoded;
     int32_t cmpret = 0;
-//#ifdef notnow
+#ifdef notnow
     FILE *fp;
     int32_t n;
     char line[512],*word;
@@ -194,7 +195,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
         //Num_JSONwords = n;
         fclose(fp);
     }
-//#endif
+#endif
     if ( didinit == 0 )
     {
         JSONlist = _JSONlist;
