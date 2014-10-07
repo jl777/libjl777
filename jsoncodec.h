@@ -156,7 +156,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
     if ( (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
-        printf("struct jsonwords _JSONlist[] = { ");
+        fprintf(stderr,"struct jsonwords _JSONlist[] = { ");
         while ( fgets(line,sizeof(line),fp) != 0 )
         {
             word = 0;
@@ -184,12 +184,12 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                     JSONlist[i].word = clonestr(word);
                     JSONlist[i].len = (int32_t)strlen(word);
                     JSONlist[i].count = 1;
-                    printf("{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
+                    fprintf(stderr,"{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
                     n++;
                 }
             }
         }
-        printf("};\nint32_t Num_JSONwords = %d;\n",n);
+        fprintf(stderr,"};\nint32_t Num_JSONwords = %d;\n",n);
         //Num_JSONwords = n;
         fclose(fp);
     }
