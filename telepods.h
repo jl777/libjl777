@@ -504,6 +504,7 @@ struct telepod *make_traceable_telepod(struct coin_info *cp,char *refcipher,cJSO
             printf("error funding %.8f telepod.(%s) from transporter\n",dstr(satoshis),podaddr);
         else
         {
+            printf("got txid.(%s)\n",txid);
             value = 0;
             while ( value == 0 )
             {

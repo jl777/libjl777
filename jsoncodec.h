@@ -91,11 +91,12 @@ int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,u
     return(retval);
 }
 
-int32_t compare_jsontext(char *jsonA,char *jsonB)
+int32_t compare_jsontext(char *jsonA,char *jsonB,int32_t origlen)
 {
     int32_t retval;
     long lenA,lenB;
     char *strA,*strB;
+    return(memcmp(jsonA,jsonB,origlen));
     strA = clonestr(jsonA); strB = clonestr(jsonB);
     lenA = stripstr(strA,strlen(strA));
     lenB = stripstr(strB,strlen(strB));
@@ -106,13 +107,14 @@ int32_t compare_jsontext(char *jsonA,char *jsonB)
     return(retval);
 }
 
-struct compressed_json *encode_json(char *jsontext)
+struct compressed_json *encode_json(char *jsontext,int32_t origlen)
 {
     int32_t retval;
     struct compressed_json *jsn = 0;
-    unsigned long len,sublen,origlen;
+    unsigned long len,sublen;
     unsigned char *encoded;
-    origlen = len = strlen(jsontext);
+    //origlen = len = strlen(jsontext);
+    len = origlen;
     encoded = malloc(len+1);
     retval = _encode_json(encoded,&len,jsontext,&sublen);
     if ( retval == 0 )
@@ -141,13 +143,12 @@ char *decode_json(struct compressed_json *jsn,int32_t dictionaryid)
     return(0);
 }
 
-int32_t init_jsoncodec(char *jsontext)
+int32_t init_jsoncodec(char *jsontext,int32_t origlen)
 {
     static int didinit,numcalls,numerrs;
     int i;
     struct compressed_json *jsn = 0;
     char *decoded;
-    unsigned long origlen;
     int32_t cmpret = 0;
 #ifdef notnow
     FILE *fp;
@@ -210,8 +211,8 @@ int32_t init_jsoncodec(char *jsontext)
     if ( jsontext != 0 )
     {
         static double origsum,compsum;
-        origlen = strlen(jsontext);
-        jsn = encode_json(jsontext);
+        //origlen = strlen(jsontext);
+        jsn = encode_json(jsontext,origlen);
         if ( jsn != 0 )
         {
             origsum += origlen;
@@ -219,12 +220,12 @@ int32_t init_jsoncodec(char *jsontext)
             decoded = decode_json(jsn,0);
             if ( decoded != 0 )
             {
-                cmpret = compare_jsontext(jsontext,decoded);
+                cmpret = compare_jsontext(jsontext,decoded,origlen);
                 if ( cmpret != 0 )
                     numerrs++;
                 numcalls++;
                 if ( compsum != 0 && jsn->complen != 0 && (cmpret != 0 || (numcalls % 10) == 9) )
-                printf("[%.6f] numerrs.%d/%d (%s).%ld ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,numerrs,numcalls,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
+                printf("[%.6f] numerrs.%d/%d (%s).%d ->\n(%s).%d retvals %d | compression ratio %.3f (orig.%d substition.%d compressed.%d)\n",origsum/compsum,numerrs,numcalls,jsontext,origlen,decoded,jsn->complen,cmpret,(double)origlen/jsn->complen,jsn->origlen,jsn->sublen,jsn->complen);
                 free(decoded);
             }
             free(jsn);

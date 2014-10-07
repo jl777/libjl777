@@ -338,7 +338,37 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
             len = (int32_t)strlen(origargstr)+1;
             stripwhite_ns(origargstr,len);
             len = (int32_t)strlen(origargstr)+1;
-            retstr = sendmessage(nexthopNXTaddr,L,sender,origargstr,len,destNXTaddr);
+            retstr = sendmessage(nexthopNXTaddr,L,sender,origargstr,len,destNXTaddr,0,0);
+        }
+    }
+    //if ( retstr == 0 )
+    //    retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
+    return(retstr);
+}
+
+char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static int counter;
+    char previp[64],nexthopNXTaddr[64],destNXTaddr[64],cmdstr[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
+    int32_t L,port;
+    copy_cJSON(destNXTaddr,objs[0]);
+    copy_cJSON(datastr,objs[1]);
+    L = (int32_t)get_API_int(objs[2],Global_mp->Lfactor);
+    nexthopNXTaddr[0] = 0;
+    //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
+    if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
+    {
+        if ( prevaddr != 0 )
+        {
+            port = extract_nameport(previp,sizeof(previp),(struct sockaddr_in *)prevaddr);
+            fprintf(stderr,"%d >>>>>>>>>>>>> received binary message.(%s) NXT.%s from hop.%s/%d\n",counter,datastr,sender,previp,port);
+            counter++;
+            //retstr = clonestr("{\"result\":\"received message\"}");
+        }
+        else
+        {
+            sprintf(cmdstr,"{\"requestType\":\"sendbinary\",\"NXT\":\"%s\",\"data\":\"%s\",\"dest\":\"%s\"}",NXTaddr,datastr,destNXTaddr);
+            retstr = send_tokenized_cmd(nexthopNXTaddr,L,NXTaddr,NXTACCTSECRET,cmdstr,destNXTaddr);
         }
     }
     //if ( retstr == 0 )
@@ -833,6 +863,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
     static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", "pserver_flag", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
+    static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "obookid", "polarity", "allfields", 0 };
     static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
@@ -847,7 +878,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", 0 };
     static char *havenode[] = { (char *)havenode_func, "havenode", "V", "pubkey", "key", "name", "data", 0 };
     static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "pubkey", "key", "name", "data", 0 };
-    static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, teleport  };
+    static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

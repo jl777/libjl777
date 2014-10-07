@@ -886,7 +886,7 @@ int32_t set_json_AM(struct json_AM *ap,int32_t sig,int32_t funcid,char *nxtaddr,
     else jsonflag = 1 + (compressjson != 0);
     if ( jsonflag == 2 )
     {
-        if ( (jsn= encode_json(jsonstr)) != 0 )
+        if ( (jsn= encode_json(jsonstr,(int32_t)strlen(jsonstr)+1)) != 0 )
             len = sizeof(*ap) + jsn->complen;
         else
         {
@@ -1097,7 +1097,7 @@ int32_t init_NXTAPI(CURL *curl_handle)
     cJSON *json,*obj;
     int32_t timestamp;
     char cmd[4096],dest[1024],*jsonstr;
-    init_jsoncodec(0);
+    init_jsoncodec(0,0);
     return(0);
     sprintf(cmd,"%s=getTime",_NXTSERVER);
     while ( 1 )

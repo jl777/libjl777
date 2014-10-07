@@ -162,7 +162,6 @@ uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTA
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
-    init_jsoncodec(_tokbuf);
     txid = directsend_packet(pserver,_tokbuf,len,data,datalen);
     return(txid);
 }
