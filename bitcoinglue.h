@@ -56,19 +56,23 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
     {
         sprintf(args,"\"%s\"",podaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
-        //printf("got podaddr.(%s) privkey.%p\n",podaddr,privkey);
+        fprintf(stderr,"got podaddr.(%s) privkey.%p\n",podaddr,privkey);
         if ( privkey != 0 )
         {
             if ( validate_coinaddr(pubkey,cp,podaddr) > 0 )
+            {
+                fprintf(stderr,"pubkey.(%s) podaddr.(%s) validated\n",pubkey,podaddr);
                 (*podaddrp) = podaddr;
+            }
             else
             {
+                fprintf(stderr,"pubkey.(%s) podaddr.(%s) NOT validated\n",pubkey,podaddr);
                 free(podaddr);
                 free(privkey);
                 privkey = 0;
             }
         }
-    } else printf("error getnewaddress telepods\n");
+    } else fprintf(stderr,"error getnewaddress telepods\n");
     return(privkey);
 }
 
@@ -299,18 +303,19 @@ uint64_t get_txid_vout(int32_t *nump,struct coin_info *cp,char *txid,uint32_t vo
         if ( rawtransaction[0] != 0 )
         {
             str = malloc(strlen(rawtransaction)+4);
-            //printf("got rawtransaction.(%s)\n",rawtransaction);
             sprintf(str,"\"%s\"",rawtransaction);
             retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
+            fprintf(stderr,"got rawtransaction.(%s) -> (%s)\n",rawtransaction,retstr);
         }
         if ( rawtransaction != 0 )
             free(rawtransaction);
-    } else printf("null rawtransaction\n");
+    } else fprintf(stderr,"null rawtransaction\n");
     if ( retstr != 0 && retstr[0] != 0 )
     {
         json = cJSON_Parse(retstr);
         if ( json != 0 )
         {
+            fprintf(stderr,"parsed\n");
             if ( (voutobj= cJSON_GetObjectItem(json,"vout")) != 0 && is_cJSON_Array(voutobj) != 0 && vout < (*nump= cJSON_GetArraySize(voutobj)) )
             {
                 item = cJSON_GetArrayItem(voutobj,vout);
@@ -319,7 +324,7 @@ uint64_t get_txid_vout(int32_t *nump,struct coin_info *cp,char *txid,uint32_t vo
             }
             free_json(json);
         }
-    } else printf("error decoding.(%s)\n",str);
+    } else fprintf(stderr,"error decoding.(%s)\n",str);
     if ( str != 0 )
         free(str);
     if ( retstr != 0 )

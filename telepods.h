@@ -495,24 +495,26 @@ struct telepod *make_traceable_telepod(struct coin_info *cp,char *refcipher,cJSO
     struct telepod *pod = 0;
     //satoshis += cp->txfee;
     M = N = 1;
-    printf("make_traceable_telepod %.8f\n",dstr(satoshis));
+    fprintf(stderr,"make_traceable_telepod %.8f\n",dstr(satoshis));
     if ( (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
     {
         sprintf(args,"[\"transporter\",\"%s\",%.8f]",podaddr,dstr(satoshis));
-        printf("args.(%s)\n",args);
+        fprintf(stderr,"args.(%s)\n",args);
         if ( (txid= bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendfrom",args)) == 0 )
-            printf("error funding %.8f telepod.(%s) from transporter\n",dstr(satoshis),podaddr);
+            fprintf(stderr,"error funding %.8f telepod.(%s) from transporter\n",dstr(satoshis),podaddr);
         else
         {
-            printf("got txid.(%s)\n",txid);
+            fprintf(stderr,"got txid.(%s)\n",txid);
             value = 0;
             while ( value == 0 )
             {
                 n = 1;
+                fprintf(stderr,"start loop\n");
                 for (vout=0; vout<n; vout++)
                 {
                     if ( (value= get_txid_vout(&n,cp,txid,vout)) == satoshis )
                     {
+                        fprintf(stderr,"get_txid_void got %.8f\n",dstr(satoshis));
                         init_sharenrs(sharenrs,0,N,N);
                         pod = create_telepod(0,refcipher,ciphersobj,cp,satoshis,podaddr,pubkey,privkey,txid,vout,M,N,sharenrs,0xff,0);
                         pod->height = (uint32_t)get_blockheight(cp);
@@ -522,7 +524,7 @@ struct telepod *make_traceable_telepod(struct coin_info *cp,char *refcipher,cJSO
                     }
                     else if ( value == 0 )
                     {
-                        printf("txid.%s vout.%d zerovalue n.%d\n",txid,vout,n);
+                        fprintf(stderr,"txid.%s vout.%d zerovalue n.%d\n",txid,vout,n);
                         sleep(30);
                         break;
                     }
