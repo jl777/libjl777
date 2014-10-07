@@ -14,8 +14,9 @@ struct compressed_json { uint32_t complen,sublen,origlen; unsigned char encoded[
 
 struct jsonwords { const char *word; int32_t len,count; };
 struct jsonwords *JSONlist = 0;
-struct jsonwords _JSONlist[] = { {"getpeers", 8, 1}, {"only_privacyServer", 18, 1}, {"getPservers", 11, 1}, {"firsti", 6, 1}, {"publishPservers", 15, 1}, {"Pservers", 8, 1}, {"Numpservers", 11, 2}, {"firstPserver", 12, 1}, {"xorsum", 6, 2}, {"maketelepods", 12, 1}, {"amount", 6, 2}, {"coin", 4, 4}, {"teleport", 8, 1}, {"dest", 4, 3}, {"minage", 6, 3}, {"telepod", 7, 1}, {"crc", 3, 1}, {"transporter", 11, 1}, {"height", 6, 2}, {"value", 5, 2}, {"totalcrc", 8, 2}, {"telepods", 8, 1}, {"sharenrs", 8, 2}, {"pubaddr", 7, 2}, {"transporter_status", 18, 1}, {"status", 6, 1}, {"num", 3, 1}, {"crcs", 4, 1}, {"sharei", 6, 1}, {"ind", 3, 1}, {"tradebot", 8, 1}, {"code", 4, 1}, {"respondtx", 9, 1}, {"signedtx", 8, 1}, {"processutx", 10, 1}, {"utx", 3, 1}, {"sig", 3, 1}, {"full", 4, 1}, {"publishaddrs", 12, 1}, {"pubNXT", 6, 1}, {"pubkey", 6, 8}, {"BTCD", 4, 1}, {"BTC", 3, 1}, {"srvNXTaddr", 10, 1}, {"srvipaddr", 9, 1}, {"srvport", 7, 1}, {"coins", 5, 1}, {"getpubkey", 9, 1}, {"addr", 4, 2}, {"destcoin", 8, 2}, {"sendpeerinfo", 12, 1}, {"pserver_flag", 12, 1}, {"sendmessage", 11, 1}, {"msg", 3, 1}, {"checkmessages", 13, 1}, {"sender", 6, 1}, {"orderbook", 9, 1}, {"obookid", 7, 3}, {"polarity", 8, 3}, {"allfields", 9, 1}, {"getorderbooks", 13, 1}, {"placebid", 8, 1}, {"volume", 6, 2}, {"price", 5, 2}, {"assetA", 6, 3}, {"assetB", 6, 3}, {"placeask", 8, 1}, {"makeoffer", 9, 1}, {"other", 5, 1}, {"qtyA", 4, 1}, {"qtyB", 4, 1}, {"type", 4, 1}, {"sendfile", 8, 1}, {"filename", 8, 1}, {"ping", 4, 1}, {"NXT", 3, 7}, {"ipaddr", 6, 2}, {"port", 4, 2}, {"destip", 6, 1}, {"pong", 4, 1}, {"store", 5, 1}, {"key", 3, 5}, {"name", 4, 5}, {"data", 4, 3}, {"findvalue", 9, 1}, {"findnode", 8, 1}, {"havenode", 8, 1}, {"havenodeB", 9, 1}, {"L", 1, 1}, {"M", 1, 1}, {"N", 1, 1}, };
-int32_t Num_JSONwords = 91;
+struct jsonwords _JSONlist[] = { {"getpeers", 8, 1}, {"V", 1, 2}, {"only_privacyServer", 18, 1}, {"getPservers", 11, 1}, {"firsti", 6, 1}, {"publishPservers", 15, 1}, {"Pservers", 8, 1}, {"Numpservers", 11, 2}, {"firstPserver", 12, 1}, {"xorsum", 6, 2}, {"maketelepods", 12, 1}, {"amount", 6, 2}, {"coin", 4, 4}, {"teleport", 8, 1}, {"dest", 4, 3}, {"minage", 6, 3}, {"telepod", 7, 1},  {"crc", 3, 1}, {"transporter", 11, 1}, {"height", 6, 2}, {"value", 5, 2}, {"totalcrc", 8, 2}, {"telepods", 8, 1}, {"sharenrs", 8, 2}, {"pubaddr", 7, 2}, {"transporter_status", 18, 1}, {"status", 6, 1}, {"num", 3, 1}, {"crcs", 4, 1}, {"sharei", 6, 1}, {"ind", 3, 1}, {"tradebot", 8, 1}, {"code", 4, 1}, {"respondtx", 9, 1}, {"signedtx", 8, 1}, {"processutx", 10, 1}, {"utx", 3, 1}, {"sig", 3, 1}, {"full", 4, 1}, {"publishaddrs", 12, 1}, {"pubNXT", 6, 1}, {"pubkey", 6, 8}, {"BTCD", 4, 1}, {"BTC", 3, 1}, {"srvNXTaddr", 10, 1}, {"srvipaddr", 9, 1}, {"srvport", 7, 1}, {"coins", 5, 1}, {"getpubkey", 9, 1}, {"addr", 4, 2}, {"destcoin", 8, 2}, {"sendpeerinfo", 12, 1}, {"pserver_flag", 12, 1}, {"sendmessage", 11, 1}, {"msg", 3, 1}, {"checkmessages", 13, 1}, {"sender", 6, 1}, {"orderbook", 9, 1}, {"obookid", 7, 3}, {"polarity", 8, 3}, {"allfields", 9, 1}, {"getorderbooks", 13, 1}, {"placebid", 8, 1}, {"volume", 6, 2}, {"price", 5, 2}, {"assetA", 6, 3}, {"assetB", 6, 3}, {"placeask", 8, 1}, {"makeoffer", 9, 1}, {"other", 5, 1}, {"qtyA", 4, 1}, {"qtyB", 4, 1}, {"type", 4, 1}, {"sendfile", 8, 1}, {"filename", 8, 2}, {"ping", 4, 1}, {"NXT", 3, 7}, {"ipaddr", 6, 2}, {"port", 4, 2}, {"destip", 6, 1}, {"pong", 4, 1}, {"store", 5, 1}, {"key", 3, 5}, {"name", 4, 5}, {"data", 4, 3}, {"findvalue", 9, 1}, {"findnode", 8, 1}, {"havenode", 8, 1}, {"havenodeB", 9, 1}, {"restorefile", 11, 1}, {"L", 1, 1}, {"M", 1, 1}, {"N", 1, 1}, {"usbname", 7, 1}, };
+    int32_t Num_JSONwords = 97;
+
 
 /*
 struct jsonwords _JSONlist[128] = { {"requestType", 11, 2}, {"alias", 5, 5}, {"uri", 3, 3}, {"transactionBytes", 16, 3}, {"order", 5, 4}, {"poll", 4, 2}, {"vote", 4, 1}, {"name", 4, 4}, {"description", 11, 4}, {"minNumberOfOptions", 18, 2}, {"maxNumberOfOptions", 18, 2}, {"optionsAreBinary", 16, 2}, {"option", 6, 1}, {"secretPhrase", 12, 8}, {"publicKey", 9, 4}, {"deadline", 8, 3}, {"referencedTransaction", 21, 1}, {"hallmark", 8, 3}, {"website", 7, 2}, {"token", 5, 2}, {"account", 7, 15}, {"timestamp", 9, 7}, {"asset", 5, 11}, {"subtype", 7, 1}, {"limit", 5, 2}, {"assetName", 9, 1}, {"block", 5, 2}, {"numberOfConfirmations", 21, 1}, {"peer", 4, 1}, {"firstIndex", 10, 1}, {"lastIndex", 9, 1}, {"transaction", 11, 4}, {"hash", 4, 4}, {"quantity", 8, 7}, {"host", 4, 3}, {"weight", 6, 3}, {"date", 4, 2}, {"price", 5, 4}, {"recipient", 9, 3}, {"message", 7, 1}, {"amount", 6, 1}, {"errorCode", 9, 10}, {"errorDescription", 16, 10}, {"error", 5, 3}, {"valid", 5, 2}, {"balance", 7, 3}, {"effectiveBalance", 16, 3}, {"unconfirmedBalance", 18, 3}, {"assetBalances", 13, 1}, {"unconfirmedAssetBalances", 24, 1}, {"blockIds", 8, 1}, {"askOrderIds", 11, 2}, {"bidOrderIds", 11, 2}, {"accountId", 9, 1}, {"transactionIds", 14, 1},  {"aliasIds", 8, 1}, {"trades", 6, 2}, {"height", 6, 3}, {"numberOfTrades", 14, 2}, {"assetIds", 8, 1}, {"assets", 6, 1}, {"generator", 9, 1}, {"numberOfTransactions", 20, 2}, {"totalAmount", 11, 1}, {"totalFee", 8, 1}, {"payloadLength", 13, 1}, {"version", 7, 3}, {"baseTarget", 10, 1}, {"previousBlock", 13, 1}, {"nextBlock", 9, 1}, {"payloadHash", 11, 1}, {"generationSignature", 19, 1}, {"previousBlockHash", 17, 1}, {"blockSignature", 14, 1}, {"transactions", 12, 1}, {"genesisBlockId", 14, 1}, {"genesisAccountId", 16, 1}, {"maxBlockPayloadLength", 21, 1}, {"transactionTypes", 16, 1}, {"peerStates", 10, 1}, {"guaranteedBalance", 17, 2}, {"address", 7, 1}, {"state", 5, 1}, {"announcedAddress", 16, 1}, {"shareAddress", 12, 1}, {"downloadedVolume", 16, 1}, {"uploadedVolume", 14, 1}, {"application", 11, 1}, {"platform", 8, 1}, {"blacklisted", 11, 1}, {"peers", 5, 1}, {"options", 7, 1}, {"voters", 6, 1}, {"pollIds", 7, 1}, {"time", 4, 2}, {"lastBlock", 9, 1}, {"cumulativeDifficulty", 20, 1}, {"totalEffectiveBalance", 21, 1}, {"numberOfBlocks", 14, 1}, {"numberOfAccounts", 16, 1}, {"numberOfAssets", 14, 1}, {"numberOfOrders", 14, 1}, {"numberOfAliases", 15, 1}, {"numberOfPolls", 13, 1}, {"numberOfVotes", 13, 1}, {"numberOfPeers", 13, 1}, {"numberOfUsers", 13, 1}, {"numberOfUnlockedAccounts", 24, 1}, {"lastBlockchainFeeder", 20, 1}, {"availableProcessors", 19, 1}, {"maxMemory", 9, 1}, {"totalMemory", 11, 1}, {"freeMemory", 10, 1}, {"confirmations", 13, 2}, {"blockTimestamp", 14, 1}, {"sender", 6, 1}, {"unconfirmedTransactionIds", 25, 1}, {"aliases", 7, 1}, {"foundAndStopped", 15, 1},
@@ -155,6 +156,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
     if ( (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
+        printf("struct jsonwords _JSONlist[] = { ");
         while ( fgets(line,sizeof(line),fp) != 0 )
         {
             word = 0;
@@ -177,18 +179,16 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
                     }
                 if ( i == n )
                 {
-                    n++;
                     JSONlist = realloc(JSONlist,n * sizeof(*JSONlist) * n);
                     memset(&JSONlist[i],0,sizeof(JSONlist[i]));
                     JSONlist[i].word = clonestr(word);
                     JSONlist[i].len = (int32_t)strlen(word);
                     JSONlist[i].count = 1;
+                    printf("{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
+                    n++;
                 }
             }
         }
-        printf("struct jsonwords _JSONlist[] = { ");
-        for (i=0; i<n; i++)
-            printf("{\"%s\", %d, %d}, ",JSONlist[i].word,JSONlist[i].len,JSONlist[i].count);
         printf("};\nint32_t Num_JSONwords = %d;\n",n);
         //Num_JSONwords = n;
         fclose(fp);
