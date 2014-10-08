@@ -158,7 +158,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                         printf("back from calc_shares pod.%p (%s) %u %u %u\n",pod,_get_privkeyptr(pod,calc_multisig_N(pod)),_crc32(0,buffer,pod->len_plus1-1),_crc32(0,buffer+pod->len_plus1,pod->len_plus1-1),_crc32(0,buffer+2*pod->len_plus1,pod->len_plus1-1));
                         {
                             char hexstr[4096];
-                            init_hexbytes(hexstr,buffer+log->N*pod->len_plus1,pod->len_plus1);
+                            init_hexbytes_noT(hexstr,buffer+log->N*pod->len_plus1,pod->len_plus1);
                             printf("DECODED.(%s)\n",hexstr);
                         }
                         free(buffer);
@@ -290,7 +290,12 @@ void teleport_idler(uv_idle_t *handle)
     static int counter;
     static double lastattempt;
     double millis;
+    void *wr;
     millis = ((double)uv_hrtime() / 1000000);
+    if ( (wr= queue_dequeue(&sendQ)) != 0 )
+    {
+        process_sendQ_item(wr);
+    }
     if ( millis > (lastattempt + 1000) )
     {
         every_second(counter);
@@ -457,7 +462,7 @@ char *telepod_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32_t c
                         gfshare_extract(_get_privkeyptr(pod,log->N),haveshares,log->N,_get_privkeyptr(pod,0),pod->len_plus1-1,pod->len_plus1);
                         {
                             char hexstr[4096];
-                            init_hexbytes(hexstr,_get_privkeyptr(pod,log->N),pod->len_plus1-1);
+                            init_hexbytes_noT(hexstr,_get_privkeyptr(pod,log->N),pod->len_plus1-1);
                             printf("DECODED.(%s) len.%d %ld\n",hexstr,pod->len_plus1,strlen(hexstr));
                             //getchar();
                         }

@@ -44,6 +44,8 @@ union writeU { uv_udp_send_t ureq; uv_write_t req; };
 struct write_req_t
 {
     union writeU U;
+    struct sockaddr addr;
+    uv_udp_t *udp;
     uv_buf_t buf;
     int32_t allocflag;
 };
@@ -57,7 +59,7 @@ struct peer_queue_entry
 
 static long server_xferred;
 int Servers_started;
-queue_t P2P_Q;
+queue_t P2P_Q,sendQ;
 struct pingpong_queue PeerQ;
 struct peerinfo **Peers,**Pservers;
 int32_t Numpeers,Numpservers,Num_in_whitelist;
@@ -109,18 +111,23 @@ void after_write(uv_write_t *req,int status)
     fprintf(stderr, "uv_write error: %d %s\n",status,uv_err_name(status));
 }
 
-int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
+int32_t process_sendQ_item(struct write_req_t *wr)
 {
     char ipaddr[64];
+    struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
     struct pserver_info *pserver;
     int32_t r,supernet_port,createdflag;
-    struct write_req_t *wr;
-    wr = alloc_wr(buf,len,allocflag);
-    ASSERT(wr != NULL);
     {
-        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&wr->addr);
         pserver = get_pserver(&createdflag,ipaddr,0,0);
+        if ( 1 && (pserver->nxt64bits == cp->pubnxtbits || pserver->nxt64bits == cp->srvpubnxtbits) )
+        {
+            printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
+            //return(0);
+            strcpy(ipaddr,"127.0.0.1");
+            uv_ip4_addr(ipaddr,supernet_port,(struct sockaddr_in *)&wr->addr);
+        }
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
             stats->numsent++;
@@ -128,11 +135,25 @@ int32_t portable_udpwrite(const struct sockaddr *addr,uv_udp_t *handle,void *buf
         }
         //for (i=0; i<16; i++)
         //    printf("%02x ",((unsigned char *)buf)[i]);
-        printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",len,ipaddr,supernet_port,_crc32(0,buf,len));
+        printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     }
-    r = uv_udp_send(&wr->U.ureq,handle,&wr->buf,1,addr,(uv_udp_send_cb)after_write);
+    r = uv_udp_send(&wr->U.ureq,wr->udp,&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
     if ( r != 0 )
-        printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->U.ureq,buf,len);
+        printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->U.ureq,wr->buf.base,wr->buf.len);
+    return(r);
+}
+
+int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
+{
+     int32_t r=0;
+    struct write_req_t *wr;
+    wr = alloc_wr(buf,len,allocflag);
+    ASSERT(wr != NULL);
+    wr->addr = *addr;
+    wr->udp = handle;
+    if ( queueflag != 0 )
+        queue_enqueue(&sendQ,wr);
+    else r = process_sendQ_item(wr);
     return(r);
 }
 
@@ -149,6 +170,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     if ( cp != 0 && nread > 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        if ( strcmp("127.0.0.1",ipaddr) == 0 )
+            strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
@@ -283,7 +306,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
             port = SUPERNET_PORT;
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
-        portable_udpwrite(destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+        portable_udpwrite(1,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
     }
     else call_SuperNET_broadcast(get_pserver(0,ipaddr,0,0),(char *)finalbuf,len,0);
     pserver = get_pserver(0,ipaddr,0,0);
@@ -396,7 +419,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     if ( destaddr != 0 )
     {
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
-        //printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
+        printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
         send_packet(0,destaddr,outbuf,len);
     }
     else

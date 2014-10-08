@@ -292,8 +292,8 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
     sha256_done(&md,hash);
     if ( hashstr != 0 )
     {
-        int32_t init_hexbytes(char *hexbytes,unsigned char *message,long len);
-        init_hexbytes(hashstr,hash,256 >> 3);
+        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+        init_hexbytes_noT(hashstr,hash,256 >> 3);
     }
 }
 

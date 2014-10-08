@@ -88,8 +88,9 @@ void usleep(int32_t);
 #define portable_mutex_t uv_mutex_t
 
 // includes that include actual code
-#include "includes/crypto_box.h"
-#include "includes/randombytes.h"
+//#include "includes/crypto_box.h"
+#include "tweetnacl.c"
+//#include "includes/randombytes.h"
 
 //#include "utils/smoothers.h"
 #include "bars.h"

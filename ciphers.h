@@ -736,7 +736,7 @@ uint8_t *ciphers_codec(int32_t decrypt,char **privkeys,int32_t *cipherids,uint8_
     for (j=0; j<n; j++)
     {
         i = (decrypt != 0) ? (n-1-j) : j;
-        cipher_idx = cipherids[i];
+        cipher_idx = (cipherids[i] % NUM_CIPHERS);
         ivsize = cipher_descriptor[cipher_idx].block_length;
         ks = (int32_t)hash_descriptor[hash_idx].hashsize;
         if ( cipher_descriptor[cipher_idx].keysize(&ks) != CRYPT_OK )
@@ -856,9 +856,33 @@ char **validate_ciphers(int32_t **cipheridsp,struct coin_info *cp,cJSON *ciphers
     return(privkeys);
 }
 
-uint8_t *save_encrypted(char *fname,struct coin_info *cp,uint8_t *data,int32_t *lenp)
+int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
 {
     FILE *fp;
+    if ( encoded != 0 )
+    {
+        if ( (fp= fopen(fname,"wb")) != 0 )
+        {
+            if ( fwrite(encoded,1,len,fp) != len )
+            {
+                printf("error saving.(%s) encrypted data %d\n",fname,len);
+                strcpy(fname,"error");
+                fclose(fp);
+                return(-1);
+            }
+            else
+            {
+                fclose(fp);
+                return(len);
+            }
+        }
+    }
+    return(0);
+}
+
+uint8_t *save_encrypted(char *fname,struct coin_info *cp,uint8_t *data,int32_t *lenp)
+{
+    //FILE *fp;
     uint8_t *encoded = 0;
     char **privkeys;
     int32_t *cipherids,newlen = *lenp;
@@ -866,7 +890,9 @@ uint8_t *save_encrypted(char *fname,struct coin_info *cp,uint8_t *data,int32_t *
     {
         encoded = ciphers_codec(0,privkeys,cipherids,data,&newlen);
         free_cipherptrs(0,privkeys,cipherids);
-        if ( encoded != 0 )
+        *lenp = _save_encrypted(fname,encoded,newlen);
+
+        /*if ( encoded != 0 )
         {
             if ( (fp= fopen(fname,"wb")) != 0 )
             {
@@ -878,7 +904,7 @@ uint8_t *save_encrypted(char *fname,struct coin_info *cp,uint8_t *data,int32_t *
                 else *lenp = newlen;
                 fclose(fp);
             }
-        }
+        }*/
     }
     return(encoded);
 }

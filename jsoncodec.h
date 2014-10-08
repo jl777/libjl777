@@ -9,7 +9,7 @@
 #define gateway_jsoncodec_h
 
 //#include <zlib.h>
-struct compressed_json { uint32_t complen,sublen,origlen; unsigned char encoded[128]; };
+struct compressed_json { uint32_t complen,sublen,origlen,jsonlen; unsigned char encoded[128]; };
 
 
 struct jsonwords { const char *word; int32_t len,count; };
@@ -33,11 +33,12 @@ int32_t Num_JSONwords = 128*0;*/
 int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *src,unsigned long *sublenp)
 {
     int32_t i,j,k,flag,retval,level = 9;
-    unsigned long len,sublen;
+    unsigned long len,sublen,slen;
     unsigned char *substr;
     len = *lenp;
     substr = malloc(len+1);
-    for (i=k=0; i<len; i++)
+    slen = strlen(src);
+    for (i=k=0; i<=slen; i++)
     {
         if ( src[i] == '"' && src[i+1] != '"' )
         {
@@ -56,14 +57,16 @@ int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *src,unsigned 
             printf("unexpected control char in srctext\n");
         substr[k++] = src[i];
     }
-    substr[k] = 0;
+    for (; i<len; i++)
+        substr[k++] = src[i];
+    //substr[k] = 0;
     *sublenp = sublen = k;
     retval = compress2(dest,lenp,substr,sublen,level);
     free(substr);
     return(retval);
 }
 
-int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,unsigned long *lenp)
+int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,unsigned long *lenp,int32_t slen)
 {
     int32_t retval,i,j,k,wordi;
     unsigned char *rawdecoded;
@@ -74,7 +77,7 @@ int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,u
     {
         for (i=j=0; i<sublen; i++)
         {
-            if ( (rawdecoded[i] & 0x80) != 0 )
+            if ( j < slen && (rawdecoded[i] & 0x80) != 0 )
             {
                 wordi = (rawdecoded[i] & 0x7f);
                 decoded[j++] = '"';
@@ -123,6 +126,7 @@ struct compressed_json *encode_json(char *jsontext,int32_t origlen)
         jsn->origlen = (uint32_t)origlen;
         jsn->complen = (uint32_t)len;
         jsn->sublen = (uint32_t)sublen;
+        jsn->jsonlen = (uint32_t)strlen(jsontext);
         memcpy(jsn->encoded,encoded,len);
     } else printf("encode_json: error calling zlib.(%s)\n",jsontext);
     free(encoded);
@@ -136,7 +140,7 @@ char *decode_json(struct compressed_json *jsn,int32_t dictionaryid)
     unsigned long sublen;
     sublen = jsn->sublen;
     decoded = malloc(jsn->origlen+1);
-    decoderet = _decode_json(decoded,sublen,jsn->encoded,&sublen);
+    decoderet = _decode_json(decoded,sublen,jsn->encoded,&sublen,jsn->jsonlen);
     if ( decoderet == 0 )
         return((char *)decoded);
     free(decoded);

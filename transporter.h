@@ -232,7 +232,7 @@ cJSON *create_transporter_json(uint32_t *totalcrcp,char *coinstr,uint32_t height
     cJSON_AddItemToObject(json,"N",cJSON_CreateNumber(N));
     if ( N > 1 )
     {
-        init_hexbytes(numstr,sharenrs,N);
+        init_hexbytes_noT(numstr,sharenrs,N);
         printf("sharenrs.(%s) -> [%s]\n",sharenrs,numstr);
         if ( numstr[0] != 0 )
             cJSON_AddItemToObject(json,"sharenrs",cJSON_CreateString(numstr));
@@ -439,7 +439,7 @@ void send_transporter_status(char *verifiedNXTaddr,char *NXTACCTSECRET,struct NX
     sprintf(msg,"{\"requestType\":\"transporter_status\",\"status\":%d,\"coin\":\"%s\",\"totalcrc\":%u,\"height\":%u,\"minage\":%d,\"value\":%.8f,\"num\":%d,\"ind\":%d,\"sharei\":%d,\"M\":%d,\"N\":%d,\"pubaddr\":\"%s\"",errflag,cp!=0?cp->name:"ERROR",totalcrc,height,minage,dstr(value),num,ind,sharei,M,N,cp->pubaddr);
     if ( N > 1 )
     {
-        init_hexbytes(buf,sharenrs,N);
+        init_hexbytes_noT(buf,sharenrs,N);
         //printf("send sharenrs.(%s) -> [%s]\n",sharenrs,buf);
         sprintf(msg+strlen(msg),",\"sharenrs\":\"%s\"",buf);
     }

@@ -26,7 +26,7 @@ void disp_telepod(char *msg,struct telepod *pod)
 {
     int32_t calc_multisig_N(struct telepod *pod);
     char hexstr[1024];
-    init_hexbytes(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
+    init_hexbytes_noT(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
     printf("%p %6s %13.8f height.%-6d %6s %s %s/vout_%d priv.(%s)\n",pod,msg,dstr(pod->satoshis),pod->height,pod->coinstr,pod->coinaddr,pod->txid,pod->vout,hexstr);
 }
 
@@ -599,7 +599,7 @@ int32_t teleport_telepod(char *mypubaddr,char *NXTaddr,char *NXTACCTSECRET,char 
     cJSON_AddItemToObject(json,"p",cJSON_CreateString(pod->script));
     if ( sharei == 0xff || sharei >= N )
         sharei = N;
-    init_hexbytes(hexstr,buffer,pod->len_plus1);
+    init_hexbytes_noT(hexstr,buffer,pod->len_plus1);
     cJSON_AddItemToObject(json,"k",cJSON_CreateString(hexstr));
     cJSON_AddItemToObject(json,"L",cJSON_CreateNumber(totalcrc));
     cJSON_AddItemToObject(json,"s",cJSON_CreateNumber(sharei));

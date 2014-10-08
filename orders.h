@@ -753,8 +753,8 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
     tx = sign_NXT_tx(utxbytes,signedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
     if ( tx != 0 )
     {
-        init_hexbytes(sighash,tx->sighash,sizeof(tx->sighash));
-        init_hexbytes(fullhash,tx->fullhash,sizeof(tx->fullhash));
+        init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
+        init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
         sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"time\":%ld}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL));
         free(tx);
         if ( 0 )

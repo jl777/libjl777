@@ -110,7 +110,7 @@ void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi)
     //struct peerinfo *pi = &pubnp->mypeerinfo;
     expand_ipbits(srvipaddr,pi->srv.ipbits);
     expand_nxt64bits(srvnxtaddr,pi->srvnxtbits);
-    init_hexbytes(pubkey,pi->srv.pubkey,sizeof(pi->srv.pubkey));
+    init_hexbytes_noT(pubkey,pi->srv.pubkey,sizeof(pi->srv.pubkey));
     _coins_jsonstr(coinsjson,pi->coins);
     sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"Numpservers\":\"%d\",\"xorsum\":\"%u\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,Numpservers,calc_xorsum(Pservers,Numpservers),pubkey,NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srv.supernet_port,coinsjson);
 }
@@ -194,7 +194,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
         }
     }
     else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
-    init_hexbytes(hexstr,peer->srv.pubkey,sizeof(peer->srv.pubkey));
+    init_hexbytes_noT(hexstr,peer->srv.pubkey,sizeof(peer->srv.pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
     {
@@ -552,8 +552,11 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
     if ( strcmp(srvNXTaddr,pubNXT) == 0 )
     {
         strcpy(verifiedNXTaddr,srvNXTaddr);
-        if ( cp != 0 )
+        if ( cp != 0 && strcmp(NXTACCTSECRET,cp->srvNXTACCTSECRET) != 0 )
+        {
+            printf("%p.(%s) <- %p.(%s)\n",NXTACCTSECRET,NXTACCTSECRET,cp->srvNXTACCTSECRET,cp->srvNXTACCTSECRET);
             strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
+        }
     }
     return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT,0));
 }
