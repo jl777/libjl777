@@ -573,7 +573,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 free_json(array);
                 stripwhite_ns(value,strlen(value));
                 printf("call havenode\n");
-                txid = send_kademlia_cmd(destbits,0,strcmp(cmd,"findnode")==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
+                txid = send_kademlia_cmd(senderbits,0,strcmp(cmd,"findnode")==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
             free(sortbuf);
