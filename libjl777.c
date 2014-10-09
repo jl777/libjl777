@@ -1100,7 +1100,7 @@ char *call_SuperNET_JSON(char *JSONstr)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( Finished_init == 0 )
         return(0);
-    //printf("got JSON.(%s)\n",JSONstr);
+    printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
@@ -1138,8 +1138,11 @@ int32_t is_BTCD_command(cJSON *json)
     if ( extract_cJSON_str(request,sizeof(request),json,"requestType") > 0 )
     {
         for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
+        {
+            printf("(%s vs %s) ",request,BTCDcmds[i]);
             if ( strcmp(request,BTCDcmds[i]) == 0 )
                 return(1);
+        }
     }
     return(0);
 }
