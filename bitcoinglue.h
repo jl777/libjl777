@@ -152,7 +152,7 @@ struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
     unsigned char sharenrs[255];
     int32_t vout,M,N;
     uint64_t amount;
-    struct telepod *pod;
+    struct telepod *pod = 0;
     M = N = 1;
     memset(sharenrs,0,sizeof(sharenrs));
     copy_cJSON(txid,cJSON_GetObjectItem(json,"txid"));
