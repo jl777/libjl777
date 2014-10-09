@@ -485,6 +485,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         printf("directsend_packet: payload too big %d\n",len);
     else if ( len > 0 )
     {
+        printf("route_packet encrypted.%d\n",encrypted);
         txid = route_packet(encrypted,&destaddr,0,outbuf,len);
         //printf("got route_packet txid.%llu\n",(long long)txid);
     }
