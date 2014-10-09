@@ -756,7 +756,7 @@ uint8_t *ciphers_codec(int32_t decrypt,char **privkeys,int32_t *cipherids,uint8_
         else
         {
             ptr = encrypt_cipher(cipher_idx,key,ks,(int32_t)ivsize,data,&len);
-            if ( 1 )
+            if ( 0 )
             {
                 int32_t tmplen = len;
                 uint8_t *tmp;
@@ -932,7 +932,7 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
             {
                 newlen = (int32_t)fsize;
                 decoded = ciphers_codec(1,privkeys,cipherids,encrypted,&newlen);
-                printf("free_cipherptrs %p %p decoded.%p\n",privkeys,cipherids,decoded);
+                //printf("free_cipherptrs %p %p decoded.%p\n",privkeys,cipherids,decoded);
                 free_cipherptrs(0,privkeys,cipherids);
                 if ( newlen != 0 )
                     *lenp = newlen;
@@ -941,7 +941,7 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
             }
         }
         fclose(fp);
-        printf("free encrypted.%p\n",encrypted);
+        //printf("free encrypted.%p\n",encrypted);
         free(encrypted);
     }
     //printf("encrypted.%p fp.%p decoded.%p\n",encrypted,fp,decoded);

@@ -288,7 +288,7 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 #define MAX_COINTXID_LEN 128
 #define MAX_COINADDR_LEN 128
 #define MAX_COIN_INPUTS 32
-#define MAX_COIN_OUTPUTS 2
+#define MAX_COIN_OUTPUTS 3
 #define MAX_PRIVKEY_SIZE 256
 
 struct rawtransaction
@@ -341,7 +341,7 @@ struct coin_info
     char pubaddr[128],NXTACCTSECRET[2048],coinpubkey[1024];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
     
-    char name[64],backupdir[512],privacyserver[32],myipaddr[64];
+    char name[64],backupdir[512],privacyserver[32],myipaddr[64],transporteraddr[128];
     char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
     uint64_t srvpubnxtbits,pubnxtbits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
     int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport;

@@ -824,7 +824,7 @@ void every_minute(int32_t counter)
     cp = get_coin_info("BTCD");
     if ( cp == 0 )
         return;
-    printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
+    //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
     refresh_buckets(cp->srvNXTACCTSECRET);
     if ( broadcast_count == 0 )
     {

@@ -1100,7 +1100,7 @@ char *call_SuperNET_JSON(char *JSONstr)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( Finished_init == 0 )
         return(0);
-    printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
+    //printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
@@ -1124,7 +1124,7 @@ char *call_SuperNET_JSON(char *JSONstr)
             }
         }
         free_json(json);
-    }
+    } else printf("couldnt parse (%s)\n",JSONstr);
     if ( retstr == 0 )
         retstr = clonestr("{\"result\":null}");
     return(retstr);
@@ -1139,7 +1139,7 @@ int32_t is_BTCD_command(cJSON *json)
     {
         for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
         {
-            printf("(%s vs %s) ",request,BTCDcmds[i]);
+            //printf("(%s vs %s) ",request,BTCDcmds[i]);
             if ( strcmp(request,BTCDcmds[i]) == 0 )
                 return(1);
         }
@@ -1164,7 +1164,7 @@ char *SuperNET_JSON(char *JSONstr)
             return(clonestr("{\"result\":\"SuperNET BTCD command queued\"}"));
         } else retstr = call_SuperNET_JSON(JSONstr);
         free_json(json);
-    }
+    } else printf("couldnt parse (%s)\n",JSONstr);
     if ( retstr == 0 )
         retstr = clonestr("{\"result\":null}");
     return(retstr);

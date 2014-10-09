@@ -272,7 +272,7 @@ int32_t process_cloneQ(void **ptrp,void *arg) // added to this queue when proces
     }
     else if ( pod->cloneblock < get_blockheight(cp) )
     {
-        pod->clone = clone_telepod(cp,pod);
+        pod->clone = clone_telepod(cp,pod,0);
         if ( pod->cloneout != TELEPOD_CONTENTS_VOUT || pod->clonetxid[0] == 0 )
         {
             printf("ERROR cloning %s telepod %.8f\n",cp->name,dstr(pod->satoshis));
