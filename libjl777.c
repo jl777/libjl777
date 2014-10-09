@@ -654,7 +654,7 @@ char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
     char coinstr[MAX_JSON_FIELD],*retstr = 0;
     value = (SATOSHIDEN * get_API_float(objs[0]));
     copy_cJSON(coinstr,objs[1]);
-    //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
+    printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
     if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = maketelepods(NXTACCTSECRET,sender,coinstr,value);
     else retstr = clonestr("{\"error\":\"invalid maketelepods_func arguments\"}");
@@ -1151,11 +1151,12 @@ char *SuperNET_JSON(char *JSONstr)
     cJSON *json;
     if ( Finished_init == 0 )
         return(0);
-    //printf("got JSON.(%s)\n",JSONstr);
+    printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         if ( is_BTCD_command(json) != 0 ) // deadlocks as the SuperNET API came from locked BTCD RPC
         {
+            printf("is_BTCD_command\n");
             queue_enqueue(&JSON_Q,clonestr(JSONstr));
             return(clonestr("{\"result\":\"SuperNET BTCD command queued\"}"));
         } else retstr = call_SuperNET_JSON(JSONstr);
