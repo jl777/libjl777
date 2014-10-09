@@ -339,6 +339,7 @@ char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_
                             {
                                 memset(inputpods,0,sizeof(*inputpods) * MAX_COIN_INPUTS);
                                 *availchangep = listunspent(inputpods,cp,1,coinaddr,-1);
+                                printf("(%s %.8f) ",coinaddr,dstr(*availchangep));
                                 if ( *availchangep > 0 )
                                 {
                                     strcpy(cp->transporteraddr,coinaddr);
@@ -360,7 +361,7 @@ char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_
                 free_json(array);
             }
             free(retstr);
-        }
+        } else printf("No unspent outputs for transporter account\n");
     }
     return(addr);
 }
