@@ -734,11 +734,17 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     N = get_API_int(objs[3],1);
     if ( N < 0 )
         N = 0;
+    else if ( N > 254 )
+        N = 254;
     if ( M >= N )
         M = N;
+    else if ( M < 1 )
+        M = 1;
     copy_cJSON(usbname,objs[4]);
     copy_cJSON(password,objs[5]);
     fp = fopen(fname,"rb");
+    if ( fp == 0 )
+        printf("cant find file (%s)\n",fname);
     if ( fp != 0 && sender[0] != 0 && valid > 0 )
         retstr = mofn_savefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbname,password,fname);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
@@ -746,6 +752,18 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         fclose(fp);
     return(retstr);
 }
+
+/*compression
+combinatorics on errors
+metadata in a file(s)
+random delays in packets
+ persistence
+ queue restore task
+teleport accounting
+ message API
+ sendfile
+ dropout of server detected -> data shuffle?
+ */
 
 char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
@@ -756,15 +774,19 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     int32_t L,M,N,i,n;
     char fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
     if ( prevaddr != 0 )
-        return(clonestr("{\"error\":\"savefile is only for local access\"}"));
+        return(clonestr("{\"error\":\"restorefile is only for local access\"}"));
     copy_cJSON(fname,objs[0]);
     L = get_API_int(objs[1],0);
     M = get_API_int(objs[2],1);
     N = get_API_int(objs[3],1);
     if ( N < 0 )
         N = 0;
+    else if ( N > 254 )
+        N = 254;
     if ( M >= N )
         M = N;
+    else if ( M < 1 )
+        M = 1;
     copy_cJSON(usbname,objs[4]);
     copy_cJSON(password,objs[5]);
     copy_cJSON(destfname,objs[6]);
@@ -781,6 +803,8 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
                 txids[i] = calc_nxt64bits(txidstr);
         }
     }
+    if ( destfname[0] == 0 )
+        strcpy(destfname,fname), strcat(destfname,".restore");
     if ( 0 )
     {
         fp = fopen(destfname,"rb");
@@ -938,31 +962,7 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-    static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "only_privacyServer", 0 };
-    static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
-    static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
-    static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "amount", "coin", 0 };
-    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "amount", "dest", "coin", "minage", "M", "N", 0 };
-    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
-    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "coin", "height", "minage", "value", "totalcrc", "telepods", "M", "N", "sharenrs", "pubaddr", 0 };
-    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "status", "coin", "totalcrc", "value", "num", "minage", "height", "crcs", "sharei", "M", "N", "sharenrs", "ind", "pubaddr", 0 };
-    static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
-    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", 0 };
-    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
-    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
-    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
-    static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", "pserver_flag", 0 };
-    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "usbdir", "password", 0 };
-    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "usbdir", "password", "destfile", "sharenrs", "txids", 0 };
-    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
-    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
-    static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
-    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
-    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "obookid", "polarity", "allfields", 0 };
-    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
-    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
-    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
-    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
+    // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
@@ -970,7 +970,43 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", 0 };
     static char *havenode[] = { (char *)havenode_func, "havenode", "V", "pubkey", "key", "name", "data", 0 };
     static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "pubkey", "key", "name", "data", 0 };
-    static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+    
+    // MofNfs
+    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "usbdir", "password", 0 };
+    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "usbdir", "password", "destfile", "sharenrs", "txids", 0 };
+    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
+    
+   // privacyNetwork and comms
+    static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "only_privacyServer", 0 };
+    static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
+    static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
+    static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
+    static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
+    static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", "pserver_flag", 0 };
+    static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
+    static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
+    static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
+
+    // Teleport
+    static char *maketelepods[] = { (char *)maketelepods_func, "maketelepods", "V", "amount", "coin", 0 };
+    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "amount", "dest", "coin", "minage", "M", "N", 0 };
+    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
+    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "coin", "height", "minage", "value", "totalcrc", "telepods", "M", "N", "sharenrs", "pubaddr", 0 };
+    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "status", "coin", "totalcrc", "value", "num", "minage", "height", "crcs", "sharei", "M", "N", "sharenrs", "ind", "pubaddr", 0 };
+    
+   // InstantDEX
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", 0 };
+    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "obookid", "polarity", "allfields", 0 };
+    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
+    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
+    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
+    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
+    
+    // Tradebot
+    static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
+
+     static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
@@ -1056,7 +1092,7 @@ void process_pNXT_typematch(struct pNXT_info *dp,struct NXT_protocol_parms *parm
     printf("got txid.(%s) type.%d subtype.%d sender.(%s) -> (%s)\n",txid,parms->type,parms->subtype,sender,receiver);
 }
 
-char *SuperNET_JSON(char *JSONstr)
+char *call_SuperNET_JSON(char *JSONstr)
 {
     cJSON *json,*array;
     int32_t valid;
@@ -1087,6 +1123,42 @@ char *SuperNET_JSON(char *JSONstr)
                 free_json(array);
             }
         }
+        free_json(json);
+    }
+    if ( retstr == 0 )
+        retstr = clonestr("{\"result\":null}");
+    return(retstr);
+}
+
+int32_t is_BTCD_command(cJSON *json)
+{
+    char *BTCDcmds[] = { "maketelepods", "teleport", "telepod", "transporter", "transporter_status" };
+    char request[MAX_JSON_FIELD];
+    long i;
+    if ( extract_cJSON_str(request,sizeof(request),json,"requestType") > 0 )
+    {
+        for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
+            if ( strcmp(request,BTCDcmds[i]) == 0 )
+                return(1);
+    }
+    return(0);
+}
+    
+char *SuperNET_JSON(char *JSONstr)
+{
+    char *retstr = 0;
+    struct coin_info *cp = get_coin_info("BTCD");
+    cJSON *json;
+    if ( Finished_init == 0 )
+        return(0);
+    //printf("got JSON.(%s)\n",JSONstr);
+    if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
+    {
+        if ( is_BTCD_command(json) != 0 ) // deadlocks as the SuperNET API came from locked BTCD RPC
+        {
+            queue_enqueue(&JSON_Q,clonestr(JSONstr));
+            return(clonestr("{\"result\":\"SuperNET BTCD command queued\"}"));
+        } else retstr = call_SuperNET_JSON(JSONstr);
         free_json(json);
     }
     if ( retstr == 0 )

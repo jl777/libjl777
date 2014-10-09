@@ -286,6 +286,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
             if ( fragments[i] != 0 )
                 free(fragments[i]);
         free(fragments);
+        free(lengths);
     }
     sprintf(retstr,"{\"result\":\"status.%d\",\"completed\":%.3f,\"filesize\":\"%ld\",\"descr\":\"mofn_restorefile M.%d of N.%d sent with Lfactor.%d usbname.(%s) usedpassword.%d reconstructed\"}",status,(double)hwmgood/(n/N),ftell(fp),M,N,L,usbdir,password[0]!=0);
     
@@ -395,7 +396,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     sprintf(retstr,"{\"result\":\"status.%d\",\"sharenrs\":\"%s\",\"txids\":%s,\"filesize\":\"%ld\",\"descr\":\"mofn_savefile M.%d of N.%d sent with Lfactor.%d usbdir.(%s) usedpassword.%d dont lose the password, sharenrs or txids!\"}",status,datastr,str,ftell(fp),M,N,L,usbdir,password[0]!=0);
     //printf("SAVE.(%s)\n",retstr);
     free(str);
-    if ( n < sizeof(txids)/sizeof(*txids) )
+    if ( 0 && n < sizeof(txids)/sizeof(*txids) )
     {
         FILE *fp = fopen("foo.txt.restore","wb");
         txids[n] = 0;
@@ -407,7 +408,6 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         system(cmdstr);
         printf("done\n\n");
     }
-
     return(retstr);
 }
 

@@ -291,10 +291,13 @@ void teleport_idler(uv_idle_t *handle)
     static double lastattempt;
     double millis;
     void *wr;
+    char *jsonstr,*retstr;
     millis = ((double)uv_hrtime() / 1000000);
     if ( (wr= queue_dequeue(&sendQ)) != 0 )
     {
+        // need to randomize
         process_sendQ_item(wr);
+        // free(wr); libuv does this
     }
     if ( millis > (lastattempt + 1000) )
     {
@@ -308,7 +311,17 @@ void teleport_idler(uv_idle_t *handle)
         process_pingpong_queue(&CloneQ,0);
         lastattempt = millis;
     }
-    usleep(100000);
+    else if ( (jsonstr= queue_dequeue(&JSON_Q)) != 0 )
+    {
+        char *call_SuperNET_JSON(char *JSONstr);
+        if ( (retstr= call_SuperNET_JSON(jsonstr)) != 0 )
+        {
+            printf("(%s) -> (%s)\n",jsonstr,retstr);
+            free(retstr);
+        }
+        free(jsonstr);
+    }
+    usleep(1000);
 }
 
 void init_Teleport()

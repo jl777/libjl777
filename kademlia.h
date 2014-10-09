@@ -23,7 +23,7 @@ struct kademlia_store
     unsigned char *data;
     uint32_t datalen,laststored,lastaccess;
 };
-struct kademlia_store K_store[1000];
+struct kademlia_store K_store[10000];
 
 struct kademlia_store *kademlia_getstored(uint64_t keyhash,int32_t storeflag)
 {

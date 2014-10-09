@@ -59,7 +59,7 @@ struct peer_queue_entry
 
 static long server_xferred;
 int Servers_started;
-queue_t P2P_Q,sendQ;
+queue_t P2P_Q,sendQ,JSON_Q;
 struct pingpong_queue PeerQ;
 struct peerinfo **Peers,**Pservers;
 int32_t Numpeers,Numpservers,Num_in_whitelist;
