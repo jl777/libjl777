@@ -162,11 +162,11 @@ struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
     vout = get_API_int(cJSON_GetObjectItem(json,"vout"),0);
     if ( txid[0] != 0 && podaddr[0] != 0 && script[0] != 0 && amount != 0 && vout >= 0 )
     {
-        sprintf(args,"\"%s\"",podaddr);
+        sprintf(args,"[\"%s\"]",podaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
-        //fprintf(stderr,"got podaddr.(%s) privkey.%p\n",podaddr,privkey);
         if ( privkey != 0 )
         {
+            fprintf(stderr,"got podaddr.(%s) privkey.(%s)\n",podaddr,privkey);
             pod = create_telepod(0,cp->name,cp->ciphersobj,cp,amount,podaddr,script,privkey,txid,vout,M,N,sharenrs,N,0);
             free(privkey);
         }

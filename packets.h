@@ -350,7 +350,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                     }
                     free_json(tmpjson);
                 }
-                if ( strcmp(checkstr,"ping") == 0 )
+                if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 )
                 {
                     char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                     tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);

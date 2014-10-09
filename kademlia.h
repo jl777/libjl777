@@ -191,20 +191,20 @@ int32_t calc_bestdist(uint64_t keyhash)
     return(bestdist);
 }
 
-uint64_t _send_kademlia_cmd(struct pserver_info *pserver,char *cmdstr,char *NXTACCTSECRET,unsigned char *data,int32_t datalen)
+uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char *cmdstr,char *NXTACCTSECRET,unsigned char *data,int32_t datalen)
 {
     int32_t len = (int32_t)strlen(cmdstr);
     char _tokbuf[4096];
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
-    txid = directsend_packet(pserver,_tokbuf,len,data,datalen);
+    txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
 }
 
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
 {
-    int32_t createdflag,len = 0;
+    int32_t encrypted,createdflag,len = 0;
     struct nodestats *stats;
     struct NXT_acct *np;
     unsigned char databuf[32768],*data = 0;
@@ -232,8 +232,10 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         printf("no point to send yourself (%s) dest.%llu pub.%llu srvpub.%llu\n",kadcmd,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
         return(0);
     }
+    encrypted = 1;
     if ( strcmp(kadcmd,"ping") == 0 )
     {
+        encrypted = 0;
         stats = get_nodestats(pserver->nxt64bits);
         if ( stats != 0 )
         {
@@ -243,7 +245,11 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr);
     }
     else
+    {
+        if ( strcmp(kadcmd,"pong") == 0 )
+            encrypted = 0;
         sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr);
+    }
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     if ( datastr != 0 && datastr[0] != 0 )
@@ -264,7 +270,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         }
     }
     strcat(cmdstr,"}");
-    return(_send_kademlia_cmd(pserver,cmdstr,NXTACCTSECRET,data,len));
+    return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
 }
 
 void kademlia_update_info(char *NXTACCTSECRET,struct peerinfo *peer,char *ipaddr,int32_t port,char *pubkeystr,uint32_t lastcontact,int32_t p2pflag)

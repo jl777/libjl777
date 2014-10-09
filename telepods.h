@@ -25,9 +25,9 @@ struct telepod *find_telepod(struct coin_info *cp,char *txid)
 void disp_telepod(char *msg,struct telepod *pod)
 {
     int32_t calc_multisig_N(struct telepod *pod);
-    char hexstr[1024];
-    init_hexbytes_noT(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
-    printf("%p %6s %13.8f height.%-6d %6s %s %s/vout_%d priv.(%s)\n",pod,msg,dstr(pod->satoshis),pod->height,pod->coinstr,pod->coinaddr,pod->txid,pod->vout,hexstr);
+    //char hexstr[1024];
+    //init_hexbytes_noT(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
+    printf("%p %6s %13.8f height.%-6d %6s %s %s/vout_%d priv.(%s)\n",pod,msg,dstr(pod->satoshis),pod->height,pod->coinstr,pod->coinaddr,pod->txid,pod->vout,_get_privkeyptr(pod,calc_multisig_N(pod)));
 }
 
 void beg_for_changepod(struct coin_info *cp)
