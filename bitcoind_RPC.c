@@ -59,7 +59,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
     cJSON *json,*result,*error;
     if ( command == 0 || rpcstr == 0 || rpcstr[0] == 0 )
         return(rpcstr);
-//fprintf(stderr,"%s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
+    //printf("%s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
     json = cJSON_Parse(rpcstr);
     if ( json == 0 )
     {
@@ -91,23 +91,6 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
 }
 #endif
 
-char *make_RPC_str(char *prefix,char *params,char *suffix)
-{
-    long len;
-    char *bracket0,*bracket1,*str;
-    len = strlen(params);
-    if ( len > 0 && params[0] == '[' && params[len-1] == ']' )
-        bracket0 = bracket1 = (char *)"";
-    else
-    {
-        bracket0 = (char *)"[";
-        bracket1 = (char *)"]";
-    }
-    str = malloc(strlen(prefix) + len + strlen(suffix) + 3);
-    sprintf(str,"%s%s%s%s%s",suffix,bracket0,params,bracket1,suffix);
-    return(str);
-}
-
 /************************************************************************
  *
  * perform the query
@@ -116,19 +99,18 @@ char *make_RPC_str(char *prefix,char *params,char *suffix)
 
 char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
-    int32_t BTCDDEV_RPC(char *cmd,char *jsonargs);
     static int numretries,count,count2;
     static double elapsedsum,elapsedsum2,laststart;
-    char tmp[512],*databuf = 0;
+    char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
     CURLcode res;
     CURL *curl_handle;
+    long len;
     double starttime;
     
     numretries=0;
     
 try_again:
-   // fprintf(stderr,"url.%s userpass.(%s) command.(%s) params.(%s)\n",url,userpass,command,params);
     starttime = milliseconds();
     
     curl_handle = curl_easy_init();
@@ -152,9 +134,7 @@ try_again:
     {
         if ( command != 0 )
         {
-            sprintf(tmp,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":",command);
-            databuf = make_RPC_str(tmp,params,"}");
-            /*len = strlen(params);
+            len = strlen(params);
             if ( len > 0 && params[0] == '[' && params[len-1] == ']' ) {
                 bracket0 = bracket1 = (char *)"";
             } else {
@@ -164,7 +144,6 @@ try_again:
             
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
-       */
         }
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
         if ( databuf != 0 )
