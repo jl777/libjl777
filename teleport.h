@@ -290,14 +290,15 @@ void teleport_idler(uv_idle_t *handle)
     static int counter;
     static double lastattempt;
     double millis;
-    void *wr,*firstwr;
+    void *wr,*firstwr = 0;
     char *jsonstr,*retstr;
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
-        firstwr = wr;
         if ( ((rand()>>8) % 100) < 50 )
         {
+            //printf("skip packet\n");
+            //firstwr = wr;
             queue_enqueue(&sendQ,wr);
             wr = queue_dequeue(&sendQ);
         }

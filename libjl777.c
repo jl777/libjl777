@@ -991,7 +991,7 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
         init_hexbytes(ret0str,ret0.bytes,sizeof(ret0));
         ret = xor_keys(seed,ret0);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
-        sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\",\"ret0\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr,ret0str);
+        sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\",\"ret0\":\"%s\"}",seedstr,ret0str,NXTaddr,otheracctstr,hexstr);
         return(clonestr(retbuf));
     }
     return(clonestr("{\"error\":\"invalid cosign_func arguments\"}"));

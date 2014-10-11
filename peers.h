@@ -563,7 +563,7 @@ char *publishaddrs(struct sockaddr *prevaddr,uint64_t coins[4],char *NXTACCTSECR
 
 char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender,int32_t firsti,int32_t hasnum,uint32_t *pservers,int32_t n,uint32_t xorsum)
 {
-    int32_t i,port,createdflag;
+    int32_t port,createdflag,i;
     char ipaddr[64],refipaddr[64];
     struct NXT_acct *np;
     struct pserver_info *pserver = 0;
