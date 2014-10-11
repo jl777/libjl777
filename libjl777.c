@@ -960,9 +960,80 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
     return(retstr);
 }
 
+char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static unsigned char zerokey[32];
+    char retbuf[MAX_JSON_FIELD],plaintext[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],otheracctstr[MAX_JSON_FIELD],hexstr[65];
+    bits256 ret,seed,priv,pub,sha;
+    struct nodestats *stats;
+    // 0 ABc curve25519(A,sha256_key(xor_keys(seed,curve25519(B,c))))
+    // 2 AbC curve25519(A,sha256_key(xor_keys(seed,curve25519(C,b))))
+    // 4 ABc curve25519(B,sha256_key(xor_keys(seed,curve25519(A,c))))
+    // 6 aBC curve25519(B,sha256_key(xor_keys(seed,curve25519(C,a))))
+    // 8 AbC curve25519(C,sha256_key(xor_keys(seed,curve25519(A,b))))
+    // 10 aBC curve25519(C,sha256_key(xor_keys(seed,curve25519(B,a))))
+    copy_cJSON(otheracctstr,objs[0]);
+    copy_cJSON(seedstr,objs[1]);
+    copy_cJSON(plaintext,objs[2]);
+    if ( seedstr[0] != 0 )
+        decode_hex(seed.bytes,sizeof(seed),seedstr);
+    if ( plaintext[0] != 0 )
+    {
+        calc_sha256(0,sha.bytes,(unsigned char *)plaintext,(int32_t)strlen(plaintext));
+        if ( seedstr[0] != 0 && memcmp(seed.bytes,sha.bytes,sizeof(seed)) != 0 )
+            printf("cosign_func: error comparing seed %llx with sha256 %llx?n",(long long)seed.ulongs[0],(long long)sha.ulongs[0]);
+        seed = sha;
+    }
+    if ( seedstr[0] == 0 )
+        init_hexbytes(seedstr,seed.bytes,sizeof(seed));
+    stats = get_nodestats(calc_nxt64bits(otheracctstr));
+    if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 && stats != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+    {
+        memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
+        memcpy(pub.bytes,stats->pubkey,sizeof(pub));
+        ret = sha256_key(xor_keys(seed,curve25519(priv,pub)));
+        init_hexbytes(hexstr,ret.bytes,sizeof(ret));
+        sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr);
+        return(clonestr(retbuf));
+    }
+    return(clonestr("{\"error\":\"invalid cosign_func arguments\"}"));
+}
+
+char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char retbuf[MAX_JSON_FIELD],resultstr[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],hexstr[65];
+    bits256 ret,seed,priv,val;
+    struct nodestats *stats;
+    uint64_t privacct,pubacct;
+    // 0 ABc curve25519(A,sha256_key(xor_keys(seed,curve25519(B,c))))
+    // 2 AbC curve25519(A,sha256_key(xor_keys(seed,curve25519(C,b))))
+    // 4 ABc curve25519(B,sha256_key(xor_keys(seed,curve25519(A,c))))
+    // 6 aBC curve25519(B,sha256_key(xor_keys(seed,curve25519(C,a))))
+    // 8 AbC curve25519(C,sha256_key(xor_keys(seed,curve25519(A,b))))
+    // 10 aBC curve25519(C,sha256_key(xor_keys(seed,curve25519(B,a))))
+    copy_cJSON(seedstr,objs[0]);
+    copy_cJSON(resultstr,objs[1]);
+    privacct = get_API_nxt64bits(objs[2]);
+    pubacct = get_API_nxt64bits(objs[3]);
+    if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 && stats != 0 )
+    {
+        decode_hex(seed.bytes,sizeof(seed),seedstr);
+        decode_hex(val.bytes,sizeof(val),resultstr);
+        memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
+        ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
+        init_hexbytes(hexstr,ret.bytes,sizeof(ret));
+        sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\",\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct);
+        return(clonestr(retbuf));
+    }
+    return(clonestr("{\"error\":\"invalid cosigned_func arguments\"}"));
+}
+
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-    // Kademlia DHT
+    static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
+    static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
+    
+   // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
@@ -1006,7 +1077,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { cosign, cosigned, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, publishPservers, sendpeerinfo, getPservers, getpubkey, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

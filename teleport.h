@@ -290,13 +290,19 @@ void teleport_idler(uv_idle_t *handle)
     static int counter;
     static double lastattempt;
     double millis;
-    void *wr;
+    void *wr,*firstwr;
     char *jsonstr,*retstr;
     millis = ((double)uv_hrtime() / 1000000);
-    if ( (wr= queue_dequeue(&sendQ)) != 0 )
+    if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
-        // need to randomize
-        process_sendQ_item(wr);
+        firstwr = wr;
+        if ( ((rand()>>8) % 100) < 50 )
+        {
+            queue_enqueue(&sendQ,wr);
+            wr = queue_dequeue(&sendQ);
+        }
+        if ( wr != 0 && wr != firstwr )
+            process_sendQ_item(wr);
         // free(wr); libuv does this
     }
     if ( millis > (lastattempt + 1000) )
