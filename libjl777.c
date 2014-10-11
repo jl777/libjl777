@@ -1003,7 +1003,6 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 {
     char retbuf[MAX_JSON_FIELD],resultstr[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],hexstr[65];
     bits256 ret,seed,priv,val;
-    struct nodestats *stats;
     uint64_t privacct,pubacct;
     // 0 ABc curve25519(A,sha256_key(xor_keys(seed,curve25519(B,c))))
     // 2 AbC curve25519(A,sha256_key(xor_keys(seed,curve25519(C,b))))
@@ -1015,7 +1014,7 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     copy_cJSON(resultstr,objs[1]);
     privacct = get_API_nxt64bits(objs[2]);
     pubacct = get_API_nxt64bits(objs[3]);
-    if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 && stats != 0 )
+    if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 )
     {
         decode_hex(seed.bytes,sizeof(seed),seedstr);
         decode_hex(val.bytes,sizeof(val),resultstr);

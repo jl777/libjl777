@@ -2,7 +2,9 @@
 #define FOR(i,n) for (i = 0;i < n;++i)
 #define sv static void
 
-typedef unsigned char u8;
+//typedef unsigned char u8;
+#define u8 unsigned char
+
 typedef unsigned long u32;
 typedef unsigned long long u64;
 typedef long long i64;
@@ -807,3 +809,5 @@ int crypto_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
     *mlen = n;
     return 0;
 }
+#undef u8
+
