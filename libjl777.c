@@ -991,7 +991,8 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         memcpy(pub.bytes,stats->pubkey,sizeof(pub));
-        ret = sha256_key(xor_keys(seed,curve25519(priv,pub)));
+        //ret = sha256_key(xor_keys(seed,curve25519(priv,pub)));
+        ret = curve25519(priv,pub);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr);
         return(clonestr(retbuf));
@@ -1019,7 +1020,7 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         decode_hex(seed.bytes,sizeof(seed),seedstr);
         decode_hex(val.bytes,sizeof(val),resultstr);
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
-        ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
+        //ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
         ret = curve25519(priv,val);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\",\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\",\"input\":\"%s\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct,resultstr);
