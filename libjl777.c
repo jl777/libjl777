@@ -966,12 +966,8 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     char retbuf[MAX_JSON_FIELD],plaintext[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],otheracctstr[MAX_JSON_FIELD],hexstr[65];
     bits256 ret,seed,priv,pub,sha;
     struct nodestats *stats;
-    // 0 ABc curve25519(A,sha256_key(xor_keys(seed,curve25519(B,c))))
-    // 2 AbC curve25519(A,sha256_key(xor_keys(seed,curve25519(C,b))))
-    // 4 ABc curve25519(B,sha256_key(xor_keys(seed,curve25519(A,c))))
-    // 6 aBC curve25519(B,sha256_key(xor_keys(seed,curve25519(C,a))))
-    // 8 AbC curve25519(C,sha256_key(xor_keys(seed,curve25519(A,b))))
-    // 10 aBC curve25519(C,sha256_key(xor_keys(seed,curve25519(B,a))))
+    // WARNING: if this is being remotely invoked, make sure you trust the requestor as the rawkey is being sent
+    
     copy_cJSON(otheracctstr,objs[0]);
     copy_cJSON(seedstr,objs[1]);
     copy_cJSON(plaintext,objs[2]);
@@ -991,7 +987,6 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         memcpy(pub.bytes,stats->pubkey,sizeof(pub));
-        //ret = sha256_key(xor_keys(seed,curve25519(priv,pub)));
         ret = curve25519(priv,pub);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr);
@@ -1005,12 +1000,12 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     char retbuf[MAX_JSON_FIELD],resultstr[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],hexstr[65];
     bits256 ret,seed,priv,val;
     uint64_t privacct,pubacct;
-    // 0 ABc curve25519(A,sha256_key(xor_keys(seed,curve25519(B,c))))
-    // 2 AbC curve25519(A,sha256_key(xor_keys(seed,curve25519(C,b))))
-    // 4 ABc curve25519(B,sha256_key(xor_keys(seed,curve25519(A,c))))
-    // 6 aBC curve25519(B,sha256_key(xor_keys(seed,curve25519(C,a))))
-    // 8 AbC curve25519(C,sha256_key(xor_keys(seed,curve25519(A,b))))
-    // 10 aBC curve25519(C,sha256_key(xor_keys(seed,curve25519(B,a))))
+    // 0 ABc sha256_key(xor_keys(seed,curve25519(A,curve25519(B,c))))
+    // 2 AbC sha256_key(xor_keys(seed,curve25519(A,curve25519(C,b))))
+    // 4 ABc sha256_key(xor_keys(seed,curve25519(B,curve25519(A,c))))
+    // 6 aBC sha256_key(xor_keys(seed,curve25519(B,curve25519(C,a))))
+    // 8 AbC sha256_key(xor_keys(seed,curve25519(C,curve25519(A,b))))
+    // 10 aBC sha256_key(xor_keys(seed,curve25519(C,curve25519(B,a))))
     copy_cJSON(seedstr,objs[0]);
     copy_cJSON(resultstr,objs[1]);
     privacct = get_API_nxt64bits(objs[2]);
@@ -1020,8 +1015,7 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         decode_hex(seed.bytes,sizeof(seed),seedstr);
         decode_hex(val.bytes,sizeof(val),resultstr);
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
-        //ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
-        ret = curve25519(priv,val);
+        ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\",\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\",\"input\":\"%s\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct,resultstr);
         return(clonestr(retbuf));
