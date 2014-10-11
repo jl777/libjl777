@@ -442,8 +442,13 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
             return(0);
         M = log->M;
         N = log->N;
-    } else M = N = 1;
-    fee = calc_transporter_fee(cp,refsatoshis);
+        fee = calc_transporter_fee(cp,refsatoshis);
+    }
+    else
+    {
+        fee = cp->txfee;
+        M = N = 1;
+    }
     if ( changepod != 0 )
     {
         availchange = changepod->satoshis;
@@ -457,9 +462,10 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
             printf("clone_telepod: cant get transporter addr || avail %.8f < %.8f + %.8f\n",dstr(availchange),dstr(refsatoshis),dstr(fee));
             return(0);
         }
-        printf("changeaddr.(%s) availchange %.8f, refsatoshis %.8f\n",change_podaddr,dstr(availchange),dstr(refsatoshis));
+        printf("fee (%.8f) changeaddr.(%s) availchange %.8f, refsatoshis %.8f\n",dstr(fee),change_podaddr,dstr(availchange),dstr(refsatoshis));
         availchange -= refsatoshis;
         printf("availchange %.8f refsatoshis %.8f\n",dstr(availchange),dstr(refsatoshis));
+        //getchar();
     }
     if ( (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
     {

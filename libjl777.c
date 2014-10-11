@@ -1369,3 +1369,11 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     }
     return(0);
 }
+
+void get_accountid(char *buf)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+        strcpy(buf,cp->srvNXTADDR);
+    else strcpy(buf,"nobtcdsrvNXTADDR");
+}

@@ -228,7 +228,7 @@ uint64_t calc_telepod_inputs(char **privkeys,struct coin_info *cp,struct rawtran
         privkeys[rp->numinputs] = (char *)&changepod->privkey_shares[changepod->len_plus1 * calc_multisig_N(changepod)];
         rp->inputs[rp->numinputs++] = conv_telepod(changepod);
     }
-    rp->amount = rp->inputsum - rp->change;
+    rp->amount = rp->inputsum - rp->change - fee;
     printf("numinputs %d sum %.8f vs amount %.8f change %.8f -> miners %.8f\n",rp->numinputs,dstr(rp->inputsum),dstr(rp->amount),dstr(rp->change),dstr(rp->inputsum - rp->change - rp->amount));
     if ( rp->inputsum != (rp->amount + fee + rp->change) )
     {
@@ -238,11 +238,9 @@ uint64_t calc_telepod_inputs(char **privkeys,struct coin_info *cp,struct rawtran
     return(rp->inputsum);
 }
 
-int64_t calc_telepod_outputs(struct coin_info *cp,struct rawtransaction *rp,char *cloneaddr,uint64_t amount,uint64_t change,char *changeaddr)
+int64_t calc_telepod_outputs(struct coin_info *cp,struct rawtransaction *rp,char *cloneaddr,uint64_t amount,uint64_t change,char *changeaddr,uint64_t fee)
 {
     int32_t n = 0;
-    int64_t fee;
-    fee = calc_transporter_fee(cp,amount);
     if ( rp->inputsum == (amount + change + fee) && amount <= rp->inputsum )
     {
         rp->destaddrs[TELEPOD_CONTENTS_VOUT] = cloneaddr;
@@ -370,13 +368,13 @@ char *calc_telepod_transaction(struct coin_info *cp,struct rawtransaction *rp,st
 {
     long len;
     int64_t retA=0,retB=0;
-    uint64_t amount = (srcsatoshis + change);
+    uint64_t amount = (srcsatoshis + change + fee);
     char *rawparams,*privkeys[MAX_COIN_INPUTS],*retstr = 0;
     memset(privkeys,0,sizeof(privkeys));
-    printf("calc_telepod_transaction amount %.8f = (%.8f + %.8f)\n",dstr(amount),dstr(srcsatoshis),dstr(change));
+    printf("calc_telepod_transaction amount %.8f = (%.8f + %.8f + %.8f)\n",dstr(amount),dstr(srcsatoshis),dstr(change),dstr(fee));
     if ( (retA= calc_telepod_inputs(privkeys,cp,rp,srcpods,changepod,amount,fee,change)) == (srcsatoshis + change + fee) )
     {
-        if ( (retB= calc_telepod_outputs(cp,rp,destaddr,srcsatoshis,change,changeaddr)) == srcsatoshis )
+        if ( (retB= calc_telepod_outputs(cp,rp,destaddr,srcsatoshis,change,changeaddr,fee)) == srcsatoshis )
         {
             rawparams = createrawtxid_json_params(cp,rp);
             if ( rawparams != 0 )

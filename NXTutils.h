@@ -275,6 +275,8 @@ uint64_t issue_getAccountId(CURL *curl_handle,char *password)
 {
     char cmd[4096];
     union NXTtype ret;
+    bits256 mysecret,mypublic;
+    return(conv_NXTpassword(mysecret.bytes,mypublic.bytes,password));
     sprintf(cmd,"%s=getAccountId&secretPhrase=%s",_NXTSERVER,password);
     ret = extract_NXTfield(curl_handle,0,cmd,"accountId",64);
     if ( ret.nxt64bits == 0 )

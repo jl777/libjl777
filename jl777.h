@@ -90,6 +90,7 @@ void usleep(int32_t);
 // includes that include actual code
 //#include "includes/crypto_box.h"
 #include "tweetnacl.c"
+#include "curve25519-donna-c64.c"
 //#include "includes/randombytes.h"
 
 //#include "utils/smoothers.h"
@@ -386,6 +387,68 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
 struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *addr,char *sender,uint16_t port);
 char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
 void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi);
+
+union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; };
+typedef union _bits256 bits256;
+
+bits256 curve25519(bits256 mysecret,bits256 theirpublic)
+{
+    bits256 rawkey;
+    curve25519_donna(&rawkey.bytes[0],&mysecret.bytes[0],&theirpublic.bytes[0]);
+    return(rawkey);
+}
+
+bits256 sha256_key(bits256 a)
+{
+    bits256 hash;
+    calc_sha256(0,hash.bytes,a.bytes,256>>3);
+    return(hash);
+}
+
+bits256 gen_sharedkey(bits256 mysecret,bits256 theirpublic)
+{
+    return(sha256_key(curve25519(mysecret,theirpublic)));
+}
+
+bits256 xor_keys(bits256 a,bits256 b)
+{
+    bits256 xor;
+    xor.ulongs[0] = a.ulongs[0] ^ b.ulongs[0];
+    xor.ulongs[1] = a.ulongs[1] ^ b.ulongs[1];
+    xor.ulongs[2] = a.ulongs[2] ^ b.ulongs[2];
+    xor.ulongs[3] = a.ulongs[3] ^ b.ulongs[3];
+    return(xor);
+}
+
+bits256 gen_password()
+{
+    bits256 pass;
+    int32_t i;
+    memset(&pass,0,sizeof(pass));
+    randombytes(pass.bytes,sizeof(pass));
+    for (i=0; i<sizeof(pass)-1; i++)
+    {
+        if ( pass.bytes[i] == 0 )
+            pass.bytes[i] = ((rand() >> 8) % 254) + 1;
+    }
+    pass.bytes[i] = 0;
+    return(pass);
+}
+
+uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *pass)
+{
+    static uint8_t basepoint[32] = {9};
+    uint64_t addr;
+    uint8_t hash[32];
+    calc_sha256(0,mysecret,(unsigned char *)pass,(int32_t)strlen(pass));
+    mysecret[0] &= 248;
+    mysecret[31] &= 127;
+    mysecret[31] |= 64;
+    curve25519_donna(mypublic,mysecret,basepoint);
+    calc_sha256(0,hash,mypublic,32);
+    memcpy(&addr,hash,sizeof(addr));
+    return(addr);
+}
 
 #include "NXTservices.h"
 #include "jl777hash.h"
