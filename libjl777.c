@@ -963,8 +963,8 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
 char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static unsigned char zerokey[32];
-    char retbuf[MAX_JSON_FIELD],plaintext[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],otheracctstr[MAX_JSON_FIELD],hexstr[65];
-    bits256 ret,seed,priv,pub,sha;
+    char retbuf[MAX_JSON_FIELD],plaintext[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],otheracctstr[MAX_JSON_FIELD],hexstr[65],ret0str[65];
+    bits256 ret,ret0,seed,priv,pub,sha;
     struct nodestats *stats;
     // WARNING: if this is being remotely invoked, make sure you trust the requestor as the rawkey is being sent
     
@@ -987,10 +987,11 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         memcpy(pub.bytes,stats->pubkey,sizeof(pub));
-        ret = xor_keys(seed,curve25519(priv,pub));
-        //ret = curve25519(priv,pub);
+        ret0 = curve25519(priv,pub);
+        init_hexbytes(ret0str,ret0.bytes,sizeof(ret0));
+        ret = xor_keys(seed,ret0);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
-        sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr);
+        sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\",\"ret0\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr,ret0str);
         return(clonestr(retbuf));
     }
     return(clonestr("{\"error\":\"invalid cosign_func arguments\"}"));
