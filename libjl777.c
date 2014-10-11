@@ -987,7 +987,8 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         memcpy(pub.bytes,stats->pubkey,sizeof(pub));
-        ret = curve25519(priv,pub);
+        ret = sha256_key(xor_keys(seed,curve25519(priv,pub)));
+        //ret = curve25519(priv,pub);
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\"}",seedstr,hexstr,NXTaddr,otheracctstr);
         return(clonestr(retbuf));
