@@ -447,7 +447,7 @@ void *findaddress_loop(void *ptr)
 {
     struct loopargs *args = ptr;
     uint64_t addr,calcaddr;
-    int32_t i,dist,n=0;
+    int32_t i,n=0;
     double startmilli,metric;
     unsigned char hash[256 >> 3],mypublic[256>>3],pass[49];
     addr = calc_nxt64bits(args->refacct);
@@ -466,9 +466,9 @@ void *findaddress_loop(void *ptr)
         memset(mypublic,0,sizeof(mypublic));
         calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
         metric = calc_address_metric(addr,args->list,args->numinlist,calcaddr,args->targetdist);
-        if ( dist < args->best )
+        if ( metric < args->best )
         {
-            args->best = dist;
+            args->best = metric;
             args->bestaddr = calcaddr;
             strcpy(args->bestpassword,(char *)pass);
             printf("thread.%d n.%d: best.%.4f -> %llu | %llu calcaddr | ave micros %.3f\n",args->threadid,n,args->best,(long long)args->bestaddr,(long long)calcaddr,1000*(milliseconds()-startmilli)/n);
