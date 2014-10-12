@@ -503,8 +503,6 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
     static struct loopargs **args;
     bits256 secret,pubkey;
     int32_t i;
-    if ( numthreads <= 0 )
-        return(0);
     if ( endmilli == 0. )
     {
         expand_nxt64bits(refNXTaddr,addr);
