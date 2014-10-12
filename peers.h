@@ -334,6 +334,8 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
     struct NXT_acct *np = 0;
     struct peerinfo *peer = 0;
     struct pserver_info *pserver;
+    if ( refpeer == 0 )
+        return(0);
     if ( (peer= find_peerinfo(refpeer->pubnxtbits,refpeer->pubBTCD,refpeer->pubBTC)) != 0 )
         return(peer);
     if ( refpeer->pubnxtbits != 0 )
