@@ -353,10 +353,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
         }
         if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
             stats->lastcontact = lastcontact;
-        fprintf(stderr,"call add_peerinfo\n");
-        
         add_peerinfo(peer);
-        fprintf(stderr,"done add_peerinfo\n");
         /*expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
         if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
             init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));

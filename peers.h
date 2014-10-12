@@ -365,8 +365,8 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
             pserver = get_pserver(0,ipaddr,0,0);
             pserver->nxt64bits = peer->srvnxtbits;
             printf("ADDED privacyServer.%d: %s\n",Numpservers,ipaddr);
-            if ( cp != 0 && cp->myipaddr[0] != 0 )
-                addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srv.ipbits);
+            //if ( cp != 0 && cp->myipaddr[0] != 0 )
+            //    addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srv.ipbits);
         }
     }
     portable_mutex_unlock(&mutex);
