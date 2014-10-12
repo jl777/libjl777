@@ -467,13 +467,16 @@ void *findaddress_loop(void *ptr)
         memset(hash,0,sizeof(hash));
         memset(mypublic,0,sizeof(mypublic));
         calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
-        metric = calc_address_metric(addr,args->list,args->numinlist,calcaddr,args->targetdist);
-        if ( metric < args->best )
+        if ( bitweight(addr ^ calcaddr) <= args->targetdist )
         {
-            args->best = metric;
-            args->bestaddr = calcaddr;
-            strcpy(args->bestpassword,(char *)pass);
-            printf("thread.%d n.%d: best.%.4f -> %llu | %llu calcaddr | ave micros %.3f\n",args->threadid,n,args->best,(long long)args->bestaddr,(long long)calcaddr,1000*(milliseconds()-startmilli)/n);
+            metric = calc_address_metric(addr,args->list,args->numinlist,calcaddr,args->targetdist);
+            if ( metric < args->best )
+            {
+                args->best = metric;
+                args->bestaddr = calcaddr;
+                strcpy(args->bestpassword,(char *)pass);
+                printf("thread.%d n.%d: best.%.4f -> %llu | %llu calcaddr | ave micros %.3f\n",args->threadid,n,args->best,(long long)args->bestaddr,(long long)calcaddr,1000*(milliseconds()-startmilli)/n);
+            }
         }
         n++;
     }
@@ -520,7 +523,6 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         {
             if ( args[i]->best < best )
             {
-                best = args[i]->best;
                 calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
                 metric = calc_address_metric(addr,list,n,calcaddr,targetdist);
                 if ( metric < best )
