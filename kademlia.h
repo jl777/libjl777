@@ -757,7 +757,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
     if ( cp != 0 )
     {
         pserver = get_pserver(0,cp->myipaddr,0,0);
-        fprintf(stderr,"call addto_hasips\n");
+        //fprintf(stderr,"call addto_hasips\n");
         addto_hasips(1,pserver,stats->ipbits);
         xorbits = (cp->srvpubnxtbits != 0) ? cp->srvpubnxtbits : cp->pubnxtbits;
         if ( stats->nxt64bits != 0 )
@@ -765,7 +765,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
             xorbits ^= stats->nxt64bits;
             bucketid = bitweight(xorbits);
             Kbucket_updated[bucketid] = time(NULL);
-            fprintf(stderr,"call update_Kbucket\n");
+            //fprintf(stderr,"call update_Kbucket\n");
             update_Kbucket(bucketid,K_buckets[bucketid],KADEMLIA_NUMK,stats);
         }
     }

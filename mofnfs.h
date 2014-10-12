@@ -413,7 +413,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 
 double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,int32_t targetdist)
 {
-    int32_t i;
+    int32_t i,flag = 0;
     double metric,dist,diff,sum;
     metric = bitweight(refaddr ^ calcaddr);
     if ( metric > targetdist )
@@ -423,17 +423,22 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
     {
         for (i=0; i<n; i++)
         {
-            dist = bitweight(list[i] ^ calcaddr);
-            if ( dispflag != 0 )
-                printf("%.0f ",dist);
-            sum += (dist * dist);
-            dist -= metric;
-            diff += (dist * dist);
+            if ( list[i] != refaddr )
+            {
+                dist = bitweight(list[i] ^ calcaddr);
+                if ( dispflag != 0 )
+                    printf("%.0f ",dist);
+                sum += (dist * dist);
+                dist -= metric;
+                diff += (dist * dist);
+            } else flag = 1;
         }
-        sum = sqrt(sum / n);
-        diff = sqrt(diff / n);
+        if ( n == 1 )
+            flag = 0;
+        sum = sqrt(sum / (n - flag));
+        diff = sqrt(diff / (n - flag));
         if ( dispflag != 0 )
-            printf("n.%d sum %.3f | diff %.3f | ",n,sum,diff);
+            printf("n.%d flag.%d sum %.3f | diff %.3f | ",n,flag,sum,diff);
     }
     dist = fabs(metric - sum);
     if ( dispflag != 0 )
@@ -558,6 +563,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             printf(">>>>>>>>>>>>>>> new best %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
             lastbest = best;
         }
+        printf("milli %f vs endmilli %f\n",milliseconds(),endmilli);
     }
     else
     {
@@ -575,6 +581,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         free(list);
         endmilli = 0;
         sprintf(retbuf,"{\"result\":\"metric %.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
+        printf("FINDADDRESS.(%s)\n",retbuf);
         return(clonestr(retbuf));
     }
     return(0);
