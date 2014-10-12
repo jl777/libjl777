@@ -129,13 +129,20 @@ uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t 
     if ( pserver->hasips != 0 && pserver->numips > 0 )
     {
         for (i=0; i<pserver->numips; i++)
+        {
+            fprintf(stderr,"%x ",ipbits);
             if ( pserver->hasips[i] == ipbits )
             {
                 portable_mutex_unlock(&mutex);
                 return(0);
             }
+        }
     }
-    printf("addto_hasips %p num.%d\n",pserver->hasips,pserver->numips);
+    {
+        char ipstr[64];
+        expand_ipbits(ipstr,ipbits);
+        printf("addto_hasips %p num.%d <- %x %s\n",pserver->hasips,pserver->numips,ipbits,ipstr);
+    }
     pserver->hasips = realloc(pserver->hasips,sizeof(*pserver->hasips) + (pserver->numips + 1));
     pserver->hasips[pserver->numips] = ipbits;
     pserver->numips++;
@@ -756,7 +763,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
             xorbits ^= stats->nxt64bits;
             bucketid = bitweight(xorbits);
             Kbucket_updated[bucketid] = time(NULL);
-            fprintf(stderr,"call update_Kbucket\n");
+            //fprintf(stderr,"call update_Kbucket\n");
             update_Kbucket(bucketid,K_buckets[bucketid],KADEMLIA_NUMK,stats);
         }
     }
