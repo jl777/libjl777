@@ -859,8 +859,8 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     if ( txids != 0 && sender[0] != 0 && valid > 0 )
         retstr = findaddress(prevaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
     else retstr = clonestr("{\"error\":\"invalid findaddress_func arguments\"}");
-    if ( txids != 0 )
-        free(txids);
+    //if ( txids != 0 ) freed on completion
+    //    free(txids);
     return(retstr);
 }
 

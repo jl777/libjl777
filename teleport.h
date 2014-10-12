@@ -310,7 +310,15 @@ void teleport_idler(uv_idle_t *handle)
     {
         every_second(counter);
         if ( (counter % 60) == 17 )
+        {
             every_minute(counter/60);
+            retstr = findaddress(0,0,0,0,0,0,0,0,0,0);
+            if ( retstr != 0 )
+            {
+                printf("findaddress completed (%s)\n",retstr);
+                free(retstr);
+            }
+        }
         counter++;
         process_pingpong_queue(&PeerQ,0);
         process_pingpong_queue(&Transporter_sendQ,0);

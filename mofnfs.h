@@ -446,7 +446,7 @@ struct loopargs
     char refacct[256],bestpassword[4096];
     double best;
     uint64_t bestaddr,*list;
-    int32_t abortflag,threadid,numinlist,targetdist;
+    int32_t abortflag,threadid,numinlist,targetdist,numthreads,duration;
 };
 
 void *findaddress_loop(void *ptr)
@@ -492,37 +492,48 @@ void *findaddress_loop(void *ptr)
 
 char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,uint64_t addr,uint64_t *list,int32_t n,int32_t targetdist,int32_t duration,int32_t numthreads)
 {
-    static double lastbest = 100000;
-    double best,metric,endmilli;
-    uint64_t calcaddr,bestaddr = 0;
+    static double lastbest,endmilli,best,metric;
+    static uint64_t calcaddr,bestaddr = 0;
+    static char refNXTaddr[64],retbuf[2048],bestpassword[512],bestNXTaddr[64];
+    static struct loopargs **args;
     bits256 secret,pubkey;
-    char refNXTaddr[64],retbuf[2048],bestpassword[512],bestNXTaddr[64];
-    struct loopargs **args;
     int32_t i;
     if ( numthreads <= 0 )
         return(0);
-    expand_nxt64bits(refNXTaddr,addr);
-    if ( numthreads > 28 )
-        numthreads = 28;
-    best = lastbest;
-    bestpassword[0] = bestNXTaddr[0] = 0;
-    args = calloc(numthreads,sizeof(*args));
-    for (i=0; i<numthreads; i++)
+    if ( endmilli == 0. )
     {
-        args[i] = calloc(1,sizeof(*args[i]));
-        strcpy(args[i]->refacct,refNXTaddr);
-        args[i]->threadid = i;
-        args[i]->targetdist = targetdist;
-        args[i]->best = lastbest;
-        args[i]->list = list;
-        args[i]->numinlist = n;
-        if ( portable_thread_create((void *)findaddress_loop,args[i]) == 0 )
-            printf("ERROR hist findaddress_loop\n");
+        expand_nxt64bits(refNXTaddr,addr);
+        if ( numthreads > 28 )
+            numthreads = 28;
+        best = lastbest = 1000000.;
+        bestpassword[0] = bestNXTaddr[0] = 0;
+        args = calloc(numthreads,sizeof(*args));
+        for (i=0; i<numthreads; i++)
+        {
+            args[i] = calloc(1,sizeof(*args[i]));
+            strcpy(args[i]->refacct,refNXTaddr);
+            args[i]->threadid = i;
+            args[i]->numthreads = numthreads;
+            args[i]->targetdist = targetdist;
+            args[i]->best = lastbest;
+            args[i]->list = list;
+            args[i]->numinlist = n;
+            if ( portable_thread_create((void *)findaddress_loop,args[i]) == 0 )
+                printf("ERROR hist findaddress_loop\n");
+        }
+        endmilli = milliseconds() + (duration * 1000.);
     }
-    endmilli = milliseconds() + (duration * 1000.);
-    while ( milliseconds() < endmilli )
+    else
     {
-        sleep(3);
+        addr = calc_nxt64bits(args[0]->refacct);
+        list = args[0]->list;
+        n = args[0]->numinlist;
+        targetdist = args[0]->targetdist;
+        numthreads = args[0]->numthreads;
+        duration = args[0]->duration;
+    }
+    if ( milliseconds() < endmilli )
+    {
         best = lastbest;
         calcaddr = 0;
         for (i=0; i<numthreads; i++)
@@ -548,16 +559,24 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             lastbest = best;
         }
     }
-    for (i=0; i<numthreads; i++)
-        args[i]->abortflag = 1;
-    for (i=0; i<numthreads; i++)
+    else
     {
-        while ( args[i]->abortflag != -1 )
-            sleep(1);
-        free(args[i]);
+        for (i=0; i<numthreads; i++)
+            args[i]->abortflag = 1;
+        for (i=0; i<numthreads; i++)
+        {
+            while ( args[i]->abortflag != -1 )
+                sleep(1);
+            free(args[i]);
+        }
+        free(args);
+        args = 0;
+        metric = calc_address_metric(1,addr,list,n,bestaddr,targetdist);
+        free(list);
+        endmilli = 0;
+        sprintf(retbuf,"{\"result\":\"metric %.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
+        return(clonestr(retbuf));
     }
-    free(args);
-    sprintf(retbuf,"{\"result\":\"metric %.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
-    return(clonestr(retbuf));
+    return(0);
 }
 #endif
