@@ -414,11 +414,11 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,int32_t targetdist)
 {
     int32_t i,numabove,numbelow,flag = 0;
-    double metric,dist,diff,sum;
+    double metric,dist,diff,sum,balance;
     metric = bitweight(refaddr ^ calcaddr);
     if ( metric > targetdist )
-        return(100.);
-    diff = sum = 0.;
+        return(10000000.);
+    diff = sum = balance = 0.;
     if ( list != 0 && n != 0 )
     {
         numabove = numbelow = 0;
@@ -440,17 +440,17 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
         }
         if ( n == 1 )
             flag = 0;
-        sum = fabs(numabove - numbelow);
-        sum *= diff;
-        sum += sqrt(sum / (n - flag));
+        balance = fabs(numabove - numbelow);
+        balance *= balance;
+        sum = sqrt(sum / (n - flag));
         diff += sqrt(diff / (n - flag));
         if ( dispflag != 0 )
-            printf("n.%d flag.%d sum %.3f | diff %.3f | above.%d below.%d ",n,flag,sum,diff,numabove,numbelow);
+            printf("n.%d flag.%d sum %.3f | diff %.3f | above.%d below.%d balance %.0f ",n,flag,sum,diff,numabove,numbelow,balance);
     }
     dist = fabs(metric - sum);
     if ( dispflag != 0 )
-        printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,metric + dist + diff);
-    return(metric + dist + diff);
+        printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,metric + dist + diff + balance);
+    return(metric + dist + diff + balance);
 }
 
 struct loopargs
