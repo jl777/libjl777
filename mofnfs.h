@@ -443,7 +443,7 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
         balance = fabs(numabove - numbelow);
         balance *= balance;
         sum = sqrt(sum / (n - flag));
-        diff += sqrt(diff / (n - flag));
+        diff = sqrt(diff / (n - flag));
         if ( dispflag != 0 )
             printf("n.%d flag.%d sum %.3f | diff %.3f | above.%d below.%d balance %.0f ",n,flag,sum,diff,numabove,numbelow,balance);
     }
