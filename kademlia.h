@@ -297,7 +297,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
 {
     struct peerinfo *add_peerinfo(struct peerinfo *);
     uint64_t nxt64bits;
-    uint32_t ipbits;
+    uint32_t ipbits = 0;
     struct peerinfo *peer = 0;
     struct pserver_info *pserver;
     struct nodestats *stats = 0;
@@ -318,7 +318,16 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
             printf("kademlia_update_info: pserver nxt64bits %llu -> %llu\n",(long long)pserver->nxt64bits,(long long)nxt64bits);
             pserver->nxt64bits = nxt64bits;
         }
-        if ( stats->ipbits == 0 || stats->ipbits != ipbits )
+    }
+    if ( nxt64bits != 0 )
+    {
+        stats = get_nodestats(&peer,nxt64bits);
+        if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
+        {
+            printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
+            stats->nxt64bits = nxt64bits;
+        }
+        if ( ipbits != 0 && (stats->ipbits == 0 || stats->ipbits != ipbits) )
         {
             printf("kademlia_update_info: stats ipbits %u -> %u\n",stats->ipbits,ipbits);
             stats->ipbits = ipbits;
@@ -342,15 +351,8 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
                 }
             }
         }
-    }
-    if ( nxt64bits != 0 )
-    {
-        stats = get_nodestats(&peer,nxt64bits);
-        if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
-        {
-            printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
-            stats->nxt64bits = nxt64bits;
-        }
+        if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
+            stats->lastcontact = lastcontact;
         fprintf(stderr,"call add_peerinfo\n");
         
         add_peerinfo(peer);
@@ -365,9 +367,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
         update_peerinfo(&createdflag,&peer);
         fprintf(stderr,"finished updating peer\n");*/
     }
-    if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
-        stats->lastcontact = lastcontact;
-    if ( peer != 0 )
+     if ( peer != 0 )
         printf("update_info(%s %s) %llu %llu\n",destNXTaddr,ipaddr,(long long)peer->srvnxtbits,(long long)peer->pubnxtbits);
 }
 
