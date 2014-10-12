@@ -437,7 +437,7 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
     }
     dist = fabs(metric - sum);
     if ( dispflag != 0 )
-        printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,dist+diff);
+        printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,metric + dist + diff);
     return(metric + dist + diff);
 }
 
@@ -472,7 +472,7 @@ void *findaddress_loop(void *ptr)
         memset(hash,0,sizeof(hash));
         memset(mypublic,0,sizeof(mypublic));
         calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
-        if ( bitweight(addr ^ calcaddr) <= args->targetdist )
+        if ( bitweight(addr ^ calcaddr) <= args->targetdist+4 )
         {
             metric = calc_address_metric(0,addr,args->list,args->numinlist,calcaddr,args->targetdist);
             if ( metric < args->best )
