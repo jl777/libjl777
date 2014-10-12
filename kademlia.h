@@ -304,7 +304,6 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     if ( destNXTaddr != 0 && destNXTaddr[0] != 0 )
         nxt64bits = calc_nxt64bits(destNXTaddr);
     else nxt64bits = 0;
-
     if ( port == BTCD_PORT )
     {
         printf("warning: kademlia_update_info port is %d?\n",port);
@@ -365,6 +364,8 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
     if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
         stats->lastcontact = lastcontact;
+    if ( peer != 0 )
+        printf("update_info(%s %s) %llu %llu\n",destNXTaddr,ipaddr,(long long)peer->srvnxtbits,(long long)peer->pubnxtbits);
 }
 
 char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *ipaddr,int32_t port,char *destip)
