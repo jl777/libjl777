@@ -1420,14 +1420,18 @@ struct nodestats *get_nodestats(struct peerinfo **peerptrp,uint64_t nxt64bits)
     struct nodestats *stats = 0;
     int32_t createdflag;
     struct NXT_acct *np;
+    struct peerinfo *peer;
     char NXTaddr[64];
     if ( nxt64bits != 0 )
     {
         expand_nxt64bits(NXTaddr,nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        peer = &np->mypeerinfo;
+        if ( peer->pubnxtbits == 0 )
+            peer->srvnxtbits = peer->pubnxtbits = peer->srv.nxt64bits = nxt64bits;
         if ( peerptrp != 0 )
-            (*peerptrp) = &np->mypeerinfo;
-        return(&np->mypeerinfo.srv);
+            (*peerptrp) = peer;
+        return(&peer->srv);
     }
     return(stats);
 }
