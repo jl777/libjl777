@@ -130,7 +130,7 @@ uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t 
     {
         for (i=0; i<pserver->numips; i++)
         {
-            fprintf(stderr,"%x ",ipbits);
+            //fprintf(stderr,"%x ",ipbits);
             if ( pserver->hasips[i] == ipbits )
             {
                 portable_mutex_unlock(&mutex);

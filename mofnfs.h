@@ -467,10 +467,10 @@ void *findaddress_loop(void *ptr)
     while ( args->abortflag == 0 )
     {
         //memset(pass,0,sizeof(pass));
-        //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
+        randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
         for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
         {
-            //if ( pass[i] == 0 )
+            if ( pass[i] == 0 )
                 pass[i] = safechar64((rand() >> 8) % 63);
         }
         pass[i] = 0;
@@ -505,6 +505,8 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
     int32_t i;
     if ( endmilli == 0. )
     {
+        if ( numthreads <= 0 )
+            return(0);
         expand_nxt64bits(refNXTaddr,addr);
         if ( numthreads > 28 )
             numthreads = 28;
@@ -558,10 +560,10 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         }
         if ( best < lastbest )
         {
-            printf(">>>>>>>>>>>>>>> new best %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
+            printf(">>>>>>>>>>>>>>> new best (%s) %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",bestpassword,(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
             lastbest = best;
         }
-        printf("milli %f vs endmilli %f\n",milliseconds(),endmilli);
+        //printf("milli %f vs endmilli %f\n",milliseconds(),endmilli);
     }
     else
     {
