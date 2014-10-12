@@ -189,7 +189,7 @@ cJSON *gen_peerinfo_json(struct peerinfo *peer)
             cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->srv.numrecv));
         if ( (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
         {
-            printf("%s pserver.%p\n",srvipaddr,pserver);
+            //printf("%s pserver.%p\n",srvipaddr,pserver);
             cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
         }
     }
@@ -330,7 +330,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
     static portable_mutex_t mutex;
     char NXTaddr[64],ipaddr[16];
     int32_t createdflag,isPserver;
-    struct coin_info *cp = get_coin_info("BTCD");
+    //struct coin_info *cp = get_coin_info("BTCD");
     struct NXT_acct *np = 0;
     struct peerinfo *peer = 0;
     struct pserver_info *pserver;
