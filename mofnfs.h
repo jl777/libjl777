@@ -411,7 +411,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(retstr);
 }
 
-double calc_address_metric(uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,int32_t targetdist)
+double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,int32_t targetdist)
 {
     int32_t i;
     double metric,dist,diff,sum;
@@ -424,16 +424,20 @@ double calc_address_metric(uint64_t refaddr,uint64_t *list,int32_t n,uint64_t ca
         for (i=0; i<n; i++)
         {
             dist = bitweight(list[i] ^ calcaddr);
+            if ( dispflag != 0 )
+                printf("%.0f ",dist);
             sum += (dist * dist);
             dist -= metric;
             diff += (dist * dist);
         }
         sum = sqrt(sum / n);
         diff = sqrt(diff / n);
-        //printf("n.%d sum %.3f | diff %.3f | ",n,sum,diff);
+        if ( dispflag != 0 )
+            printf("n.%d sum %.3f | diff %.3f | ",n,sum,diff);
     }
     dist = fabs(metric - sum);
-    //printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,dist+diff);
+    if ( dispflag != 0 )
+        printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,dist+diff);
     return(metric + dist + diff);
 }
 
@@ -457,7 +461,7 @@ void *findaddress_loop(void *ptr)
     startmilli = milliseconds();
     while ( args->abortflag == 0 )
     {
-        memset(pass,0,sizeof(pass));
+        //memset(pass,0,sizeof(pass));
         //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
         for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
         {
@@ -470,9 +474,10 @@ void *findaddress_loop(void *ptr)
         calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
         if ( bitweight(addr ^ calcaddr) <= args->targetdist )
         {
-            metric = calc_address_metric(addr,args->list,args->numinlist,calcaddr,args->targetdist);
+            metric = calc_address_metric(0,addr,args->list,args->numinlist,calcaddr,args->targetdist);
             if ( metric < args->best )
             {
+                metric = calc_address_metric(1,addr,args->list,args->numinlist,calcaddr,args->targetdist);
                 args->best = metric;
                 args->bestaddr = calcaddr;
                 strcpy(args->bestpassword,(char *)pass);
@@ -525,7 +530,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             if ( args[i]->best < best )
             {
                 calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
-                metric = calc_address_metric(addr,list,n,calcaddr,targetdist);
+                metric = calc_address_metric(1,addr,list,n,calcaddr,targetdist);
                 if ( metric < best )
                 {
                     best = metric;
