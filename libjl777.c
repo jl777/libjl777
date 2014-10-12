@@ -753,18 +753,6 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(retstr);
 }
 
-/*compression
-combinatorics on errors
-metadata in a file(s)
-random delays in packets
- persistence
- queue restore task
-teleport accounting
- message API
- sendfile
- dropout of server detected -> data shuffle?
- */
-
 char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;

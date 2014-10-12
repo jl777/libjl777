@@ -76,8 +76,8 @@ struct pingpong_queue Transporter_sendQ,Transporter_recvQ,CloneQ;
 uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 {
     if ( strcmp(cp->name,"BTCD") == 0 )
-        return(cp->txfee * 0);
-    else return(0*cp->txfee + 0*(satoshis>>10));
+        return(cp->txfee);
+    else return(cp->txfee + (satoshis>>10));
 }
 
 #include "bitcoinglue.h"
@@ -346,8 +346,6 @@ void init_Teleport()
     init_pingpong_queue(&Transporter_recvQ,"recvQ",process_recvQ,0,0);
 
     init_pingpong_queue(&CloneQ,"cloneQ",process_cloneQ,0,0);
-    //if ( portable_thread_create((void *)teleport_idler,Global_mp) == 0 )
-    //    printf("ERROR teleport_idler\n");
 }
 
 void complete_telepod_reception(struct coin_info *cp,struct telepod *pod,int32_t height)

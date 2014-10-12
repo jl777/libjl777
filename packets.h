@@ -387,7 +387,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( destbits != 0 ) // route packet
             {
                 expand_nxt64bits(hopNXTaddr,destbits);
-                printf("Route to {%s}\n",hopNXTaddr);
+                printf("jl777: if dest is without IP, drop 10%% Route to {%s}\n",hopNXTaddr);
                 outbuf = decoded;
                 len = onionize(hopNXTaddr,maxbuf,0,hopNXTaddr,&outbuf,len);
                 route_packet(1,0,hopNXTaddr,outbuf,len);//decoded,len);
