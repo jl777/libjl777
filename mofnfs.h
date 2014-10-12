@@ -416,6 +416,8 @@ double calc_address_metric(uint64_t refaddr,uint64_t *list,int32_t n,uint64_t ca
     int32_t i;
     double metric,dist,diff,sum;
     metric = bitweight(refaddr ^ calcaddr);
+    if ( metric > targetdist )
+        return(100.);
     diff = sum = 0.;
     if ( list != 0 && n != 0 )
     {
@@ -428,11 +430,11 @@ double calc_address_metric(uint64_t refaddr,uint64_t *list,int32_t n,uint64_t ca
         }
         sum = sqrt(sum / n);
         diff = sqrt(diff / n);
-        printf("n.%d sum %.3f | diff %.3f | ",n,sum,diff);
+        //printf("n.%d sum %.3f | diff %.3f | ",n,sum,diff);
     }
     dist = fabs(metric - sum);
-    printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,dist+diff);
-    return(dist + diff);
+    //printf("metric %.3f dist %.3f -> %.3f\n",metric,dist,dist+diff);
+    return(metric + dist + diff);
 }
 
 struct loopargs
