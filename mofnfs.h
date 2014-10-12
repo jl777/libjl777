@@ -458,12 +458,13 @@ void *findaddress_loop(void *ptr)
     while ( args->abortflag == 0 )
     {
         memset(pass,0,sizeof(pass));
-        randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
+        //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
         for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
         {
-            if ( pass[i] == 0 )
+            //if ( pass[i] == 0 )
                 pass[i] = safechar64((rand() >> 8) % 63);
         }
+        pass[i] = 0;
         memset(hash,0,sizeof(hash));
         memset(mypublic,0,sizeof(mypublic));
         calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
@@ -486,7 +487,7 @@ void *findaddress_loop(void *ptr)
 
 char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,uint64_t addr,uint64_t *list,int32_t n,int32_t targetdist,int32_t duration,int32_t numthreads)
 {
-    static double lastbest = 64;
+    static double lastbest = 100000;
     double best,metric,endmilli;
     uint64_t calcaddr,bestaddr = 0;
     bits256 secret,pubkey;
@@ -517,7 +518,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
     while ( milliseconds() < endmilli )
     {
         sleep(3);
-        best = 64;
+        best = lastbest;
         calcaddr = 0;
         for (i=0; i<numthreads; i++)
         {
@@ -538,7 +539,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         }
         if ( best < lastbest )
         {
-            printf(">>>>>>>>>>>>>>> new best %016llx %llu dist.%.2f vs %016llx %llu\n",(long long)calcaddr,(long long)calcaddr,best,(long long)addr,(long long)addr);
+            printf(">>>>>>>>>>>>>>> new best %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
             lastbest = best;
         }
     }
@@ -551,7 +552,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         free(args[i]);
     }
     free(args);
-    sprintf(retbuf,"{\"result\":\"metric.%.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
+    sprintf(retbuf,"{\"result\":\"metric %.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
     return(clonestr(retbuf));
 }
 #endif
