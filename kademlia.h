@@ -298,7 +298,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     struct peerinfo *add_peerinfo(struct peerinfo *);
     uint64_t nxt64bits;
     uint32_t ipbits;
-    struct peerinfo *peer;
+    struct peerinfo *peer = 0;
     struct pserver_info *pserver;
     struct nodestats *stats = 0;
     if ( destNXTaddr != 0 && destNXTaddr[0] != 0 )
@@ -309,25 +309,6 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     {
         printf("warning: kademlia_update_info port is %d?\n",port);
         port = 0;
-    }
-    if ( nxt64bits != 0 )
-    {
-        stats = get_nodestats(&peer,nxt64bits);
-        if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
-        {
-            printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
-            stats->nxt64bits = nxt64bits;
-        }
-        add_peerinfo(peer);
-        /*expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
-        if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-            init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
-        else pubkeystr[0] = 0;
-        int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxtbits,char *pubBTC);
-        struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
-        set_pubpeerinfo(srvNXTaddr,ipaddr,port,&peer,0,pubkeystr,pserver->nxt64bits,0);
-        update_peerinfo(&createdflag,&peer);
-        fprintf(stderr,"finished updating peer\n");*/
     }
     if ( ipaddr != 0 && ipaddr[0] != 0 )
     {
@@ -362,6 +343,25 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
                 }
             }
         }
+    }
+    if ( nxt64bits != 0 )
+    {
+        stats = get_nodestats(&peer,nxt64bits);
+        if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
+        {
+            printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
+            stats->nxt64bits = nxt64bits;
+        }
+        add_peerinfo(peer);
+        /*expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
+        if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+            init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
+        else pubkeystr[0] = 0;
+        int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxtbits,char *pubBTC);
+        struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
+        set_pubpeerinfo(srvNXTaddr,ipaddr,port,&peer,0,pubkeystr,pserver->nxt64bits,0);
+        update_peerinfo(&createdflag,&peer);
+        fprintf(stderr,"finished updating peer\n");*/
     }
     if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
         stats->lastcontact = lastcontact;
