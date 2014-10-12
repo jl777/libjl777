@@ -351,7 +351,10 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
             printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
             stats->nxt64bits = nxt64bits;
         }
+        fprintf(stderr,"call add_peerinfo\n");
+        
         add_peerinfo(peer);
+        fprintf(stderr,"done add_peerinfo\n");
         /*expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
         if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
             init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
@@ -757,6 +760,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
     if ( cp != 0 )
     {
         pserver = get_pserver(0,cp->myipaddr,0,0);
+        fprintf(stderr,"call addto_hasips\n");
         addto_hasips(1,pserver,stats->ipbits);
         xorbits = (cp->srvpubnxtbits != 0) ? cp->srvpubnxtbits : cp->pubnxtbits;
         if ( stats->nxt64bits != 0 )
@@ -764,7 +768,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
             xorbits ^= stats->nxt64bits;
             bucketid = bitweight(xorbits);
             Kbucket_updated[bucketid] = time(NULL);
-            //fprintf(stderr,"call update_Kbucket\n");
+            fprintf(stderr,"call update_Kbucket\n");
             update_Kbucket(bucketid,K_buckets[bucketid],KADEMLIA_NUMK,stats);
         }
     }
