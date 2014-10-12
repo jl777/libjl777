@@ -128,7 +128,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
             strcpy(ipaddr,"127.0.0.1");
             uv_ip4_addr(ipaddr,supernet_port,(struct sockaddr_in *)&wr->addr);
         }
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
         {
             stats->numsent++;
             stats->sentmilli = milliseconds();
@@ -173,7 +173,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         if ( strcmp("127.0.0.1",ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
         {
             stats->numrecv++;
             stats->recvmilli = milliseconds();
@@ -319,7 +319,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     }
     else
     {
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
         {
             stats->sentmilli++;
             stats->sentmilli = milliseconds();
@@ -462,7 +462,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     struct nodestats *stats;
     unsigned char encoded[4096],*outbuf;
     memset(encoded,0,sizeof(encoded)); // encoded to dest
-    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+    if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
     
@@ -555,8 +555,8 @@ int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int3
     }
     if ( memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
-        void update_Kbuckets(struct nodestats *stats,uint64_t,char *,int32_t,int32_t);
-        update_Kbuckets(stats,nxt64bits,ipaddr,port,p2pflag);
+        void update_Kbuckets(struct nodestats *stats,uint64_t,char *,int32_t,int32_t,int32_t lastcontact);
+        update_Kbuckets(stats,nxt64bits,ipaddr,port,p2pflag,now);
     }
     return(modified);
 }
@@ -575,7 +575,7 @@ int32_t update_routing_probs(char *NXTaddr,int32_t encryptedflag,int32_t p2pflag
     else pserver = get_pserver(0,ipaddr,port,0);
     if ( peer != 0 )
         modified = update_nodestats(NXTaddr,now,&peer->srv,encryptedflag,p2pflag,(is_privacyServer(peer) != 0) ? pubkey : 0,ipaddr,port);
-    if ( (stats= get_nodestats(calc_nxt64bits(NXTaddr))) != 0 )
+    if ( (stats= get_nodestats(0,calc_nxt64bits(NXTaddr))) != 0 )
         modified |= (update_nodestats(NXTaddr,now,stats,encryptedflag,p2pflag,pubkey,ipaddr,port) << 1);
     return(modified);
     /*if ( is_privacyServer(peer) != 0 )

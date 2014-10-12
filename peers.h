@@ -137,7 +137,7 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
         }
         cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
         cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(pserver->xorsum));
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
         {
             if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
                 cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(stats->p2pport));
@@ -321,11 +321,13 @@ struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 
 void copy_peerinfo(struct peerinfo *dest,struct peerinfo *src)
 {
-    *dest = *src;
+    if ( dest != src )
+        *dest = *src;
 }
 
 struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
 {
+    static portable_mutex_t mutex;
     char NXTaddr[64],ipaddr[16];
     int32_t createdflag,isPserver;
     struct coin_info *cp = get_coin_info("BTCD");
@@ -334,7 +336,6 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
     struct pserver_info *pserver;
     if ( (peer= find_peerinfo(refpeer->pubnxtbits,refpeer->pubBTCD,refpeer->pubBTC)) != 0 )
         return(peer);
-    Peers = realloc(Peers,sizeof(*Peers) * (Numpeers + 1));
     if ( refpeer->pubnxtbits != 0 )
     {
         expand_nxt64bits(NXTaddr,refpeer->pubnxtbits);
@@ -346,7 +347,11 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
         printf("FATAL: add_peerinfo without nxtbits (%s %llu %s)\n",refpeer->pubBTCD,(long long)refpeer->pubnxtbits,refpeer->pubBTC);
         peer = calloc(1,sizeof(*peer));
     }
+    if ( Numpeers == 0 )
+        portable_mutex_init(&mutex);
+    portable_mutex_lock(&mutex);
     copy_peerinfo(peer,refpeer);
+    Peers = realloc(Peers,sizeof(*Peers) * (Numpeers + 1));
     Peers[Numpeers] = peer, Numpeers++;
     if ( (isPserver= is_privacyServer(peer)) != 0 )
     {
@@ -362,6 +367,7 @@ struct peerinfo *add_peerinfo(struct peerinfo *refpeer)
                 addto_hasips(1,get_pserver(0,cp->myipaddr,0,0),peer->srv.ipbits);
         }
     }
+    portable_mutex_unlock(&mutex);
     printf("isPserver.%d add_peerinfo Numpeers.%d added %llu srv.%llu\n",isPserver,Numpeers,(long long)refpeer->pubnxtbits,(long long)refpeer->srvnxtbits);
     return(peer);
 }

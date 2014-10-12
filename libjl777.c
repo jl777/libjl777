@@ -982,7 +982,7 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     }
     if ( seedstr[0] == 0 )
         init_hexbytes(seedstr,seed.bytes,sizeof(seed));
-    stats = get_nodestats(calc_nxt64bits(otheracctstr));
+    stats = get_nodestats(0,calc_nxt64bits(otheracctstr));
     if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 && stats != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
@@ -1285,7 +1285,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
     {
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
             port = (stats->p2pport == 0) ? BTCD_PORT : stats->p2pport;
         else port = BTCD_PORT;
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
