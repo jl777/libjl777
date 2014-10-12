@@ -437,9 +437,9 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
             if ( list[i] != refaddr )
             {
                 dist = bitweight(list[i] ^ calcaddr);
-                if ( dist > metric )
+                if ( dist >= metric )
                     numabove++;
-                else if ( dist < metric )
+                else if ( dist <= metric )
                     numbelow++;
                 if ( dispflag != 0 )
                     printf("%.0f ",dist);
@@ -482,17 +482,21 @@ void *findaddress_loop(void *ptr)
     startmilli = milliseconds();
     while ( args->abortflag == 0 )
     {
-        //memset(pass,0,sizeof(pass));
-        //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
-        for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
+        if ( 0 )
         {
-            //if ( pass[i] == 0 )
+            //memset(pass,0,sizeof(pass));
+            //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
+            for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
+            {
+                //if ( pass[i] == 0 )
                 pass[i] = safechar64((rand() >> 8) % 63);
+            }
+            pass[i] = 0;
+            memset(hash,0,sizeof(hash));
+            memset(mypublic,0,sizeof(mypublic));
+            calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
         }
-        pass[i] = 0;
-        memset(hash,0,sizeof(hash));
-        memset(mypublic,0,sizeof(mypublic));
-        calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
+        else randombytes((unsigned char *)&calcaddr,sizeof(calcaddr));
         if ( bitweight(addr ^ calcaddr) <= args->targetdist+4 )
         {
             metric = calc_address_metric(0,addr,args->list,args->numinlist,calcaddr,args->targetdist);
