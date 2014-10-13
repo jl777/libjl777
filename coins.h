@@ -401,6 +401,7 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
 extern int32_t process_podQ(void *ptr);
 struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 {
+    void add_new_node(uint64_t nxt64bits);
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
     char rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
@@ -471,6 +472,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->pubnxtbits);
                         free(privkey);
                         stats = get_nodestats(cp->pubnxtbits);
+                        add_new_node(cp->pubnxtbits);
                         memcpy(stats->pubkey,Global_mp->session_pubkey,sizeof(stats->pubkey));
                     }
                     printf("check srvpubaddr\n");
@@ -485,6 +487,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                             free(privkey);
                             stats = get_nodestats(cp->srvpubnxtbits);
+                            add_new_node(cp->srvpubnxtbits);
                             memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
                         }
                     }
