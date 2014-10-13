@@ -635,11 +635,11 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
                         if ( Debuglevel > 1 )
                             printf("call %llu (%s)\n",(long long)destbits,cmd);
-                        txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,0);
+                        txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,datastr);
                     }
                 }
             }
-            else if ( ismynxtbits(senderbits) == 0 ) // need to respond to sender
+            else if ( ismynxtbits(senderbits) == 0 && (strcmp(cmd,"findnode") != 0 || datastr == 0) ) // need to respond to sender
             {
                 array = cJSON_CreateArray();
                 for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
