@@ -406,6 +406,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     char rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*privkey,*coinaddr,**privkeys;
     cJSON *ciphersobj;
+    struct nodestats *stats;
     uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust;
     struct coin_info *cp = 0;
     printf("init_coin.(%s)\n",cJSON_Print(json));
@@ -469,6 +470,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 
                         printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->pubnxtbits);
                         free(privkey);
+                        stats = get_nodestats(cp->pubnxtbits);
+                        memcpy(stats->pubkey,Global_mp->session_pubkey,sizeof(stats->pubkey));
                     }
                     printf("check srvpubaddr\n");
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
