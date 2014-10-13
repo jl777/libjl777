@@ -1401,23 +1401,16 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
     printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
-    if ( Finished_init == 0 )
+    if ( Finished_loading == 0 )
     {
-        while ( Finished_init == 0 )
-        {
-            fprintf(stderr,".");
-            sleep(1);
-        }
-        //return(clonestr(retjsonstr));
+        printf("QUEUE.(%s)\n",msg);
+        if ( is_hexstr(msg) == 0 )
+            queue_enqueue(&JSON_Q,clonestr(msg));
+        return(clonestr(retjsonstr));
     }
     p2pport = parse_ipaddr(ipaddr,ip_port);
     uv_ip4_addr(ipaddr,p2pport,(struct sockaddr_in *)&prevaddr);
     pserver = get_pserver(0,ipaddr,0,p2pport);
-    if ( Finished_loading == 0 )
-    {
-        printf("QUEUE.(%s)\n",msg);
-        return(clonestr(retjsonstr));
-    }
     len = (int32_t)strlen(msg);
     if ( is_hexstr(msg) != 0 )
     {
