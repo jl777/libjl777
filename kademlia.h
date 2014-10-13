@@ -1120,7 +1120,6 @@ cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTA
         if ( retstr != 0 )
             free(retstr);
     }
-    cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
     cJSON_AddItemToObject(json,"Numnxtaccts",cJSON_CreateNumber(n));
     return(json);
 }
