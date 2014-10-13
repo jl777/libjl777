@@ -56,7 +56,7 @@ int32_t _decode_cipher(char *str,unsigned char *cipher,int32_t *lenp,unsigned ch
     return(err);
 }
 
-int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *encoded,int32_t len)
+int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *encoded,int32_t len,char *senderip,int32_t port)
 {
     //void *origencoded = encoded;
     int32_t err;
@@ -73,7 +73,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         memcpy(&payload_len,encoded,sizeof(payload_len));
         //printf("deonionize >>>>> pubkey.%llx vs mypubkey.%llx (%llx) -> %d %2x\n",*(long long *)pubkey,*(long long *)Global_mp->session_pubkey,*(long long *)Global_mp->loopback_pubkey,payload_len,payload_len);
         encoded += sizeof(payload_len);
-        printf("packedest.%llu srvpub.%llu (%s) payload_len.%d\n",(long long)packetdest,(long long)cp->srvpubnxtbits,cp->privacyserver,payload_len);
+        printf("packedest.%llu srvpub.%llu (%s:%d) payload_len.%d\n",(long long)packetdest,(long long)cp->srvpubnxtbits,senderip,port,payload_len);
         if ( (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)) <= len )
         {
             len = payload_len;
@@ -268,13 +268,13 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     {
         recvbuf += sizeof(uint32_t);
         recvlen -= sizeof(uint32_t);
-        if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen)) > 0 )
+        if ( (len= deonionize(pubkey,decoded,recvbuf,recvlen,sender,port)) > 0 )
         {
             memcpy(&destbits,decoded,sizeof(destbits));
             while ( cp != 0 && (destbits == 0 || destbits == cp->pubnxtbits || destbits == cp->srvpubnxtbits) )
             {
                 memset(decoded2,0,sizeof(decoded2));
-                if ( (len2= deonionize(pubkey2,decoded2,decoded,len)) > 0 )
+                if ( (len2= deonionize(pubkey2,decoded2,decoded,len,sender,port)) > 0 )
                 {
                     memcpy(&destbits,decoded2,sizeof(destbits));
                     printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
