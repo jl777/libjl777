@@ -282,19 +282,12 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     }
     else if ( len > 0 )
     {
-        //memset(encodedsrvD,0,sizeof(encodedsrvD)); // encoded to privacyServer of dest
-        //memset(encodedL,0,sizeof(encodedL)); // encoded to max L onion layers
-       //printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.U.NXTaddr:"no np",destnp);
-        //if ( strcmp(destsrvNXTaddr,destNXTaddr) != 0 && has_privacyServer(destnp) != 0 ) // build onion in reverse order, privacyServer for dest is 2nd
-        //    len = onionize(hopNXTaddr,maxbuf,encodedsrvD,destsrvNXTaddr,&outbuf,len);
         if ( L > 0 )
         {
             len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
             len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
         }
         else len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-        //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
-        //    len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
@@ -458,7 +451,6 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tmpjson = cJSON_Parse(parmstxt);
-                printf("process.(%s)\n",parmstxt);
                 if ( tmpjson != 0 )
                 {
                     if ( encrypted == 0 )
@@ -539,7 +531,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                 route_packet(1,0,hopNXTaddr,outbuf,len);//decoded,len);
                 //route_packet(1,0,hopNXTaddr,maxbuf,MAX_UDPLEN-sizeof(uint32_t));
                 return(0);
-            }
+            } else printf("JSON didnt parse and no destination to forward to\n");
         }
     }
     else printf("process_packet got unexpected recvlen.%d %s/%d\n",recvlen,sender,port);
