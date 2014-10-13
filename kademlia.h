@@ -585,7 +585,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
     struct kademlia_store *sp;
     struct nodestats *stats;
     if ( Debuglevel > 1 )
-        printf("kademlia_find.(%s) (%s)\n",cmd,key);
+        printf("kademlia_find.(%s) (%s) data.(%s) mynode.%d %p\n",cmd,key,datastr!=0?datastr:"",ismynode(prevaddr),prevaddr);
     if ( key != 0 && key[0] != 0 )
     {
         senderbits = calc_nxt64bits(sender);
@@ -672,7 +672,8 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 free(value);
             }
             //free(sortbuf);
-        } else printf("kademlia.(%s) no peers\n",cmd);
+        } else if ( Debuglevel > 0 )
+            printf("kademlia.(%s) no peers\n",cmd);
     }
     sprintf(retstr,"{\"result\":\"kademlia_%s txid.%llu\"}",cmd,(long long)txid);
     if ( Debuglevel > 0 )
