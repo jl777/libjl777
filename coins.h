@@ -484,6 +484,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                             free(privkey);
+                            stats = get_nodestats(cp->srvpubnxtbits);
+                            memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
                         }
                     }
                     printf("end check srvpubaddr\n");
