@@ -1011,6 +1011,7 @@ int32_t update_newaccts(uint64_t *newaccts,int32_t num,uint64_t nxtbits)
     for (i=0; i<num; i++)
         if ( newaccts[i] == nxtbits )
             return(num);
+    printf("update_newaccts[%d] <- %llu\n",num,(long long)nxtbits);
     newaccts[num++] = nxtbits;
     return(num);
 }
