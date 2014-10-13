@@ -205,7 +205,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
         numlayers = ((rand() >> 8) % numlayers);
     if ( numlayers > 0 )
     {
-        printf("add_random_onionlayers %d of %d\n",numlayers,Global_mp->Lfactor);
+        printf("add_random_onionlayers %d of %d *srcp %p\n",numlayers,Global_mp->Lfactor,*srcp);
         memset(dest,0,sizeof(dest));
         memcpy(srcbuf,*srcp,len);
         while ( numlayers > 0 )
@@ -222,11 +222,11 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
-                //printf("add layer %d: NXT.%s\n",numlayers,np->H.U.NXTaddr);
-                len = onionize(hopNXTaddr,maxbuf,final,NXTaddr,&src,len);
-                memcpy(srcbuf,final,len);
+                printf("add layer %d: NXT.%s\n",numlayers,NXTaddr);
+                len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
+                memcpy(srcbuf,dest,len);
                 src = srcbuf;
-                *srcp = final;
+                *srcp = (final != 0) ? final : maxbuf;
                 if ( len > 4096 )
                 {
                     printf("FATAL: onion layers too big.%d\n",len);
