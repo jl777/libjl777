@@ -462,8 +462,8 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
             printf("n.%d flag.%d sum %.3f | diff %.3f | exact.%d above.%d below.%d balance %.0f ",n,flag,sum,diff,exact,numabove,numbelow,balance);
     }
     if ( dispflag != 0 )
-        printf("dist %.3f -> %.3f %llx %llu\n",metric,diff + balance,(long long)refaddr,(long long)refaddr);
-    return((diff + balance)/(exact+1));
+        printf("dist %.3f -> %.3f %llx %llu\n",metric,(diff + balance)/(exact*exact+1),(long long)refaddr,(long long)refaddr);
+    return((cbrt(metric) + diff + balance)/(exact*exact+1));
 }
 
 struct loopargs
