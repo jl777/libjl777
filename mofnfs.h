@@ -426,7 +426,7 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
     int32_t i,numabove,numbelow,flag = 0;
     double metric,dist,diff,sum,balance;
     metric = bitweight(refaddr ^ calcaddr);
-    if ( metric > targetdist )
+    if ( metric > targetdist+4 )
         return(10000000.);
     diff = sum = balance = 0.;
     if ( list != 0 && n != 0 )
