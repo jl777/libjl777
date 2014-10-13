@@ -872,6 +872,13 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
         txids = calloc(n+1,sizeof(*txids));
         memcpy(txids,cp->nxtaccts,n*sizeof(*txids));
     }
+    else
+    {
+        n = 64;
+        txids = calloc(n+1,sizeof(*txids));
+        for (i=0; i<n; i++)
+            randombytes((unsigned char *)&txids[i],sizeof(txids[i]));
+    }
     if ( txids != 0 && sender[0] != 0 && valid > 0 )
         retstr = findaddress(prevaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
     else retstr = clonestr("{\"error\":\"invalid findaddress_func arguments\"}");
