@@ -37,6 +37,7 @@ void add_new_node(uint64_t nxt64bits)
                 return;
         }
     }
+    printf("ADDNODE.%llu\n",(long long)nxt64bits);
     Allnodes = realloc(Allnodes,sizeof(*Allnodes) + (Numallnodes + 1));
     Allnodes[Numallnodes] = nxt64bits;
     Numallnodes++;
@@ -968,11 +969,12 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
     struct pserver_info *pserver;
     expand_ipbits(srvipaddr,stats->ipbits);
     expand_nxt64bits(srvnxtaddr,stats->nxt64bits);
-    //if ( is_privacyServer(peer) != 0 )
+    if ( stats->ipbits != 0 )
     {
-        cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
-        cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
+        //cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
+        cJSON_AddItemToObject(json,"srvNXT",cJSON_CreateString(srvnxtaddr));
         cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
+        cJSON_AddItemToObject(json,"ipbits",cJSON_CreateNumber(stats->ipbits));
         sprintf(numstr,"%d",stats->supernet_port);
         if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
@@ -989,7 +991,7 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
             cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
         }
     }
-    //else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
+    else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
     init_hexbytes_noT(hexstr,stats->pubkey,sizeof(stats->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )

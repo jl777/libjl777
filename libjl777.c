@@ -226,6 +226,8 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
     double price,volume;
     struct orderbook_tx tx;
     char buf[MAX_JSON_FIELD],txidstr[64],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     nxt64bits = calc_nxt64bits(sender);
     obookid = get_API_nxt64bits(objs[0]);
     polarity = get_API_int(objs[1],1);
@@ -296,6 +298,8 @@ char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     int32_t M,N;
     struct coin_info *cp;
     char destaddr[MAX_JSON_FIELD],minage[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     if ( Historical_done == 0 )
         return(clonestr("historical processing is not done yet"));
     amount = get_API_float(objs[0]);
@@ -319,6 +323,8 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     static int counter;
     char previp[64],nexthopNXTaddr[64],destNXTaddr[64],msg[MAX_JSON_FIELD],*retstr = 0;
     int32_t L,port,len;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(msg,objs[1]);
     L = (int32_t)get_API_int(objs[2],Global_mp->Lfactor);
@@ -351,6 +357,8 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     static int counter;
     char previp[64],nexthopNXTaddr[64],destNXTaddr[64],cmdstr[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
     int32_t L,port;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(datastr,objs[1]);
     L = (int32_t)get_API_int(objs[2],Global_mp->Lfactor);
@@ -379,6 +387,8 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
 char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char senderNXTaddr[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(senderNXTaddr,objs[0]);
     if ( sender[0] != 0 && valid > 0 )
         retstr = checkmessages(sender,NXTACCTSECRET,senderNXTaddr);
@@ -457,6 +467,8 @@ char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     double qtyA,qtyB;
     int32_t type;
     char otherNXTaddr[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(otherNXTaddr,objs[0]);
     assetA = get_API_nxt64bits(objs[1]);
     qtyA = get_API_float(objs[2]);
@@ -485,6 +497,8 @@ char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
 char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char signedtx[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(signedtx,objs[0]);
     if ( sender[0] != 0 && valid > 0 && signedtx[0] != 0 )
         retstr = respondtx(sender,signedtx);
@@ -499,6 +513,8 @@ char *tradebot_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     long len;
     cJSON *botjson;
     char code[MAX_JSON_FIELD],retbuf[4096],*str,*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(code,objs[0]);
     printf("tradebotfunc.(%s) sender.(%s) valid.%d code.(%s)\n",origargstr,sender,valid,code);
     if ( sender[0] != 0 && valid > 0 && code[0] != 0 )
@@ -653,6 +669,8 @@ char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
 {
     uint64_t value;
     char coinstr[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     value = (SATOSHIDEN * get_API_float(objs[0]));
     copy_cJSON(coinstr,objs[1]);
     printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
@@ -666,6 +684,8 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 {
     cJSON *json;
     char numstr[MAX_JSON_FIELD],*jsonstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(numstr,objs[0]);
     json = gen_peers_json(atoi(numstr));
     if ( json != 0 )
@@ -859,6 +879,8 @@ char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     FILE *fp;
     int32_t L;
     char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(fname,objs[0]);
     copy_cJSON(dest,objs[1]);
     L = get_API_int(objs[2],0);
@@ -875,6 +897,8 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
 {
     int32_t port;
     char pubkey[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(pubkey,objs[0]);
     copy_cJSON(ipaddr,objs[1]);
     port = get_API_int(objs[2],0);
