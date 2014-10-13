@@ -572,7 +572,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
         free_json(array);
     }
     sprintf(retstr,"{\"result\":\"kademlia_havenode from NXT.%s key.(%s) value.(%s)\"}",sender,key,value);
-    printf("HAVENODE.%d %s\n",valueflag,retstr);
+    //printf("HAVENODE.%d %s\n",valueflag,retstr);
     return(clonestr(retstr));
 }
 

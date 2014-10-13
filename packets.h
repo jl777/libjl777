@@ -363,6 +363,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                     qp->valid = valid;
                     qp->tokenized_np = tokenized_np;
                     qp->decoded = clonestr((char *)decoded);
+                    printf("queue argjson.%p\n",argjson);
                     queue_enqueue(&udp_JSON,qp);
                     argjson = 0;
                     jsonstr = 0;//pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);

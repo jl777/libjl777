@@ -313,9 +313,9 @@ void teleport_idler(uv_idle_t *handle)
     if ( millis > (lastattempt + 10) && (qp= queue_dequeue(&udp_JSON)) != 0 )
     {
         char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-        //printf("process qp\n");
+        printf("process qp argjson.%p\n",qp->argjson);
         jsonstr = pNXT_json_commands(Global_mp,&qp->prevaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
-        //printf("free qp (%s)\n",jsonstr);
+        printf("free qp (%s) argjson.%p\n",jsonstr,qp->argjson);
         if ( jsonstr != 0 )
             free(jsonstr);
         free(qp->decoded);
