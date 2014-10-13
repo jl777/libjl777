@@ -210,7 +210,7 @@ struct nodestats
 struct pserver_info
 {
     uint64_t modified,nxt64bits;
-    uint32_t *hasips;
+    uint32_t hasips[128];
     char ipaddr[16];
     uint32_t numips,xorsum,hasnum;
 };

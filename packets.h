@@ -179,7 +179,7 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
     np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
     if ( (hasips= pserver->hasips) != 0 )
     {
-        for (i=0; i<pserver->numips; i++)
+        for (i=0; i<pserver->numips&&i<(int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips)); i++)
             if ( hasips[i] == np->stats.ipbits )
             {
                 char ipaddr[16];

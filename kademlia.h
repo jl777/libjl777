@@ -146,46 +146,45 @@ int32_t ismynode(struct sockaddr *addr)
 
 uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
 {
-    static int didinit;
-    static portable_mutex_t mutex;
-    int32_t i;
+    //static int didinit;
+    //static portable_mutex_t mutex;
+    int32_t i,n;
     uint32_t xorsum = 0;
-    if ( didinit == 0 )
+    /*if ( didinit == 0 )
     {
         portable_mutex_init(&mutex);
         didinit = 1;
-    }
+    }*/
     if ( ipbits == 0 )
         return(0);
-    portable_mutex_lock(&mutex);
-    if ( pserver->hasips != 0 && pserver->numips > 0 )
+    //portable_mutex_lock(&mutex);
+    n = (pserver->numips < (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))) ? n : (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips));
+    if ( pserver->numips > 0 )
     {
         for (i=0; i<pserver->numips; i++)
         {
             //fprintf(stderr,"%x ",ipbits);
             if ( pserver->hasips[i] == ipbits )
-            {
-                portable_mutex_unlock(&mutex);
                 return(0);
-            }
         }
     }
     {
         char ipstr[64];
         expand_ipbits(ipstr,ipbits);
-        printf("addto_hasips %p num.%d <- %x %s\n",pserver->hasips,pserver->numips,ipbits,ipstr);
+        printf("addto_hasips %p n.%d num.%d <- %x %s\n",pserver->hasips,n,pserver->numips,ipbits,ipstr);
     }
-    pserver->hasips = realloc(pserver->hasips,sizeof(*pserver->hasips) + (pserver->numips + 1));
-    pserver->hasips[pserver->numips] = ipbits;
+    //pserver->hasips = realloc(pserver->hasips,sizeof(*pserver->hasips) + (pserver->numips + 1));
+    pserver->hasips[n % (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))] = ipbits;
     pserver->numips++;
+    n++;
     if ( recalc_flag != 0 )
     {
-        for (i=0; i<pserver->numips; i++)
+        for (i=0; i<n; i++)
             xorsum ^= pserver->hasips[i];
         pserver->xorsum = xorsum;
         pserver->hasnum = pserver->numips;
     }
-    portable_mutex_unlock(&mutex);
+    //portable_mutex_unlock(&mutex);
     return(xorsum);
 }
 
@@ -906,7 +905,7 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
         if ( (ipaddrs= pserver->hasips) != 0 && pserver->numips > 0 )
         {
             array = cJSON_CreateArray();
-            for (i=0; i<pserver->numips; i++)
+            for (i=0; i<pserver->numips&&i<(int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips)); i++)
             {
                 expand_ipbits(ipaddr,ipaddrs[i]);
                 cJSON_AddItemToArray(array,cJSON_CreateString(ipaddr));
@@ -1036,13 +1035,13 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                         pserver = get_pserver(0,ipaddr,0,0);
                         if ( pserver->hasips != 0 && pserver->numips > 0 )
                         {
-                            for (j=0; j<pserver->numips; j++)
+                            for (j=0; j<pserver->numips&&j<(int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips)); j++)
                             {
                                 ipbits = pserver->hasips[j];
-                                for (k=0; k<mypserver->numips; k++)
+                                for (k=0; k<mypserver->numips&&k<(int)(sizeof(mypserver->hasips)/sizeof(*mypserver->hasips)); k++)
                                     if ( mypserver->hasips[k] == ipbits )
                                         break;
-                                if ( k == mypserver->numips )
+                                if ( k == mypserver->numips || k == (int)(sizeof(mypserver->hasips)/sizeof(*mypserver->hasips)) )
                                 {
                                     newips[m++] = ipbits;
                                     if ( m >= (int)(sizeof(newips)/sizeof(*newips)) )
