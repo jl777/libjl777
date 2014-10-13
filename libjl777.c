@@ -870,7 +870,7 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     else if ( (n= cp->numnxtaccts) > 0 )
     {
         txids = calloc(n+1,sizeof(*txids));
-        memcpy(txids,cp->nxtaccts,n);
+        memcpy(txids,cp->nxtaccts,n*sizeof(*txids));
     }
     if ( txids != 0 && sender[0] != 0 && valid > 0 )
         retstr = findaddress(prevaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
