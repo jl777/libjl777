@@ -245,7 +245,7 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     char _tokbuf[4096];
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
+    //printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
 }
@@ -1057,7 +1057,7 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                 for (i=0; i<m; i++)
                 {
                     expand_ipbits(ipaddr,newips[i]);
-                    printf("ping new ip.%s\n",ipaddr);
+                    //printf("ping new ip.%s\n",ipaddr);
                     send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",NXTACCTSECRET,0,0);
                 }
             }
