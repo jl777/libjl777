@@ -846,6 +846,7 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
 {
     char txidstr[MAX_JSON_FIELD],*retstr = 0;
     cJSON *array,*item;
+    struct coin_info *cp = get_coin_info("BTCD");
     int32_t targetdist,numthreads,duration,i,n = 0;
     uint64_t refaddr,*txids = 0;
     if ( prevaddr != 0 )
@@ -865,6 +866,11 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
             if ( txidstr[0] != 0 )
                 txids[i] = calc_nxt64bits(txidstr);
         }
+    }
+    else if ( (n= cp->numnxtaccts) > 0 )
+    {
+        txids = calloc(n+1,sizeof(*txids));
+        memcpy(txids,cp->nxtaccts,n);
     }
     if ( txids != 0 && sender[0] != 0 && valid > 0 )
         retstr = findaddress(prevaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
