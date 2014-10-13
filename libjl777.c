@@ -1434,7 +1434,16 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         printf("C SuperNET_gotpacket.(%s) size.%d ascii txid.%llu | flood.%d\n",msg,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
+            cJSON *argjson;
+            char pubkeystr[MAX_JSON_FIELD];
             cmdstr = verify_tokenized_json(0,verifiedNXTaddr,&valid,json);
+            pubkeystr[0] = 0;
+            if ( (argjson= cJSON_Parse(cmdstr)) != 0 )
+            {
+                copy_cJSON(pubkeystr,cJSON_GetObjectItem(argjson,"pubkey"));
+                free_json(argjson);
+            }
+            kademlia_update_info(verifiedNXTaddr,ipaddr,p2pport,pubkeystr,(int32_t)time(NULL),1);
             retstr = pNXT_json_commands(Global_mp,&prevaddr,json,verifiedNXTaddr,valid,(char *)msg);
             if ( cmdstr != 0 )
                 free(cmdstr);
@@ -1442,7 +1451,8 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
             if ( retstr == 0 )
                 retstr = clonestr("{\"result\":null}");
             return(retstr);
-        } printf("cJSON_Parse error.(%s)\n",msg);
+        }
+        else printf("cJSON_Parse error.(%s)\n",msg);
     }
     return(clonestr(retjsonstr));
 }
