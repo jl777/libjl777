@@ -189,13 +189,13 @@ uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t 
     return(xorsum);
 }
 
-uint64_t *sort_all_buckets(int32_t *nump,uint64_t hash)
+int32_t sort_all_buckets(uint64_t *sortbuf,uint64_t hash)
 {
-    uint64_t *sortbuf = 0;
+    //uint64_t *sortbuf = 0;
     struct nodestats *stats;
     int32_t i,j,n;
     //long now = time(NULL);
-    sortbuf = calloc(2 * sizeof(*sortbuf),KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK);
+    //sortbuf = calloc(2 * sizeof(*sortbuf),KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK);
     for (i=n=0; i<KADEMLIA_NUMBUCKETS; i++)
     {
         for (j=0; j<KADEMLIA_NUMK; j++)
@@ -209,18 +209,15 @@ uint64_t *sort_all_buckets(int32_t *nump,uint64_t hash)
             n++;
         }
     }
-    *nump = n;
+    //*nump = n;
     if ( n == 0 )
-    {
-        free(sortbuf);
-        sortbuf = 0;
-    }
+        return(0);
     else
     {
-        sortbuf = realloc(sortbuf,n * sizeof(uint64_t) * 2);
+        //sortbuf = realloc(sortbuf,n * sizeof(uint64_t) * 2);
         sort64s(sortbuf,n,sizeof(*sortbuf)*2);
     }
-    return(sortbuf);
+    return(n);
 }
 
 int32_t calc_bestdist(uint64_t keyhash)
@@ -473,15 +470,17 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[32768];
-    uint64_t *sortbuf,keybits,destbits,txid = 0;
+    uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
+    uint64_t keybits,destbits,txid = 0;
     int32_t i,n;
     struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
         return(0);
     keybits = calc_nxt64bits(key);
-    sortbuf = sort_all_buckets(&n,keybits);
-    if ( sortbuf != 0 )
+    memset(sortbuf,0,sizeof(sortbuf));
+    n = sort_all_buckets(sortbuf,keybits);
+    if ( n != 0 )
     {
         if ( ismynode(prevaddr) != 0 )
         {
@@ -502,7 +501,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
         }
         else do_localstore(&txid,key,datastr,NXTACCTSECRET);
         sprintf(retstr,"{\"result\":\"kademlia_store key.(%s) data.(%s) len.%ld -> txid.%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
-        free(sortbuf);
+        //free(sortbuf);
     }
     else
     {
@@ -580,7 +579,8 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[32768],pubkeystr[256],datastr[32768],numstr[64],ipaddr[64],destNXTaddr[64],*value;
-    uint64_t keyhash,*sortbuf,senderbits,destbits,txid = 0;
+    uint64_t keyhash,senderbits,destbits,txid = 0;
+    uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     int32_t i,n,createdflag;
     struct NXT_acct *keynp;
     struct NXT_acct *destnp;
@@ -608,8 +608,9 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 return(clonestr(retstr));
             }
         }
-        sortbuf = sort_all_buckets(&n,keyhash);
-        if ( sortbuf != 0 )
+        memset(sortbuf,0,sizeof(sortbuf));
+        n = sort_all_buckets(sortbuf,keyhash);
+        if ( n != 0 )
         {
             if ( ismynode(prevaddr) != 0 ) // user invoked
             {
@@ -662,7 +663,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 txid = send_kademlia_cmd(senderbits,0,strcmp(cmd,"findnode")==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
-            free(sortbuf);
+            //free(sortbuf);
         } else printf("kademlia.(%s) no peers\n",cmd);
     }
     sprintf(retstr,"{\"result\":\"kademlia_%s txid.%llu\"}",cmd,(long long)txid);
