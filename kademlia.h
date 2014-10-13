@@ -246,7 +246,8 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     char _tokbuf[4096];
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    //printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
+    if ( Debuglevel > 1 )
+        printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
 }
@@ -387,6 +388,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
+    printf("got ping.%d\n",ismynode(prevaddr));
     if ( ismynode(prevaddr) != 0 ) // user invoked
     {
         if ( destip != 0 && destip[0] != 0 && ismyipaddr(destip) == 0 )
@@ -400,7 +402,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     else // sender ping'ed us
     {
         if ( verify_addr(prevaddr,ipaddr,port) < 0 )
-            sprintf(retstr,"{\"error\":\"kademlia_pong from %s doesnt verify (%s/%d)\"}",sender,ipaddr,port);
+            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s/%d)\"}",sender,ipaddr,port);
         else
         {
             txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"pong",NXTACCTSECRET,0,0);

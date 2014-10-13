@@ -149,13 +149,16 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         len = _encode_str(encoded,(char *)payload,len,destpubkey,onetime_privkey);
         slen = len;
         memcpy(payload_lenp,&slen,sizeof(*payload_lenp));
-        if ( padlen > 0 )
+        if ( maxbuf != 0 )
         {
-            //slen2 = len + padlen;
-            slen2 = _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
-            memcpy(max_lenp,&slen2,sizeof(*max_lenp));
+            if ( padlen > 0 )
+            {
+                //slen2 = len + padlen;
+                slen2 = _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
+                memcpy(max_lenp,&slen2,sizeof(*max_lenp));
+            }
+            else memcpy(maxbuf,encoded,len);
         }
-        else memcpy(maxbuf,encoded,len);
     }
     //printf("new len.%d + %ld = %ld (%d %d)\n",len,sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits),sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)+len,*payload_lenp,*max_lenp);
     return(len + sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits));
@@ -264,13 +267,13 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     memset(maxbuf,0,sizeof(maxbuf)); // always the same size
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
     outbuf = (unsigned char *)msg;
+    len = msglen;
     if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
     {
         memcpy(outbuf+msglen,data,datalen);
-        msglen += datalen;
+        len += datalen;
     }
     init_jsoncodec((char *)outbuf,msglen);
-    len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,msglen);
     printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(maxbuf)-1024 )
     {
@@ -285,12 +288,11 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         //if ( strcmp(destsrvNXTaddr,destNXTaddr) != 0 && has_privacyServer(destnp) != 0 ) // build onion in reverse order, privacyServer for dest is 2nd
         //    len = onionize(hopNXTaddr,maxbuf,encodedsrvD,destsrvNXTaddr,&outbuf,len);
         if ( L > 0 )
-            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
-        if ( outbuf != maxbuf )
         {
-            len = MAX_UDPLEN - sizeof(uint32_t);
-            outbuf = maxbuf;
+            len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
+            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
         }
+        else len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
         //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
         //    len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
