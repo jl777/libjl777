@@ -1347,7 +1347,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
-    if ( Debuglevel > 1 )
+    //if ( Debuglevel > 1 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
@@ -1357,7 +1357,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         else port = BTCD_PORT;
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
         txid ^= calc_ipbits(ipaddr);
-        if ( Debuglevel > 1 )
+        //if ( Debuglevel > 1 )
             printf("%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,msg,(long long)txid,ip_port);
         if ( SuperNET_narrowcast(ip_port,(unsigned char *)msg,len) == 0 )
             return(txid);
@@ -1374,7 +1374,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             if ( cmdstr != 0 )
                 free(cmdstr);
             free_json(array);
-            if ( Debuglevel > 1 )
+            //if ( Debuglevel > 1 )
                 printf("BROADCAST parms.(%s) valid.%d txid.%llu\n",msg,valid,(long long)txid);
             if ( SuperNET_broadcast(msg,duration) == 0 )
                 return(txid);
@@ -1512,7 +1512,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("call init_NXTservices.(%s)\n",myipaddr);
     init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices\n");
-    Finished_init = 1;
     free(myipaddr);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
@@ -1520,6 +1519,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         printf("need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
+    Finished_init = 1;
     return(0);
 }
 
