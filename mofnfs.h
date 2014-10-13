@@ -557,7 +557,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         numthreads = args[0]->numthreads;
         duration = args[0]->duration;
     }
-    if ( milliseconds() < endmilli )
+    //if ( milliseconds() < endmilli )
     {
         best = lastbest;
         calcaddr = 0;
@@ -585,7 +585,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         }
         //printf("milli %f vs endmilli %f\n",milliseconds(),endmilli);
     }
-    else
+    if ( milliseconds() >= endmilli )
     {
         for (i=0; i<numthreads; i++)
             args[i]->abortflag = 1;
