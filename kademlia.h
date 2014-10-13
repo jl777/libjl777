@@ -28,19 +28,31 @@ struct kademlia_store K_store[10000];
 
 void add_new_node(uint64_t nxt64bits)
 {
+    static int didinit;
+    static portable_mutex_t mutex;
     int32_t i;
+    if ( didinit == 0 )
+    {
+        portable_mutex_init(&mutex);
+        didinit = 1;
+    }
+    portable_mutex_lock(&mutex);
     if ( Allnodes != 0 && Numallnodes > 0 )
     {
         for (i=0; i<Numallnodes; i++)
         {
             if ( Allnodes[i] == nxt64bits )
+            {
+                portable_mutex_unlock(&mutex);
                 return;
+            }
         }
     }
     printf("ADDNODE.%llu\n",(long long)nxt64bits);
     Allnodes = realloc(Allnodes,sizeof(*Allnodes) + (Numallnodes + 1));
     Allnodes[Numallnodes] = nxt64bits;
     Numallnodes++;
+    portable_mutex_unlock(&mutex);
 }
 
 struct nodestats *get_random_node()

@@ -310,7 +310,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
         if ( len > parmslen )
             datalen = (len - parmslen);
         else datalen = 0;
-        printf("len.%d parmslen.%d datalen.%d\n",len,parmslen,datalen);
+        //printf("len.%d parmslen.%d datalen.%d\n",len,parmslen,datalen);
         parmstxt = clonestr((char *)decoded);
         argjson = cJSON_Parse(parmstxt);
         //printf("[%s] argjson.%p udp.%p\n",parmstxt,argjson,udp);
