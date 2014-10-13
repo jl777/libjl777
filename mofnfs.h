@@ -563,6 +563,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         calcaddr = 0;
         for (i=0; i<numthreads; i++)
         {
+            printf("%f ",args[i]->best);
             if ( args[i]->best < best )
             {
                 calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
@@ -578,6 +579,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
                 }
             }
         }
+        printf("best %f lastbest %f\n",best,lastbest);
         if ( best < lastbest )
         {
             printf(">>>>>>>>>>>>>>> new best (%s) %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",bestpassword,(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
