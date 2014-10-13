@@ -193,11 +193,10 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbuf,uint8_t *final,uint8_t **srcp,int32_t len)
 {
-    char ipaddr[64];
+    char ipaddr[64],NXTaddr[64];
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
-    struct NXT_acct *np;
     if ( numlayers > 1 )
         numlayers = ((rand() >> 8) % numlayers);
     if ( numlayers > 0 )
@@ -214,8 +213,9 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
                 return(-1);
             }
             expand_ipbits(ipaddr,stats->ipbits);
-            if ( (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
+            if ( stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
                 continue;
+            expand_nxt64bits(NXTaddr,stats->nxt64bits);
             /*(np = search_addresses(peer->pubBTCD);
             if ( np == 0 && peer->pubnxtbits != 0 )
             {
@@ -229,10 +229,10 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
                 printf("FATAL: %s %s %s is unknown account\n",peer->pubBTCD,destNXTaddr,peer->pubBTC);
                 return(-1);
             }*/
-            if ( strcmp(hopNXTaddr,np->H.U.NXTaddr) != 0 )
+            if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
                 //printf("add layer %d: NXT.%s\n",numlayers,np->H.U.NXTaddr);
-                len = onionize(hopNXTaddr,maxbuf,final,np->H.U.NXTaddr,&src,len);
+                len = onionize(hopNXTaddr,maxbuf,final,NXTaddr,&src,len);
                 memcpy(srcbuf,final,len);
                 src = srcbuf;
                 *srcp = final;

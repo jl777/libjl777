@@ -392,11 +392,11 @@ char *calc_teleport_summary(struct coin_info *cp,struct NXT_acct *sendernp,struc
 void complete_transporter_reception(struct coin_info *cp,struct transporter_log *log,char *NXTACCTSECRET) // start cloning
 {
     char verifiedNXTaddr[64],hopNXTaddr[64],*retstr;
-    int32_t i;
+    int32_t i,createdflag;
     struct NXT_acct *destnp,*np;
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    //destnp = search_addresses(log->otherpubaddr);
+    destnp = get_NXTacct(&createdflag,Global_mp,log->otherpubaddr);
     retstr = calc_teleport_summary(cp,destnp,log);
     log->logstate |= TRANSPORTER_TRANSFERRED;
     save_transporter_log(log);
