@@ -885,7 +885,7 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
 {
     cJSON *array,*json = cJSON_CreateObject();
     int32_t i;
-    char ipaddr[64];
+    char ipaddr[64],NXTaddr[64];
     uint32_t *ipaddrs;
     struct nodestats *stats;
     double millis = milliseconds();
@@ -900,9 +900,19 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
                 cJSON_AddItemToArray(array,cJSON_CreateString(ipaddr));
             }
             cJSON_AddItemToObject(json,"hasips",array);
+            cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
         }
-        cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
-        cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(pserver->xorsum));
+        if ( pserver->numnxt > 0 )
+        {
+            array = cJSON_CreateArray();
+            for (i=0; i<pserver->numnxt&&i<(int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt)); i++)
+            {
+                expand_nxt64bits(NXTaddr,pserver->hasnxt[i]);
+                cJSON_AddItemToArray(array,cJSON_CreateString(NXTaddr));
+            }
+            cJSON_AddItemToObject(json,"hasnxt",array);
+            cJSON_AddItemToObject(json,"numnxt",cJSON_CreateNumber(pserver->numnxt));
+        }
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
             if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
@@ -966,7 +976,6 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
         //cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
         cJSON_AddItemToObject(json,"srvNXT",cJSON_CreateString(srvnxtaddr));
         cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
-        cJSON_AddItemToObject(json,"ipbits",cJSON_CreateNumber(stats->ipbits));
         sprintf(numstr,"%d",stats->supernet_port);
         if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
