@@ -1016,7 +1016,61 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
     return(json);
 }
 
-cJSON *gen_peers_json(int32_t only_privacyServers)
+void scan_nodes(char *NXTACCTSECRET)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct pserver_info *pserver,*mypserver;
+    uint32_t ipbits,newips[16];
+    int32_t i,j,k,m,n = (int32_t)Numallnodes;
+    uint64_t otherbits;
+    char ipaddr[64];
+    struct nodestats *stats;
+    if ( Allnodes != 0 && cp != 0 && cp->myipaddr[0] != 0 )
+    {
+        mypserver = get_pserver(0,cp->myipaddr,0,0);
+        if ( mypserver->hasips != 0 && n != 0 )
+        {
+            memset(newips,0,sizeof(newips));
+            for (i=m=0; i<n; i++)
+            {
+                if ( (otherbits= Allnodes[i]) != mypserver->nxt64bits )
+                {
+                    if ( (stats= get_nodestats(otherbits)) != 0 )
+                    {
+                        expand_ipbits(ipaddr,stats->ipbits);
+                        pserver = get_pserver(0,ipaddr,0,0);
+                        if ( pserver->hasips != 0 && pserver->numips > 0 )
+                        {
+                            for (j=0; j<pserver->numips; j++)
+                            {
+                                ipbits = pserver->hasips[j];
+                                for (k=0; k<mypserver->numips; k++)
+                                    if ( mypserver->hasips[k] == ipbits )
+                                        break;
+                                if ( k == mypserver->numips )
+                                {
+                                    newips[m++] = ipbits;
+                                    if ( m >= (int)(sizeof(newips)/sizeof(*newips)) )
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if ( m > 0 )
+            {
+                for (i=0; i<m; i++)
+                {
+                    expand_ipbits(ipaddr,newips[i]);
+                    send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",NXTACCTSECRET,0,0);
+                }
+            }
+        }
+    }
+}
+
+cJSON *gen_peers_json(int32_t only_privacyServers,char *NXTACCTSECRET)
 {
     int32_t i,n = (int32_t)Numallnodes;
     cJSON *json,*array;
@@ -1035,7 +1089,9 @@ cJSON *gen_peers_json(int32_t only_privacyServers)
         cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
         cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
     }
+    scan_nodes(NXTACCTSECRET);
     return(json);
 }
+
 
 #endif
