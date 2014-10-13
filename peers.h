@@ -9,6 +9,7 @@
 #ifndef libjl777_peers_h
 #define libjl777_peers_h
 
+
 int32_t process_PeerQ(void **ptrp,void *arg) // added when inbound transporter sequence is started
 {
     struct peer_queue_entry *ptr = (*ptrp);
@@ -80,30 +81,6 @@ struct peerinfo *get_random_pserver()
     return(0);
 }
 
-char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
-{
-    int32_t i,n = 0;
-    char *str;
-    if ( coins == 0 )
-        return(0);
-    strcpy(coinsjson,",\"coins\":[");
-    for (i=0; i<4*64; i++)
-        if ( (coins[i>>6] & (1L << (i&63))) != 0 )
-        {
-            str = coinid_str(i);
-            if ( strcmp(str,ILLEGAL_COIN) != 0 )
-            {
-                if ( n++ != 0 )
-                    strcat(coinsjson,", ");
-                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
-            }
-        }
-    if ( n == 0 )
-        coinsjson[0] = coinsjson[1] = 0;
-    else strcat(coinsjson,"]");
-    return(coinsjson);
-}
-
 void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi)
 {
     char pubkey[128],srvipaddr[64],srvnxtaddr[64],coinsjson[1024];
@@ -113,176 +90,6 @@ void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi)
     init_hexbytes_noT(pubkey,pi->srv.pubkey,sizeof(pi->srv.pubkey));
     _coins_jsonstr(coinsjson,pi->coins);
     sprintf(buf,"{\"requestType\":\"publishaddrs\",\"NXT\":\"%s\",\"Numpservers\":\"%d\",\"xorsum\":\"%u\",\"pubkey\":\"%s\",\"pubNXT\":\"%s\",\"pubBTCD\":\"%s\",\"pubBTC\":\"%s\",\"time\":%ld,\"srvNXTaddr\":\"%s\",\"srvipaddr\":\"%s\",\"srvport\":\"%d\"%s}",NXTaddr,Numpservers,calc_xorsum(Pservers,Numpservers),pubkey,NXTaddr,pi->pubBTCD,pi->pubBTC,time(NULL),srvnxtaddr,srvipaddr,pi->srv.supernet_port,coinsjson);
-}
-
-cJSON *gen_pserver_json(struct pserver_info *pserver)
-{
-    cJSON *array,*json = cJSON_CreateObject();
-    int32_t i;
-    char ipaddr[64];
-    uint32_t *ipaddrs;
-    struct nodestats *stats;
-    double millis = milliseconds();
-    if ( pserver != 0 )
-    {
-        if ( (ipaddrs= pserver->hasips) != 0 && pserver->numips > 0 )
-        {
-            array = cJSON_CreateArray();
-            for (i=0; i<pserver->numips; i++)
-            {
-                expand_ipbits(ipaddr,ipaddrs[i]);
-                cJSON_AddItemToArray(array,cJSON_CreateString(ipaddr));
-            }
-            cJSON_AddItemToObject(json,"hasips",array);
-        }
-        cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
-        cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(pserver->xorsum));
-        if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
-        {
-            if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
-                cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(stats->p2pport));
-            if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
-                cJSON_AddItemToObject(json,"port",cJSON_CreateNumber(stats->supernet_port));
-            if ( stats->numsent != 0 )
-                cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(stats->numsent));
-            if ( stats->sentmilli != 0 )
-                cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber((millis - stats->sentmilli)/60000.));
-            if ( stats->numrecv != 0 )
-                cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
-            if ( stats->recvmilli != 0 )
-                cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - stats->recvmilli)/60000.));
-            if ( stats->numpings != 0 )
-                cJSON_AddItemToObject(json,"pings",cJSON_CreateNumber(stats->numpings));
-            if ( stats->numpongs != 0 )
-                cJSON_AddItemToObject(json,"pongs",cJSON_CreateNumber(stats->numpongs));
-            if ( stats->pingmilli != 0 && stats->pongmilli != 0 )
-                cJSON_AddItemToObject(json,"pingtime",cJSON_CreateNumber(stats->pongmilli - stats->pingmilli));
-            if ( stats->numpings != 0 && stats->numpongs != 0 && stats->pingpongsum != 0 )
-                cJSON_AddItemToObject(json,"avetime",cJSON_CreateNumber((2. * stats->pingpongsum)/(stats->numpings + stats->numpongs)));
-       }
-    }
-    return(json);
-}
-
-cJSON *gen_peerinfo_json(struct peerinfo *peer)
-{
-    char srvipaddr[64],srvnxtaddr[64],numstr[64],pubNXT[64],hexstr[512],coinsjsonstr[1024];
-    cJSON *coins,*json = cJSON_CreateObject();
-    struct pserver_info *pserver;
-    expand_ipbits(srvipaddr,peer->srv.ipbits);
-    expand_nxt64bits(srvnxtaddr,peer->srvnxtbits);
-    expand_nxt64bits(pubNXT,peer->pubnxtbits);
-    if ( is_privacyServer(peer) != 0 )
-    {
-        cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
-        cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
-        cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
-        sprintf(numstr,"%d",peer->srv.supernet_port);
-        if ( peer->srv.supernet_port != 0 && peer->srv.supernet_port != SUPERNET_PORT )
-            cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
-        sprintf(numstr,"%d",peer->srv.p2pport);
-        if ( peer->srv.p2pport != 0 && peer->srv.p2pport != BTCD_PORT )
-            cJSON_AddItemToObject(json,"p2pport",cJSON_CreateString(numstr));
-        if ( peer->srv.numsent != 0 )
-            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(peer->srv.numsent));
-        if ( peer->srv.numrecv != 0 )
-            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(peer->srv.numrecv));
-        if ( (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
-        {
-            //printf("%s pserver.%p\n",srvipaddr,pserver);
-            cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
-        }
-    }
-    else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
-    init_hexbytes_noT(hexstr,peer->srv.pubkey,sizeof(peer->srv.pubkey));
-    cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
-    if ( _coins_jsonstr(coinsjsonstr,peer->coins) != 0 )
-    {
-        coins = cJSON_Parse(coinsjsonstr+9);
-        if ( coins != 0 )
-            cJSON_AddItemToObject(json,"coins",coins);
-        else printf("warning no coin networks.(%s) probably no peerinfo yet\n",coinsjsonstr);
-    }
-    return(json);
-}
-
-cJSON *gen_Pservers_json(int32_t firstPserver)
-{
-    int32_t i,j;
-    struct coin_info *cp = get_coin_info("BTCD");
-    char srvipaddr[64];
-    struct peerinfo *pserver;
-    cJSON *json,*array;
-    json = cJSON_CreateObject();
-    array = cJSON_CreateArray();
-    if ( Pservers != 0 && Numpservers >= firstPserver )
-    {
-        for (j=0,i=firstPserver; i<Numpservers&&j<32; i++,j++)
-        {
-            pserver = Pservers[i];
-            expand_ipbits(srvipaddr,pserver->srv.ipbits);
-            cJSON_AddItemToArray(array,cJSON_CreateString(srvipaddr));
-        }
-        if ( cp != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 && cp->srvNXTADDR[0] != 0 )
-        {
-            cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("publishPservers"));
-            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
-        }
-        cJSON_AddItemToObject(json,"Pservers",array);
-        cJSON_AddItemToObject(json,"firstPserver",cJSON_CreateNumber(firstPserver));
-        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numpservers));
-        cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(calc_xorsum(Pservers,Numpservers)));
-    }
-    return(json);
-}
-
-void set_pservers_json(char *buf,int32_t firstPserver)
-{
-    cJSON *json;
-    char *jsonstr;
-    if ( (json = gen_Pservers_json(firstPserver)) != 0 )
-    {
-        if ( (jsonstr = cJSON_Print(json)) != 0 )
-        {
-            stripwhite_ns(jsonstr,strlen(jsonstr));
-            strcpy(buf,jsonstr);
-            free(jsonstr);
-        }
-        free_json(json);
-    }
-}
-
-cJSON *gen_peers_json(int32_t only_privacyServers)
-{
-    int32_t i,n;
-    struct peerinfo **peers;
-    cJSON *json,*array;
-    //printf("inside gen_peer_json.%d\n",only_privacyServers);
-    json = cJSON_CreateObject();
-    array = cJSON_CreateArray();
-    if ( only_privacyServers != 0 )
-    {
-        peers = Pservers;
-        n = Numpservers;
-    }
-    else
-    {
-        peers = Peers;
-        n = Numpeers;
-    }
-    if ( peers != 0 && n > 0 )
-    {
-        for (i=0; i<n; i++)
-        {
-            if ( peers[i] != 0 )
-                cJSON_AddItemToArray(array,gen_peerinfo_json(peers[i]));
-        }
-        cJSON_AddItemToObject(json,"peers",array);
-        //cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
-        cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
-        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numpservers));
-    }
-    return(json);
 }
 
 struct peerinfo *find_privacyserver(struct peerinfo *refpeer)
@@ -299,6 +106,7 @@ struct peerinfo *find_privacyserver(struct peerinfo *refpeer)
     }
     return(0);
 }
+
 
 struct peerinfo *find_peerinfo(uint64_t pubnxtbits,char *pubBTCD,char *pubBTC)
 {
@@ -593,59 +401,110 @@ char *publishPservers(struct sockaddr *prevaddr,char *NXTACCTSECRET,char *sender
     return(0);
 }
 
-int32_t on_SuperNET_whitelist(char *ipaddr)
+static int _cmp_Uaddr(const void *a,const void *b)
 {
-    uint32_t i,ipbits;
-    if ( Num_in_whitelist > 0 && SuperNET_whitelist != 0 )
-    {
-        ipbits = calc_ipbits(ipaddr);
-        for (i=0; i<Num_in_whitelist; i++)
-            if ( SuperNET_whitelist[i] == ipbits )
-                return(1);
-    }
-    return(0);
+#define val_a ((struct Uaddr *)a)->metric
+#define val_b ((struct Uaddr *)b)->metric
+	if ( val_b > val_a )
+		return(1);
+	else if ( val_b < val_a )
+		return(-1);
+	return(0);
+#undef val_a
+#undef val_b
 }
 
-int32_t add_SuperNET_whitelist(char *ipaddr)
+double calc_Uaddr_metric(struct Uaddr *uaddr,uint32_t now)
 {
-    if ( on_SuperNET_whitelist(ipaddr) == 0 )
+    double elapsed,metric = 0.;
+    if ( uaddr->lastcontact != 0 && uaddr->numrecv > 0 )
     {
-        SuperNET_whitelist = realloc(SuperNET_whitelist,sizeof(*SuperNET_whitelist) * (Num_in_whitelist + 1));
-        SuperNET_whitelist[Num_in_whitelist] = calc_ipbits(ipaddr);
-        printf(">>>>>>>>>>>>>>>>>> add to SuperNET_whitelist[%d] (%s)\n",Num_in_whitelist,ipaddr);
-        Num_in_whitelist++;
-        return(1);
+        if ( uaddr->lastcontact <= now )
+        {
+            elapsed = ((double)(now - uaddr->lastcontact) + 1) / 60.;
+            metric = (double)(uaddr->numsent + 1) / uaddr->numrecv;
+            if ( metric > 1. )
+                metric = 1.;
+            metric /= sqrt(elapsed);
+        }
     }
-    return(0);
+    return(metric);
 }
 
-void add_SuperNET_peer(char *ip_port)
+int32_t sort_topaddrs(struct Uaddr **Uaddrs,int32_t max,struct peerinfo *peer)
 {
-    struct pserver_info *pserver;
-    int32_t createdflag,p2pport;
-    char ipaddr[16];
-    p2pport = parse_ipaddr(ipaddr,ip_port);
-    if ( p2pport == 0 )
-        p2pport = BTCD_PORT;
-    pserver = get_pserver(&createdflag,ipaddr,0,p2pport);
-    //pserver->S.BTCD_p2p = 1;
-    if ( on_SuperNET_whitelist(ipaddr) != 0 )
+    int32_t i,n;
+    void **ptrs;
+    uint32_t now = (uint32_t)time(NULL);
+    if ( peer->numUaddrs == 0 || peer->Uaddrs == 0 )
+        return(0);
+    n = (peer->numUaddrs > max) ? max : peer->numUaddrs;
+    if ( peer->numUaddrs > 1 )
     {
-        printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
-        p2p_publishpacket(pserver,0);
+        ptrs = malloc(sizeof(*Uaddrs) * peer->numUaddrs);
+        for (i=0; i<peer->numUaddrs; i++)
+        {
+            peer->Uaddrs[i].metric = calc_Uaddr_metric(ptrs[i],now);
+            ptrs[i] = &peer->Uaddrs[i];
+        }
+        qsort(ptrs,peer->numUaddrs,sizeof(*Uaddrs),_cmp_Uaddr);
+        for (i=0; i<n; i++)
+        {
+            if ( ((struct Uaddr *)ptrs[i])->metric <= 0. )
+            {
+                n = i;
+                break;
+            }
+            Uaddrs[i] = ptrs[i];
+        }
+        free(ptrs);
     }
+    else Uaddrs[0] = &peer->Uaddrs[0];
+    return(n);
+}
+cJSON *gen_Pservers_json(int32_t firstPserver)
+{
+    int32_t i,j;
+    struct coin_info *cp = get_coin_info("BTCD");
+    char srvipaddr[64];
+    struct peerinfo *pserver;
+    cJSON *json,*array;
+    json = cJSON_CreateObject();
+    array = cJSON_CreateArray();
+    if ( Pservers != 0 && Numpservers >= firstPserver )
+    {
+        for (j=0,i=firstPserver; i<Numpservers&&j<32; i++,j++)
+        {
+            pserver = Pservers[i];
+            expand_ipbits(srvipaddr,pserver->ipbits);
+            cJSON_AddItemToArray(array,cJSON_CreateString(srvipaddr));
+        }
+        if ( cp != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 && cp->srvNXTADDR[0] != 0 )
+        {
+            cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("publishPservers"));
+            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
+        }
+        cJSON_AddItemToObject(json,"Pservers",array);
+        cJSON_AddItemToObject(json,"firstPserver",cJSON_CreateNumber(firstPserver));
+        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numpservers));
+        cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(calc_xorsum(Pservers,Numpservers)));
+    }
+    return(json);
 }
 
-void every_second(int32_t counter)
+void set_pservers_json(char *buf,int32_t firstPserver)
 {
-    char *ip_port;
-    if ( Finished_init == 0 )
-        return;
-    if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
+    cJSON *json;
+    char *jsonstr;
+    if ( (json = gen_Pservers_json(firstPserver)) != 0 )
     {
-        add_SuperNET_peer(ip_port);
-        free(ip_port);
+        if ( (jsonstr = cJSON_Print(json)) != 0 )
+        {
+            stripwhite_ns(jsonstr,strlen(jsonstr));
+            strcpy(buf,jsonstr);
+            free(jsonstr);
+        }
+        free_json(json);
     }
 }
-
 #endif

@@ -16,6 +16,7 @@
 #define KADEMLIA_NUMK ((int)(sizeof(K_buckets[0])/sizeof(K_buckets[0][0])))
 struct nodestats *K_buckets[64+1][6];
 long Kbucket_updated[KADEMLIA_NUMBUCKETS];
+uint64_t *Allnodes,Numallnodes;
 
 struct kademlia_store
 {
@@ -24,6 +25,33 @@ struct kademlia_store
     uint32_t datalen,laststored,lastaccess;
 };
 struct kademlia_store K_store[10000];
+
+void add_new_node(uint64_t nxt64bits)
+{
+    int32_t i;
+    if ( Allnodes != 0 && Numallnodes > 0 )
+    {
+        for (i=0; i<Numallnodes; i++)
+        {
+            if ( Allnodes[i] == nxt64bits )
+                return;
+        }
+    }
+    Allnodes = realloc(Allnodes,sizeof(*Allnodes) + (Numallnodes + 1));
+    Allnodes[Numallnodes] = nxt64bits;
+    Numallnodes++;
+}
+
+struct nodestats *get_random_node()
+{
+    struct nodestats *stats;
+    if ( Allnodes != 0 && Numallnodes > 0 )
+    {
+        if ( (stats= get_nodestats(Allnodes[(rand()>>8) % Numallnodes])) != 0 )
+            return(stats);
+    }
+    return(0);
+}
 
 struct kademlia_store *kademlia_getstored(uint64_t keyhash,int32_t storeflag)
 {
@@ -242,7 +270,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-        expand_ipbits(ipaddr,np->mypeerinfo.srv.ipbits);
+        expand_ipbits(ipaddr,np->stats.ipbits);
         pserver = get_pserver(0,ipaddr,0,0);
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
@@ -256,7 +284,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
-        stats = get_nodestats(0,pserver->nxt64bits);
+        stats = get_nodestats(pserver->nxt64bits);
         if ( stats != 0 )
         {
             stats->pingmilli = milliseconds();
@@ -295,10 +323,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
 
 void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubkeystr,uint32_t lastcontact,int32_t p2pflag)
 {
-    struct peerinfo *add_peerinfo(struct peerinfo *);
     uint64_t nxt64bits;
     uint32_t ipbits = 0;
-    struct peerinfo *peer = 0;
     struct pserver_info *pserver;
     struct nodestats *stats = 0;
     if ( destNXTaddr != 0 && destNXTaddr[0] != 0 )
@@ -321,7 +347,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
     if ( nxt64bits != 0 )
     {
-        stats = get_nodestats(&peer,nxt64bits);
+        stats = get_nodestats(nxt64bits);
         if ( stats->nxt64bits == 0 || stats->nxt64bits != nxt64bits )
         {
             printf("kademlia_update_info: nxt64bits %llu -> %llu\n",(long long)stats->nxt64bits,(long long)nxt64bits);
@@ -353,8 +379,8 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
         }
         if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
             stats->lastcontact = lastcontact;
-        add_peerinfo(peer);
-        /*expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
+        /*add_peerinfo(peer);
+        expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
         if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
             init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
         else pubkeystr[0] = 0;
@@ -364,8 +390,6 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
         update_peerinfo(&createdflag,&peer);
         fprintf(stderr,"finished updating peer\n");*/
     }
-     if ( peer != 0 )
-        printf("update_info(%s %s) %llu %llu\n",destNXTaddr,ipaddr,(long long)peer->srvnxtbits,(long long)peer->pubnxtbits);
 }
 
 char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *ipaddr,int32_t port,char *destip)
@@ -400,7 +424,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     char retstr[1024];
     struct nodestats *stats;
-    stats = get_nodestats(0,calc_nxt64bits(sender));
+    stats = get_nodestats(calc_nxt64bits(sender));
     // all the work is already done in update_Kbucket
     if ( stats != 0 )
     {
@@ -462,7 +486,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
                 destbits = sortbuf[(i<<1) + 1];
                 if ( ismynxtbits(destbits) == 0 )
                 {
-                    if ( (stats= get_nodestats(0,destbits)) != 0 )
+                    if ( (stats= get_nodestats(destbits)) != 0 )
                     {
                         if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
@@ -593,7 +617,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                     destbits = sortbuf[(i<<1) + 1];
                     if ( ismynxtbits(destbits) == 0 )
                     {
-                        if ( (stats= get_nodestats(0,destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
+                        if ( (stats= get_nodestats(destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
                         printf("call %llu (%s)\n",(long long)destbits,cmd);
                         txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,0);
@@ -608,7 +632,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 {
                     expand_nxt64bits(destNXTaddr,sortbuf[(i<<1) + 1]);
                     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                    stats = &destnp->mypeerinfo.srv;
+                    stats = &destnp->stats;
                     item = cJSON_CreateArray();
                     cJSON_AddItemToArray(item,cJSON_CreateString(destNXTaddr));
                     if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
@@ -695,6 +719,7 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
             if ( matchflag < 0 )
             {
                 buckets[j] = stats;
+                add_new_node(stats->nxt64bits);
                 printf("APPEND.%d: bucket[%d] <- %llu %s then call pushstore\n",bucketid,j,(long long)stats->nxt64bits,ipaddr);
                 kademlia_pushstore(mynxt64bits(),stats->nxt64bits);
             }
@@ -717,6 +742,7 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
     }
     if ( matchflag < 0 ) // stats is new and the bucket is full
     {
+        add_new_node(stats->nxt64bits);
         eviction = buckets[0];
         for (k=0; k<n-1; k++)
             buckets[k] = buckets[k+1];
@@ -846,7 +872,7 @@ void every_minute(int32_t counter)
     if ( broadcast_count == 0 )
     {
         p2p_publishpacket(0,0);
-        update_Kbuckets(get_nodestats(0,cp->srvpubnxtbits),cp->srvpubnxtbits,cp->myipaddr,0,0,0);
+        update_Kbuckets(get_nodestats(cp->srvpubnxtbits),cp->srvpubnxtbits,cp->myipaddr,0,0,0);
     }
     if ( (broadcast_count % 10) == 0 )
     {
@@ -854,63 +880,148 @@ void every_minute(int32_t counter)
         {
             expand_ipbits(ipaddr,SuperNET_whitelist[i]);
             pserver = get_pserver(0,ipaddr,0,0);
-            if ( ismyipaddr(ipaddr) == 0 && ((stats= get_nodestats(0,pserver->nxt64bits)) == 0 || broadcast_count == 0 || (now - stats->lastcontact) > NODESTATS_EXPIRATION) )
+            if ( ismyipaddr(ipaddr) == 0 && ((stats= get_nodestats(pserver->nxt64bits)) == 0 || broadcast_count == 0 || (now - stats->lastcontact) > NODESTATS_EXPIRATION) )
                 send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0), n++;
         }
         printf("PINGED.%d\n",n);
     }
     broadcast_count++;
-    return;
-/*
-    if ( cp->myipaddr[0] != 0 )
-        mypserver = get_pserver(0,cp->myipaddr,0,0);
-    mynp = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
-    set_peer_json(cmd,cp->srvNXTADDR,&mynp->mypeerinfo);
-    len = construct_tokenized_req(packet,cmd,cp->srvNXTACCTSECRET);
-    if ( Num_in_whitelist > 0 && SuperNET_whitelist != 0 )
+}
+
+cJSON *gen_pserver_json(struct pserver_info *pserver)
+{
+    cJSON *array,*json = cJSON_CreateObject();
+    int32_t i;
+    char ipaddr[64];
+    uint32_t *ipaddrs;
+    struct nodestats *stats;
+    double millis = milliseconds();
+    if ( pserver != 0 )
     {
-        for (iter=0; iter<2; iter++)
+        if ( (ipaddrs= pserver->hasips) != 0 && pserver->numips > 0 )
         {
-            connected = 0;
-            for (i=0; i<Num_in_whitelist; i++)
+            array = cJSON_CreateArray();
+            for (i=0; i<pserver->numips; i++)
             {
-                expand_ipbits(ipaddr,SuperNET_whitelist[i]);
-                pserver = get_pserver(0,ipaddr,0,0);
-                if ( pserver != mypserver )
-                {
-                    actionflag = 1;
-                    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 && expire_nodestats(stats,now) == 0 )
-                    {
-                        if ( stats->gotencrypted == 0 )
-                        {
-                            if ( stats->modified != 0 )
-                            {
-                                if ( iter == 1 )
-                                    p2p_publishpacket(pserver,0);
-                                connected++;
-                            }
-                            else if ( iter == 1 ) directsend_packet(pserver,packet,len);
-                        } else connected++;
-                    } else if ( iter == 1 ) p2p_publishpacket(pserver,0);
-                }
+                expand_ipbits(ipaddr,ipaddrs[i]);
+                cJSON_AddItemToArray(array,cJSON_CreateString(ipaddr));
             }
-            if ( iter == 0 && connected <= (Num_in_whitelist/8) && broadcast_count < 10 )
+            cJSON_AddItemToObject(json,"hasips",array);
+        }
+        cJSON_AddItemToObject(json,"hasnum",cJSON_CreateNumber(pserver->hasnum));
+        cJSON_AddItemToObject(json,"xorsum",cJSON_CreateNumber(pserver->xorsum));
+        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        {
+            if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
+                cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(stats->p2pport));
+            if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
+                cJSON_AddItemToObject(json,"port",cJSON_CreateNumber(stats->supernet_port));
+            if ( stats->numsent != 0 )
+                cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(stats->numsent));
+            if ( stats->sentmilli != 0 )
+                cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber((millis - stats->sentmilli)/60000.));
+            if ( stats->numrecv != 0 )
+                cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
+            if ( stats->recvmilli != 0 )
+                cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - stats->recvmilli)/60000.));
+            if ( stats->numpings != 0 )
+                cJSON_AddItemToObject(json,"pings",cJSON_CreateNumber(stats->numpings));
+            if ( stats->numpongs != 0 )
+                cJSON_AddItemToObject(json,"pongs",cJSON_CreateNumber(stats->numpongs));
+            if ( stats->pingmilli != 0 && stats->pongmilli != 0 )
+                cJSON_AddItemToObject(json,"pingtime",cJSON_CreateNumber(stats->pongmilli - stats->pingmilli));
+            if ( stats->numpings != 0 && stats->numpongs != 0 && stats->pingpongsum != 0 )
+                cJSON_AddItemToObject(json,"avetime",cJSON_CreateNumber((2. * stats->pingpongsum)/(stats->numpings + stats->numpongs)));
+        }
+    }
+    return(json);
+}
+
+char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
+{
+    int32_t i,n = 0;
+    char *str;
+    if ( coins == 0 )
+        return(0);
+    strcpy(coinsjson,",\"coins\":[");
+    for (i=0; i<4*64; i++)
+        if ( (coins[i>>6] & (1L << (i&63))) != 0 )
+        {
+            str = coinid_str(i);
+            if ( strcmp(str,ILLEGAL_COIN) != 0 )
             {
-                printf("only connected to %d of %d, lets broadcast\n",connected,Num_in_whitelist);
-                p2p_publishpacket(0,0);
-                if ( broadcast_count++ == 0 )
-                {
-                    for (i=0; i<Num_in_whitelist; i++)
-                    {
-                        expand_ipbits(ipaddr,SuperNET_whitelist[i]);
-                        send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",cp->srvNXTACCTSECRET,0,0);
-                    }
-                    printf("PINGED.%d\n",Num_in_whitelist);
-                }
-                break;
+                if ( n++ != 0 )
+                    strcat(coinsjson,", ");
+                sprintf(coinsjson+strlen(coinsjson),"\"%s\"",str);
             }
         }
-    }*/
+    if ( n == 0 )
+        coinsjson[0] = coinsjson[1] = 0;
+    else strcat(coinsjson,"]");
+    return(coinsjson);
+}
+
+cJSON *gen_peerinfo_json(struct nodestats *stats)
+{
+    char srvipaddr[64],srvnxtaddr[64],numstr[64],hexstr[512],coinsjsonstr[1024];
+    cJSON *coins,*json = cJSON_CreateObject();
+    struct pserver_info *pserver;
+    expand_ipbits(srvipaddr,stats->ipbits);
+    expand_nxt64bits(srvnxtaddr,stats->nxt64bits);
+    //if ( is_privacyServer(peer) != 0 )
+    {
+        cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
+        cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
+        cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
+        sprintf(numstr,"%d",stats->supernet_port);
+        if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
+            cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
+        sprintf(numstr,"%d",stats->p2pport);
+        if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
+            cJSON_AddItemToObject(json,"p2pport",cJSON_CreateString(numstr));
+        if ( stats->numsent != 0 )
+            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(stats->numsent));
+        if ( stats->numrecv != 0 )
+            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
+        if ( (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
+        {
+            //printf("%s pserver.%p\n",srvipaddr,pserver);
+            cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
+        }
+    }
+    //else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(pubNXT));
+    init_hexbytes_noT(hexstr,stats->pubkey,sizeof(stats->pubkey));
+    cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
+    if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )
+    {
+        coins = cJSON_Parse(coinsjsonstr+9);
+        if ( coins != 0 )
+            cJSON_AddItemToObject(json,"coins",coins);
+        else printf("warning no coin networks.(%s) probably no peerinfo yet\n",coinsjsonstr);
+    }
+    return(json);
+}
+
+cJSON *gen_peers_json(int32_t only_privacyServers)
+{
+    int32_t i,n = (int32_t)Numallnodes;
+    cJSON *json,*array;
+    //printf("inside gen_peer_json.%d\n",only_privacyServers);
+    json = cJSON_CreateObject();
+    array = cJSON_CreateArray();
+    if ( Allnodes != 0 && n > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( Allnodes[i] != 0 )
+                cJSON_AddItemToArray(array,gen_peerinfo_json(get_nodestats(Allnodes[i])));
+        }
+        cJSON_AddItemToObject(json,"peers",array);
+        //cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
+        cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
+        cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
+    }
+    return(json);
 }
 
 #endif

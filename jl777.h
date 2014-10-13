@@ -186,20 +186,20 @@ struct NXT_str
     union _NXT_str_buf U;
 };
 
-struct Uaddr
+/*struct Uaddr
 {
     uint32_t ipbits,numsent,numrecv,lastcontact;
     float metric;
-};
+};*/
 
-#define PEER_HELLOSTATE 1
-#define NUM_PEER_STATES (PEER_HELLOSTATE+1)
+//#define PEER_HELLOSTATE 1
+//#define NUM_PEER_STATES (PEER_HELLOSTATE+1)
 
 struct nodestats
 {
     uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
     struct nodestats *eviction;
-    uint64_t nxt64bits;
+    uint64_t nxt64bits,coins[4];
     uint32_t ipbits,numsent,numrecv,lastcontact,numpings,numpongs;
     float recvmilli,sentmilli,pingmilli,pongmilli;
     double pingpongsum;
@@ -215,7 +215,7 @@ struct pserver_info
     uint32_t numips,xorsum,hasnum;
 };
 
-struct peerinfo
+/*struct peerinfo
 {
     struct nodestats srv;
     uint64_t srvnxtbits,pubnxtbits,coins[4];
@@ -224,7 +224,7 @@ struct peerinfo
     float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];
     uint8_t states[NUM_PEER_STATES + 1];
     char pubBTCD[36],pubBTC[36];
-};
+};*/
 
 struct NXThandler_info
 {
@@ -242,9 +242,9 @@ struct NXThandler_info
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
-    uint64_t *privacyServers,coins[4];
-    CURL *curl_handle,*curl_handle2,*curl_handle3;
-    portable_tcp_t Punch_tcp;
+    uint64_t coins[4];//*privacyServers,
+    //CURL *curl_handle,*curl_handle2,*curl_handle3;
+    //portable_tcp_t Punch_tcp;
     //uv_udp_t Punch_udp;
     int32_t initassets,Lfactor;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
@@ -386,7 +386,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
 struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *addr,char *sender,uint16_t port);
 char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
-void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi);
+//void set_peer_json(char *buf,char *NXTaddr,struct peerinfo *pi);
 
 union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; };
 typedef union _bits256 bits256;
@@ -457,7 +457,7 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
 #include "coins.h"
 #include "udp.h"
 #include "kademlia.h"
-#include "peers.h"
+//#include "peers.h"
 #include "packets.h"
 #include "mofnfs.h"
 

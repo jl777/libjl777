@@ -446,7 +446,7 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
     return(np);
 }
 
-struct NXT_acct *search_addresses(char *addr)
+/*struct NXT_acct *search_addresses(char *addr)
 {
     char NXTaddr[64],*BTCDaddr,*BTCaddr;
     int32_t createdflag;
@@ -473,7 +473,7 @@ struct NXT_acct *search_addresses(char *addr)
         return(0);
     }
     return(0);
-}
+}*/
 
 uint64_t calc_txid(unsigned char *buf,int32_t len)
 {
@@ -599,7 +599,7 @@ uint64_t *issue_getAssetIds(int32_t *nump)
     uint64_t *assetids = 0;
     char cmd[4096],*retstr;
     sprintf(cmd,"%s=getAssetIds",_NXTSERVER);
-    retstr = issue_NXTPOST(Global_mp->curl_handle,cmd);
+    retstr = issue_NXTPOST(0,cmd);
     if ( retstr != 0 )
     {
         if ( (json= cJSON_Parse(retstr)) != 0 )
@@ -1391,7 +1391,7 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
     return(server_addr);
 }
 
-uint32_t _calc_xorsum(uint32_t *ipbits,int32_t n)
+/*uint32_t _calc_xorsum(uint32_t *ipbits,int32_t n)
 {
     uint32_t i,xorsum = 0;
     if ( ipbits != 0 && n > 0 )
@@ -1413,25 +1413,21 @@ uint32_t calc_xorsum(struct peerinfo **peers,int32_t n)
                 xorsum ^= peers[i]->srv.ipbits;
     }
     return(xorsum);
-}
+}*/
 
-struct nodestats *get_nodestats(struct peerinfo **peerptrp,uint64_t nxt64bits)
+struct nodestats *get_nodestats(uint64_t nxt64bits)
 {
     struct nodestats *stats = 0;
     int32_t createdflag;
     struct NXT_acct *np;
-    struct peerinfo *peer;
     char NXTaddr[64];
     if ( nxt64bits != 0 )
     {
         expand_nxt64bits(NXTaddr,nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        peer = &np->mypeerinfo;
-        if ( peer->pubnxtbits == 0 )
-            peer->srvnxtbits = peer->pubnxtbits = peer->srv.nxt64bits = nxt64bits;
-        if ( peerptrp != 0 )
-            (*peerptrp) = peer;
-        return(&peer->srv);
+        stats = &np->stats;
+        if ( stats->nxt64bits == 0 )
+            stats->nxt64bits = nxt64bits;
     }
     return(stats);
 }
@@ -1444,7 +1440,7 @@ struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t superne
     if ( createdp == 0 )
         createdp = &createdflag;
     pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
-    if ( (stats= get_nodestats(0,pserver->nxt64bits)) != 0 )
+    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
     {
         if ( *createdp != 0 || (supernet_port != 0 && supernet_port != BTCD_PORT && supernet_port != stats->supernet_port) )
             stats->supernet_port = supernet_port;
@@ -1689,7 +1685,7 @@ int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,c
     struct NXT_acct *np;
     char argstr[1024],pubkey[1024],token[1024];
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    init_hexbytes_noT(pubkey,np->mypeerinfo.srv.pubkey,sizeof(np->mypeerinfo.srv.pubkey));
+    init_hexbytes_noT(pubkey,np->stats.pubkey,sizeof(np->stats.pubkey));
     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
@@ -1810,7 +1806,7 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
         stripwhite_ns(parmstxt,len);
         
         if ( strlen((char *)encoded) == NXT_TOKEN_LEN )
-            issue_decodeToken(Global_mp->curl_handle2,sender,validp,parmstxt,encoded);
+            issue_decodeToken(0,sender,validp,parmstxt,encoded);
         if ( *validp <= 0 )
             printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
         if ( sender[0] != 0 && strcmp(sender,NXTaddr) != 0 )

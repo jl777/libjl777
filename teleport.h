@@ -119,14 +119,14 @@ int32_t is_relevant_coinvalue(int32_t spentflag,struct coin_info *cp,char *txid,
 int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound transporter sequence is started
 {
     struct transporter_log *log = (*ptrp);
-    struct NXT_acct *destnp,*np;
+    //struct NXT_acct *destnp,*np;
     unsigned char *buffer;
     int32_t i,sharei,err=0,verified = 0;
     struct telepod *pod;
     if ( log->cp->initdone < 2 )
         return(0);
-    np = search_addresses(log->cp->pubaddr);
-    destnp = search_addresses(log->otherpubaddr);
+    //np = search_addresses(log->cp->pubaddr);
+    //destnp = search_addresses(log->otherpubaddr);
     printf("log send %f complete %f\n",log->recvmilli,log->completemilli);
     if ( log->recvmilli != 0. && log->completemilli == 0. )
     {
@@ -149,7 +149,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                         gfshare_extract(buffer+log->N*pod->len_plus1,log->sharenrs,log->N,buffer,pod->len_plus1-1,pod->len_plus1);
                         for (sharei=err=0; sharei<log->N; sharei++)
                         {
-                            if ( teleport_telepod(log->cp->pubaddr,np->H.U.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.U.NXTaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
+                            if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->NXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
                             {
                                 err++;
                                 break;
@@ -166,7 +166,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                     else
                     {
                         sharei = log->N;
-                        if ( teleport_telepod(log->cp->pubaddr,np->H.U.NXTaddr,log->cp->NXTACCTSECRET,destnp->H.U.NXTaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
+                        if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->NXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
                             err++;
                     }
                     printf("sharei.%d N.%d err.%d\n",sharei,log->N,err);
@@ -396,13 +396,13 @@ void complete_transporter_reception(struct coin_info *cp,struct transporter_log 
     struct NXT_acct *destnp,*np;
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    destnp = search_addresses(log->otherpubaddr);
+    //destnp = search_addresses(log->otherpubaddr);
     retstr = calc_teleport_summary(cp,destnp,log);
     log->logstate |= TRANSPORTER_TRANSFERRED;
     save_transporter_log(log);
     if ( retstr != 0 )
     {
-        send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,retstr,destnp->H.U.NXTaddr);
+        send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,verifiedNXTaddr,NXTACCTSECRET,retstr,log->otherpubaddr);
         free(retstr);
     }
     for (i=0; i<log->numpods; i++)
@@ -532,7 +532,7 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     struct telepod **pods = 0;
     struct NXT_acct *np,*destnp;
     struct transporter_log *log;
-    int32_t n,err = -1;
+    int32_t createdflag,n,err = -1;
     uint32_t height;
     if ( M <= 0 )
         M = cp->M;
@@ -549,7 +549,8 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     sprintf(buf,"%s -> teleport %.8f %s -> %s minage.%d | M.%d N.%d dest.(%s)\n",NXTaddr,dstr(satoshis),cp->name,otherpubaddr,minage,M,N,otherpubaddr);
     if ( minage == 0 )
         minage = cp->minconfirms;
-    destnp = search_addresses(otherpubaddr);
+    destnp = get_NXTacct(&createdflag,Global_mp,otherpubaddr);
+    //destnp = search_addresses(otherpubaddr);
     height = (uint32_t)get_blockheight(cp);
     if ( (pods= evolve_transporter(&n,0,cp,minage,satoshis,height)) == 0 )
         sprintf(buf,"{\"error\":\"teleport: not enough  for %.8f %s to %s\"}",dstr(satoshis),cp->name,otherpubaddr);
@@ -557,12 +558,12 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
     {
         free(pods), pods = 0;
         np = find_NXTacct(NXTaddr,NXTACCTSECRET);
-        if ( memcmp(destnp->mypeerinfo.srv.pubkey,zerokey,sizeof(zerokey)) == 0 )
+        if ( memcmp(destnp->stats.pubkey,zerokey,sizeof(zerokey)) == 0 )
         {
-            query_pubkey(destnp->H.U.NXTaddr,NXTACCTSECRET);
+            //query_pubkey(destnp->H.U.NXTaddr,NXTACCTSECRET);
             sprintf(buf,"{\"error\":\"no pubkey for %s, request sent\"}",otherpubaddr);
         }
-        if ( memcmp(destnp->mypeerinfo.srv.pubkey,zerokey,sizeof(zerokey)) != 0 )
+        if ( memcmp(destnp->stats.pubkey,zerokey,sizeof(zerokey)) != 0 )
         {
             printf("start evolving at %f\n",milliseconds());
             pods = evolve_transporter(&n,cp->maxevolveiters,cp,minage,satoshis,height);

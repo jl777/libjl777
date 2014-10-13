@@ -369,7 +369,7 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
     sprintf(cmd,"%s=getTransaction&transaction=%s",NXTSERVER,txid);
     //retval = extract_NXTfield(0,cmd,0,0);
     retval.json = 0;
-    jsonstr = issue_curl(mp->curl_handle,cmd);
+    jsonstr = issue_curl(0,cmd);
     if ( jsonstr != 0 )
        retval.json = cJSON_Parse(jsonstr);
     if ( retval.json != 0 )
@@ -544,7 +544,7 @@ uint64_t find_quoting_NXTaddr(uint64_t txidbits)
     uint64_t acctbits = 0;
     char txidstr[1024],numstr[1024],*jsonstr;
     expand_nxt64bits(txidstr,txidbits);
-    jsonstr = issue_getTransaction(Global_mp->curl_handle,txidstr);
+    jsonstr = issue_getTransaction(0,txidstr);
     if ( jsonstr != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -602,7 +602,7 @@ uint64_t get_asset_balance(struct NXT_acct *np,char *refassetid)
     cJSON *obj,*item,*array;
     char buf[2048],assetid[64];
     sprintf(buf,"%s=getAccount&account=%s",_NXTSERVER,np->H.U.NXTaddr);
-    retval = extract_NXTfield(Global_mp->curl_handle,0,buf,0,0);
+    retval = extract_NXTfield(0,0,buf,0,0);
     if ( retval.json != 0 )
     {
         array = cJSON_GetObjectItem(retval.json,"assetBalances");
@@ -1071,7 +1071,7 @@ struct NXT_asset *init_asset(struct NXThandler_info *mp,char *assetidstr)
     char *jsonstr,buf[1024];
     int32_t i,createdflag;
     struct NXT_asset *ap = 0;
-    jsonstr = issue_getAsset(mp->curl_handle,assetidstr);
+    jsonstr = issue_getAsset(0,assetidstr);
     if ( jsonstr != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -1116,7 +1116,7 @@ int process_asset_trades(char *assetidstr,int32_t firstindex,int32_t lastindex)
     //if ( endi == 0 )
     //    endi = (1 << 30);
     sprintf(cmd,"%s=getTrades&asset=%s&firstIndex=%d&lastIndex=%d",NXTSERVER,assetidstr,firstindex,lastindex);
-    jsonstr = issue_curl(Global_mp->curl_handle,cmd);
+    jsonstr = issue_curl(0,cmd);
     if ( jsonstr != 0 )
     {
         json = cJSON_Parse(jsonstr);
@@ -1260,7 +1260,7 @@ int32_t getNXTblock(char *nextblock,struct NXThandler_info *mp,char *blockidstr,
         return(-1);
     }
     sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
-    jsonstr = issue_curl(mp->curl_handle2,cmd);
+    jsonstr = issue_curl(0,cmd);
     if ( jsonstr != 0 )
     {
         json = cJSON_Parse(jsonstr);
@@ -1306,8 +1306,8 @@ void *getNXTblocks(void *ptr)
     mp->origblockidstr = ORIGBLOCK;
     strcpy(blockidstr,mp->origblockidstr);
     strcpy(mp->blockidstr,mp->origblockidstr);
-    mp->firsttimestamp = issue_getTime(mp->curl_handle2);
-    numblocks = set_current_NXTblock(&isrescan,mp->curl_handle2,tmpblock);
+    mp->firsttimestamp = issue_getTime(0);
+    numblocks = set_current_NXTblock(&isrescan,0,tmpblock);
     mp->height = height = numblocks - 1;
     ensure_NXT_blocks(mp,numblocks,0,0);
     Finished_loading = 0;
@@ -1330,7 +1330,7 @@ void *getNXTblocks(void *ptr)
         while ( isrescan != 0 || blockidstr[0] == 0 )
         {
             sleep(3);
-            numblocks = set_current_NXTblock(&isrescan,mp->curl_handle2,blockidstr);
+            numblocks = set_current_NXTblock(&isrescan,0,blockidstr);
             //printf("numblocks.%d %s\n",numblocks,blockidstr);
         }
         mp->height = numblocks - 1;
@@ -1338,7 +1338,7 @@ void *getNXTblocks(void *ptr)
         {
             h = numblocks - i;
             blockidbits = calc_nxt64bits(blockidstr);
-            set_prev_NXTblock(mp->curl_handle2,&height,&timestamp,prevblock,blockidstr);
+            set_prev_NXTblock(0,&height,&timestamp,prevblock,blockidstr);
             if ( height != h )
             {
                 printf("WARNING: got height.%d vs expected h.%d for %s\n",height,h,blockidstr);
@@ -1397,7 +1397,7 @@ int32_t process_NXTblock(int32_t *heightp,char *nextblock,struct NXThandler_info
     }
     sprintf(cmd,"%s=getBlock&block=%s",NXTSERVER,blockidstr);
     //printf("issue curl.(%s)\n",cmd);
-    jsonstr = issue_curl(mp->curl_handle,cmd);
+    jsonstr = issue_curl(0,cmd);
     if ( jsonstr != 0 )
         retval.json = cJSON_Parse(jsonstr);
     else retval.json = 0;

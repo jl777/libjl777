@@ -71,7 +71,7 @@ struct NXT_acct
     
     //uint16_t udp_port;
     //uv_stream_t *tcp,*connect;
-    struct peerinfo mypeerinfo;
+    struct nodestats stats;
     char dispname[128],NXTACCTSECRET[128];//,udp_sender[64];//,tcp_sender[64];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
