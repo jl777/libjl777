@@ -1375,7 +1375,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
                 free(cmdstr);
             free_json(array);
             //if ( Debuglevel > 1 )
-                printf("BROADCAST parms.(%s) valid.%d txid.%llu\n",msg,valid,(long long)txid);
+                printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu\n",msg,valid,duration,(long long)txid);
             if ( SuperNET_broadcast(msg,duration) == 0 )
                 return(txid);
         } else printf("cant broadcast non-JSON.(%s)\n",msg);

@@ -574,8 +574,13 @@ void add_SuperNET_peer(char *ip_port)
 
 void every_second(int32_t counter)
 {
+    static double firstmilli;
     char *ip_port;
     if ( Finished_init == 0 )
+        return;
+    if ( firstmilli == 0 )
+        firstmilli = milliseconds();
+    if ( milliseconds() < firstmilli+5000 )
         return;
     if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
     {
