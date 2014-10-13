@@ -441,7 +441,9 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
                     numabove++;
                 else if ( dist < metric )
                     numbelow++;
-                if ( dispflag != 0 )
+                if ( dispflag > 1 )
+                    printf("(%llx %.0f) ",(long long)list[i],dist);
+                else if ( dispflag != 0 )
                     printf("%.0f ",dist);
                 sum += (dist * dist);
                 dist -= metric;
@@ -458,7 +460,7 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
             printf("n.%d flag.%d sum %.3f | diff %.3f | above.%d below.%d balance %.0f ",n,flag,sum,diff,numabove,numbelow,balance);
     }
     if ( dispflag != 0 )
-        printf("dist %.3f -> %.3f\n",metric,diff + balance);
+        printf("dist %.3f -> %.3f %llx\n",metric,diff + balance,(long long)refaddr);
     return(diff + balance);
 }
 
