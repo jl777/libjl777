@@ -463,7 +463,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
         //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
         //    len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
-        txid = route_packet(1,0,hopNXTaddr,outbuf,len);
+        txid = route_packet(1,0,hopNXTaddr,maxbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
         else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending, len.%d\"}",verifiedNXTaddr,destNXTaddr,len);
