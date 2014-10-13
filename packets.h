@@ -288,7 +288,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
         if ( outbuf != maxbuf )
         {
-            len = MAX_UDPLEN - (crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(uint16_t) + sizeof(Global_mp->loopback_pubkey) + sizeof(uint64_t)) - sizeof(uint32_t);
+            len = MAX_UDPLEN - sizeof(uint32_t);
             outbuf = maxbuf;
         }
         //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP

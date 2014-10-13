@@ -295,7 +295,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     else
     {
-        if ( 0 && strcmp(kadcmd,"pong") == 0 )
+        if ( 1 && strcmp(kadcmd,"pong") == 0 )
             encrypted = 0;
         sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr);
     }
