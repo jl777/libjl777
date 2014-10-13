@@ -1046,7 +1046,7 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                         {
                             for (j=0; j<(int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt)); j++)
                             {
-                                num = update_newaccts(newaccts,num,otherbits);
+                                num = update_newaccts(newaccts,num,pserver->hasnxt[j]);
                                 if ( num >= max )
                                     break;
                             }
