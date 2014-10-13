@@ -413,12 +413,13 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     char hopNXTaddr[64];
     struct sockaddr destaddr;
     struct nodestats *stats;
-    unsigned char encoded[4096],maxbuf[4096],*outbuf;
+    unsigned char encoded[4096],maxbuf[4096],encodedL[4096],*outbuf;
     memset(encoded,0,sizeof(encoded)); // encoded to dest
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
     memset(maxbuf,0,sizeof(maxbuf));
+    memset(encodedL,0,sizeof(encodedL));
 
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
@@ -433,9 +434,10 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     init_jsoncodec((char *)outbuf,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
-        len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,0,&outbuf,len);
+        len = direct_onionize(pserver->nxt64bits,stats->pubkey,maxbuf,encoded,&outbuf,len);
         if ( Global_mp->Lfactor > 0 )
-            len = add_random_onionlayers(hopNXTaddr,Global_mp->Lfactor,maxbuf,encoded,&outbuf,len);
+            len = add_random_onionlayers(hopNXTaddr,Global_mp->Lfactor,maxbuf,encodedL,&outbuf,len);
+        outbuf = maxbuf;
     }
     else encrypted = 0;
     //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
@@ -444,7 +446,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     else if ( len > 0 )
     {
         printf("route_packet encrypted.%d len.%d\n",encrypted,len);
-        txid = route_packet(encrypted,&destaddr,0,maxbuf,len);
+        txid = route_packet(encrypted,&destaddr,0,outbuf,len);
         //printf("got route_packet txid.%llu\n",(long long)txid);
     }
     else printf("directsend_packet: illegal len.%d\n",len);
