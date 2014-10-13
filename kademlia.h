@@ -633,11 +633,11 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                     {
                         if ( (stats= get_nodestats(destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
-                        printf("call %llu (%s)\n",(long long)destbits,cmd);
+                        if ( Debuglevel > 1 )
+                            printf("call %llu (%s)\n",(long long)destbits,cmd);
                         txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,0);
                     }
                 }
-                printf("start %d %s\n",i,cmd);
             }
             else if ( ismynxtbits(senderbits) == 0 ) // need to respond to sender
             {
