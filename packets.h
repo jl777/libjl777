@@ -325,6 +325,7 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tmpjson = cJSON_Parse(parmstxt);
+                printf("process.(%s)\n",parmstxt);
                 if ( tmpjson != 0 )
                 {
                     if ( encrypted == 0 )
