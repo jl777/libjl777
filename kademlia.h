@@ -1027,6 +1027,8 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
             {
                 if ( (otherbits= Allnodes[i]) != mypserver->nxt64bits )
                 {
+                    if ( num < max )
+                        newaccts[num++] = otherbits;
                     if ( (stats= get_nodestats(otherbits)) != 0 )
                     {
                         expand_ipbits(ipaddr,stats->ipbits);
@@ -1041,8 +1043,6 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                                         break;
                                 if ( k == mypserver->numips )
                                 {
-                                    if ( num < max )
-                                        newaccts[num++] = otherbits;
                                     newips[m++] = ipbits;
                                     if ( m >= (int)(sizeof(newips)/sizeof(*newips)) )
                                         break;
