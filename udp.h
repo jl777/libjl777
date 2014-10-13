@@ -411,6 +411,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     int32_t port;
     struct sockaddr destaddr;
     struct nodestats *stats;
+    struct coin_info *cp = get_coin_info("BTCD");
     unsigned char encoded[4096],*outbuf;
     memset(encoded,0,sizeof(encoded)); // encoded to dest
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
@@ -419,8 +420,8 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
-    stripwhite_ns(origargstr,len);
-    len = (int32_t)strlen(origargstr)+1;
+    //stripwhite_ns(origargstr,len);
+    //len = (int32_t)strlen(origargstr)+1;
     outbuf = (unsigned char *)origargstr;
     if ( data != 0 && datalen > 0 )
     {
@@ -429,18 +430,32 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     }
     init_jsoncodec((char *)outbuf,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
-        len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,0,&outbuf,len);
-    else encrypted = 0;
-    //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
-    if ( len > sizeof(encoded)-1024 )
-        printf("directsend_packet: payload too big %d\n",len);
-    else if ( len > 0 )
     {
-        //printf("route_packet encrypted.%d\n",encrypted);
-        txid = route_packet(encrypted,&destaddr,0,outbuf,len);
-        //printf("got route_packet txid.%llu\n",(long long)txid);
+        char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
+        char hopNXTaddr[64],destNXTaddr[64],*retstr;
+        expand_nxt64bits(destNXTaddr,stats->nxt64bits);
+        retstr = sendmessage(hopNXTaddr,0,cp->srvNXTADDR,origargstr,len,destNXTaddr,data,datalen);
+        if ( retstr != 0 )
+        {
+            printf("direct send via sendmessage got (%s)\n",retstr);
+            free(retstr);
+        }
+        //len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,0,&outbuf,len);
     }
-    else printf("directsend_packet: illegal len.%d\n",len);
+    else
+    {
+        encrypted = 0;
+        //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
+        if ( len > sizeof(encoded)-1024 )
+            printf("directsend_packet: payload too big %d\n",len);
+        else if ( len > 0 )
+        {
+            //printf("route_packet encrypted.%d\n",encrypted);
+            txid = route_packet(encrypted,&destaddr,0,outbuf,len);
+            //printf("got route_packet txid.%llu\n",(long long)txid);
+        }
+        else printf("directsend_packet: illegal len.%d\n",len);
+    }
     return(txid);
 }
 
