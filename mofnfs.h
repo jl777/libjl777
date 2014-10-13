@@ -568,6 +568,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             {
                 calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
                 metric = calc_address_metric(1,addr,list,n,calcaddr,targetdist);
+                printf("-> %f, ",metric);
                 if ( metric < best )
                 {
                     best = metric;
