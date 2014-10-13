@@ -1347,7 +1347,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
-    //if ( Debuglevel > 1 )
+    if ( Debuglevel > 1 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
@@ -1357,7 +1357,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         else port = BTCD_PORT;
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
         txid ^= calc_ipbits(ipaddr);
-        //if ( Debuglevel > 1 )
+        if ( Debuglevel > 1 )
             printf("%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,msg,(long long)txid,ip_port);
         if ( SuperNET_narrowcast(ip_port,(unsigned char *)msg,len) == 0 )
             return(txid);
@@ -1374,7 +1374,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             if ( cmdstr != 0 )
                 free(cmdstr);
             free_json(array);
-            //if ( Debuglevel > 1 )
+            if ( Debuglevel > 1 )
                 printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu\n",msg,valid,duration,(long long)txid);
             if ( SuperNET_broadcast(msg,duration) == 0 )
                 return(txid);
@@ -1429,7 +1429,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( (len<<1) == 30 ) // hack against flood
             flood++;
-        //if ( Debuglevel > 0 )
+        if ( Debuglevel > 0 )
             printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
@@ -1455,7 +1455,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( len == 30 ) // hack against flood
             flood++;
-        //if ( Debuglevel > 0 )
+        if ( Debuglevel > 0 )
             printf("C SuperNET_gotpacket.(%s) from %s:%d size.%d ascii txid.%llu | flood.%d\n",msg,ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
