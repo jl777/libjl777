@@ -371,7 +371,8 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                 else printf("encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
             }
             else printf("valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
-            free_json(argjson);
+            if ( argjson != 0 )
+                free_json(argjson);
             if ( parmstxt != 0 )
                 free(parmstxt);
             return(tokenized_np);
