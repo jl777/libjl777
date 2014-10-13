@@ -405,30 +405,20 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
 
 uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *origargstr,int32_t len,unsigned char *data,int32_t datalen)
 {
-    int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len);
+    //int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned char *maxbuf,unsigned char *encoded,unsigned char **payloadp,int32_t len);
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     uint64_t txid = 0;
     int32_t port;
     struct sockaddr destaddr;
     struct nodestats *stats;
     struct coin_info *cp = get_coin_info("BTCD");
-    unsigned char encoded[4096],*outbuf;
-    memset(encoded,0,sizeof(encoded)); // encoded to dest
+    unsigned char *outbuf;
+    //memset(encoded,0,sizeof(encoded)); // encoded to dest
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
-    
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
-    //stripwhite_ns(origargstr,len);
-    //len = (int32_t)strlen(origargstr)+1;
-    outbuf = (unsigned char *)origargstr;
-    if ( data != 0 && datalen > 0 )
-    {
-        memcpy(outbuf+len,data,datalen);
-        len += datalen;
-    }
-    init_jsoncodec((char *)outbuf,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
         char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
@@ -445,8 +435,17 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     else
     {
         encrypted = 0;
+        stripwhite_ns(origargstr,len);
+        len = (int32_t)strlen(origargstr)+1;
+        outbuf = (unsigned char *)origargstr;
+        if ( data != 0 && datalen > 0 )
+        {
+            memcpy(outbuf+len,data,datalen);
+            len += datalen;
+        }
+        init_jsoncodec((char *)outbuf,len);
         //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
-        if ( len > sizeof(encoded)-1024 )
+        if ( len > MAX_UDPLEN-56 )
             printf("directsend_packet: payload too big %d\n",len);
         else if ( len > 0 )
         {
