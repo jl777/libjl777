@@ -191,7 +191,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             //int i;
             //for (i=0; i<16; i++)
             //    printf("%02x ",((unsigned char *)rcvbuf->base)[i]);
-            printf("UDP RECEIVED %ld from %s/%d crc.%x | ",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
+            if ( Debuglevel > 1 )
+                printf("UDP RECEIVED %ld from %s/%d crc.%x | ",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         }
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
@@ -366,7 +367,8 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     if ( destaddr != 0 )
     {
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
-        printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
+        if ( Debuglevel > 0 )
+            printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
         send_packet(0,destaddr,outbuf,len);
     }
     else
@@ -375,7 +377,8 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
         expand_ipbits(destip,np->stats.ipbits);
         //if ( is_privacyServer(&np->mypeerinfo) != 0 )
         {
-            printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->stats.supernet_port,len);
+            if ( Debuglevel > 0 )
+                printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->stats.supernet_port,len);
             uv_ip4_addr(destip,np->stats.supernet_port,&addr);
             send_packet(&np->stats,(struct sockaddr *)&addr,finalbuf,len);
         }

@@ -376,7 +376,7 @@ uint64_t MIN_NQTFEE = SATOSHIDEN;
 int32_t MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
-int32_t NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done;
+int32_t NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
 char NXTAPIURL[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt" };
 char NXTSERVER[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt?requestType" };
 

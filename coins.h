@@ -585,6 +585,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
+            Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
             if ( ismainnet != 0 )
             {
                 NXT_FORKHEIGHT = 173271;
