@@ -1402,7 +1402,14 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_init == 0 )
-        return(clonestr(retjsonstr));
+    {
+        while ( Finished_init == 0 )
+        {
+            fprintf(stderr,".");
+            sleep(1);
+        }
+        //return(clonestr(retjsonstr));
+    }
     p2pport = parse_ipaddr(ipaddr,ip_port);
     uv_ip4_addr(ipaddr,p2pport,(struct sockaddr_in *)&prevaddr);
     pserver = get_pserver(0,ipaddr,0,p2pport);
