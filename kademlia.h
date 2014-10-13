@@ -1008,6 +1008,8 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
 int32_t update_newaccts(uint64_t *newaccts,int32_t num,uint64_t nxtbits)
 {
     int32_t i;
+    if ( nxtbits == 0 )
+        return(num);
     for (i=0; i<num; i++)
         if ( newaccts[i] == nxtbits )
             return(num);
@@ -1044,7 +1046,7 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                         pserver = get_pserver(0,ipaddr,0,0);
                         if ( num < max && pserver->numnxt > 0 )
                         {
-                            for (j=0; j<(int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt)); j++)
+                            for (j=0; j<pserver->numnxt&&j<(int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt)); j++)
                             {
                                 num = update_newaccts(newaccts,num,pserver->hasnxt[j]);
                                 if ( num >= max )

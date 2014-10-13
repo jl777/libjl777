@@ -437,9 +437,9 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
             if ( list[i] != refaddr )
             {
                 dist = bitweight(list[i] ^ calcaddr);
-                if ( dist >= metric )
+                if ( dist > metric )
                     numabove++;
-                else if ( dist <= metric )
+                else if ( dist < metric )
                     numbelow++;
                 if ( dispflag != 0 )
                     printf("%.0f ",dist);
