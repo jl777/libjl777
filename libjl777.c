@@ -687,7 +687,7 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     if ( prevaddr != 0 )
         return(0);
     copy_cJSON(numstr,objs[0]);
-    json = gen_peers_json(atoi(numstr),NXTACCTSECRET);
+    json = gen_peers_json(prevaddr,NXTaddr,NXTACCTSECRET,sender,atoi(numstr));
     if ( json != 0 )
     {
         jsonstr = cJSON_Print(json);

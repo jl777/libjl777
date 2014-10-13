@@ -1007,12 +1007,12 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
     return(json);
 }
 
-void scan_nodes(char *NXTACCTSECRET)
+int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     struct pserver_info *pserver,*mypserver;
     uint32_t ipbits,newips[16];
-    int32_t i,j,k,m,n;
+    int32_t i,j,k,m,n,num = 0;
     uint64_t otherbits;
     char ipaddr[64];
     struct nodestats *stats;
@@ -1041,6 +1041,8 @@ void scan_nodes(char *NXTACCTSECRET)
                                         break;
                                 if ( k == mypserver->numips )
                                 {
+                                    if ( num < max )
+                                        newaccts[num++] = otherbits;
                                     newips[m++] = ipbits;
                                     if ( m >= (int)(sizeof(newips)/sizeof(*newips)) )
                                         break;
@@ -1061,12 +1063,15 @@ void scan_nodes(char *NXTACCTSECRET)
             }
         }
     }
+    return(num);
 }
 
-cJSON *gen_peers_json(int32_t only_privacyServers,char *NXTACCTSECRET)
+cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,int32_t only_privacyServers)
 {
     int32_t i,n;
+    char pubkeystr[512],key[64],*retstr;
     cJSON *json,*array;
+    uint64_t newaccts[16];
     //printf("inside gen_peer_json.%d\n",only_privacyServers);
     json = cJSON_CreateObject();
     array = cJSON_CreateArray();
@@ -1083,7 +1088,16 @@ cJSON *gen_peers_json(int32_t only_privacyServers,char *NXTACCTSECRET)
         cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
         cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
     }
-    scan_nodes(NXTACCTSECRET);
+    memset(newaccts,0,sizeof(newaccts));
+    n = scan_nodes(newaccts,sizeof(newaccts)/sizeof(*newaccts),NXTACCTSECRET);
+    for (i=0; i<n; i++)
+    {
+        expand_nxt64bits(key,newaccts[i]);
+        init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
+        retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key);
+        if ( retstr != 0 )
+            free(retstr);
+    }
     return(json);
 }
 
