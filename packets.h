@@ -217,19 +217,6 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             if ( stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
                 continue;
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
-            /*(np = search_addresses(peer->pubBTCD);
-            if ( np == 0 && peer->pubnxtbits != 0 )
-            {
-                expand_nxt64bits(destNXTaddr,peer->pubnxtbits);
-                np = search_addresses(destNXTaddr);
-            }
-            if ( np == 0 )
-                np = search_addresses(peer->pubBTC);
-            if ( np == 0 )
-            {
-                printf("FATAL: %s %s %s is unknown account\n",peer->pubBTCD,destNXTaddr,peer->pubBTC);
-                return(-1);
-            }*/
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
                 //printf("add layer %d: NXT.%s\n",numlayers,np->H.U.NXTaddr);
@@ -250,6 +237,150 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     }
     return(len);
 }
+
+int32_t has_privacyServer(struct NXT_acct *np)
+{
+    if ( np->stats.ipbits != 0 && np->stats.nxt64bits != 0 )
+        return(1);
+    else return(0);
+}
+
+char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
+{
+    uint64_t txid;
+    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
+    unsigned char maxbuf[4096],encodedD[4096],*outbuf;
+    int32_t len,createdflag;//,maxlen;
+    struct NXT_acct *np,*destnp;
+    np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
+    expand_nxt64bits(srvNXTaddr,np->stats.nxt64bits);
+    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->stats.nxt64bits == 0 )
+    {
+        sprintf(buf,"\"error\":\"no np.%p or global udp.%p for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,Global_mp->udp,destNXTaddr,(long long)destnp->stats.nxt64bits);
+        return(clonestr(buf));
+    }
+    expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);
+    memset(maxbuf,0,sizeof(maxbuf)); // always the same size
+    memset(encodedD,0,sizeof(encodedD)); // encoded to dest
+    outbuf = (unsigned char *)msg;
+    if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
+    {
+        memcpy(outbuf+msglen,data,datalen);
+        msglen += datalen;
+    }
+    init_jsoncodec((char *)outbuf,msglen);
+    len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,msglen);
+    printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
+    if ( len > sizeof(maxbuf)-1024 )
+    {
+        printf("sendmessage, payload too big %d\n",len);
+        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
+    }
+    else if ( len > 0 )
+    {
+        //memset(encodedsrvD,0,sizeof(encodedsrvD)); // encoded to privacyServer of dest
+        //memset(encodedL,0,sizeof(encodedL)); // encoded to max L onion layers
+       //printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.U.NXTaddr:"no np",destnp);
+        //if ( strcmp(destsrvNXTaddr,destNXTaddr) != 0 && has_privacyServer(destnp) != 0 ) // build onion in reverse order, privacyServer for dest is 2nd
+        //    len = onionize(hopNXTaddr,maxbuf,encodedsrvD,destsrvNXTaddr,&outbuf,len);
+        if ( L > 0 )
+            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
+        if ( outbuf != maxbuf )
+        {
+            len = MAX_UDPLEN - (crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(uint16_t) + sizeof(Global_mp->loopback_pubkey) + sizeof(uint64_t)) - sizeof(uint32_t);
+            outbuf = maxbuf;
+        }
+        //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
+        //    len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
+        txid = route_packet(1,0,hopNXTaddr,outbuf,len);
+        if ( txid == 0 )
+            sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
+        else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending, len.%d\"}",verifiedNXTaddr,destNXTaddr,len);
+    }
+    else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s illegal len\"}",verifiedNXTaddr,msg,destNXTaddr);
+    return(clonestr(buf));
+}
+
+char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
+{
+    char _tokbuf[4096],datastr[MAX_JSON_FIELD],*cmd = cmdstr;
+    unsigned char databuf[4096],*data = 0;
+    int32_t n,len,datalen = 0;
+    cJSON *json;
+    if ( strcmp("{\"result\":null}",cmdstr) == 0 )
+    {
+        printf("no need to send null JSON to %s\n",destNXTaddr);
+        return(0);
+    }
+    if ( (json= cJSON_Parse(cmdstr)) != 0 )
+    {
+        copy_cJSON(datastr,cJSON_GetObjectItem(json,"data"));
+        len = (int32_t)strlen(datastr);
+        if ( len >= 2 && (len & 1) == 0 && is_hexstr(datastr) != 0 )
+        {
+            datalen = (len >> 1);
+            data = databuf;
+            decode_hex(data,datalen,datastr);
+            cJSON_ReplaceItemInObject(json,"data",cJSON_CreateNumber(datalen));
+            cmd = cJSON_Print(json);
+            stripwhite_ns(cmd,strlen(cmd));
+            printf("cmdstr.(%s) -> (%s)\n",cmdstr,cmd);
+        }
+        free_json(json);
+    }
+    memset(_tokbuf,0,sizeof(_tokbuf));
+    n = construct_tokenized_req(_tokbuf,cmd,NXTACCTSECRET);
+    if ( cmd != cmdstr )
+        free(cmd), cmd = cmdstr;
+    {
+        char sender[64],*parmstxt;
+        int32_t valid;
+        cJSON *json = cJSON_Parse(_tokbuf);
+        if ( json != 0 )
+        {
+            parmstxt = verify_tokenized_json(0,sender,&valid,json);
+            if ( valid <= 0 )
+                printf("_tokbuf.%s valid.%d sender.(%s)\n",_tokbuf,valid,sender);
+            if ( parmstxt != 0 )
+                free(parmstxt);
+            free_json(json);
+        }
+    }
+    return(sendmessage(hopNXTaddr,L,verifiedNXTaddr,_tokbuf,(int32_t)n+1,destNXTaddr,data,datalen));
+}
+
+int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
+{
+    int32_t err = -1;
+    cJSON *retjson;
+    struct NXT_acct *np;
+    char *msg,*retstr,errstr[512],hopNXTaddr[64],verifiedNXTaddr[64];
+    verifiedNXTaddr[0] = 0;
+    np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    msg = cJSON_Print(json);
+    stripwhite_ns(msg,strlen(msg));
+    retstr = send_tokenized_cmd(hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+    if ( retstr != 0 )
+    {
+        // printf("sendandfree_jsoncmd.(%s)\n",retstr);
+        retjson = cJSON_Parse(retstr);
+        if ( retjson != 0 )
+        {
+            if ( extract_cJSON_str(errstr,sizeof(errstr),retjson,"error") > 0 )
+            {
+                printf("error.(%s) sending (%s)\n",errstr,msg);
+                err = -2;
+            } else err = 0;
+            free_json(retjson);
+        } else printf("sendandfree_jsoncmd: cant parse (%s) from (%s)\n",retstr,msg);
+        free(retstr);
+    } else printf("sendandfree_jsoncmd: no retstr from (%s)\n",msg);
+    free_json(json);
+    free(msg);
+    return(err);
+}
+
 
 struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t recvlen,uv_udp_t *udp,struct sockaddr *prevaddr,char *sender,uint16_t port)
 {
@@ -413,141 +544,4 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
     return(0);
 }
 
-int32_t has_privacyServer(struct NXT_acct *np)
-{
-    if ( np->stats.ipbits != 0 && np->stats.nxt64bits != 0 )
-        return(1);
-    else return(0);
-}
-
-char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
-{
-    uint64_t txid;
-    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
-    unsigned char maxbuf[4096],encodedsrvD[4096],encodedD[4096],encodedL[4096],*outbuf;
-    int32_t len,createdflag;//,maxlen;
-    struct NXT_acct *np,*destnp;
-    np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
-    expand_nxt64bits(srvNXTaddr,np->stats.nxt64bits);
-    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-    if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->stats.nxt64bits == 0 )
-    {
-        sprintf(buf,"\"error\":\"no np.%p or global udp.%p for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,Global_mp->udp,destNXTaddr,(long long)destnp->stats.nxt64bits);
-        return(clonestr(buf));
-    }
-    expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);
-    memset(maxbuf,0,sizeof(maxbuf)); // always the same size
-    memset(encodedD,0,sizeof(encodedD)); // encoded to dest
-    outbuf = (unsigned char *)msg;
-    if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
-    {
-        memcpy(outbuf+msglen,data,datalen);
-        msglen += datalen;
-    }
-    init_jsoncodec((char *)outbuf,msglen);
-    len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,msglen);
-    printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
-    if ( len > sizeof(maxbuf)-1024 )
-    {
-        printf("sendmessage, payload too big %d\n",len);
-        sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s too long.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
-    }
-    else if ( len > 0 )
-    {
-        memset(encodedsrvD,0,sizeof(encodedsrvD)); // encoded to privacyServer of dest
-        memset(encodedL,0,sizeof(encodedL)); // encoded to max L onion layers
-       //printf("np.%p NXT.%s | destnp.%p\n",np,np!=0?np->H.U.NXTaddr:"no np",destnp);
-        //if ( strcmp(destsrvNXTaddr,destNXTaddr) != 0 && has_privacyServer(destnp) != 0 ) // build onion in reverse order, privacyServer for dest is 2nd
-        //    len = onionize(hopNXTaddr,maxbuf,encodedsrvD,destsrvNXTaddr,&outbuf,len);
-        if ( L > 0 )
-            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
-        //if ( strcmp(srvNXTaddr,hopNXTaddr) != 0 && has_privacyServer(np) != 0 ) // send via privacy server to protect our IP
-        //    len = onionize(hopNXTaddr,maxbuf,0,srvNXTaddr,&outbuf,len);
-        txid = route_packet(1,0,hopNXTaddr,maxbuf,len);
-        if ( txid == 0 )
-            sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
-        else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending, len.%d\"}",verifiedNXTaddr,destNXTaddr,len);
-    }
-    else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s illegal len\"}",verifiedNXTaddr,msg,destNXTaddr);
-    return(clonestr(buf));
-}
-
-char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
-{
-    char _tokbuf[4096],datastr[MAX_JSON_FIELD],*cmd = cmdstr;
-    unsigned char databuf[4096],*data = 0;
-    int32_t n,len,datalen = 0;
-    cJSON *json;
-    if ( strcmp("{\"result\":null}",cmdstr) == 0 )
-    {
-        printf("no need to send null JSON to %s\n",destNXTaddr);
-        return(0);
-    }
-    if ( (json= cJSON_Parse(cmdstr)) != 0 )
-    {
-        copy_cJSON(datastr,cJSON_GetObjectItem(json,"data"));
-        len = (int32_t)strlen(datastr);
-        if ( len >= 2 && (len & 1) == 0 && is_hexstr(datastr) != 0 )
-        {
-            datalen = (len >> 1);
-            data = databuf;
-            decode_hex(data,datalen,datastr);
-            cJSON_ReplaceItemInObject(json,"data",cJSON_CreateNumber(datalen));
-            cmd = cJSON_Print(json);
-            stripwhite_ns(cmd,strlen(cmd));
-            printf("cmdstr.(%s) -> (%s)\n",cmdstr,cmd);
-        }
-        free_json(json);
-    }
-    memset(_tokbuf,0,sizeof(_tokbuf));
-    n = construct_tokenized_req(_tokbuf,cmd,NXTACCTSECRET);
-    if ( cmd != cmdstr )
-        free(cmd), cmd = cmdstr;
-    {
-        char sender[64],*parmstxt;
-        int32_t valid;
-        cJSON *json = cJSON_Parse(_tokbuf);
-        if ( json != 0 )
-        {
-            parmstxt = verify_tokenized_json(0,sender,&valid,json);
-            if ( valid <= 0 )
-                printf("_tokbuf.%s valid.%d sender.(%s)\n",_tokbuf,valid,sender);
-            if ( parmstxt != 0 )
-                free(parmstxt);
-            free_json(json);
-        }
-    }
-    return(sendmessage(hopNXTaddr,L,verifiedNXTaddr,_tokbuf,(int32_t)n+1,destNXTaddr,data,datalen));
-}
-
-int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
-{
-    int32_t err = -1;
-    cJSON *retjson;
-    struct NXT_acct *np;
-    char *msg,*retstr,errstr[512],hopNXTaddr[64],verifiedNXTaddr[64];
-    verifiedNXTaddr[0] = 0;
-    np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    msg = cJSON_Print(json);
-    stripwhite_ns(msg,strlen(msg));
-    retstr = send_tokenized_cmd(hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
-    if ( retstr != 0 )
-    {
-        // printf("sendandfree_jsoncmd.(%s)\n",retstr);
-        retjson = cJSON_Parse(retstr);
-        if ( retjson != 0 )
-        {
-            if ( extract_cJSON_str(errstr,sizeof(errstr),retjson,"error") > 0 )
-            {
-                printf("error.(%s) sending (%s)\n",errstr,msg);
-                err = -2;
-            } else err = 0;
-            free_json(retjson);
-        } else printf("sendandfree_jsoncmd: cant parse (%s) from (%s)\n",retstr,msg);
-        free(retstr);
-    } else printf("sendandfree_jsoncmd: no retstr from (%s)\n",msg);
-    free_json(json);
-    free(msg);
-    return(err);
-}
 #endif
