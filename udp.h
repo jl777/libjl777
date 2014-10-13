@@ -452,7 +452,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
         if ( cmd == 0 )
         {
-            sprintf(_cmd,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"","ping",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr);
+            sprintf(_cmd,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"}","ping",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr);
         }
         else strcpy(_cmd,cmd);
         //printf("_cmd.(%s)\n",_cmd);
