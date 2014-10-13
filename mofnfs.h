@@ -482,7 +482,7 @@ void *findaddress_loop(void *ptr)
     startmilli = milliseconds();
     while ( args->abortflag == 0 )
     {
-        if ( 0 )
+        if ( 1 )
         {
             //memset(pass,0,sizeof(pass));
             //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
@@ -563,10 +563,12 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
         calcaddr = 0;
         for (i=0; i<numthreads; i++)
         {
-            printf("%f ",args[i]->best);
             if ( args[i]->best < best )
             {
-                calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
+                if ( args[i]->bestpassword[0] != 0 )
+                    calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
+                else calcaddr = args[i]->bestaddr;
+                printf("(%llx %f) ",(long long)calcaddr,args[i]->best);
                 metric = calc_address_metric(1,addr,list,n,calcaddr,targetdist);
                 printf("-> %f, ",metric);
                 if ( metric < best )
@@ -580,7 +582,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
                 }
             }
         }
-        printf("best %f lastbest %f\n",best,lastbest);
+        printf("best %f lastbest %f %llu\n",best,lastbest,(long long)addr);
         if ( best < lastbest )
         {
             printf(">>>>>>>>>>>>>>> new best (%s) %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",bestpassword,(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
