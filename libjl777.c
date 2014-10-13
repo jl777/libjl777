@@ -874,7 +874,7 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     }
     else
     {
-        n = 64;
+        n = 512;
         txids = calloc(n+1,sizeof(*txids));
         for (i=0; i<n; i++)
             randombytes((unsigned char *)&txids[i],sizeof(txids[i]));
