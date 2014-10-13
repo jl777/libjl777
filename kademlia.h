@@ -16,7 +16,9 @@
 #define KADEMLIA_NUMK ((int)(sizeof(K_buckets[0])/sizeof(K_buckets[0][0])))
 struct nodestats *K_buckets[64+1][6];
 long Kbucket_updated[KADEMLIA_NUMBUCKETS];
-uint64_t *Allnodes,Numallnodes;
+uint64_t Allnodes[10000];
+int32_t Numallnodes;
+#define MAX_ALLNODES ((int32_t)(sizeof(Allnodes)/sizeof(*Allnodes)))
 
 struct kademlia_store
 {
@@ -28,39 +30,28 @@ struct kademlia_store K_store[10000];
 
 void add_new_node(uint64_t nxt64bits)
 {
-    static int didinit;
-    static portable_mutex_t mutex;
     int32_t i;
-    if ( didinit == 0 )
+    if ( Numallnodes > 0 )
     {
-        portable_mutex_init(&mutex);
-        didinit = 1;
-    }
-    portable_mutex_lock(&mutex);
-    if ( Allnodes != 0 && Numallnodes > 0 )
-    {
-        for (i=0; i<Numallnodes; i++)
+        for (i=0; i<MAX_ALLNODES; i++)
         {
             if ( Allnodes[i] == nxt64bits )
-            {
-                portable_mutex_unlock(&mutex);
                 return;
-            }
         }
     }
-    printf("ADDNODE.%llu\n",(long long)nxt64bits);
-    Allnodes = realloc(Allnodes,sizeof(*Allnodes) + (Numallnodes + 1));
-    Allnodes[Numallnodes] = nxt64bits;
+    printf("[%d of %d] ADDNODE.%llu\n",Numallnodes,MAX_ALLNODES,(long long)nxt64bits);
+    Allnodes[Numallnodes % MAX_ALLNODES] = nxt64bits;
     Numallnodes++;
-    portable_mutex_unlock(&mutex);
 }
 
 struct nodestats *get_random_node()
 {
     struct nodestats *stats;
-    if ( Allnodes != 0 && Numallnodes > 0 )
+    int32_t n;
+    if ( Numallnodes > 0 )
     {
-        if ( (stats= get_nodestats(Allnodes[(rand()>>8) % Numallnodes])) != 0 )
+        n = (Numallnodes < MAX_ALLNODES) ? Numallnodes : MAX_ALLNODES;
+        if ( (stats= get_nodestats(Allnodes[(rand()>>8) % n])) != 0 )
             return(stats);
     }
     return(0);
@@ -1021,11 +1012,12 @@ void scan_nodes(char *NXTACCTSECRET)
     struct coin_info *cp = get_coin_info("BTCD");
     struct pserver_info *pserver,*mypserver;
     uint32_t ipbits,newips[16];
-    int32_t i,j,k,m,n = (int32_t)Numallnodes;
+    int32_t i,j,k,m,n;
     uint64_t otherbits;
     char ipaddr[64];
     struct nodestats *stats;
-    if ( Allnodes != 0 && cp != 0 && cp->myipaddr[0] != 0 )
+    n = (Numallnodes < MAX_ALLNODES) ? Numallnodes : MAX_ALLNODES;
+    if ( n > 0 && cp != 0 && cp->myipaddr[0] != 0 )
     {
         mypserver = get_pserver(0,cp->myipaddr,0,0);
         if ( mypserver->hasips != 0 && n != 0 )
@@ -1063,6 +1055,7 @@ void scan_nodes(char *NXTACCTSECRET)
                 for (i=0; i<m; i++)
                 {
                     expand_ipbits(ipaddr,newips[i]);
+                    printf("ping new ip.%s\n",ipaddr);
                     send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",NXTACCTSECRET,0,0);
                 }
             }
@@ -1072,12 +1065,13 @@ void scan_nodes(char *NXTACCTSECRET)
 
 cJSON *gen_peers_json(int32_t only_privacyServers,char *NXTACCTSECRET)
 {
-    int32_t i,n = (int32_t)Numallnodes;
+    int32_t i,n;
     cJSON *json,*array;
     //printf("inside gen_peer_json.%d\n",only_privacyServers);
     json = cJSON_CreateObject();
     array = cJSON_CreateArray();
-    if ( Allnodes != 0 && n > 0 )
+    n = (Numallnodes < MAX_ALLNODES) ? Numallnodes : MAX_ALLNODES;
+    if ( n > 0 )
     {
         for (i=0; i<n; i++)
         {
