@@ -50,16 +50,25 @@ struct write_req_t
     int32_t allocflag;
 };
 
-struct peer_queue_entry
+struct udp_queuecmd
+{
+    struct sockaddr prevaddr;
+    cJSON *argjson;
+    struct NXT_acct *tokenized_np;
+    char *decoded;
+    int32_t valid;
+};
+
+/*struct peer_queue_entry
 {
     struct peerinfo *peer,*hop;
     float startmilli,elapsed;
     uint8_t stateid,state;
-};
+};*/
 
 static long server_xferred;
 int Servers_started;
-queue_t P2P_Q,sendQ,JSON_Q;
+queue_t P2P_Q,sendQ,JSON_Q,udp_JSON;
 struct pingpong_queue PeerQ;
 //struct peerinfo **Peers,**Pservers;Numpeers,Numpservers,
 int32_t Num_in_whitelist;

@@ -350,13 +350,22 @@ struct NXT_acct *process_packet(char *retjsonstr,unsigned char *recvbuf,int32_t 
                     }
                     free_json(tmpjson);
                 }
-                if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 )
+                if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 ) // just means valid
                 {
-                    char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+                    struct udp_queuecmd *qp;
+                    //char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                     tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
                     update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
                     //printf("GOT.(%s)\n",parmstxt);
-                    jsonstr = pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                    qp = calloc(1,sizeof(*qp));
+                    qp->prevaddr = *prevaddr;
+                    qp->argjson = argjson;
+                    qp->valid = valid;
+                    qp->tokenized_np = tokenized_np;
+                    qp->decoded = clonestr((char *)decoded);
+                    queue_enqueue(&udp_JSON,qp);
+                    argjson = 0;
+                    jsonstr = 0;//pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
                     if ( jsonstr != 0 )
                     {
                         //printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);

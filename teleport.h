@@ -290,6 +290,7 @@ void teleport_idler(uv_idle_t *handle)
     static int counter;
     static double lastattempt;
     double millis;
+    struct udp_queuecmd *qp;
     void *wr,*firstwr = 0;
     char *jsonstr,*retstr;
     millis = ((double)uv_hrtime() / 1000000);
@@ -303,8 +304,24 @@ void teleport_idler(uv_idle_t *handle)
             wr = queue_dequeue(&sendQ);
         }
         if ( wr != 0 && wr != firstwr )
+        {
             process_sendQ_item(wr);
+            lastattempt = millis;
+        }
         // free(wr); libuv does this
+    }
+    if ( millis > (lastattempt + 10) && (qp= queue_dequeue(&udp_JSON)) != 0 )
+    {
+        char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+        printf("process qp\n");
+        jsonstr = pNXT_json_commands(Global_mp,&qp->prevaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
+        printf("free qp (%s)\n",jsonstr);
+        if ( jsonstr != 0 )
+            free(jsonstr);
+        free(qp->decoded);
+        free_json(qp->argjson);
+        free(qp);
+        lastattempt = millis;
     }
     if ( millis > (lastattempt + 1000) )
     {
