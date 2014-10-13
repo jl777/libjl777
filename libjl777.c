@@ -1288,12 +1288,14 @@ char *SuperNET_JSON(char *JSONstr)
     cJSON *json;
     if ( Finished_init == 0 )
         return(0);
-    printf("got JSON.(%s)\n",JSONstr);
+    if ( Debuglevel > 0 )
+        printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         if ( is_BTCD_command(json) != 0 ) // deadlocks as the SuperNET API came from locked BTCD RPC
         {
-            printf("is_BTCD_command\n");
+            if ( Debuglevel > 1 )
+                printf("is_BTCD_command\n");
             queue_enqueue(&JSON_Q,clonestr(JSONstr));
             return(clonestr("{\"result\":\"SuperNET BTCD command queued\"}"));
         } else retstr = call_SuperNET_JSON(JSONstr);
@@ -1400,7 +1402,8 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
+    if ( Debuglevel > 0 )
+        printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
     {
