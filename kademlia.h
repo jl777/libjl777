@@ -158,7 +158,7 @@ uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t 
     if ( ipbits == 0 )
         return(0);
     //portable_mutex_lock(&mutex);
-    n = (pserver->numips < (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))) ? n : (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips));
+    n = (pserver->numips < (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))) ? pserver->numips : (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips));
     if ( pserver->numips > 0 )
     {
         for (i=0; i<pserver->numips; i++)
