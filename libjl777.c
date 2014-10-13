@@ -1399,13 +1399,13 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    if ( Finished_init == 0 )
-        return(0);
     printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
+    strcpy(retjsonstr,"{\"result\":null}");
+    if ( Finished_init == 0 )
+        return(clonestr(retjsonstr));
     p2pport = parse_ipaddr(ipaddr,ip_port);
     uv_ip4_addr(ipaddr,p2pport,(struct sockaddr_in *)&prevaddr);
     pserver = get_pserver(0,ipaddr,0,p2pport);
-    strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
     {
         printf("QUEUE.(%s)\n",msg);
