@@ -1397,18 +1397,13 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     struct pserver_info *pserver;
     uint64_t txid,obookid;
     struct sockaddr prevaddr;
-    int32_t i,len,createdflag,valid;
+    int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
     printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
     {
-        for (i=0; i<5; i++)
-        {
-            fprintf(stderr,".");
-            sleep(1);
-        }
         if ( is_hexstr(msg) == 0 )
         {
             printf("QUEUE.(%s)\n",msg);

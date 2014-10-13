@@ -293,6 +293,8 @@ void teleport_idler(uv_idle_t *handle)
     struct udp_queuecmd *qp;
     void *wr,*firstwr = 0;
     char *jsonstr,*retstr;
+    if ( Finished_init == 0 )
+        return;
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
