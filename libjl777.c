@@ -1416,7 +1416,6 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     {
         len >>= 1;
         decode_hex(packet,len,msg);
-        //calc_sha256(0,hash,packet,len);
         txid = calc_txid(packet,len);//hash,sizeof(hash));
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
@@ -1427,7 +1426,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( (len<<1) == 30 ) // hack against flood
             flood++;
-        if ( Debuglevel > 0 )
+        //if ( Debuglevel > 0 )
             printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
@@ -1453,7 +1452,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( len == 30 ) // hack against flood
             flood++;
-        if ( Debuglevel > 0 )
+        //if ( Debuglevel > 0 )
             printf("C SuperNET_gotpacket.(%s) from %s:%d size.%d ascii txid.%llu | flood.%d\n",msg,ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
