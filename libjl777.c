@@ -1091,10 +1091,11 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
+    // multisig
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
 
-   // Kademlia DHT
+    // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
@@ -1396,16 +1397,23 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     struct pserver_info *pserver;
     uint64_t txid,obookid;
     struct sockaddr prevaddr;
-    int32_t len,createdflag,valid;
+    int32_t i,len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
     printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
     {
-        printf("QUEUE.(%s)\n",msg);
+        for (i=0; i<5; i++)
+        {
+            fprintf(stderr,".");
+            sleep(1);
+        }
         if ( is_hexstr(msg) == 0 )
+        {
+            printf("QUEUE.(%s)\n",msg);
             queue_enqueue(&JSON_Q,clonestr(msg));
+        }
         return(clonestr(retjsonstr));
     }
     p2pport = parse_ipaddr(ipaddr,ip_port);
