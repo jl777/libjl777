@@ -330,7 +330,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     if ( destNXTaddr != 0 && destNXTaddr[0] != 0 )
         nxt64bits = calc_nxt64bits(destNXTaddr);
     else nxt64bits = 0;
-    if ( port == BTCD_PORT )
+    if ( port == BTCD_PORT && p2pflag == 0 )
     {
         printf("warning: kademlia_update_info port is %d?\n",port);
         port = 0;
@@ -379,16 +379,6 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
         }
         if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
             stats->lastcontact = lastcontact;
-        /*add_peerinfo(peer);
-        expand_nxt64bits(srvNXTaddr,pserver->nxt64bits);
-        if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-            init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
-        else pubkeystr[0] = 0;
-        int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxtbits,char *pubBTC);
-        struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
-        set_pubpeerinfo(srvNXTaddr,ipaddr,port,&peer,0,pubkeystr,pserver->nxt64bits,0);
-        update_peerinfo(&createdflag,&peer);
-        fprintf(stderr,"finished updating peer\n");*/
     }
 }
 

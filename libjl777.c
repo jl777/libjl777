@@ -1443,6 +1443,8 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
                 copy_cJSON(pubkeystr,cJSON_GetObjectItem(argjson,"pubkey"));
                 free_json(argjson);
             }
+            printf("update (%s) (%s:%d) %s\n",verifiedNXTaddr,ipaddr,p2pport,pubkeystr);
+            add_new_node(calc_nxt64bits(verifiedNXTaddr));
             kademlia_update_info(verifiedNXTaddr,ipaddr,p2pport,pubkeystr,(int32_t)time(NULL),1);
             retstr = pNXT_json_commands(Global_mp,&prevaddr,json,verifiedNXTaddr,valid,(char *)msg);
             if ( cmdstr != 0 )
