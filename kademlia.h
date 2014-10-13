@@ -1013,7 +1013,7 @@ int32_t update_newaccts(uint64_t *newaccts,int32_t num,uint64_t nxtbits)
     for (i=0; i<num; i++)
         if ( newaccts[i] == nxtbits )
             return(num);
-    printf("update_newaccts[%d] <- %llu\n",num,(long long)nxtbits);
+    //printf("update_newaccts[%d] <- %llu\n",num,(long long)nxtbits);
     newaccts[num++] = nxtbits;
     return(num);
 }
@@ -1120,6 +1120,8 @@ cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTA
         if ( retstr != 0 )
             free(retstr);
     }
+    cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
+    cJSON_AddItemToObject(json,"Numnxtaccts",cJSON_CreateNumber(n));
     return(json);
 }
 

@@ -539,7 +539,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             strcpy(args[i]->refacct,refNXTaddr);
             args[i]->threadid = i;
             args[i]->numthreads = numthreads;
-            args[i]->targetdist = targetdist;
+            args[i]->targetdist = targetdist-i;
             args[i]->best = lastbest;
             args[i]->list = list;
             args[i]->numinlist = n;
