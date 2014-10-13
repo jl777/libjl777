@@ -452,7 +452,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
-        if ( Debuglevel > 1 )
+        //if ( Debuglevel > 1 )
             fprintf(stderr,"p2p_publishpacket.%p (%s)\n",pserver,cmd);
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
         if ( cmd == 0 )
@@ -462,7 +462,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
         else strcpy(_cmd,cmd);
         //printf("_cmd.(%s)\n",_cmd);
         len = construct_tokenized_req(packet,_cmd,cp->srvNXTACCTSECRET);
-        if ( Debuglevel > 1 )
+        //if ( Debuglevel > 1 )
             printf("len.%d (%s)\n",len,packet);
         return(call_SuperNET_broadcast(pserver,packet,len+1,PUBADDRS_MSGDURATION));
     }
