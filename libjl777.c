@@ -958,24 +958,26 @@ void set_kademlia_args(char *key,cJSON *keyobj,cJSON *nameobj)
 
 char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
+    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
     set_kademlia_args(key,objs[1],objs[2]);
+    copy_cJSON(value,objs[3]);
     printf("findnode.%p (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key);
+        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
     else retstr = clonestr("{\"error\":\"invalid findnode_func arguments\"}");
     return(retstr);
 }
 
 char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
+    char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
     set_kademlia_args(key,objs[1],objs[2]);
+    copy_cJSON(value,objs[3]);
     printf("findvalue.%p (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key);
+        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
     else retstr = clonestr("{\"error\":\"invalid findvalue_func arguments\"}");
     printf("back from findvalue\n");
     return(retstr);
@@ -1093,8 +1095,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
-    static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", 0 };
-    static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", 0 };
+    static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", "data", 0 };
+    static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", "data", 0 };
     static char *havenode[] = { (char *)havenode_func, "havenode", "V", "pubkey", "key", "name", "data", 0 };
     static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "pubkey", "key", "name", "data", 0 };
     static char *findaddress[] = { (char *)findaddress_func, "findaddress", "V", "refaddr", "list", "dist", "duration", "numthreads", 0 };

@@ -563,13 +563,14 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
     return(clonestr(retstr));
 }
 
-char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key)
+char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key,char *datastr)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
-    char retstr[32768],pubkeystr[256],datastr[32768],numstr[64],ipaddr[64],destNXTaddr[64],*value;
+    unsigned char data[MAX_JSON_FIELD];
+    char retstr[32768],pubkeystr[256],databuf[32768],numstr[64],ipaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
-    int32_t i,n,createdflag;
+    int32_t i,n,createdflag,recvlen;
     struct NXT_acct *keynp;
     struct NXT_acct *destnp;
     cJSON *array,*item;
@@ -585,16 +586,27 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
             sp = kademlia_getstored(keyhash,0);
             if ( sp != 0 && sp->data != 0 )
             {
-                init_hexbytes_noT(datastr,sp->data,sp->datalen);
+                init_hexbytes_noT(databuf,sp->data,sp->datalen);
                 if ( ismynode(prevaddr) == 0 && ismynxtbits(senderbits) == 0 )
                 {
                     printf("call store\n");
-                    txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,datastr);
+                    txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                 }
-                sprintf(retstr,"{\"data\":\"%s\"}",datastr);
+                sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                 //printf("FOUND.(%s)\n",retstr);
                 return(clonestr(retstr));
             }
+        }
+        else if ( ismynode(prevaddr) == 0 && datastr != 0 && datastr[0] != 0 && prevaddr != 0 ) // externally sent find
+        {
+            int32_t port;
+            struct NXT_acct *retnp;
+            char retjsonstr[MAX_JSON_FIELD],sender[64];
+            port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)prevaddr);
+            recvlen = (int32_t)(strlen(datastr) / 2);
+            decode_hex(data,recvlen,datastr);
+            retnp = process_packet(retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
+            printf("processed the possible dead drop.(%s) %p\n",retjsonstr,retnp);
         }
         memset(sortbuf,0,sizeof(sortbuf));
         n = sort_all_buckets(sortbuf,keyhash);
@@ -1116,7 +1128,7 @@ cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTA
     {
         expand_nxt64bits(key,cp->nxtaccts[i]);
         init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
-        retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key);
+        retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key,0);
         if ( retstr != 0 )
             free(retstr);
     }
