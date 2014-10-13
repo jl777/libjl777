@@ -1454,7 +1454,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         if ( len == 30 ) // hack against flood
             flood++;
         if ( Debuglevel > 0 )
-            printf("C SuperNET_gotpacket.(%s) size.%d ascii txid.%llu | flood.%d\n",msg,len,(long long)txid,flood);
+            printf("C SuperNET_gotpacket.(%s) from %s:%d size.%d ascii txid.%llu | flood.%d\n",msg,ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
             cJSON *argjson;
