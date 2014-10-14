@@ -588,7 +588,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
     char retstr[32768],pubkeystr[256],databuf[32768],numstr[64],ipaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
-    int32_t i,n,createdflag,recvlen;
+    int32_t i,n,createdflag,recvlen,remoteflag = 0;
     struct NXT_acct *keynp;
     struct NXT_acct *destnp;
     cJSON *array,*item;
@@ -625,13 +625,14 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
             recvlen = (int32_t)(strlen(datastr) / 2);
             decode_hex(data,recvlen,datastr);
             retnp = process_packet(1,retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
+            remoteflag = 1;
             printf("processed the possible dead drop.(%s) %p\n",retjsonstr,retnp);
         }
         memset(sortbuf,0,sizeof(sortbuf));
         n = sort_all_buckets(sortbuf,keyhash);
         if ( n != 0 )
         {
-            if ( ismynode(prevaddr) != 0 ) // user invoked
+            if ( ismynode(prevaddr) != 0 || remoteflag != 0 ) // user invoked
             {
                 keynp = get_NXTacct(&createdflag,Global_mp,key);
                 keynp->bestdist = 10000;
@@ -644,7 +645,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                         if ( (stats= get_nodestats(destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
                         if ( Debuglevel > 1 )
-                            printf("call %llu (%s)\n",(long long)destbits,cmd);
+                            printf("call %llu (%s) dist.%d\n",(long long)destbits,cmd,bitweight(destbits ^ keyhash));
                         txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,datastr);
                     }
                 }
@@ -879,11 +880,9 @@ void every_minute(int32_t counter)
 {
     static int broadcast_count;
     uint32_t now = (uint32_t)time(NULL);
-    int32_t i,n;//,createdflag,len,iter,connected,actionflag;
-    char ipaddr[64];//,cmd[4096],packet[4096];//ip_port[64],NXTaddr[64],
-    //struct NXT_acct *mynp = 0;
+    int32_t i,n;
+    char ipaddr[64];
     struct coin_info *cp;
-    //struct peerinfo *peer;
     struct nodestats *stats;
     struct pserver_info *pserver;//,*mypserver = 0;
     if ( Finished_init == 0 )
@@ -899,7 +898,7 @@ void every_minute(int32_t counter)
         p2p_publishpacket(0,0);
         update_Kbuckets(get_nodestats(cp->srvpubnxtbits),cp->srvpubnxtbits,cp->myipaddr,0,0,0);
     }
-    //if ( (broadcast_count % 10) == 0 )
+    if ( (broadcast_count % 10) == 0 )
     {
         for (i=n=0; i<Num_in_whitelist; i++)
         {
