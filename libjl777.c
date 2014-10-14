@@ -41,10 +41,85 @@ void NXTservices_idler(uv_idle_t *handle)
     }
 }
 
+uv_async_t Tasks_async;
+uv_work_t Tasks;
+struct task_info
+{
+    char name[64];
+    int32_t sleepmicros,argsize;
+    tfunc func;
+    uint8_t args[];
+};
+tfunc Tfuncs[100];
+
+void aftertask(uv_work_t *req,int status)
+{
+    struct task_info *task = (struct task_info *)req->data;
+    if ( task != 0 )
+    {
+        fprintf(stderr,"req.%p task.%s complete status.%d\n",req,task->name,status);
+        free(task);
+    } else fprintf(stderr,"task.%p complete\n",req);
+    uv_close((uv_handle_t *)&Tasks_async,NULL);
+}
+
+void Task_handler(uv_work_t *req)
+{
+    struct task_info *task = (struct task_info *)req->data;
+    while ( task != 0 )
+    {
+        //fprintf(stderr,"Task.(%s) sleep.%d\n",task->name,task->sleepmicros);
+        if ( task->func != 0 )
+        {
+            if ( (*task->func)(task->args,task->argsize) < 0 )
+                break;
+            if ( task->sleepmicros != 0 )
+                usleep(task->sleepmicros);
+        }
+        else break;
+    }
+}
+
+uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize)
+{
+    uv_work_t *work;
+    struct task_info *task;
+    task = calloc(1,sizeof(*task) + argsize);
+    memcpy(task->args,args,argsize);
+    task->func = func;
+    task->argsize = argsize;
+    safecopy(task->name,name,sizeof(task->name));
+    task->sleepmicros = sleepmicros;
+    work = calloc(1,sizeof(*work));
+    work->data = task;
+    uv_queue_work(UV_loop,work,Task_handler,aftertask);
+    return(work);
+}
+
+void async_handler(uv_async_t *handle)
+{
+    char *jsonstr = (char *)handle->data;
+    if ( jsonstr != 0 )
+    {
+        fprintf(stderr,"ASYNC(%s)\n",jsonstr);
+        free(jsonstr);
+        handle->data = 0;
+    } else fprintf(stderr,"ASYNC called\n");
+}
+
+void send_async_message(char *msg)
+{
+    while ( Tasks_async.data != 0 )
+        usleep(1000);
+    Tasks_async.data = clonestr(msg);
+    uv_async_send(&Tasks_async);
+}
+
 void run_UVloop(void *arg)
 {
     uv_idle_t idler;
     uv_idle_init(UV_loop,&idler);
+    uv_async_init(UV_loop,&Tasks_async,async_handler);
     uv_idle_start(&idler,teleport_idler);
     //uv_idle_start(&idler,NXTservices_idler);
     uv_run(UV_loop,UV_RUN_DEFAULT);
@@ -683,17 +758,54 @@ char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
 char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
-    char numstr[MAX_JSON_FIELD],*jsonstr = 0;
+    int32_t scanflag;
+    char *jsonstr = 0;
     if ( prevaddr != 0 )
         return(0);
-    copy_cJSON(numstr,objs[0]);
-    json = gen_peers_json(prevaddr,NXTaddr,NXTACCTSECRET,sender,atoi(numstr));
+    scanflag = get_API_int(objs[0],0);
+    json = gen_peers_json(prevaddr,NXTaddr,NXTACCTSECRET,sender,scanflag);
     if ( json != 0 )
     {
         jsonstr = cJSON_Print(json);
         free_json(json);
     }
     return(jsonstr);
+}
+
+struct args_connect { uint64_t mytxid,othertxid,otheraddrs[8]; bits256 mypubkey,hispubkey; };
+
+int32_t Task_connect(void *_args,int32_t argsize)
+{
+    struct args_connect *args = _args;
+    printf("mytxid.%llu othertxid.%llu\n",(long long)args->mytxid,(long long)args->othertxid);
+    return(0);
+}
+
+char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    struct args_connect args;
+    bits256 myhash,otherhash;
+    char retbuf[1000],myname[MAX_JSON_FIELD],othername[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
+    copy_cJSON(myname,objs[0]);
+    copy_cJSON(othername,objs[1]);
+    if ( myname[0] != 0 && othername[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        calc_sha256(0,myhash.bytes,(uint8_t *)myname,(int32_t)strlen(myname));
+        if ( calc_txid((uint8_t *)myname,(int32_t)strlen(myname)) != myhash.txid )
+            printf("txid mismatch: %llx != %llx\n",(long long)calc_txid((uint8_t *)myname,(int32_t)strlen(myname)),(long long)myhash.txid);
+        calc_sha256cat(myhash.bytes,(uint8_t *)myname,(int32_t)strlen(myname),(uint8_t *)othername,(int32_t)strlen(othername));
+        calc_sha256cat(otherhash.bytes,(uint8_t *)othername,(int32_t)strlen(othername),(uint8_t *)myname,(int32_t)strlen(myname));
+        sprintf(retbuf,"{\"result\":\"pending\",\"mytxid\":\"%llu\",\"othertxid\":\"%llu\"}",(long long)myhash.txid,(long long)otherhash.txid);
+        memset(&args,0,sizeof(args));
+        args.mytxid = myhash.txid;
+        args.othertxid = otherhash.txid;
+        start_task(Task_connect,"connect",1000000,(void *)&args,sizeof(args));
+        retstr = clonestr(retbuf);
+    }
+    else retstr = clonestr("{\"error\":\"invalid connect_func arguments\"}");
+    return(retstr);
 }
 
 /*char *getPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1110,7 +1222,8 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     
    // privacyNetwork and comms
-    static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "only_privacyServer", 0 };
+    static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
+    static char *connect[] = { (char *)connect_func, "connect", "V",  "myname", "other", 0 };
     //static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
     //static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
     //static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
@@ -1139,7 +1252,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { cosign, cosigned, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { cosign, cosigned, connect, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

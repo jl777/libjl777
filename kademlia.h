@@ -1118,11 +1118,12 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
     return(num);
 }
 
-cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,int32_t only_privacyServers)
+cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,int32_t scanflag)
 {
-    int32_t i,n;
+    int32_t i,n,numservers = 0;
     char pubkeystr[512],key[64],*retstr;
     cJSON *json,*array;
+    struct nodestats *stats;
     struct coin_info *cp = get_coin_info("BTCD");
     //printf("inside gen_peer_json.%d\n",only_privacyServers);
     if ( cp == 0 )
@@ -1135,24 +1136,32 @@ cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTA
         for (i=0; i<n; i++)
         {
             if ( Allnodes[i] != 0 )
-                cJSON_AddItemToArray(array,gen_peerinfo_json(get_nodestats(Allnodes[i])));
+            {
+                stats = get_nodestats(Allnodes[i]);
+                if ( stats->ipbits != 0 )
+                    numservers++;
+                cJSON_AddItemToArray(array,gen_peerinfo_json(stats));
+            }
         }
         cJSON_AddItemToObject(json,"peers",array);
         //cJSON_AddItemToObject(json,"only_privacyServers",cJSON_CreateNumber(only_privacyServers));
-        cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(n));
+        cJSON_AddItemToObject(json,"num",cJSON_CreateNumber(numservers));
         cJSON_AddItemToObject(json,"Numpservers",cJSON_CreateNumber(Numallnodes));
     }
-    memset(cp->nxtaccts,0,sizeof(cp->nxtaccts));
-    cp->numnxtaccts = n = scan_nodes(cp->nxtaccts,sizeof(cp->nxtaccts)/sizeof(*cp->nxtaccts),NXTACCTSECRET);
-    for (i=0; i<n; i++)
+    if ( scanflag != 0 )
     {
-        expand_nxt64bits(key,cp->nxtaccts[i]);
-        init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
-        retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key,0);
-        if ( retstr != 0 )
-            free(retstr);
+        memset(cp->nxtaccts,0,sizeof(cp->nxtaccts));
+        cp->numnxtaccts = n = scan_nodes(cp->nxtaccts,sizeof(cp->nxtaccts)/sizeof(*cp->nxtaccts),NXTACCTSECRET);
+        for (i=0; i<n; i++)
+        {
+            expand_nxt64bits(key,cp->nxtaccts[i]);
+            init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
+            retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key,0);
+            if ( retstr != 0 )
+                free(retstr);
+        }
     }
-    cJSON_AddItemToObject(json,"Numnxtaccts",cJSON_CreateNumber(n));
+    cJSON_AddItemToObject(json,"Numnxtaccts",cJSON_CreateNumber(cp->numnxtaccts));
     return(json);
 }
 

@@ -218,7 +218,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             if ( stats == 0 )
             {
                 printf("FATAL: cant get random node!\n");
-                return(-1);
+                return(maxlen);
             }
             expand_ipbits(ipaddr,stats->ipbits);
             if ( stats->ipbits == 0 || stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
@@ -537,10 +537,10 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         else
         {
             memcpy(&destbits,decoded,sizeof(destbits));
-            if ( destbits != 0 && find_nodestats(destbits) != 0 ) // route packet
+            if ( destbits != 0 ) // route packet
             {
                 expand_nxt64bits(destNXTaddr,destbits);
-                printf("Route to {%s}\n",destNXTaddr);
+                printf("Route to {%s} %p\n",destNXTaddr,find_nodestats(destbits));
                 outbuf = decoded;
                 len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
                 route_packet(1,0,hopNXTaddr,outbuf,len);

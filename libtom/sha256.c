@@ -297,6 +297,16 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
     }
 }
 
+void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,unsigned char *src2,int32_t len2)
+{
+    hash_state md;
+    sha256_init(&md);
+    sha256_process(&md,src,len);
+    if ( src2 != 0 )
+        sha256_process(&md,src2,len2);
+    sha256_done(&md,hash);
+}
+
 /**
   Self-test the hash
   @return CRYPT_OK if successful, CRYPT_NOP if self-tests have been disabled
