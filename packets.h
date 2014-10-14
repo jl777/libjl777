@@ -226,7 +226,12 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
                 len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
                 memcpy(srcbuf,dest,len);
                 src = srcbuf;
-                *srcp = (final != 0) ? final : maxbuf;
+                if ( final == 0 )
+                {
+                    *srcp = maxbuf;
+                    break;
+                }
+                *srcp = final;
                 if ( len > 4096 )
                 {
                     printf("FATAL: onion layers too big.%d\n",len);
@@ -252,7 +257,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
 {
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
-    unsigned char maxbuf[4096],encodedD[4096],*outbuf;
+    unsigned char maxbuf[4096],encodedD[4096],encodedL[4096],*outbuf;
     int32_t len,createdflag;//,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
@@ -266,6 +271,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);
     memset(maxbuf,0,sizeof(maxbuf)); // always the same size
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
+    memset(encodedL,0,sizeof(encodedL)); // encoded to dest
     outbuf = (unsigned char *)msg;
     len = msglen;
     if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
@@ -285,7 +291,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         if ( L > 0 )
         {
             len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
-            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,0,&outbuf,len);
+            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
         }
         else len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
