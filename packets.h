@@ -198,6 +198,7 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbuf,uint8_t *final,uint8_t **srcp,int32_t len)
 {
     char ipaddr[64],NXTaddr[64];
+    int32_t maxlen = 0;
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
@@ -223,7 +224,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
                 printf("add layer %d: NXT.%s\n",numlayers,NXTaddr);
-                len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
+                maxlen = onionize(hopNXTaddr,maxbuf,0,NXTaddr,&src,len);
+                len = onionize(hopNXTaddr,0,dest,NXTaddr,&src,len);
                 memcpy(srcbuf,dest,len);
                 src = srcbuf;
                 if ( final == 0 )
@@ -243,7 +245,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             numlayers--;
         }
     }
-    return(len);
+    return(maxlen);
 }
 
 int32_t has_privacyServer(struct NXT_acct *np)
