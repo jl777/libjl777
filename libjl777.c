@@ -96,6 +96,7 @@ uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32
     return(work);
 }
 
+/*
 void async_handler(uv_async_t *handle)
 {
     char *jsonstr = (char *)handle->data;
@@ -113,13 +114,13 @@ void send_async_message(char *msg)
         usleep(1000);
     Tasks_async.data = clonestr(msg);
     uv_async_send(&Tasks_async);
-}
+}*/
 
 void run_UVloop(void *arg)
 {
     uv_idle_t idler;
     uv_idle_init(UV_loop,&idler);
-    uv_async_init(UV_loop,&Tasks_async,async_handler);
+    //uv_async_init(UV_loop,&Tasks_async,async_handler);
     uv_idle_start(&idler,teleport_idler);
     //uv_idle_start(&idler,NXTservices_idler);
     uv_run(UV_loop,UV_RUN_DEFAULT);
