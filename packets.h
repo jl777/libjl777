@@ -1,3 +1,4 @@
+//"findnode","key":"4567308492595024585","data":"deadbeef"}'
 //
 //  packets.h
 //  xcode
@@ -107,7 +108,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
     long hdrlen;
     memset(maxbuf,0,MAX_UDPLEN);
     origencoded = encoded;
-    padlen = MAX_UDPLEN - 0*56 - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - (sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
+    padlen = MAX_UDPLEN - (len + crypto_box_ZEROBYTES + crypto_box_NONCEBYTES) - 0*(sizeof(*payload_lenp) + sizeof(onetime_pubkey) + sizeof(nxt64bits)) - sizeof(uint32_t);
     if ( padlen < 0 )
         padlen = 0;
     if ( encoded == 0 )
@@ -153,7 +154,6 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         {
             if ( padlen > 0 )
             {
-                //slen2 = len + padlen;
                 slen2 = _encode_str(maxbuf,(char *)payload,len + padlen,destpubkey,onetime_privkey);
                 memcpy(max_lenp,&slen2,sizeof(*max_lenp));
             }
@@ -218,22 +218,19 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
                 return(-1);
             }
             expand_ipbits(ipaddr,stats->ipbits);
-            if ( stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
+            if ( stats->ipbits == 0 || stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
                 continue;
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
-                printf("add layer %d: NXT.%s\n",numlayers,NXTaddr);
+                printf("add layer %d: NXT.(%s) -> (%s) [%s]\n",numlayers,NXTaddr,hopNXTaddr,ipaddr);
                 maxlen = onionize(hopNXTaddr,maxbuf,0,NXTaddr,&src,len);
                 len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
                 memcpy(srcbuf,dest,len);
                 src = srcbuf;
+                *srcp = maxbuf;
                 if ( final == 0 )
-                {
-                    *srcp = maxbuf;
                     break;
-                }
-                *srcp = final;
                 if ( len > 4096 )
                 {
                     printf("FATAL: onion layers too big.%d\n",len);
