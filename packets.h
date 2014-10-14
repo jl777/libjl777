@@ -131,7 +131,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         maxbuf += sizeof(*payload_lenp);
     } else max_lenp = payload_lenp;
     encoded += sizeof(*payload_lenp);
-    if ( 1 )
+    if ( Debuglevel > 0 )
     {
         char hexstr[1024];
         init_hexbytes_noT(hexstr,destpubkey,crypto_box_PUBLICKEYBYTES);
@@ -160,7 +160,8 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
             else memcpy(maxbuf,encoded,len);
         }
     }
-    printf("new len.%d + %ld = %d (%d %d)\n",len,extralen,padlen,*payload_lenp,*max_lenp);
+    if ( Debuglevel > 1 )
+        printf("new len.%d + %ld = %d (%d %d)\n",len,extralen,padlen,*payload_lenp,*max_lenp);
     return(len + (int)extralen);
 }
 
@@ -188,7 +189,8 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
             {
                 char ipaddr[16];
                 expand_ipbits(ipaddr,hasips[i]);
-                printf(">>>>>>>>>>> HASIP.%s in slot %d of %d\n",ipaddr,i,pserver->numips);
+                if ( Debuglevel > 1 )
+                    printf(">>>>>>>>>>> HASIP.%s in slot %d of %d\n",ipaddr,i,pserver->numips);
                 return(i);
             }
     }
@@ -206,7 +208,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
         numlayers = ((rand() >> 8) % numlayers);
     if ( numlayers > 0 )
     {
-        printf("add_random_onionlayers %d of %d *srcp %p\n",numlayers,Global_mp->Lfactor,*srcp);
+        if ( Debuglevel > 0 )
+            printf("add_random_onionlayers %d of %d *srcp %p\n",numlayers,Global_mp->Lfactor,*srcp);
         memset(dest,0,sizeof(dest));
         memcpy(srcbuf,*srcp,len);
         while ( numlayers > 0 )
@@ -223,7 +226,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
-                printf("add layer %d: NXT.(%s) -> (%s) [%s] len.%d origlen.%d maxlen.%d\n",numlayers,NXTaddr,hopNXTaddr,ipaddr,len,origlen,maxlen);
+                if ( Debuglevel > 0 )
+                    printf("add layer %d: NXT.(%s) -> (%s) [%s] len.%d origlen.%d maxlen.%d\n",numlayers,NXTaddr,hopNXTaddr,ipaddr,len,origlen,maxlen);
                 origlen = len;
                 src = srcbuf;
                 len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
@@ -399,7 +403,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
     memset(tmpbuf,0,sizeof(tmpbuf));
     retjsonstr[0] = 0;
     //sprintf(retjsonstr,"{\"error\":\"unknown error processing %d bytes from %s/%d\"}",recvlen,sender,port);
-    if ( internalflag == 0 && is_encrypted_packet(recvbuf,recvlen) != 0 )
+    if ( is_encrypted_packet(recvbuf,recvlen) != 0 )
     {
         recvbuf += sizeof(uint32_t);
         recvlen -= sizeof(uint32_t);
@@ -430,7 +434,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
             return(0);
         }
     }
-    else
+    else if ( internalflag == 0 )
     {
         if ( Debuglevel > 1 )
             printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,recvbuf);
@@ -439,6 +443,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         encrypted = 0;
         //return(0);
     }
+    else return(0); // if from data field, must decrypt or it is ignored
     if ( len > 0 )
     {
         //decoded[len] = 0;
@@ -478,7 +483,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                                 stripwhite_ns(parmstxt,strlen(parmstxt));
                                 free_json(argjson);
                                 argjson = cJSON_Parse(parmstxt);
-                                printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
+                                if ( Debuglevel > 0 )
+                                    printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
                             }
                             else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
                         }
@@ -491,7 +497,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     struct udp_queuecmd *qp;
                     char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                     tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
-                    update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
+                    if ( internalflag == 0 )
+                        update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
                     //printf("GOT.(%s)\n",parmstxt);
                     if ( 0 )
                     {
