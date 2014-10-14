@@ -28,21 +28,29 @@ struct kademlia_store
 };
 struct kademlia_store K_store[10000];
 
-void add_new_node(uint64_t nxt64bits)
+struct nodestats *find_nodestats(uint64_t nxt64bits)
 {
     int32_t i;
-    if ( Numallnodes > 0 )
+    if ( nxt64bits != 0 && Numallnodes > 0 )
     {
         for (i=0; i<MAX_ALLNODES; i++)
         {
             if ( Allnodes[i] == nxt64bits )
-                return;
+                return(get_nodestats(Allnodes[i]));
         }
     }
-    if ( Debuglevel > 0 )
-        printf("[%d of %d] ADDNODE.%llu\n",Numallnodes,MAX_ALLNODES,(long long)nxt64bits);
-    Allnodes[Numallnodes % MAX_ALLNODES] = nxt64bits;
-    Numallnodes++;
+    return(0);
+}
+
+void add_new_node(uint64_t nxt64bits)
+{
+    if ( find_nodestats(nxt64bits) == 0 )
+    {
+        if ( Debuglevel > 0 )
+            printf("[%d of %d] ADDNODE.%llu\n",Numallnodes,MAX_ALLNODES,(long long)nxt64bits);
+        Allnodes[Numallnodes % MAX_ALLNODES] = nxt64bits;
+        Numallnodes++;
+    }
 }
 
 struct nodestats *get_random_node()
@@ -616,7 +624,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
             port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)prevaddr);
             recvlen = (int32_t)(strlen(datastr) / 2);
             decode_hex(data,recvlen,datastr);
-            retnp = process_packet(retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
+            retnp = process_packet(1,retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
             printf("processed the possible dead drop.(%s) %p\n",retjsonstr,retnp);
         }
         memset(sortbuf,0,sizeof(sortbuf));
@@ -891,7 +899,7 @@ void every_minute(int32_t counter)
         p2p_publishpacket(0,0);
         update_Kbuckets(get_nodestats(cp->srvpubnxtbits),cp->srvpubnxtbits,cp->myipaddr,0,0,0);
     }
-    if ( (broadcast_count % 10) == 0 )
+    //if ( (broadcast_count % 10) == 0 )
     {
         for (i=n=0; i<Num_in_whitelist; i++)
         {

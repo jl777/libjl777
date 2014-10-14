@@ -1434,7 +1434,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         if ( Debuglevel > 0 )
             printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
-            process_packet(retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
+            process_packet(0,retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
         else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
         {
             if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )

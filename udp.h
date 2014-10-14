@@ -197,7 +197,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         }
         expand_nxt64bits(NXTaddr,cp->pubnxtbits);
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
-        np = process_packet(retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
+        np = process_packet(0,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);
          server_xferred += nread;
     }
@@ -313,7 +313,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     {
         if ( port == 0 || port == BTCD_PORT )
         {
-            printf("ERROR: send_packet port.%d\n",port);
+            printf("send_packet WARNING: send_packet port.%d <- %d\n",port,SUPERNET_PORT);
             port = SUPERNET_PORT;
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
