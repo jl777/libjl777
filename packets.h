@@ -198,7 +198,7 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbuf,uint8_t *final,uint8_t **srcp,int32_t len)
 {
     char ipaddr[64],NXTaddr[64];
-    int32_t origlen=0,maxlen = 0;
+    int32_t origlen=0,maxlen = MAX_UDPLEN - 46;
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;

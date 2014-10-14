@@ -290,7 +290,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         printf("no point to send yourself (%s) dest.%llu pub.%llu srvpub.%llu\n",kadcmd,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
         return(0);
     }
-    encrypted = 1;
+    encrypted = 2;
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -304,8 +304,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     else
     {
-        if ( 0 && strcmp(kadcmd,"pong") == 0 )
-            encrypted = 0;
+        if ( strcmp(kadcmd,"pong") == 0 )
+            encrypted = 1;
         sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr);
     }
     if ( key != 0 && key[0] != 0 )
