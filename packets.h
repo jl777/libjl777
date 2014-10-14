@@ -225,7 +225,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             {
                 printf("add layer %d: NXT.%s\n",numlayers,NXTaddr);
                 maxlen = onionize(hopNXTaddr,maxbuf,0,NXTaddr,&src,len);
-                len = onionize(hopNXTaddr,0,dest,NXTaddr,&src,len);
+                len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
                 memcpy(srcbuf,dest,len);
                 src = srcbuf;
                 if ( final == 0 )
