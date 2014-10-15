@@ -392,7 +392,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
 }
 
-char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *ipaddr,int32_t port,char *destip)
+char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip)
 {
     uint64_t txid = 0;
     char retstr[1024];
@@ -422,7 +422,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(clonestr(retstr));
 }
 
-char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *ipaddr,uint16_t port)
+char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port)
 {
     char retstr[1024];
     struct nodestats *stats;
@@ -468,7 +468,7 @@ struct kademlia_store *do_localstore(uint64_t *txidp,char *key,char *datastr,cha
     return(sp);
 }
 
-char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key,char *datastr)
+char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[32768];
@@ -515,7 +515,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
     return(clonestr(retstr));
 }
 
-char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key,char *value)
+char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *value)
 {
     char retstr[1024],ipaddr[MAX_JSON_FIELD],destNXTaddr[MAX_JSON_FIELD],pubkeystr[MAX_JSON_FIELD],portstr[MAX_JSON_FIELD],lastcontactstr[MAX_JSON_FIELD];
     int32_t i,n,createdflag,dist;
@@ -581,7 +581,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
     return(clonestr(retstr));
 }
 
-char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pubkey,char *key,char *datastr)
+char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     unsigned char data[MAX_JSON_FIELD];
@@ -1156,7 +1156,7 @@ cJSON *gen_peers_json(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTA
         {
             expand_nxt64bits(key,cp->nxtaccts[i]);
             init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
-            retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,pubkeystr,key,0);
+            retstr = kademlia_find("findnode",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,0);
             if ( retstr != 0 )
                 free(retstr);
         }

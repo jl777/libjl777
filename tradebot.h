@@ -538,9 +538,9 @@ int32_t init_tradebots(cJSON *tradebot_languages)
 {
     cJSON *item;
     int32_t i,n;
-    uv_lib_t lib;
-    void *compiler,*runtime;
-    char dyldfname[1024],*langname;
+    //uv_lib_t lib;
+    //void *compiler,*runtime;
+    char dyldfname[1024];//,*langname;
     //register_tradebot_language("ptl",pico_tradebot_compiler,pico_tradebot_runtime);
     if ( tradebot_languages != 0 && is_cJSON_Array(tradebot_languages) != 0 )
     {
@@ -549,6 +549,7 @@ int32_t init_tradebots(cJSON *tradebot_languages)
         {
             item = cJSON_GetArrayItem(tradebot_languages,i);
             copy_cJSON(dyldfname,item);
+#ifdef later
             if ( dyldfname[0] != 0 )
             {
                 printf("try to load tradebot_language in (%s)\n",dyldfname);
@@ -568,6 +569,7 @@ int32_t init_tradebots(cJSON *tradebot_languages)
                     } else printf("error (%s) trying to find langname (%s)\n",uv_dlerror(&lib),dyldfname);
                 } else printf("error (%s) trying to load tradebot_language in (%s)\n",uv_dlerror(&lib),dyldfname);
             }
+#endif
         }
     }
     return(Num_languages);

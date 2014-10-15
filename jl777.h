@@ -90,7 +90,11 @@ void usleep(int32_t);
 // includes that include actual code
 //#include "includes/crypto_box.h"
 #include "tweetnacl.c"
+#ifdef WIN32
+#include "curve25519-donna.c"
+#else
 #include "curve25519-donna-c64.c"
+#endif
 //#include "includes/randombytes.h"
 
 //#include "utils/smoothers.h"

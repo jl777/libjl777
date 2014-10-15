@@ -190,6 +190,15 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
         sleep(1);
 }
 
+uint64_t get_accountid(char *buf)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+        strcpy(buf,cp->srvNXTADDR);
+    else strcpy(buf,"nobtcdsrvNXTADDR");
+    return(calc_nxt64bits(buf));
+}
+
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
     char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
@@ -773,21 +782,70 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(jsonstr);
 }
 
-struct args_connect { uint64_t mytxid,othertxid,otheraddrs[8]; bits256 mypubkey,hispubkey; };
+uint64_t gen_randacct(char *randaddr)
+{
+    char secret[33];
+    uint64_t randacct;
+    bits256 priv,pub;
+    randombytes((uint8_t *)secret,sizeof(secret));
+    secret[sizeof(secret)-1] = 0;
+    randacct = conv_NXTpassword(priv.bytes,pub.bytes,secret);
+    expand_nxt64bits(randaddr,randacct);
+    return(randacct);
+}
+
+struct args_connect { uint64_t mytxid,othertxid,refaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
 
 int32_t Task_connect(void *_args,int32_t argsize)
 {
+    static bits256 zerokey;
     struct args_connect *args = _args;
-    printf("mytxid.%llu othertxid.%llu\n",(long long)args->mytxid,(long long)args->othertxid);
+    int32_t i,j;
+    cJSON *json;
+    struct coin_info *cp = get_coin_info("BTCD");
+    char key[64],datastr[1024],sender[64],*retstr;
+    if ( cp == 0 )
+        return(-1);
+    if ( memcmp(&args->otherpubkey,&zerokey,sizeof(zerokey)) == 0 )
+    {
+        expand_nxt64bits(key,args->othertxid);
+        gen_randacct(sender);
+        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,sender,key,0);
+        if ( retstr != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                copy_cJSON(datastr,cJSON_GetObjectItem(json,"data"));
+                if ( strlen(datastr) == sizeof(zerokey)*2 )
+                {
+                    printf("set otherpubkey to (%s)\n",datastr);
+                    decode_hex(args->otherpubkey.bytes,sizeof(args->otherpubkey),datastr);
+                }
+                free_json(json);
+            }
+            free(retstr);
+        }
+    }
+    for (i=0; i<args->numrefs; i++)
+    {
+        for (j=0; j<args->numrefs; j++)
+            printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
+        printf("\n");
+    }
+
+    for (i=0; i<args->numrefs; i++)
+        printf("%llu ",(long long)args->refaddrs[i]);
+    printf("mytxid.%llu othertxid.%llu | myaddr.%llu\n",(long long)args->mytxid,(long long)args->othertxid,(long long)args->refaddr);
     return(0);
 }
 
 char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    struct coin_info *cp = get_coin_info("BTCD");
     struct args_connect args;
     bits256 myhash,otherhash;
-    char retbuf[1000],myname[MAX_JSON_FIELD],othername[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    char retbuf[1000],datastr[128],key[64],myname[MAX_JSON_FIELD],othername[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 || cp == 0 )
         return(0);
     copy_cJSON(myname,objs[0]);
     copy_cJSON(othername,objs[1]);
@@ -799,9 +857,16 @@ char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
         calc_sha256cat(myhash.bytes,(uint8_t *)myname,(int32_t)strlen(myname),(uint8_t *)othername,(int32_t)strlen(othername));
         calc_sha256cat(otherhash.bytes,(uint8_t *)othername,(int32_t)strlen(othername),(uint8_t *)myname,(int32_t)strlen(myname));
         sprintf(retbuf,"{\"result\":\"pending\",\"mytxid\":\"%llu\",\"othertxid\":\"%llu\"}",(long long)myhash.txid,(long long)otherhash.txid);
+        expand_nxt64bits(key,myhash.txid);
+        init_hexbytes_noT(datastr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+        retstr = kademlia_storedata(0,NXTaddr,NXTACCTSECRET,NXTaddr,key,datastr);
+        if ( retstr != 0 )
+            free(retstr);
         memset(&args,0,sizeof(args));
         args.mytxid = myhash.txid;
         args.othertxid = otherhash.txid;
+        args.refaddr = cp->srvpubnxtbits;
+        args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
         start_task(Task_connect,"connect",1000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);
     }
@@ -1028,7 +1093,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(destip,objs[3]);
     //printf("ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port,destip);
+        retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
     return(retstr);
 }
@@ -1044,7 +1109,7 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     port = get_API_int(objs[2],0);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,ipaddr,port);
+        retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port);
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
 }
@@ -1077,7 +1142,7 @@ char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     if ( Debuglevel > 1 )
         printf("findnode.%p (%s) (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key,value);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
+        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid findnode_func arguments\"}");
     return(retstr);
 }
@@ -1091,7 +1156,7 @@ char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     if ( Debuglevel > 1 )
         printf("findvalue.%p (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
+        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid findvalue_func arguments\"}");
     if ( Debuglevel > 1 )
         printf("back from findvalue\n");
@@ -1105,7 +1170,7 @@ char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     set_kademlia_args(key,objs[1],objs[2]);
     copy_cJSON(value,objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_havenode(0,prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
+        retstr = kademlia_havenode(0,prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenode_func arguments\"}");
     return(retstr);
 }
@@ -1117,7 +1182,7 @@ char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     set_kademlia_args(key,objs[1],objs[2]);
     copy_cJSON(value,objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_havenode(1,prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,value);
+        retstr = kademlia_havenode(1,prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenode_func arguments\"}");
     return(retstr);
 }
@@ -1130,7 +1195,7 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
     copy_cJSON(datastr,objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 && datastr[0] != 0 )
     {
-        retstr = kademlia_storedata(prevaddr,NXTaddr,NXTACCTSECRET,sender,pubkey,key,datastr);
+        retstr = kademlia_storedata(prevaddr,NXTaddr,NXTACCTSECRET,sender,key,datastr);
     }
     else retstr = clonestr("{\"error\":\"invalid store_func arguments\"}");
     return(retstr);
@@ -1639,10 +1704,3 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     return(0);
 }
 
-void get_accountid(char *buf)
-{
-    struct coin_info *cp = get_coin_info("BTCD");
-    if ( cp != 0 )
-        strcpy(buf,cp->srvNXTADDR);
-    else strcpy(buf,"nobtcdsrvNXTADDR");
-}

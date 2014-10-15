@@ -162,7 +162,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
             if ( fragments[i] != 0 )
                 continue;
             expand_nxt64bits(key,txids[i]);
-            str = kademlia_find("findvalue",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,0,key,0);
+            str = kademlia_find("findvalue",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,0);
             if ( str != 0 )
             {
                 if ( (json= cJSON_Parse(str)) != 0 )
@@ -346,7 +346,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
                 n++;
                 cJSON_AddItemToArray(array,cJSON_CreateString(key));
                 fprintf(stderr,"%s ",key);
-                str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,0,key,datastr);
+                str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
                 if ( str != 0 )
                 {
                     //printf("i.%ld sharei.%d of %d: %s\n",i,sharei,N,str);
@@ -364,7 +364,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             expand_nxt64bits(key,keyhash);
             cJSON_AddItemToArray(array,cJSON_CreateString(key));
             printf("%s ",key);
-            str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,0,key,datastr);
+            str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
             if ( str != 0 )
             {
                 //printf("i.%ld: %s\n",i,str);
