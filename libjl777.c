@@ -848,7 +848,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
     sum /= (args->numrefs * args->numrefs - args->numrefs);
     if ( args->bestaddr == 0 )
         randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
-    bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr,sum);
+    bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr,(int)sum);
     printf("bestmetric %.3f avedist %.1f\n",bestmetric,sum);
     for (iter=0; iter<1000000; iter++)
     {
@@ -857,7 +857,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
         if( (iter & 1) != 0 )
             randombytes((unsigned char *)&calcaddr,sizeof(calcaddr));
         else calcaddr = (args->bestaddr ^ (1L << ((rand()>>8)&63)));
-        metric = calc_nradius(args->refaddrs,args->numrefs,calcaddr,sum);
+        metric = calc_nradius(args->refaddrs,args->numrefs,calcaddr,(int)sum);
         if ( metric < bestmetric )
         {
             bestmetric = metric;
