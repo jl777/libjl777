@@ -843,7 +843,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
         if ( args->bestaddr == 0 )
             randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
         bestmetric = calc_address_metric(0,args->refaddr,args->refaddrs,args->numrefs,args->bestaddr,sum);
-        for (i=0; i<100000; i++)
+        for (i=0; i<1000; i++)
         {
             calcaddr = 0;
             for (j=0; j<4; j++)
