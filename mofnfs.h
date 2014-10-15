@@ -421,7 +421,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(retstr);
 }
 
-double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,int32_t targetdist)
+double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,double targetdist)
 {
     int32_t i,numabove,numbelow,exact,flag = 0;
     double metric,dist,diff,sum,balance;

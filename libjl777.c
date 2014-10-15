@@ -794,16 +794,18 @@ uint64_t gen_randacct(char *randaddr)
     return(randacct);
 }
 
-struct args_connect { uint64_t mytxid,othertxid,refaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
+struct args_connect { uint64_t mytxid,othertxid,refaddr,bestaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
 
 int32_t Task_connect(void *_args,int32_t argsize)
 {
     static bits256 zerokey;
     struct args_connect *args = _args;
-    int32_t i,j;
+    int32_t i,j,dist;
+    double sum,metric,bestmetric;
     cJSON *json;
+    uint64_t calcaddr;
     struct coin_info *cp = get_coin_info("BTCD");
-    char key[64],datastr[1024],sender[64],*retstr;
+    char key[64],datastr[1024],sender[64],otherkeystr[512],*retstr;
     if ( cp == 0 )
         return(-1);
     if ( memcmp(&args->otherpubkey,&zerokey,sizeof(zerokey)) == 0 )
@@ -828,11 +830,45 @@ int32_t Task_connect(void *_args,int32_t argsize)
     }
     for (i=0; i<args->numrefs; i++)
     {
+        sum = 0;
         for (j=0; j<args->numrefs; j++)
-            printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
-        printf("\n");
+        {
+            if ( i == j )
+                dist = bitweight(args->refaddr ^ args->refaddrs[j]);
+            else dist = bitweight(args->refaddrs[i] ^ args->refaddrs[j]);
+            printf("%2d ",dist);
+            sum += dist;
+        }
+        sum /= (i * j);
+        if ( args->bestaddr == 0 )
+            randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
+        bestmetric = calc_address_metric(0,args->refaddr,args->refaddrs,args->numrefs,args->bestaddr,sum);
+        for (i=0; i<100000; i++)
+        {
+            calcaddr = 0;
+            for (j=0; j<4; j++)
+            {
+                calcaddr <<= 16;
+                calcaddr |= ((rand() >> 8) & 0xffff);
+            }
+            metric = calc_address_metric(0,args->refaddr,args->refaddrs,args->numrefs,calcaddr,sum);
+            if ( metric < bestmetric )
+            {
+                bestmetric = metric;
+                args->bestaddr = calcaddr;
+            }
+        }
+        printf("  %.1f  |    ",sum);
+        for (j=0; j<args->numrefs; j++)
+        {
+            if ( i == j )
+                printf("%2d ",bitweight(args->bestaddr ^ args->refaddrs[j]));
+            else printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
+        }
+        printf("\n bestaddr.%llu bestmetric %.3f\n",args->bestaddr,bestmetric);
     }
-
+    init_hexbytes(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
+    printf("Other pubkey.(%s)\n",otherkeystr);
     for (i=0; i<args->numrefs; i++)
         printf("%llu ",(long long)args->refaddrs[i]);
     printf("mytxid.%llu othertxid.%llu | myaddr.%llu\n",(long long)args->mytxid,(long long)args->othertxid,(long long)args->refaddr);
@@ -867,7 +903,7 @@ char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
         args.othertxid = otherhash.txid;
         args.refaddr = cp->srvpubnxtbits;
         args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
-        start_task(Task_connect,"connect",1000000,(void *)&args,sizeof(args));
+        start_task(Task_connect,"connect",5000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);
     }
     else retstr = clonestr("{\"error\":\"invalid connect_func arguments\"}");
