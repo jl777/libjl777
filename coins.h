@@ -467,12 +467,12 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     {
                         printf("copy key <- (%s)\n",privkey);
                         safecopy(cp->NXTACCTSECRET,privkey,sizeof(cp->NXTACCTSECRET));
-                        cp->pubnxtbits = issue_getAccountId(0,privkey);
+                        cp->privatebits = issue_getAccountId(0,privkey);
 
-                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->pubnxtbits);
+                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
-                        stats = get_nodestats(cp->pubnxtbits);
-                        add_new_node(cp->pubnxtbits);
+                        stats = get_nodestats(cp->privatebits);
+                        add_new_node(cp->privatebits);
                         memcpy(stats->pubkey,Global_mp->session_pubkey,sizeof(stats->pubkey));
                     }
                     printf("check srvpubaddr\n");
@@ -656,8 +656,8 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             BTCDaddr = cp->pubaddr;
                             strcpy(NXTACCTSECRET,cp->NXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
-                            if ( cp->pubnxtbits != 0 )
-                                expand_nxt64bits(NXTADDR,cp->pubnxtbits);
+                            if ( cp->privatebits != 0 )
+                                expand_nxt64bits(NXTADDR,cp->privatebits);
                             /*set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxtbits,0);
                             refpeer = update_peerinfo(&createdflag,&peer);
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )

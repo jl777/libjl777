@@ -130,7 +130,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&wr->addr);
         pserver = get_pserver(&createdflag,ipaddr,0,0);
-        if ( 1 && (pserver->nxt64bits == cp->pubnxtbits || pserver->nxt64bits == cp->srvpubnxtbits) )
+        if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
         {
             //printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
             //return(0);
@@ -175,7 +175,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     struct pserver_info *pserver;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    char ipaddr[256],retjsonstr[4096],NXTaddr[64],srvNXTaddr[64];
+    char ipaddr[256],retjsonstr[4096],srvNXTaddr[64];
     retjsonstr[0] = 0;
     if ( cp != 0 && nread > 0 )
     {
@@ -195,7 +195,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             if ( Debuglevel > 0 )
                 printf("UDP RECEIVED %ld from %s/%d crc.%x | ",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         }
-        expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+        //expand_nxt64bits(NXTaddr,cp->pubnxtbits);
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
         np = process_packet(0,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);

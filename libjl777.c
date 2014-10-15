@@ -908,7 +908,7 @@ char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         memset(&args,0,sizeof(args));
         args.mytxid = myhash.txid;
         args.othertxid = otherhash.txid;
-        args.refaddr = cp->pubnxtbits;
+        args.refaddr = cp->privatebits;
         args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
         start_task(Task_mindmeld,"mindmeld",1000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);
@@ -1392,7 +1392,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
             else
             {
                 safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
-                expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+                expand_nxt64bits(NXTaddr,cp->privatebits);
                 //printf("use NXT.%s to send command\n",NXTaddr);
             }
         }
@@ -1458,13 +1458,13 @@ char *call_SuperNET_JSON(char *JSONstr)
     //printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
-        expand_nxt64bits(NXTaddr,cp->pubnxtbits);
+        expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
             stripwhite_ns(cmdstr,strlen(cmdstr));
-            issue_generateToken(0,encoded,cmdstr,cp->NXTACCTSECRET);
+            issue_generateToken(0,encoded,cmdstr,cp->srvNXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",cmdstr,encoded);
             free(cmdstr);

@@ -128,7 +128,7 @@ int32_t ismynxtbits(uint64_t destbits)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
-        if ( destbits == cp->pubnxtbits || destbits == cp->srvpubnxtbits )
+        if ( destbits == cp->privatebits || destbits == cp->srvpubnxtbits )
             return(1);
         else return(0);
     } else return(-1);
@@ -285,9 +285,9 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
-    if ( 0 && (pserver->nxt64bits == cp->pubnxtbits || pserver->nxt64bits == cp->srvpubnxtbits) )
+    if ( 0 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
     {
-        printf("no point to send yourself (%s) dest.%llu pub.%llu srvpub.%llu\n",kadcmd,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
+        printf("no point to send yourself (%s) dest.%llu pub.%llu srvpub.%llu\n",kadcmd,(long long)pserver->nxt64bits,(long long)cp->privatebits,(long long)cp->srvpubnxtbits);
         return(0);
     }
     encrypted = 2;
@@ -811,7 +811,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
         pserver = get_pserver(0,cp->myipaddr,0,0);
         //fprintf(stderr,"call addto_hasips\n");
         addto_hasips(1,pserver,stats->ipbits);
-        xorbits = (cp->srvpubnxtbits != 0) ? cp->srvpubnxtbits : cp->pubnxtbits;
+        xorbits = cp->srvpubnxtbits;
         if ( stats->nxt64bits != 0 )
         {
             xorbits ^= stats->nxt64bits;
@@ -1063,12 +1063,13 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
     if ( n > 0 && cp != 0 && cp->myipaddr[0] != 0 )
     {
         mypserver = get_pserver(0,cp->myipaddr,0,0);
+        num = update_newaccts(newaccts,num,mypserver->nxt64bits);
         if ( mypserver->hasips != 0 && n != 0 )
         {
             memset(newips,0,sizeof(newips));
             for (i=m=0; i<n; i++)
             {
-                if ( (otherbits= Allnodes[i]) != mypserver->nxt64bits )
+                if ( (otherbits= Allnodes[i]) != cp->privatebits )
                 {
                     if ( num < max )
                         num = update_newaccts(newaccts,num,otherbits);
