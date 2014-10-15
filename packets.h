@@ -286,7 +286,8 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         len += datalen;
     }
     init_jsoncodec((char *)outbuf,msglen);
-    printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
+    if ( Debuglevel > 1 )
+        printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(maxbuf)-1024 )
     {
         printf("sendmessage, payload too big %d\n",len);
