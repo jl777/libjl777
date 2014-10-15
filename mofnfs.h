@@ -425,12 +425,14 @@ double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr,double refdist)
 {
     int32_t i;
     double dist,sum = 0.;
+    if ( n == 0 )
+        return(0.);
     for (i=0; i<n; i++)
     {
-        dist = bitweight(addrs[i] ^ testaddr) - refdist;
-        sum += log(dist * dist);
+        dist = (bitweight(addrs[i] ^ testaddr) - refdist);
+        sum += (dist * dist);
     }
-    return(sum);
+    return(sqrt(sum/n));
 }
 
 double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,double targetdist)

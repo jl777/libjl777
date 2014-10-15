@@ -800,7 +800,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
 {
     static bits256 zerokey;
     struct args_mindmeld *args = _args;
-    int32_t i,j,iter,dist;
+    int32_t i,j,ind,iter,dist;
     double sum,metric,bestmetric;
     cJSON *json;
     uint64_t calcaddr;
@@ -842,21 +842,19 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
             }
             printf("%2d ",dist);
         }
-        printf("\n");
+        printf("\ndist from privateaddr above -> ");
     }
     sum /= (args->numrefs * args->numrefs - args->numrefs);
     if ( args->bestaddr == 0 )
         randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
     bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr,sum);
     printf("bestmetric %.3f avedist %.1f\n",bestmetric,sum);
-    for (iter=0; iter<1000; iter++)
+    for (iter=0; iter<100000; iter++)
     {
-        calcaddr = 0;
-        for (j=0; j<4; j++)
-        {
-            calcaddr <<= 16;
-            calcaddr |= ((rand() >> 8) & 0xffff);
-        }
+        ind = (iter % 65);
+        if ( ind == 64 )
+            randombytes((unsigned char *)&calcaddr,sizeof(calcaddr));
+        else calcaddr = (args->bestaddr ^ (1L << ind));
         metric = calc_nradius(args->refaddrs,args->numrefs,calcaddr,sum);
         if ( metric < bestmetric )
         {
@@ -911,7 +909,7 @@ char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         args.othertxid = otherhash.txid;
         args.refaddr = cp->srvpubnxtbits;
         args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
-        start_task(Task_mindmeld,"mindmeld",5000000,(void *)&args,sizeof(args));
+        start_task(Task_mindmeld,"mindmeld",1000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);
     }
     else retstr = clonestr("{\"error\":\"invalid mindmeld_func arguments\"}");
