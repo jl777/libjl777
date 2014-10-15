@@ -794,12 +794,12 @@ uint64_t gen_randacct(char *randaddr)
     return(randacct);
 }
 
-struct args_connect { uint64_t mytxid,othertxid,refaddr,bestaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
+struct args_mindmeld { uint64_t mytxid,othertxid,refaddr,bestaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
 
-int32_t Task_connect(void *_args,int32_t argsize)
+int32_t Task_mindmeld(void *_args,int32_t argsize)
 {
     static bits256 zerokey;
-    struct args_connect *args = _args;
+    struct args_mindmeld *args = _args;
     int32_t i,j,dist;
     double sum,metric,bestmetric;
     cJSON *json;
@@ -865,7 +865,7 @@ int32_t Task_connect(void *_args,int32_t argsize)
                 printf("%2d ",bitweight(args->bestaddr ^ args->refaddrs[j]));
             else printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
         }
-        printf("\n bestaddr.%llu bestmetric %.3f\n",args->bestaddr,bestmetric);
+        printf("\n bestaddr.%llu bestmetric %.3f\n",(long long)args->bestaddr,bestmetric);
     }
     init_hexbytes(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
     printf("Other pubkey.(%s)\n",otherkeystr);
@@ -875,10 +875,10 @@ int32_t Task_connect(void *_args,int32_t argsize)
     return(0);
 }
 
-char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    struct args_connect args;
+    struct args_mindmeld args;
     bits256 myhash,otherhash;
     char retbuf[1000],datastr[128],key[64],myname[MAX_JSON_FIELD],othername[MAX_JSON_FIELD],*retstr = 0;
     if ( prevaddr != 0 || cp == 0 )
@@ -903,10 +903,10 @@ char *connect_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
         args.othertxid = otherhash.txid;
         args.refaddr = cp->srvpubnxtbits;
         args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
-        start_task(Task_connect,"connect",5000000,(void *)&args,sizeof(args));
+        start_task(Task_mindmeld,"mindmeld",5000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);
     }
-    else retstr = clonestr("{\"error\":\"invalid connect_func arguments\"}");
+    else retstr = clonestr("{\"error\":\"invalid mindmeld_func arguments\"}");
     return(retstr);
 }
 
@@ -1325,7 +1325,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     
    // privacyNetwork and comms
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
-    static char *connect[] = { (char *)connect_func, "connect", "V",  "myname", "other", 0 };
+    static char *mindmeld[] = { (char *)mindmeld_func, "mindmeld", "V",  "myname", "other", 0 };
     //static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
     //static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
     //static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
@@ -1354,7 +1354,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { cosign, cosigned, connect, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { cosign, cosigned, mindmeld, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
