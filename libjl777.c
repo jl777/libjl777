@@ -842,14 +842,15 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
             }
             printf("%2d ",dist);
         }
-        printf("\ndist from privateaddr above -> ");
+        printf("\n");
     }
+    printf("dist from privateaddr above -> ");
     sum /= (args->numrefs * args->numrefs - args->numrefs);
     if ( args->bestaddr == 0 )
         randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
     bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr,sum);
     printf("bestmetric %.3f avedist %.1f\n",bestmetric,sum);
-    for (iter=0; iter<100000; iter++)
+    for (iter=0; iter<1000000; iter++)
     {
         ind = (iter % 65);
         if ( ind == 64 )
