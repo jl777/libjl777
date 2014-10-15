@@ -907,7 +907,7 @@ char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         memset(&args,0,sizeof(args));
         args.mytxid = myhash.txid;
         args.othertxid = otherhash.txid;
-        args.refaddr = cp->srvpubnxtbits;
+        args.refaddr = cp->pubnxtbits;
         args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
         start_task(Task_mindmeld,"mindmeld",1000000,(void *)&args,sizeof(args));
         retstr = clonestr(retbuf);

@@ -432,6 +432,8 @@ double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr,double refdist)
         dist = (bitweight(addrs[i] ^ testaddr) - refdist);
         sum += (dist * dist);
     }
+    if ( sum < 0. )
+        printf("huh? sum %f n.%d -> %f\n",sum,n,sqrt(sum/n));
     return(sqrt(sum/n));
 }
 
