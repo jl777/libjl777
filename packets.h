@@ -470,14 +470,16 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 tmpjson = cJSON_Parse(parmstxt);
                 if ( tmpjson != 0 )
                 {
+                    copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     if ( encrypted == 0 )
                     {
-                        copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                         if ( strcmp("ping",checkstr) == 0 && internalflag == 0 )
                                 update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
                     }
                     else
                     {
+                        if ( strcmp("pong",checkstr) == 0 && internalflag == 0 )
+                            update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
                         valueobj = cJSON_GetObjectItem(tmpjson,"data");
                         if ( is_cJSON_Number(valueobj) != 0 )
                         {
