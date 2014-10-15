@@ -1,4 +1,4 @@
 rm libjl777.so
 sudo rm /usr/lib/libjl777.so
-gcc -shared -Wl,-soname,libjl777.so -o libjl777.so libjl777.o libtom/*.o picoc/*.o picoc/cstdlib/*.o picoc/platform/*.o libgfshare.o libs/libuv.so -lstdc++ -lc -lcurl -lm -ldl
+gcc -shared -Wl,-soname,libjl777.so -o libjl777.so libjl777.o libtom/*.o picoc/*.o picoc/cstdlib/*.o picoc/platform/*.o libgfshare.o -lstdc++ -lc -lcurl -lm -ldl
 sudo mv libjl777.so /usr/lib
