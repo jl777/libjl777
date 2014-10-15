@@ -132,7 +132,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         pserver = get_pserver(&createdflag,ipaddr,0,0);
         if ( 1 && (pserver->nxt64bits == cp->pubnxtbits || pserver->nxt64bits == cp->srvpubnxtbits) )
         {
-            printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
+            //printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
             //return(0);
             strcpy(ipaddr,"127.0.0.1");
             uv_ip4_addr(ipaddr,supernet_port,(struct sockaddr_in *)&wr->addr);
