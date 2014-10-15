@@ -800,7 +800,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
 {
     static bits256 zerokey;
     struct args_mindmeld *args = _args;
-    int32_t i,j,dist;
+    int32_t i,j,iter,dist;
     double sum,metric,bestmetric;
     cJSON *json;
     uint64_t calcaddr;
@@ -828,45 +828,53 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
             free(retstr);
         }
     }
+    sum = 0.;
     for (i=0; i<args->numrefs; i++)
     {
-        sum = 0;
         for (j=0; j<args->numrefs; j++)
         {
             if ( i == j )
                 dist = bitweight(args->refaddr ^ args->refaddrs[j]);
-            else dist = bitweight(args->refaddrs[i] ^ args->refaddrs[j]);
+            else
+            {
+                dist = bitweight(args->refaddrs[i] ^ args->refaddrs[j]);
+                sum += dist;
+            }
             printf("%2d ",dist);
-            sum += dist;
         }
-        sum /= (i * j);
-        if ( args->bestaddr == 0 )
-            randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
-        bestmetric = calc_address_metric(0,args->refaddr,args->refaddrs,args->numrefs,args->bestaddr,sum);
-        for (i=0; i<1000; i++)
+        printf("\n");
+    }
+    sum /= (args->numrefs * args->numrefs - args->numrefs);
+    if ( args->bestaddr == 0 )
+        randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
+    bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr);
+    printf("bestmetric %.3f avedist %.1f\n",bestmetric,sum);
+    for (iter=0; iter<1000; iter++)
+    {
+        calcaddr = 0;
+        for (j=0; j<4; j++)
         {
-            calcaddr = 0;
-            for (j=0; j<4; j++)
-            {
-                calcaddr <<= 16;
-                calcaddr |= ((rand() >> 8) & 0xffff);
-            }
-            metric = calc_address_metric(0,args->refaddr,args->refaddrs,args->numrefs,calcaddr,sum);
-            if ( metric < bestmetric )
-            {
-                bestmetric = metric;
-                args->bestaddr = calcaddr;
-            }
+            calcaddr <<= 16;
+            calcaddr |= ((rand() >> 8) & 0xffff);
         }
-        printf("  %.1f  |    ",sum);
+        metric = calc_nradius(args->refaddrs,args->numrefs,calcaddr);
+        if ( metric < bestmetric )
+        {
+            bestmetric = metric;
+            args->bestaddr = calcaddr;
+        }
+    }
+    for (i=0; i<args->numrefs; i++)
+    {
         for (j=0; j<args->numrefs; j++)
         {
             if ( i == j )
                 printf("%2d ",bitweight(args->bestaddr ^ args->refaddrs[j]));
             else printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
         }
-        printf("\n bestaddr.%llu bestmetric %.3f\n",(long long)args->bestaddr,bestmetric);
+        printf("\n");
     }
+    printf("bestaddr.%llu bestmetric %.3f\n",(long long)args->bestaddr,bestmetric);
     init_hexbytes(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
     printf("Other pubkey.(%s)\n",otherkeystr);
     for (i=0; i<args->numrefs; i++)
