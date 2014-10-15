@@ -421,14 +421,14 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(retstr);
 }
 
-double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr)
+double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr,double refdist)
 {
     int32_t i;
     double dist,sum = 0.;
     for (i=0; i<n; i++)
     {
-        dist = bitweight(addrs[i] ^ testaddr);
-        sum += log(dist);
+        dist = bitweight(addrs[i] ^ testaddr) - refdist;
+        sum += log(dist * dist);
     }
     return(sum);
 }
