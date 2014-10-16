@@ -583,6 +583,64 @@ char *issue_getTransaction(CURL *curl_handle,char *txidstr)
     return(issue_curl(curl_handle,cmd));
 }
 
+uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
+{
+    cJSON *json;
+    char field[32],cmd[4096],retstr[4096],*jsonstr = 0;
+    strcpy(field,"account");
+    retstr[0] = 0;
+    if ( nxt64bits != 0 )
+    {
+        sprintf(cmd,"%s=rsConvert&account=%llu",NXTSERVER,(long long)nxt64bits);
+        strcat(field,"RS");
+        jsonstr = issue_curl(0,cmd);
+    }
+    else if ( rsacctstr[0] != 0 )
+    {
+        sprintf(cmd,"%s=rsConvert&account=%s",NXTSERVER,rsacctstr);
+        jsonstr = issue_curl(0,cmd);
+    }
+    else printf("conv_rsacctstr: illegal parms %s %llu\n",rsacctstr,(long long)nxt64bits);
+    if ( jsonstr != 0 )
+    {
+        if ( (json = cJSON_Parse(jsonstr)) != 0 )
+        {
+            copy_cJSON(retstr,cJSON_GetObjectItem(json,field));
+            free_json(json);
+        }
+        free(jsonstr);
+        if ( nxt64bits != 0 )
+            strcpy(rsacctstr,retstr);
+        else nxt64bits = calc_nxt64bits(retstr);
+    }
+    return(nxt64bits);
+}
+
+bits256 issue_getpubkey(char *acct)
+{
+    cJSON *json;
+    bits256 pubkey;
+    char cmd[4096],pubkeystr[MAX_JSON_FIELD],*jsonstr;
+    //sprintf(cmd,"%s=getTransaction&transaction=%s",_NXTSERVER,txidstr);
+    //jsonstr = issue_NXTPOST(curl_handle,cmd);
+    sprintf(cmd,"%s=getAccountPublicKey&account=%s",NXTSERVER,acct);
+    jsonstr = issue_curl(0,cmd);
+    pubkeystr[0] = 0;
+    memset(&pubkey,0,sizeof(pubkey));
+    if ( jsonstr != 0 )
+    {
+        if ( (json = cJSON_Parse(jsonstr)) != 0 )
+        {
+            copy_cJSON(pubkeystr,cJSON_GetObjectItem(json,"publicKey"));
+            free_json(json);
+            if ( strlen(pubkeystr) == sizeof(pubkey)*2 )
+                decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr);
+        }
+        free(jsonstr);
+    }
+    return(pubkey);
+}
+
 uint64_t cJSON_convassetid(cJSON *obj)
 {
     char numstr[1024];

@@ -14,6 +14,7 @@
 #define PUBADDRS_MSGDURATION (3600 * 24)
 
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
+#define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
 
 // system includes
 #include <stdio.h>
@@ -245,7 +246,7 @@ struct NXThandler_info
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
     unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
-    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1];
+    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64];
     uint64_t coins[4];//*privacyServers,
     //CURL *curl_handle,*curl_handle2,*curl_handle3;
     //portable_tcp_t Punch_tcp;
@@ -343,7 +344,7 @@ struct coin_info
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
     void **logs;
     cJSON *ciphersobj;
-    char pubaddr[128],NXTACCTSECRET[2048],coinpubkey[1024];
+    char pubaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
     
     char name[64],backupdir[512],privacyserver[32],myipaddr[64],transporteraddr[128];
@@ -393,6 +394,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
 char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
 typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
+char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle,char *acct);
 
 union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
 typedef union _bits256 bits256;
@@ -462,6 +464,7 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
 #include "ciphers.h"
 #include "coins.h"
 #include "udp.h"
+#include "contacts.h"
 #include "kademlia.h"
 //#include "peers.h"
 #include "packets.h"

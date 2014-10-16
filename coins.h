@@ -466,10 +466,10 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     if ( (privkey= get_telepod_privkey(&coinaddr,cp->coinpubkey,cp)) != 0 )
                     {
                         printf("copy key <- (%s)\n",privkey);
-                        safecopy(cp->NXTACCTSECRET,privkey,sizeof(cp->NXTACCTSECRET));
+                        safecopy(cp->privateNXTACCTSECRET,privkey,sizeof(cp->privateNXTACCTSECRET));
                         cp->privatebits = issue_getAccountId(0,privkey);
-
-                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->NXTACCTSECRET,(long long)cp->privatebits);
+                        expand_nxt64bits(cp->privateNXTADDR,cp->privatebits);
+                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
@@ -574,6 +574,8 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
         MGWconf = cJSON_Parse(jsonstr);
         if ( MGWconf != 0 )
         {
+            if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
+                strcpy(Global_mp->myhandle,"myhandle");
             printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
@@ -654,10 +656,11 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
                             BTCDaddr = cp->pubaddr;
-                            strcpy(NXTACCTSECRET,cp->NXTACCTSECRET);
+                            strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
+                            addcontact(0,cp->privateNXTADDR,cp->privateNXTACCTSECRET,cp->privateNXTADDR,Global_mp->myhandle,cp->privateNXTADDR);
                             /*set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxtbits,0);
                             refpeer = update_peerinfo(&createdflag,&peer);
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
@@ -720,6 +723,26 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 MGW_whitelist[n] = "";
                 MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
                 MGW_blacklist[n++] = "";
+            }
+            array = cJSON_GetObjectItem(MGWconf,"contacts");
+            if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
+            {
+                char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD],*retstr;
+                n = cJSON_GetArraySize(array);
+                for (i=0; i<n; i++)
+                {
+                    if ( array == 0 || n == 0 )
+                        break;
+                    copy_cJSON(handle,cJSON_GetArrayItem(array,0));
+                    copy_cJSON(acct,cJSON_GetArrayItem(array,1));
+                    if ( handle[0] != 0 && acct[0] != 0 )
+                    {
+                        retstr = addcontact(0,NXTADDR,NXTACCTSECRET,NXTADDR,handle,acct);
+                        if ( retstr != 0 )
+                            free(retstr);
+                    }
+                }
+                printf("contacts.%d\n",n);
             }
             void start_polling_exchanges(int32_t exchangeflag);
             int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);

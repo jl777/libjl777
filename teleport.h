@@ -149,7 +149,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                         gfshare_extract(buffer+log->N*pod->len_plus1,log->sharenrs,log->N,buffer,pod->len_plus1-1,pod->len_plus1);
                         for (sharei=err=0; sharei<log->N; sharei++)
                         {
-                            if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->NXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
+                            if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->privateNXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,log->M,log->N,buffer+sharei*pod->len_plus1) < 0 )
                             {
                                 err++;
                                 break;
@@ -166,7 +166,7 @@ int32_t process_transporterQ(void **ptrp,void *arg) // added when outbound trans
                     else
                     {
                         sharei = log->N;
-                        if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->NXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
+                        if ( teleport_telepod(log->cp->pubaddr,log->cp->pubaddr,log->cp->privateNXTACCTSECRET,log->otherpubaddr,pod,log->totalcrc,sharei,i,1,1,_get_privkeyptr(pod,calc_multisig_N(pod))) < 0 )
                             err++;
                     }
                     printf("sharei.%d N.%d err.%d\n",sharei,log->N,err);
@@ -591,7 +591,7 @@ char *teleport(char *NXTaddr,char *NXTACCTSECRET,uint64_t satoshis,char *otherpu
                 sprintf(buf,"{\"error\":\"unexpected transporter evolve failure for %.8f %s to %s\"}",dstr(satoshis),cp->name,otherpubaddr);
             else
             {
-                log = send_transporter_log(NXTaddr,cp->NXTACCTSECRET,destnp,cp,minage,satoshis,pods,n,M,N,sharenrs,otherpubaddr);
+                log = send_transporter_log(NXTaddr,cp->privateNXTACCTSECRET,destnp,cp,minage,satoshis,pods,n,M,N,sharenrs,otherpubaddr);
                 if ( log == 0 )
                 {
                     sprintf(buf,"{\"error\":\"unexpected error sending transporter log %.8f %s to %s\"}",dstr(satoshis),cp->name,otherpubaddr);

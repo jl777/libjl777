@@ -800,7 +800,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
 {
     static bits256 zerokey;
     struct args_mindmeld *args = _args;
-    int32_t i,j,ind,iter,dist;
+    int32_t i,j,iter,dist;
     double sum,metric,bestmetric;
     cJSON *json;
     uint64_t calcaddr;
@@ -1158,6 +1158,44 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     return(retstr);
 }
 
+char *addcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
+    copy_cJSON(handle,objs[0]);
+    copy_cJSON(acct,objs[1]);
+    printf("handle.(%s) acct.(%s) valid.%d\n",handle,acct,valid);
+    if ( handle[0] != 0 && acct[0] != 0 && sender[0] != 0 && valid > 0 )
+        retstr = addcontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle,acct);
+    else retstr = clonestr("{\"error\":\"invalid addcontact_func arguments\"}");
+    return(retstr);
+}
+
+char *removecontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char handle[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
+    copy_cJSON(handle,objs[0]);
+    if ( handle[0] != 0 && sender[0] != 0 && valid > 0 )
+        retstr = removecontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle);
+    else retstr = clonestr("{\"error\":\"invalid removecontact_func arguments\"}");
+    return(retstr);
+}
+
+char *dispcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char handle[MAX_JSON_FIELD],*retstr = 0;
+    if ( prevaddr != 0 )
+        return(0);
+    copy_cJSON(handle,objs[0]);
+    if ( handle[0] != 0 && sender[0] != 0 && valid > 0 )
+        retstr = dispcontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle);
+    else retstr = clonestr("{\"error\":\"invalid dispcontact arguments\"}");
+    return(retstr);
+}
+
 void set_kademlia_args(char *key,cJSON *keyobj,cJSON *nameobj)
 {
     uint64_t hash;
@@ -1334,6 +1372,9 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
    // privacyNetwork and comms
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
     static char *mindmeld[] = { (char *)mindmeld_func, "mindmeld", "V",  "myname", "other", 0 };
+    static char *addcontact[] = { (char *)addcontact_func, "addcontact", "V",  "handle", "acct", 0 };
+    static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "handle", 0 };
+    static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "handle", 0 };
     //static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
     //static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
     //static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
@@ -1362,7 +1403,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { cosign, cosigned, mindmeld, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { cosign, cosigned, mindmeld, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
@@ -1392,7 +1433,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
             }
             else
             {
-                safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+                safecopy(NXTACCTSECRET,cp->privateNXTACCTSECRET,sizeof(NXTACCTSECRET));
                 expand_nxt64bits(NXTaddr,cp->privatebits);
                 //printf("use NXT.%s to send command\n",NXTaddr);
             }
@@ -1723,6 +1764,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             return(-1);
         fclose(fp);
     }
+    portable_mutex_init(&Contacts_mutex);
     myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
