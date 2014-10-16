@@ -117,7 +117,9 @@ void set_contactstr(char *contactstr,struct contact_info *contact)
     char pubkeystr[128],rsacctstr[128];
     rsacctstr[0] = 0;
     conv_rsacctstr(rsacctstr,contact->nxt64bits);
-    init_hexbytes(pubkeystr,contact->pubkey.bytes,sizeof(contact->pubkey));
+    if ( strcmp(contact->handle,"myhandle") == 0 )
+        init_hexbytes(pubkeystr,Global_mp->mypubkey.bytes,sizeof(Global_mp->mypubkey));
+    else init_hexbytes(pubkeystr,contact->pubkey.bytes,sizeof(contact->pubkey));
     sprintf(contactstr,"{\"result\":\"handle\":\"%s\",\"acct\":\"%s\",\"NXT\":\"%llu\",\"pubkey\":\"%s\"}",contact->handle,rsacctstr,(long long)contact->nxt64bits,pubkeystr);
 }
 
