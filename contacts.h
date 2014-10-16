@@ -45,7 +45,7 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     bits256 mysecret,mypublic;
     struct coin_info *cp = get_coin_info("BTCD");
     struct contact_info *contact;
-    char retstr[1024],pubkeystr[128];
+    char retstr[1024],pubkeystr[128],sharedstr[128];
     if ( cp == 0 )
     {
         printf("addcontact: no BTCD cp?\n");
@@ -74,6 +74,8 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     {
         conv_NXTpassword(mysecret.bytes,mypublic.bytes,cp->privateNXTACCTSECRET);
         contact->shared = curve25519(mysecret,contact->pubkey);
+        init_hexbytes(sharedstr,contact->shared.bytes,sizeof(contact->shared));
+        printf("shared.(%s)\n",sharedstr);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
     }
     portable_mutex_unlock(&Contacts_mutex);

@@ -903,7 +903,7 @@ char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         sprintf(retbuf,"{\"result\":\"pending\",\"mytxid\":\"%llu\",\"othertxid\":\"%llu\"}",(long long)myhash.txid,(long long)otherhash.txid);
         expand_nxt64bits(key,myhash.txid);
         init_hexbytes_noT(datastr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-        retstr = kademlia_storedata(0,NXTaddr,NXTACCTSECRET,NXTaddr,key,datastr);
+        retstr = kademlia_storedata(0,GENESISACCT,GENESIS_SECRET,GENESISACCT,key,datastr);
         if ( retstr != 0 )
             free(retstr);
         memset(&args,0,sizeof(args));
