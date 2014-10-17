@@ -327,7 +327,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( datastr != 0 )
             calc_sha256cat(hash.bytes,(uint8_t *)key,(int32_t)strlen(key),(uint8_t *)datastr,(int32_t)strlen(datastr));
         else calc_sha256(0,hash.bytes,(uint8_t *)key,(int32_t)strlen(key));
-        txid ^= nxt64bits;
+        txid = (hash.txid ^ nxt64bits);
         for (i=0; i<(int)(sizeof(txids)/sizeof(*txids)); i++)
         {
             if ( txids[i] == 0 )
