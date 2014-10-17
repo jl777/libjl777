@@ -159,9 +159,8 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     //safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
     mp->pollseconds = POLL_SECONDS;
-    crypto_box_keypair(Global_mp->loopback_pubkey,Global_mp->loopback_privkey);
+    //crypto_box_keypair(Global_mp->loopback_pubkey,Global_mp->loopback_privkey);
     crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
-    init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);

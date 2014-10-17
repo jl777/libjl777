@@ -659,6 +659,8 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             BTCDaddr = cp->pubaddr;
                             strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
+                            conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->privateNXTACCTSECRET);
+                            init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
                             addcontact(0,cp->privateNXTADDR,cp->privateNXTACCTSECRET,cp->privateNXTADDR,Global_mp->myhandle,cp->privateNXTADDR);
