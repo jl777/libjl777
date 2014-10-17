@@ -9,6 +9,9 @@
 #ifndef libjl777_kademlia_h
 #define libjl777_kademlia_h
 
+#define KADEMLIA_MINTHRESHOLD 24
+#define KADEMLIA_MAXTHRESHOLD 28
+
 #define KADEMLIA_ALPHA 7
 #define NODESTATS_EXPIRATION 600
 #define KADEMLIA_BUCKET_REFRESHTIME 3600
@@ -617,7 +620,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                     {
                         kademlia_update_info(destNXTaddr,ipaddr,port,pubkeystr,lastcontact,0);
                         dist = bitweight(keynp->H.nxt64bits ^ calc_nxt64bits(destNXTaddr));
-                        if ( dist < calc_bestdist(keyhash) )
+                        if ( dist <= KADEMLIA_MINTHRESHOLD || (dist < calc_bestdist(keyhash) && dist <= KADEMLIA_MAXTHRESHOLD) )
                         {
                             printf("%s new bestdist %d vs %d\n",destNXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
