@@ -94,7 +94,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                     printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
             }
-        } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->loopback_pubkey) + sizeof(packetdest)),len);
+        } else printf("mismatched len expected %ld got %d from (%s:%d)\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->loopback_pubkey) + sizeof(packetdest)),len,senderip,port);
     }
     else printf("deonionize onion for NXT.%llu not this address.(%llu)\n",(long long)packetdest,(long long)cp->srvpubnxtbits);
     return(0);
@@ -306,7 +306,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
-        else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending, len.%d\"}",verifiedNXTaddr,destNXTaddr,len);
+        else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending via.(%s), len.%d\"}",verifiedNXTaddr,destNXTaddr,hopNXTaddr,len);
     }
     else sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s illegal len\"}",verifiedNXTaddr,msg,destNXTaddr);
     return(clonestr(buf));

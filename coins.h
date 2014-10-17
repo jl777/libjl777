@@ -491,6 +491,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
                             init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                             stats = get_nodestats(cp->srvpubnxtbits);
+                            stats->ipbits = calc_ipbits(cp->myipaddr);
                             add_new_node(cp->srvpubnxtbits);
                             memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
                         }

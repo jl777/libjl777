@@ -317,6 +317,8 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
             port = SUPERNET_PORT;
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
+        if ( Debuglevel > 0 )
+            printf("portable_udpwrite %d to %s\n",len,ipaddr,port);
         portable_udpwrite(1,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
     }
     else call_SuperNET_broadcast(get_pserver(0,ipaddr,0,0),(char *)finalbuf,len,0);
@@ -376,7 +378,7 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     {
         np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
         expand_ipbits(destip,np->stats.ipbits);
-        //if ( is_privacyServer(&np->mypeerinfo) != 0 )
+        if ( np->stats.ipbits != 0 )//is_privacyServer(&np->mypeerinfo) != 0 )
         {
             if ( Debuglevel > 0 )
                 printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->stats.supernet_port,len);
