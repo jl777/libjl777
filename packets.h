@@ -435,7 +435,11 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         }
         else
         {
-            printf("couldnt decrypt packet len.%d\n",recvlen);
+            struct pserver_info *pserver;
+            pserver = get_pserver(0,sender,0,0);
+            if ( (++pserver->decrypterrs % 10) == 0 && pserver->decrypterrs < 100 )
+                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+            printf("couldnt decrypt packet len.%d from (%s)\n",recvlen,sender);
             return(0);
         }
     }

@@ -217,7 +217,7 @@ struct pserver_info
     uint64_t modified,nxt64bits,hasnxt[64];
     uint32_t hasips[128];
     char ipaddr[16];
-    uint32_t numips,xorsum,hasnum,numnxt;
+    uint32_t numips,xorsum,hasnum,numnxt,decrypterrs;
 };
 
 /*struct peerinfo
