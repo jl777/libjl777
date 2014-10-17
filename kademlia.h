@@ -751,7 +751,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
     else port = 0, strcpy(ipaddr,"localhost");
     sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s:%d) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,ipaddr,port,key,datastr!=0?strlen(datastr):0,(long long)txid);
-   // if ( Debuglevel > 0 )
+    if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
 }
