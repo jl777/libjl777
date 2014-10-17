@@ -73,7 +73,7 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         }
         memset(space,0,sizeof(space));
         strcpy(space,msg);
-        compressed = encode_json(space,(int32_t)sizeof(space)-1);
+       /* compressed = encode_json(space,(int32_t)sizeof(space)-1);
         if ( compressed != 0 )
         {
             len = compressed->complen;
@@ -85,7 +85,7 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
             free_privkeys(privkeys,cipherids);
             printf("encode_json error in AES_coded\n");
             return(-2);
-        }
+        }*/
     }
     else
     {
@@ -99,9 +99,9 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         decompressed = decode_json(compressed,0);
         if ( decompressed != 0 )
         {
-            free(retdata);
-            retdata = (uint8_t *)decompressed;
-            len = compressed->origlen;
+            decompressed[compressed->origlen] = 0;
+            len = (int32_t)strlen(decompressed);
+            memcpy(buf,decompressed,len);
         }
     }
     else if ( len > 0 )

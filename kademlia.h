@@ -47,7 +47,7 @@ struct nodestats *find_nodestats(uint64_t nxt64bits)
 
 void add_new_node(uint64_t nxt64bits)
 {
-    if ( find_nodestats(nxt64bits) == 0 )
+    if ( nxt64bits != 0 && find_nodestats(nxt64bits) == 0 )
     {
         if ( Debuglevel > 0 )
             printf("[%d of %d] ADDNODE.%llu\n",Numallnodes,MAX_ALLNODES,(long long)nxt64bits);
