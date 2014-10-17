@@ -347,7 +347,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
                 break;
             else if ( txids[i] == txid )
             {
-                if ( Debuglevel > 1 )
+                if ( Debuglevel > 2 )
                     printf("send_kademlia_cmd.(%s): duplicate txid.%llu to %llu in slot.%d lasti.%d\n",kadcmd,(long long)txid,(long long)nxt64bits,i,lasti);
                 return(0);
             }
@@ -622,7 +622,8 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                         dist = bitweight(keynp->H.nxt64bits ^ calc_nxt64bits(destNXTaddr));
                         if ( dist <= KADEMLIA_MINTHRESHOLD || (dist < calc_bestdist(keyhash) && dist <= KADEMLIA_MAXTHRESHOLD) )
                         {
-                            printf("%s new bestdist %d vs %d\n",destNXTaddr,dist,keynp->bestdist);
+                            if ( Debuglevel > 1 )
+                                printf("%s new bestdist %d vs %d\n",destNXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destNXTaddr);
                             if ( 1 && ismynxtbits(keynp->bestbits) == 0 )
