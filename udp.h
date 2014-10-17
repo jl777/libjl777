@@ -427,7 +427,8 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         retstr = sendmessage(hopNXTaddr,0*(encrypted>1?Global_mp->Lfactor:0),cp->srvNXTADDR,origargstr,len,destNXTaddr,data,datalen);
         if ( retstr != 0 )
         {
-            printf("direct send via sendmessage got (%s)\n",retstr);
+            if ( Debuglevel > 0 )
+                printf("direct send via sendmessage got (%s)\n",retstr);
             free(retstr);
         }
         //len = direct_onionize(pserver->nxt64bits,stats->pubkey,encoded,0,&outbuf,len);
