@@ -407,10 +407,13 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     static int counter;
     char previp[64],nexthopNXTaddr[64],destNXTaddr[64],msg[MAX_JSON_FIELD],*retstr = 0;
     int32_t L,port,len;
-    if ( prevaddr != 0 )
-        return(0);
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(msg,objs[1]);
+    if ( prevaddr != 0 )
+    {
+        printf("GOT MESSAGE.(%s) from %s\n",msg,sender);
+        return(0);
+    }
     L = (int32_t)get_API_int(objs[2],Global_mp->Lfactor);
     nexthopNXTaddr[0] = 0;
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
