@@ -144,8 +144,8 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         }
         //for (i=0; i<16; i++)
         //    printf("%02x ",((unsigned char *)buf)[i]);
-        if ( Debuglevel > 0 )
-            printf("portable_udpwrite %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
+        //if ( Debuglevel > 0 )
+            printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     }
     r = uv_udp_send(&wr->U.ureq,wr->udp,&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
     if ( r != 0 )
@@ -317,7 +317,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
             port = SUPERNET_PORT;
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
-        if ( Debuglevel > 0 )
+        if ( Debuglevel > 1 )
             printf("portable_udpwrite %d to (%s:%d)\n",len,ipaddr,port);
         portable_udpwrite(1,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
     }

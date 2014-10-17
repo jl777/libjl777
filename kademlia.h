@@ -476,7 +476,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\",\"%llu\"}",ipaddr,port,(long long)txid);
         }
     }
-    if ( Debuglevel > 0 )
+   // if ( Debuglevel > 0 )
         printf("PING.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -495,7 +495,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         sprintf(retstr,"{\"result\":\"kademlia_pong from NXT.%s (%s/%d) %.3f millis | numpings.%d numpongs.%d ave %.3f\"}",sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
     else sprintf(retstr,"{\"result\":\"kademlia_pong from NXT.%s (%s/%d)\"}",sender,ipaddr,port);
-    if ( Debuglevel > 0 )
+    //if ( Debuglevel > 0 )
         printf("PONG.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -569,7 +569,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
         do_localstore(&txid,key,datastr,NXTACCTSECRET);
         sprintf(retstr,"{\"error\":\"kademlia_store key.(%s) no peers, stored locally\"}",key);
     }
-    if ( Debuglevel > 0 )
+    //if ( Debuglevel > 0 )
         printf("STORE.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -636,7 +636,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
         free_json(array);
     }
     sprintf(retstr,"{\"result\":\"kademlia_havenode from NXT.%s key.(%s) value.(%s)\"}",sender,key,value);
-    if ( Debuglevel > 0 )
+    //if ( Debuglevel > 0 )
         printf("HAVENODE.%d %s\n",valueflag,retstr);
     return(clonestr(retstr));
 }
@@ -748,7 +748,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
             printf("kademlia.(%s) no peers\n",cmd);
     }
     sprintf(retstr,"{\"result\":\"kademlia_%s txid.%llu\"}",cmd,(long long)txid);
-    if ( Debuglevel > 0 )
+   // if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
 }

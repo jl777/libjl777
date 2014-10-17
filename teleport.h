@@ -291,21 +291,20 @@ void teleport_idler(uv_idle_t *handle)
     static double lastattempt;
     double millis;
     struct udp_queuecmd *qp;
-    void *wr,*firstwr = 0;
+    void *wr;
     char *jsonstr,*retstr;
     if ( Finished_init == 0 )
         return;
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
+    if ( millis > (lastattempt + 100) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
         if ( ((rand()>>8) % 100) < 50 )
         {
             //printf("skip packet\n");
-            //firstwr = wr;
             queue_enqueue(&sendQ,wr);
             wr = queue_dequeue(&sendQ);
         }
-        if ( wr != 0 && wr != firstwr )
+        if ( wr != 0 )
         {
             process_sendQ_item(wr);
             lastattempt = millis;
