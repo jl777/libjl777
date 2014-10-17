@@ -288,9 +288,10 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
 
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
 {
-    int32_t encrypted,createdflag,len = 0;
+    int32_t i,encrypted,createdflag,len = 0;
     struct nodestats *stats;
     struct NXT_acct *np;
+    uint64_t keybits;
     unsigned char databuf[32768],*data = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     char pubkeystr[1024],ipaddr[64],cmdstr[2048],verifiedNXTaddr[64],destNXTaddr[64];
@@ -311,6 +312,40 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
+    if ( nxt64bits == 0 )
+    {
+        printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
+        return(0);
+    }
+    if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 )
+    {
+        static int lasti;
+        static uint64_t txids[8192];
+        bits256 hash;
+        uint64_t txid;
+        keybits = calc_nxt64bits(key);
+        if ( datastr != 0 )
+            calc_sha256cat(hash.bytes,(uint8_t *)key,(int32_t)strlen(key),(uint8_t *)datastr,(int32_t)strlen(datastr));
+        else calc_sha256(0,hash.bytes,(uint8_t *)key,(int32_t)strlen(key));
+        txid ^= nxt64bits;
+        for (i=0; i<(int)(sizeof(txids)/sizeof(*txids)); i++)
+        {
+            if ( txids[i] == 0 )
+                break;
+            else if ( txids[i] == txid )
+            {
+                printf("send_kademlia_cmd.(%s): duplicate txid.%llu to %llu in slot.%d lasti.%d\n",kadcmd,(long long)txid,(long long)nxt64bits,i,lasti);
+                return(0);
+            }
+        }
+        if ( i == (int)(sizeof(txids)/sizeof(*txids)) )
+        {
+            i = lasti++;
+            if ( lasti >= (int)(sizeof(txids)/sizeof(*txids)) )
+                lasti = 0;
+        }
+        txids[i] = txid;
+    }
     if ( 0 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
     {
         printf("no point to send yourself (%s) dest.%llu pub.%llu srvpub.%llu\n",kadcmd,(long long)pserver->nxt64bits,(long long)cp->privatebits,(long long)cp->srvpubnxtbits);
@@ -576,7 +611,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                             printf("%s new bestdist %d vs %d\n",destNXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destNXTaddr);
-                            if ( ismynxtbits(keynp->bestbits) == 0 )
+                            if ( 0 && ismynxtbits(keynp->bestbits) == 0 )
                                 txid = send_kademlia_cmd(keynp->bestbits,0,valueflag!=0?"findvalue":"findnode",NXTACCTSECRET,key,0);
                         }
                     }
