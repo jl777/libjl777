@@ -283,6 +283,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         if ( sequenceid == 0 )
         {
             expand_nxt64bits(key,location);
+            printf("store.(%s) -> %llu\n",privatedatastr,(long long)seqacct);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
         }
         else

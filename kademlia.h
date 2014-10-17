@@ -537,7 +537,10 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
     struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
+    {
+        printf("kademlia_storedata null args\n");
         return(0);
+    }
     keybits = calc_nxt64bits(key);
     memset(sortbuf,0,sizeof(sortbuf));
     n = sort_all_buckets(sortbuf,keybits);
