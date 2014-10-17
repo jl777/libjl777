@@ -312,12 +312,12 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
-    if ( nxt64bits == 0 )
+    if ( strcmp(kadcmd,"ping") != 0 && nxt64bits == 0 )
     {
         printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
         return(0);
     }
-    if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 )
+    else if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 )
     {
         static int lasti;
         static uint64_t txids[8192];
