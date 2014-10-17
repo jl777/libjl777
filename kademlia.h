@@ -17,7 +17,7 @@
 #define KADEMLIA_BUCKET_REFRESHTIME 3600
 #define KADEMLIA_NUMBUCKETS ((int)(sizeof(K_buckets)/sizeof(K_buckets[0])))
 #define KADEMLIA_NUMK ((int)(sizeof(K_buckets[0])/sizeof(K_buckets[0][0])))
-struct nodestats *K_buckets[64+1][6];
+struct nodestats *K_buckets[64+1][1];
 long Kbucket_updated[KADEMLIA_NUMBUCKETS];
 uint64_t Allnodes[10000];
 int32_t Numallnodes;
