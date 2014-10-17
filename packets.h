@@ -82,14 +82,16 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                 err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->loopback_privkey);
                 if ( err == 0 )
                 {
-                    //printf("srvpubnxtbits payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                    if ( Debuglevel > 2 )
+                        printf("srvpubnxtbits payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                     return(len);
                 }
             }
             err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
             if ( err == 0 )
             {
-                //printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
+                if ( Debuglevel > 2 )
+                    printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
             }
         } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)),len);
@@ -285,7 +287,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         memcpy(outbuf+msglen,data,datalen);
         len += datalen;
     }
-    init_jsoncodec((char *)outbuf,msglen);
+    //init_jsoncodec((char *)outbuf,msglen);
     if ( Debuglevel > 1 )
         printf("\nsendmessage (%s) len.%d to %s crc.%x\n",msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(maxbuf)-1024 )
@@ -454,16 +456,16 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         if ( len > parmslen )
             datalen = (len - parmslen);
         else datalen = 0;
-        //printf("len.%d parmslen.%d datalen.%d\n",len,parmslen,datalen);
         parmstxt = clonestr((char *)decoded);
         argjson = cJSON_Parse(parmstxt);
-        //printf("[%s] argjson.%p udp.%p\n",parmstxt,argjson,udp);
         free(parmstxt), parmstxt = 0;
         if ( argjson != 0 ) // if it parses, we must have been the ultimate destination
         {
             senderNXTaddr[0] = 0;
             memset(pubkey,0,sizeof(pubkey));
             parmstxt = verify_tokenized_json(pubkey,senderNXTaddr,&valid,argjson);
+            if ( Debuglevel > 1 )
+                printf("len.%d parmslen.%d datalen.%d (%s) valid.%d\n",len,parmslen,datalen,parmstxt,valid);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
@@ -546,11 +548,17 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
             memcpy(&destbits,decoded,sizeof(destbits));
             if ( destbits != 0 ) // route packet
             {
+                static uint8_t zerokey[256>>3];
+                struct nodestats *stats;
+                stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
-                printf("Route to {%s} %p\n",destNXTaddr,find_nodestats(destbits));
-                outbuf = decoded;
-                len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-                route_packet(1,0,hopNXTaddr,outbuf,len);
+                printf("Route to {%s} %p\n",destNXTaddr,stats);
+                if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+                {
+                    outbuf = decoded;
+                    len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+                    route_packet(1,0,hopNXTaddr,outbuf,len);
+                } else printf("JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
             } else printf("JSON didnt parse and no destination to forward to\n");
         }

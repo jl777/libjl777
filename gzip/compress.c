@@ -44,11 +44,17 @@ int ZEXPORT compress2 (dest, destLen, source, sourceLen, level)
     stream.opaque = (voidpf)0;
 
     err = deflateInit(&stream, level);
-    if (err != Z_OK) return err;
+//#include <stdio.h>
+    if (err != Z_OK)
+    {
+        //printf("deflateInit err\n");
+        return err;
+    }
 
     err = deflate(&stream, Z_FINISH);
     if (err != Z_STREAM_END) {
         deflateEnd(&stream);
+        //printf("deflate err.%d\n",err);
         return err == Z_OK ? Z_BUF_ERROR : err;
     }
     *destLen = stream.total_out;

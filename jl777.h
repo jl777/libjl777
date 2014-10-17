@@ -464,10 +464,10 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
 #include "ciphers.h"
 #include "coins.h"
 #include "udp.h"
-#include "contacts.h"
 #include "kademlia.h"
 //#include "peers.h"
 #include "packets.h"
 #include "mofnfs.h"
+#include "telepathy.h"
 
 #endif

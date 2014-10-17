@@ -443,7 +443,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
             memcpy(outbuf+len,data,datalen);
             len += datalen;
         }
-        init_jsoncodec((char *)outbuf,len);
+        //init_jsoncodec((char *)outbuf,len);
         //printf("directsend to %llu (%s).%d stats.%p\n",(long long)pserver->nxt64bits,pserver->ipaddr,port,stats);
         if ( len > MAX_UDPLEN-56 )
             printf("directsend_packet: payload too big %d\n",len);

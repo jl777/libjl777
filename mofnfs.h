@@ -26,26 +26,31 @@ char *onion_sendfile(int32_t L,struct sockaddr *prevaddr,char *verifiedNXTaddr,c
     return(0);
 }
 
-char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen)
+char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen,char *pin)
 {
     long i,len;
-    uint64_t passwordhash,namehash;
-    char key[64],**privkeys = 0;
+    bits256 passkey,G;
+    char key[128],**privkeys = 0;
     *cipheridsp = 0;
+    if ( password == 0 || password[0] == 0 )
+        password = keygen;
+    else if ( strcmp(password,"none") == 0 )
+        return(0);
     if ( password != 0 && password[0] != 0 )
     {
-        namehash = calc_txid((unsigned char *)name,(int32_t)strlen(name));
-        len = strlen(password);
-        passwordhash = (namehash ^ calc_txid((unsigned char *)keygen,(int32_t)strlen(keygen)) ^ calc_txid((unsigned char *)password,(int32_t)len));
-        privkeys = calloc(len+1,sizeof(*privkeys));
-        (*cipheridsp) = calloc(len+1,sizeof(*cipheridsp));
-        for (i=0; i<len; i++)
+        memset(&G,0,sizeof(G));
+        G.bytes[0] = 9;
+        calc_sha256cat(passkey.bytes,(uint8_t *)name,(int32_t)strlen(name),(uint8_t *)password,(int32_t)strlen(password));
+        len = strlen(pin);
+        privkeys = calloc(len+2,sizeof(*privkeys));
+        (*cipheridsp) = calloc(len+2,sizeof(*cipheridsp));
+        for (i=0; i<=len; i++)
         {
-            expand_nxt64bits(key,passwordhash);
-            (*cipheridsp)[i] = (password[i] % NUM_CIPHERS);
+            init_hexbytes(key,passkey.bytes,sizeof(passkey));
+            (*cipheridsp)[i] = (pin[i] % NUM_CIPHERS);
             privkeys[i] = clonestr(key);
-            if ( i < len-1 )
-                passwordhash ^= (namehash ^ calc_txid((unsigned char *)key,(int32_t)strlen(key)));
+            if ( i < len )
+                passkey = curve25519(passkey,G);
         }
     }
     return(privkeys);
@@ -118,7 +123,7 @@ int32_t verify_fragment(char *usbdir,uint64_t txid,unsigned char *fragment,int32
 void calc_shares(unsigned char *shares,unsigned char *secret,int32_t size,int32_t width,int32_t M,int32_t N,unsigned char *sharenrs);
 void gfshare_extract(unsigned char *secretbuf,uint8_t *sharenrs,int32_t N,uint8_t *buffer,int32_t len,int32_t size);
 
-char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename,char *sharenrsstr,uint64_t *txids)
+char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename,char *sharenrsstr,uint64_t *txids)
 {
     long i,len;
     cJSON *json;
@@ -153,7 +158,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
     }
     lengths = calloc(n,sizeof(*lengths));
     fragments = calloc(n,sizeof(*fragments));
-    privkeys = gen_privkeys(&cipherids,filename,password,NXTACCTSECRET);
+    privkeys = gen_privkeys(&cipherids,filename,password,NXTACCTSECRET,pin);
     hwmgood = 0;
     while ( milliseconds() < endmilli )
     {
@@ -304,7 +309,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
     return(clonestr(retstr));
 }
 
-char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename)
+char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename)
 {
     long i,len;
     FILE *savefp;
@@ -315,7 +320,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     char *retstr,savefname[512],key[64],datastr[sizeof(buf)*3+1],*str,**privkeys = 0;
     i = n = 0;
     array = cJSON_CreateArray();
-    privkeys = gen_privkeys(&cipherids,filename,password,NXTACCTSECRET);
+    privkeys = gen_privkeys(&cipherids,filename,password,NXTACCTSECRET,pin);
     memset(sharenrs,0,sizeof(sharenrs));
     init_sharenrs(sharenrs,0,N,N);
     while ( (len= fread(buf,1,sizeof(buf),fp)) > 0 )
@@ -410,7 +415,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     {
         FILE *fp = fopen("foo.txt.restore","wb");
         txids[n] = 0;
-        mofn_restorefile(0,verifiedNXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbdir,password,filename,datastr,txids);
+        mofn_restorefile(0,verifiedNXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbdir,password,filename,datastr,txids);
         fclose(fp);
         char cmdstr[512];
         printf("\n*****************\ncompare (%s) vs (%s)\n",filename,"foo.txt.restore");
@@ -419,216 +424,5 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         printf("done\n\n");
     }
     return(retstr);
-}
-
-double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr,double refdist)
-{
-    int32_t i;
-    double dist,sum = 0.;
-    if ( n == 0 )
-        return(0.);
-    for (i=0; i<n; i++)
-    {
-        dist = (bitweight(addrs[i] ^ testaddr) - refdist);
-        sum += (dist * dist);
-    }
-    if ( sum < 0. )
-        printf("huh? sum %f n.%d -> %f\n",sum,n,sqrt(sum/n));
-    return(sqrt(sum/n));
-}
-
-double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,double targetdist)
-{
-    int32_t i,numabove,numbelow,exact,flag = 0;
-    double metric,dist,diff,sum,balance;
-    metric = bitweight(refaddr ^ calcaddr);
-    if ( metric > targetdist )
-        return(10000000.);
-    exact = 0;
-    diff = sum = balance = 0.;
-    if ( list != 0 && n != 0 )
-    {
-        numabove = numbelow = 0;
-        for (i=0; i<n; i++)
-        {
-            if ( list[i] != refaddr )
-            {
-                dist = bitweight(list[i] ^ calcaddr);
-                if ( dist > metric )
-                    numabove++;
-                else if ( dist < metric )
-                    numbelow++;
-                else exact++;
-                if ( dispflag > 1 )
-                    printf("(%llx %.0f) ",(long long)list[i],dist);
-                else if ( dispflag != 0 )
-                    printf("%.0f ",dist);
-                sum += (dist * dist);
-                dist -= metric;
-                diff += (dist * dist);
-            } else flag = 1;
-        }
-        if ( n == 1 )
-            flag = 0;
-        balance = fabs(numabove - numbelow);
-        balance *= balance * 10;
-        sum = sqrt(sum / (n - flag));
-        diff = sqrt(diff / (n - flag));
-        if ( dispflag != 0 )
-            printf("n.%d flag.%d sum %.3f | diff %.3f | exact.%d above.%d below.%d balance %.0f ",n,flag,sum,diff,exact,numabove,numbelow,balance);
-    }
-    if ( dispflag != 0 )
-        printf("dist %.3f -> %.3f %llx %llu\n",metric,(diff + balance)/(exact*exact+1),(long long)refaddr,(long long)refaddr);
-    return((cbrt(metric) + diff + balance)/(exact*exact+1));
-}
-
-struct loopargs
-{
-    char refacct[256],bestpassword[4096];
-    double best;
-    uint64_t bestaddr,*list;
-    int32_t abortflag,threadid,numinlist,targetdist,numthreads,duration;
-};
-
-void *findaddress_loop(void *ptr)
-{
-    struct loopargs *args = ptr;
-    uint64_t addr,calcaddr;
-    int32_t i,n=0;
-    double startmilli,metric;
-    unsigned char hash[256 >> 3],mypublic[256>>3],pass[49];
-    addr = calc_nxt64bits(args->refacct);
-    n = 0;
-    startmilli = milliseconds();
-    while ( args->abortflag == 0 )
-    {
-        if ( 0 )
-        {
-            //memset(pass,0,sizeof(pass));
-            //randombytes(pass,(sizeof(pass)/sizeof(*pass))-1);
-            for (i=0; i<(int)(sizeof(pass)/sizeof(*pass))-1; i++)
-            {
-                //if ( pass[i] == 0 )
-                pass[i] = safechar64((rand() >> 8) % 63);
-            }
-            pass[i] = 0;
-            memset(hash,0,sizeof(hash));
-            memset(mypublic,0,sizeof(mypublic));
-            calcaddr = conv_NXTpassword(hash,mypublic,(char *)pass);
-        }
-        else randombytes((unsigned char *)&calcaddr,sizeof(calcaddr));
-        if ( bitweight(addr ^ calcaddr) <= args->targetdist )
-        {
-            metric = calc_address_metric(0,addr,args->list,args->numinlist,calcaddr,args->targetdist);
-            if ( metric < args->best )
-            {
-                metric = calc_address_metric(1,addr,args->list,args->numinlist,calcaddr,args->targetdist);
-                args->best = metric;
-                args->bestaddr = calcaddr;
-                strcpy(args->bestpassword,(char *)pass);
-                printf("thread.%d n.%d: best.%.4f -> %llu | %llu calcaddr | ave micros %.3f\n",args->threadid,n,args->best,(long long)args->bestaddr,(long long)calcaddr,1000*(milliseconds()-startmilli)/n);
-            }
-        }
-        n++;
-    }
-    args->abortflag = -1;
-    return(0);
-}
-
-char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,uint64_t addr,uint64_t *list,int32_t n,int32_t targetdist,int32_t duration,int32_t numthreads)
-{
-    static double lastbest,endmilli,best,metric;
-    static uint64_t calcaddr,bestaddr = 0;
-    static char refNXTaddr[64],retbuf[2048],bestpassword[512],bestNXTaddr[64];
-    static struct loopargs **args;
-    bits256 secret,pubkey;
-    int32_t i;
-    if ( endmilli == 0. )
-    {
-        if ( numthreads <= 0 )
-            return(0);
-        expand_nxt64bits(refNXTaddr,addr);
-        if ( numthreads > 28 )
-            numthreads = 28;
-        best = lastbest = 1000000.;
-        bestpassword[0] = bestNXTaddr[0] = 0;
-        args = calloc(numthreads,sizeof(*args));
-        for (i=0; i<numthreads; i++)
-        {
-            args[i] = calloc(1,sizeof(*args[i]));
-            strcpy(args[i]->refacct,refNXTaddr);
-            args[i]->threadid = i;
-            args[i]->numthreads = numthreads;
-            args[i]->targetdist = targetdist-(i%5);
-            args[i]->best = lastbest;
-            args[i]->list = list;
-            args[i]->numinlist = n;
-            if ( portable_thread_create((void *)findaddress_loop,args[i]) == 0 )
-                printf("ERROR hist findaddress_loop\n");
-        }
-        endmilli = milliseconds() + (duration * 1000.);
-    }
-    else
-    {
-        addr = calc_nxt64bits(args[0]->refacct);
-        list = args[0]->list;
-        n = args[0]->numinlist;
-        targetdist = args[0]->targetdist;
-        numthreads = args[0]->numthreads;
-        duration = args[0]->duration;
-    }
-    //if ( milliseconds() < endmilli )
-    {
-        best = lastbest;
-        calcaddr = 0;
-        for (i=0; i<numthreads; i++)
-        {
-            if ( args[i]->best < best )
-            {
-                if ( args[i]->bestpassword[0] != 0 )
-                    calcaddr = conv_NXTpassword(secret.bytes,pubkey.bytes,args[i]->bestpassword);
-                else calcaddr = args[i]->bestaddr;
-                //printf("(%llx %f) ",(long long)calcaddr,args[i]->best);
-                metric = calc_address_metric(1,addr,list,n,calcaddr,targetdist);
-                //printf("-> %f, ",metric);
-                if ( metric < best )
-                {
-                    best = metric;
-                    bestaddr = calcaddr;
-                    if ( calcaddr != args[i]->bestaddr )
-                        printf("error calcaddr.%llx vs %llx\n",(long long)calcaddr,(long long)args[i]->bestaddr);
-                    expand_nxt64bits(bestNXTaddr,calcaddr);
-                    strcpy(bestpassword,args[i]->bestpassword);
-                }
-            }
-        }
-        //printf("best %f lastbest %f %llu\n",best,lastbest,(long long)addr);
-        if ( best < lastbest )
-        {
-            printf(">>>>>>>>>>>>>>> new best (%s) %016llx %llu dist.%d metric %.2f vs %016llx %llu\n",bestpassword,(long long)calcaddr,(long long)calcaddr,bitweight(addr ^ bestaddr),best,(long long)addr,(long long)addr);
-            lastbest = best;
-        }
-        //printf("milli %f vs endmilli %f\n",milliseconds(),endmilli);
-    }
-    if ( milliseconds() >= endmilli )
-    {
-        for (i=0; i<numthreads; i++)
-            args[i]->abortflag = 1;
-        for (i=0; i<numthreads; i++)
-        {
-            while ( args[i]->abortflag != -1 )
-                sleep(1);
-            free(args[i]);
-        }
-        free(args);
-        args = 0;
-        metric = calc_address_metric(2,addr,list,n,bestaddr,targetdist);
-        free(list);
-        endmilli = 0;
-        sprintf(retbuf,"{\"result\":\"metric %.3f\",\"privateaddr\":\"%s\",\"password\":%s\",\"dist\":%d,\"targetdist\":%d}",best,bestNXTaddr,bestpassword,bitweight(addr ^ bestaddr),targetdist);
-        printf("FINDADDRESS.(%s)\n",retbuf);
-        return(clonestr(retbuf));
-    }
-    return(0);
 }
 #endif

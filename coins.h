@@ -730,12 +730,12 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             {
                 char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD],*retstr;
                 n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i++)
+                for (i=0; i<n; i+=2)
                 {
                     if ( array == 0 || n == 0 )
                         break;
-                    copy_cJSON(handle,cJSON_GetArrayItem(array,0));
-                    copy_cJSON(acct,cJSON_GetArrayItem(array,1));
+                    copy_cJSON(handle,cJSON_GetArrayItem(array,i));
+                    copy_cJSON(acct,cJSON_GetArrayItem(array,i+1));
                     if ( handle[0] != 0 && acct[0] != 0 )
                     {
                         retstr = addcontact(0,NXTADDR,NXTACCTSECRET,NXTADDR,handle,acct);

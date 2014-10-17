@@ -782,142 +782,6 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(jsonstr);
 }
 
-uint64_t gen_randacct(char *randaddr)
-{
-    char secret[33];
-    uint64_t randacct;
-    bits256 priv,pub;
-    randombytes((uint8_t *)secret,sizeof(secret));
-    secret[sizeof(secret)-1] = 0;
-    randacct = conv_NXTpassword(priv.bytes,pub.bytes,secret);
-    expand_nxt64bits(randaddr,randacct);
-    return(randacct);
-}
-
-struct args_mindmeld { uint64_t mytxid,othertxid,refaddr,bestaddr,refaddrs[8],otheraddrs[8]; bits256 mypubkey,otherpubkey; int numrefs; };
-
-int32_t Task_mindmeld(void *_args,int32_t argsize)
-{
-    static bits256 zerokey;
-    struct args_mindmeld *args = _args;
-    int32_t i,j,iter,dist;
-    double sum,metric,bestmetric;
-    cJSON *json;
-    uint64_t calcaddr;
-    struct coin_info *cp = get_coin_info("BTCD");
-    char key[64],datastr[1024],sender[64],otherkeystr[512],*retstr;
-    if ( cp == 0 )
-        return(-1);
-    if ( memcmp(&args->otherpubkey,&zerokey,sizeof(zerokey)) == 0 )
-    {
-        expand_nxt64bits(key,args->othertxid);
-        gen_randacct(sender);
-        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,sender,key,0);
-        if ( retstr != 0 )
-        {
-            if ( (json= cJSON_Parse(retstr)) != 0 )
-            {
-                copy_cJSON(datastr,cJSON_GetObjectItem(json,"data"));
-                if ( strlen(datastr) == sizeof(zerokey)*2 )
-                {
-                    printf("set otherpubkey to (%s)\n",datastr);
-                    decode_hex(args->otherpubkey.bytes,sizeof(args->otherpubkey),datastr);
-                }
-                free_json(json);
-            }
-            free(retstr);
-        }
-    }
-    sum = 0.;
-    for (i=0; i<args->numrefs; i++)
-    {
-        for (j=0; j<args->numrefs; j++)
-        {
-            if ( i == j )
-                dist = bitweight(args->refaddr ^ args->refaddrs[j]);
-            else
-            {
-                dist = bitweight(args->refaddrs[i] ^ args->refaddrs[j]);
-                sum += dist;
-            }
-            printf("%2d ",dist);
-        }
-        printf("\n");
-    }
-    printf("dist from privateaddr above -> ");
-    sum /= (args->numrefs * args->numrefs - args->numrefs);
-    if ( args->bestaddr == 0 )
-        randombytes((uint8_t *)&args->bestaddr,sizeof(args->bestaddr));
-    bestmetric = calc_nradius(args->refaddrs,args->numrefs,args->bestaddr,(int)sum);
-    printf("bestmetric %.3f avedist %.1f\n",bestmetric,sum);
-    for (iter=0; iter<1000000; iter++)
-    {
-        //ind = (iter % 65);
-        //if ( ind == 64 )
-        if( (iter & 1) != 0 )
-            randombytes((unsigned char *)&calcaddr,sizeof(calcaddr));
-        else calcaddr = (args->bestaddr ^ (1L << ((rand()>>8)&63)));
-        metric = calc_nradius(args->refaddrs,args->numrefs,calcaddr,(int)sum);
-        if ( metric < bestmetric )
-        {
-            bestmetric = metric;
-            args->bestaddr = calcaddr;
-        }
-    }
-    for (i=0; i<args->numrefs; i++)
-    {
-        for (j=0; j<args->numrefs; j++)
-        {
-            if ( i == j )
-                printf("%2d ",bitweight(args->bestaddr ^ args->refaddrs[j]));
-            else printf("%2d ",bitweight(args->refaddrs[i] ^ args->refaddrs[j]));
-        }
-        printf("\n");
-    }
-    printf("bestaddr.%llu bestmetric %.3f\n",(long long)args->bestaddr,bestmetric);
-    init_hexbytes(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
-    printf("Other pubkey.(%s)\n",otherkeystr);
-    for (i=0; i<args->numrefs; i++)
-        printf("%llu ",(long long)args->refaddrs[i]);
-    printf("mytxid.%llu othertxid.%llu | myaddr.%llu\n",(long long)args->mytxid,(long long)args->othertxid,(long long)args->refaddr);
-    return(0);
-}
-
-char *mindmeld_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    struct coin_info *cp = get_coin_info("BTCD");
-    struct args_mindmeld args;
-    bits256 myhash,otherhash;
-    char retbuf[1000],datastr[128],key[64],myname[MAX_JSON_FIELD],othername[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 || cp == 0 )
-        return(0);
-    copy_cJSON(myname,objs[0]);
-    copy_cJSON(othername,objs[1]);
-    if ( myname[0] != 0 && othername[0] != 0 && sender[0] != 0 && valid > 0 )
-    {
-        calc_sha256(0,myhash.bytes,(uint8_t *)myname,(int32_t)strlen(myname));
-        if ( calc_txid((uint8_t *)myname,(int32_t)strlen(myname)) != myhash.txid )
-            printf("txid mismatch: %llx != %llx\n",(long long)calc_txid((uint8_t *)myname,(int32_t)strlen(myname)),(long long)myhash.txid);
-        calc_sha256cat(myhash.bytes,(uint8_t *)myname,(int32_t)strlen(myname),(uint8_t *)othername,(int32_t)strlen(othername));
-        calc_sha256cat(otherhash.bytes,(uint8_t *)othername,(int32_t)strlen(othername),(uint8_t *)myname,(int32_t)strlen(myname));
-        sprintf(retbuf,"{\"result\":\"pending\",\"mytxid\":\"%llu\",\"othertxid\":\"%llu\"}",(long long)myhash.txid,(long long)otherhash.txid);
-        expand_nxt64bits(key,myhash.txid);
-        init_hexbytes_noT(datastr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-        retstr = kademlia_storedata(0,GENESISACCT,GENESIS_SECRET,GENESISACCT,key,datastr);
-        if ( retstr != 0 )
-            free(retstr);
-        memset(&args,0,sizeof(args));
-        args.mytxid = myhash.txid;
-        args.othertxid = otherhash.txid;
-        args.refaddr = cp->privatebits;
-        args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
-        start_task(Task_mindmeld,"mindmeld",1000000,(void *)&args,sizeof(args));
-        retstr = clonestr(retbuf);
-    }
-    else retstr = clonestr("{\"error\":\"invalid mindmeld_func arguments\"}");
-    return(retstr);
-}
-
 /*char *getPservers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
@@ -968,7 +832,7 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 {
     FILE *fp;
     int32_t L,M,N;
-    char fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
     if ( prevaddr != 0 )
         return(clonestr("{\"error\":\"savefile is only for local access\"}"));
     copy_cJSON(fname,objs[0]);
@@ -985,11 +849,12 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         M = 1;
     copy_cJSON(usbname,objs[4]);
     copy_cJSON(password,objs[5]);
+    copy_cJSON(pin,objs[5]);
     fp = fopen(fname,"rb");
     if ( fp == 0 )
         printf("cant find file (%s)\n",fname);
     if ( fp != 0 && sender[0] != 0 && valid > 0 )
-        retstr = mofn_savefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbname,password,fname);
+        retstr = mofn_savefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
@@ -1003,7 +868,7 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     cJSON *array,*item;
     uint64_t *txids = 0;
     int32_t L,M,N,i,n;
-    char fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
     if ( prevaddr != 0 )
         return(clonestr("{\"error\":\"restorefile is only for local access\"}"));
     copy_cJSON(fname,objs[0]);
@@ -1034,6 +899,7 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
                 txids[i] = calc_nxt64bits(txidstr);
         }
     }
+    copy_cJSON(pin,objs[9]);
     if ( destfname[0] == 0 )
         strcpy(destfname,fname), strcat(destfname,".restore");
     if ( 0 )
@@ -1047,7 +913,7 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     }
     fp = fopen(destfname,"wb");
     if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
-        retstr = mofn_restorefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,fp,L,M,N,usbname,password,fname,sharenrs,txids);
+        retstr = mofn_restorefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
@@ -1365,21 +1231,16 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *findaddress[] = { (char *)findaddress_func, "findaddress", "V", "refaddr", "list", "dist", "duration", "numthreads", 0 };
 
     // MofNfs
-    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "usbdir", "password", 0 };
-    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "usbdir", "password", "destfile", "sharenrs", "txids", 0 };
+    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "backup", "password", "pin", 0 };
+    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "backup", "password", "destfile", "sharenrs", "txids", "pin", 0 };
     static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     
-   // privacyNetwork and comms
+    // privacyNetwork and comms
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
-    static char *mindmeld[] = { (char *)mindmeld_func, "mindmeld", "V",  "myname", "other", 0 };
     static char *addcontact[] = { (char *)addcontact_func, "addcontact", "V",  "handle", "acct", 0 };
-    static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "handle", 0 };
-    static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "handle", 0 };
-    //static char *getPservers[] = { (char *)getPservers_func, "getPservers", "V",  "firsti", 0 };
-    //static char *publishPservers[] = { (char *)publishPservers_func, "publishPservers", "V", "Pservers", "Numpservers", "firstPserver", "xorsum", 0 };
-    //static char *publishaddrs[] = { (char *)publishaddrs_func, "publishaddrs", "V", "pubNXT", "pubkey", "BTCD", "BTC", "srvNXTaddr", "srvipaddr", "srvport", "coins", "Numpservers", "xorsum", 0 };
-    //static char *getpubkey[] = { (char *)getpubkey_func, "getpubkey", "V", "addr", "destcoin", 0 };
-   // static char *sendpeerinfo[] = { (char *)sendpeerinfo_func, "sendpeerinfo", "V", "addr", "destcoin", "pserver_flag", 0 };
+    static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "contact", 0 };
+    static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "contact", 0 };
+    static char *telepathy[] = { (char *)telepathy_func, "telepathy", "V",  "contact", "msg", "data", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
     static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
@@ -1403,7 +1264,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { cosign, cosigned, mindmeld, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

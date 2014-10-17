@@ -260,6 +260,32 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     return(txid);
 }
 
+uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char *datastr)
+{
+    int32_t len = 0;
+    uint8_t *data = 0;
+    if ( datastr != 0 && datastr[0] != 0 )
+    {
+        len = (int32_t)strlen(datastr);
+        if ( len < 2 || (len & 1) != 0 || is_hexstr(datastr) == 0 )
+        {
+            if ( datastr[0] == '[' )
+                sprintf(cmdstr+strlen(cmdstr),",\"data\":%s",datastr);
+            else sprintf(cmdstr+strlen(cmdstr),",\"data\":\"%s\"",datastr);
+            len = 0;
+        }
+        else
+        {
+            len >>= 1;
+            sprintf(cmdstr+strlen(cmdstr),",\"data\":%d",len);
+            data = databuf;
+            decode_hex(data,len,datastr);
+        }
+    }
+    *datalenp = len;
+    return(data);
+}
+
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
 {
     int32_t encrypted,createdflag,len = 0;
@@ -310,23 +336,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
-    if ( datastr != 0 && datastr[0] != 0 )
-    {
-        len = (int32_t)strlen(datastr);
-        if ( len < 2 || (len & 1) != 0 || is_hexstr(datastr) == 0 )
-        {
-            if ( datastr[0] == '[' )
-                sprintf(cmdstr+strlen(cmdstr),",\"data\":%s",datastr);
-            else sprintf(cmdstr+strlen(cmdstr),",\"data\":\"%s\"",datastr);
-        }
-        else
-        {
-            len >>= 1;
-            sprintf(cmdstr+strlen(cmdstr),",\"data\":%d",len);
-            data = databuf;
-            decode_hex(data,len,datastr);
-        }
-    }
+    data = replace_datafield(cmdstr,databuf,&len,datastr);
     strcat(cmdstr,"}");
     return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
 }

@@ -117,8 +117,8 @@ struct compressed_json *encode_json(char *jsontext,int32_t origlen)
     unsigned long len,sublen;
     unsigned char *encoded;
     //origlen = len = strlen(jsontext);
-    len = origlen;
-    encoded = malloc(len+1);
+    len = origlen * 1.1 + 12;
+    encoded = calloc(1,len+1);
     retval = _encode_json(encoded,&len,jsontext,&sublen);
     if ( retval == 0 )
     {

@@ -583,6 +583,18 @@ char *issue_getTransaction(CURL *curl_handle,char *txidstr)
     return(issue_curl(curl_handle,cmd));
 }
 
+uint64_t gen_randacct(char *randaddr)
+{
+    char secret[33];
+    uint64_t randacct;
+    bits256 priv,pub;
+    randombytes((uint8_t *)secret,sizeof(secret));
+    secret[sizeof(secret)-1] = 0;
+    randacct = conv_NXTpassword(priv.bytes,pub.bytes,secret);
+    expand_nxt64bits(randaddr,randacct);
+    return(randacct);
+}
+
 uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
 {
     cJSON *json;
