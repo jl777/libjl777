@@ -421,14 +421,16 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 if ( (len2= deonionize(pubkey2,decoded2,decoded,len,sender,port)) > 0 )
                 {
                     memcpy(&destbits,decoded2,sizeof(destbits));
-                    printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
+                    if ( Debuglevel > 1 )
+                        printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
                     len = len2;
                     memcpy(decoded,decoded2,len);
                     memcpy(pubkey,pubkey2,sizeof(pubkey));
                 }
                 else
                 {
-                    printf("couldnt decrypt2 packet len.%d to %llu\n",len,(long long)destbits);
+                    if ( Debuglevel > 1 )
+                        printf("couldnt decrypt2 packet len.%d to %llu\n",len,(long long)destbits);
                     if ( destbits == cp->privatebits || destbits == cp->srvpubnxtbits )
                         return(0);
                     break;
@@ -440,7 +442,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         {
             if ( (++pserver->decrypterrs % 10) == 0 && pserver->decrypterrs < 100 )
                 send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
-            printf("couldnt decrypt packet len.%d from (%s)\n",recvlen,sender);
+            if ( Debuglevel > 0 )
+                printf("couldnt decrypt packet len.%d from (%s)\n",recvlen,sender);
             return(0);
         }
     }
@@ -557,7 +560,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 struct nodestats *stats;
                 stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
-                printf("Route to {%s} %p\n",destNXTaddr,stats);
+                if ( Debuglevel > 0 )
+                    printf("Route to {%s} %p\n",destNXTaddr,stats);
                 if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
                 {
                     outbuf = decoded;
@@ -565,7 +569,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     route_packet(1,0,hopNXTaddr,outbuf,len);
                 } else printf("JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
-            } else printf("JSON didnt parse and no destination to forward to\n");
+            } else if ( Debuglevel > 0 ) printf("JSON didnt parse and no destination to forward to\n");
         }
     }
     else printf("process_packet got unexpected recvlen.%d %s/%d\n",recvlen,sender,port);

@@ -686,7 +686,8 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
             decode_hex(data,recvlen,datastr);
             retnp = process_packet(1,retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
             remoteflag = 1;
-            printf("processed the possible dead drop.(%s) %p\n",retjsonstr,retnp);
+            if ( Debuglevel > 0 )
+                printf("processed the possible telepathic message.(%s) %p\n",retjsonstr,retnp);
         }
         memset(sortbuf,0,sizeof(sortbuf));
         n = sort_all_buckets(sortbuf,keyhash);
