@@ -247,7 +247,7 @@ struct NXThandler_info
     cJSON *accountjson;
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
-    unsigned char session_pubkey[crypto_box_PUBLICKEYBYTES],session_privkey[crypto_box_SECRETKEYBYTES];
+    unsigned char private_pubkey[crypto_box_PUBLICKEYBYTES],private_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64];
     bits256 mypubkey,myprivkey;
     uint64_t coins[4];//*privacyServers,

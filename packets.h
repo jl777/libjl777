@@ -74,7 +74,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         encoded += sizeof(payload_len);
         if ( Debuglevel > 0 )
             printf("packedest.%llu srvpub.%llu (%s:%d) payload_len.%d\n",(long long)packetdest,(long long)cp->srvpubnxtbits,senderip,port,payload_len);
-        if ( payload_len > 0 && (payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)) <= len )
+        if ( payload_len > 0 && (payload_len + sizeof(payload_len) + sizeof(Global_mp->loopback_pubkey) + sizeof(packetdest)) <= len )
         {
             len = payload_len;
             if ( packetdest == 0 || packetdest == cp->srvpubnxtbits  )
@@ -87,14 +87,14 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                     return(len);
                 }
             }
-            err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->session_privkey);
+            err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->private_privkey);
             if ( err == 0 )
             {
                 if ( Debuglevel > 2 )
                     printf("payload_len.%d err.%d new len.%d\n",payload_len,err,len);
                 return(len);
             }
-        } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->session_pubkey) + sizeof(packetdest)),len);
+        } else printf("mismatched len expected %ld got %d\n",(payload_len + sizeof(payload_len) + sizeof(Global_mp->loopback_pubkey) + sizeof(packetdest)),len);
     }
     else printf("deonionize onion for NXT.%llu not this address.(%llu)\n",(long long)packetdest,(long long)cp->srvpubnxtbits);
     return(0);

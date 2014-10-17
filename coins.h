@@ -474,7 +474,6 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
-                        memcpy(stats->pubkey,Global_mp->session_pubkey,sizeof(stats->pubkey));
                     }
                     printf("check srvpubaddr\n");
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
@@ -659,6 +658,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             BTCDaddr = cp->pubaddr;
                             strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
+                            conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
                             conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
                             init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                             if ( cp->privatebits != 0 )
