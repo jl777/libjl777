@@ -93,7 +93,7 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         memcpy(space,buf,len);
     }
     retdata = ciphers_codec(decryptflag!=0,privkeys,cipherids,(uint8_t *)space,&len);
-    if ( decryptflag != 0 )
+    /*if ( decryptflag != 0 )
     {
         compressed = (struct compressed_json *)retdata;
         decompressed = decode_json(compressed,0);
@@ -104,7 +104,7 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
             memcpy(buf,decompressed,len);
         }
     }
-    else if ( len > 0 )
+    else*/ if ( len > 0 )
         memcpy(buf,retdata,len);
     if ( retdata != 0 )
         free(retdata);
