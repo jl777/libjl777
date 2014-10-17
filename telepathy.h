@@ -121,7 +121,7 @@ int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AES
     if ( decodedlen > 0 )
     {
         if ( strcmp(msg,(char *)decoded) == 0 )
-            printf("decrypted.(%s)\n",(char *)decoded);
+            printf("decrypted.(%s) len.%d\n",(char *)decoded,decodedlen);
         else printf("AES_codec error on msg.(%s) != (%s)\n",msg,(char *)decoded);
     } else printf("AES_codec unexpected decode error.%d\n",decodedlen);
     return(decodedlen);
@@ -171,7 +171,7 @@ uint64_t calc_privatedatastr(char *AESpasswordstr,char *privatedatastr,struct co
         if ( encodedlen > 0 )
         {
             init_hexbytes(privatedatastr,encoded,encodedlen);
-            if ( verify_AES_codec(encoded,encodedlen,msg,AESpasswordstr) == 0 )
+            if ( verify_AES_codec(encoded,encodedlen,msg,AESpasswordstr) > 0 )
                 retval = location;
         }
     }
@@ -275,7 +275,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
     int32_t i,n;
     uint64_t location,deaddrops[16];
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
-    if ( (location= calc_privatedatastr(AESpasswordstr,privatedatastr,contact,0,msg)) > 0 )
+    if ( (location= calc_privatedatastr(AESpasswordstr,privatedatastr,contact,0,msg)) != 0 )
     {
         expand_nxt64bits(seqacct,location);
         if ( location != issue_getAccountId(0,AESpasswordstr) )
