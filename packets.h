@@ -567,7 +567,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     outbuf = decoded;
                     len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
                     route_packet(1,0,hopNXTaddr,outbuf,len);
-                } else printf("JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
+                } else if ( Debuglevel > 0 ) printf("JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
             } else if ( Debuglevel > 0 ) printf("JSON didnt parse and no destination to forward to\n");
         }

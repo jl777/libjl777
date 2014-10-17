@@ -455,7 +455,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
-    printf("got ping.%d\n",ismynode(prevaddr));
+    //printf("got ping.%d\n",ismynode(prevaddr));
     if ( ismynode(prevaddr) != 0 ) // user invoked
     {
         if ( destip != 0 && destip[0] != 0 && ismyipaddr(destip) == 0 )
