@@ -648,7 +648,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
     char retstr[32768],pubkeystr[256],databuf[32768],numstr[64],ipaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
-    int32_t i,n,createdflag,recvlen,remoteflag = 0;
+    int32_t i,n,createdflag,port,recvlen,remoteflag = 0;
     struct NXT_acct *keynp;
     struct NXT_acct *destnp;
     cJSON *array,*item;
@@ -747,7 +747,10 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         } else if ( Debuglevel > 0 )
             printf("kademlia.(%s) no peers\n",cmd);
     }
-    sprintf(retstr,"{\"result\":\"kademlia_%s txid.%llu\"}",cmd,(long long)txid);
+    if ( prevaddr != 0 )
+        port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+    else port = 0, strcpy(ipaddr,"localhost");
+    sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s:%d) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,ipaddr,port,key,datastr!=0?strlen(datastr):0,(long long)txid);
    // if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
