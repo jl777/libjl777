@@ -678,16 +678,11 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         }
         else if ( ismynode(prevaddr) == 0 && datastr != 0 && datastr[0] != 0 && prevaddr != 0 ) // externally sent find
         {
-            int32_t port;
-            struct NXT_acct *retnp;
-            char retjsonstr[MAX_JSON_FIELD],sender[64];
-            port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)prevaddr);
+            void process_telepathic(uint8_t *data,int32_t len,uint64_t senderbits);
             recvlen = (int32_t)(strlen(datastr) / 2);
             decode_hex(data,recvlen,datastr);
-            retnp = process_packet(1,retjsonstr,data,recvlen,Global_mp->udp,prevaddr,sender,port);
+            process_telepathic(data,recvlen,senderbits);
             remoteflag = 1;
-            if ( Debuglevel > 0 )
-                printf("processed the possible telepathic message.(%s) %p\n",retjsonstr,retnp);
         }
         memset(sortbuf,0,sizeof(sortbuf));
         n = sort_all_buckets(sortbuf,keyhash);

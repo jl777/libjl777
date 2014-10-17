@@ -1237,7 +1237,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "backup", "password", "destfile", "sharenrs", "txids", "pin", 0 };
     static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
     
-    // privacyNetwork and comms
+    // Telepathy
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
     static char *addcontact[] = { (char *)addcontact_func, "addcontact", "V",  "handle", "acct", 0 };
     static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "contact", 0 };

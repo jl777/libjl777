@@ -43,78 +43,9 @@ double calc_nradius(uint64_t *addrs,int32_t n,uint64_t testaddr,double refdist)
     return(sqrt(sum/n));
 }
 
-uint64_t calc_seqaddr(char *buf,uint64_t nxt64bits,int32_t sequenceid)
+void free_privkeys(char **privkeys,int32_t *cipherids)
 {
-    bits256 secret,pubkey;
-    sprintf(buf,"%llu.%d",(long long)nxt64bits,sequenceid);
-    return(conv_NXTpassword(secret.bytes,pubkey.bytes,buf));
-}
-
-uint64_t calc_privatelocation(char *seqpass,bits256 *passp,int32_t dir,struct contact_info *contact,int32_t sequenceid)
-{
-    static bits256 zerokey;
-    uint64_t nxt64bits,seqaddr;
-    struct coin_info *cp = get_coin_info("BTCD");
-    if ( cp == 0 || memcmp(&zerokey,&contact->shared,sizeof(zerokey)) == 0 )
-        return(0);
-    if ( dir > 0 ) // transmission
-        nxt64bits = cp->privatebits;
-    else nxt64bits = contact->nxt64bits;
-    seqaddr = calc_seqaddr(seqpass,nxt64bits,sequenceid);
-    calc_sha256cat(passp->bytes,(uint8_t *)seqpass,(int32_t)strlen(seqpass),contact->shared.bytes,(int32_t)sizeof(contact->shared));
-    return(seqaddr);
-}
-
-uint8_t *AES_codec(int32_t *lenp,int32_t decryptflag,char *msg,uint8_t *data,int32_t *datalenp,char *name,char *password)
-{
-    int32_t i,*cipherids,len;
-    char **privkeys,*decompressed;
-    uint8_t *retdata,*combined = 0;
-    struct compressed_json *compressed = 0;
-    privkeys = gen_privkeys(&cipherids,name,password,GENESIS_SECRET,"");
-    if ( decryptflag == 0 )
-    {
-        len = (int32_t)strlen(msg);
-        if ( data != 0 && *datalenp > 0 )
-        {
-            combined = calloc(1,1 + len + *datalenp);
-            memcpy(combined,msg,len + 1);
-            memcpy(combined+len,data,*datalenp);
-            len += (*datalenp);
-            compressed = 0;//encode_json((char *)combined,len);
-        } else compressed = 0;//encode_json(msg,len);
-        if ( compressed != 0 )
-        {
-            *lenp = compressed->complen;
-            data = (uint8_t *)compressed;
-            free(combined);
-        }
-        else if ( combined != 0 )
-        {
-            data = combined;
-            *lenp = len;
-        }
-        else
-        {
-            data = (uint8_t *)clonestr(msg);
-            len++;
-            *lenp = len;
-        }
-    }
-    else *lenp = *datalenp;
-    retdata = ciphers_codec(decryptflag,privkeys,cipherids,data,lenp);
-    if ( decryptflag != 0 )
-    {
-        compressed = (struct compressed_json *)retdata;
-        decompressed = 0;//decode_json(compressed,0);
-        if ( decompressed != 0 )
-        {
-            free(retdata);
-            retdata = (uint8_t *)decompressed;
-            *lenp = compressed->origlen;
-            *datalenp = (int32_t)(compressed->origlen - strlen(decompressed) - 1);
-        }
-    } else free(data);
+    int32_t i;
     if ( privkeys != 0 )
     {
         for (i=0; privkeys[i]!=0; i++)
@@ -122,50 +53,126 @@ uint8_t *AES_codec(int32_t *lenp,int32_t decryptflag,char *msg,uint8_t *data,int
         free(privkeys);
         free(cipherids);
     }
-    return(retdata);
 }
 
-int32_t verify_AES_codec(uint8_t *encoded,int32_t origlen,char *name,char *passwordstr,char *msg,char *datastr)
+int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordstr)
 {
-    int32_t datalen,len,decodedlen,retval = -1;
-    uint8_t *decoded,*dataptr,data[8192];
-    decodedlen = 0;
-    len = origlen;
-    decoded = AES_codec(&decodedlen,1,0,encoded,&len,name,passwordstr);
-    if ( decoded != 0 )
+    int32_t *cipherids,len;
+    char **privkeys,*decompressed;
+    uint8_t *retdata;
+    char space[2049];
+    struct compressed_json *compressed = 0;
+    privkeys = gen_privkeys(&cipherids,"AES",AESpasswordstr,GENESIS_SECRET,"");
+    if ( decryptflag == 0 )
+    {
+        len = (int32_t)strlen(msg);
+        if ( len > (sizeof(space)-1) )
+        {
+            printf("AES_codec error: len.%d too big\n",len);
+            return(-1);
+        }
+        memset(space,0,sizeof(space));
+        strcpy(space,msg);
+        compressed = encode_json(space,(int32_t)sizeof(space)-1);
+        if ( compressed != 0 )
+        {
+            len = compressed->complen;
+            memcpy(space,compressed,len);
+            free(compressed);
+        }
+        else
+        {
+            free_privkeys(privkeys,cipherids);
+            printf("encode_json error in AES_coded\n");
+            return(-2);
+        }
+    }
+    else
+    {
+        len = decryptflag;
+        memcpy(space,buf,len);
+    }
+    retdata = ciphers_codec(decryptflag!=0,privkeys,cipherids,(uint8_t *)space,&len);
+    if ( decryptflag != 0 )
+    {
+        compressed = (struct compressed_json *)retdata;
+        decompressed = decode_json(compressed,0);
+        if ( decompressed != 0 )
+        {
+            free(retdata);
+            retdata = (uint8_t *)decompressed;
+            len = compressed->origlen;
+        }
+    }
+    else if ( len > 0 )
+        memcpy(buf,retdata,len);
+    if ( retdata != 0 )
+        free(retdata);
+    free_privkeys(privkeys,cipherids);
+    return(len);
+}
+
+int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AESpasswordstr)
+{
+    int32_t decodedlen;
+    uint8_t decoded[4096];
+    memcpy(decoded,encoded,encodedlen);
+    decodedlen = AES_codec(decoded,encodedlen,msg,AESpasswordstr);
+    if ( decodedlen > 0 )
     {
         if ( strcmp(msg,(char *)decoded) == 0 )
-        {
             printf("decrypted.(%s)\n",(char *)decoded);
-            dataptr = conv_datastr(&datalen,data,datastr);
-            if ( dataptr != 0 && memcmp(msg+strlen(msg)+1,dataptr,len - strlen(msg) - 1) != 0 )
-                printf("AES_codec error on datastr\n");
-            else retval = 0;
-        } else printf("AES_codec error on msg\n");
-        free(decoded);
-    } else printf("AES_codec unexpected null decoded\n");
-    return(retval);
+        else printf("AES_codec error on msg.(%s) != (%s)\n",msg,(char *)decoded);
+    } else printf("AES_codec unexpected decode error.%d\n",decodedlen);
+    return(decodedlen);
 }
 
-uint64_t calc_privatedatastr(char *seqpass,char *privatedatastr,struct contact_info *contact,int32_t sequence,char *msg,char *datastr)
+uint64_t calc_AESkeys(char *AESpasswordstr,uint8_t *shared,uint64_t nxt64bits,int32_t sequenceid)
 {
-    bits256 password;
-    uint64_t location,retval = 0;
-    char passwordstr[512];
-    int32_t len,datalen,encodedlen;
-    uint8_t *encoded,*dataptr,data[4096];
-    if ( (location= calc_privatelocation(seqpass,&password,1,contact,sequence)) != 0 )
+    char buf[128];
+    bits256 secret,pubkey,AESbits;
+    sprintf(buf,"%llu.%d",(long long)nxt64bits,sequenceid);
+    calc_sha256cat(AESbits.bytes,(uint8_t *)buf,(int32_t)strlen(buf),shared,(int32_t)sizeof(bits256));
+    init_hexbytes(AESpasswordstr,AESbits.bytes,sizeof(bits256));
+    return(conv_NXTpassword(secret.bytes,pubkey.bytes,AESpasswordstr));
+}
+
+#define calc_sendAESkeys(AESpasswordstr,contact,sequence) calc_privatelocation(AESpasswordstr,1,contact,sequence)
+#define calc_recvAESkeys(AESpasswordstr,contact,sequence) calc_privatelocation(AESpasswordstr,-1,contact,sequence)
+uint64_t calc_privatelocation(char *AESpasswordstr,int32_t dir,struct contact_info *contact,int32_t sequenceid)
+{
+    static bits256 zerokey;
+    uint64_t nxt64bits;
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp == 0 || memcmp(&zerokey,&contact->shared,sizeof(zerokey)) == 0 || contact->nxt64bits == 0 )
     {
-        init_hexbytes(passwordstr,password.bytes,sizeof(password));
-        dataptr = conv_datastr(&datalen,data,datastr);
-        encoded = AES_codec(&encodedlen,0,msg,dataptr,&datalen,contact->handle,passwordstr);
-        if ( encoded != 0 )
+        printf("ERROR: illegal calc_privatelocation dir.%d for %llu.%d no shared secret\n",dir,(long long)contact->nxt64bits,sequenceid);
+        return(0);
+    }
+    if ( dir > 0 ) // transmission
+        nxt64bits = cp->privatebits;
+    else nxt64bits = contact->nxt64bits;
+    return(calc_AESkeys(AESpasswordstr,contact->shared.bytes,nxt64bits,sequenceid));
+}
+
+void process_telepathic(uint8_t *data,int32_t len,uint64_t senderbits)
+{
+    printf("process_telepathic: got.(%llx) len.%d from %llu\n",*(long long *)data,len,(long long)senderbits);
+}
+
+uint64_t calc_privatedatastr(char *AESpasswordstr,char *privatedatastr,struct contact_info *contact,int32_t sequence,char *msg)
+{
+    uint64_t location,retval = 0;
+    int32_t encodedlen;
+    uint8_t encoded[4096];
+    if ( (location= calc_sendAESkeys(AESpasswordstr,contact,sequence)) != 0 )
+    {
+        encodedlen = AES_codec(encoded,0,msg,AESpasswordstr);
+        if ( encodedlen > 0 )
         {
             init_hexbytes(privatedatastr,encoded,encodedlen);
-            len = encodedlen;
-            if ( verify_AES_codec(encoded,encodedlen,contact->handle,passwordstr,msg,datastr) == 0 )
+            if ( verify_AES_codec(encoded,encodedlen,msg,AESpasswordstr) == 0 )
                 retval = location;
-            free(encoded);
         }
     }
     return(retval);
@@ -263,18 +270,20 @@ int32_t calc_global_deaddrop(uint64_t *deaddrops,int32_t max)
     return(i);
 }
 
-char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg,char *datastr)
+char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
 {
     int32_t i,n;
     uint64_t location,deaddrops[16];
-    char privatedatastr[8192],seqpass[512],seqacct[64],key[64],*retstr = 0;
-    if ( (location= calc_privatedatastr(seqpass,privatedatastr,contact,0,msg,datastr)) > 0 )
+    char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
+    if ( (location= calc_privatedatastr(AESpasswordstr,privatedatastr,contact,0,msg)) > 0 )
     {
         expand_nxt64bits(seqacct,location);
+        if ( location != issue_getAccountId(0,AESpasswordstr) )
+            printf("ERROR: private_publish location %llu != %llu from (%s)\n",(long long)location,(long long)issue_getAccountId(0,AESpasswordstr),AESpasswordstr);
         if ( sequenceid == 0 )
         {
             expand_nxt64bits(key,location);
-            retstr = kademlia_storedata(0,seqacct,seqpass,seqacct,key,privatedatastr);
+            retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
         }
         else
         {
@@ -291,7 +300,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg,
             for (i=0; i<n; i++)
             {
                 expand_nxt64bits(key,deaddrops[i]);
-                retstr = kademlia_find("findnode",0,seqacct,seqpass,seqacct,key,privatedatastr);
+                retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             }
         }
     }
@@ -569,7 +578,7 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     copy_cJSON(datastr,objs[2]);
     if ( contact != 0 && desthandle[0] != 0 && msg[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        retstr = private_publish(contact,0,msg,datastr);
+        retstr = private_publish(contact,0,msg);
          /*if ( retstr != 0 )
             free(retstr);
         memset(&args,0,sizeof(args));
