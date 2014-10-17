@@ -144,7 +144,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         }
         //for (i=0; i<16; i++)
         //    printf("%02x ",((unsigned char *)buf)[i]);
-        //if ( Debuglevel > 0 )
+        if ( Debuglevel > 0 )
             printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     }
     r = uv_udp_send(&wr->U.ureq,wr->udp,&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
@@ -192,7 +192,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             //int i;
             //for (i=0; i<16; i++)
             //    printf("%02x ",((unsigned char *)rcvbuf->base)[i]);
-            if ( Debuglevel > 0 )
+            if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
                 printf("UDP RECEIVED %ld from %s/%d crc.%x | ",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         }
         //expand_nxt64bits(NXTaddr,cp->pubnxtbits);
