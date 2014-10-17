@@ -474,7 +474,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
-                        memcpy(stats->pubkey,Global_mp->myprivkey.bytes,sizeof(stats->pubkey));
+                        memcpy(stats->pubkey,Global_mp->mypubkey.bytes,sizeof(stats->pubkey));
                         //conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
                     }
                     printf("check srvpubaddr\n");
