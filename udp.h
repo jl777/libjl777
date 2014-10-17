@@ -318,7 +318,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
         if ( Debuglevel > 0 )
-            printf("portable_udpwrite %d to %s\n",len,ipaddr,port);
+            printf("portable_udpwrite %d to (%s:%d)\n",len,ipaddr,port);
         portable_udpwrite(1,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
     }
     else call_SuperNET_broadcast(get_pserver(0,ipaddr,0,0),(char *)finalbuf,len,0);
