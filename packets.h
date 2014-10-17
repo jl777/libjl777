@@ -87,7 +87,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
                     return(len);
                 }
             }
-            err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->private_privkey);
+            err = _decode_cipher((char *)decoded,encoded,&len,pubkey,Global_mp->myprivkey.bytes);
             if ( err == 0 )
             {
                 if ( Debuglevel > 2 )

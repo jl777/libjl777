@@ -474,6 +474,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
+                        memcpy(stats->pubkey,Global_mp->myprivkey.bytes,sizeof(stats->pubkey));
+                        //conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
                     }
                     printf("check srvpubaddr\n");
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
@@ -486,6 +488,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                             free(privkey);
+                            conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
+                            init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                             stats = get_nodestats(cp->srvpubnxtbits);
                             add_new_node(cp->srvpubnxtbits);
                             memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
@@ -658,9 +662,6 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             BTCDaddr = cp->pubaddr;
                             strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
-                            conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
-                            conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
-                            init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
                             addcontact(0,cp->privateNXTADDR,cp->privateNXTACCTSECRET,cp->privateNXTADDR,Global_mp->myhandle,cp->privateNXTADDR);
