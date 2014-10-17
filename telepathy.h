@@ -58,14 +58,14 @@ void free_privkeys(char **privkeys,int32_t *cipherids)
 int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordstr)
 {
     int32_t *cipherids,len;
-    char **privkeys,*decompressed;
+    char **privkeys;//,*decompressed;
     uint8_t *retdata;
     char space[2049];
-    struct compressed_json *compressed = 0;
+    //struct compressed_json *compressed = 0;
     privkeys = gen_privkeys(&cipherids,"AES",AESpasswordstr,GENESIS_SECRET,"");
     if ( decryptflag == 0 )
     {
-        len = (int32_t)strlen(msg);
+        len = (int32_t)strlen(msg) + 1;
         if ( len > (sizeof(space)-1) )
         {
             printf("AES_codec error: len.%d too big\n",len);
