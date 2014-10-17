@@ -358,6 +358,7 @@ struct contact_info *find_contact(char *handle)
 
 char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle,char *acct)
 {
+    static bits256 zerokey;
     uint64_t nxt64bits;
     bits256 mysecret,mypublic;
     struct coin_info *cp = get_coin_info("BTCD");
@@ -383,7 +384,7 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     else if ( strcmp(handle,"myhandle") == 0 )
        return(clonestr("{\"error\":\"cant override myhandle\"}"));
     nxt64bits = conv_rsacctstr(acct,0);
-    if ( nxt64bits != contact->nxt64bits )
+    if ( nxt64bits != contact->nxt64bits && memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) != 0 )
     {
         contact->nxt64bits = nxt64bits;
         contact->pubkey = issue_getpubkey(acct);
