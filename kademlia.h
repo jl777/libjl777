@@ -210,16 +210,26 @@ void addto_hasnxt(struct pserver_info *pserver,uint64_t nxtbits)
 int32_t sort_all_buckets(uint64_t *sortbuf,uint64_t hash)
 {
     struct nodestats *stats;
+    struct pserver_info *pserver;
     int32_t i,j,n;
+    char ipaddr[32];
     for (i=n=0; i<KADEMLIA_NUMBUCKETS; i++)
     {
         for (j=0; j<KADEMLIA_NUMK; j++)
         {
             if ( (stats= K_buckets[i][j]) == 0 )
                 break;
-            sortbuf[n<<1] = bitweight(stats->nxt64bits ^ hash);// + ((stats->gotencrypted == 0) ? 64 : 0);
-            sortbuf[(n<<1) + 1] = stats->nxt64bits;
-            n++;
+            if ( stats->ipbits != 0 )
+            {
+                expand_ipbits(ipaddr,stats->ipbits);
+                pserver = get_pserver(0,ipaddr,0,0);
+                if ( pserver->decrypterrs == 0 )
+                {
+                    sortbuf[n<<1] = bitweight(stats->nxt64bits ^ hash);// + ((stats->gotencrypted == 0) ? 64 : 0);
+                    sortbuf[(n<<1) + 1] = stats->nxt64bits;
+                    n++;
+                }
+            }
         }
     }
     if ( n == 0 )
@@ -334,7 +344,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
                 break;
             else if ( txids[i] == txid )
             {
-                printf("send_kademlia_cmd.(%s): duplicate txid.%llu to %llu in slot.%d lasti.%d\n",kadcmd,(long long)txid,(long long)nxt64bits,i,lasti);
+                if ( Debuglevel > 1 )
+                    printf("send_kademlia_cmd.(%s): duplicate txid.%llu to %llu in slot.%d lasti.%d\n",kadcmd,(long long)txid,(long long)nxt64bits,i,lasti);
                 return(0);
             }
         }
@@ -611,7 +622,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                             printf("%s new bestdist %d vs %d\n",destNXTaddr,dist,keynp->bestdist);
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destNXTaddr);
-                            if ( 0 && ismynxtbits(keynp->bestbits) == 0 )
+                            if ( 1 && ismynxtbits(keynp->bestbits) == 0 )
                                 txid = send_kademlia_cmd(keynp->bestbits,0,valueflag!=0?"findvalue":"findnode",NXTACCTSECRET,key,0);
                         }
                     }

@@ -402,6 +402,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],pubkey2[crypto_box_PUBLICKEYBYTES],decoded[4096],decoded2[4096],tmpbuf[4096],maxbuf[4096],*outbuf;
     char senderNXTaddr[64],datastr[4096],hopNXTaddr[64],destNXTaddr[64],checkstr[MAX_JSON_FIELD],datalenstr[MAX_JSON_FIELD];
     char *parmstxt=0,*jsonstr;
+    struct pserver_info *pserver;
+    pserver = get_pserver(0,sender,0,0);
     memset(decoded,0,sizeof(decoded));
     memset(tmpbuf,0,sizeof(tmpbuf));
     retjsonstr[0] = 0;
@@ -432,11 +434,10 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     break;
                 }
             }
+            pserver->decrypterrs = 0;
         }
         else
         {
-            struct pserver_info *pserver;
-            pserver = get_pserver(0,sender,0,0);
             if ( (++pserver->decrypterrs % 10) == 0 && pserver->decrypterrs < 100 )
                 send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
             printf("couldnt decrypt packet len.%d from (%s)\n",recvlen,sender);
