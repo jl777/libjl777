@@ -202,7 +202,7 @@ int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbuf,uint8_t *final,uint8_t **srcp,int32_t len)
 {
     char ipaddr[64],NXTaddr[64];
-    int32_t origlen=0,maxlen = MAX_UDPLEN - 46;
+    int32_t origlen=0,maxlen = 0;
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
@@ -300,7 +300,11 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
         if ( L > 0 )
         {
             len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
-            len = add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len);
+            if ( (len= add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len)) == 0 )
+            {
+                outbuf = (unsigned char *)msg;
+                len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,msglen);
+            }
         }
         else len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
