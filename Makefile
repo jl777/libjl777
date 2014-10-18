@@ -32,9 +32,6 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
-install: /usr/lib/libjl777.so
-    cp libs/libjl777.so /usr/lib
-
 count:
 	@echo "Core:"
 	@cat picoc.h interpreter.h picoc.c table.c lex.c parse.c expression.c platform.c heap.c type.c variable.c include.c | grep -v '^[ 	]*/\*' | grep -v '^[ 	]*$$' | wc
