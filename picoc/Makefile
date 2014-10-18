@@ -14,12 +14,14 @@ OBJS	:= $(SRCS:%.c=%.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
     gcc -fPIC -c ../libtom/*.c
     gcc -fPIC -c ../gzip/*.c
    	ar rcu  ../libjl777.a  $(OBJS) *.o ../libs/randombytes.o
     gcc -shared -Wl,-soname,libjl777.so -o ../libs/libjl777.so ../libjl777.o *.o cstdlib/*.o platform/*.o ../libgfshare.o -lstdc++ -lc -lcurl -lm -ldl
-	#g++ -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o -lcurl -lm
+	
+    
+    #g++ -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o -lcurl -lm
+	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 
 test:	all
 	(cd tests; make test)
