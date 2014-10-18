@@ -16,10 +16,12 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 	ar rcu  ../libjl777.a  $(OBJS) ../gzip/*.o ../libtom/*.o ../libs/randombytes.o
-   
-    
-# gcc -fPIC -c ../libtom/*.c ../gzip/*.c
-# gcc -shared -Wl,-soname,libjl777.so -o ../libs/libjl777.so ../libjl777.o *.o cstdlib/*.o platform/*.o ../libgfshare.o -lstdc++ -lc -lcurl -lm -ldl
+    cd ../libtom
+    gcc -fPIC -c *.c 
+    cd ../gzip
+    gcc -fPIC -c *.c 
+    cd ../picoc
+    gcc -shared -Wl,-soname,libjl777.so -o ../libs/libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o -lstdc++ -lc -lcurl -lm -ldl
 #g++ -shared -o ../libjl777.so $(OBJS) ../gzip/*.o ../libtom/*.o -lcurl -lm
 #$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 
