@@ -128,7 +128,6 @@ void usleep(int32_t);
 //#define NXTPROTOCOL_WEBJSON 7777
 #define SUPERNET_PORT 7777
 #define BTCD_PORT 14631
-//#define NXTSYNC_PORT 5777
 
 #define NUM_GATEWAYS 3
 #define _NXTSERVER "requestType"
