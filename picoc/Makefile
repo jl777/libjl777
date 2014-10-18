@@ -14,6 +14,7 @@ OBJS	:= $(SRCS:%.c=%.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
+  	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
     ar rcu  ../libjl777.a  $(OBJS) *.o ../libs/randombytes.o
    
     
