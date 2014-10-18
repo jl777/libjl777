@@ -32,6 +32,9 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
+onetime: doesntexist
+	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
+
 count:
 	@echo "Core:"
 	@cat picoc.h interpreter.h picoc.c table.c lex.c parse.c expression.c platform.c heap.c type.c variable.c include.c | grep -v '^[ 	]*/\*' | grep -v '^[ 	]*$$' | wc
