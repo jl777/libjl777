@@ -32,7 +32,7 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
-onetime: libs/randombytes.o libs/libuv.a
+onetime: 
     cd libuv; \
     sh autogen.sh; \
     ./configure; \
