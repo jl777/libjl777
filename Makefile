@@ -35,6 +35,9 @@ clean: doesntexist
 install: /usr/lib/libjl777.so; \
     sudo cp libs/libjl777.so /usr/lib/libjl777.so
 
+btcd: ../src/BitcoinDarkd; \
+    cd ../src; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd .
+    
 onetime: doesntexist; \
     cd libuv; \
     sh autogen.sh; \
