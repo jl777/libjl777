@@ -33,7 +33,7 @@ clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
 install: /usr/lib/libjl777.so
-    sudo cp libs/libjl777.so /usr/lib
+    cp libs/libjl777.so /usr/lib
 
 count:
 	@echo "Core:"
