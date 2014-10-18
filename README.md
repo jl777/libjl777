@@ -9,19 +9,11 @@ sudo apt-get install clang
 
 sudo apt-get install libcurl4-gnutls-dev
 
-libuv and nacl sources are included and onetime build steps as follows:
-./onetime
-
-Now all the required libraries should be in the system
-
-there is a shell script "m" to make, make sure to copy randombytes.o to the libs dir
-
-./m
-
-That should build libjl777.a
-copy it to your project directory along with libnacl.a and libuv.a which is in libuv/.libs
-
-make sure to add the following to the linker line: libjl777.a libuv.a libnacl.a -lcurl -lm -ldl 
+cd libjl777
+make onetime
+make
+make btcd
+make install
 
 
 You might have to update boost:
