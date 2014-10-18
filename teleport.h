@@ -296,7 +296,7 @@ void teleport_idler(uv_idle_t *handle)
     if ( Finished_init == 0 )
         return;
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 100) && (wr= queue_dequeue(&sendQ)) != 0 )
+    if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
         if ( ((rand()>>8) % 100) < 50 )
         {

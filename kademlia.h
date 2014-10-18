@@ -330,7 +330,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
         return(0);
     }
-    else if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 )
+    else if ( strncmp("find",kadcmd,4) == 0 ) //strcmp(kadcmd,"store") == 0 ||
     {
         static int lasti;
         static uint64_t txids[8192];
@@ -537,7 +537,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
     char retstr[32768];
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     uint64_t keybits,destbits,txid = 0;
-    int32_t i,n;
+    int32_t i,n,dist,mydist;
     struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
@@ -546,6 +546,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
         return(0);
     }
     keybits = calc_nxt64bits(key);
+    mydist = bitweight(keybits ^ cp->srvpubnxtbits);
     memset(sortbuf,0,sizeof(sortbuf));
     n = sort_all_buckets(sortbuf,keybits);
     if ( n != 0 )
@@ -555,7 +556,8 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
             for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
             {
                 destbits = sortbuf[(i<<1) + 1];
-                if ( ismynxtbits(destbits) == 0 )
+                dist = bitweight(destbits ^ keybits);
+                if ( ismynxtbits(destbits) == 0 && dist < mydist )
                 {
                     if ( (stats= get_nodestats(destbits)) != 0 )
                     {

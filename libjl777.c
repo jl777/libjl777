@@ -139,6 +139,43 @@ void run_NXTservices(void *arg)
     while ( 1 ) sleep(60);
 }
 
+void init_NXThashtables(struct NXThandler_info *mp)
+{
+    struct other_addr *op = 0;
+    struct NXT_acct *np = 0;
+    struct NXT_asset *ap = 0;
+    struct NXT_assettxid *tp = 0;
+    struct NXT_guid *gp = 0;
+    struct pserver_info *pp = 0;
+    struct telepathy_entry *tel = 0;
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs,*Pserver,*Telepathy_hash;
+    if ( Pserver == 0 )
+        Pserver = hashtable_create("Pservers",HASHTABLES_STARTSIZE,sizeof(struct pserver_info),((long)&pp->ipaddr[0] - (long)pp),sizeof(pp->ipaddr),((long)&pp->modified - (long)pp));
+    if ( NXTguids == 0 )
+        NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
+    if ( NXTasset_txids == 0 )
+        NXTasset_txids = hashtable_create("NXTasset_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_assettxid),((long)&tp->H.U.txid[0] - (long)tp),sizeof(tp->H.U.txid),((long)&tp->H.modified - (long)tp));
+    if ( NXTassets == 0 )
+        NXTassets = hashtable_create("NXTassets",HASHTABLES_STARTSIZE,sizeof(struct NXT_asset),((long)&ap->H.U.assetid[0] - (long)ap),sizeof(ap->H.U.assetid),((long)&ap->H.modified - (long)ap));
+    if ( NXTaddrs == 0 )
+        NXTaddrs = hashtable_create("NXTaddrs",HASHTABLES_STARTSIZE,sizeof(struct NXT_acct),((long)&np->H.U.NXTaddr[0] - (long)np),sizeof(np->H.U.NXTaddr),((long)&np->H.modified - (long)np));
+    if ( otheraddrs == 0 )
+        otheraddrs = hashtable_create("otheraddrs",HASHTABLES_STARTSIZE,sizeof(struct other_addr),((long)&op->addr[0] - (long)op),sizeof(op->addr),((long)&op->modified - (long)op));
+    if ( Telepathy_hash == 0 )
+        Telepathy_hash = hashtable_create("Telepath_hash",HASHTABLES_STARTSIZE,sizeof(struct telepathy_entry),((long)&tel->locationstr[0] - (long)tel),sizeof(tel->locationstr),((long)&tel->modified - (long)tel));
+    if ( mp != 0 )
+    {
+        mp->Telepathy_tablep = &Telepathy_hash;
+        mp->Pservers_tablep = &Pserver;
+        mp->NXTguid_tablep = &NXTguids;
+        mp->NXTaccts_tablep = &NXTaddrs;
+        mp->otheraddrs_tablep = &otheraddrs;
+        mp->NXTassets_tablep = &NXTassets;
+        mp->NXTasset_txids_tablep = &NXTasset_txids;
+        printf("init_NXThashtables: %p %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids,otheraddrs);
+    }
+}
+
 void init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     void *Coinloop(void *arg);
@@ -150,7 +187,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     portable_mutex_init(&mp->hashtable_queue[1].mutex);
     
     init_NXThashtables(mp);
-    init_NXTAPI(0);
+    //init_NXTAPI(0);
     if ( myipaddr != 0 )
     {
         //strcpy(MY_IPADDR,get_ipaddr());
@@ -165,22 +202,22 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("ERROR hist process_hashtablequeues\n");
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
     init_MGWconf(JSON_or_fname,myipaddr);
-    printf("start getNXTblocks.(%s)\n",myipaddr);
-    if ( 0 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
-        printf("ERROR start_Histloop\n");
+    //printf("start getNXTblocks.(%s)\n",myipaddr);
+    //if ( 0 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
+    //    printf("ERROR start_Histloop\n");
     //mp->udp = start_libuv_udpserver(4,NXT_PUNCH_PORT,(void *)on_udprecv);
     //init_pingpong_queue(&PeerQ,"PeerQ",process_PeerQ,0,0);
 
-    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s\n",mp,mp->dispname,mp->ipaddr);
-    void run_NXTservices(void *arg);
-    if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
-        printf("ERROR hist process_hashtablequeues\n");
+    //printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s\n",mp,mp->dispname,mp->ipaddr);
+    //void run_NXTservices(void *arg);
+    //if ( 0 && portable_thread_create((void *)run_NXTservices,mp) == 0 )
+    //    printf("ERROR hist process_hashtablequeues\n");
     Finished_loading = 1;
 	//while ( Finished_loading == 0 )
     //    sleep(1);
-    printf("start Coinloop\n");
-    if ( portable_thread_create((void *)Coinloop,Global_mp) == 0 )
-        printf("ERROR Coin_genaddrloop\n");
+    //printf("start Coinloop\n");
+    //if ( portable_thread_create((void *)Coinloop,Global_mp) == 0 )
+    //    printf("ERROR Coin_genaddrloop\n");
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
@@ -1242,7 +1279,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJ
     static char *addcontact[] = { (char *)addcontact_func, "addcontact", "V",  "handle", "acct", 0 };
     static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "contact", 0 };
     static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "contact", 0 };
-    static char *telepathy[] = { (char *)telepathy_func, "telepathy", "V",  "contact", "msg", "data", 0 };
+    static char *telepathy[] = { (char *)telepathy_func, "telepathy", "V",  "contact", "msg", "id", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
     static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };

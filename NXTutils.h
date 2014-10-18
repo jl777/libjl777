@@ -1520,6 +1520,7 @@ struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t superne
     return(pserver);
 }
 
+
 //#ifndef WIN32
 
 //#endif
@@ -1744,7 +1745,8 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
         if ( system(cmd) != 0 )
             printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
         fp = fopen(fname,"wb");
-        fclose(fp);
+        if ( fp != 0 )
+            fclose(fp);
     }
     else fclose(fp);
 }
