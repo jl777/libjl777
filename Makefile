@@ -29,7 +29,7 @@ $(TARGET): $(OBJS)
 test:	all
 	(cd tests; make test)
 
-clean:
+clean: doesntexist
 	rm -f $(TARGET) $(OBJS) *~
 
 count:
