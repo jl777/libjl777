@@ -155,9 +155,11 @@ uint64_t calc_privatelocation(char *AESpasswordstr,int32_t dir,struct contact_in
     return(calc_AESkeys(AESpasswordstr,contact->shared.bytes,nxt64bits,sequenceid));
 }
 
-void process_telepathic(uint8_t *data,int32_t len,uint64_t senderbits)
+void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits)
 {
-    printf("process_telepathic: got.(%llx) len.%d from %llu\n",*(long long *)data,len,(long long)senderbits);
+    struct coin_info *cp = get_coin_info("BTCD");
+    uint64_t keybits = calc_nxt64bits(key);
+    printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d\n",key,*(long long *)data,len,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits));
 }
 
 uint64_t calc_privatedatastr(char *AESpasswordstr,char *privatedatastr,struct contact_info *contact,int32_t sequence,char *msg)

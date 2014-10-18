@@ -681,10 +681,10 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         }
         else if ( ismynode(prevaddr) == 0 && datastr != 0 && datastr[0] != 0 && prevaddr != 0 ) // externally sent find
         {
-            void process_telepathic(uint8_t *data,int32_t len,uint64_t senderbits);
+            void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits);
             recvlen = (int32_t)(strlen(datastr) / 2);
             decode_hex(data,recvlen,datastr);
-            process_telepathic(data,recvlen,senderbits);
+            process_telepathic(key,data,recvlen,senderbits);
             remoteflag = 1;
         }
         memset(sortbuf,0,sizeof(sortbuf));
