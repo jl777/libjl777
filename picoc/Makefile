@@ -15,7 +15,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-    ar rcu  ../libjl777.a  $(OBJS) *.o ../libs/randombytes.o
+	ar rcu  ../libjl777.a  $(OBJS) ../gzip/*.o ../libtom/*.o ../libs/randombytes.o
    
     
 # gcc -fPIC -c ../libtom/*.c ../gzip/*.c
