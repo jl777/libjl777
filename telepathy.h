@@ -292,7 +292,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         if ( (retstr= check_privategenesis(contact)) != 0 )
             free(retstr);
     }
-    if ( (location= calc_privatedatastr(0,AESpasswordstr,privatedatastr,contact,0,msg)) != 0 )
+    if ( (location= calc_privatedatastr(0,AESpasswordstr,privatedatastr,contact,sequenceid,msg)) != 0 )
     {
         expand_nxt64bits(seqacct,location);
         if ( location != issue_getAccountId(0,AESpasswordstr) )
@@ -307,7 +307,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         {
             contact->numsent++;
             contact->lastsent = sequenceid;
-            printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)seqacct,AESpasswordstr);
+            printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)location,AESpasswordstr);
             expand_nxt64bits(key,contact->deaddrop);
             retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr,0); // find and you shall telepath
         } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");

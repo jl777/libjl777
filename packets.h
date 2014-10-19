@@ -133,7 +133,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         maxbuf += sizeof(*payload_lenp);
     } else max_lenp = payload_lenp;
     encoded += sizeof(*payload_lenp);
-    if ( Debuglevel > 0 )
+    if ( Debuglevel > 1 )
     {
         char hexstr[1024];
         init_hexbytes_noT(hexstr,destpubkey,crypto_box_PUBLICKEYBYTES);
