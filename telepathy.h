@@ -333,7 +333,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         {
             contact->numsent++;
             contact->lastsent = sequenceid;
-            printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)location,AESpasswordstr);
+            //printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)location,AESpasswordstr);
             expand_nxt64bits(key,contact->deaddrop);
             retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr,0); // find and you shall telepath
         } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");
@@ -359,7 +359,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
-            printf("try AESpassword.(%s)\n",AESpasswordstr);
+            //printf("try AESpassword.(%s)\n",AESpasswordstr);
             if ( (json= parse_encrypted_data(&sequenceid,contact,data,datalen,AESpasswordstr)) != 0 )
             {
                 if ( sequenceid == tel->sequenceid )
@@ -384,7 +384,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
     {
         char datastr[4096];
         init_hexbytes(datastr,data,datalen);
-        printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,datastr,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
+        printf("process_telepathic: key.(%s) got.(%s) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,datastr,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
     }
 }
 
@@ -476,7 +476,8 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
         {
             sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
             portable_mutex_unlock(&Contacts_mutex);
-            printf("addcontact: (%s)\n",retstr);
+            if ( Debuglevel > 1 )
+                printf("addcontact: (%s)\n",retstr);
             return(clonestr(retstr));
         }
         if ( (contact= _find_contact(handle)) == 0 )
@@ -486,7 +487,8 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
                 Max_contacts = (Num_contacts + 1);
                 Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
             }
-            printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
+            if ( Debuglevel > 1 )
+                printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
             contact = &Contacts[Num_contacts++];
             memset(contact,0,sizeof(*contact));
             safecopy(contact->handle,handle,sizeof(contact->handle));
@@ -496,7 +498,8 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     }
     portable_mutex_unlock(&Contacts_mutex);
     
-    printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
+    if ( Debuglevel > 0 )
+        printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
     if ( nxt64bits != contact->nxt64bits || memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) == 0 )
     {
         contact->nxt64bits = nxt64bits;
@@ -522,7 +525,7 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
             free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
     }
-    printf("ADD.(%s -> %s) %llu\n",handle,acct,(long long)contact->nxt64bits);
+    printf("ADDCONTACT.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 
@@ -551,7 +554,7 @@ char *removecontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,
         sprintf(retstr,"{\"result\":\"handle.(%s) deleted num.%d max.%d\"}",handle,Num_contacts,Max_contacts);
     } else sprintf(retstr,"{\"error\":\"handle.(%s) doesnt exist\"}",handle);
     portable_mutex_unlock(&Contacts_mutex);
-    printf("REMOVE.(%s)\n",handle);
+    printf("REMOVECONTACT.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 

@@ -683,7 +683,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 init_hexbytes_noT(databuf,sp->data,sp->datalen);
                 if ( ismynode(prevaddr) == 0 && ismynxtbits(senderbits) == 0 )
                 {
-                    printf("call store\n");
+                    //printf("call store\n");
                     txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                 }
                 sprintf(retstr,"{\"data\":\"%s\"}",databuf);
@@ -780,7 +780,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
     else port = 0, strcpy(ipaddr,"localhost");
     sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s:%d) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,ipaddr,port,key,datastr!=0?strlen(datastr):0,(long long)txid);
-    if ( Debuglevel > 0 )
+    //if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
 }
