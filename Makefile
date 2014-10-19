@@ -1,4 +1,4 @@
-CC=clang
+CC=gcc
 CFLAGS=-Wall -pedantic -g -fPIC 
 LIBS=-lm -lreadline 
 

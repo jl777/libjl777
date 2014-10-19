@@ -503,7 +503,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         stats->pongmilli = milliseconds();
         stats->pingpongsum += (stats->pongmilli - stats->pingmilli);
         stats->numpongs++;
-        sprintf(retstr,"{\"result\":\"kademlia_pong from NXT.%s (%s/%d) %.3f millis | numpings.%d numpongs.%d ave %.3f\"}",sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
+        sprintf(retstr,"{\"result\":\"kademlia_pong\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\",\"lag\":%.3f,\"numpings\":%d,\"numpongs\":%d,\"ave\":%.3f\"}",sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
     else sprintf(retstr,"{\"result\":\"kademlia_pong\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\"}",sender,ipaddr,port);
     //if ( Debuglevel > 0 )
