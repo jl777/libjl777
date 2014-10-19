@@ -310,7 +310,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     char pubkeystr[1024],ipaddr[64],cmdstr[2048],verifiedNXTaddr[64],destNXTaddr[64];
     if ( NXTACCTSECRET[0] == 0 || cp == 0 )
     {
-        printf("No srvpubaddr or cp.%p NULL\n",cp);
+        printf("send_kademlia_cmd srvpubaddr or cp.%p NULL\n",cp);
         return(0);
     }
     init_hexbytes_noT(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
