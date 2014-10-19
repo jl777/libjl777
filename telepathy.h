@@ -370,7 +370,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                     if ( contact->lastentry < (tel->sequenceid + MAX_DROPPED_PACKETS) )
                     {
                         for (i=0; i<MAX_DROPPED_PACKETS; i++)
-                            create_telepathy_entry(contact,tel->sequenceid + i);
+                            create_telepathy_entry(contact,contact->lastentry + i);
                     }
                     free(jsonstr);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
