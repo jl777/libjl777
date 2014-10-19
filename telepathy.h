@@ -683,6 +683,7 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     sequenceid = get_API_int(objs[2],-1);
     if ( contact != 0 && desthandle[0] != 0 && msg[0] != 0 && sender[0] != 0 && valid > 0 )
     {
+        printf("telepathy.(%s -> %s).%d\n",msg,contact->handle,sequenceid);
         retstr = private_publish(contact,sequenceid,msg);
          /*if ( retstr != 0 )
             free(retstr);
