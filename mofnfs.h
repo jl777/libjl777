@@ -49,9 +49,11 @@ char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen,
             init_hexbytes(key,passkey.bytes,sizeof(passkey));
             (*cipheridsp)[i] = (pin[i] % NUM_CIPHERS);
             privkeys[i] = clonestr(key);
+            //printf("(%d %s) ",(*cipheridsp)[i],privkeys[i]);
             if ( i < len )
                 passkey = curve25519(passkey,G);
         }
+        //printf("gen_privkeys len.%ld\n",len);
     }
     return(privkeys);
 }

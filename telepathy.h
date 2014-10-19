@@ -104,64 +104,31 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         len = (int32_t)strlen(msg) + 1;
         retdata = ciphers_codec(0,privkeys,cipherids,(uint8_t *)msg,&len);
         memcpy(buf,retdata,len);
+        if ( 0 )
+        {
+            uint8_t *ret;
+            int32_t retlen = len;
+            ret = ciphers_codec(1,privkeys,cipherids,(uint8_t *)retdata,&retlen);
+            if ( ret != 0 )
+            {
+                if ( strlen((char *)ret) != strlen(msg) || strcmp((char *)ret,msg) != 0 )
+                    printf("ciper.(%s) error len %ld != %ld || (%s) != (%s)\n",AESpasswordstr,strlen((char *)ret),(strlen(msg)+1),ret,msg);
+                else printf("(%s) matches (%s)\n",(char *)ret,msg);
+                free(ret);
+            }
+        }
     }
     else
     {
         len = decryptflag;
         retdata = ciphers_codec(1,privkeys,cipherids,buf,&len);
+        //printf("cipher decrypted.(%s)\n",retdata);
         memcpy(msg,retdata,len);
     }
     if ( retdata != 0 )
         free(retdata);
     free_privkeys(privkeys,cipherids);
     return(len);
-#ifdef needworkingcompressioncodec
-    //struct compressed_json *compressed = 0;
-    /*if ( len > (sizeof(space)-1) )
-        {
-            printf("AES_codec error: len.%d too big\n",len);
-            return(-1);
-        }
-       memset(space,0,sizeof(space));
-        strcpy(space,msg);
-        compressed = encode_json(space,(int32_t)sizeof(space)-1);
-        if ( compressed != 0 )
-        {
-            len = compressed->complen;
-            memcpy(space,compressed,len);
-            free(compressed);
-        }
-        else
-        {
-            free_privkeys(privkeys,cipherids);
-            printf("encode_json error in AES_coded\n");
-            return(-2);
-        }*/
-    }
-    else len = decryptflag;
-    retdata = ciphers_codec(decryptflag!=0,privkeys,cipherids,((decryptflag == 0) ? (uint8_t *)msg : buf),&len);
-    /*if ( decryptflag != 0 )
-    {
-        compressed = (struct compressed_json *)retdata;
-        decompressed = decode_json(compressed,0);
-        if ( decompressed != 0 )
-        {
-            decompressed[compressed->origlen] = 0;
-            len = (int32_t)strlen(decompressed);
-            memcpy(buf,decompressed,len);
-        }
-    }
-    else*/ if ( len > 0 )
-    {
-        if ( decryptflag != 0 )
-            memcpy(msg,retdata,len);
-        else memcpy(buf,retdata,len);
-    }
-    if ( retdata != 0 )
-        free(retdata);
-    free_privkeys(privkeys,cipherids);
-    return(len);
-#endif
 }
 
 int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AESpasswordstr)
@@ -172,8 +139,10 @@ int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AES
     if ( decodedlen > 0 )
     {
         if ( strcmp(msg,decoded) == 0 )
+        {
             printf("decrypted.(%s) len.%d\n",decoded,decodedlen);
-        else printf("AES_codec error on msg.(%s) != (%s)\n",msg,decoded);
+        }
+        else { printf("AES_codec error on msg.(%s) != (%s)\n",msg,decoded); decodedlen = -1; }
     } else printf("AES_codec unexpected decode error.%d\n",decodedlen);
     return(decodedlen);
 }
@@ -213,8 +182,11 @@ void create_telepathy_entry(struct contact_info *contact,int32_t sequenceid)
     uint64_t location;
     bits256 AESpassword;
     char AESpasswordstr[512],locationstr[64];
-    if ( sequenceid <= contact->lastentry )
+    if ( contact->lastentry != 0 && sequenceid <= contact->lastentry )
+    {
+        printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
         return;
+    }
     if ( (location= calc_recvAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid)) != 0 )
     {
         expand_nxt64bits(locationstr,location);
@@ -327,7 +299,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         if ( sequenceid == 0 )
         {
             expand_nxt64bits(key,location);
-            printf("store.(%s) -> %llu\n",privatedatastr,(long long)seqacct);
+            printf("store.(%s) -> %llu %llu\n",privatedatastr,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
         }
         else if ( contact->deaddrop != 0 )
@@ -387,12 +359,12 @@ void init_telepathy_contact(struct contact_info *contact)
     for (i=1; i<=MAX_DROPPED_PACKETS; i++)
         create_telepathy_entry(contact,i);
     randbits = cp->srvpubnxtbits;
-    for (i=0; i<KADEMLIA_MAXTHRESHOLD; i++)
+    while ( bitweight(randbits ^ cp->srvpubnxtbits) < KADEMLIA_MAXTHRESHOLD)
         randbits ^= (1L << ((rand()>>8) & 63));
     sprintf(deaddropjsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d}",(long long)randbits,0);
     retstr = private_publish(contact,0,deaddropjsonstr);
     init_hexbytes(sharedstr,contact->shared.bytes,sizeof(contact->shared));
-    printf("shared.(%s) ret.(%s) %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)cp->srvpubnxtbits,bitweight(randbits ^ cp->srvpubnxtbits));
+    printf("shared.(%s) ret.(%s) %llu %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)randbits,(long long)cp->srvpubnxtbits,bitweight(randbits ^ cp->srvpubnxtbits));
     if ( retstr != 0 )
         free(retstr);
     if ( (retstr= check_privategenesis(contact)) != 0 )
@@ -404,6 +376,7 @@ struct contact_info *_find_handle(char *handle)
     int32_t i;
     if ( Num_contacts != 0 )
     {
+        printf("find handle.(%s)\n",handle);
         for (i=0; i<Num_contacts; i++)
             if ( strcmp(Contacts[i].handle,handle) == 0 )
                 return(&Contacts[i]);
@@ -416,6 +389,7 @@ struct contact_info *_find_contact_nxt64bits(uint64_t nxt64bits)
     int32_t i;
     if ( Num_contacts != 0 )
     {
+        printf("_find_contact_nxt64bits.(%llu)\n",(long long)nxt64bits);
         for (i=0; i<Num_contacts; i++)
             if ( Contacts[i].nxt64bits == nxt64bits )
                 return(&Contacts[i]);
@@ -423,18 +397,26 @@ struct contact_info *_find_contact_nxt64bits(uint64_t nxt64bits)
     return(0);
 }
 
+uint64_t conv_acctstr(char *acctstr)
+{
+    uint64_t nxt64bits = 0;
+    int32_t len;
+    if ( (len= is_decimalstr(acctstr)) > 0 && len < 22 )
+        nxt64bits = calc_nxt64bits(acctstr);
+    else if ( strncmp("NXT-",acctstr,4) == 0 )
+        nxt64bits = conv_rsacctstr(acctstr,0);
+    return(nxt64bits);
+}
+
 struct contact_info *_find_contact(char *contactstr)
 {
-    int32_t len;
     uint64_t nxt64bits = 0;
     struct contact_info *contact = 0;
+    printf("_find_contact.(%s)\n",contactstr);
     if ( (contact= _find_handle(contactstr)) == 0 )
     {
-        if ( (len= is_decimalstr(contactstr)) > 0 && len < 22 )
-            nxt64bits = calc_nxt64bits(contactstr);
-        else if ( strncmp("NXT-",contactstr,4) == 0 )
-            nxt64bits = conv_rsacctstr(contactstr,0);
-        contact = _find_contact_nxt64bits(nxt64bits);
+        if ( (nxt64bits= conv_acctstr(contactstr)) != 0 )
+            contact = _find_contact_nxt64bits(nxt64bits);
     }
     return(contact);
 }
@@ -467,16 +449,19 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     {
         if ( Num_contacts >= Max_contacts )
         {
-            Max_contacts = (Num_contacts + 1 );
+            Max_contacts = (Num_contacts + 1);
             Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
         }
+        printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
         contact = &Contacts[Num_contacts++];
+        memset(contact,0,sizeof(*contact));
         safecopy(contact->handle,handle,sizeof(contact->handle));
     }
     else if ( strcmp(handle,"myhandle") == 0 )
        return(clonestr("{\"error\":\"cant override myhandle\"}"));
-    nxt64bits = conv_rsacctstr(acct,0);
-    if ( nxt64bits != contact->nxt64bits && memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) != 0 )
+    nxt64bits = conv_acctstr(acct);
+    printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
+    if ( nxt64bits != contact->nxt64bits || memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) == 0 )
     {
         contact->nxt64bits = nxt64bits;
         contact->pubkey = issue_getpubkey(acct);
@@ -485,14 +470,17 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
             sprintf(retstr,"{\"error\":\"(%s) acct.(%s) has no pubkey.(%s)\"}",handle,acct,pubkeystr);
         else
         {
-            conv_NXTpassword(mysecret.bytes,mypublic.bytes,cp->privateNXTACCTSECRET);
-            contact->shared = curve25519(mysecret,contact->pubkey);
-            init_telepathy_contact(contact);
-            sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
+            if ( strcmp(contact->handle,"myhandle") != 0 )
+            {
+                conv_NXTpassword(mysecret.bytes,mypublic.bytes,cp->privateNXTACCTSECRET);
+                contact->shared = curve25519(mysecret,contact->pubkey);
+                init_telepathy_contact(contact);
+                sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
+            }
         }
     } else sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
     portable_mutex_unlock(&Contacts_mutex);
-    printf("ADD.(%s -> %s)\n",handle,acct);
+    printf("ADD.(%s -> %s) %llu\n",handle,acct,(long long)contact->nxt64bits);
     return(clonestr(retstr));
 }
 
