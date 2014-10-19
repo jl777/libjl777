@@ -254,6 +254,7 @@ cJSON *parse_encrypted_data(int32_t *sequenceidp,struct contact_info *contact,ui
     {
         if ( (json= cJSON_Parse(decoded)) != 0 )
         {
+            printf("parsed decrypted.(%s)\n",decoded);
             hint = get_API_int(cJSON_GetObjectItem(json,"hint"),-1);
             if ( hint > 0 )
             {
@@ -276,7 +277,7 @@ cJSON *parse_encrypted_data(int32_t *sequenceidp,struct contact_info *contact,ui
                     contact->deaddrop = deaddrop;
                 }
             }
-        }
+        } else printf("couldnt parse decrypted.(%s)\n",decoded);
     } else printf("AES_codec failure.%d\n",decodedlen);
     return(json);
 }
@@ -358,6 +359,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
+            printf("try AESpassword.(%s)\n",AESpasswordstr);
             if ( (json= parse_encrypted_data(&sequenceid,contact,data,datalen,AESpasswordstr)) != 0 )
             {
                 if ( sequenceid == tel->sequenceid )
@@ -379,7 +381,11 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         } else printf("dont have contact info for %llu\n",(long long)tel->contactbits);
         printf("(%s.%d) pass.(%s) | ",contact->handle,tel->sequenceid,AESpasswordstr);
     }
-    printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,*(long long *)data,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
+    {
+        char datastr[4096];
+        init_hexbytes(datastr,data,datalen);
+        printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,datastr,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
+    }
 }
 
 void publish_deaddrop(struct contact_info *contact)
