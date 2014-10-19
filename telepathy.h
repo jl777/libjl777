@@ -271,7 +271,7 @@ char *check_privategenesis(struct contact_info *contact)
             if ( (json= parse_encrypted_data(&sequenceid,contact,sp->data,sp->datalen,AESpasswordstr)) != 0 )
                 free_json(json);
         }
-        else
+        //else
         {
             expand_nxt64bits(key,location);
             printf("need to get %s deaddrop from %s\n",contact->handle,key);
@@ -377,7 +377,7 @@ struct contact_info *_find_handle(char *handle)
     int32_t i;
     if ( Num_contacts != 0 )
     {
-        printf("find handle.(%s)\n",handle);
+        //printf("find handle.(%s)\n",handle);
         for (i=0; i<Num_contacts; i++)
             if ( strcmp(Contacts[i].handle,handle) == 0 )
                 return(&Contacts[i]);
@@ -390,7 +390,7 @@ struct contact_info *_find_contact_nxt64bits(uint64_t nxt64bits)
     int32_t i;
     if ( Num_contacts != 0 )
     {
-        printf("_find_contact_nxt64bits.(%llu)\n",(long long)nxt64bits);
+        //printf("_find_contact_nxt64bits.(%llu)\n",(long long)nxt64bits);
         for (i=0; i<Num_contacts; i++)
             if ( Contacts[i].nxt64bits == nxt64bits )
                 return(&Contacts[i]);
@@ -413,7 +413,7 @@ struct contact_info *_find_contact(char *contactstr)
 {
     uint64_t nxt64bits = 0;
     struct contact_info *contact = 0;
-    printf("_find_contact.(%s)\n",contactstr);
+    //printf("_find_contact.(%s)\n",contactstr);
     if ( (contact= _find_handle(contactstr)) == 0 )
     {
         if ( (nxt64bits= conv_acctstr(contactstr)) != 0 )
@@ -438,28 +438,33 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     bits256 mysecret,mypublic;
     struct coin_info *cp = get_coin_info("BTCD");
     struct contact_info *contact;
-    char retstr[1024],pubkeystr[128];
+    char retstr[1024],pubkeystr[128],*ret;
     if ( cp == 0 )
     {
         printf("addcontact: no BTCD cp?\n");
         return(0);
     }
     handle[sizeof(contact->handle)-1] = 0;
+    
     portable_mutex_lock(&Contacts_mutex);
-    if ( (contact= _find_contact(handle)) == 0 )
     {
-        if ( Num_contacts >= Max_contacts )
+        if ( (contact= _find_contact(handle)) == 0 )
         {
-            Max_contacts = (Num_contacts + 1);
-            Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
+            if ( Num_contacts >= Max_contacts )
+            {
+                Max_contacts = (Num_contacts + 1);
+                Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
+            }
+            printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
+            contact = &Contacts[Num_contacts++];
+            memset(contact,0,sizeof(*contact));
+            safecopy(contact->handle,handle,sizeof(contact->handle));
         }
-        printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
-        contact = &Contacts[Num_contacts++];
-        memset(contact,0,sizeof(*contact));
-        safecopy(contact->handle,handle,sizeof(contact->handle));
+        else if ( strcmp(handle,"myhandle") == 0 )
+            return(clonestr("{\"error\":\"cant override myhandle\"}"));
     }
-    else if ( strcmp(handle,"myhandle") == 0 )
-       return(clonestr("{\"error\":\"cant override myhandle\"}"));
+    portable_mutex_unlock(&Contacts_mutex);
+    
     nxt64bits = conv_acctstr(acct);
     printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
     if ( nxt64bits != contact->nxt64bits || memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) == 0 )
@@ -479,8 +484,13 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
                 sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
             }
         }
-    } else sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
-    portable_mutex_unlock(&Contacts_mutex);
+    }
+    else
+    {
+        if ( (ret= check_privategenesis(contact)) != 0 )
+            free(ret);
+        sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
+    }
     printf("ADD.(%s -> %s) %llu\n",handle,acct,(long long)contact->nxt64bits);
     return(clonestr(retstr));
 }
