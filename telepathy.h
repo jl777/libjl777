@@ -289,7 +289,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
     if ( contact->deaddrop == 0 )
     {
         if ( (retstr= check_privategenesis(contact)) != 0 )
-            return(retstr);
+            free(retstr);
     }
     if ( (location= calc_privatedatastr(0,AESpasswordstr,privatedatastr,contact,0,msg)) != 0 )
     {
