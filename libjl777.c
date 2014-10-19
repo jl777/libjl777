@@ -1129,7 +1129,7 @@ char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     if ( Debuglevel > 1 )
         printf("findnode.%p (%s) (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key,value);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
+        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
     else retstr = clonestr("{\"error\":\"invalid findnode_func arguments\"}");
     return(retstr);
 }
@@ -1143,7 +1143,7 @@ char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     if ( Debuglevel > 1 )
         printf("findvalue.%p (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
+        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
     else retstr = clonestr("{\"error\":\"invalid findvalue_func arguments\"}");
     if ( Debuglevel > 1 )
         printf("back from findvalue\n");

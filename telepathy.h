@@ -275,7 +275,7 @@ char *check_privategenesis(struct contact_info *contact)
         {
             expand_nxt64bits(key,location);
             printf("need to get %s deaddrop from %s\n",contact->handle,key);
-            return(kademlia_find("findvalue",0,key,AESpasswordstr,key,key,0));
+            return(kademlia_find("findvalue",0,key,AESpasswordstr,key,key,0,0));
         }
     }
     return(0);
@@ -307,9 +307,9 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         {
             contact->numsent++;
             contact->lastsent = sequenceid;
-            printf("telepathic send to %s.%d via %llu\n",contact->handle,sequenceid,(long long)contact->deaddrop);
+            printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)seqacct,AESpasswordstr);
             expand_nxt64bits(key,contact->deaddrop);
-            retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr); // find and you shall telepath
+            retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr,0); // find and you shall telepath
         } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");
     }
     return(retstr);
@@ -597,7 +597,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
     {
         expand_nxt64bits(key,args->othertxid);
         gen_randacct(sender);
-        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,sender,key,0);
+        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,sender,key,0,0);
         if ( retstr != 0 )
         {
             if ( (json= cJSON_Parse(retstr)) != 0 )
