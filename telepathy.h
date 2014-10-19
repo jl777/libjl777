@@ -271,7 +271,7 @@ char *check_privategenesis(struct contact_info *contact)
             if ( (json= parse_encrypted_data(&sequenceid,contact,sp->data,sp->datalen,AESpasswordstr)) != 0 )
                 free_json(json);
         }
-        //else
+        else
         {
             expand_nxt64bits(key,location);
             printf("need to get %s deaddrop from %s\n",contact->handle,key);
@@ -351,14 +351,11 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
     printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d\n",key,*(long long *)data,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits));
 }
 
-void init_telepathy_contact(struct contact_info *contact)
+void publish_deaddrop(struct contact_info *contact)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    int32_t i;
     uint64_t randbits;
     char deaddropjsonstr[512],sharedstr[512],*retstr;
-    for (i=1; i<=MAX_DROPPED_PACKETS; i++)
-        create_telepathy_entry(contact,i);
     randbits = cp->srvpubnxtbits;
     while ( bitweight(randbits ^ cp->srvpubnxtbits) < KADEMLIA_MAXTHRESHOLD)
         randbits ^= (1L << ((rand()>>8) & 63));
@@ -368,6 +365,14 @@ void init_telepathy_contact(struct contact_info *contact)
     printf("shared.(%s) ret.(%s) %llu %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)randbits,(long long)cp->srvpubnxtbits,bitweight(randbits ^ cp->srvpubnxtbits));
     if ( retstr != 0 )
         free(retstr);
+}
+
+void init_telepathy_contact(struct contact_info *contact)
+{
+    int32_t i;
+    char *retstr;
+    for (i=1; i<=MAX_DROPPED_PACKETS; i++)
+        create_telepathy_entry(contact,i);
     if ( (retstr= check_privategenesis(contact)) != 0 )
         free(retstr);
 }
@@ -487,6 +492,7 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     }
     else
     {
+        publish_deaddrop(contact);
         if ( (ret= check_privategenesis(contact)) != 0 )
             free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
