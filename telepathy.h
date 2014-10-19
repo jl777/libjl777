@@ -830,7 +830,7 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
     int32_t i;
     if ( endmilli == 0. )
     {
-        if ( numthreads <= 0 )
+        if ( numthreads <= 0 || n < 1 )
             return(0);
         expand_nxt64bits(refNXTaddr,addr);
         if ( numthreads > 28 )
@@ -844,14 +844,16 @@ char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTS
             strcpy(args[i]->refacct,refNXTaddr);
             args[i]->threadid = i;
             args[i]->numthreads = numthreads;
-            args[i]->targetdist = targetdist-(i%5);
+            args[i]->targetdist = targetdist;
             args[i]->best = lastbest;
             args[i]->list = list;
             args[i]->numinlist = n;
             if ( portable_thread_create((void *)findaddress_loop,args[i]) == 0 )
                 printf("ERROR hist findaddress_loop\n");
+            printf("%d ",i);
         }
         endmilli = milliseconds() + (duration * 1000.);
+        printf("%d threads started numinlist.%d\n",numthreads,n);
     }
     else
     {
