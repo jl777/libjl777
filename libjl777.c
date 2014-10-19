@@ -1247,7 +1247,7 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
         init_hexbytes(hexstr,ret.bytes,sizeof(ret));
-        sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\",\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\",\"input\":\"%s\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct,resultstr);
+        sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\":\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\",\"input\":\"%s\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct,resultstr);
         return(clonestr(retbuf));
     }
     return(clonestr("{\"error\":\"invalid cosigned_func arguments\"}"));
