@@ -345,7 +345,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
     uint64_t keybits = calc_nxt64bits(key);
     struct contact_info *contact;
     struct telepathy_entry *tel;
-    int32_t sequenceid,i;
+    int32_t sequenceid,i,n;
     char AESpasswordstr[512],locationstr[64],*jsonstr;
     cJSON *json;
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
@@ -369,8 +369,9 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                     contact->numrecv++;
                     if ( contact->lastentry < (tel->sequenceid + MAX_DROPPED_PACKETS) )
                     {
-                        for (i=0; i<MAX_DROPPED_PACKETS; i++)
-                            create_telepathy_entry(contact,contact->lastentry + i);
+                        n = (contact->lastentry + MAX_DROPPED_PACKETS);
+                        for (i=contact->lastentry; i<n; i++)
+                            create_telepathy_entry(contact,i);
                     }
                     free(jsonstr);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
