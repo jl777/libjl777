@@ -390,7 +390,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"ipaddr\":\"%s\",\"pubkey\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),cp->myipaddr,pubkeystr);
         }
         else sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld",kadcmd,verifiedNXTaddr,(long)time(NULL));
     }
