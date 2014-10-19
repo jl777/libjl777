@@ -311,8 +311,6 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
 {
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
     uint64_t location;
-    if ( sequenceid < 0 )
-        sequenceid = contact->lastsent+1;
     if ( contact->deaddrop == 0 )
     {
         if ( (retstr= check_privategenesis(contact)) != 0 )
@@ -375,7 +373,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                             create_telepathy_entry(contact,tel->sequenceid + i);
                     }
                     free(jsonstr);
-                }
+                } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }
         } else printf("dont have contact info for %llu\n",(long long)tel->contactbits);
@@ -692,7 +690,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
 char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     //struct coin_info *cp = get_coin_info("BTCD");
-    char desthandle[MAX_JSON_FIELD],msg[MAX_JSON_FIELD],*retstr = 0;
+    char desthandle[MAX_JSON_FIELD],msg[MAX_JSON_FIELD],jsonstr[MAX_JSON_FIELD],*retstr = 0;
     //struct telepathy_args args;
     int32_t sequenceid;
     struct contact_info *contact;
@@ -704,8 +702,11 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     sequenceid = get_API_int(objs[2],-1);
     if ( contact != 0 && desthandle[0] != 0 && msg[0] != 0 && sender[0] != 0 && valid > 0 )
     {
+        if ( sequenceid < 0 )
+            sequenceid = contact->lastsent+1;
         printf("telepathy.(%s -> %s).%d\n",msg,contact->handle,sequenceid);
-        retstr = private_publish(contact,sequenceid,msg);
+        sprintf(jsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d,\"msg\":\"%s\"}",(long long)contact->mydrop,sequenceid,msg);
+        retstr = private_publish(contact,sequenceid,jsonstr);
          /*if ( retstr != 0 )
             free(retstr);
         memset(&args,0,sizeof(args));
