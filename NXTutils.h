@@ -1891,7 +1891,7 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
                 update_pubkey(pubkey,pubkeystr);
         }
         return(parmstxt);
-    } else printf("verify_tokenized_json not array of 2\n");
+    } else { printf("verify_tokenized_json not array of 2\n"); while ( 1 ) sleep(1); }
     return(0);
 }
 

@@ -97,13 +97,27 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
 {
     int32_t *cipherids,len;
     char **privkeys;//,*decompressed;
-    uint8_t *retdata;
-    //struct compressed_json *compressed = 0;
+    uint8_t *retdata = 0;
     privkeys = gen_privkeys(&cipherids,"AES",AESpasswordstr,GENESIS_SECRET,"");
     if ( decryptflag == 0 )
     {
         len = (int32_t)strlen(msg) + 1;
-        /*if ( len > (sizeof(space)-1) )
+        retdata = ciphers_codec(0,privkeys,cipherids,(uint8_t *)msg,&len);
+        memcpy(buf,retdata,len);
+    }
+    else
+    {
+        len = decryptflag;
+        retdata = ciphers_codec(1,privkeys,cipherids,buf,&len);
+        memcpy(msg,retdata,len);
+    }
+    if ( retdata != 0 )
+        free(retdata);
+    free_privkeys(privkeys,cipherids);
+    return(len);
+#ifdef needworkingcompressioncodec
+    //struct compressed_json *compressed = 0;
+    /*if ( len > (sizeof(space)-1) )
         {
             printf("AES_codec error: len.%d too big\n",len);
             return(-1);
@@ -147,19 +161,19 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         free(retdata);
     free_privkeys(privkeys,cipherids);
     return(len);
+#endif
 }
 
 int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AESpasswordstr)
 {
     int32_t decodedlen;
-    uint8_t decoded[4096];
-    memcpy(decoded,encoded,encodedlen);
-    decodedlen = AES_codec(decoded,encodedlen,msg,AESpasswordstr);
+    char decoded[4096];
+    decodedlen = AES_codec(encoded,encodedlen,decoded,AESpasswordstr);
     if ( decodedlen > 0 )
     {
-        if ( strcmp(msg,(char *)decoded) == 0 )
-            printf("decrypted.(%s) len.%d\n",(char *)decoded,decodedlen);
-        else printf("AES_codec error on msg.(%s) != (%s)\n",msg,(char *)decoded);
+        if ( strcmp(msg,decoded) == 0 )
+            printf("decrypted.(%s) len.%d\n",decoded,decodedlen);
+        else printf("AES_codec error on msg.(%s) != (%s)\n",msg,decoded);
     } else printf("AES_codec unexpected decode error.%d\n",decodedlen);
     return(decodedlen);
 }
@@ -378,7 +392,7 @@ void init_telepathy_contact(struct contact_info *contact)
     sprintf(deaddropjsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d}",(long long)randbits,0);
     retstr = private_publish(contact,0,deaddropjsonstr);
     init_hexbytes(sharedstr,contact->shared.bytes,sizeof(contact->shared));
-    printf("shared.(%s) ret.(%s) %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)cp->privatebits,bitweight(randbits ^ cp->privatebits));
+    printf("shared.(%s) ret.(%s) %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)cp->srvpubnxtbits,bitweight(randbits ^ cp->srvpubnxtbits));
     if ( retstr != 0 )
         free(retstr);
     if ( (retstr= check_privategenesis(contact)) != 0 )
