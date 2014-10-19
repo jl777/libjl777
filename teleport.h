@@ -298,7 +298,7 @@ void teleport_idler(uv_idle_t *handle)
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
-        if ( 0 && ((rand()>>8) % 100) < 50 )
+        if ( ((rand()>>8) % 100) < 50 )
         {
             //printf("skip packet\n");
             queue_enqueue(&sendQ,wr);
