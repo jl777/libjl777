@@ -12,6 +12,7 @@
 #define MAX_LFACTOR 10
 #define MAX_UDPLEN 1400
 #define PUBADDRS_MSGDURATION (3600 * 24)
+#define MAX_ONION_LAYERS 7
 
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."

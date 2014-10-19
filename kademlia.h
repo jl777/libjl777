@@ -267,7 +267,7 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     char _tokbuf[4096];
     uint64_t txid;
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    if ( Debuglevel > 0 )
+    if ( Debuglevel > 1 )
         printf(">>>>>>>> directsend.[%s]\n",_tokbuf);
     txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
