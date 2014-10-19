@@ -452,7 +452,7 @@ struct contact_info *find_contact(char *handle)
     return(contact);
 }
 
-char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle,char *acct)
+char *addcontact(char *handle,char *acct)
 {
     static bits256 zerokey;
     uint64_t nxt64bits;

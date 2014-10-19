@@ -1072,7 +1072,7 @@ char *addcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     copy_cJSON(acct,objs[1]);
     printf("handle.(%s) acct.(%s) valid.%d\n",handle,acct,valid);
     if ( handle[0] != 0 && acct[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = addcontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle,acct);
+        retstr = addcontact(handle,acct);
     else retstr = clonestr("{\"error\":\"invalid addcontact_func arguments\"}");
     return(retstr);
 }

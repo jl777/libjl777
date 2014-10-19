@@ -397,7 +397,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
 char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
 typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
-char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle,char *acct);
+char *addcontact(char *handle,char *acct);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {

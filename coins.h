@@ -665,7 +665,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
-                            addcontact(0,cp->privateNXTADDR,cp->privateNXTACCTSECRET,cp->privateNXTADDR,Global_mp->myhandle,cp->privateNXTADDR);
+                            addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                             /*set_pubpeerinfo(cp->srvNXTADDR,cp->privacyserver,cp->srvport,&peer,BTCDaddr,cp->coinpubkey,cp->pubnxtbits,0);
                             refpeer = update_peerinfo(&createdflag,&peer);
                             if ( refpeer != 0 && strcmp(cp->privacyserver,"127.0.0.1") == 0 )
@@ -734,17 +734,21 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
             {
                 char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD],*retstr;
                 n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i+=2)
+                for (i=0; i<n; i++)
                 {
                     if ( array == 0 || n == 0 )
                         break;
-                    copy_cJSON(handle,cJSON_GetArrayItem(array,i));
-                    copy_cJSON(acct,cJSON_GetArrayItem(array,i+1));
-                    if ( handle[0] != 0 && acct[0] != 0 )
+                    item = cJSON_GetArrayItem(array,i);
+                    if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 2 ) // must be ["handle","<acct>"]
                     {
-                        retstr = addcontact(0,NXTADDR,NXTACCTSECRET,NXTADDR,handle,acct);
-                        if ( retstr != 0 )
-                            free(retstr);
+                        copy_cJSON(handle,cJSON_GetArrayItem(item,0));
+                        copy_cJSON(acct,cJSON_GetArrayItem(item,1));
+                        if ( handle[0] != 0 && acct[0] != 0 )
+                        {
+                            retstr = addcontact(handle,acct);
+                            if ( retstr != 0 )
+                                free(retstr);
+                        }
                     }
                 }
                 printf("contacts.%d\n",n);
