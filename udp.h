@@ -358,7 +358,8 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     struct NXT_acct *np;
     if ( len > sizeof(finalbuf) )
     {
-        printf("sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+        fprintf(stderr,"sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
+        return(0);
         exit(-1);
     }
     if ( encrypted != 0 )

@@ -1683,7 +1683,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
     {
-        printf("need to have BTCD active and also srvpubaddr\n");
+        fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
     Finished_init = 1;

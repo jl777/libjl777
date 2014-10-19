@@ -363,6 +363,7 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
                 if ( _get_gatewayid() >= 0 )
                 {
                     sleep(60);
+                    fprintf(stderr,"ERROR submitting assetxfer.(%s)\n",jsontxt);
                     exit(-1);
                 }
 #endif
@@ -926,7 +927,7 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
             errjson = cJSON_GetObjectItem(json,"errorCode");
             if ( errjson != 0 )
             {
-                printf("ERROR submitting AM.(%s)\n",jsonstr);
+                fprintf(stderr,"ERROR submitting AM.(%s)\n",jsonstr);
                 sleep(60);
                 exit(-1);
             }

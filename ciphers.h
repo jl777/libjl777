@@ -374,7 +374,7 @@ int32_t register_ciphers()
     for (i=0; i<n; i++)
         if ( Ciphers[i] == 0 )
         {
-            printf("FATAL error Cipher[%d] not found??\n",i);
+            fprintf(stderr,"FATAL error Cipher[%d] not found??\n",i);
             exit(-2);
         }
     myregister_hash(&sha256_desc);

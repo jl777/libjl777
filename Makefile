@@ -2,7 +2,7 @@ CC=clang
 CFLAGS=-Wall -pedantic -g -fPIC 
 LIBS=-lm -lreadline 
 
-TARGET	= picoc
+TARGET	= libjl777.a
 SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
 	variable.c clibrary.c platform.c include.c \
 	platform/platform_unix.c platform/library_unix.c \
@@ -21,7 +21,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	ar rcu  libjl777.a  $(OBJS) gzip/*.o libtom/*.o libs/randombytes.o;\
+	ar rcu  libs/libjl777.a  $(OBJS) gzip/*.o libtom/*.o libs/randombytes.o;\
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lc -lcurl -lm -ldl
 #g++ -shared -o ../libjl777.so $(OBJS) -lcurl -lm
 #$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
@@ -36,12 +36,15 @@ install: /usr/lib/libjl777.so; \
     sudo cp libs/libjl777.so /usr/lib/libjl777.so
 
 btcd: ../src/BitcoinDarkd; \
-    cd ../src; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd .
-    
+    cd ../src; rm BitcoinDarkd; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
+
 onetime: doesntexist; \
     cd libuv; \
     sh autogen.sh; \
     ./configure; \
+    make; \
+    cp .libs/libuv.a ../libs; \
+    cp .libs/libuv.so ../libs; \
     cd ..; \
     echo "expanding nacl"; \
     bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -; \
@@ -63,6 +66,7 @@ count:
 
 .PHONY: clibrary.c
 
+../src/BitcoinDarkd: libjl777.a
 libs/randombytes.o:
 libs/libuv.a:
 /usr/lib/libjl777.so: libs/libjl777.so

@@ -507,7 +507,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     pubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
                     sprintf(args,"[\"srvpubaddr\"]");
                     srvpubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
-                    printf("Withdraw directly from an exchange to your transporter address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
+                    fprintf(stderr,"Withdraw directly from an exchange to your transporter address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
                     exit(1);
                 }
                 if ( (cp->min_telepod_satoshis= min_telepod_satoshis) == 0 )
@@ -536,7 +536,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 cipherids = 0;
                 if ( strcmp(cp->name,"BTCD") == 0 && (privkeys= validate_ciphers(&cipherids,cp,cp->ciphersobj)) == 0 )
                 {
-                    printf("FATAL error: cant validate ciphers sequence for %s\n",cp->name);
+                    fprintf(stderr,"FATAL error: cant validate ciphers sequence for %s\n",cp->name);
                     exit(-1);
                 }
                 free_cipherptrs(0,privkeys,cipherids);
@@ -716,7 +716,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     copy_cJSON(NXTADDR,item);
                     if ( NXTADDR[0] == 0 )
                     {
-                        printf("Illegal special NXTaddr.%d\n",i);
+                        fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
                         exit(1);
                     }
                     printf("%s ",NXTADDR);
@@ -771,7 +771,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
         }
         if ( ORIGBLOCK[0] == 0 )
         {
-            printf("need a non-zero origblock.(%s)\n",ORIGBLOCK);
+            fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
             exit(1);
         }
         else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);

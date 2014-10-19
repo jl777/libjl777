@@ -431,7 +431,7 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
         //Global_mp->hashprocessing = 0;
         //portable_mutex_unlock(&Global_mp->hash_mutex);
     }
-    printf("finished processing hashtable MT queues\n");
+    fprintf(stderr,"finished processing hashtable MT queues\n");
     exit(0);
     return(0);
 }

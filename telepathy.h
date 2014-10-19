@@ -372,16 +372,16 @@ void init_telepathy_contact(struct contact_info *contact)
     char deaddropjsonstr[512],sharedstr[512],*retstr;
     for (i=1; i<=MAX_DROPPED_PACKETS; i++)
         create_telepathy_entry(contact,i);
-    randbits = cp->privatebits;
+    randbits = cp->srvpubnxtbits;
     for (i=0; i<KADEMLIA_MAXTHRESHOLD; i++)
         randbits ^= (1L << ((rand()>>8) & 63));
     sprintf(deaddropjsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d}",(long long)randbits,0);
     retstr = private_publish(contact,0,deaddropjsonstr);
     init_hexbytes(sharedstr,contact->shared.bytes,sizeof(contact->shared));
-    if ( (retstr= check_privategenesis(contact)) != 0 )
-        free(retstr);
     printf("shared.(%s) ret.(%s) %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)cp->privatebits,bitweight(randbits ^ cp->privatebits));
     if ( retstr != 0 )
+        free(retstr);
+    if ( (retstr= check_privategenesis(contact)) != 0 )
         free(retstr);
 }
 

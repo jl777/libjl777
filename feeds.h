@@ -935,6 +935,7 @@ int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag)
     if ( exchangeflag != 0 )
     {
         start_polling_exchanges(exchangeflag);
+        fprintf(stderr,"finished start_polling_exchanges\n");
         exit(0);
     }
     return(Numactivefiles);

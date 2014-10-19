@@ -1363,7 +1363,7 @@ void *getNXTblocks(void *ptr)
                     mp->height = h;
                     if ( mp->NXTheight >= mp->lastchanged )
                     {
-                        printf("NXTloop: mp->NXTheight.%d >= mp->lastchanged %d | NXT network fragmentation?? | maxpop depth.%d height.%d extra.%d\n",mp->NXTheight,mp->lastchanged,mp->maxpopdepth,mp->maxpopheight,mp->extraconfirms);
+                        fprintf(stderr,"NXTloop: mp->NXTheight.%d >= mp->lastchanged %d | NXT network fragmentation?? | maxpop depth.%d height.%d extra.%d\n",mp->NXTheight,mp->lastchanged,mp->maxpopdepth,mp->maxpopheight,mp->extraconfirms);
                         exit(-1);
                     }
                 }
@@ -1371,7 +1371,7 @@ void *getNXTblocks(void *ptr)
             }
             else
             {
-                printf("BAD ERROR no data for height.%d\n",h);
+                fprintf(stderr,"BAD ERROR no data for height.%d\n",h);
                 exit(-1);
             }
         }
@@ -1445,7 +1445,7 @@ void NXTloop(struct NXThandler_info *mp)
     if ( 1 )
     {
         process_NXTblock(&tmp,nextblock,mp,height,GENESISBLOCK);
-        // printf("tmp.%d height.%d genesis.%s\n",tmp,height,GENESISBLOCK);
+        fprintf(stderr,"tmp.%d height.%d genesis.%s\n",tmp,height,GENESISBLOCK);
         if ( tmp != height )
             exit(666);
         // printf("start\n");
