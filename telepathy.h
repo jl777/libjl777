@@ -274,6 +274,7 @@ char *check_privategenesis(struct contact_info *contact)
         else
         {
             expand_nxt64bits(key,location);
+            printf("need to get %s deaddrop from %s\n",contact->handle,key);
             return(kademlia_find("findvalue",0,key,AESpasswordstr,key,key,0));
         }
     }
