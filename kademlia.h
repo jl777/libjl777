@@ -316,6 +316,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     init_hexbytes_noT(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
     verifiedNXTaddr[0] = 0;
     find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    printf("send_kademlia_cmd (%s) [%s]\n",verifiedNXTaddr,NXTACCTSECRET);
     if ( pserver == 0 )
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
@@ -668,7 +669,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
     struct kademlia_store *sp;
     struct nodestats *stats;
     if ( Debuglevel > 0 )
-        printf("kademlia_find.(%s) (%s) data.(%s) mynode.%d\n",cmd,key,datastr!=0?datastr:"",ismynode(prevaddr));
+        printf("myNXT.(%s) kademlia_find.(%s) (%s) data.(%s) mynode.%d\n",verifiedNXTaddr,cmd,key,datastr!=0?datastr:"",ismynode(prevaddr));
     if ( key != 0 && key[0] != 0 )
     {
         senderbits = calc_nxt64bits(sender);
