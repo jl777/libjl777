@@ -593,7 +593,7 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
 char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *value)
 {
     char retstr[1024],ipaddr[MAX_JSON_FIELD],destNXTaddr[MAX_JSON_FIELD],pubkeystr[MAX_JSON_FIELD],portstr[MAX_JSON_FIELD],lastcontactstr[MAX_JSON_FIELD];
-    int32_t i,n,createdflag,dist,mydist;
+    int32_t i,n,createdflag,dist,mydist,threshold;
     uint32_t lastcontact,port;
     uint64_t keyhash,txid = 0;
     cJSON *array,*item;
@@ -644,7 +644,8 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                             keynp->bestdist = dist;
                             keynp->bestbits = calc_nxt64bits(destNXTaddr);
                         }
-                        if ( keynp->bestbits != 0 && ismynxtbits(keynp->bestbits) == 0 && (dist < mydist || dist <= KADEMLIA_MAXTHRESHOLD) )
+                        threshold = (valueflag == 0) ? KADEMLIA_MAXTHRESHOLD : KADEMLIA_MINTHRESHOLD;
+                        if ( keynp->bestbits != 0 && ismynxtbits(keynp->bestbits) == 0 && (dist < mydist || dist <= threshold) )
                             txid = send_kademlia_cmd(keynp->bestbits,0,valueflag!=0?"findvalue":"findnode",NXTACCTSECRET,key,0);
                     }
                 }

@@ -565,7 +565,7 @@ void set_contactstr(char *contactstr,struct contact_info *contact)
     if ( strcmp(contact->handle,"myhandle") == 0 )
         init_hexbytes(pubkeystr,Global_mp->mypubkey.bytes,sizeof(Global_mp->mypubkey));
     else init_hexbytes(pubkeystr,contact->pubkey.bytes,sizeof(contact->pubkey));
-    sprintf(contactstr,"{\"result\":\"handle\":\"%s\",\"acct\":\"%s\",\"NXT\":\"%llu\",\"pubkey\":\"%s\"}",contact->handle,rsacctstr,(long long)contact->nxt64bits,pubkeystr);
+    sprintf(contactstr,"{\"handle\":\"%s\",\"acct\":\"%s\",\"NXT\":\"%llu\",\"pubkey\":\"%s\"}",contact->handle,rsacctstr,(long long)contact->nxt64bits,pubkeystr);
 }
 
 char *dispcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
