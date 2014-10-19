@@ -311,7 +311,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
 {
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
     uint64_t location;
-    if ( contact->deaddrop == 0 )
+    if ( 0 && contact->deaddrop == 0 )
     {
         if ( (retstr= check_privategenesis(contact)) != 0 )
             free(retstr);
@@ -404,7 +404,7 @@ void init_telepathy_contact(struct contact_info *contact)
     int32_t i;
     char *retstr;
     uint64_t randbits;
-    for (i=1; i<=MAX_DROPPED_PACKETS; i++)
+    for (i=0; i<=MAX_DROPPED_PACKETS; i++)
         create_telepathy_entry(contact,i);
     if ( contact->mydrop == 0 )
     {
@@ -470,7 +470,7 @@ char *addcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,cha
     portable_mutex_lock(&Contacts_mutex);
     {
         contact = _find_contact_nxt64bits(nxt64bits);
-        if ( contact != 0 )
+        if ( contact != 0 && strcmp(contact->handle,handle) != 0 )
         {
             sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
             portable_mutex_unlock(&Contacts_mutex);
