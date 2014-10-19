@@ -402,7 +402,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
     uint64_t destbits = 0;
     struct NXT_acct *tokenized_np = 0;
     int32_t valid,len=0,len2,createdflag,datalen,parmslen,encrypted = 1;
-    cJSON *argjson,*tmpjson,*valueobj;
+    cJSON *tmpjson,*valueobj,*argjson = 0;
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES],pubkey2[crypto_box_PUBLICKEYBYTES],decoded[4096],decoded2[4096],tmpbuf[4096],maxbuf[4096],*outbuf;
     char senderNXTaddr[64],datastr[4096],hopNXTaddr[64],destNXTaddr[64],checkstr[MAX_JSON_FIELD],datalenstr[MAX_JSON_FIELD];
     char *parmstxt=0,*jsonstr;
@@ -468,9 +468,12 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         if ( len > parmslen )
             datalen = (len - parmslen);
         else datalen = 0;
-        parmstxt = clonestr((char *)decoded);
-        argjson = cJSON_Parse(parmstxt);
-        free(parmstxt), parmstxt = 0;
+        if ( decoded[0] == '{' || decoded[0] == '[' )
+        {
+            parmstxt = clonestr((char *)decoded);
+            argjson = cJSON_Parse(parmstxt);
+            free(parmstxt), parmstxt = 0;
+        }
         if ( argjson != 0 ) // if it parses, we must have been the ultimate destination
         {
             senderNXTaddr[0] = 0;

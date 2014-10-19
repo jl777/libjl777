@@ -23,7 +23,7 @@ struct contact_info
 {
     bits256 pubkey,shared;
     char handle[64];
-    uint64_t nxt64bits,deaddrop;
+    uint64_t nxt64bits,deaddrop,mydrop;
     int32_t numsent,numrecv,lastrecv,lastsent,lastentry;
 } *Contacts;
 
@@ -307,6 +307,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         {
             contact->numsent++;
             contact->lastsent = sequenceid;
+            printf("telepathic send to %s.%d via %llu\n",contact->handle,sequenceid,(long long)contact->deaddrop);
             expand_nxt64bits(key,contact->deaddrop);
             retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr); // find and you shall telepath
         } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");
@@ -354,25 +355,31 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
 void publish_deaddrop(struct contact_info *contact)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    uint64_t randbits;
     char deaddropjsonstr[512],sharedstr[512],*retstr;
-    randbits = cp->srvpubnxtbits;
-    while ( bitweight(randbits ^ cp->srvpubnxtbits) < KADEMLIA_MAXTHRESHOLD)
-        randbits ^= (1L << ((rand()>>8) & 63));
-    sprintf(deaddropjsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d}",(long long)randbits,0);
+    sprintf(deaddropjsonstr,"{\"deaddrop\":\"%llu\",\"id\":%d}",(long long)contact->mydrop,0);
     retstr = private_publish(contact,0,deaddropjsonstr);
     init_hexbytes(sharedstr,contact->shared.bytes,sizeof(contact->shared));
-    printf("shared.(%s) ret.(%s) %llu %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)randbits,(long long)randbits,(long long)cp->srvpubnxtbits,bitweight(randbits ^ cp->srvpubnxtbits));
+    printf("shared.(%s) ret.(%s) %llu %llx vs %llx dist.%d\n",sharedstr,retstr,(long long)contact->mydrop,(long long)contact->mydrop,(long long)cp->srvpubnxtbits,bitweight(contact->mydrop ^ cp->srvpubnxtbits));
     if ( retstr != 0 )
         free(retstr);
 }
 
 void init_telepathy_contact(struct contact_info *contact)
 {
+    struct coin_info *cp = get_coin_info("BTCD");
     int32_t i;
     char *retstr;
+    uint64_t randbits;
     for (i=1; i<=MAX_DROPPED_PACKETS; i++)
         create_telepathy_entry(contact,i);
+    if ( contact->mydrop == 0 )
+    {
+        randbits = cp->srvpubnxtbits;
+        while ( bitweight(randbits ^ cp->srvpubnxtbits) < KADEMLIA_MAXTHRESHOLD)
+            randbits ^= (1L << ((rand()>>8) & 63));
+        contact->mydrop = randbits;
+    }
+    publish_deaddrop(contact);
     if ( (retstr= check_privategenesis(contact)) != 0 )
         free(retstr);
 }
