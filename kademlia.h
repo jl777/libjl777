@@ -690,10 +690,13 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         }
         else if ( ismynode(prevaddr) == 0 && datastr != 0 && datastr[0] != 0 && prevaddr != 0 ) // externally sent find
         {
-            void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits);
+            void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
             recvlen = (int32_t)(strlen(datastr) / 2);
             decode_hex(data,recvlen,datastr);
-            process_telepathic(key,data,recvlen,senderbits);
+            if ( prevaddr != 0 )
+                port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+            else port = 0, strcpy(ipaddr,"localhost");
+            process_telepathic(key,data,recvlen,senderbits,ipaddr);
             remoteflag = 1;
         }
         memset(sortbuf,0,sizeof(sortbuf));

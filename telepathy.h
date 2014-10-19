@@ -315,7 +315,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
     return(retstr);
 }
 
-void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderbits)
+void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderbits,char *senderip)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     uint64_t keybits = calc_nxt64bits(key);
@@ -349,7 +349,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         }
         printf("(%s.%d) pass.(%s) | ",contact->handle,tel->sequenceid,AESpasswordstr);
     }
-    printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d\n",key,*(long long *)data,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits));
+    printf("process_telepathic: key.(%s) got.(%llx) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,*(long long *)data,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
 }
 
 void publish_deaddrop(struct contact_info *contact)
