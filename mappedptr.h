@@ -72,6 +72,18 @@ char *_mbstr(double n)
 	return(str);
 }
 
+char *_mbstr2(double n)
+{
+	static char str[100];
+	if ( n < 1024*1024*10 )
+		sprintf(str,"%.3fkb",_kb(n));
+	else if ( n < 1024*1024*1024 )
+		sprintf(str,"%.1fMB",_mb(n));
+	else
+		sprintf(str,"%.2fGB",_gb(n));
+	return(str);
+}
+
 uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
 
 void *alloc_aligned_buffer(uint64_t allocsize)

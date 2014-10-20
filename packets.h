@@ -523,9 +523,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 ) // just means valid
                     {
                         struct udp_queuecmd *qp;
-                        char *pNXT_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
                         //printf("GOT.(%s)\n",parmstxt);
-                        if ( 0 )
+                        if ( 1 )
                         {
                             qp = calloc(1,sizeof(*qp));
                             qp->prevaddr = *prevaddr;
@@ -538,7 +537,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             argjson = 0;
                             jsonstr = 0;
                         }
-                        else jsonstr = pNXT_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                        else jsonstr = SuperNET_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
                         if ( jsonstr != 0 )
                         {
                             //printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);

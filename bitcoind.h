@@ -516,7 +516,7 @@ void update_coin_values(struct coin_info *cp,struct coin_txid *tp,int64_t blockh
                 {
                     tp->decodedrawtx = retstr;
                     if ( cp->CACHE.cachefp != 0 )
-                        update_coincache(cp->CACHE.cachefp,tp->txid,retstr,(int32_t)blockheight);
+                        update_coincache(cp->CACHE.cachefp,tp->txid,(uint8_t *)retstr,(int32_t)strlen(retstr)+1);
                 } else printf("null retstr from decoderawtransaction (%s)\n",str);
             }
             if ( rawtransaction != 0 )
@@ -566,7 +566,7 @@ int32_t add_bitcoind_uniquetxids(struct coin_info *cp,int64_t blockheight)
             free(cp->CACHE.blocks[block]);
         cp->CACHE.blocks[block] = blocktxt = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getblock",txid);
         if ( blocktxt != 0 && blocktxt[0] != 0 )
-            update_coincache(cp->CACHE.blocksfp,numstr,blocktxt,(int32_t)block);
+            update_coincache(cp->CACHE.blocksfp,numstr,(uint8_t *)blocktxt,(int32_t)strlen(blocktxt)+1);
         else printf("error getting blocktxt from (%s)\n",blockhashstr);
         free(blockhashstr);
     }

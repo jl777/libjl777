@@ -59,21 +59,6 @@ struct udp_queuecmd
     int32_t valid;
 };
 
-/*struct peer_queue_entry
-{
-    struct peerinfo *peer,*hop;
-    float startmilli,elapsed;
-    uint8_t stateid,state;
-};*/
-
-static long server_xferred;
-int Servers_started;
-queue_t P2P_Q,sendQ,JSON_Q,udp_JSON;
-struct pingpong_queue PeerQ;
-//struct peerinfo **Peers,**Pservers;Numpeers,Numpservers,
-int32_t Num_in_whitelist;
-uint32_t *SuperNET_whitelist;
-
 // helper and completion funcs
 void portable_alloc(uv_handle_t *handle,size_t suggested_size,uv_buf_t *buf)
 {
@@ -199,7 +184,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
         np = process_packet(0,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
         ASSERT(addr->sa_family == AF_INET);
-         server_xferred += nread;
+        server_xferred += nread;
     }
     if ( rcvbuf->base != 0 )
     {

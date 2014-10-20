@@ -13,6 +13,7 @@
 #define MAX_UDPLEN 1400
 #define PUBADDRS_MSGDURATION (3600 * 24)
 #define MAX_ONION_LAYERS 7
+#define pNXT_SIG 0x99999999
 
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
@@ -147,6 +148,8 @@ void usleep(int32_t);
 #define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 #define POLL_SECONDS 10
 #define NXT_ASSETLIST_INCR 100
+#define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x) / SATOSHIDEN)
 
 typedef struct queue
 {
@@ -243,17 +246,14 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep,**Telepathy_tablep;
+    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep,**Telepathy_tablep,**Storage_tablep,**Private_tablep;
     cJSON *accountjson;
+    FILE *storage_fps[2];
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
-    //unsigned char private_pubkey[crypto_box_PUBLICKEYBYTES],private_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64];
     bits256 mypubkey,myprivkey;
-    uint64_t coins[4];//*privacyServers,
-    //CURL *curl_handle,*curl_handle2,*curl_handle3;
-    //portable_tcp_t Punch_tcp;
-    //uv_udp_t Punch_udp;
+    uint64_t coins[4];
     int32_t initassets,Lfactor;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers;
@@ -280,6 +280,7 @@ struct NXT_protocol_parms
 };
 
 typedef void *(*NXT_handler)(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
+typedef int32_t (*addcache_funcp)(int32_t arg,char *key,void *ptr,int32_t len);
 
 struct NXT_protocol
 {
@@ -388,6 +389,18 @@ int32_t NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel
 char NXTAPIURL[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt" };
 char NXTSERVER[MAX_JSON_FIELD] = { "http://127.0.0.1:6876/nxt?requestType" };
 
+struct hashtable *orderbook_txids;
+
+//char dispstr[65536];
+//char testforms[1024*1024],PC_USERNAME[512],MY_IPADDR[512];
+uv_loop_t *UV_loop;
+static long server_xferred;
+int Servers_started;
+queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ;
+struct pingpong_queue PeerQ;
+int32_t Num_in_whitelist;
+uint32_t *SuperNET_whitelist;
+
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
 uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t len,int32_t duration);
@@ -398,6 +411,7 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
 typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
 char *addcontact(char *handle,char *acct);
+char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {
@@ -464,10 +478,18 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
 #include "ciphers.h"
 #include "coins.h"
 #include "udp.h"
+#include "coincache.h"
+#include "storage.h"
 #include "kademlia.h"
-//#include "peers.h"
 #include "packets.h"
 #include "mofnfs.h"
 #include "telepathy.h"
+#include "bitcoind.h"
+#include "atomic.h"
+#include "teleport.h"
+#include "orders.h"
+#include "tradebot.h"
+#include "NXTservices.c"
+#include "api.h"
 
 #endif

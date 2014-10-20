@@ -22,17 +22,16 @@ char *load_cachestr(FILE *fp,int32_t len)
     return(str);
 }
 
-void update_coincache(FILE *fp,char *key,char *data,int32_t height)
+void update_coincache(FILE *fp,char *key,unsigned char *data,int32_t len)
 {
     long fpos;
-    int32_t addrlen,len;
+    int32_t addrlen;
     if ( fp == 0 )
     {
         printf("update_coincache: null fp rejected\n");
         return;
     }
     addrlen = (int32_t)(strlen(key) + 1);
-    len = (int32_t)(strlen(data) + 1);
     fpos = ftell(fp);
     if ( fwrite(&addrlen,1,sizeof(addrlen),fp) != sizeof(addrlen) )
         fseek(fp,fpos,SEEK_SET);
@@ -158,18 +157,13 @@ int32_t load_ignorelist(struct coincache_info *cache,char *name)
     return(lastblock);
 }
 
-int32_t init_rawtx_cache(FILE **fpp,struct coincache_info *cache,char *name,char *suffix)
+long get_cachesize(FILE **fpp,char *dirname,char *name,char *suffix)
 {
-    char buf[4096];
-    long endpos,fpos;
-    int32_t block,blockscache,createdflag,addrlen,len=0,count = 0;
-    struct coin_txid *tp;
-    printf("init_rawtx_cache %s\n",name);
-    cache->lastignore = load_ignorelist(cache,name);
-    blockscache = (strcmp(suffix,"blocks") == 0);
+    char buf[512];
+    long endpos;
     if ( (*fpp) == 0 )
     {
-        sprintf(buf,"backups/%s.%s",name,suffix);
+        sprintf(buf,"%s/%s.%s",dirname,name,suffix);
         (*fpp) = fopen(buf,"rb+");
         if ( (*fpp) == 0 )
         {
@@ -180,6 +174,65 @@ int32_t init_rawtx_cache(FILE **fpp,struct coincache_info *cache,char *name,char
     fseek((*fpp),0,SEEK_END);
     endpos = ftell((*fpp));
     rewind((*fpp));
+    return(endpos);
+}
+
+int32_t load_cache(addcache_funcp funcp,int32_t arg,FILE **fpp,char *name,char *suffix)
+{
+    char buf[4096];
+    void *ptr;
+    long endpos,fpos;
+    endpos = get_cachesize(fpp,"storage",name,suffix);
+    int32_t addrlen,len=0,count = 0;
+    while ( (fpos= ftell((*fpp))) < endpos )
+    {
+        if ( fread(&addrlen,1,sizeof(addrlen),(*fpp)) == sizeof(addrlen) && addrlen < (int32_t)sizeof(buf) )
+        {
+            if ( (int32_t)fread(buf,1,addrlen,(*fpp)) == addrlen && fread(&len,1,sizeof(len),(*fpp)) == sizeof(len) )
+            {
+                if ( (ptr= load_cachestr((*fpp),len)) != 0 )
+                {
+                    (*funcp)(arg,buf,ptr,len);
+                    count++;
+                }
+            }
+            else
+            {
+                printf("load_cache: error reading addrlen.%d or len.%d\n",addrlen,len);
+                fseek(*fpp,fpos,SEEK_SET);
+                break;
+            }
+        }
+        else
+        {
+            printf("load_cache: unexpected file read error at %ld, len %d\n",ftell((*fpp)),len);
+            fseek(*fpp,fpos,SEEK_SET);
+            break;
+        }
+    }
+    printf("load_cache loaded %d entries for storage/%s.%s fpos.%ld vs endpos.%ld\n",count,name,suffix,fpos,endpos);
+    if ( fpos < endpos )
+    {
+        fflush(*fpp);
+#ifndef WIN32
+        if ( ftruncate(fileno(*fpp), ftello(*fpp)) == -1)
+            fprintf(stderr,"ftruncate(*fpp) failed: %s\n",name);
+        else printf("%s truncated to %ld\n",name,fpos);
+#endif
+    }
+    return(count);
+}
+
+int32_t init_rawtx_cache(FILE **fpp,struct coincache_info *cache,char *name,char *suffix)
+{
+    char buf[4096];
+    long endpos,fpos;
+    int32_t block,blockscache,createdflag,addrlen,len=0,count = 0;
+    struct coin_txid *tp;
+    printf("init_rawtx_cache %s\n",name);
+    cache->lastignore = load_ignorelist(cache,name);
+    blockscache = (strcmp(suffix,"blocks") == 0);
+    endpos = get_cachesize(fpp,"backups",name,suffix);
     while ( (fpos= ftell((*fpp))) < endpos )
     {
         if ( fread(&addrlen,1,sizeof(addrlen),(*fpp)) == sizeof(addrlen) && addrlen < (int32_t)sizeof(buf) )

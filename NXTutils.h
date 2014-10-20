@@ -1903,4 +1903,44 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
     return(0);
 }
 
+int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
+{
+    char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
+    union NXTtype retval;
+    int32_t i,n,iter;
+    cJSON *array,*item,*obj;
+    int64_t quantity,qty;
+    quantity = *unconfirmedp = 0;
+    sprintf(cmd,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
+    retval = extract_NXTfield(0,0,cmd,0,0);
+    if ( retval.json != 0 )
+    {
+        for (iter=0; iter<2; iter++)
+        {
+            qty = 0;
+            array = cJSON_GetObjectItem(retval.json,iter==0?"assetBalances":"unconfirmedAssetBalances");
+            if ( is_cJSON_Array(array) != 0 )
+            {
+                n = cJSON_GetArraySize(array);
+                for (i=0; i<n; i++)
+                {
+                    item = cJSON_GetArrayItem(array,i);
+                    obj = cJSON_GetObjectItem(item,"asset");
+                    copy_cJSON(assetid,obj);
+                    //printf("i.%d of %d: %s(%s)\n",i,n,assetid,cJSON_Print(item));
+                    if ( strcmp(assetid,assetidstr) == 0 )
+                    {
+                        qty = get_cJSON_int(item,iter==0?"balanceQNT":"unconfirmedBalanceQNT");
+                        break;
+                    }
+                }
+            }
+            if ( iter == 0 )
+                quantity = qty;
+            else *unconfirmedp = qty;
+        }
+    }
+    return(quantity);
+}
+
 #endif

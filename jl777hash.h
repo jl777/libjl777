@@ -189,12 +189,15 @@ int64_t _hashtable_clear_modified(struct hashtable *hp,long offset) // no MT sup
 }
 #define hashtable_clear_modified(hp)_hashtable_clear_modified(hp,(hp)->modifiedoffset)
 
-void **hashtable_gather_modified(int64_t *changedp,struct hashtable *hp,int32_t forceflag) // no MT support (yet)
+void **hashtable_gather_modified(int64_t *changedp,struct hashtable *hp,int32_t forceflag) // partial MT support 
 {
     uint64_t i,m,n = 0;
     void *ptr,**list = 0;
     if ( hp == 0 )
         return(0);
+    while ( Global_mp->hashprocessing != 0 )
+        usleep(100);
+    Global_mp->hashprocessing++;
     for (i=0; i<hp->hashsize; i++)
     {
         ptr = hp->hashtable[i];
@@ -213,6 +216,7 @@ void **hashtable_gather_modified(int64_t *changedp,struct hashtable *hp,int32_t 
         if ( m != n )
             printf("gather_modified: unexpected m.%ld != n.%ld\n",(long)m,(long)n);
     }
+    Global_mp->hashprocessing--;
     *changedp = n;
     return(list);
 }
@@ -357,7 +361,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
         ptr->funcid = 'A';
         while ( Global_mp->hashprocessing != 0 )
             usleep(100);
-        Global_mp->hashprocessing = 1;
+        Global_mp->hashprocessing++;
         //printf("A Queue %p\n",ptr);
         queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
         //printf("A Queued %p\n",ptr);
@@ -366,7 +370,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
         //printf("A Done %p\n",ptr);
         result = ptr->U.result;
         free(ptr);
-        Global_mp->hashprocessing = 0;
+        Global_mp->hashprocessing--;
        // portable_mutex_unlock(&Global_mp->hash_mutex);
         return(result);
     }
@@ -388,7 +392,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
         ptr->funcid = 'S';
         while ( Global_mp->hashprocessing != 0 )
             usleep(100);
-        Global_mp->hashprocessing = 1;
+        Global_mp->hashprocessing++;
         //printf("B Queue %p\n",ptr);
         queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
         //printf("B Queued %p\n",ptr);
@@ -397,7 +401,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
         //printf("B Done %p\n",ptr);
         hashval = ptr->U.hashval;
         free(ptr);
-        Global_mp->hashprocessing = 0;
+        Global_mp->hashprocessing--;
         //portable_mutex_unlock(&Global_mp->hash_mutex);
         return(hashval);
     }

@@ -106,6 +106,15 @@ struct coin_info *get_coin_info(char *coinstr)
     return(0);
 }
 
+uint64_t get_accountid(char *buf)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+        strcpy(buf,cp->srvNXTADDR);
+    else strcpy(buf,"nobtcdsrvNXTADDR");
+    return(calc_nxt64bits(buf));
+}
+
 uint64_t mynxt64bits()
 {
     struct coin_info *cp = get_coin_info("BTCD");
@@ -565,6 +574,7 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
     //init_filtered_bufs(); crashed ubunty
+    ensure_directory("storage");
     ensure_directory("backups");
     ensure_directory("backups/telepods");
     ensure_directory("archive");
