@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -fPIC -I includes
+CFLAGS=-Wall -pedantic -g -fPIC
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
@@ -44,7 +44,7 @@ onetime: doesntexist; \
     ../dist/configure; \
     make; \
     cp libdb.a ../../libs; \
-    cp *.h ../../includes; \
+    cp *.h ../..; \
     cd ../..; \
     cd libuv; \
     sh autogen.sh; \
