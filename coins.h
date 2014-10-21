@@ -574,7 +574,6 @@ void init_MGWconf(char *JSON_or_fname,char *myipaddr)
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
     //init_filtered_bufs(); crashed ubunty
-    ensure_directory("storage");
     ensure_directory("backups");
     ensure_directory("backups/telepods");
     ensure_directory("archive");

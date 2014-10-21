@@ -587,6 +587,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    init_storage();
     if ( Global_pNXT == 0 )
     {
         Global_pNXT = calloc(1,sizeof(*Global_pNXT));
@@ -605,7 +606,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
-    init_storage();
     Finished_init = 1;
     return(0);
 }

@@ -81,7 +81,7 @@ doesntexist:
 picoc.o: picoc.c picoc.h
 libgfshare.o: libgfshare.c libgfshare.h
 libjl777.o: libjl777.c atomic.h ciphers.h feeds.h jl777hash.h libgfshare.h mofnfs.h packets.h sorts.h tradebot.h \
-            bars.h cJSON.h jl777str.h libjl777.h NXTservices.h peers.h telepathy.h transporter.h \
+            storage.h bars.h cJSON.h jl777str.h libjl777.h NXTservices.h peers.h telepathy.h transporter.h \
             bitcoind.h coincache.h jdatetime.h jsoncodec.h NXTutils.h sortnetworks.h telepods.h \
             bitcoinglue.h coins.h jl777.h kademlia.h mappedptr.h orders.h _sorts.h teleport.h udp.h tweetnacl.h
 table.o: table.c interpreter.h platform.h

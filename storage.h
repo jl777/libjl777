@@ -52,7 +52,7 @@ int32_t init_storage()
     {
         printf("error.%d creating Public_dbp database\n",ret);
         return(ret);
-    }
+    } //else Public_dbp->verify(Private_dbp,0);
     if ( (ret= Private_dbp->open(Private_dbp,NULL,"private.db",NULL,DB_HASH,DB_CREATE | DB_AUTO_COMMIT,0)) != 0 )
     {
         printf("error.%d creating Private_dbp database\n",ret);
@@ -128,7 +128,8 @@ struct kademlia_storage *add_storage(int32_t selector,char *keystr,char *datastr
         memcpy(sp->data,databuf,datalen);
         //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
         {
-            clear_pair(&key,&data);
+            memset(&key,0,sizeof(DBT));
+            memset(&data,0,sizeof(DBT));
             key.data = &sp->keyhash;
             key.size = sizeof(sp->keyhash);
             data.data = sp;
@@ -185,13 +186,12 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
     struct kademlia_storage *sp,**sps = 0;
     int32_t ret,dist,refdist,i,n = 0;
     DBT key,data;
-    DBC *cursorp = 0;
-    printf("find_closer_Kstored\n");
+    DBC *cursorp;
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
         clear_pair(&key,&data);
-        sps = (struct kademlia_storage **)calloc(sizeof(*sps),num_in_db(selector)+1);
+        sps = (struct kademlia_storage **)calloc(sizeof(*sps),num_in_db(dbp)+1);
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
             sp = data.data;
@@ -205,7 +205,6 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
         }
         cursorp->close(cursorp);
     }
-    printf("find_closer_Kstored returns n.%d\n",n);
     return(sps);
 }
 
