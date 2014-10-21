@@ -578,6 +578,7 @@ char *addcontact(char *handle,char *acct)
             {
                 conv_NXTpassword(mysecret.bytes,mypublic.bytes,cp->privateNXTACCTSECRET);
                 contact->shared = curve25519(mysecret,contact->pubkey);
+                fprintf(stderr,"init_telepathy_contact\n");
                 init_telepathy_contact(contact);
                 sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
             }
@@ -585,12 +586,13 @@ char *addcontact(char *handle,char *acct)
     }
     else
     {
+        fprintf(stderr,"publish deaddrop\n");
         publish_deaddrop(contact);
         if ( (ret= check_privategenesis(contact)) != 0 )
             free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
     }
-    printf("ADDCONTACT.(%s)\n",retstr);
+    fprintf(stderr,"ADDCONTACT.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 

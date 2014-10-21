@@ -71,7 +71,7 @@ count:
 	@echo "Everything:"
 	@cat $(SRCS) *.h */*.h | wc
 
-.PHONY: clibrary.c
+.PHONY: libjl777.c
 
 ../src/BitcoinDarkd: libjl777.a
 libs/randombytes.o:

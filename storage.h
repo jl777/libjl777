@@ -32,16 +32,24 @@ struct storage_queue_entry { struct kademlia_storage *sp; union _storage_type U;
 int32_t init_storage()
 {
     int ret;
+#ifdef __linux__
+    //return(0);
+#endif
     ensure_directory("storage");
-    if ( (ret = db_env_create(&Storage, 0)) != 0 )
+    ensure_directory("storage/data");
+    if ( 0 )
     {
-        fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
-        return(-1);
-    }
-    if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 )
-    {
-        printf("error.%d opening Storage environment\n",ret);
-        exit(ret);
+        if ( (ret = db_env_create(&Storage,0)) != 0 )
+        {
+            fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
+            return(-1);
+        }
+      	(void)Storage->set_data_dir(Storage,"storage");
+        if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 )
+        {
+            printf("error.%d opening Storage environment\n",ret);
+            exit(ret);
+        }
     }
     if ( (ret= db_create(&Public_dbp,Storage,0)) != 0 )
     {
@@ -53,14 +61,16 @@ int32_t init_storage()
         printf("error.%d creating Private_dbp database\n",ret);
         return(ret);
     }
-    if ( (ret= Public_dbp->open(Public_dbp,NULL,"public.db",NULL,DB_HASH,DB_CREATE | DB_AUTO_COMMIT,0)) != 0 )
+  	(void)Public_dbp->set_create_dir(Public_dbp,"storage");
+	(void)Private_dbp->set_create_dir(Private_dbp,"storage");
+    if ( (ret= Public_dbp->open(Public_dbp,NULL,"public.db",NULL,DB_HASH,DB_CREATE | 0*DB_AUTO_COMMIT,0)) != 0 )
     {
-        printf("error.%d creating Public_dbp database\n",ret);
+        printf("error.%d opening Public_dbp database\n",ret);
         return(ret);
     }
-    if ( (ret= Private_dbp->open(Private_dbp,NULL,"private.db",NULL,DB_HASH,DB_CREATE | DB_AUTO_COMMIT,0)) != 0 )
+    if ( (ret= Private_dbp->open(Private_dbp,NULL,"private.db",NULL,DB_HASH,DB_CREATE | 0*DB_AUTO_COMMIT,0)) != 0 )
     {
-        printf("error.%d creating Private_dbp database\n",ret);
+        printf("error.%d opening Private_dbp database\n",ret);
         return(ret);
     }
     return(0);
@@ -88,6 +98,8 @@ struct kademlia_storage *find_storage(int32_t selector,char *keystr)
     uint64_t keybits = calc_nxt64bits(keystr);
     DBT key,data;
     int ret;
+    if ( dbp == 0 )
+        return(0);
     clear_pair(&key,&data);
     key.data = &keybits;
     key.size = sizeof(keybits);
@@ -110,6 +122,8 @@ struct kademlia_storage *add_storage(int32_t selector,char *keystr,char *datastr
     DBT key,data;
     DB_TXN *txn = 0;
     struct kademlia_storage *sp;
+    if ( dbp == 0 )
+        return(0);
     if ( Total_stored > MAX_KADEMLIA_STORAGE )
     {
         printf("Total_stored %s > %s\n",_mbstr(Total_stored),_mbstr2(MAX_KADEMLIA_STORAGE));
@@ -193,6 +207,8 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
     int32_t ret,dist,refdist,n = 0;
     DBT key,data;
     DBC *cursorp = 0;
+    if ( dbp == 0 )
+        return(0);
     printf("find_closer_Kstored\n");
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
@@ -218,6 +234,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
     int32_t n = 0;
     struct storage_queue_entry *ptr;
     struct kademlia_storage **sps,*sp;
+    fprintf(stderr,"pushstore\n");
     if ( (sps= find_closer_Kstored(selector,refbits,newbits)) != 0 )
     {
         while ( (sp= sps[n++]) != 0 )
