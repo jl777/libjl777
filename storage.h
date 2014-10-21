@@ -39,7 +39,8 @@ int32_t init_storage()
         fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
         return(-1);
     }
-    printf("Storage.%p\n",Storage);
+    ret = Storage->add_data_dir(Storage,"storage");
+    printf("Storage.%p ret.%d\n",Storage,ret);
 
     if ( (ret= Storage->open(Storage,"storage",DB_CREATE | DB_INIT_TXN | DB_INIT_LOG | DB_INIT_MPOOL | DB_RECOVER |DB_USE_ENVIRON,0)) != 0 )
     {
