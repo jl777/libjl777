@@ -56,7 +56,7 @@ int32_t init_storage()
 	/* Databases are in a subdirectory. */
 	(void)Storage->set_data_dir(Storage,"data");
 
-    if ( (ret= Storage->open(Storage,"storage",DB_CREATE | DB_INIT_TXN | DB_INIT_LOG | DB_INIT_MPOOL | DB_RECOVER |DB_USE_ENVIRON,0)) != 0 )
+    if ( (ret= Storage->open(Storage,"storage",DB_CREATE | DB_INIT_TXN | DB_INIT_LOG | DB_INIT_MPOOL,0)) != 0 )
     {
         printf("error.%d opening Storage environment\n",ret);
         exit(ret);
