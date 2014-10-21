@@ -28,6 +28,7 @@ DB *Public_dbp,*Private_dbp;
 
 union _storage_type { uint64_t destbits; int32_t selector; };
 struct storage_queue_entry { struct kademlia_storage *sp; union _storage_type U; };
+int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progname);
 
 int32_t init_storage()
 {
@@ -37,6 +38,9 @@ int32_t init_storage()
 #endif
     ensure_directory("storage");
     ensure_directory("storage/data");
+    ret = db_setup("storage","data",stderr,"SuperNET");
+    printf("db_setup returns.%d\n",ret);
+
     if ( 0 )
     {
         if ( (ret = db_env_create(&Storage,0)) != 0 )
