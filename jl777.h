@@ -89,7 +89,6 @@ void usleep(int32_t);
 #define portable_thread_t uv_thread_t
 
 #define portable_mutex_t uv_mutex_t
-#include "pthread-fixes.h"
 
 // includes that include actual code
 //#include "includes/crypto_box.h"
