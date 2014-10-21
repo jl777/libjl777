@@ -40,28 +40,21 @@ int32_t init_storage()
         return(-1);
     }
     printf("Storage.%p ret.%d\n",Storage,ret);
-	Storage->set_errfile(Storage,stderr);
+	/*Storage->set_errfile(Storage,stderr);
 	Storage->set_errpfx(Storage,"SuperNET");
-    
-	/*
-	 * We want to specify the shared memory buffer pool cachesize,
-	 * but everything else is the default.
-	 */
 	if ((ret = Storage->set_cachesize(Storage, 0, 64 * 1024, 0)) != 0) {
 		Storage->err(Storage, ret, "set_cachesize");
 		Storage->close(Storage, 0);
 		return (1);
 	}
-    
-	/* Databases are in a subdirectory. */
-	(void)Storage->set_data_dir(Storage,"data");
+	(void)Storage->set_data_dir(Storage,"data");*/
 
-    if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0644)) != 0 )
+    if ( (ret= Storage->open(Storage,"/tmp",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0644)) != 0 )
     {
         printf("error.%d opening Storage environment\n",ret);
         exit(ret);
     }
-    ret = Storage->add_data_dir(Storage,"storage");
+    //ret = Storage->add_data_dir(Storage,"storage");
     printf("opening.%d\n",ret);
     if ( (ret= db_create(&Public_dbp,Storage,0)) != 0 )
     {
