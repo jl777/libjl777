@@ -89,6 +89,7 @@ void usleep(int32_t);
 #define portable_thread_t uv_thread_t
 
 #define portable_mutex_t uv_mutex_t
+#include "pthread-fixes.h"
 
 // includes that include actual code
 //#include "includes/crypto_box.h"
@@ -246,9 +247,9 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep,**Telepathy_tablep,**Storage_tablep,**Private_tablep;
+    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**NXTguid_tablep,**otheraddrs_tablep,**Telepathy_tablep;//,**Storage_tablep,**Private_tablep;
     cJSON *accountjson;
-    FILE *storage_fps[2];
+    //FILE *storage_fps[2];
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64];

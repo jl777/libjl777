@@ -766,7 +766,7 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
                 buckets[j] = stats;
                 add_new_node(stats->nxt64bits);
                 printf("APPEND.%d: bucket[%d] <- %llu %s then call pushstore\n",bucketid,j,(long long)stats->nxt64bits,ipaddr);
-                if ( cp != 0 && ismynxtbits(eviction->nxt64bits) == 0 )
+                if ( cp != 0 && ismynxtbits(stats->nxt64bits) == 0 )
                     kademlia_pushstore(0,mynxt64bits(),stats->nxt64bits);
             }
             else if ( j > 0 )

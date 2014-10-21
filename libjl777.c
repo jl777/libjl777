@@ -110,7 +110,7 @@ void SuperNET_idler(uv_idle_t *handle)
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) && (wr= queue_dequeue(&sendQ)) != 0 )
     {
-        process_cacheQ();
+        //process_cacheQ();
         if ( ((rand()>>8) % 100) < 50 )
         {
             //printf("skip packet\n");
@@ -202,8 +202,8 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_guid *gp = 0;
     struct pserver_info *pp = 0;
     struct telepathy_entry *tel = 0;
-    struct kademlia_storage *sp = 0;
-    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs,*Pserver,*Telepathy_hash,*Storage_hash,*Private_hash;
+    //struct kademlia_storage *sp = 0;
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*otheraddrs,*Pserver,*Telepathy_hash;//,*Storage_hash,*Private_hash;
     if ( Pserver == 0 )
         Pserver = hashtable_create("Pservers",HASHTABLES_STARTSIZE,sizeof(struct pserver_info),((long)&pp->ipaddr[0] - (long)pp),sizeof(pp->ipaddr),((long)&pp->modified - (long)pp));
     if ( NXTguids == 0 )
@@ -218,7 +218,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
         otheraddrs = hashtable_create("otheraddrs",HASHTABLES_STARTSIZE,sizeof(struct other_addr),((long)&op->addr[0] - (long)op),sizeof(op->addr),((long)&op->modified - (long)op));
     if ( Telepathy_hash == 0 )
         Telepathy_hash = hashtable_create("Telepath_hash",HASHTABLES_STARTSIZE,sizeof(struct telepathy_entry),((long)&tel->locationstr[0] - (long)tel),sizeof(tel->locationstr),((long)&tel->modified - (long)tel));
-    if ( Storage_hash == 0 )
+    /*if ( Storage_hash == 0 )
     {
         Storage_hash = hashtable_create("Storage_hash",HASHTABLES_STARTSIZE,sizeof(struct kademlia_storage),((long)&sp->key[0] - (long)sp),sizeof(sp->key),((long)&sp->modified - (long)sp));
         load_cache(add_to_storage,0,&Global_mp->storage_fps[0],"public","data");
@@ -227,11 +227,11 @@ void init_NXThashtables(struct NXThandler_info *mp)
     {
         Private_hash = hashtable_create("Private_hash",HASHTABLES_STARTSIZE,sizeof(struct kademlia_storage),((long)&sp->key[0] - (long)sp),sizeof(sp->key),((long)&sp->modified - (long)sp));
         load_cache(add_to_storage,1,&Global_mp->storage_fps[1],"private","data");
-    }
+    }*/
     if ( mp != 0 )
     {
-        mp->Private_tablep = &Private_hash;
-        mp->Storage_tablep = &Storage_hash;
+        //mp->Private_tablep = &Private_hash;
+        //mp->Storage_tablep = &Storage_hash;
         mp->Telepathy_tablep = &Telepathy_hash;
         mp->Pservers_tablep = &Pserver;
         mp->NXTguid_tablep = &NXTguids;
@@ -618,6 +618,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
+    init_storage();
     Finished_init = 1;
     return(0);
 }

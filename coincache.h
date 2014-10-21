@@ -181,10 +181,10 @@ int32_t load_cache(addcache_funcp funcp,int32_t arg,FILE **fpp,char *name,char *
 {
     char buf[4096];
     void *ptr;
-    long endpos,fpos;
+    long endpos,fpos = 0;
     endpos = get_cachesize(fpp,"storage",name,suffix);
     int32_t addrlen,len=0,count = 0;
-    while ( (fpos= ftell((*fpp))) < endpos )
+    while ( *fpp != 0 && (fpos= ftell((*fpp))) < endpos )
     {
         if ( fread(&addrlen,1,sizeof(addrlen),(*fpp)) == sizeof(addrlen) && addrlen < (int32_t)sizeof(buf) )
         {
