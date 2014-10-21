@@ -32,12 +32,22 @@ struct storage_queue_entry { struct kademlia_storage *sp; union _storage_type U;
 int32_t init_storage()
 {
     int ret;
+    ensure_directory("storage");
+    ensure_directory("storage/data");
     if ( (ret = db_env_create(&Storage, 0)) != 0 )
     {
         fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
         return(-1);
     }
-    ret = Storage->open(Storage,"storage",DB_CREATE | DB_INIT_TXN | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_RECOVER,0);
+    printf("Storage.%p\n",Storage);
+
+    if ( (ret= Storage->open(Storage,"storage",DB_CREATE | DB_INIT_TXN | DB_INIT_LOG | DB_INIT_MPOOL | DB_RECOVER |DB_USE_ENVIRON,0)) != 0 )
+    {
+        printf("error.%d opening Storage environment\n",ret);
+        exit(ret);
+    }
+    Storage->add_data_dir(Storage,"storage");
+    printf("opening\n");
     if ( (ret= db_create(&Public_dbp,Storage,0)) != 0 )
     {
         printf("error.%d creating Public_dbp database\n",ret);
@@ -52,12 +62,12 @@ int32_t init_storage()
     {
         printf("error.%d creating Public_dbp database\n",ret);
         return(ret);
-    } //else Public_dbp->verify(Private_dbp,0);
+    }
     if ( (ret= Private_dbp->open(Private_dbp,NULL,"private.db",NULL,DB_HASH,DB_CREATE | DB_AUTO_COMMIT,0)) != 0 )
     {
         printf("error.%d creating Private_dbp database\n",ret);
         return(ret);
-    } //else Private_dbp->verify(Private_dbp,0);
+    }
     return(0);
 }
 
@@ -126,10 +136,11 @@ struct kademlia_storage *add_storage(int32_t selector,char *keystr,char *datastr
         sp->keyhash = calc_nxt64bits(keystr);
         strcpy(sp->key,keystr);
         memcpy(sp->data,databuf,datalen);
+        sp->datalen = datalen;
+        //printf("store datalen.%d\n",datalen);
         //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
         {
-            memset(&key,0,sizeof(DBT));
-            memset(&data,0,sizeof(DBT));
+            clear_pair(&key,&data);
             key.data = &sp->keyhash;
             key.size = sizeof(sp->keyhash);
             data.data = sp;
@@ -184,27 +195,26 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
 {
     DB *dbp = get_selected_database(selector);
     struct kademlia_storage *sp,**sps = 0;
-    int32_t ret,dist,refdist,i,n = 0;
+    int32_t ret,dist,refdist,n = 0;
     DBT key,data;
-    DBC *cursorp;
+    DBC *cursorp = 0;
+    printf("find_closer_Kstored\n");
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
         clear_pair(&key,&data);
-        sps = (struct kademlia_storage **)calloc(sizeof(*sps),num_in_db(dbp)+1);
+        sps = (struct kademlia_storage **)calloc(sizeof(*sps),num_in_db(selector)+1);
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
             sp = data.data;
             refdist = bitweight(refbits ^ sp->keyhash);
             dist = bitweight(newbits ^ sp->keyhash);
             if ( dist < refdist )
-            {
-                if ( i != n )
-                    sps[n++] = sp;
-            }
+                sps[n++] = sp;
         }
         cursorp->close(cursorp);
     }
+    printf("find_closer_Kstored returns n.%d\n",n);
     return(sps);
 }
 

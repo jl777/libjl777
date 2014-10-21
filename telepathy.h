@@ -287,7 +287,7 @@ cJSON *parse_encrypted_data(int32_t updatedb,int32_t *sequenceidp,struct contact
                     contact->deaddrop = deaddrop;
                 }
             }
-        } else printf("couldnt parse decrypted.(%s)\n",decoded);
+        } else printf("couldnt parse decrypted.(%s) len.%d %d\n",decoded,decodedlen,datalen);
     } else printf("AES_codec failure.%d\n",decodedlen);
     return(json);
 }
@@ -334,7 +334,7 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         if ( sequenceid == 0 )
         {
             expand_nxt64bits(key,location);
-            printf("store.(%s) -> %llu %llu\n",privatedatastr,(long long)seqacct,(long long)location);
+            printf("store.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             add_storage(PRIVATE_DATA,key,privatedatastr,0,0);
             add_storage(PUBLIC_DATA,key,privatedatastr,0,0);
