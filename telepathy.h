@@ -465,6 +465,45 @@ struct contact_info *find_contact(char *handle)
     return(contact);
 }
 
+char *getdb(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int32_t dir,char *contactstr,int32_t sequenceid,char *keystr)
+{
+    char retbuf[4096],hexstr[4096],AESpasswordstr[512],locationstr[64];
+    uint64_t location;
+    bits256 AESpassword;
+    struct kademlia_storage *sp = 0;
+    struct contact_info *contact;
+    retbuf[0] = 0;
+    if ( contactstr[0] == 0 )
+    {
+        if ( keystr[0] != 0 )
+            sp = find_storage(PUBLIC_DATA,keystr);
+        else strcpy(retbuf,"{\"error\":\"no contact or key\"}");
+    }
+    else
+    {
+        if ( (contact= find_contact(contactstr)) != 0 )
+        {
+            if ( dir > 0 )
+                location = calc_sendAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid);
+            else location = calc_recvAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid);
+            if ( location != 0 )
+            {
+                expand_nxt64bits(locationstr,location);
+                sp = find_storage(PRIVATE_DATA,locationstr);
+            } else strcpy(retbuf,"{\"error\":\"cant get location\"}");
+        } else strcpy(retbuf,"{\"error\":\"cant find contact\"}");
+    }
+    if ( sp != 0 )
+    {
+        if ( sp->datalen < sizeof(hexstr)/2 )
+        {
+            init_hexbytes(hexstr,sp->data,sp->datalen);
+            sprintf(retbuf,"{\"data\":\"%s\"}",hexstr);
+        } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
+    } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
+    return(clonestr(retbuf));
+}
+
 char *addcontact(char *handle,char *acct)
 {
     static bits256 zerokey;

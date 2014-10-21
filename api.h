@@ -861,6 +861,25 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
     return(retstr);
 }
 
+char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
+    int32_t sequenceid,dir;
+    copy_cJSON(contact,objs[0]);
+    sequenceid = get_API_int(objs[1],0);
+    copy_cJSON(key,objs[2]);
+    copy_cJSON(dirstr,objs[3]);
+    if ( (contact[0] != 0 || key[0] != 0) && sender[0] != 0 && valid > 0 )
+    {
+        if ( strcmp(dirstr,"send") == 0 )
+            dir = 1;
+        else dir = -1;
+        retstr = getdb(prevaddr,NXTaddr,NXTACCTSECRET,sender,dir,contact,sequenceid,key);
+    }
+    else retstr = clonestr("{\"error\":\"invalid getdb_func arguments\"}");
+    return(retstr);
+}
+
 char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static unsigned char zerokey[32];
@@ -953,6 +972,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "contact", 0 };
     static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "contact", 0 };
     static char *telepathy[] = { (char *)telepathy_func, "telepathy", "V",  "contact", "msg", "id", 0 };
+    static char *getdb[] = { (char *)getdb_func, "getdb", "V",  "contact", "id", "key", "dir", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
     static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };
@@ -976,7 +996,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
+     static char **commands[] = { getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
