@@ -90,6 +90,7 @@ int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progn
 	 * Create an environment object and initialize it for error
 	 * reporting.
 	 */
+    fprintf(stderr,"create db_env\n");
 	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 		fprintf(errfp, "%s: %s\n", progname, db_strerror(ret));
 		return (1);
@@ -101,7 +102,8 @@ int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progn
 	 * We want to specify the shared memory buffer pool cachesize,
 	 * but everything else is the default.
 	 */
-	if ((ret = dbenv->set_cachesize(dbenv, 0, 64 * 1024, 0)) != 0) {
+    fprintf(stderr,"set cachesize\n");
+    if ((ret = dbenv->set_cachesize(dbenv, 0, 64 * 1024, 0)) != 0) {
 		dbenv->err(dbenv, ret, "set_cachesize");
 		dbenv->close(dbenv, 0);
 		return (1);
@@ -110,6 +112,7 @@ int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progn
 	/* Databases are in a subdirectory. */
 	(void)dbenv->set_data_dir(dbenv, data_dir);
     
+    fprintf(stderr,"open env\n");
 	/* Open the environment with full transactional support. */
 	if ((ret = dbenv->open(dbenv, home, EnvFlags, 0644)) != 0) {
 		dbenv->err(dbenv, ret, "environment open: %s", home);
