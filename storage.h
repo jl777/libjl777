@@ -215,7 +215,7 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
     DBC *cursorp = 0;
     if ( dbp == 0 )
         return(0);
-    printf("find_closer_Kstored\n");
+    printf("find_closer_Kstored max.%d\n",num_in_db(selector));
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
