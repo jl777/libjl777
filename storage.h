@@ -46,7 +46,7 @@ int32_t init_SuperNET_storage()
     //ret = db_setup("storage","data",stderr,"SuperNET");
     //printf("db_setup returns.%d\n",ret);
 
-    if ( 1 )
+    if ( 0 )
     {
         if ( (ret = db_env_create(&Storage,0)) != 0 )
         {
