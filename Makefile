@@ -31,7 +31,7 @@ clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
 libtest: libtest; \
-    gcc -o libtest libtest.c libs/libjl777.a libs/libdb.a libs/libuv.a -lpthread libs/randombytes.o
+    gcc -o libtest libtest.c libs/libjl777.a libs/libdb.a libs/libuv.a -lpthread -lcurl -lm
 
 install: /usr/lib/libjl777.so; \
     sudo cp libs/libjl777.so /usr/lib/libjl777.so
