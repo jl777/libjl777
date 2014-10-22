@@ -15,14 +15,19 @@
 int main(int argc,const char *argv[])
 {
     long stripwhite_ns(char *buf,long len);
-	char *retstr,cmdstr[1024],buf[1024];
+	char *retstr,cmdstr[1024],buf[1024],buf2[1024];
     SuperNET_start("SuperNET.conf",0);
     while ( 1 )
     {
         memset(buf,0,sizeof(buf));
         fgets(buf,sizeof(buf),stdin);
         stripwhite_ns(buf,(int32_t)strlen(buf));
-        sprintf(cmdstr,"{\"requestType\":%s",buf);
+        if ( strcmp("p",buf) == 0 )
+            strcpy(buf2,"\"getpeers\"}'");
+        else if ( buf[0] == 'P' && buf[1] == ' ' )
+            sprintf(buf2,"\"ping\",\"destip\":\"%s\"}'",buf+2);
+        else strcpy(buf2,buf0);
+        sprintf(cmdstr,"{\"requestType\":%s",buf2);
         retstr = SuperNET_JSON(cmdstr);
         printf("input.(%s) -> (%s)\n",cmdstr,retstr);
         if ( retstr != 0 )
