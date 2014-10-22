@@ -46,7 +46,7 @@ int32_t init_SuperNET_storage()
     //ret = db_setup("storage","data",stderr,"SuperNET");
     //printf("db_setup returns.%d\n",ret);
 
-    if ( 0 )
+    if ( 1 )
     {
         if ( (ret = db_env_create(&Storage,0)) != 0 )
         {
@@ -70,8 +70,6 @@ int32_t init_SuperNET_storage()
         printf("error.%d creating Private_dbp database\n",ret);
         return(ret);
     } else printf("Private_dbp created\n");
-  	//(void)Public_dbp->set_create_dir(Public_dbp,"storage");
-	//(void)Private_dbp->set_create_dir(Private_dbp,"storage");
     if ( (ret= Public_dbp->open(Public_dbp,NULL,"public.db",NULL,DB_HASH,DB_CREATE | 0*DB_AUTO_COMMIT,0)) != 0 )
     {
         printf("error.%d opening Public_dbp database\n",ret);
