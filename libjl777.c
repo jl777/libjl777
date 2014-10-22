@@ -230,7 +230,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
     }
 }
 
-void init_NXTservices(char *JSON_or_fname,char *myipaddr)
+char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     void *Coinloop(void *arg);
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
@@ -242,11 +242,6 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     
     init_NXThashtables(mp);
     //init_NXTAPI(0);
-    if ( myipaddr != 0 )
-    {
-        //strcpy(MY_IPADDR,get_ipaddr());
-        strcpy(mp->ipaddr,myipaddr);
-    }
     //safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
     mp->upollseconds = 333333 * 0;
     mp->pollseconds = POLL_SECONDS;
@@ -255,7 +250,12 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
-    init_MGWconf(JSON_or_fname,myipaddr);
+    myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
+    if ( myipaddr != 0 )
+    {
+        //strcpy(MY_IPADDR,get_ipaddr());
+        strcpy(mp->ipaddr,myipaddr);
+    }
     //printf("start getNXTblocks.(%s)\n",myipaddr);
     //if ( 0 && portable_thread_create((void *)getNXTblocks,mp) == 0 )
     //    printf("ERROR start_Histloop\n");
@@ -278,6 +278,7 @@ void init_NXTservices(char *JSON_or_fname,char *myipaddr)
     sleep(3);
     while ( get_coin_info("BTCD") == 0 )
         sleep(1);
+    return(myipaddr);
 }
 
 /*void process_pNXT_AM(struct pNXT_info *dp,struct NXT_protocol_parms *parms)
@@ -584,7 +585,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         fclose(fp);
     }
     portable_mutex_init(&Contacts_mutex);
-    myipaddr = clonestr(myipaddr);
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     init_SuperNET_storage();
@@ -596,10 +596,10 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
         printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
-    printf("call init_NXTservices.(%s)\n",myipaddr);
-    init_NXTservices(JSON_or_fname,myipaddr);
-    printf("back from init_NXTservices\n");
-    free(myipaddr);
+    printf("call init_NXTservices (%s)\n",myipaddr);
+    myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
+    printf("back from init_NXTservices (%s)\n",myipaddr);
+    //free(myipaddr);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
     {
