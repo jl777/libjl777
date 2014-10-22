@@ -31,3 +31,5 @@ int main(int argc,const char *argv[])
     return(0);
 }
 
+int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
+int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
