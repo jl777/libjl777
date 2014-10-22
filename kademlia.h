@@ -75,7 +75,10 @@ int32_t verify_addr(struct sockaddr *addr,char *refipaddr,int32_t refport)
     char ipaddr[64];
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
     if ( strcmp(ipaddr,refipaddr) != 0 )//|| refport != port )
+    {
+        printf("(%s) vs (%s) ",refipaddr,ipaddr);
         return(-1);
+    }
     return(0);
 }
 
