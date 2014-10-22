@@ -34,7 +34,7 @@ int32_t init_SuperNET_storage()
     static int didinit;
     int ret;
 #ifdef __linux__
-    //return(0);
+    return(0);
 #endif
     if ( didinit != 0 )
         return(1);
