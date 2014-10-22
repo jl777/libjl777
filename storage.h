@@ -87,6 +87,11 @@ uint32_t num_in_db(int32_t selector)
     return((uint32_t)Storage_maxitems[selector]);
 }
 
+void set_num_in_db(int32_t selector,int32_t num)
+{
+    Storage_maxitems[selector] = num;
+}
+
 DB *get_selected_database(int32_t selector)
 {
    return((selector == 0) ? Public_dbp : Private_dbp);
@@ -210,29 +215,42 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
 {
     DB *dbp = get_selected_database(selector);
     struct kademlia_storage *sp,**sps = 0;
-    int32_t ret,dist,refdist,n = 0;
+    int32_t ret,dist,max,m,refdist,n = 0;
     DBT key,data;
     DBC *cursorp = 0;
     if ( dbp == 0 )
         return(0);
-    printf("find_closer_Kstored max.%d\n",num_in_db(selector));
+    max = num_in_db(selector);
+    printf("find_closer_Kstored max.%d\n",max);
+    max += 100;
+    m = 0;
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
         clear_pair(&key,&data);
-        sps = (struct kademlia_storage **)calloc(sizeof(*sps),num_in_db(selector)+1);
+        sps = (struct kademlia_storage **)calloc(sizeof(*sps),max);
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
+            m++;
             sp = data.data;
             refdist = bitweight(refbits ^ sp->keyhash);
             dist = bitweight(newbits ^ sp->keyhash);
             if ( dist < refdist )
+            {
                 sps[n++] = sp;
+                if ( n >= max )
+                {
+                    max += 100;
+                    sps = (struct kademlia_storage **)realloc(sps,sizeof(*sps)*max);
+                }
+            }
             clear_pair(&key,&data);
         }
         cursorp->close(cursorp);
     }
     printf("find_closer_Kstored returns n.%d %p\n",n,sps);
+    if ( m > num_in_db(selector) )
+        set_num_in_db(selector,m);
     return(sps);
 }
 
