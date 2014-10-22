@@ -416,7 +416,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
 }
 
-char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip)
+char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip,char *origargstr)
 {
     uint64_t txid = 0;
     char retstr[1024];
@@ -434,7 +434,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     else // sender ping'ed us
     {
         if ( verify_addr(prevaddr,ipaddr,port) < 0 )
-            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s/%d)\"}",sender,ipaddr,port);
+            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s)\"}",sender,origargstr);
         else
         {
             txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"pong",NXTACCTSECRET,0,0);
