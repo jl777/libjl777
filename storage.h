@@ -228,6 +228,7 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
             dist = bitweight(newbits ^ sp->keyhash);
             if ( dist < refdist )
                 sps[n++] = sp;
+            clear_pair(&key,&data);
         }
         cursorp->close(cursorp);
     }
@@ -269,6 +270,7 @@ uint64_t process_storageQ()
     struct coin_info *cp = get_coin_info("BTCD");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
+        fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);
         if ( (sp= find_storage(ptr->selector,key)) != 0 )
         {
