@@ -588,13 +588,13 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         MGWconf = cJSON_Parse(jsonstr);
         if ( MGWconf != 0 )
         {
+            static char ipbuf[64];
             if ( myipaddr == 0 )
             {
-                static char ipbuf[64];
-                myipaddr = ipbuf;
-                if ( extract_cJSON_str(myipaddr,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
-                    strcpy(myipaddr,"127.0.0.1");
-            }
+                if ( extract_cJSON_str(ipbuf,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
+                    strcpy(ipbuf,"127.0.0.1");
+            } else parse_ipaddr(ipbuf,myipaddr);
+            myipaddr = ipbuf;
             if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
                 strcpy(Global_mp->myhandle,"myhandle");
             printf("parsed\n");

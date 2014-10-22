@@ -285,7 +285,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         while ( (cp= get_coin_info("BTCD")) == 0 )
             sleep(1);
         stats = get_nodestats(cp->srvpubnxtbits);
-        strcpy(cp->myipaddr,myipaddr);
+        stats->p2pport = parse_ipaddr(cp->myipaddr,myipaddr);
         stats->ipbits = calc_ipbits(cp->myipaddr);
         pserver = get_pserver(0,myipaddr,0,0);
         pserver->nxt64bits = cp->srvpubnxtbits;
@@ -589,6 +589,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     FILE *fp = 0;
     struct coin_info *cp;
     struct NXT_str *tp = 0;
+    if ( myipaddr != 0 )
+        myipaddr = clonestr(myipaddr);
     printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
     {
