@@ -47,11 +47,6 @@ portable_thread_t *portable_thread_create(void *funcp,void *argp)
     } else return(ptr);
 }
 
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { printf("malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
-void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { printf("calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
-#define malloc jl777malloc
-#define calloc jl777calloc
-
 void fatal(char *str) { printf("FATAL: (%s)\n",str); while ( 1 ) sleep(10); }
 
 double _kb(double n) { return(n / 1024.); }
