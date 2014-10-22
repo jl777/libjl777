@@ -27,7 +27,7 @@ DB_ENV *Storage;
 DB *Public_dbp,*Private_dbp;
 
 union _storage_type { uint64_t destbits; int32_t selector; };
-struct storage_queue_entry { struct kademlia_storage *sp; union _storage_type U; };
+struct storage_queue_entry { uint8_t *data; union _storage_type U; uint64_t keyhash; int32_t datalen; };
 int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progname);
 
 int32_t init_SuperNET_storage()
@@ -246,10 +246,13 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
     {
         while ( (sp= sps[n++]) != 0 )
         {
-            printf("queue.%d to %llu\n",n,(long long)newbits);
             ptr = calloc(1,sizeof(*ptr));
             ptr->U.destbits = newbits;
-            ptr->sp = sp;
+            ptr->data = malloc(sp->datalen);
+            memcpy(ptr->data,sp->data,sp->datalen);
+            ptr->datalen = sp->datalen;
+            ptr->keyhash = sp->keyhash;
+            printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
             queue_enqueue(&storageQ,ptr);
         }
         free(sps);
@@ -264,15 +267,13 @@ uint64_t process_storageQ()
     uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
     struct storage_queue_entry *ptr;
     char key[64],datastr[8193];
-    struct kademlia_storage *sp;
     uint64_t txid = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
-        printf("dequeued storageQ %p\n",ptr);
-        sp = ptr->sp;
-        init_hexbytes_noT(datastr,sp->data,sp->datalen);
-        expand_nxt64bits(key,sp->keyhash);
+        init_hexbytes_noT(datastr,ptr->data,ptr->datalen);
+        expand_nxt64bits(key,ptr->keyhash);
+        printf("dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,ptr->datalen);
         txid = send_kademlia_cmd(ptr->U.destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
         if ( Debuglevel > 0 )
             printf("txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->U.destbits);
