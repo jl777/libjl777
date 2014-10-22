@@ -39,10 +39,18 @@ install: /usr/lib/libjl777.so; \
 btcd: ../src/BitcoinDarkd; \
     cd ../src; rm BitcoinDarkd; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
 
+patch: doesntexist; \
+    cd db-6.1.19/build_unix; \
+    ../dist/configure; \
+    cp ../../env_region.c ../src/env; \
+    make; \
+    cp libdb.a ../../libs;
+
 onetime: doesntexist; \
     unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \
+    cp ../../env_region.c ../src/env; \
     make; \
     cp libdb.a ../../libs; \
     cp *.h ../../includes; \
