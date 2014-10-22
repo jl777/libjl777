@@ -41,7 +41,7 @@ int32_t init_SuperNET_storage()
     didinit = 1;
 
     ensure_directory("storage");
-    ensure_directory("storage/data");
+    //ensure_directory("storage/data");
     //ret = db_setup("storage","data",stderr,"SuperNET");
     //printf("db_setup returns.%d\n",ret);
 

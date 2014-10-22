@@ -3,7 +3,7 @@ CFLAGS=-Wall -pedantic -g -fPIC -I includes
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
-SRCS	= envglue.c picoc.c table.c lex.c parse.c expression.c heap.c type.c \
+SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
 	variable.c clibrary.c platform.c include.c \
 	platform/platform_unix.c platform/library_unix.c \
 	cstdlib/stdio.c cstdlib/math.c cstdlib/string.c cstdlib/stdlib.c \
@@ -40,10 +40,12 @@ btcd: ../src/BitcoinDarkd; \
     cd ../src; rm BitcoinDarkd; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
 
 patch: doesntexist; \
+    export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \
     cp ../../env_region.c ../src/env; \
     make; \
+    cp *.h ../../includes; \
     cp libdb.a ../../libs;
 
 onetime: doesntexist; \

@@ -249,7 +249,8 @@ user_map_functions:
 	infop->primary = infop->addr;
 	infop->head = (u_int8_t *)infop->addr + sizeof(REGENV);
 	renv = infop->primary;
-    
+
+#ifdef ENFORCE_ENV_VERSION
 	/*
 	 * Make sure the region matches our build.  Special case a region
 	 * that's all nul bytes, just treat it like any other corruption.
@@ -272,7 +273,7 @@ user_map_functions:
 		ret = USR_ERR(env, DB_VERSION_MISMATCH);
 		goto err;
 	}
-    
+#endif
 	/*
 	 * Check if the environment has had a catastrophic failure.
 	 *
