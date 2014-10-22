@@ -12,10 +12,13 @@
 #include <memory.h>
 #include "SuperNET.h"
 
+extern int32_t IS_LIBTEST;
+
 int main(int argc,const char *argv[])
 {
     long stripwhite_ns(char *buf,long len);
 	char *retstr,cmdstr[1024],buf[1024],buf2[1024];
+    IS_LIBTEST = 1;
     SuperNET_start("SuperNET.conf",0);
     while ( 1 )
     {
