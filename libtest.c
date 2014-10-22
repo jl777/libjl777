@@ -16,7 +16,7 @@ int main(int argc,const char *argv[])
 {
     long stripwhite_ns(char *buf,long len);
 	char *retstr,cmdstr[1024],buf[1024];
-    SuperNET_start("SuperNET.conf","209.126.70.159");
+    SuperNET_start("SuperNET.conf",0);
     while ( 1 )
     {
         memset(buf,0,sizeof(buf));
