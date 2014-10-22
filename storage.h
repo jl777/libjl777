@@ -232,7 +232,7 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
         }
         cursorp->close(cursorp);
     }
-    printf("find_closer_Kstored returns n.%d\n",n);
+    printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     return(sps);
 }
 
@@ -253,6 +253,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
             printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
             queue_enqueue(&storageQ,ptr);
         }
+        printf("free sps.%p\n",sps);
         free(sps);
         if ( Debuglevel > 0 )
             printf("Queue n.%d pushstore to %llu\n",n,(long long)newbits);

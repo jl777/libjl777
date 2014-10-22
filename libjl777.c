@@ -276,8 +276,19 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     sleep(3);
-    while ( get_coin_info("BTCD") == 0 )
-        sleep(1);
+    {
+        struct coin_info *cp;
+        struct nodestats *stats;
+        struct pserver_info *pserver;
+        while ( (cp= get_coin_info("BTCD")) == 0 )
+            sleep(1);
+        stats = get_nodestats(cp->srvpubnxtbits);
+        strcpy(cp->myipaddr,myipaddr);
+        stats->ipbits = calc_ipbits(cp->myipaddr);
+        pserver = get_pserver(0,myipaddr,0,0);
+        pserver->nxt64bits = cp->srvpubnxtbits;
+    }
+
     return(myipaddr);
 }
 
