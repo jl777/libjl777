@@ -574,7 +574,7 @@ char *addcontact(char *handle,char *acct)
             sprintf(retstr,"{\"error\":\"(%s) acct.(%s) has no pubkey.(%s)\"}",handle,acct,pubkeystr);
         else
         {
-            if ( strcmp(contact->handle,"myhandle") != 0 )
+            //if ( strcmp(contact->handle,"myhandle") != 0 )
             {
                 conv_NXTpassword(mysecret.bytes,mypublic.bytes,cp->privateNXTACCTSECRET);
                 contact->shared = curve25519(mysecret,contact->pubkey);
