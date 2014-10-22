@@ -26,7 +26,7 @@ int main(int argc,const char *argv[])
             strcpy(buf2,"\"getpeers\"}'");
         else if ( buf[0] == 'P' && buf[1] == ' ' )
             sprintf(buf2,"\"ping\",\"destip\":\"%s\"}'",buf+2);
-        else strcpy(buf2,buf0);
+        else strcpy(buf2,buf);
         sprintf(cmdstr,"{\"requestType\":%s",buf2);
         retstr = SuperNET_JSON(cmdstr);
         printf("input.(%s) -> (%s)\n",cmdstr,retstr);
