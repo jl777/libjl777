@@ -30,12 +30,17 @@ union _storage_type { uint64_t destbits; int32_t selector; };
 struct storage_queue_entry { struct kademlia_storage *sp; union _storage_type U; };
 int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progname);
 
-int32_t init_storage()
+int32_t init_SuperNET_storage()
 {
+    static int didinit;
     int ret;
 #ifdef __linux__
-    //return(0);
+    return(0);
 #endif
+    if ( didinit != 0 )
+        return(1);
+    didinit = 1;
+
     ensure_directory("storage");
     ensure_directory("storage/data");
     //ret = db_setup("storage","data",stderr,"SuperNET");

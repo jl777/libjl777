@@ -10,7 +10,7 @@
 #define libjl777_peers_h
 
 
-int32_t process_PeerQ(void **ptrp,void *arg) // added when inbound transporter sequence is started
+/*int32_t process_PeerQ(void **ptrp,void *arg) // added when inbound transporter sequence is started
 {
     struct peer_queue_entry *ptr = (*ptrp);
     struct peerinfo *peer,*hop;
@@ -72,7 +72,7 @@ void update_peerstate(struct peerinfo *peer,struct peerinfo *hop,int32_t stateid
         else printf("unexpected states[%d] NXT.%llu %d and hopNXT.%llu %d\n",stateid,(long long)peer->pubnxtbits,peer->states[stateid],(long long)hop->pubnxtbits,hop->states[stateid]);
     }
     else printf("update_peerstate unknown state.%d\n",state);
-}
+}*/
 
 struct peerinfo *get_random_pserver()
 {
