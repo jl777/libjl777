@@ -221,7 +221,7 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
     if ( dbp == 0 )
         return(0);
     max = num_in_db(selector);
-    printf("find_closer_Kstored max.%d\n",max);
+    //printf("find_closer_Kstored max.%d\n",max);
     max += 100;
     m = 0;
     dbp->cursor(dbp,NULL,&cursorp,0);
@@ -248,7 +248,7 @@ struct kademlia_storage **find_closer_Kstored(int32_t selector,uint64_t refbits,
         }
         cursorp->close(cursorp);
     }
-    printf("find_closer_Kstored returns n.%d %p\n",n,sps);
+    //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     if ( m > num_in_db(selector) )
         set_num_in_db(selector,m);
     return(sps);
@@ -259,7 +259,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
     int32_t n = 0;
     struct storage_queue_entry *ptr;
     struct kademlia_storage **sps,*sp;
-    fprintf(stderr,"pushstore\n");
+    //fprintf(stderr,"pushstore\n");
     if ( (sps= find_closer_Kstored(selector,refbits,newbits)) != 0 )
     {
         while ( (sp= sps[n++]) != 0 )
@@ -268,10 +268,10 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
             ptr->destbits = newbits;
             ptr->selector = selector;
             ptr->keyhash = sp->keyhash;
-            printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
+            //printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
             queue_enqueue(&storageQ,ptr);
         }
-        printf("free sps.%p\n",sps);
+        //printf("free sps.%p\n",sps);
         free(sps);
         if ( Debuglevel > 0 )
             printf("Queue n.%d pushstore to %llu\n",n,(long long)newbits);
@@ -289,12 +289,12 @@ uint64_t process_storageQ()
     struct coin_info *cp = get_coin_info("BTCD");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
-        fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
+        //fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);
         if ( (sp= find_storage(ptr->selector,key)) != 0 )
         {
             init_hexbytes_noT(datastr,sp->data,sp->datalen);
-            printf("dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
+            //printf("dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
             if ( Debuglevel > 0 )
                 printf("txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);

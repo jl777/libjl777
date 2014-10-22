@@ -24,6 +24,8 @@ int main(int argc,const char *argv[])
         stripwhite_ns(buf,(int32_t)strlen(buf));
         if ( strcmp("p",buf) == 0 )
             strcpy(buf2,"\"getpeers\"}'");
+        else if ( strcmp("q",buf) == 0 )
+            exit(0);
         else if ( buf[0] == 'P' && buf[1] == ' ' )
             sprintf(buf2,"\"ping\",\"destip\":\"%s\"}'",buf+2);
         else strcpy(buf2,buf);

@@ -135,9 +135,11 @@ void SuperNET_idler(uv_idle_t *handle)
         free(qp);
         lastattempt = millis;
     }
+    if ( millis > (lastattempt + 100) )
+        process_storageQ();
+
     if ( millis > (lastattempt + 1000) )
     {
-        process_storageQ();
         every_second(counter);
         retstr = findaddress(0,0,0,0,0,0,0,0,0,0);
         if ( retstr != 0 )
