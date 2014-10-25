@@ -11,6 +11,7 @@
 
 
 #include "includes/task.h"
+#undef ARRAY_SIZE
 #include <stdio.h>
 #include <stdlib.h>
 
