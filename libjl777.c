@@ -392,11 +392,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     return(txid);
 }
 
-int32_t got_newpeer(char *ip_port)
+/*int32_t got_newpeer(char *ip_port)
 {
     queue_enqueue(&P2P_Q,clonestr(ip_port));
 	return(0);
-}
+}*/
 
 char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
 {

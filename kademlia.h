@@ -350,6 +350,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         {
             if ( strncmp(kadcmd,"have",4) == 0 )
                 encrypted = 1;
+            else if ( strncmp(kadcmd,"findnode",4) == 0 && datastr != 0 && datastr[0] != 0 )
+                encrypted = 4;
             sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld",kadcmd,verifiedNXTaddr,(long)time(NULL));
         }
     }
@@ -862,14 +864,21 @@ uint64_t refresh_bucket(struct nodestats *buckets[],long lastcontact,char *NXTAC
 {
     uint64_t txid = 0;
     int32_t i,r;
+    char key[64];
     if ( buckets[0] != 0 && lastcontact >= KADEMLIA_BUCKET_REFRESHTIME )
     {
         for (i=0; i<KADEMLIA_NUMK; i++)
             if ( buckets[i] == 0 )
                 break;
-        r = ((rand()>>8) % i);
-        if ( ismynxtbits(buckets[r]->nxt64bits) == 0 )
-            txid = send_kademlia_cmd(buckets[r]->nxt64bits,0,"findnode",NXTACCTSECRET,0,0);
+        if ( i > 0 )
+        {
+            r = ((rand()>>8) % i);
+            if ( ismynxtbits(buckets[r]->nxt64bits) == 0 )
+            {
+                expand_nxt64bits(key,buckets[r]->nxt64bits);
+                txid = send_kademlia_cmd(buckets[r]->nxt64bits,0,"findnode",NXTACCTSECRET,key,0);
+            }
+        }
     }
     return(txid);
 }

@@ -17,3 +17,17 @@ NXTprivacy copy.h
 packets copy.h
 
 NXTprivacy.h
+
+SuperNET.key.pem
+
+SuperNET.pem
+
+includes/lws_config.h
+
+includes/libwebsockets.h
+
+libwebsockets/
+
+libs/libwebsockets.dylib
+
+libs/libwebsockets.dylib
