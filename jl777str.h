@@ -419,6 +419,27 @@ char *replacequotes(char *str)
     return(newstr);
 }
 
+char *stringify(char *str)
+{
+    char *newstr;
+    int32_t i,j,n;
+    for (i=n=0; str[i]!=0; i++)
+        n += (str[i] == '"') ? 2 : 1;
+    newstr = (char *)malloc(n + 1);
+    for (i=j=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '"' )
+        {
+            newstr[j++] = '\\';
+            newstr[j++] = '"';
+        }
+        else newstr[j++] = str[i];
+    }
+    newstr[j] = 0;
+    free(str);
+    return(newstr);
+}
+
 char *convert_percent22(char *str)
 {
     int32_t i,j;

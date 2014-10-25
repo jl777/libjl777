@@ -30,8 +30,8 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
-libtest: $(TARGET); \
-    rm libtest; gcc -o libtest libtest.c libs/libjl777.a libs/libuv.a libs/libdb.a -lpthread -lcurl -lm
+SuperNET: $(TARGET); \
+    rm SuperNET; gcc -o SuperNET SuperNET.c libs/libjl777.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm
 
 install: /usr/lib/libjl777.so; \
     sudo cp libs/libjl777.so /usr/lib/libjl777.so

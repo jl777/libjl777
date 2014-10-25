@@ -84,8 +84,8 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
         }
         else if ( (error->type&0xff) != cJSON_NULL || (result->type&0xff) != cJSON_NULL )
             printf("%s post_process_bitcoind_RPC (%s) error.%s\n",debugstr,command,rpcstr);
-    }
-    free(rpcstr);
+        free(rpcstr);
+    } else retstr = rpcstr;
     free_json(json);
     return(retstr);
 }
@@ -126,6 +126,8 @@ try_again:
     curl_easy_setopt(curl_handle,CURLOPT_WRITEDATA,		&s); 			// we pass our 's' struct to the callback
     curl_easy_setopt(curl_handle,CURLOPT_NOSIGNAL,		1L);   			// supposed to fix "Alarm clock" and long jump crash
 	curl_easy_setopt(curl_handle,CURLOPT_NOPROGRESS,	1L);			// no progress callback
+    curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYPEER,0);
+    curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYHOST,0);
     if ( userpass != 0 )
         curl_easy_setopt(curl_handle,CURLOPT_USERPWD,	userpass);
     

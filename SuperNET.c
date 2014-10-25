@@ -22,6 +22,8 @@ int main(int argc,const char *argv[])
     SuperNET_start("SuperNET.conf",0);
     while ( 1 )
     {
+        sleep(60);
+        /*
         memset(buf,0,sizeof(buf));
         fgets(buf,sizeof(buf),stdin);
         stripwhite_ns(buf,(int32_t)strlen(buf));
@@ -36,7 +38,7 @@ int main(int argc,const char *argv[])
         retstr = SuperNET_JSON(cmdstr);
         printf("input.(%s) -> (%s)\n",cmdstr,retstr);
         if ( retstr != 0 )
-            free(retstr);
+            free(retstr);*/
     }
     return(0);
 }

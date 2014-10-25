@@ -876,7 +876,7 @@ char *get_cJSON_fieldname(cJSON *obj)
     //c=object->child
     if ( obj != 0 && obj->child != 0 && obj->child->string != 0 )
         return(obj->child->string);
-    else return("<no cJSON string field");
+    else return((char *)"<no cJSON string field>");
 }
 
 void free_json(cJSON *json) { if ( json != 0 ) cJSON_Delete(json); }

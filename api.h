@@ -74,6 +74,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 {
 	char buf[MAX_JSON_FIELD],*retstr;
     cJSON *json,*array;
+    //if ( len != 0 )
     //printf("reason.%d len.%ld\n",reason,len);
 	switch ( reason )
     {
@@ -92,6 +93,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
                 return 0;
             //printf("GOT.(%s)\n",(char *)in);
+            convert_percent22((char *)in);
             retstr = block_on_SuperNET(1,(char *)in+1);
             if ( retstr != 0 )
             {
@@ -112,6 +114,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY:
+            //printf("RPC.(%s)\n",(char *)in);
             //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }
             if ( (json= cJSON_Parse((char *)in)) != 0 )
             {
@@ -119,14 +122,18 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 {
                     copy_cJSON(buf,cJSON_GetArrayItem(array,0));
                     replace_backslashquotes(buf);
+                    stripwhite_ns(buf,strlen(buf));
                     retstr = block_on_SuperNET(1,buf);
                     if ( retstr != 0 )
                     {
-                        stripwhite_ns(retstr,strlen(retstr));
-                        strcat(retstr,"\n");
+                        //stripwhite_ns(retstr,strlen(retstr));
+                        //strcat(retstr,"\n");
+                        //printf("RPC return.(%s)\n",retstr);
                         return_http_str(wsi,retstr);
                         free(retstr);
-                    }
+                        free(json);
+                        return(-1);
+                    } else printf("(%s) returned null\n",buf);
                 }
                 else
                 {
@@ -134,14 +141,17 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     buf[sizeof(buf)-1] = '\0';
                     //if ( len < 20 )
                     //    buf[len] = '\0';
+                    lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s\n",buf);
                 }
-                lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s\n",buf);
                 free_json(json);
             }
+            else printf("couldnt parse (%s)\n",(char *)in);
+            return_http_str(wsi,"{\"error\":\"couldnt parse JSON\"}");
+            return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY_COMPLETION: // the whole sent body arried, close the connection
             
-            lwsl_notice("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
+            //lwsl_notice("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
             //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_OK, NULL);
             return -1;
         case LWS_CALLBACK_HTTP_FILE_COMPLETION:     // kill the connection after we sent one file
@@ -1097,10 +1107,30 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     return(0);
 }
 
+char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
+    char jsonstr[MAX_JSON_FIELD],*retstr = 0;
+    cJSON *array;
+    copy_cJSON(jsonstr,objs[0]);
+    if ( jsonstr[0] != 0 )
+    {
+        //printf("got jsonstr.(%s)\n",jsonstr);
+        replace_backslashquotes(jsonstr);
+        array = cJSON_Parse(jsonstr);
+        if ( array != 0 )
+        {
+            retstr = SuperNET_json_commands(Global_mp,prevaddr,array,sender,valid,origargstr);
+            free_json(array);
+        }
+    }
+    return(retstr);
+}
+
 char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-    
     // glue
+    static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "", "json", 0 };
     static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "", "msg", "dur", "ip", 0 };
     static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "ip_port", 0 };
   
@@ -1154,7 +1184,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, telepodacct, savefile, restorefile  };
+     static char **commands[] = { gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, telepodacct, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
@@ -1193,22 +1223,22 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
             }
         }
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
-    }
-    //printf("SuperNET_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
-    for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
-    {
-        cmdinfo = commands[i];
-        //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
-        if ( strcmp(cmdinfo[1],command) == 0 )
+        //printf("SuperNET_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
+        for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
         {
-            if ( cmdinfo[2][0] != 0 && valid <= 0 )
-                return(0);
-            for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
-                objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
-            retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,prevaddr,sender,valid,objs,j-3,origargstr);
-            break;
+            cmdinfo = commands[i];
+            //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
+            if ( strcmp(cmdinfo[1],command) == 0 )
+            {
+                if ( cmdinfo[2][0] != 0 && valid <= 0 )
+                    return(0);
+                for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
+                    objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
+                retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,prevaddr,sender,valid,objs,j-3,origargstr);
+                break;
+            }
         }
-    }
+    } else printf("not JSON to parse?\n");
     return(retstr);
 }
 
