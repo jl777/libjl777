@@ -100,7 +100,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
 char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static int numretries,count,count2;
-    static double elapsedsum,elapsedsum2,laststart;
+    static double elapsedsum,elapsedsum2;//,laststart;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
     CURLcode res;
@@ -151,7 +151,7 @@ try_again:
         else
             curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,params);
     }
-    laststart = milliseconds();
+    //laststart = milliseconds();
     
     res = curl_easy_perform(curl_handle);
     
@@ -209,7 +209,7 @@ try_again:
 void init_string(struct return_string *s)
 {
     s->len = 0;
-    s->ptr = malloc(s->len+1);
+    s->ptr = (char *)malloc(s->len+1);
     if (s->ptr == NULL) {
         fprintf(stderr, "malloc() failed\n");
         exit(-1);
@@ -226,7 +226,7 @@ void init_string(struct return_string *s)
 size_t accumulate(void *ptr, size_t size, size_t nmemb, struct return_string *s)
 {
     size_t new_len = s->len + size*nmemb;
-    s->ptr = realloc(s->ptr, new_len+1);
+    s->ptr = (char *)realloc(s->ptr, new_len+1);
     if (s->ptr == NULL) {
         fprintf(stderr, "realloc() failed\n");
         exit(-1);
