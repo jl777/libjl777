@@ -252,13 +252,13 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
     {
 		char cert_path[1024];
         char key_path[1024];
-		sprintf(cert_path,"SuperNET.pem");
+		sprintf(cert_path,"libwebsockets-test-server.pem");
 		if (strlen(resource_path) > sizeof(key_path) - 32)
         {
 			lwsl_err("resource path too long\n");
 			return -1;
 		}
-		sprintf(key_path,"SuperNET.key.pem");
+		sprintf(key_path,"libwebsockets-test-server.key.pem");
 		info.ssl_cert_filepath = cert_path;
 		info.ssl_private_key_filepath = key_path;
 	}
