@@ -53,8 +53,8 @@ patch: doesntexist; \
     cd libwebsockets/lib; \
     cmake ..; \
     cp libwebsockets.h lws_config.h ../../includes; \
-    cp lib/libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
-    cp lib/libwebsockets-test-server.pem ../../SuperNET.pem; \
+    cp libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
+    cp libwebsockets-test-server.pem ../../SuperNET.pem; \
     make; \
     cp lib/*  ../../libs; \
     cd ../..;
