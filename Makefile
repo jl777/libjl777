@@ -51,9 +51,12 @@ patch0: doesntexist; \
 patch: doesntexist; \
     unzip lws.zip -d libwebsockets; \
     cd libwebsockets/lib; \
-    cmake ..; make; \
-    cp lib/*  ../../libs; \
+    cmake ..; \
     cp libwebsockets.h lws_config.h ../../includes; \
+    cp lib/libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
+    cp lib/libwebsockets-test-server.pem ../../SuperNET.pem; \
+    make; \
+    cp lib/*  ../../libs; \
     cd ../..;
 
 onetime: doesntexist; \
