@@ -142,7 +142,7 @@ LWS_VISIBLE LWS_EXTERN void lwsl_hexdump(void *buf, size_t len);
 
 #endif
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+//#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 /* api change list for user code to test against */
 

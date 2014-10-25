@@ -8,52 +8,6 @@
 
 #ifndef xcode_tradebot_h
 #define xcode_tradebot_h
-
-#define TRADEBOT_PRICECHANGE 1
-#define TRADEBOT_NEWMINUTE 2
-#define MAX_TRADEBOT_INPUTS (1024*1024)
-#define MAX_BOTTYPE_BITS 30
-#define MAX_BOTTYPE_VNUMBITS 11
-#define MAX_BOTTYPE_ITEMBITS (MAX_BOTTYPE_BITS - 2*MAX_BOTTYPE_VNUMBITS)
-
-struct tradebot_type { uint32_t itembits_sub1:MAX_BOTTYPE_ITEMBITS,vnum:MAX_BOTTYPE_VNUMBITS,vind:MAX_BOTTYPE_VNUMBITS,isfloat:1,hasneg:1; };
-
-struct tradebot
-{
-    char *botname,**outputnames;
-    void *compiled,*codestr;
-    void **inputs,**outputs;
-    uint32_t lastupdatetime;
-    int32_t botid,numoutputs,metalevel,disabled,numinputs,bitpacked;
-    struct tradebot_type *outtypes,*intypes;
-    uint64_t *inconditioners;
-};
-
-struct InstantDEX_state
-{
-    struct price_data *dp;
-    struct exchange_state *ep;
-    char exchange[64],base[64],rel[64];
-    uint64_t obookid,changedmask;
-    int32_t polarity,numexchanges,event;
-    uint32_t jdatetime;
-    
-    int maxbars,numbids,numasks;
-    uint64_t *bidnxt,*asknxt;
-    double *bids,*asks,*inv_bids,*inv_asks;
-    double *bidvols,*askvols,*inv_bidvols,*inv_askvols;
-    float *m1,*m2,*m3,*m4,*m5,*m10,*m15,*m30,*h1;
-    float *inv_m1,*inv_m2,*inv_m3,*inv_m4,*inv_m5,*inv_m10,*inv_m15,*inv_m30,*inv_h1;
-};
-
-struct tradebot_language
-{
-    char name[64];
-    int32_t (*compiler_func)(int32_t *iosizep,void **inputs,struct tradebot_type *intypes,uint64_t *conditioners,int32_t *numinputsp,int32_t *metalevelp,void **compiledptr,char *retbuf,cJSON *codejson);
-    int32_t (*runtime_func)(uint32_t jdatetime,struct tradebot *bot,struct InstantDEX_state *state);
-    struct tradebot **tradebots;
-    int32_t numtradebots,maxtradebots;
-} **Languages;
 int32_t Num_languages,Max_metalevel;
 
 

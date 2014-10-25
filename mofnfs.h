@@ -410,7 +410,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         sprintf(retstr,"./BitcoinDarkd SuperNET '{\"requestType\":\"restorefile\",\"filename\":\"%s\",\"L\":%d,\"M\":%d,\"N\":%d,\"destfile\":\"%s.restored\",\"sharenrs\":\"%s\",\"txids\":%s%s}'",filename,L,M,N,filename,datastr,str,password[0]!=0?",\"password\":yourPIN":"");
         printf("%s\n",retstr);
     }
-    sprintf(retstr,"{\"result\":\"status.%d\",\"sharenrs\":\"%s\",\"txids\":%s,\"filesize\":\"%ld\",\"descr\":\"mofn_savefile M.%d of N.%d sent with Lfactor.%d usbdir.(%s) usedpassword.%d dont lose the password, sharenrs or txids!\"}",status,datastr,str,ftell(fp),M,N,L,usbdir,password[0]!=0);
+    sprintf(retstr,"{\"result\":\"%d\",\"sharenrs\":\"%s\",\"txids\":%s,\"filesize\":\"%ld\",\"descr\":\"mofn_savefile M.%d of N.%d sent with Lfactor.%d usbdir.(%s) usedpassword.%d dont lose the password, sharenrs or txids!\"}",status,datastr,str,ftell(fp),M,N,L,usbdir!=0?usbdir:"",password[0]!=0);
     //printf("SAVE.(%s)\n",retstr);
     free(str);
     if ( 0 && n < sizeof(txids)/sizeof(*txids) )

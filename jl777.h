@@ -20,6 +20,30 @@
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
 
+#define MAX_PRICE 1000000.f
+#define NUM_BARPRICES 16
+
+#define BARI_FIRSTBID 0
+#define BARI_FIRSTASK 1
+#define BARI_LOWBID 2
+#define BARI_HIGHASK 3
+#define BARI_HIGHBID 4
+#define BARI_LOWASK 5
+#define BARI_LASTBID 6
+#define BARI_LASTASK 7
+
+#define BARI_ARBBID 8
+#define BARI_ARBASK 9
+#define BARI_MINBID 10
+#define BARI_MAXASK 11
+#define BARI_VIRTBID 10
+#define BARI_VIRTASK 11
+#define BARI_AVEBID 12
+#define BARI_AVEASK 13
+#define BARI_MEDIAN 14
+#define BARI_AVEPRICE 15
+
+
 // system includes
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,7 +135,6 @@ void usleep(int32_t);
 //#include "includes/randombytes.h"
 
 //#include "utils/smoothers.h"
-#include "bars.h"
 #include "jdatetime.h"
 #include "mappedptr.h"
 #include "sorts.h"
@@ -305,11 +328,11 @@ struct NXT_protocol
 };
 
 struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
-#define MAX_COINTXID_LEN 128
-#define MAX_COINADDR_LEN 128
+#define MAX_COINTXID_LEN 66
+#define MAX_COINADDR_LEN 66
 #define MAX_COIN_INPUTS 32
 #define MAX_COIN_OUTPUTS 3
-#define MAX_PRIVKEY_SIZE 256
+//#define MAX_PRIVKEY_SIZE 768
 
 struct rawtransaction
 {
@@ -367,6 +390,181 @@ struct coin_info
     int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;
 };
 
+
+#define TRADEBOT_PRICECHANGE 1
+#define TRADEBOT_NEWMINUTE 2
+#define MAX_TRADEBOT_INPUTS (1024*1024)
+#define MAX_BOTTYPE_BITS 30
+#define MAX_BOTTYPE_VNUMBITS 11
+#define MAX_BOTTYPE_ITEMBITS (MAX_BOTTYPE_BITS - 2*MAX_BOTTYPE_VNUMBITS)
+
+struct tradebot_type { uint32_t itembits_sub1:MAX_BOTTYPE_ITEMBITS,vnum:MAX_BOTTYPE_VNUMBITS,vind:MAX_BOTTYPE_VNUMBITS,isfloat:1,hasneg:1; };
+
+struct tradebot
+{
+    char *botname,**outputnames;
+    void *compiled,*codestr;
+    void **inputs,**outputs;
+    uint32_t lastupdatetime;
+    int32_t botid,numoutputs,metalevel,disabled,numinputs,bitpacked;
+    struct tradebot_type *outtypes,*intypes;
+    uint64_t *inconditioners;
+};
+
+struct InstantDEX_state
+{
+    struct price_data *dp;
+    struct exchange_state *ep;
+    char exchange[64],base[64],rel[64];
+    uint64_t obookid,changedmask;
+    int32_t polarity,numexchanges,event;
+    uint32_t jdatetime;
+    
+    int maxbars,numbids,numasks;
+    uint64_t *bidnxt,*asknxt;
+    double *bids,*asks,*inv_bids,*inv_asks;
+    double *bidvols,*askvols,*inv_bidvols,*inv_askvols;
+    float *m1,*m2,*m3,*m4,*m5,*m10,*m15,*m30,*h1;
+    float *inv_m1,*inv_m2,*inv_m3,*inv_m4,*inv_m5,*inv_m10,*inv_m15,*inv_m30,*inv_h1;
+};
+
+struct tradebot_language
+{
+    char name[64];
+    int32_t (*compiler_func)(int32_t *iosizep,void **inputs,struct tradebot_type *intypes,uint64_t *conditioners,int32_t *numinputsp,int32_t *metalevelp,void **compiledptr,char *retbuf,cJSON *codejson);
+    int32_t (*runtime_func)(uint32_t jdatetime,struct tradebot *bot,struct InstantDEX_state *state);
+    struct tradebot **tradebots;
+    int32_t numtradebots,maxtradebots;
+} **Languages;
+
+#define ORDERBOOK_SIG 0x83746783
+
+#define ORDERBOOK_FEED 1
+#define NUM_PRICEDATA_SPLINES 17
+#define MAX_TRADEBOT_BARS 512
+
+#define LEFTMARGIN 0
+#define TIMEIND_PIXELS 60
+#define MAX_LOOKAHEAD 60
+#define NUM_ACTIVE_PIXELS ((32*24) - MAX_LOOKAHEAD)
+#define MAX_ACTIVE_WIDTH (NUM_ACTIVE_PIXELS + TIMEIND_PIXELS)
+#define NUM_REQFUNC_SPLINES 32
+#define MAX_SCREENWIDTH 2048
+#define MAX_AMPLITUDE 100.
+#ifndef MIN
+#define MIN(x,y) (((x)<=(y)) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x,y) (((x)>=(y)) ? (x) : (y))
+#endif
+
+//#define calc_predisplinex(startweekind,clumpsize,weekind) (((weekind) - (startweekind))/(clumpsize))
+struct tradebot_ptrs
+{
+    char base[64],rel[64];
+    uint32_t jdatetime;
+    int maxbars,numbids,numasks;
+    uint64_t bidnxt[MAX_TRADEBOT_BARS],asknxt[MAX_TRADEBOT_BARS];
+    double bids[MAX_TRADEBOT_BARS],asks[MAX_TRADEBOT_BARS],inv_bids[MAX_TRADEBOT_BARS],inv_asks[MAX_TRADEBOT_BARS];
+    double bidvols[MAX_TRADEBOT_BARS],askvols[MAX_TRADEBOT_BARS],inv_bidvols[MAX_TRADEBOT_BARS],inv_askvols[MAX_TRADEBOT_BARS];
+    float m1[MAX_TRADEBOT_BARS * NUM_BARPRICES],m2[MAX_TRADEBOT_BARS * NUM_BARPRICES],m3[MAX_TRADEBOT_BARS * NUM_BARPRICES],m4[MAX_TRADEBOT_BARS * NUM_BARPRICES],m5[MAX_TRADEBOT_BARS * NUM_BARPRICES],m10[MAX_TRADEBOT_BARS * NUM_BARPRICES],m15[MAX_TRADEBOT_BARS * NUM_BARPRICES],m30[MAX_TRADEBOT_BARS * NUM_BARPRICES],h1[MAX_TRADEBOT_BARS * NUM_BARPRICES];
+    float inv_m1[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m2[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m3[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m4[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m5[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m10[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m15[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_m30[MAX_TRADEBOT_BARS * NUM_BARPRICES],inv_h1[MAX_TRADEBOT_BARS * NUM_BARPRICES];
+};
+
+struct filtered_buf
+{
+	double coeffs[512],projden[512],emawts[512];
+	double buf[256+256],projbuf[256+256],prevprojbuf[256+256],avebuf[(256+256)/16];
+	double slopes[4];
+	double emadiffsum,lastval,lastave,diffsum,Idiffsum,refdiffsum,RTsum;
+	int32_t middlei,len;
+};
+
+struct price_data
+{
+    double lastprice;
+    struct exchange_quote *allquotes;
+    uint32_t *display,firstjdatetime,lastjdatetime,calctime;
+    uint64_t obookid;
+    char base[64],rel[64];
+    struct tradebot_ptrs PTRS;
+    struct filtered_buf bidfb,askfb,avefb,slopefb,accelfb;
+    float *bars,avebar[NUM_BARPRICES],highbids[MAX_ACTIVE_WIDTH],lowasks[MAX_ACTIVE_WIDTH],aveprices[MAX_ACTIVE_WIDTH];
+    double displine[MAX_ACTIVE_WIDTH],dispslope[MAX_ACTIVE_WIDTH],dispaccel[MAX_ACTIVE_WIDTH];
+    double splineprices[MAX_ACTIVE_WIDTH],slopes[MAX_ACTIVE_WIDTH],accels[MAX_ACTIVE_WIDTH];
+    double *pixeltimes,timefactor,aveprice,absslope,absaccel,avedisp,aveslope,aveaccel,bidsum,asksum,halfspread;
+    double dSplines[NUM_PRICEDATA_SPLINES][4],jdatetimes[NUM_PRICEDATA_SPLINES],splinevals[NUM_PRICEDATA_SPLINES];
+    int32_t numquotes,maxquotes,screenwidth,screenheight,numsplines,polarity;
+};
+
+struct orderbook_tx
+{
+    uint32_t sig,type;
+    uint64_t txid,nxt64bits,baseid,relid;
+    uint64_t baseamount,relamount;
+};
+
+struct quote
+{
+    double price,vol;    // must be first!!
+    uint32_t type;
+    uint64_t nxt64bits,baseamount,relamount;
+};
+
+struct orderbook
+{
+    uint64_t assetA,assetB;
+    struct quote *bids,*asks;
+    int32_t numbids,numasks,polarity;
+};
+
+struct raw_orders
+{
+    uint64_t assetA,assetB,obookid;
+    struct orderbook_tx **orders;
+    int32_t num,max;
+} **Raw_orders;
+
+struct exchange_quote { uint32_t jdatetime; float highbid,lowask; };
+#define EXCHANGE_QUOTES_INCR ((int32_t)(4096L / sizeof(struct exchange_quote)))
+#define INITIAL_PIXELTIME 60
+
+struct exchange_state
+{
+    double bidminmax[2],askminmax[2],hbla[2];
+    char name[64],url[512],url2[512],base[64],rel[64],lbase[64],lrel[64];
+    int32_t updated,polarity,numbids,numasks,numbidasks;
+    uint32_t type,writeflag;
+    uint64_t obookid,feedid,baseid,relid,basemult,relmult;
+    struct price_data P;
+    FILE *fp;
+    double lastmilli;
+    queue_t ordersQ;
+    //struct orderbook_tx **orders;
+};
+
+#define _extrapolate_Spline(Spline,gap) ((double)(Spline[0]) + ((gap) * ((double)(Spline[1]) + ((gap) * ((double)(Spline[2]) + ((gap) * (double)(Spline[3])))))))
+#define _extrapolate_Slope(Spline,gap) ((double)(Spline[1]) + ((gap) * ((double)(Spline[2]) + ((gap) * (double)(Spline[3])))))
+#define _extrapolate_Accel(Spline,gap) ((double)(Spline[2]) + ((gap) * ((double)(Spline[3]))))
+
+struct madata
+{
+	double sum;
+	double ave,slope,diff,pastanswer;
+	double signchange_slope,dirchange_slope,answerchange_slope,diffchange_slope;
+	double oldest,lastval,accel2,accel;
+	int32_t numitems,maxitems,next,maid;
+	int32_t changes,slopechanges,accelchanges,diffchanges;
+	int32_t signchanges,dirchanges,answerchanges;
+	char signchange,dirchange,answerchange,islogprice;
+	double RTvals[20],derivs[4],derivbufs[4][12];
+	struct madata **stored;
+#ifdef INSIDE_OPENCL
+	int32_t pad;
+#endif
+	double rotbuf[];
+};
+
 #define TELEPORT_DEFAULT_SMEARTIME 3600
 
 #define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
@@ -408,8 +606,10 @@ static long server_xferred;
 int Servers_started;
 queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ;
 //struct pingpong_queue PeerQ;
-int32_t Num_in_whitelist,IS_LIBTEST;
+int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL;
 uint32_t *SuperNET_whitelist;
+int32_t Historical_done;
+struct NXThandler_info *Global_mp;
 
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
@@ -482,6 +682,22 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
     return(addr);
 }
 
+double _pairaved(double valA,double valB)
+{
+	if ( valA != 0. && valB != 0. )
+		return((valA + valB) / 2.);
+	else if ( valA != 0. ) return(valA);
+	else return(valB);
+}
+
+double _pairave(float valA,float valB)
+{
+	if ( valA != 0.f && valB != 0.f )
+		return((valA + valB) / 2.);
+	else if ( valA != 0.f ) return(valA);
+	else return(valB);
+}
+
 #include "NXTservices.h"
 #include "jl777hash.h"
 #include "NXTutils.h"
@@ -497,9 +713,12 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
 #include "bitcoind.h"
 #include "atomic.h"
 #include "teleport.h"
+
+#include "feeds.h"
 #include "orders.h"
+#include "bars.h"
 #include "tradebot.h"
-#include "NXTservices.c"
+//#include "NXTservices.c"
 #include "api.h"
 
 #endif

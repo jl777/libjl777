@@ -662,145 +662,6 @@ int32_t _search_list(uint64_t x,uint64_t *ptr,int32_t n)
     return(-1);
 }
 
-float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_t polarity)
-{
-    float *bars,*invbars;
-    bars = invbars = 0;
-    switch ( period )
-    {
-        case 60: invbars = ptrs->inv_m1; bars = ptrs->m1; break;
-        case 60*2: invbars = ptrs->inv_m2; bars = ptrs->m2; break;
-        case 60*3: invbars = ptrs->inv_m3; bars = ptrs->m3; break;
-        case 60*4: invbars = ptrs->inv_m4; bars = ptrs->m4; break;
-        case 60*5: invbars = ptrs->inv_m5; bars = ptrs->m5; break;
-        case 60*10: invbars = ptrs->inv_m10; bars = ptrs->m10; break;
-        case 60*15: invbars = ptrs->inv_m15; bars = ptrs->m15; break;
-        case 60*30: invbars = ptrs->inv_m30; bars = ptrs->m30; break;
-        case 60*60: invbars = ptrs->inv_h1; bars = ptrs->h1; break;
-    }
-    if ( polarity > 0 )
-    {
-        *invbarp = invbars;
-        return(bars);
-    }
-    else
-    {
-        *invbarp = bars;
-        return(invbars);
-    }
-    return(0);
-}
-
-void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
-{
-    static int32_t periods[] = { 60, 60*2, 60*3, 60*4, 60*5, 60*10, 60*15, 60*30, 60*60 };
-    int32_t maxbars,i,j,ind,numbids,numasks,period,timedist,maxtimedist;
-    struct orderbook *op;
-    float *bar,*invbars,*bars;
-    struct exchange_quote *qp;
-    memset(ptrs,0,sizeof(*ptrs));
-    ptrs->jdatetime = jdatetime;
-    op = create_orderbook(dp->obookid,dp->polarity,orders,numorders);
-    if ( op != 0 )
-    {
-        numbids = op->numbids;
-        if ( numbids > MAX_TRADEBOT_BARS )
-            numbids = MAX_TRADEBOT_BARS;
-        numasks = op->numasks;
-        if ( numasks > MAX_TRADEBOT_BARS )
-            numasks = MAX_TRADEBOT_BARS;
-    } else numbids = numasks = 0;
-    ptrs->maxbars = MAX_TRADEBOT_BARS;
-    for (j=0; j<(int32_t)(sizeof(periods)/sizeof(*periods)); j++)
-    {
-        maxbars = 0;
-        period = periods[j];
-        bars = get_bars(&invbars,ptrs,period,dp->polarity);
-        if ( bars == 0 )
-            fatal("illegal bars period??");
-        maxtimedist = period * MAX_TRADEBOT_BARS;
-        for (i=dp->numquotes-1; i>=0; i--)
-        {
-            qp = &dp->allquotes[i];
-            timedist = (jdatetime - qp->jdatetime);
-            if ( timedist < 0 )
-                printf("unexpected data from fugure?? %s vs %s\n",jdatetime_str(jdatetime),jdatetime_str2(qp->jdatetime));
-            else if ( timedist < maxtimedist )
-            {
-                ind = (timedist / period);
-                bar = &bars[ind * NUM_BARPRICES];
-                maxbars = ind;
-                update_bar(bar,qp->highbid,qp->lowask);
-            } else break;
-        }
-        for (ind=0; ind<=maxbars; ind++)
-        {
-            calc_barprice_aves(&bars[ind * NUM_BARPRICES]);
-            invert_bar(&invbars[ind * NUM_BARPRICES],&bars[ind * NUM_BARPRICES]);
-        }
-    }
-    for (i=0; i<numbids; i++)
-        ptrs->bidnxt[i] = op->bids[i].nxt64bits;
-    for (i=0; i<numasks; i++)
-        ptrs->asknxt[i] = op->asks[i].nxt64bits;
-    if ( dp->polarity > 0 )
-    {
-        strcpy(ptrs->base,dp->base);
-        strcpy(ptrs->rel,dp->rel);
-        ptrs->numbids = numbids;
-        for (i=0; i<numbids; i++)
-        {
-            ptrs->bidnxt[i] = op->bids[i].nxt64bits;
-            ptrs->bids[i] = op->bids[i].price;
-            //printf("%f ",ptrs->bids[i]);
-            ptrs->bidvols[i] = ((double)op->bids[i].baseamount / SATOSHIDEN);
-            ptrs->inv_asks[i] = invert_price(op->bids[i].price);
-            ptrs->inv_askvols[i] = ((double)op->bids[i].relamount / SATOSHIDEN);
-        }
-        //printf("numbids.%d %p\n",numbids,ptrs->bids);
-        ptrs->numasks = numasks;
-        for (i=0; i<numasks; i++)
-        {
-            ptrs->asknxt[i] = op->asks[i].nxt64bits;
-            ptrs->asks[i] = op->asks[i].price;
-            //printf("%f ",ptrs->asks[i]);
-            ptrs->askvols[i] = ((double)op->asks[i].baseamount / SATOSHIDEN);
-            ptrs->inv_bids[i] = invert_price(op->asks[i].price);
-            ptrs->inv_bidvols[i] = ((double)op->asks[i].relamount / SATOSHIDEN);
-        }
-        //printf("numasks.%d %p\n",numasks,ptrs->asks);
-    }
-    else
-    {
-        strcpy(ptrs->base,dp->rel);
-        strcpy(ptrs->rel,dp->base);
-        ptrs->numasks = numasks;
-        for (i=0; i<numasks; i++)
-        {
-            ptrs->asknxt[i] = op->asks[i].nxt64bits;
-            ptrs->asks[i] = invert_price(op->asks[i].price);
-            ptrs->askvols[i] = ((double)op->asks[i].relamount / SATOSHIDEN);
-            ptrs->inv_bids[i] = op->asks[i].price;
-            ptrs->inv_bidvols[i] = ((double)op->asks[i].baseamount / SATOSHIDEN);
-            //printf("(%f %f) ",ptrs->asks[i],ptrs->inv_asks[i]);
-        }
-        //printf("%d invasks\n",numasks);
-        ptrs->numbids = numbids;
-        for (i=0; i<numbids; i++)
-        {
-            ptrs->bidnxt[i] = op->bids[i].nxt64bits;
-            ptrs->bids[i] = invert_price(op->bids[i].price);
-            ptrs->bidvols[i] = ((double)op->bids[i].relamount / SATOSHIDEN);
-            ptrs->inv_asks[i] = op->bids[i].price;
-            ptrs->inv_askvols[i] = ((double)op->bids[i].baseamount / SATOSHIDEN);
-            //printf("(%f %f) ",ptrs->bids[i],ptrs->inv_bids[i]);
-        }
-        //printf("%d invbids\n",numbids);
-    }
-    if ( op != 0 )
-        free_orderbook(op);
-}
-
 struct orderbook_tx **get_latest_orders(uint32_t *jdatetimep,int32_t *nump,struct exchange_state *ep)
 {
     uint32_t i,jdatetime;
@@ -843,6 +704,7 @@ void *poll_exchanges(void *flagp)
                 ep = Activefiles[i];
                 if ( (orders= get_latest_orders(&jdatetime,&n,ep)) != 0 )
                 {
+                    void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime);
                     //printf("ep.%p %s lag.%d recalc_bars %s %s %s\n",ep,jdatetime_str(jdatetime),actual_gmt_jdatetime()-jdatetime,ep->name,ep->base,ep->rel);
                     recalc_bars(&ep->P.PTRS,orders,n,&ep->P,jdatetime);
                     ep->P.calctime = jdatetime;
@@ -908,7 +770,6 @@ int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag)
     cJSON *array,*item;
     char base[64],rel[64];
     Numactivefiles = 0;
-    //return(0);
     for (i=0; i<NUM_EXCHANGES; i++)
     {
         if ( confobj == 0 )

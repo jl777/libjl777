@@ -302,10 +302,6 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     if ( key == 0 || *key == 0 || hp == 0 || strlen(key) >= hp->keysize )
     {
         printf("%p key.(%s) len.%ld is too big for %s %ld, FATAL\n",key,key,strlen(key),hp->name,hp->keysize);
-#ifdef __APPLE__
-        while ( 1 ) sleep(1);
-        return(0);
-#endif
         key = "123456";
     }
     //printf("hp %p %p hashsize.%ld add_hashtable(%s)\n",hp_ptr,hp,(long)hp->hashsize,key);
@@ -341,82 +337,58 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     void *result;
     extern struct NXThandler_info *Global_mp;
     struct hashpacket *ptr;
-#ifdef __APPLE__
     if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || strlen(key) >= (*hp_ptr)->keysize )
     {
-        printf("MTadd_hashtable null key??\n");
-        while ( 1 )
-            sleep(60);
+        printf("MTadd_hashtable illegal key?? (%s)\n",key);
     }
-#endif
-    if ( 0 && Historical_done != 0 )
-        return(add_hashtable(createdflagp,hp_ptr,key));
-    else
-    {
-        //portable_mutex_lock(&Global_mp->hash_mutex);
-        ptr = calloc(1,sizeof(*ptr));
-        ptr->createdflagp = createdflagp;
-        ptr->hp_ptr = hp_ptr;
-        ptr->key = key;
-        ptr->funcid = 'A';
-        while ( Global_mp->hashprocessing != 0 )
-            usleep(100);
-        Global_mp->hashprocessing++;
-        //printf("A Queue %p\n",ptr);
-        queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
-        //printf("A Queued %p\n",ptr);
-        while ( ptr->doneflag == 0 )
-            usleep(1);
-        //printf("A Done %p\n",ptr);
-        result = ptr->U.result;
-        free(ptr);
-        Global_mp->hashprocessing--;
-       // portable_mutex_unlock(&Global_mp->hash_mutex);
-        return(result);
-    }
+    ptr = calloc(1,sizeof(*ptr));
+    ptr->createdflagp = createdflagp;
+    ptr->hp_ptr = hp_ptr;
+    ptr->key = key;
+    ptr->funcid = 'A';
+    while ( Global_mp->hashprocessing != 0 )
+        usleep(1);
+    Global_mp->hashprocessing++;
+    queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
+    usleep(1);
+    while ( ptr->doneflag == 0 )
+        usleep(1);
+    result = ptr->U.result;
+    free(ptr);
+    Global_mp->hashprocessing--;
+    return(result);
 }
 
 uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
 {
     uint64_t hashval;
-    struct hashtable *hp = *hp_ptr;
     struct hashpacket *ptr;
-    if ( 0 && Historical_done != 0 )
-        return(search_hashtable(hp,key));
-    else
-    {
-        //portable_mutex_lock(&Global_mp->hash_mutex);
-        ptr = calloc(1,sizeof(*ptr));
-        ptr->hp_ptr = hp_ptr;
-        ptr->key = key;
-        ptr->funcid = 'S';
-        while ( Global_mp->hashprocessing != 0 )
-            usleep(100);
-        Global_mp->hashprocessing++;
-        //printf("B Queue %p\n",ptr);
-        queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
-        //printf("B Queued %p\n",ptr);
-        while ( ptr->doneflag == 0 )
-            usleep(1);
-        //printf("B Done %p\n",ptr);
-        hashval = ptr->U.hashval;
-        free(ptr);
-        Global_mp->hashprocessing--;
-        //portable_mutex_unlock(&Global_mp->hash_mutex);
-        return(hashval);
-    }
+    ptr = calloc(1,sizeof(*ptr));
+    ptr->hp_ptr = hp_ptr;
+    ptr->key = key;
+    ptr->funcid = 'S';
+    while ( Global_mp->hashprocessing != 0 )
+        usleep(1);
+    Global_mp->hashprocessing++;
+    queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
+    usleep(1);
+    while ( ptr->doneflag == 0 )
+        usleep(1);
+    hashval = ptr->U.hashval;
+    free(ptr);
+    Global_mp->hashprocessing--;
+    return(hashval);
 }
 
 void *process_hashtablequeues(void *_p) // serialize hashtable functions
 {
-    int32_t iter;
+    int32_t iter,n = 0;
     struct hashpacket *ptr;
     while ( 1 )//Historical_done == 0 )
     {
-        usleep(1 + Historical_done*1000);
-        //portable_mutex_lock(&Global_mp->hash_mutex);
-        //Global_mp->hashprocessing = 1;
-        for (iter=0; iter<2; iter++)
+        if ( Global_mp->hashprocessing == 0 && n == 0 )
+            usleep(1000);
+        for (iter=n=0; iter<2; iter++)
         {
             while ( (ptr= queue_dequeue(&Global_mp->hashtable_queue[iter])) != 0 )
             {
@@ -428,12 +400,11 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
                     ptr->U.hashval = search_hashtable(*ptr->hp_ptr,ptr->key);
                 else printf("UNEXPECTED MThashtable funcid.(%c) %d\n",ptr->funcid,ptr->funcid);
                 ptr->doneflag = 1;
+                n++;
                 //printf("<<<<<< Finished Processs %p\n",ptr);
                 //printf("finished numitems.%ld process.%p hp %p\n",(long)(*ptr->hp_ptr)->hashsize,ptr,ptr->hp_ptr);
             }
         }
-        //Global_mp->hashprocessing = 0;
-        //portable_mutex_unlock(&Global_mp->hash_mutex);
     }
     fprintf(stderr,"finished processing hashtable MT queues\n");
     exit(0);

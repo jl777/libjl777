@@ -47,7 +47,7 @@ struct write_req_t
     struct sockaddr addr;
     uv_udp_t *udp;
     uv_buf_t buf;
-    int32_t allocflag;
+    int32_t allocflag,queuetime;
 };
 
 struct udp_queuecmd
@@ -140,14 +140,17 @@ int32_t process_sendQ_item(struct write_req_t *wr)
 
 int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,uv_udp_t *handle,void *buf,long len,int32_t allocflag)
 {
-     int32_t r=0;
+    int32_t r=0;
     struct write_req_t *wr;
     wr = alloc_wr(buf,len,allocflag);
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->udp = handle;
     if ( queueflag != 0 )
+    {
+        wr->queuetime = (uint32_t)(1000. * milliseconds());
         queue_enqueue(&sendQ,wr);
+    }
     else r = process_sendQ_item(wr);
     return(r);
 }
@@ -302,7 +305,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
             port = SUPERNET_PORT;
             uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
         }
-        queueflag = 0*1;
+        queueflag = 1;
         if ( Debuglevel > 1 )
             printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
         portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);

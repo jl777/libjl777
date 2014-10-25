@@ -39,7 +39,7 @@ install: /usr/lib/libjl777.so; \
 btcd: ../src/BitcoinDarkd; \
     cd ../src; rm BitcoinDarkd; make -f makefile.unix; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
 
-patch: doesntexist; \
+patch0: doesntexist; \
     export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \
@@ -47,6 +47,14 @@ patch: doesntexist; \
     make; \
     cp *.h ../../includes; \
     cp libdb.a ../../libs;
+
+patch: doesntexist; \
+    unzip lws.zip -d libwebsockets; \
+    cd libwebsockets/lib; \
+    cmake ..; make; \
+    cp lib/*  ../../libs; \
+    cp libwebsockets.h lws_config.h ../../includes; \
+    cd ../..;
 
 onetime: doesntexist; \
     unzip db-6.1.19.zip; \
@@ -92,7 +100,7 @@ doesntexist:
 picoc.o: picoc.c picoc.h
 libgfshare.o: libgfshare.c libgfshare.h
 libjl777.o: libjl777.c atomic.h ciphers.h feeds.h jl777hash.h libgfshare.h mofnfs.h packets.h sorts.h tradebot.h \
-            storage.h bars.h cJSON.h jl777str.h NXTservices.h peers.h telepathy.h transporter.h \
+            storage.h bars.h cJSON.h jl777str.h NXTservices.h telepathy.h transporter.h \
             bitcoind.h coincache.h jdatetime.h jsoncodec.h NXTutils.h sortnetworks.h telepods.h \
             bitcoinglue.h coins.h jl777.h kademlia.h mappedptr.h orders.h _sorts.h teleport.h udp.h tweetnacl.h
 table.o: table.c interpreter.h platform.h

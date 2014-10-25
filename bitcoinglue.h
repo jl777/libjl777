@@ -147,10 +147,10 @@ char *createrawtxid_json_params(struct coin_info *cp,struct rawtransaction *rp)
 
 struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
 {
-    struct telepod *create_telepod(int32_t saveflag,char *refcipher,cJSON *ciphersobj,struct coin_info *cp,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout,uint8_t M,uint8_t N,uint8_t sharenrs[255],uint8_t sharei,int32_t height);
+    struct telepod *create_telepod(uint32_t createtime,char *coinstr,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout);
     char args[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],script[MAX_JSON_FIELD],podaddr[MAX_JSON_FIELD],*privkey = 0;
     unsigned char sharenrs[255];
-    int32_t vout,M,N;
+    int32_t vout,M,N,numconfirms;
     uint64_t amount;
     struct telepod *pod = 0;
     M = N = 1;
@@ -160,6 +160,7 @@ struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
     copy_cJSON(script,cJSON_GetObjectItem(json,"scriptPubKey"));
     amount = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"amount")));
     vout = get_API_int(cJSON_GetObjectItem(json,"vout"),0);
+    numconfirms = get_API_int(cJSON_GetObjectItem(json,"confirmations"),0);
     if ( txid[0] != 0 && podaddr[0] != 0 && script[0] != 0 && amount != 0 && vout >= 0 )
     {
         sprintf(args,"[\"%s\"]",podaddr);
@@ -167,39 +168,12 @@ struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
         if ( privkey != 0 )
         {
             fprintf(stderr,"got podaddr.(%s) privkey.(%s)\n",podaddr,privkey);
-            pod = create_telepod(0,cp->name,cp->ciphersobj,cp,amount,podaddr,script,privkey,txid,vout,M,N,sharenrs,N,0);
+            pod = create_telepod((uint32_t)time(NULL) - cp->estblocktime*numconfirms,cp->name,amount,podaddr,script,privkey,txid,vout);
             free(privkey);
         }
     }
     else printf("illegal unspent output: (%s) (%s) (%s) %.8f %d\n",txid,podaddr,script,dstr(amount),vout);
     return(pod);
-}
-
-uint64_t listunspent(struct telepod *inputpods[MAX_COIN_INPUTS],struct coin_info *cp,int32_t minconfirms,char *coinaddr,uint64_t mask)
-{
-    uint64_t sum = 0;
-    int32_t i,j,n;
-    cJSON *array;
-    char *retstr,params[512];
-    sprintf(params,"%d, 99999999, [\"%s\"]",minconfirms,coinaddr);
-    //printf("LISTUNSPENT.(%s)\n",params);
-    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
-    if ( retstr != 0 && retstr[0] != 0 )
-    {
-        //printf("listunspent (%s) -> (%s)\n",params,retstr);
-        if ( (array= cJSON_Parse(retstr)) != 0 )
-        {
-            if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-            {
-                for (i=j=0; i<n; i++)
-                    if ( (inputpods[j]= parse_unspent_json(cp,cJSON_GetArrayItem(array,i))) != 0 )
-                        sum += inputpods[j++]->satoshis;
-            }
-            free(array);
-        }
-        free(retstr);
-    }
-    return(sum);
 }
 
 uint64_t calc_telepod_inputs(char **privkeys,struct coin_info *cp,struct rawtransaction *rp,struct telepod **srcpods,struct telepod *changepod,uint64_t amount,uint64_t fee,uint64_t change)
@@ -215,7 +189,8 @@ uint64_t calc_telepod_inputs(char **privkeys,struct coin_info *cp,struct rawtran
         if ( srcpods[i] == 0 )
             break;
         //coinaddrs[rp->numinputs] = srcpod->coinaddr
-        privkeys[rp->numinputs] = (char *)&srcpods[i]->privkey_shares[srcpods[i]->len_plus1 * calc_multisig_N(srcpods[i])];
+        //privkeys[rp->numinputs] = (char *)&srcpods[i]->privkey_shares[srcpods[i]->len_plus1 * calc_multisig_N(srcpods[i])];
+        privkeys[rp->numinputs] = (char *)srcpods[i]->privkey;
         rp->inputs[rp->numinputs++] = conv_telepod(srcpods[i]);
         rp->inputsum += srcpods[i]->satoshis;
         if ( rp->inputsum == (amount + fee + change) )
@@ -225,7 +200,8 @@ uint64_t calc_telepod_inputs(char **privkeys,struct coin_info *cp,struct rawtran
     {
         rp->inputsum += changepod->satoshis;
         //coinaddrs[rp->numinputs] = changepod->coinaddr;
-        privkeys[rp->numinputs] = (char *)&changepod->privkey_shares[changepod->len_plus1 * calc_multisig_N(changepod)];
+        //privkeys[rp->numinputs] = (char *)&changepod->privkey_shares[changepod->len_plus1 * calc_multisig_N(changepod)];
+        privkeys[rp->numinputs] = (char *)&changepod->privkey;
         rp->inputs[rp->numinputs++] = conv_telepod(changepod);
     }
     rp->amount = rp->inputsum - rp->change - fee;
@@ -311,57 +287,180 @@ int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_inf
     return(completed);
 }
 
-char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *availchangep,struct coin_info *cp)
+uint64_t listunspent(struct telepod *inputpods[MAX_COIN_INPUTS],struct coin_info *cp,int32_t minconfirms,char *coinaddr)
 {
-    char pubkey[512],coinaddr[MAX_JSON_FIELD],*retstr,*addr = 0;
+    uint64_t sum = 0;
+    int32_t i,j,n;
     cJSON *array;
-    int32_t i,n,j;
-    *availchangep = 0;
-    if ( cp->transporteraddr[0] == 0 )
+    char *retstr,params[512];
+    sprintf(params,"%d, 99999999, [\"%s\"]",minconfirms,coinaddr);
+    //printf("LISTUNSPENT.(%s)\n",params);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
+    if ( retstr != 0 && retstr[0] != 0 )
     {
-        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaddressesbyaccount","[\"transporter\"]");
-        if ( retstr != 0 && retstr[0] != 0 )
+        //printf("listunspent (%s) -> (%s)\n",params,retstr);
+        if ( (array= cJSON_Parse(retstr)) != 0 )
         {
-            if ( (array= cJSON_Parse(retstr)) != 0 )
+            if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
-                if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) != 0 )
+                for (i=j=0; i<n; i++)
+                    if ( (inputpods[j]= parse_unspent_json(cp,cJSON_GetArrayItem(array,i))) != 0 )
+                        sum += inputpods[j++]->satoshis;
+            }
+            free(array);
+        }
+        free(retstr);
+    }
+    return(sum);
+}
+
+uint64_t check_txid(uint32_t *createtimep,struct coin_info *cp,int32_t minconfirms,char *coinaddr,char *reftxid,int32_t vout,char *refscript)
+{
+    //txid" : "a27335be811bf48f12856a77f922d01bd111892ea64fd5fb42ecd5b5f6ce693a",
+    //"vout" : 1,
+    //"address" : "RGLbLB5YHM6vngmd8XKvAFCUK8zDfWoSSr",
+    //"account" : "",
+    //"scriptPubKey" : "21036b0ac4361f0058710840f9db9f85733e8014211d9fcc7930dd833aa098ed4d33ac",
+    //"amount" : 281.51000000,
+    //"confirmations" : 716
+    uint64_t unspent = 0;
+    int32_t i,n;
+    cJSON *array,*item;
+    char *retstr,params[512],addr[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],script[MAX_JSON_FIELD];
+    sprintf(params,"%d, 99999999, [\"%s\"]",minconfirms,coinaddr);
+    //printf("check_txid.(%s)\n",params);
+    *createtimep = 0;
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
+    if ( retstr != 0 && retstr[0] != 0 )
+    {
+        //printf("check_txid (%s) -> (%s)\n",params,retstr);
+        if ( (array= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
                 {
-                    for (i=0; i<n; i++)
+                    item = cJSON_GetArrayItem(array,i);
+                    if ( (int32_t)get_API_int(cJSON_GetObjectItem(item,"vout"),-1) == vout )
                     {
-                        coinaddr[0] = 0;
-                        *availchangep = 0;
-                        copy_cJSON(coinaddr,cJSON_GetArrayItem(array,i));
-                        if ( coinaddr[0] != 0 )
+                        copy_cJSON(addr,cJSON_GetObjectItem(item,"address"));
+                        copy_cJSON(txid,cJSON_GetObjectItem(item,"txid"));
+                        if ( strcmp(addr,coinaddr) == 0 && strcmp(txid,reftxid) == 0 )
                         {
-                            if ( validate_coinaddr(pubkey,cp,coinaddr) > 0 )
+                            if ( refscript != 0 )
                             {
-                                memset(inputpods,0,sizeof(*inputpods) * MAX_COIN_INPUTS);
-                                *availchangep = listunspent(inputpods,cp,1,coinaddr,-1);
-                                printf("(%s %.8f) ",coinaddr,dstr(*availchangep));
-                                if ( *availchangep > 0 )
+                                copy_cJSON(script,cJSON_GetObjectItem(item,"scriptPubKey"));
+                                if ( refscript[0] == 0 )
+                                    strcpy(refscript,script);
+                                else if ( strcmp(refscript,script) != 0 )
                                 {
-                                    strcpy(cp->transporteraddr,coinaddr);
-                                    addr = clonestr(cp->transporteraddr);
-                                    printf("set TRANSPORTER.%d ADDRESS.(%s) %.8f\n",i,coinaddr,dstr(*availchangep));
-                                    break;
-                                }
-                                else
-                                {
-                                    for (j=0; j<MAX_COIN_INPUTS; j++)
-                                        if ( inputpods[j] != 0 )
-                                            free(inputpods[j]);
+                                    printf("script mismatch %s.%s.%d (%s) != (%s)\n",addr,txid,vout,refscript,script);
+                                    continue;
                                 }
                             }
-                            else printf("error with transporter addr.(%s)\n",retstr);
+                            unspent = (uint64_t)(get_API_float(cJSON_GetObjectItem(item,"amount")) * SATOSHIDEN);
+                            *createtimep = (uint32_t)time(NULL) - cp->estblocktime*get_API_int(cJSON_GetObjectItem(item,"confirmations"),0);
+                            break;
                         }
                     }
                 }
-                free_json(array);
             }
-            free(retstr);
-        } else printf("No unspent outputs for transporter account\n");
+            free(array);
+        }
+        free(retstr);
     }
-    return(addr);
+    return(unspent);
+}
+
+char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *availchangep,struct coin_info *cp,char *account)
+{
+    char pubkey[512],coinaddr[MAX_JSON_FIELD],bestaddr[MAX_JSON_FIELD],argstr[512],*retstr,*addr = 0;
+    struct telepod *hwmpods[MAX_COIN_INPUTS];
+    cJSON *array;
+    int32_t i,n,j;
+    uint64_t sum,max = 0;
+    *availchangep = 0;
+    bestaddr[0] = 0;
+    memset(hwmpods,0,sizeof(hwmpods));
+    sprintf(argstr,"[\"%s\"]",account);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaddressesbyaccount",argstr);
+    if ( retstr != 0 && retstr[0] != 0 )
+    {
+        if ( (array= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) != 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    coinaddr[0] = 0;
+                    sum = 0;
+                    copy_cJSON(coinaddr,cJSON_GetArrayItem(array,i));
+                    if ( coinaddr[0] != 0 )
+                    {
+                        if ( validate_coinaddr(pubkey,cp,coinaddr) > 0 )
+                        {
+                            memset(inputpods,0,sizeof(*inputpods) * MAX_COIN_INPUTS);
+                            sum = listunspent(inputpods,cp,1,coinaddr);
+                            printf("(%s %.8f) ",coinaddr,dstr(*availchangep));
+                            if ( sum > max )
+                            {
+                                for (j=0; j<MAX_COIN_INPUTS; j++)
+                                    if ( hwmpods[j] != 0 )
+                                        free(hwmpods[j]);
+                                memcpy(hwmpods,inputpods,sizeof(hwmpods));
+                                max = sum;
+                                strcpy(bestaddr,coinaddr);
+                                addr = bestaddr;
+                                printf("set %s.%d ADDRESS.(%s) %.8f\n",account,i,coinaddr,dstr(sum));
+                                //break;
+                            }
+                            else
+                            {
+                                for (j=0; j<MAX_COIN_INPUTS; j++)
+                                    if ( inputpods[j] != 0 )
+                                        free(inputpods[j]);
+                            }
+                        }
+                        else printf("error with transporter addr.(%s)\n",retstr);
+                    }
+                }
+            }
+            free_json(array);
+        }
+        free(retstr);
+    } else printf("No unspent outputs for transporter account\n");
+    *availchangep = max;
+    memcpy(inputpods,hwmpods,sizeof(hwmpods));
+    return(clonestr(bestaddr));
+}
+
+char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *availchangep,struct coin_info *cp)
+{
+    char *bestaddr;
+    if ( (bestaddr= get_account_unspent(inputpods,availchangep,cp,"transporter")) != 0 )
+        strcpy(cp->transporteraddr,bestaddr);
+    return(bestaddr);
+}
+
+uint64_t get_changepod(struct telepod **changepodp,struct coin_info *cp)
+{
+    char *bestaddr;
+    uint64_t avail,j;
+    struct telepod *inputpods[MAX_COIN_INPUTS];
+    *changepodp = 0;
+    memset(inputpods,0,sizeof(inputpods));
+    if ( (bestaddr= get_account_unspent(inputpods,&avail,cp,"changepods")) != 0 )
+    {
+        if ( inputpods[0] != 0 )
+        {
+            *changepodp = inputpods[0];
+            avail = inputpods[0]->satoshis;
+            for (j=1; j<MAX_COIN_INPUTS; j++)
+                if ( inputpods[j] != 0 )
+                    free(inputpods[j]);
+        }
+    }
+    return(avail);
 }
 
 char *calc_telepod_transaction(struct coin_info *cp,struct rawtransaction *rp,struct telepod *srcpods[],uint64_t srcsatoshis,char *destaddr,uint64_t fee,struct telepod *changepod,uint64_t change,char *changeaddr)

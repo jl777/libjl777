@@ -858,7 +858,13 @@ char **validate_ciphers(int32_t **cipheridsp,struct coin_info *cp,cJSON *ciphers
 
 int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
 {
+    struct coin_info *get_coin_info(char *coinstr);
+    char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename);
     FILE *fp;
+    cJSON *json,*txidsobj;
+    int M=2,N=3,result;
+    char sharenrs[512],*retstr,*pin = "";
+    struct coin_info *cp = get_coin_info("BTCD");
     if ( encoded != 0 )
     {
         if ( (fp= fopen(fname,"wb")) != 0 )
@@ -873,6 +879,29 @@ int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
             else
             {
                 fclose(fp);
+                if ( (fp= fopen(fname,"rb")) != 0 )
+                {
+                    retstr = mofn_savefile(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,cp->srvNXTADDR,pin,fp,0,M,N,0,cp->privateNXTACCTSECRET,fname);
+                    if ( retstr != 0 )
+                    {
+                        if ( (json= cJSON_Parse(retstr)) != 0 )
+                        {
+                            if ( (result= get_API_int(cJSON_GetObjectItem(json,"result"),-1)) == 0 )
+                            {
+                                copy_cJSON(sharenrs,cJSON_GetObjectItem(json,"sharenrs"));
+                                txidsobj = cJSON_GetObjectItem(json,"txids");
+                                if ( is_cJSON_Array(txidsobj) != 0 && cJSON_GetArraySize(txidsobj) == N )
+                                {
+                                    // extract N uint64_t, save with sharenrs in binary file, keyed to filename
+                                } else printf("ERROR: unexpected array size.%d vs N.%d (%s)\n",cJSON_GetArraySize(txidsobj),N,retstr);
+                            } else printf("ERROR: result.%d from (%s)\n",result,retstr);
+                            free_json(json);
+                        }
+                        printf("save.(%s) -> (%s)\n",fname,retstr);
+                        free(retstr);
+                    }
+                    fclose(fp);
+                }
                 return(len);
             }
         }
@@ -891,20 +920,6 @@ uint8_t *save_encrypted(char *fname,struct coin_info *cp,uint8_t *data,int32_t *
         encoded = ciphers_codec(0,privkeys,cipherids,data,&newlen);
         free_cipherptrs(0,privkeys,cipherids);
         *lenp = _save_encrypted(fname,encoded,newlen);
-
-        /*if ( encoded != 0 )
-        {
-            if ( (fp= fopen(fname,"wb")) != 0 )
-            {
-                if ( fwrite(encoded,1,newlen,fp) != newlen )
-                {
-                    printf("error saving.(%s) encrypted data len.%d -> %d\n",fname,*lenp,newlen);
-                    strcpy(fname,"error");
-                }
-                else *lenp = newlen;
-                fclose(fp);
-            }
-        }*/
     }
     return(encoded);
 }
