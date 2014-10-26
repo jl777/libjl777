@@ -41,6 +41,7 @@ btcd: ../src/BitcoinDarkd; \
 
 patch0: doesntexist; \
     export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
+    unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \
     cp ../../env_region.c ../src/env; \
@@ -60,6 +61,15 @@ patch: doesntexist; \
     cd ../..;
 
 onetime: doesntexist; \
+    unzip lws.zip -d libwebsockets; \
+    cd libwebsockets/lib; \
+    cmake ..; \
+    cp libwebsockets.h lws_config.h ../../includes; \
+    cp libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
+    cp libwebsockets-test-server.pem ../../SuperNET.pem; \
+    make; \
+    cp lib/*  ../../libs; \
+    cd ../..;
     unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \

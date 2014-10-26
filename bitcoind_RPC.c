@@ -97,7 +97,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
  *
  ************************************************************************/
 
-char *bitcoind_RPC(CURL *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
+char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static int numretries,count,count2;
     static double elapsedsum,elapsedsum2;//,laststart;
@@ -166,9 +166,16 @@ try_again:
         databuf = 0;
     }
     
-    if ( res != CURLE_OK ) {
+    if ( res != CURLE_OK )
+    {
         numretries++;
-        if (numretries >= 10) {
+        if ( strcmp("SuperNET",command) == 0 )
+        {
+            free(s.ptr);
+            return(0);
+        }
+        else if ( numretries >= 10 )
+        {
             fprintf(stderr,"Maximum number of retries exceeded!\n");
             free(s.ptr);
             return(0);
@@ -178,7 +185,9 @@ try_again:
         usleep(13*1000000);
         goto try_again;
         
-    } else {
+    }
+    else
+    {
         if ( command != 0 )
         {
             count++;
@@ -186,7 +195,9 @@ try_again:
             if ( (count % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
             return(post_process_bitcoind_RPC(debugstr,command,s.ptr));
-        } else {
+        }
+        else
+        {
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
             ///if ( (count2 % 10000) == 0) exit(0);
