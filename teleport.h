@@ -245,7 +245,7 @@ uint64_t scan_telepods(char *coinstr)
                             num++;
                             if ( (pod= parse_unspent_json(cp,item)) != 0 )
                             {
-                                fprintf(stderr,"pod.%p parse_unspent\n",pod);
+                                //fprintf(stderr,"pod.%p parse_unspent\n",pod);
                                 if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
                                 {
                                     disp_telepod("new",pod);
@@ -611,7 +611,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         set_num_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-    printf("set nump.%d\n",n);
+    //printf("set nump.%d\n",n);
     *nump = n;
     return(pods);
 }
