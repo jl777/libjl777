@@ -1066,7 +1066,9 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             strcpy(transporteraddr,addr);
             free(addr);
         }
-        if ( (addr= get_account_unspent(0,&change,cp,"changepods")) != 0 )
+        if ( (addr= get_account_unspent(0,&change,cp,"changepods")) == 0 )
+            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"changepods\"]");
+        if ( addr != 0 )
         {
             strcpy(changeaddr,addr);
             free(addr);
@@ -1104,12 +1106,9 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             sprintf(numstr,"%.8f",dstr(availsend));
             cJSON_AddItemToObject(json,"avail",cJSON_CreateString(numstr));
         }
-        if ( changeaddr[0] != 0 )
-        {
-            cJSON_AddItemToObject(json,"changeaddr",cJSON_CreateString(changeaddr));
-            sprintf(numstr,"%.8f",dstr(change));
-            cJSON_AddItemToObject(json,"change",cJSON_CreateString(numstr));
-        }
+        cJSON_AddItemToObject(json,"changeaddr",cJSON_CreateString(changeaddr));
+        sprintf(numstr,"%.8f",dstr(change));
+        cJSON_AddItemToObject(json,"change",cJSON_CreateString(numstr));
         retstr = cJSON_Print(json);
         stripwhite_ns(retstr,strlen(retstr));
         return(retstr);
