@@ -379,7 +379,7 @@ char *SuperNET_JSON(char *JSONstr)
     cJSON *json;
     if ( Finished_init == 0 )
         return(0);
-    if ( Debuglevel > 0 )
+    if ( Debuglevel > 1 )
         printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
