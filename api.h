@@ -165,7 +165,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 return 0;
             //printf("GOT.(%s)\n",(char *)in);
             str = malloc(len+1);
-            memcpy(str,(void *)((long)in + 1),len);
+            memcpy(str,(void *)((long)in + 1),len-1);
             str[len-1] = 0;
             convert_percent22(str);
             if ( (json= cJSON_Parse(str)) != 0 )
@@ -187,7 +187,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             str[len] = 0;
             //if ( wsi != 0 )
             //dump_handshake_info(wsi);
-            //fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
+            fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
             //>>>>>>>>>>>>>> SuperNET received RPC.({"requestType":"BTCDjson","json":{\"requestType\":\"getpeers\"}})
             //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }
             if ( (json= cJSON_Parse(str)) != 0 )

@@ -211,6 +211,7 @@ uint64_t scan_telepods(char *coinstr)
     char *retstr,params[512],acct[MAX_JSON_FIELD];
     struct coin_info *cp;
     struct telepod *pod;
+    struct storage_header *hp;
     if ( strcmp(coinstr,"BBR") == 0 )
     {
         printf("Cant scan BBR for telepods yet\n");
@@ -238,7 +239,9 @@ uint64_t scan_telepods(char *coinstr)
                             j++;
                             if ( (pod= parse_unspent_json(cp,item)) != 0 )
                             {
-                                update_telepod(pod,pod->txid);
+                                if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
+                                    update_telepod(pod,pod->txid);
+                                else free(hp);
                                 disp_telepod("scan",pod);
                                 sum += pod->satoshis;
                                 free(pod);
