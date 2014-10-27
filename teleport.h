@@ -51,7 +51,9 @@ uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 
 void update_telepod(struct telepod *pod)
 {
+    fprintf(stderr,"call update_telepod\n");
     update_storage(TELEPOD_DATA,pod->txid,&pod->H);
+    fprintf(stderr,"back update_telepod\n");
 }
 
 char *_podstate(int32_t podstate)
@@ -243,6 +245,7 @@ uint64_t scan_telepods(char *coinstr)
                             num++;
                             if ( (pod= parse_unspent_json(cp,item)) != 0 )
                             {
+                                fprintf(stderr,"pod.%p parse_unspent\n",pod);
                                 if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
                                 {
                                     disp_telepod("new",pod);

@@ -126,6 +126,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     struct storage_header *hp;
     if ( dbp == 0 )
         return(0);
+    fprintf(stderr,"in find_storage\n");
     clear_pair(&key,&data);
     key.data = keystr;
     key.size = (int32_t)strlen(keystr) + 1;
@@ -134,11 +135,16 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     {
         if ( ret != DB_NOTFOUND )
             fprintf(stderr,"DB get error.%d data.size %d\n",ret,data.size);
-        else return(0);
+        else
+        {
+            fprintf(stderr,"find_storage ret.null\n");
+            return(0);
+        }
     }
     hp = (struct storage_header *)data.data;
     ptr = malloc(data.size);
     memcpy(ptr,hp,data.size);
+    fprintf(stderr,"find_storage ret.%p\n",ptr);
     return(ptr);
 }
 
@@ -238,10 +244,10 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         data.data = hp;
         data.size = hp->datalen;
-        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
-        //fprintf(stderr,"after dbp->put\n");
+        fprintf(stderr,"after dbp->put\n");
     }
 }
 
