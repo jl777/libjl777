@@ -73,7 +73,10 @@ char *_podstate(int32_t podstate)
 cJSON *coin_specific_json(struct telepod *pod)
 {
     cJSON *tpd;
+    char numstr[64];
     tpd = cJSON_CreateObject();
+    sprintf(numstr,"%.8f",(double)pod->satoshis/SATOSHIDEN);
+    cJSON_AddItemToObject(tpd,"v",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(tpd,"t",cJSON_CreateNumber(pod->H.createtime));
     cJSON_AddItemToObject(tpd,"c",cJSON_CreateNumber(pod->crc));
     cJSON_AddItemToObject(tpd,"x",cJSON_CreateString(pod->txid));
@@ -927,7 +930,7 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
 double filter_telepod(struct telepod *pod,struct contact_info *contact,char *coinstr,char *withdrawaddr)
 {
     double net = 0.;
-    printf("filter contact.%p coinstr.%p withdraw.%p\n",contact,coinstr,withdrawaddr);
+    //printf("filter contact.%p coinstr.%p withdraw.%p\n",contact,coinstr,withdrawaddr);
     if ( contact != 0 && pod->destbits != contact->nxt64bits && pod->senderbits != contact->nxt64bits )
         return(0.);
     if ( coinstr != 0 && coinstr[0] != 0 && strcmp(coinstr,pod->coinstr) != 0 )
@@ -979,7 +982,8 @@ cJSON *telepod_dispjson(struct telepod *pod,double netamount)
     }
     cJSON_AddItemToObject(dispjson,"txid",cJSON_CreateString(pod->txid));
     cJSON_AddItemToObject(dispjson,"coin",cJSON_CreateString(pod->coinstr));
-    cJSON_AddItemToObject(dispjson,"amount",cJSON_CreateNumber(dir * (double)pod->satoshis/SATOSHIDEN));
+    sprintf(numstr,"%.8f",(double)pod->satoshis/SATOSHIDEN);
+    cJSON_AddItemToObject(dispjson,"amount",cJSON_CreateString(numstr));
     return(dispjson);
 }
 
