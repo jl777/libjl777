@@ -301,23 +301,6 @@ char *call_SuperNET_JSON(char *JSONstr)
     return(retstr);
 }
 
-int32_t is_BTCD_command(cJSON *json)
-{
-    char *BTCDcmds[] = { "maketelepods", "teleport", "telepod", "transporter", "transporter_status" };
-    char request[MAX_JSON_FIELD];
-    long i;
-    if ( extract_cJSON_str(request,sizeof(request),json,"requestType") > 0 )
-    {
-        for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
-        {
-            //printf("(%s vs %s) ",request,BTCDcmds[i]);
-            if ( strcmp(request,BTCDcmds[i]) == 0 )
-                return(1);
-        }
-    }
-    return(0);
-}
-
 char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr;
@@ -336,6 +319,23 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
     return(retstr);
 }
 
+int32_t is_BTCD_command(cJSON *json)
+{
+    char *BTCDcmds[] = { "maketelepods", "teleport", "telepodacct" };
+    char request[MAX_JSON_FIELD];
+    long i;
+    if ( extract_cJSON_str(request,sizeof(request),json,"requestType") > 0 )
+    {
+        for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
+        {
+            //printf("(%s vs %s) ",request,BTCDcmds[i]);
+            if ( strcmp(request,BTCDcmds[i]) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
 char *SuperNET_JSON(char *JSONstr)
 {
     char *retstr = 0;
@@ -347,7 +347,7 @@ char *SuperNET_JSON(char *JSONstr)
         printf("got JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
-        if ( 0 && is_BTCD_command(json) != 0 ) // deadlocks as the SuperNET API came from locked BTCD RPC
+        if ( 1 && is_BTCD_command(json) != 0 ) // deadlocks as the SuperNET API came from locked BTCD RPC
         {
             //if ( Debuglevel > 1 )
             //    printf("is_BTCD_command\n");

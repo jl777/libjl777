@@ -954,7 +954,7 @@ cJSON *telepod_dispjson(struct telepod *pod,double netamount)
 
 char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawaddr,char *comment,char *cmd)
 {
-    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],NXTaddr[64],*retstr;
+    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[64],*retstr;
     int32_t i,n,dir,numpos,numneg;
     struct contact_info *contact = 0;
     cJSON *json,*array,*item;
@@ -982,9 +982,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
     }
     if ( coinstr[0] == 0 )
     {
-        char str[MAX_JSON_FIELD];
-        cJSON *array,*item;
-        array = cJSON_GetObjectItem(MGWconf,"coins");
+        array = cJSON_GetObjectItem(MGWconf,"active");
         if ( array != 0 && is_cJSON_Array(array) != 0 )
         {
             n = cJSON_GetArraySize(array);
@@ -992,8 +990,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             {
                 if ( array == 0 || n == 0 )
                     break;
-                item = cJSON_GetArrayItem(array,i);
-                copy_cJSON(str,cJSON_GetObjectItem(item,"name"));
+                copy_cJSON(str,cJSON_GetArrayItem(array,i));
                 if ( str[0] != 0 )
                     scan_telepods(str);
             }
