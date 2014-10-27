@@ -546,9 +546,9 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
-            printf("found.%d %s size.%d podstate.%d createtime.%d\n",m,key.data,data.size,pod->podstate,pod->createtime);
-            podstate = pod->podstate;
-            createtime = pod->createtime;
+            printf("minage.%d found.%d %s size.%d podstate. createtime.\n",minage,m,key.data,data.size);//,pod->podstate,pod->createtime);
+            podstate = 0;//pod->podstate;
+            createtime = 0;//pod->createtime;
             if ( minage < 0 )
                 ADD_TELEPOD
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
