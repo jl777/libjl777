@@ -133,16 +133,24 @@ void SuperNET_idler(uv_idle_t *handle)
         {
             char *call_SuperNET_JSON(char *JSONstr);
             jsonstr = ptrs[0];
-        printf("dequeue JSON_Q.(%s)\n",jsonstr);
-            if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
+            //printf("dequeue JSON_Q.(%s)\n",jsonstr);
+            /*if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
                 retstr = clonestr("{\"result\":null}");
             str = stringifyM(retstr);
             str2 = stringifyM(jsonstr);
             sprintf(retbuf,"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
             queue_enqueue(&ResultsQ,clonestr(retbuf));
-            free(str); free(str2); free(ptrs[0]); free(ptrs[1]); free(ptrs);
+            free(str); free(str2); free(ptrs[0]); free(ptrs[1]); free(ptrs);*/
+            
+            //printf("dequeue JSON_Q.(%s)\n",jsonstr);
+            if ( (retstr= call_SuperNET_JSON(jsonstr)) != 0 )
+            {
+                //printf("(%s) -> (%s)\n",jsonstr,retstr);
+                ptrs[1] = retstr;
+            } else ptrs[1] = clonestr("{\"result\":null}");
             //printf("JSON_Q ret.(%s)\n",retstr);
-            //free(jsonstr);
+            free(jsonstr);
+
             lastattempt = millis;
         }
         if ( process_storageQ() != 0 )
