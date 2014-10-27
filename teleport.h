@@ -203,6 +203,54 @@ int32_t get_telepod_info(uint64_t *unspentp,uint32_t *createtimep,char *coinstr,
     return((*createtimep == 0) ? -1 : 0);
 }
 
+uint64_t scan_telepods(char *coinstr)
+{
+    uint64_t sum = 0;
+    int32_t i,j,n;
+    cJSON *array,*item;
+    char *retstr,params[512],acct[MAX_JSON_FIELD];
+    struct coin_info *cp;
+    struct telepod *pod;
+    if ( strcmp(coinstr,"BBR") == 0 )
+    {
+        printf("Cant scan BBR for telepods yet\n");
+        return(0);
+    }
+    if ( (cp= get_coin_info(coinstr)) != 0 )
+    {
+        sprintf(params,"%d, 99999999",cp->minconfirms);
+        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
+        if ( retstr != 0 && retstr[0] != 0 )
+        {
+            if ( (array= cJSON_Parse(retstr)) != 0 )
+            {
+                if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (i=j=0; i<n; i++)
+                    {
+                        item = cJSON_GetArrayItem(array,i);
+                        copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
+                        if ( strcmp(acct,"telepods") == 0 )
+                        {
+                            j++;
+                            if ( (pod= parse_unspent_json(cp,item)) != 0 )
+                            {
+                                update_telepod(pod,pod->txid);
+                                disp_telepod("scan",pod);
+                                sum += pod->satoshis;
+                                free(pod);
+                            }
+                        }
+                    }
+                }
+                free(array);
+            }
+            free(retstr);
+        }
+    }
+    return(sum);
+}
+
 struct telepod *conv_BBR_json(struct coin_info *cp,struct cJSON *tpd)
 {
     struct telepod *pod = 0;
@@ -793,6 +841,8 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
     int32_t i,n;
     cJSON *attachmentjson;
     double avail,inbound,outbound,maturing,doublespent,cancelled;
+    if ( IS_LIBTEST == 0 )
+        return(0);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,minage);
     sprintf(buf,"{\"result\":\"teleport %.8f %s minage.%d -> (%s)\",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(satoshis),coinstr,minage,contactstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     if ( strcmp(contactstr,"balance") == 0 )
@@ -907,6 +957,8 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
     cJSON *json,*array,*item;
     struct telepod **pods,*pod;
     double avail,inbound,outbound,maturing,doublespent,cancelled,credits,debits,net;
+    if ( IS_LIBTEST == 0 )
+        return(0);
     if ( strcmp(cmd,"debit") == 0 )
         dir = -1;
     else if ( strcmp(cmd,"credit") == 0 )
@@ -925,6 +977,24 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             return(retstr);
         } else return(clonestr("{\"error\":\"illegal debit/credit parameter\"}"));
     }
+    if ( coinstr[0] == 0 )
+    {
+        char str[MAX_JSON_FIELD];
+        cJSON *array,*item;
+        array = cJSON_GetObjectItem(MGWconf,"coins");
+        if ( array != 0 && is_cJSON_Array(array) != 0 )
+        {
+            n = cJSON_GetArraySize(array);
+            for (i=0; i<n; i++)
+            {
+                if ( array == 0 || n == 0 )
+                    break;
+                item = cJSON_GetArrayItem(array,i);
+                copy_cJSON(str,cJSON_GetObjectItem(item,"name"));
+                scan_telepods(str);
+            }
+        }
+    } else scan_telepods(coinstr);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,-1);
     sprintf(retbuf,"{\"result\":\"telepodacct %.8f %s \",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(amount),coinstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     if ( pods != 0 )

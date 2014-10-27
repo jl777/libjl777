@@ -1,0 +1,12 @@
+pkill SuperNET
+./BitcoinDarkd stop
+pkill SuperNET
+git pull
+rm SuperNET
+make SuperNET
+if make btcd; then
+	rm ~/.BitcoinDark/debug.log
+	./BitcoinDarkd
+else
+	echo "error building"
+fi
