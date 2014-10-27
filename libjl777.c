@@ -311,30 +311,30 @@ printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     return(retstr);
 }
 
-char *badblock_on_SuperNET(int32_t blockflag,char *JSONstr)
+char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr,retbuf[1024];
     ptrs = calloc(2,sizeof(*ptrs));
     ptrs[0] = clonestr(JSONstr);
-    printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
+   // printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
     queue_enqueue(&JSON_Q,ptrs);
     if ( blockflag != 0 )
     {
         while ( (retstr= ptrs[1]) == 0 )
             usleep(1000);
         free(ptrs);
-        printf("block.%d returned.(%s)\n",blockflag,retstr);
+        //printf("block.%d returned.(%s)\n",blockflag,retstr);
         return(retstr);
     }
     else
     {
         sprintf(retbuf,"{\"result\":\"pending SuperNET API call\",\"ptr\":\"%p\"}",ptrs);
-        printf("block.%d returned.(%s)\n",blockflag,retbuf);
+        //printf("block.%d returned.(%s)\n",blockflag,retbuf);
         return(clonestr(retbuf));
     }
 }
 
-char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
+char *oldblock_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr;
     ptrs = calloc(2,sizeof(*ptrs));
