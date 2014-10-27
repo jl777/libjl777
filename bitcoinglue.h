@@ -411,7 +411,7 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
                             val = listunspent(inputpods,cp,1,coinaddr);
                             printf("(%s %.8f) ",coinaddr,dstr(*availchangep));
                             sum += val;
-                            if ( val > max )
+                            if ( val >= max )
                             {
                                 for (j=0; j<MAX_COIN_INPUTS; j++)
                                     if ( hwmpods[j] != 0 )
