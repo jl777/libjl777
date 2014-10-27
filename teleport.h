@@ -34,9 +34,9 @@ struct telepod
 #define TELEPOD_SPENT 6
 #define TELEPOD_WITHDRAWN 7
 
-int32_t telepod_normal_spend(struct telepod *pod)
+int32_t telepod_normal_spend(uint32_t podstate)
 {
-    if ( pod->podstate == TELEPOD_CLONED || pod->podstate == TELEPOD_SPENT || pod->podstate == TELEPOD_WITHDRAWN )
+    if ( podstate == TELEPOD_CLONED || podstate == TELEPOD_SPENT || podstate == TELEPOD_WITHDRAWN )
         return(1);
     else return(0);
 }
@@ -555,14 +555,18 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             fprintf(stderr,"%s %p minage.%d found.%d %s size.%d podstate.%d createtime.%d\n",coinstr,pod,minage,m,key.data,data.size,pod->podstate,pod->H.createtime);
             podstate = pod->podstate;
             createtime = pod->H.createtime;
+            fprintf(stderr,"before if\n");
             if ( minage < 0 )
                 ADD_TELEPOD
+                fprintf(stderr,"after if\n");
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
+            fprintf(stderr,"after calc_convamount\n");
             if ( evolve_amount == 0. )
             {
                 clear_pair(&key,&data);
                 continue;
             }
+            fprintf(stderr,"before state checks\n");
             if ( podstate == TELEPOD_AVAIL )
             {
                 if ( createtime > (now - minage) )
@@ -576,7 +580,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                 (*outboundp) += evolve_amount;
             else if ( podstate == TELEPOD_INBOUND ) // we are going to clone this within clonesmear timewindow
                 (*inboundp) += evolve_amount;
-            else if ( telepod_normal_spend(pod) == 0 ) // inbound -> cloned, outbound->spent
+            else if ( telepod_normal_spend(podstate) == 0 ) // inbound -> cloned, outbound->spent
             {
                 if ( podstate == TELEPOD_DOUBLESPENT ) // sender of inbound telepod cashed in telepod before us
                     (*doublespentp) += evolve_amount;
