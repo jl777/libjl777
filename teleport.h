@@ -261,7 +261,7 @@ uint64_t scan_telepods(char *coinstr)
                                 }
                                 sum += pod->satoshis;
                                 free(pod);
-                            }
+                            } else fprintf(stderr,"parse_unspent null\n");
                         }
                     }
                 }
@@ -556,6 +556,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         portable_mutex_init(&mutex);
         didinit = 1;
     }
+    printf("available_telepods\n");
     portable_mutex_lock(&mutex);
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
