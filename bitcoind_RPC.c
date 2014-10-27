@@ -102,7 +102,6 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
 
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
-    static portable_mutex_t mutex;
     static int numretries,count,count2;
     static double elapsedsum,elapsedsum2;//,laststart;
     char *bracket0,*bracket1,*databuf = 0;
@@ -114,6 +113,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     int32_t specialcase;
     double starttime;
 #ifndef __cplusplus
+    static portable_mutex_t mutex;
     static int didinit;
     if ( didinit == 0 )
     {
