@@ -543,9 +543,9 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         pods = (struct telepod **)calloc(sizeof(*pods),max+1);
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
+            printf("found.%d %s\n",m,key.data);
             m++;
             pod = data.data;
-            disp_telepod("DB",pod);
             if ( minage < 0 )
                 ADD_TELEPOD
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
