@@ -468,6 +468,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
         {
             int32_t gen_pingstr(char *cmdstr);
             gen_pingstr(_cmd);
+            strcat(_cmd,"}");
             //sprintf(_cmd,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"}","ping",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr);
         }
         else strcpy(_cmd,cmd);

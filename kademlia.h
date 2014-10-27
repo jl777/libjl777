@@ -258,7 +258,7 @@ int32_t gen_pingstr(char *cmdstr)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
-        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"}",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         return(0);
     } else return(-1);
 }

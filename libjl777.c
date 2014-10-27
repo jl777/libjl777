@@ -105,6 +105,7 @@ void SuperNET_idler(uv_idle_t *handle)
             if ( wr == firstwr )
             {
                 queue_enqueue(&sendQ,wr);
+                //printf("reached firstwr.%p\n",firstwr);
                 break;
             }
             if ( (wr->queuetime % 10) == r )
