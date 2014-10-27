@@ -143,7 +143,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     struct storage_header *hp;
     if ( dbp == 0 )
         return(0);
-    fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
+    //fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
     key.data = keystr;
     key.size = (int32_t)strlen(keystr) + 1;
@@ -156,7 +156,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
         else
         {
             DB_unlock(selector);
-            fprintf(stderr,"find_storage ret.null\n");
+            //fprintf(stderr,"find_storage ret.null\n");
             return(0);
         }
     }
@@ -164,7 +164,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     hp = (struct storage_header *)data.data;
     ptr = malloc(data.size);
     memcpy(ptr,hp,data.size);
-    fprintf(stderr,"find_storage ret.%p\n",ptr);
+    //fprintf(stderr,"find_storage ret.%p\n",ptr);
     return(ptr);
 }
 
