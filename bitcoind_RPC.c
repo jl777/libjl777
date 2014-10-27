@@ -117,7 +117,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
         specialcase = 1;
     else specialcase = 0;
-    //if ( specialcase != 0 && 0 )
+    if ( specialcase != 0 && 0 )
         fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: debug.(%s) url.(%s) command.(%s) params.(%s)\n",debugstr,url,command,params);
 try_again:
     starttime = milliseconds();
@@ -153,7 +153,7 @@ try_again:
             
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
-            printf("databuf.(%s)\n",databuf);
+            //printf("databuf.(%s)\n",databuf);
         }
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
         if ( databuf != 0 )
@@ -206,7 +206,6 @@ try_again:
                 fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.(%s) -> (%s)\n",params,s.ptr);
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
-            ///if ( (count2 % 10000) == 0) exit(0);
             if ( (count2 % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s)\n",count2,elapsedsum2/count2,(double)(milliseconds() - starttime),url);
             return(s.ptr);

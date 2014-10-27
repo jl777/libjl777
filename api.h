@@ -33,6 +33,23 @@ struct per_session_data__http
 	int fd;
 };
 
+int32_t is_BTCD_command(cJSON *json)
+{
+    char *BTCDcmds[] = { "maketelepods", "teleport", "telepodacct" };
+    char request[MAX_JSON_FIELD];
+    long i;
+    if ( extract_cJSON_str(request,sizeof(request),json,"requestType") > 0 )
+    {
+        for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
+        {
+            //printf("(%s vs %s) ",request,BTCDcmds[i]);
+            if ( strcmp(request,BTCDcmds[i]) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
 void dump_handshake_info(struct libwebsocket *wsi)
 {
 	int n;
@@ -143,33 +160,25 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_BAD_REQUEST, NULL);
                 return -1;
             }
-            if ( strchr((const char *)in + 1, '/') != 0 ) // this server has no concept of directories
-            {
-                //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_FORBIDDEN, NULL);
-                return -1;
-            }
             // if a legal POST URL, let it continue and accept data
             if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
                 return 0;
             //printf("GOT.(%s)\n",(char *)in);
-            convert_percent22((char *)in);
-            retstr = block_on_SuperNET(1,(char *)in+1);
-            if ( retstr != 0 )
+            str = malloc(len+1);
+            memcpy(str,(void *)((long)in + 1),len);
+            str[len-1] = 0;
+            convert_percent22(str);
+            if ( (json= cJSON_Parse(str)) != 0 )
             {
-                return_http_str(wsi,retstr);
-                /*len = strlen(retstr);
-                sprintf((char *)buffer,
-                        "HTTP/1.0 200 OK\x0d\x0a"
-                        "Server: NXTprotocol.jl777\x0d\x0a"
-                        "Content-Type: text/html\x0d\x0a"
-                        "Access-Control-Allow-Origin: *\x0d\x0a"
-                        "Content-Length: %u\x0d\x0a\x0d\x0a",
-                        (unsigned int)len);
-                printf("html hdr.(%s)\n",buffer);
-                libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);*/
-                free(retstr);
+                retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
+                if ( retstr != 0 )
+                {
+                    return_http_str(wsi,retstr);
+                    free(retstr);
+                }
+                free_json(json);
             }
+            free(str);
             return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY:
@@ -190,7 +199,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     stripwhite_ns(buf,strlen(buf));
                     retstr = block_on_SuperNET(1,buf);
                 }
-                else retstr = block_on_SuperNET(1,str);
+                else retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
                 if ( retstr != 0 )
                 {
                     return_http_str(wsi,retstr);
@@ -257,7 +266,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     strcpy(retbuf,"{\"result\":\"nothing pending\"}");
     //printf("BTCDpoll.%d\n",counter);
     //BTCDpoll post_process_bitcoind_RPC.SuperNET can't parse.({"msg":"[{"requestType":"ping","NXT":"13434315136155299987","time":1414310974,"pubkey":"34b173939544eb01515119b5e0b05880eadaae3d268439c9cc1471d8681ecb6d","ipaddr":"209.126.70.159"},{"token":"im9n7c9ka58g3qq4b2oe1d8p7mndlqk0pj4jj1163pkdgs8knb0vsreb0kf6luo1bbk097buojs1k5o5c0ldn6r6aueioj8stgel1221fq40f0cvaqq0bciuniit0isi0dikd363f3bjd9ov24iltirp6h4eua0q"}]","duration":86400})
-    if ( (counter & 1) == 0 )
+    if ( (counter % 3) == 0 )
     {
         if ( (ptr= queue_dequeue(&BroadcastQ)) != 0 )
         {
@@ -277,7 +286,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             free(ptr);
         }
     }
-    else
+    else if ( (counter % 3) == 1 )
     {
         if ( (ptr= queue_dequeue(&NarrowQ)) != 0 )
         {
@@ -292,6 +301,14 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
                 //printf("send back narrow.(%s)\n",retbuf);
             } else printf("BTCDpoll NarrowQ illegal len.%d\n",len);
             free(ptr);
+        }
+    }
+    else
+    {
+        if ( (ptr= queue_dequeue(&ResultsQ)) != 0 )
+        {
+            printf("Got ResultsQ.(%s)\n",ptr);
+            return(ptr);
         }
     }
     return(clonestr(retbuf));
