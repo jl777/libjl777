@@ -160,7 +160,7 @@ char *clonestr(char *str)
     char *clone;
     if ( str == 0 || str[0] == 0 )
     {
-        printf("warning cloning nullstr.%p\n",str); while ( 1 ) sleep(1);
+        printf("warning cloning nullstr.%p\n",str); //while ( 1 ) sleep(1);
         str = (char *)"<nullstr>";
     }
     clone = (char *)mymalloc(strlen(str)+1);
@@ -397,7 +397,7 @@ long stripstr(char *buf,long len)
     return(j);
 }
 
-char *replacequotes(char *str)
+char *replacequotesM(char *str)
 {
     char *newstr;
     int32_t i,j,n;
@@ -415,28 +415,6 @@ char *replacequotes(char *str)
         else newstr[j++] = str[i];
     }
     newstr[j] = 0;
-    free(str);
-    return(newstr);
-}
-
-char *stringify(char *str)
-{
-    char *newstr;
-    int32_t i,j,n;
-    for (i=n=0; str[i]!=0; i++)
-        n += (str[i] == '"') ? 2 : 1;
-    newstr = (char *)malloc(n + 1);
-    for (i=j=0; str[i]!=0; i++)
-    {
-        if ( str[i] == '"' )
-        {
-            newstr[j++] = '\\';
-            newstr[j++] = '"';
-        }
-        else newstr[j++] = str[i];
-    }
-    newstr[j] = 0;
-    free(str);
     return(newstr);
 }
 
@@ -471,7 +449,31 @@ char *replace_singlequotes(char *str)
     return(str);
 }
 
-char *replace_backslashquotes(char *str)
+char *stringifyM(char *str)
+{
+    char *newstr;
+    int32_t i,j,n;
+    for (i=n=0; str[i]!=0; i++)
+        n += (str[i] == '"') ? 2 : 1;
+    newstr = (char *)malloc(n + 3);
+    j = 0;
+    newstr[j++] = '"';
+    for (i=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '"' )
+        {
+            newstr[j++] = '\\';
+            newstr[j++] = '"';
+        }
+        else newstr[j++] = str[i];
+    }
+    newstr[j++] = '"';
+    newstr[j] = 0;
+    return(newstr);
+}
+
+#define replace_backslashquotes unstringify
+char *unstringify(char *str)
 {
     int32_t i,j,n;
     if ( str == 0 )

@@ -69,7 +69,7 @@ onetime: doesntexist; \
     cp libwebsockets-test-server.pem ../../SuperNET.pem; \
     make; \
     cp lib/*  ../../libs; \
-    cd ../..;
+    cd ../..; \
     unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \

@@ -58,14 +58,16 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
     char *retstr = 0;
     cJSON *json,*result,*error;
     if ( command == 0 || rpcstr == 0 || rpcstr[0] == 0 )
+    {
+        //fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
         return(rpcstr);
-    //printf("%s post_process_bitcoind_RPC.%s.[%s]\n",debugstr,command,rpcstr);
+    }
     json = cJSON_Parse(rpcstr);
     if ( json == 0 )
     {
-        printf("%s post_process_bitcoind_RPC.%s can't parse.(%s)\n",debugstr,command,rpcstr);
-        free(rpcstr);
-        return(0);
+        fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s can't parse.(%s)\n",debugstr,command,rpcstr);
+        //free(rpcstr);
+        return(rpcstr);
     }
     result = cJSON_GetObjectItem(json,"result");
     error = cJSON_GetObjectItem(json,"error");
@@ -83,10 +85,11 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
             }
         }
         else if ( (error->type&0xff) != cJSON_NULL || (result->type&0xff) != cJSON_NULL )
-            printf("%s post_process_bitcoind_RPC (%s) error.%s\n",debugstr,command,rpcstr);
+            fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC (%s) error.%s\n",debugstr,command,rpcstr);
         free(rpcstr);
     } else retstr = rpcstr;
     free_json(json);
+    //fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: postprocess returns.(%s)\n",retstr);
     return(retstr);
 }
 #endif
@@ -103,21 +106,23 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     static double elapsedsum,elapsedsum2;//,laststart;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
+    struct return_string s;
     CURLcode res;
     CURL *curl_handle;
     long len;
+    int32_t specialcase;
     double starttime;
     
     numretries=0;
-    
+    if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
+        specialcase = 1;
+    else specialcase = 0;
+    if ( specialcase != 0 && 0 )
+        fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: debug.(%s) url.(%s) command.(%s) params.(%s)\n",debugstr,url,command,params);
 try_again:
     starttime = milliseconds();
-    
     curl_handle = curl_easy_init();
-    
-    struct return_string s;
     init_string(&s);
-    
     headers = curl_slist_append(0,"Expect:");
     
     curl_easy_setopt(curl_handle,CURLOPT_HTTPHEADER,	headers);
@@ -134,7 +139,7 @@ try_again:
     databuf = 0;
     if ( params != 0 )
     {
-        if ( command != 0 )
+        if ( command != 0 && specialcase == 0 )
         {
             len = strlen(params);
             if ( len > 0 && params[0] == '[' && params[len-1] == ']' ) {
@@ -150,27 +155,23 @@ try_again:
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
         if ( databuf != 0 )
             curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,databuf);
-        else
-            curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,params);
+        else curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,params);
     }
     //laststart = milliseconds();
-    
     res = curl_easy_perform(curl_handle);
-    
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl_handle);
-    
-    // clean up temporary buffer
-    if ( databuf != 0 ) {
+    if ( databuf != 0 ) // clean up temporary buffer
+    {
         free(databuf);
         databuf = 0;
     }
-    
     if ( res != CURLE_OK )
     {
         numretries++;
-        if ( strcmp("SuperNET",command) == 0 )
+        if ( specialcase != 0 )
         {
+            fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.%s timeout params.(%s) s.ptr.(%s) err.%d\n",command,params,s.ptr,res);
             free(s.ptr);
             return(0);
         }
@@ -182,13 +183,13 @@ try_again:
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,params,numretries);
         free(s.ptr);
-        usleep(13*1000000);
+        sleep(3);
         goto try_again;
         
     }
     else
     {
-        if ( command != 0 )
+        if ( command != 0 && specialcase == 0 )
         {
             count++;
             elapsedsum += (milliseconds() - starttime);
@@ -198,6 +199,8 @@ try_again:
         }
         else
         {
+            if ( 0 && specialcase != 0 )
+                fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.(%s) -> (%s)\n",params,s.ptr);
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
             ///if ( (count2 % 10000) == 0) exit(0);
@@ -206,7 +209,7 @@ try_again:
             return(s.ptr);
         }
     }
-    
+    fprintf(stderr,"bitcoind_RPC: impossible case\n");
     free(s.ptr);
     return(0);
 }
@@ -222,8 +225,9 @@ try_again:
 void init_string(struct return_string *s)
 {
     s->len = 0;
-    s->ptr = (char *)malloc(s->len+1);
-    if (s->ptr == NULL) {
+    s->ptr = (char *)calloc(1,s->len+1);
+    if ( s->ptr == NULL )
+    {
         fprintf(stderr, "malloc() failed\n");
         exit(-1);
     }
@@ -236,19 +240,19 @@ void init_string(struct return_string *s)
  *
  ************************************************************************/
 
-size_t accumulate(void *ptr, size_t size, size_t nmemb, struct return_string *s)
+size_t accumulate(void *ptr,size_t size,size_t nmemb,struct return_string *s)
 {
     size_t new_len = s->len + size*nmemb;
-    s->ptr = (char *)realloc(s->ptr, new_len+1);
-    if (s->ptr == NULL) {
+    s->ptr = (char *)realloc(s->ptr,new_len+1);
+    if ( s->ptr == NULL )
+    {
         fprintf(stderr, "realloc() failed\n");
         exit(-1);
     }
-    memcpy(s->ptr+s->len, ptr, size*nmemb);
+    memcpy(s->ptr+s->len,ptr,size*nmemb);
     s->ptr[new_len] = '\0';
     s->len = new_len;
-    
-    return size*nmemb;
+    return(size * nmemb);
 }
 
 #endif

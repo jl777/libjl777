@@ -197,7 +197,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     utx->subtype = atoi(subtype);
     utx->verify = (strcmp("true",verify) == 0);
     strcpy(utx->comment,comment);
-    replace_backslashquotes(utx->comment);
+    unstringify(utx->comment);
     return(utx);
 }
 

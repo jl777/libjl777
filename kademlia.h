@@ -76,7 +76,7 @@ int32_t verify_addr(struct sockaddr *addr,char *refipaddr,int32_t refport)
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
     if ( strcmp(ipaddr,refipaddr) != 0 )//|| refport != port )
     {
-        printf("(%s) vs (%s) ",refipaddr,ipaddr);
+        printf("verify_addr error: (%s) vs (%s)\n",refipaddr,ipaddr);
         return(-1);
     }
     return(0);
@@ -253,6 +253,16 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
     return(data);
 }
 
+int32_t gen_pingstr(char *cmdstr)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+    {
+        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"}",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        return(0);
+    } else return(-1);
+}
+
 uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
 {
     int32_t i,encrypted,dist,createdflag,len = 0;
@@ -283,6 +293,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( pserver->nxt64bits == 0 )
             pserver->nxt64bits = nxt64bits;
     } else nxt64bits = pserver->nxt64bits;
+    strcpy(ipaddr,pserver->ipaddr);
     if ( strcmp(kadcmd,"ping") != 0 && nxt64bits == 0 )
     {
         printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
@@ -337,7 +348,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->pingmilli = milliseconds();
             stats->numpings++;
         }
-        sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        gen_pingstr(cmdstr);
+        //sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
     }
     else
     {
@@ -427,7 +439,8 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
-    printf("got ping.%d (%s)\n",ismynode(prevaddr),origargstr);
+    //printf("got ping.%d (%s)\n",ismynode(prevaddr),origargstr);
+    retstr[0] = 0;
     if ( ismynode(prevaddr) != 0 ) // user invoked
     {
         if ( destip != 0 && destip[0] != 0 && ismyipaddr(destip) == 0 )
@@ -448,7 +461,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,port,(long long)txid);
         }
     }
-   // if ( Debuglevel > 0 )
+    if ( ismynode(prevaddr) == 0 && retstr[0] != 0 )
         printf("PING.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -936,7 +949,7 @@ void every_minute(int32_t counter)
     if ( cp == 0 )
         return;
     //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
-    //p2p_publishpacket(0,0);
+    //p2p_publishpacket(get_pserver(0,"209.126.70.170",0,0),0);
     refresh_buckets(cp->srvNXTACCTSECRET);
     if ( broadcast_count == 0 )
     {

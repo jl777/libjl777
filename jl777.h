@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.007"
+#define HARDCODED_VERSION "0.077"
 
 #define NXT_GENESISTIME 1385294400
 #define SMALLVAL .000000000000001

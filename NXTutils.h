@@ -404,7 +404,7 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
         copy_cJSON(name,obj);
         obj = cJSON_GetObjectItem(retval.json,"description");
         copy_cJSON(buf,obj);
-        replace_backslashquotes(buf);
+        unstringify(buf);
         json = cJSON_Parse(buf);
         if ( json != 0 )
         {
@@ -1666,7 +1666,7 @@ cJSON *parse_json_AM(struct json_AM *ap)
         if ( jsontxt != 0 )
         {
             if ( jsontxt[0] == '"' && jsontxt[strlen(jsontxt)-1] == '"' )
-                replace_backslashquotes(jsontxt);
+                unstringify(jsontxt);
             return(cJSON_Parse(jsontxt));
         }
     }

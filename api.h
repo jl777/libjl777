@@ -33,6 +33,64 @@ struct per_session_data__http
 	int fd;
 };
 
+void dump_handshake_info(struct libwebsocket *wsi)
+{
+	int n;
+	static const char *token_names[] = {
+		/*[WSI_TOKEN_GET_URI]		=*/ "GET URI",
+		/*[WSI_TOKEN_POST_URI]		=*/ "POST URI",
+		/*[WSI_TOKEN_HOST]		=*/ "Host",
+		/*[WSI_TOKEN_CONNECTION]	=*/ "Connection",
+		/*[WSI_TOKEN_KEY1]		=*/ "key 1",
+		/*[WSI_TOKEN_KEY2]		=*/ "key 2",
+		/*[WSI_TOKEN_PROTOCOL]		=*/ "Protocol",
+		/*[WSI_TOKEN_UPGRADE]		=*/ "Upgrade",
+		/*[WSI_TOKEN_ORIGIN]		=*/ "Origin",
+		/*[WSI_TOKEN_DRAFT]		=*/ "Draft",
+		/*[WSI_TOKEN_CHALLENGE]		=*/ "Challenge",
+        
+		/* new for 04 */
+		/*[WSI_TOKEN_KEY]		=*/ "Key",
+		/*[WSI_TOKEN_VERSION]		=*/ "Version",
+		/*[WSI_TOKEN_SWORIGIN]		=*/ "Sworigin",
+        
+		/* new for 05 */
+		/*[WSI_TOKEN_EXTENSIONS]	=*/ "Extensions",
+        
+		/* client receives these */
+		/*[WSI_TOKEN_ACCEPT]		=*/ "Accept",
+		/*[WSI_TOKEN_NONCE]		=*/ "Nonce",
+		/*[WSI_TOKEN_HTTP]		=*/ "Http",
+        
+		"Accept:",
+		"If-Modified-Since:",
+		"Accept-Encoding:",
+		"Accept-Language:",
+		"Pragma:",
+		"Cache-Control:",
+		"Authorization:",
+		"Cookie:",
+		"Content-Length:",
+		"Content-Type:",
+		"Date:",
+		"Range:",
+		"Referer:",
+		"Uri-Args:",
+        
+		/*[WSI_TOKEN_MUXURL]	=*/ "MuxURL",
+	};
+	char buf[256];
+    
+	for (n = 0; n < sizeof(token_names) / sizeof(token_names[0]); n++) {
+		if (!lws_hdr_total_length(wsi, n))
+			continue;
+        
+		lws_hdr_copy(wsi, buf, sizeof buf, n);
+        
+		fprintf(stderr, "    %s = %s\n", token_names[n], buf);
+	}
+}
+
 const char * get_mimetype(const char *file)
 {
 	int n = (int)strlen(file);
@@ -67,12 +125,13 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
     //printf("html hdr.(%s)\n",buffer);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
     libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
+    //printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
 }
 
 // this protocol server (always the first one) just knows how to do HTTP
 static int callback_http(struct libwebsocket_context *context,struct libwebsocket *wsi,enum libwebsocket_callback_reasons reason,void *user,void *in,size_t len)
 {
-	char buf[MAX_JSON_FIELD],*retstr;
+	char buf[MAX_JSON_FIELD],*retstr,*str;
     cJSON *json,*array;
     //if ( len != 0 )
     //printf("reason.%d len.%ld\n",reason,len);
@@ -114,40 +173,33 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY:
-            ((char *)in)[len] = 0;
-            printf("RPC.(%s)\n",(char *)in);
+            str = malloc(len+1);
+            memcpy(str,in,len);
+            str[len] = 0;
+            //if ( wsi != 0 )
+            //dump_handshake_info(wsi);
+            //fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
+            //>>>>>>>>>>>>>> SuperNET received RPC.({"requestType":"BTCDjson","json":{\"requestType\":\"getpeers\"}})
             //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }
-            if ( (json= cJSON_Parse((char *)in)) != 0 )
+            if ( (json= cJSON_Parse(str)) != 0 )
             {
                 if ( (array= cJSON_GetObjectItem(json,"params")) != 0 && is_cJSON_Array(array) != 0 )
                 {
                     copy_cJSON(buf,cJSON_GetArrayItem(array,0));
-                    replace_backslashquotes(buf);
+                    unstringify(buf);
                     stripwhite_ns(buf,strlen(buf));
                     retstr = block_on_SuperNET(1,buf);
-                    if ( retstr != 0 )
-                    {
-                        //stripwhite_ns(retstr,strlen(retstr));
-                        //strcat(retstr,"\n");
-                        printf("RPC return.(%s)\n",retstr);
-                        return_http_str(wsi,retstr);
-                        free(retstr);
-                        free(json);
-                        return(-1);
-                    } else printf("(%s) returned null\n",buf);
                 }
-                else
+                else retstr = block_on_SuperNET(1,str);
+                if ( retstr != 0 )
                 {
-                    strncpy(buf,in,sizeof(buf)-1);
-                    buf[sizeof(buf)-1] = '\0';
-                    //if ( len < 20 )
-                    //    buf[len] = '\0';
-                    lwsl_notice("LWS_CALLBACK_HTTP_BODY: %s\n",buf);
+                    return_http_str(wsi,retstr);
+                    free(retstr);
                 }
                 free_json(json);
             }
-            else printf("couldnt parse (%s)\n",(char *)in);
-            return_http_str(wsi,"{\"error\":\"couldnt parse JSON\"}");
+            else return_http_str(wsi,str);
+            free(str);
             return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY_COMPLETION: // the whole sent body arried, close the connection
@@ -158,23 +210,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             //		lwsl_info("LWS_CALLBACK_HTTP_FILE_COMPLETION seen\n");
             return -1;
         case LWS_CALLBACK_HTTP_WRITEABLE:           // we can send more of whatever it is we were sending
-            /*do
-            {
-                n = (int)read(pss->fd,buffer,sizeof buffer);
-                if ( n < 0 ) // problem reading, close conn
-                    goto bail;
-                if ( n == 0 ) // sent it all, close conn
-                    goto flush_bail;
-                // because it's HTTP and not websocket, don't need to take care about pre and postamble
-                m = libwebsocket_write(wsi,buffer,n,LWS_WRITE_HTTP);
-                if ( m < 0 ) // write failed, close conn
-                    goto bail;
-                if ( m != n ) // partial write, adjust
-                    lseek(pss->fd,m - n,SEEK_CUR);
-            } while ( lws_send_pipe_choked(wsi) == 0 );
-            libwebsocket_callback_on_writable(context,wsi);
-            break;
-        flush_bail:
+         /*flush_bail:
             if ( lws_send_pipe_choked(wsi) == 0 )   // true if still partial pending
             {
                 libwebsocket_callback_on_writable(context, wsi);
@@ -210,6 +246,55 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             break;
 	}
 	return 0;
+}
+
+char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static int counter;
+    int32_t duration,len;
+    char ip_port[64],hexstr[8192],msg[MAX_JSON_FIELD],retbuf[MAX_JSON_FIELD*3],*ptr,*str,*msg2;
+    counter++;
+    strcpy(retbuf,"{\"result\":\"nothing pending\"}");
+    //printf("BTCDpoll.%d\n",counter);
+    //BTCDpoll post_process_bitcoind_RPC.SuperNET can't parse.({"msg":"[{"requestType":"ping","NXT":"13434315136155299987","time":1414310974,"pubkey":"34b173939544eb01515119b5e0b05880eadaae3d268439c9cc1471d8681ecb6d","ipaddr":"209.126.70.159"},{"token":"im9n7c9ka58g3qq4b2oe1d8p7mndlqk0pj4jj1163pkdgs8knb0vsreb0kf6luo1bbk097buojs1k5o5c0ldn6r6aueioj8stgel1221fq40f0cvaqq0bciuniit0isi0dikd363f3bjd9ov24iltirp6h4eua0q"}]","duration":86400})
+    if ( (counter & 1) == 0 )
+    {
+        if ( (ptr= queue_dequeue(&BroadcastQ)) != 0 )
+        {
+            printf("Got BroadcastQ\n");
+            memcpy(&len,ptr,sizeof(len));
+            str = &ptr[sizeof(len) + sizeof(duration)];
+            if ( len == (strlen(str) + 1) )
+            {
+                memcpy(&duration,&ptr[sizeof(len)],sizeof(duration));
+                memcpy(msg,str,len);
+                ptr[sizeof(len) + sizeof(duration) + len] = 0;
+                msg2 = stringifyM(msg);
+                sprintf(retbuf,"{\"msg\":%s,\"duration\":%d}",msg2,duration);
+                free(msg2);
+                //printf("send back broadcast.(%s)\n",retbuf);
+            } else printf("BTCDpoll BroadcastQ len mismatch %d != %ld (%s)\n",len,strlen(str)+1,str);
+            free(ptr);
+        }
+    }
+    else
+    {
+        if ( (ptr= queue_dequeue(&NarrowQ)) != 0 )
+        {
+            printf("Got NarrowQ\n");
+            memcpy(&len,ptr,sizeof(len));
+            if ( len < 4096 && len > 0 )
+            {
+                memcpy(ip_port,&ptr[sizeof(len)],64);
+                memcpy(msg,&ptr[sizeof(len) + 64],len);
+                init_hexbytes(hexstr,(unsigned char *)msg,len);
+                sprintf(retbuf,"{\"ip_port\":\"%s\",\"hex\":\"%s\",\"len\":%d}",ip_port,hexstr,len);
+                //printf("send back narrow.(%s)\n",retbuf);
+            } else printf("BTCDpoll NarrowQ illegal len.%d\n",len);
+            free(ptr);
+        }
+    }
+    return(clonestr(retbuf));
 }
 
 static struct libwebsocket_protocols protocols[] =
@@ -1090,7 +1175,10 @@ char *gotpacket_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port);
     char msg[MAX_JSON_FIELD],ip_port[MAX_JSON_FIELD];
     int32_t duration;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(msg,objs[0]);
+    unstringify(msg);
     duration = (int32_t)get_API_int(objs[1],600);
     copy_cJSON(ip_port,objs[2]);
     return(SuperNET_gotpacket(msg,duration,ip_port));
@@ -1100,78 +1188,48 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
 {
     int32_t got_newpeer(char *ip_port);
     char ip_port[MAX_JSON_FIELD];
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(ip_port,objs[0]);
     if ( ip_port[0] != 0 )
+    {
         queue_enqueue(&P2P_Q,clonestr(ip_port));
+        return(clonestr("{\"result\":\"ip_port queued\"}"));
+    }
     return(0);
 }
 
 char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
-    char jsonstr[MAX_JSON_FIELD],*retstr = 0;
-    cJSON *array;
+    char jsonstr[MAX_JSON_FIELD],ipaddr[64],*retstr = 0;
+    cJSON *json;
+    int32_t port;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(jsonstr,objs[0]);
     if ( jsonstr[0] != 0 )
     {
-        printf("got jsonstr.(%s)\n",jsonstr);
-        replace_backslashquotes(jsonstr);
-        array = cJSON_Parse(jsonstr);
-        if ( array != 0 )
+        if ( prevaddr != 0 )
+            port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+        else port = 0, strcpy(ipaddr,"noprevaddr");
+        unstringify(jsonstr);
+        printf("BTCDjson jsonstr.(%s) from (%s:%d)\n",jsonstr,ipaddr,port);
+        json = cJSON_Parse(jsonstr);
+        if ( json != 0 )
         {
-            retstr = SuperNET_json_commands(Global_mp,prevaddr,array,sender,valid,origargstr);
-            free_json(array);
+            retstr = SuperNET_json_commands(Global_mp,prevaddr,json,sender,valid,origargstr);
+            free_json(json);
         }
     }
     return(retstr);
-}
-
-char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    static int counter;
-    int32_t duration,len;
-    char ip_port[64],hexstr[8192],msg[MAX_JSON_FIELD],retbuf[MAX_JSON_FIELD*3],*ptr,*str;
-    counter++;
-    strcpy(retbuf,"{\"result\":\"nothing pending\"}");
-    if ( (counter++ & 1) == 0 )
-    {
-        if ( (ptr= queue_dequeue(&BroadcastQ)) != 0 )
-        {
-            memcpy(&len,ptr,sizeof(len));
-            str = &ptr[sizeof(len) + sizeof(duration)];
-            if ( len == strlen(str) )
-            {
-                memcpy(&duration,&ptr[sizeof(len)],sizeof(duration));
-                memcpy(msg,str,len);
-                ptr[sizeof(len) + sizeof(duration) + len] = 0;
-                sprintf(retbuf,"{\"msg\":\"%s\",\"duration\":%d}",msg,duration);
-            } else printf("len mismatch %d != %ld (%s)\n",len,strlen(str),str);
-            free(ptr);
-        }
-    }
-    else
-    {
-        if ( (ptr= queue_dequeue(&NarrowQ)) != 0 )
-        {
-            memcpy(&len,ptr,sizeof(len));
-            if ( len < 4096 && len > 0 )
-            {
-                memcpy(ip_port,&ptr[sizeof(len)],64);
-                memcpy(msg,&ptr[sizeof(len) + 64],len);
-                init_hexbytes(hexstr,(unsigned char *)msg,len);
-                sprintf(retbuf,"{\"ip_port\":\"%s\",\"hex\":\"%s\",\"len\":%d}",ip_port,hexstr,len);
-            } else printf("BTCDpoll illegal len.%d\n",len);
-            free(ptr);
-        }
-    }
-    return(clonestr(retbuf));
 }
     
 char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     // glue
     static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "", "json", 0 };
-    static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "", "msg", "dur", "ip", 0 };
+    static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "", "msg", "dur", "ip_port", 0 };
     static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "", "ip_port", 0 };
     static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "", 0 };
   
