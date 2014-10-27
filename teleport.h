@@ -545,7 +545,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
-            //disp_telepod("DB",pod);
+            disp_telepod("DB",pod);
             if ( minage < 0 )
                 ADD_TELEPOD
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
