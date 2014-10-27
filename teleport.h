@@ -510,7 +510,7 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
 }
 
 #define ADD_TELEPOD \
-    { pod = calloc(1,data.size + key.size);\
+    { pod = calloc(1,data.size + key.size + 1);\
     memcpy(pod,data.data,data.size);\
     memcpy(pod+data.size,key.data,key.size);\
     pods[n++] = pod;\
@@ -525,7 +525,8 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     uint32_t now = (uint32_t)time(NULL);
     DB *dbp = get_selected_database(TELEPOD_DATA);
     struct telepod *pod,**pods = 0;
-    int32_t ret,max,m,n = 0;
+    int32_t podstate,ret,max,m,n = 0;
+    uint32_t createtime;
     double evolve_amount;
     DBT key,data;
     DBC *cursorp = 0;
@@ -543,9 +544,11 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         pods = (struct telepod **)calloc(sizeof(*pods),max+1);
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
-            printf("found.%d %s\n",m,key.data);
             m++;
             pod = data.data;
+            printf("found.%d %s size.%d podstate.%d createtime.%d\n",m,key.data,data.size,pod->podstate,pod->createtime);
+            podstate = pod->podstate;
+            createtime = pod->createtime;
             if ( minage < 0 )
                 ADD_TELEPOD
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
@@ -554,24 +557,24 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                 clear_pair(&key,&data);
                 continue;
             }
-            if ( pod->podstate == TELEPOD_AVAIL )
+            if ( podstate == TELEPOD_AVAIL )
             {
-                if ( pod->createtime > (now - minage) )
+                if ( createtime > (now - minage) )
                 {
                     (*availp) += evolve_amount;
                     if ( minage >= 0 )
                         ADD_TELEPOD
                 } else (*maturingp) += evolve_amount;
             }
-            else if ( pod->podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
+            else if ( podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
                 (*outboundp) += evolve_amount;
-            else if ( pod->podstate == TELEPOD_INBOUND ) // we are going to clone this within clonesmear timewindow
+            else if ( podstate == TELEPOD_INBOUND ) // we are going to clone this within clonesmear timewindow
                 (*inboundp) += evolve_amount;
             else if ( telepod_normal_spend(pod) == 0 ) // inbound -> cloned, outbound->spent
             {
-                if ( pod->podstate == TELEPOD_DOUBLESPENT ) // sender of inbound telepod cashed in telepod before us
+                if ( podstate == TELEPOD_DOUBLESPENT ) // sender of inbound telepod cashed in telepod before us
                     (*doublespentp) += evolve_amount;
-                else if ( pod->podstate == TELEPOD_CANCELLED ) // we cashed the telepod before destination cloned
+                else if ( podstate == TELEPOD_CANCELLED ) // we cashed the telepod before destination cloned
                     (*cancelledp) += evolve_amount;
             }
             clear_pair(&key,&data);
