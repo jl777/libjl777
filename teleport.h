@@ -108,11 +108,11 @@ void disp_telepod(char *msg,struct telepod *pod)
     {
         str = cJSON_Print(podjson);
         stripwhite_ns(str,strlen(str));
-        printf("%8s %s\n",msg,str);
+        fprintf(stderr,"%8s %s\n",msg,str);
         free(str);
         free_json(podjson);
     }
-    else printf("%8s %s %s %s/vout.%d\n",msg,pod->coinstr,pod->coinaddr,pod->txid,pod->vout);
+    else fprintf(stderr,"%8s %s %s %s/vout.%d\n",msg,pod->coinstr,pod->coinaddr,pod->txid,pod->vout);
     //int32_t calc_multisig_N(struct telepod *pod);
     //char hexstr[1024];
     //init_hexbytes_noT(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
@@ -234,7 +234,7 @@ uint64_t scan_telepods(char *coinstr)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
-                        printf("%s.%d acct.%s\n",coinstr,i,acct);
+                        fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
                         if ( strcmp(acct,"telepods") == 0 )
                         {
                             num++;
@@ -249,9 +249,9 @@ uint64_t scan_telepods(char *coinstr)
                                 {
                                     if ( hp->datalen != pod->H.datalen )
                                     {
-                                        printf("OVERWRITE due to datalen mismatch %d vs %d\n",hp->datalen,pod->H.datalen);
+                                        fprintf(stderr,"OVERWRITE due to datalen mismatch %d vs %d\n",hp->datalen,pod->H.datalen);
                                         update_telepod(pod,pod->txid);
-                                        printf("back from update_telepod\n");
+                                        fprintf(stderr,"back from update_telepod\n");
                                     }
                                     disp_telepod("inDB",pod);
                                     free(hp);
