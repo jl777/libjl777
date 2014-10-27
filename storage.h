@@ -133,7 +133,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     if ( (ret= dbp->get(dbp,NULL,&key,&data,0)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
         if ( ret != DB_NOTFOUND )
-            printf("DB get error.%d\n",ret);
+            fprintf(stderr,"DB get error.%d data.size %d\n",ret,data.size);
         else return(0);
     }
     hp = (struct storage_header *)data.data;
@@ -211,13 +211,13 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
                 //    Storage->err(Storage,ret,"Transaction commit failed.");
                 //else
                 {
-                    printf("created.%d DB entry for %s\n",createdflag,keystr);
+                    fprintf(stderr,"created.%d DB entry for %s\n",createdflag,keystr);
                     if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) != 0 )
                     {
                         if ( memcmp(sp->data,databuf,datalen) != 0 )
-                            printf("data cmp error\n");
+                            fprintf(stderr,"data cmp error\n");
                         free(sp);
-                    } else printf("couldnt find sp in DB that was just added\n");
+                    } else fprintf(stderr,"couldnt find sp in DB that was just added\n");
                     dbp->sync(dbp,0);
                 }
             }
@@ -238,10 +238,10 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         data.data = hp;
         data.size = hp->datalen;
-        fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
-        fprintf(stderr,"after dbp->put\n");
+        //fprintf(stderr,"after dbp->put\n");
     }
 }
 
