@@ -139,7 +139,7 @@ void SuperNET_idler(uv_idle_t *handle)
             str = stringifyM(retstr);
             str2 = stringifyM(jsonstr);
             sprintf(retbuf,"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
-            queue_enqueue(&ResultsQ,retbuf);
+            queue_enqueue(&ResultsQ,clonestr(retbuf));
             free(str); free(str2); free(ptrs[0]); free(ptrs[1]); free(ptrs);
             //printf("JSON_Q ret.(%s)\n",retstr);
             //free(jsonstr);
