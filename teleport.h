@@ -407,12 +407,13 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
         printf("availchange %.8f refsatoshis %.8f\n",dstr(availchange),dstr(refsatoshis));
         //getchar();
     }
-    if ( withdrawaddr[0] != 0 || (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
+    if ( (withdrawaddr != 0 && withdrawaddr[0] != 0) || (privkey= get_telepod_privkey(&podaddr,pubkey,cp)) != 0 )
     {
         if ( fee <= availchange )
         {
             change = (availchange - fee);
             memset(&RAW,0,sizeof(RAW));
+            fprintf(stderr,"calc_tx\n");
             if ( (txid= calc_telepod_transaction(cp,&RAW,refpod!=0?refpods:inputpods,refsatoshis,podaddr,fee,changepod,change,change_podaddr)) == 0 )
             {
                 if ( refpod != 0 )
@@ -420,7 +421,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     refpod->cloneout = TELEPOD_ERROR_VOUT;
                     update_telepod(refpod);
                 }
-                printf("error cloning %.8f telepod.(%s) to %s\n",dstr(refsatoshis),refpod!=0?refpod->coinaddr:"transporter",podaddr);
+                fprintf(stderr,"error cloning %.8f telepod.(%s) to %s\n",dstr(refsatoshis),refpod!=0?refpod->coinaddr:"transporter",podaddr);
             }
             else
             {
@@ -429,7 +430,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     safecopy(refpod->cloneaddr,podaddr,sizeof(refpod->cloneaddr));
                     safecopy(refpod->clonetxid,txid,sizeof(refpod->clonetxid));
                     refpod->cloneout = TELEPOD_CONTENTS_VOUT;
-                    printf("set refpod.%p (%s).vout%d\n",refpod,refpod->clonetxid,refpod->cloneout);
+                    fprintf(stderr,"set refpod.%p (%s).vout%d\n",refpod,refpod->clonetxid,refpod->cloneout);
                     update_telepod(refpod);
                 }
                 pod = create_telepod((uint32_t)time(NULL),cp->name,refsatoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT);
@@ -438,9 +439,10 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
             //if ( cp->enabled == 0 )
             //    cp->blockheight = (uint32_t)get_blockheight(cp), cp->enabled = 1;
             purge_rawtransaction(&RAW);
-        } else printf("clone_telepod fee %llu change %llu\n",(long long)fee,(long long)availchange);
+        } else fprintf(stderr,"clone_telepod fee %llu change %llu\n",(long long)fee,(long long)availchange);
         if ( didalloc == 0 )
         {
+            fprintf(stderr,"free privkey.%p and podaddr.%p\n",privkey,podaddr);
             if ( change_privkey != 0 )
                 free(change_privkey);
             if ( change_podaddr != 0 )
