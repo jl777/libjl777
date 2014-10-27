@@ -781,11 +781,14 @@ char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
     uint64_t value;
     char coinstr[MAX_JSON_FIELD],*retstr = 0;
     if ( prevaddr != 0 )
+    {
+        printf("prevaddr.%p\n",prevaddr);
         return(0);
+    }
     value = (SATOSHIDEN * get_API_float(objs[0]));
     copy_cJSON(coinstr,objs[1]);
     printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 )
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid > 0 && value > 0 )
         retstr = maketelepods(NXTACCTSECRET,sender,coinstr,value);
     else retstr = clonestr("{\"error\":\"invalid maketelepods_func arguments\"}");
     return(retstr);
