@@ -42,7 +42,7 @@ int32_t is_BTCD_command(cJSON *json)
     {
         for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
         {
-            //printf("(%s vs %s) ",request,BTCDcmds[i]);
+            printf("(%s vs %s) ",request,BTCDcmds[i]);
             if ( strcmp(request,BTCDcmds[i]) == 0 )
             {
                 printf("%s is BTCD command\n",request);
@@ -50,6 +50,7 @@ int32_t is_BTCD_command(cJSON *json)
             }
         }
     }
+    printf("not BTCD command requestType.(%s)\n",request);
     return(0);
 }
 
