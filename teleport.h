@@ -600,7 +600,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         set_num_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-    printf("set nump.%d\n",n);
+   // printf("set nump.%d\n",n);
     *nump = n;
     return(pods);
 }
@@ -929,9 +929,9 @@ double filter_telepod(struct telepod *pod,struct contact_info *contact,char *coi
     double net = 0.;
     if ( contact != 0 && pod->destbits != contact->nxt64bits && pod->senderbits != contact->nxt64bits )
         return(0.);
-    if ( coinstr != 0 && strcmp(coinstr,pod->coinstr) != 0 )
+    if ( coinstr != 0 && coinstr[0] != 0 && strcmp(coinstr,pod->coinstr) != 0 )
         return(0.);
-    if ( withdrawaddr != 0 && strcmp(withdrawaddr,pod->coinaddr) != 0 )
+    if ( withdrawaddr != 0 && withdrawaddr[0] != 0 && strcmp(withdrawaddr,pod->coinaddr) != 0 )
         return(0.);
     net = calc_convamount(pod->coinstr,(coinstr!=0&&coinstr[0]!=0)?coinstr:"BTC",pod->satoshis);
     return(net);
