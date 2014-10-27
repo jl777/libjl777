@@ -516,9 +516,8 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
 }
 
 #define ADD_TELEPOD \
-    { pod = calloc(1,data.size + key.size + 1);\
+    { pod = calloc(1,data.size);\
     memcpy(pod,data.data,data.size);\
-    memcpy(pod+data.size,key.data,key.size);\
     pods[n++] = pod;\
     if ( n >= max )\
     {\
@@ -557,21 +556,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             createtime = pod->H.createtime;
             fprintf(stderr,"before if n.%d max.%d pods.%p\n",n,max,pods);
             if ( minage < 0 )
-            {
-                pod = calloc(1,data.size);
-                fprintf(stderr,"after if alloc pod.%p\n",pod);
-                memcpy(pod,data.data,data.size);
-                fprintf(stderr,"after if 0\n");
-                //memcpy(pod+data.size,key.data,key.size);
-                //fprintf(stderr,"after if 1 \n");
-                pods[n++] = pod;
-                fprintf(stderr,"after if 2\n");
-                if ( n >= max )
-                {
-                    max += 100;
-                    pods = (struct telepod **)realloc(pods,sizeof(*pods)*(max+1));
-                }
-            }
+                ADD_TELEPOD
             fprintf(stderr,"after if\n");
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
             fprintf(stderr,"after calc_convamount\n");
