@@ -223,12 +223,12 @@ uint64_t scan_telepods(char *coinstr)
     num = 0;
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
-        //printf("scan %s\n",coinstr);
+        printf("scan %s\n",coinstr);
         sprintf(params,"%d, 99999999",cp->minconfirms);
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
         if ( retstr != 0 && retstr[0] != 0 )
         {
-            //printf("got.(%s)\n",retstr);
+            printf("got.(%s)\n",retstr);
             if ( (array= cJSON_Parse(retstr)) != 0 )
             {
                 if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -237,7 +237,7 @@ uint64_t scan_telepods(char *coinstr)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
-                        //fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
+                        fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
                         if ( strcmp(acct,"telepods") == 0 )
                         {
                             num++;
@@ -270,7 +270,7 @@ uint64_t scan_telepods(char *coinstr)
             free(retstr);
         }
     }
-    //printf("num telepods.%d sum %.8f\n",num,dstr(sum));
+    printf("num telepods.%d sum %.8f\n",num,dstr(sum));
     return(sum);
 }
 
@@ -566,7 +566,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
-            //fprintf(stderr,"%s %p minage.%d found.%d %s size.%d/%d podstate.%d createtime.%d\n",coinstr,pod,minage,m,key.data,pod->H.datalen,data.size,pod->podstate,pod->H.createtime);
+            fprintf(stderr,"%s %p minage.%d found.%d %s size.%d/%d podstate.%d createtime.%d\n",coinstr,pod,minage,m,key.data,pod->H.datalen,data.size,pod->podstate,pod->H.createtime);
             podstate = pod->podstate;
             createtime = pod->H.createtime;
             if ( minage < 0 )
@@ -607,7 +607,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         set_num_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-   // printf("set nump.%d\n",n);
+    printf("set nump.%d\n",n);
     *nump = n;
     return(pods);
 }
