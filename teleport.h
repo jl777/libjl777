@@ -927,13 +927,14 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
 double filter_telepod(struct telepod *pod,struct contact_info *contact,char *coinstr,char *withdrawaddr)
 {
     double net = 0.;
+    printf("filter contact.%p coinstr.%p withdraw.%p\n",contact,coinstr,withdrawaddr);
     if ( contact != 0 && pod->destbits != contact->nxt64bits && pod->senderbits != contact->nxt64bits )
         return(0.);
     if ( coinstr != 0 && coinstr[0] != 0 && strcmp(coinstr,pod->coinstr) != 0 )
         return(0.);
     if ( withdrawaddr != 0 && withdrawaddr[0] != 0 && strcmp(withdrawaddr,pod->coinaddr) != 0 )
         return(0.);
-    net = calc_convamount(pod->coinstr,(coinstr!=0&&coinstr[0]!=0)?coinstr:"BTC",pod->satoshis);
+    net = calc_convamount(pod->coinstr,(coinstr!=0&&coinstr[0]!=0)?coinstr:"BTCD",pod->satoshis);
     return(net);
 }
 
