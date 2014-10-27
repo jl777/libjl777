@@ -88,7 +88,7 @@ int32_t init_SuperNET_storage()
             fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
             return(-1);
         }
-        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 )
+        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_THREAD,0)) != 0 )
         {
             fprintf(stderr,"error.%d opening storage\n",ret);
             return(-2);
