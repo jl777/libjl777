@@ -218,10 +218,12 @@ uint64_t scan_telepods(char *coinstr)
     }
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
+        printf("scan %s\n",coinstr);
         sprintf(params,"%d, 99999999",cp->minconfirms);
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
         if ( retstr != 0 && retstr[0] != 0 )
         {
+            printf("got.(%s)\n",retstr);
             if ( (array= cJSON_Parse(retstr)) != 0 )
             {
                 if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -230,6 +232,7 @@ uint64_t scan_telepods(char *coinstr)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
+                        printf("%s.%d acct.%s\n",coinstr,i,acct);
                         if ( strcmp(acct,"telepods") == 0 )
                         {
                             j++;
@@ -991,7 +994,8 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
                     break;
                 item = cJSON_GetArrayItem(array,i);
                 copy_cJSON(str,cJSON_GetObjectItem(item,"name"));
-                scan_telepods(str);
+                if ( str[0] != 0 )
+                    scan_telepods(str);
             }
         }
     } else scan_telepods(coinstr);
