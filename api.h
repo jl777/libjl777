@@ -1271,7 +1271,7 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
         {
             retstr = SuperNET_json_commands(Global_mp,prevaddr,json,sender,valid,origargstr);
             free_json(json);
-        }
+        } else printf("PARSE error.(%s)\n",jsonstr);
     }
     return(retstr);
 }
