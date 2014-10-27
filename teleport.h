@@ -559,6 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             if ( minage < 0 )
             {
                 pod = calloc(1,data.size + key.size + 1);
+                fprintf(stderr,"after if alloc pod.%p\n",pod);
                 memcpy(pod,data.data,data.size);
                 fprintf(stderr,"after if 0\n");
                 memcpy(pod+data.size,key.data,key.size);
