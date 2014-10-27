@@ -210,8 +210,8 @@ int32_t get_telepod_info(uint64_t *unspentp,uint32_t *createtimep,char *coinstr,
 
 uint64_t scan_telepods(char *coinstr)
 {
-    static int didinit;
-    static portable_mutex_t mutex;
+   // static int didinit;
+   // static portable_mutex_t mutex;
     uint64_t sum = 0;
     int32_t i,num,n;
     cJSON *array,*item;
@@ -229,12 +229,12 @@ uint64_t scan_telepods(char *coinstr)
     {
         printf("scan %s\n",coinstr);
         sprintf(params,"%d, 99999999",cp->minconfirms);
-        if ( didinit == 0 )
+        /*if ( didinit == 0 )
         {
             portable_mutex_init(&mutex);
             didinit = 1;
         }
-        portable_mutex_lock(&mutex);
+        portable_mutex_lock(&mutex);*/
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
         if ( retstr != 0 && retstr[0] != 0 )
         {
@@ -280,7 +280,7 @@ uint64_t scan_telepods(char *coinstr)
             }
             free(retstr);
         }
-        portable_mutex_unlock(&mutex);
+        //portable_mutex_unlock(&mutex);
     }
     printf("num telepods.%d sum %.8f\n",num,dstr(sum));
     return(sum);
