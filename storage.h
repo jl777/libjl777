@@ -88,7 +88,7 @@ int32_t init_SuperNET_storage()
             fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
             return(-1);
         }
-        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN|DB_THREAD,0)) != 0 )
+        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOCK|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 )
         {
             fprintf(stderr,"error.%d opening storage\n",ret);
             return(-2);
@@ -216,7 +216,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
         memcpy(sp->data,databuf,datalen);
         sp->H.datalen = datalen;
         //printf("store datalen.%d\n",datalen);
-        //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
+        if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
         {
             clear_pair(&key,&data);
             key.data = keystr;
@@ -233,9 +233,9 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
             }
             else
             {
-                //if ( (ret= txn->commit(txn,0)) != 0 )
-                //    Storage->err(Storage,ret,"Transaction commit failed.");
-                //else
+                if ( (ret= txn->commit(txn,0)) != 0 )
+                    Storage->err(Storage,ret,"Transaction commit failed.");
+                else
                 {
                     fprintf(stderr,"created.%d DB entry for %s\n",createdflag,keystr);
                     if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) != 0 )
@@ -247,7 +247,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
                     dbp->sync(dbp,0);
                 }
             }
-        } //else Storage->err(Storage,ret,"Transaction begin failed.");
+        } else Storage->err(Storage,ret,"Transaction begin failed.");
     }
 }
 
