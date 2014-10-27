@@ -126,7 +126,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     struct storage_header *hp;
     if ( dbp == 0 )
         return(0);
-    fprintf(stderr,"in find_storage\n");
+    fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
     key.data = keystr;
     key.size = (int32_t)strlen(keystr) + 1;
