@@ -555,9 +555,22 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             fprintf(stderr,"%s %p minage.%d found.%d %s size.%d/%d podstate.%d createtime.%d\n",coinstr,pod,minage,m,key.data,pod->H.datalen,data.size,pod->podstate,pod->H.createtime);
             podstate = pod->podstate;
             createtime = pod->H.createtime;
-            fprintf(stderr,"before if n.%d max.%d\n",n,max);
+            fprintf(stderr,"before if n.%d max.%d pods.%p\n",n,max,pods);
             if ( minage < 0 )
-                ADD_TELEPOD
+            {
+                pod = calloc(1,data.size + key.size + 1);
+                memcpy(pod,data.data,data.size);
+                fprintf(stderr,"after if 0\n");
+                memcpy(pod+data.size,key.data,key.size);
+                fprintf(stderr,"after if 1 \n");
+                pods[n++] = pod;
+                fprintf(stderr,"after if 2\n");
+                if ( n >= max )
+                {
+                    max += 100;
+                    pods = (struct telepod **)realloc(pods,sizeof(*pods)*(max+1));
+                }
+            }
             fprintf(stderr,"after if\n");
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
             fprintf(stderr,"after calc_convamount\n");
