@@ -1214,7 +1214,7 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
             port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
         else port = 0, strcpy(ipaddr,"noprevaddr");
         unstringify(jsonstr);
-        printf("BTCDjson jsonstr.(%s) from (%s:%d)\n",jsonstr,ipaddr,port);
+        //printf("BTCDjson jsonstr.(%s) from (%s:%d)\n",jsonstr,ipaddr,port);
         json = cJSON_Parse(jsonstr);
         if ( json != 0 )
         {

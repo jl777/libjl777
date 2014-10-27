@@ -616,7 +616,11 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),3);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),1);
             printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
-            init_SuperNET_storage();
+            if ( IS_LIBTEST != 0 )
+            {
+                ensure_directory("storage");
+                init_SuperNET_storage();
+            }
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
             Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
             if ( ismainnet != 0 )

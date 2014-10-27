@@ -19,6 +19,8 @@
 #define PUBLIC_DATA 0
 #define PRIVATE_DATA 1
 #define TELEPOD_DATA 2
+#define PRICE_DATA 3
+#define DEADDROP_DATA 4
 
 struct storage_header
 {
@@ -33,7 +35,7 @@ struct kademlia_storage
 };
 long Total_stored,Storage_maxitems[16];
 DB_ENV *Storage;
-DB *Public_dbp,*Private_dbp,*Telepod_dbp;
+DB *Public_dbp,*Private_dbp,*Telepod_dbp,*Prices_dbp,*Deaddrops_dbp;
 
 struct storage_queue_entry { uint64_t keyhash,destbits; int32_t selector; };
 int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progname);
@@ -79,6 +81,8 @@ int32_t init_SuperNET_storage()
             Public_dbp = open_database("public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             Private_dbp = open_database("private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             Telepod_dbp = open_database("telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            Prices_dbp = open_database("prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT);
+            Deaddrops_dbp = open_database("deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
         }
     }
     return(0);
@@ -101,6 +105,8 @@ DB *get_selected_database(int32_t selector)
         case PUBLIC_DATA: return(Public_dbp);
         case PRIVATE_DATA: return(Private_dbp);
         case TELEPOD_DATA: return(Telepod_dbp);
+        case PRICE_DATA: return(Prices_dbp);
+        case DEADDROP_DATA: return(Deaddrops_dbp);
     }
     return(0);
 }
