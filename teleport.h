@@ -1051,10 +1051,11 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         }
         if ( withdrawaddr[0] != 0 )
             cJSON_AddItemToObject(json,"withdrawaddr",cJSON_CreateString(withdrawaddr));
-        if ( coinstr[0] == 0 )
-            strcpy(coinstr,"BTCD");
-        cp = get_coin_info(coinstr);
-        cJSON_AddItemToObject(json,"coin",cJSON_CreateString(coinstr));
+        if ( coinstr[0] != 0 )
+            cp = get_coin_info(coinstr);
+        if ( cp == 0 )
+            cp = get_coin_info("BTCD");
+        cJSON_AddItemToObject(json,"coin",cJSON_CreateString(cp->name));
         credits = debits = 0.;
         numpos = numneg = 0;
         transporteraddr[0] = changeaddr[0] = 0;
