@@ -989,11 +989,15 @@ cJSON *telepod_dispjson(struct telepod *pod,double netamount)
 
 char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawaddr,char *comment,char *cmd)
 {
-    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[64],*retstr;
+    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[64];
+    char transporteraddr[128],changeaddr[128],numstr[64];
+    char *addr,*retstr;
     int32_t i,n,dir,numpos,numneg;
+    uint64_t availsend,change;
     struct contact_info *contact = 0;
     cJSON *json,*array,*item;
     struct telepod **pods,*pod;
+    struct coin_info *cp = 0;
     double avail,inbound,outbound,maturing,doublespent,cancelled,credits,debits,net;
     if ( IS_LIBTEST == 0 )
         return(0);
@@ -1048,9 +1052,25 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         if ( withdrawaddr[0] != 0 )
             cJSON_AddItemToObject(json,"withdrawaddr",cJSON_CreateString(withdrawaddr));
         if ( coinstr[0] != 0 )
+        {
+            cp = get_coin_info(coinstr);
             cJSON_AddItemToObject(json,"coin",cJSON_CreateString(coinstr));
+        }
+        if ( cp == 0 )
+            cp = get_coin_info("BTCD");
         credits = debits = 0.;
         numpos = numneg = 0;
+        transporteraddr[0] = changeaddr[0] = 0;
+        if ( (addr= get_account_unspent(0,&availsend,cp,"transporter")) != 0 )
+        {
+            strcpy(transporteraddr,addr);
+            free(addr);
+        }
+        if ( (addr= get_account_unspent(0,&change,cp,"changepods")) != 0 )
+        {
+            strcpy(changeaddr,addr);
+            free(addr);
+        }
         for (i=0; i<n; i++)
         {
             if ( (pod= pods[i]) != 0 )
@@ -1078,6 +1098,18 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         cJSON_AddItemToObject(json,"debits",cJSON_CreateNumber(debits));
         cJSON_AddItemToObject(json,"numcredits",cJSON_CreateNumber(numpos));
         cJSON_AddItemToObject(json,"credits",cJSON_CreateNumber(credits));
+        if ( transporteraddr[0] != 0 )
+        {
+            cJSON_AddItemToObject(json,"transporter",cJSON_CreateString(transporteraddr));
+            sprintf(numstr,"%.8f",dstr(availsend));
+            cJSON_AddItemToObject(json,"avail",cJSON_CreateString(numstr));
+        }
+        if ( changeaddr[0] != 0 )
+        {
+            cJSON_AddItemToObject(json,"changeaddr",cJSON_CreateString(changeaddr));
+            sprintf(numstr,"%.8f",dstr(change));
+            cJSON_AddItemToObject(json,"change",cJSON_CreateString(numstr));
+        }
         retstr = cJSON_Print(json);
         stripwhite_ns(retstr,strlen(retstr));
         return(retstr);

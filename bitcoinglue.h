@@ -291,7 +291,7 @@ uint64_t listunspent(struct telepod *inputpods[MAX_COIN_INPUTS],struct coin_info
 {
     uint64_t sum = 0;
     int32_t i,j,n;
-    cJSON *array;
+    cJSON *array,*item;
     char *retstr,params[512];
     sprintf(params,"%d, 99999999, [\"%s\"]",minconfirms,coinaddr);
     //printf("LISTUNSPENT.(%s)\n",params);
@@ -304,8 +304,15 @@ uint64_t listunspent(struct telepod *inputpods[MAX_COIN_INPUTS],struct coin_info
             if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
                 for (i=j=0; i<n; i++)
-                    if ( (inputpods[j]= parse_unspent_json(cp,cJSON_GetArrayItem(array,i))) != 0 )
-                        sum += inputpods[j++]->satoshis;
+                {
+                    item = cJSON_GetArrayItem(array,i);
+                    if ( inputpods != 0 )
+                    {
+                        if ( (inputpods[j]= parse_unspent_json(cp,item)) != 0 )
+                            sum += inputpods[j++]->satoshis;
+                    }
+                    else sum += (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(item,"amount")));
+                }
             }
             free(array);
         }
@@ -378,11 +385,12 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
     struct telepod *hwmpods[MAX_COIN_INPUTS];
     cJSON *array;
     int32_t i,n,j;
-    uint64_t sum,max = 0;
+    uint64_t sum,val,max = 0;
     *availchangep = 0;
     bestaddr[0] = 0;
     memset(hwmpods,0,sizeof(hwmpods));
     sprintf(argstr,"[\"%s\"]",account);
+    sum = 0;
     retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaddressesbyaccount",argstr);
     if ( retstr != 0 && retstr[0] != 0 )
     {
@@ -393,28 +401,30 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
                 for (i=0; i<n; i++)
                 {
                     coinaddr[0] = 0;
-                    sum = 0;
                     copy_cJSON(coinaddr,cJSON_GetArrayItem(array,i));
                     if ( coinaddr[0] != 0 )
                     {
                         if ( validate_coinaddr(pubkey,cp,coinaddr) > 0 )
                         {
-                            memset(inputpods,0,sizeof(*inputpods) * MAX_COIN_INPUTS);
-                            sum = listunspent(inputpods,cp,1,coinaddr);
+                            if ( inputpods != 0 )
+                                memset(inputpods,0,sizeof(*inputpods) * MAX_COIN_INPUTS);
+                            val = listunspent(inputpods,cp,1,coinaddr);
                             printf("(%s %.8f) ",coinaddr,dstr(*availchangep));
-                            if ( sum > max )
+                            sum += val;
+                            if ( val > max )
                             {
                                 for (j=0; j<MAX_COIN_INPUTS; j++)
                                     if ( hwmpods[j] != 0 )
                                         free(hwmpods[j]);
-                                memcpy(hwmpods,inputpods,sizeof(hwmpods));
-                                max = sum;
+                                if ( inputpods != 0 )
+                                    memcpy(hwmpods,inputpods,sizeof(hwmpods));
+                                max = val;
                                 strcpy(bestaddr,coinaddr);
                                 addr = bestaddr;
-                                printf("set %s.%d ADDRESS.(%s) %.8f\n",account,i,coinaddr,dstr(sum));
+                                printf("set %s.%d ADDRESS.(%s) %.8f\n",account,i,coinaddr,dstr(max));
                                 //break;
                             }
-                            else
+                            else if ( inputpods != 0 )
                             {
                                 for (j=0; j<MAX_COIN_INPUTS; j++)
                                     if ( inputpods[j] != 0 )
@@ -429,9 +439,14 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
         }
         free(retstr);
     } else printf("No unspent outputs for transporter account\n");
-    *availchangep = max;
-    memcpy(inputpods,hwmpods,sizeof(hwmpods));
-    return(clonestr(bestaddr));
+    if ( inputpods != 0 )
+    {
+        *availchangep = max;
+        memcpy(inputpods,hwmpods,sizeof(hwmpods));
+    } else *availchangep = sum;
+    if ( bestaddr[0] == 0 )
+        return(0);
+    else return(clonestr(bestaddr));
 }
 
 char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *availchangep,struct coin_info *cp)
