@@ -189,7 +189,6 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     if ( datalen > sizeof(databuf) )
         return;
     decode_hex(databuf,datalen,datastr);
-    DB_lock(selector);
     if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) == 0 || sp->H.datalen != datalen || memcmp(sp->data,databuf,datalen) != 0 )
     {
         slen = (int32_t)strlen(keystr);
@@ -250,7 +249,6 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
             }
         } //else Storage->err(Storage,ret,"Transaction begin failed.");
     }
-    DB_unlock(selector);
 }
 
 void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
@@ -305,7 +303,7 @@ uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits
     //printf("find_closer_Kstored max.%d\n",max);
     max += 100;
     m = 0;
-    DB_lock(selector);
+    //DB_lock(selector);
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
@@ -330,7 +328,7 @@ uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits
         }
         cursorp->close(cursorp);
     }
-    DB_unlock(selector);
+    //DB_unlock(selector);
     //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     if ( m > num_in_db(selector) )
         set_num_in_db(selector,m);
