@@ -36,9 +36,26 @@ struct kademlia_storage
 long Total_stored,Storage_maxitems[16];
 DB_ENV *Storage;
 DB *Public_dbp,*Private_dbp,*Telepod_dbp,*Prices_dbp,*Deaddrops_dbp;
+portable_mutex_t DB_mutex[16];
+int32_t DB_initflags[16];
 
 struct storage_queue_entry { uint64_t keyhash,destbits; int32_t selector; };
 int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progname);
+
+void DB_lock(int32_t selector)
+{
+    if ( DB_initflags[selector] == 0 )
+    {
+        portable_mutex_init(&DB_mutex[selector]);
+        DB_initflags[selector] = 1;
+    }
+    portable_mutex_lock(&DB_mutex[selector]);
+}
+
+void DB_unlock(int32_t selector)
+{
+    portable_mutex_unlock(&DB_mutex[selector]);
+}
 
 DB *open_database(char *fname,int32_t type,int32_t flags)
 {
@@ -131,16 +148,19 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     key.data = keystr;
     key.size = (int32_t)strlen(keystr) + 1;
     data.flags = 0;
+    DB_lock(selector);
     if ( (ret= dbp->get(dbp,NULL,&key,&data,0)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
         if ( ret != DB_NOTFOUND )
             fprintf(stderr,"DB get error.%d data.size %d\n",ret,data.size);
         else
         {
+            DB_unlock(selector);
             fprintf(stderr,"find_storage ret.null\n");
             return(0);
         }
     }
+    DB_unlock(selector);
     hp = (struct storage_header *)data.data;
     ptr = malloc(data.size);
     memcpy(ptr,hp,data.size);
@@ -169,6 +189,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     if ( datalen > sizeof(databuf) )
         return;
     decode_hex(databuf,datalen,datastr);
+    DB_lock(selector);
     if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) == 0 || sp->H.datalen != datalen || memcmp(sp->data,databuf,datalen) != 0 )
     {
         slen = (int32_t)strlen(keystr);
@@ -229,6 +250,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
             }
         } //else Storage->err(Storage,ret,"Transaction begin failed.");
     }
+    DB_unlock(selector);
 }
 
 void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
@@ -245,8 +267,10 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         data.data = hp;
         data.size = hp->datalen;
         fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        DB_lock(selector);
         if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
+        DB_unlock(selector);
         fprintf(stderr,"after dbp->put\n");
     }
 }
@@ -281,6 +305,7 @@ uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits
     //printf("find_closer_Kstored max.%d\n",max);
     max += 100;
     m = 0;
+    DB_lock(selector);
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
@@ -305,6 +330,7 @@ uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits
         }
         cursorp->close(cursorp);
     }
+    DB_unlock(selector);
     //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     if ( m > num_in_db(selector) )
         set_num_in_db(selector,m);

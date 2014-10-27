@@ -538,7 +538,6 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
 struct telepod **available_telepods(int32_t *nump,double *availp,double *maturingp,double *inboundp,double *outboundp,double *doublespentp,double *cancelledp,char *coinstr,int32_t minage)
 {
     static int didinit;
-    static portable_mutex_t mutex;
     uint32_t now = (uint32_t)time(NULL);
     DB *dbp = get_selected_database(TELEPOD_DATA);
     struct telepod *pod,**pods = 0;
@@ -554,13 +553,8 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     max = num_in_db(TELEPOD_DATA);
     max += 100;
     m = 0;
-    if ( didinit == 0 )
-    {
-        portable_mutex_init(&mutex);
-        didinit = 1;
-    }
     printf("available_telepods\n");
-    portable_mutex_lock(&mutex);
+    DB_lock(TELEPOD_DATA);
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
@@ -605,7 +599,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         }
         cursorp->close(cursorp);
     }
-    portable_mutex_unlock(&mutex);
+    DB_unlock(TELEPOD_DATA);
     //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     if ( m > num_in_db(TELEPOD_DATA) )
         set_num_in_db(TELEPOD_DATA,m);
