@@ -117,7 +117,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
         specialcase = 1;
     else specialcase = 0;
-    if ( specialcase != 0 && 0 )
+    if ( specialcase != 0 && 1 )
         fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: debug.(%s) url.(%s) command.(%s) params.(%s)\n",debugstr,url,command,params);
 try_again:
     starttime = milliseconds();
@@ -135,7 +135,6 @@ try_again:
     curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYHOST,0);
     if ( userpass != 0 )
         curl_easy_setopt(curl_handle,CURLOPT_USERPWD,	userpass);
-    
     databuf = 0;
     if ( params != 0 )
     {
@@ -153,8 +152,8 @@ try_again:
             
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
-            //printf("databuf.(%s)\n",databuf);
-        }
+            //
+        } else fprintf(stderr,"databuf.(%s)\n",databuf);
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
         if ( databuf != 0 )
             curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,databuf);
@@ -202,7 +201,7 @@ try_again:
         }
         else
         {
-            if ( 0 && specialcase != 0 )
+            if ( 1 && specialcase != 0 )
                 fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.(%s) -> (%s)\n",params,s.ptr);
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
