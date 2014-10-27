@@ -103,7 +103,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static portable_mutex_t mutex;
-    static int numretries,count,count2,didinit;
+    static int numretries,count,count2;
     static double elapsedsum,elapsedsum2;//,laststart;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
@@ -113,12 +113,15 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     long len;
     int32_t specialcase;
     double starttime;
+#ifndef __cplusplus
+    static int didinit;
     if ( didinit == 0 )
     {
         portable_mutex_init(&mutex);
         didinit = 1;
     }
     portable_mutex_lock(&mutex);
+#endif
     numretries=0;
     if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
         specialcase = 1;
@@ -181,14 +184,18 @@ try_again:
         {
             fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.%s timeout params.(%s) s.ptr.(%s) err.%d\n",command,params,s.ptr,res);
             free(s.ptr);
+#ifndef __cplusplus
             portable_mutex_unlock(&mutex);
+#endif
             return(0);
         }
         else if ( numretries >= 10 )
         {
             fprintf(stderr,"Maximum number of retries exceeded!\n");
             free(s.ptr);
+#ifndef __cplusplus
             portable_mutex_unlock(&mutex);
+#endif
             return(0);
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,params,numretries);
@@ -205,7 +212,9 @@ try_again:
             elapsedsum += (milliseconds() - starttime);
             if ( (count % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
+#ifndef __cplusplus
             portable_mutex_unlock(&mutex);
+#endif
             return(post_process_bitcoind_RPC(debugstr,command,s.ptr));
         }
         else
@@ -216,13 +225,17 @@ try_again:
             elapsedsum2 += (milliseconds() - starttime);
             if ( (count2 % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s)\n",count2,elapsedsum2/count2,(double)(milliseconds() - starttime),url);
+#ifndef __cplusplus
             portable_mutex_unlock(&mutex);
+#endif
             return(s.ptr);
         }
     }
     fprintf(stderr,"bitcoind_RPC: impossible case\n");
     free(s.ptr);
+#ifndef __cplusplus
     portable_mutex_unlock(&mutex);
+#endif
     return(0);
 }
 
