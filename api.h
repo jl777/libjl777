@@ -1250,8 +1250,6 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
 
 char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    static portable_mutex_t mutex;
-    static int didinit;
     char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
     char jsonstr[MAX_JSON_FIELD],ipaddr[64],*retstr = 0;
     cJSON *json;
@@ -1269,14 +1267,7 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
         json = cJSON_Parse(jsonstr);
         if ( json != 0 )
         {
-            if ( didinit == 0 )
-            {
-                portable_mutex_init(&mutex);
-                didinit = 1;
-            }
-            portable_mutex_lock(&mutex);
             retstr = SuperNET_json_commands(Global_mp,prevaddr,json,sender,valid,origargstr);
-            portable_mutex_unlock(&mutex);
             free_json(json);
         } else printf("PARSE error.(%s)\n",jsonstr);
     }
@@ -1285,7 +1276,9 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     
 char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-    // glue
+    static portable_mutex_t mutex;
+    static int didinit;
+   // glue
     static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "", "json", 0 };
     static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "", "msg", "dur", "ip_port", 0 };
     static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "", "ip_port", 0 };
@@ -1391,7 +1384,14 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
                     return(0);
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                     objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
+                if ( didinit == 0 )
+                {
+                    portable_mutex_init(&mutex);
+                    didinit = 1;
+                }
+                portable_mutex_lock(&mutex);
                 retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,prevaddr,sender,valid,objs,j-3,origargstr);
+                portable_mutex_unlock(&mutex);
                 break;
             }
         }
