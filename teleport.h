@@ -433,7 +433,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     refpod->cloneout = TELEPOD_ERROR_VOUT;
                     update_telepod(refpod);
                 }
-                fprintf(stderr,"error cloning %.8f telepod.(%s) to %s\n",dstr(refsatoshis),refpod!=0?refpod->coinaddr:"transporter",podaddr);
+                fprintf(stderr,"error cloning %.8f telepod.(%s) to %s\n",dstr(refsatoshis),refpod!=0?refpod->coinaddr:"funding",podaddr);
             }
             else
             {
@@ -904,7 +904,7 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
     pods = evolve_telepods(&n,cp->maxevolveiters,pods,satoshis);
     printf("finished evolving at %f\n",milliseconds());
     if ( pods == 0 )
-        sprintf(buf,"{\"error\":\"transporter evolve failure for %.8f %s to %s\"}",dstr(satoshis),coinstr,contactstr);
+        sprintf(buf,"{\"error\":\"funding evolve failure for %.8f %s to %s\"}",dstr(satoshis),coinstr,contactstr);
     else
     {
         for (i=0; i<n; i++)
@@ -1069,8 +1069,8 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         credits = debits = 0.;
         numpos = numneg = 0;
         transporteraddr[0] = changeaddr[0] = 0;
-        if ( (addr= get_account_unspent(0,&availsend,cp,"transporter")) == 0 )
-            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"transporter\"]");
+        if ( (addr= get_account_unspent(0,&availsend,cp,"funding")) == 0 )
+            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"funding\"]");
         if ( addr != 0 )
         {
             strcpy(transporteraddr,addr);
@@ -1112,7 +1112,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         cJSON_AddItemToObject(json,"credits",cJSON_CreateNumber(credits));
         if ( transporteraddr[0] != 0 )
         {
-            cJSON_AddItemToObject(json,"transporter",cJSON_CreateString(transporteraddr));
+            cJSON_AddItemToObject(json,"funding",cJSON_CreateString(transporteraddr));
             sprintf(numstr,"%.8f",dstr(availsend));
             cJSON_AddItemToObject(json,"avail",cJSON_CreateString(numstr));
         }

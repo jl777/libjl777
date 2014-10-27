@@ -468,7 +468,7 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
 char *get_transporter_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *availchangep,struct coin_info *cp)
 {
     char *bestaddr;
-    if ( (bestaddr= get_account_unspent(inputpods,availchangep,cp,"transporter")) != 0 )
+    if ( (bestaddr= get_account_unspent(inputpods,availchangep,cp,"funding")) != 0 )
         strcpy(cp->transporteraddr,bestaddr);
     return(bestaddr);
 }

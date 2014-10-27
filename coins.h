@@ -510,13 +510,13 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 else if ( strcmp(cp->name,"BTCD") == 0 )
                 {
                     char args[1024],*addr,*pubaddr,*srvpubaddr;
-                    sprintf(args,"[\"transporter\"]");
+                    sprintf(args,"[\"funding\"]");
                     addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
                     sprintf(args,"[\"pubaddr\"]");
                     pubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
                     sprintf(args,"[\"srvpubaddr\"]");
                     srvpubaddr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",args);
-                    fprintf(stderr,"Withdraw directly from an exchange to your transporter address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
+                    fprintf(stderr,"Withdraw directly from an exchange to your funding address %s\nAdd the following to jl777.conf: \"pubaddr\":\"%s\",\"srvpubaddr\":\"%s\"\n",addr,pubaddr,srvpubaddr);
                     exit(1);
                 }
                 if ( (cp->min_telepod_satoshis= min_telepod_satoshis) == 0 )
