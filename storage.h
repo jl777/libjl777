@@ -238,8 +238,10 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         data.data = hp;
         data.size = hp->datalen;
+        printf("update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
+        printf("after dbp->put\n");
     }
 }
 
