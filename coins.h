@@ -520,7 +520,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     exit(1);
                 }
                 if ( (cp->min_telepod_satoshis= min_telepod_satoshis) == 0 )
-                    min_telepod_satoshis = (dust == 0) ? SATOSHIDEN/10000 : dust;
+                    cp->min_telepod_satoshis = (dust == 0) ? SATOSHIDEN/10000 : dust;
                 if ( dust == 0 )
                     dust = 100000;
                 cp->dust = dust;
