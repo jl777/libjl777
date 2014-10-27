@@ -309,7 +309,11 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         {
             memcpy(&ptrs,ptr,sizeof(ptrs));
             fprintf(stderr,"Got ResultsQ.(%s) ptrs.%p %p %p\n",ptr+sizeof(ptrs),ptrs,ptrs[0],ptrs[1]);
-            free(ptrs[0]); free(ptrs[1]); free(ptrs);
+            if ( ptrs[0] != 0 )
+                free(ptrs[0]);
+            if ( ptrs[1] != 0 )
+                free(ptrs[1]);
+            free(ptrs);
             strcpy(retbuf,ptr+sizeof(ptrs));
         }
     }

@@ -137,15 +137,18 @@ void SuperNET_idler(uv_idle_t *handle)
             //printf("dequeue JSON_Q.(%s)\n",jsonstr);
             if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
                 retstr = clonestr("{\"result\":null}");
-            str = stringifyM(retstr);
-            str2 = stringifyM(jsonstr);
-            memcpy(retbuf,&ptrs,sizeof(ptrs));
-            sprintf(retbuf+sizeof(ptrs),"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
-            free(str); free(str2);
-            len = sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1;
-            str = malloc(len);
-            memcpy(str,retbuf,len);
-            queue_enqueue(&ResultsQ,str);
+            if ( ptrs[2] == 0 )
+            {
+                str = stringifyM(retstr);
+                str2 = stringifyM(jsonstr);
+                memcpy(retbuf,&ptrs,sizeof(ptrs));
+                sprintf(retbuf+sizeof(ptrs),"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
+                free(str); free(str2);
+                len = sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1;
+                str = malloc(len);
+                memcpy(str,retbuf,len);
+                queue_enqueue(&ResultsQ,str);
+            }
             ptrs[1] = retstr;
 
             //free(ptrs[0]); free(ptrs[1]); free(ptrs);
@@ -322,8 +325,9 @@ char *call_SuperNET_JSON(char *JSONstr)
 char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr,retbuf[1024];
-    ptrs = calloc(2,sizeof(*ptrs));
+    ptrs = calloc(3,sizeof(*ptrs));
     ptrs[0] = clonestr(JSONstr);
+    ptrs[2] = (blockflag != 0) ? "dont queue" : 0;
    // printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
     queue_enqueue(&JSON_Q,ptrs);
     if ( blockflag != 0 )
