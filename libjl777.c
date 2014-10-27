@@ -142,7 +142,7 @@ void SuperNET_idler(uv_idle_t *handle)
                 str = stringifyM(retstr);
                 str2 = stringifyM(jsonstr);
                 memcpy(retbuf,&ptrs,sizeof(ptrs));
-                sprintf(retbuf+sizeof(ptrs),"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
+                sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"ptr\":\"%p\",\"arg\":%s}",str,ptrs,str2);
                 free(str); free(str2);
                 len = sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1;
                 str = malloc(len);
@@ -343,7 +343,7 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
     else
     {
         sprintf(retbuf,"{\"result\":\"pending SuperNET API call\",\"ptr\":\"%p\"}",ptrs);
-        printf("queue.%d returned.(%s)\n",blockflag,retbuf);
+        //printf("queue.%d returned.(%s)\n",blockflag,retbuf);
         return(clonestr(retbuf));
     }
 }

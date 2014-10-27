@@ -206,7 +206,7 @@ int32_t get_telepod_info(uint64_t *unspentp,uint32_t *createtimep,char *coinstr,
 uint64_t scan_telepods(char *coinstr)
 {
     uint64_t sum = 0;
-    int32_t i,j,n;
+    int32_t i,num,n;
     cJSON *array,*item;
     char *retstr,params[512],acct[MAX_JSON_FIELD];
     struct coin_info *cp;
@@ -217,32 +217,39 @@ uint64_t scan_telepods(char *coinstr)
         printf("Cant scan BBR for telepods yet\n");
         return(0);
     }
+    num = 0;
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
-        printf("scan %s\n",coinstr);
+        //printf("scan %s\n",coinstr);
         sprintf(params,"%d, 99999999",cp->minconfirms);
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
         if ( retstr != 0 && retstr[0] != 0 )
         {
-            printf("got.(%s)\n",retstr);
+            //printf("got.(%s)\n",retstr);
             if ( (array= cJSON_Parse(retstr)) != 0 )
             {
                 if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
                 {
-                    for (i=j=0; i<n; i++)
+                    for (i=0; i<n; i++)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
                         printf("%s.%d acct.%s\n",coinstr,i,acct);
                         if ( strcmp(acct,"telepods") == 0 )
                         {
-                            j++;
+                            num++;
                             if ( (pod= parse_unspent_json(cp,item)) != 0 )
                             {
                                 if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
+                                {
+                                    disp_telepod("new",pod);
                                     update_telepod(pod,pod->txid);
-                                else free(hp);
-                                disp_telepod("scan",pod);
+                                }
+                                else
+                                {
+                                    disp_telepod("inDB",pod);
+                                    free(hp);
+                                }
                                 sum += pod->satoshis;
                                 free(pod);
                             }
@@ -254,6 +261,7 @@ uint64_t scan_telepods(char *coinstr)
             free(retstr);
         }
     }
+    printf("num telepods.%d sum %.8f\n",num,dstr(sum));
     return(sum);
 }
 
@@ -537,6 +545,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
+            disp_telepod("DB",pod);
             if ( minage < 0 )
                 ADD_TELEPOD
             evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);

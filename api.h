@@ -46,10 +46,10 @@ int32_t is_BTCD_command(cJSON *json)
         {
             for (i=0; i<(sizeof(BTCDcmds)/sizeof(*BTCDcmds)); i++)
             {
-                printf("(%s vs %s) ",request,BTCDcmds[i]);
+                //printf("(%s vs %s) ",request,BTCDcmds[i]);
                 if ( strcmp(request,BTCDcmds[i]) == 0 )
                 {
-                    printf("%s is BTCD command\n",request);
+                    //printf("%s is BTCD command\n",request);
                     return(1);
                 }
             }
@@ -68,7 +68,7 @@ int32_t is_BTCD_command(cJSON *json)
             } else free_json(json2);
         }
     }
-    printf("not BTCD command requestType.(%s)\n",request);
+    //printf("not BTCD command requestType.(%s)\n",request);
     return(0);
 }
 
@@ -164,7 +164,7 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
     //printf("html hdr.(%s)\n",buffer);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
     libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
-    printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
+    //printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
 }
 
 // this protocol server (always the first one) just knows how to do HTTP
@@ -209,7 +209,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             str[len] = 0;
             //if ( wsi != 0 )
             //dump_handshake_info(wsi);
-            fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
+            //fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
             //>>>>>>>>>>>>>> SuperNET received RPC.({"requestType":"BTCDjson","json":{\"requestType\":\"getpeers\"}})
             //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }
             if ( (json= cJSON_Parse(str)) != 0 )
