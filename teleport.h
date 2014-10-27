@@ -1061,7 +1061,9 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         credits = debits = 0.;
         numpos = numneg = 0;
         transporteraddr[0] = changeaddr[0] = 0;
-        if ( (addr= get_account_unspent(0,&availsend,cp,"transporter")) != 0 )
+        if ( (addr= get_account_unspent(0,&availsend,cp,"transporter")) == 0 )
+            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"transporter\"]");
+        if ( addr != 0 )
         {
             strcpy(transporteraddr,addr);
             free(addr);
