@@ -137,12 +137,12 @@ void SuperNET_idler(uv_idle_t *handle)
             //printf("dequeue JSON_Q.(%s)\n",jsonstr);
             if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
                 retstr = clonestr("{\"result\":null}");
-            if ( ptrs[2] == 0 )
+            if ( ptrs[2] != 0 )
             {
                 str = stringifyM(retstr);
                 str2 = stringifyM(jsonstr);
                 memcpy(retbuf,&ptrs,sizeof(ptrs));
-                sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"ptr\":\"%p\"}",str,ptrs);
+                sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"txid\":\"%llu\"}",str,(long long)ptrs[2]);
                 free(str); free(str2);
                 len = sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1;
                 str = malloc(len);
@@ -325,9 +325,14 @@ char *call_SuperNET_JSON(char *JSONstr)
 char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr,retbuf[1024];
+    uint64_t txid;
     ptrs = calloc(3,sizeof(*ptrs));
     ptrs[0] = clonestr(JSONstr);
-    ptrs[2] = (blockflag != 0) ? "dont queue" : 0;
+    if ( blockflag == 0 )
+    {
+        txid = calc_txid((uint8_t *)JSONstr,(int32_t)strlen(JSONstr));
+        ptrs[2] = (char *)txid;
+    }
    // printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
     queue_enqueue(&JSON_Q,ptrs);
     if ( blockflag != 0 )
@@ -342,7 +347,7 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
     }
     else
     {
-        sprintf(retbuf,"{\"result\":\"pending SuperNET API call\",\"ptr\":\"%p\"}",ptrs);
+        sprintf(retbuf,"{\"result\":\"pending SuperNET API call\",\"txid\":\"%lld\"}",(long long)txid);
         //printf("queue.%d returned.(%s)\n",blockflag,retbuf);
         return(clonestr(retbuf));
     }
