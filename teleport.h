@@ -148,7 +148,7 @@ struct telepod *create_telepod(uint32_t createtime,char *coinstr,uint64_t satosh
     if ( privkey != 0 )
         strcpy((void *)pod->privkey,privkey);
     pod->crc = calc_telepodcrc(pod);
-    disp_telepod("create",pod);
+    //disp_telepod("create",pod);
     return(pod);
 }
 
@@ -256,7 +256,7 @@ uint64_t scan_telepods(char *coinstr)
                                         update_telepod(pod);
                                         fprintf(stderr,"back from update_telepod\n");
                                     }
-                                    //disp_telepod("inDB",pod);
+                                    disp_telepod("inDB",pod);
                                     free(hp);
                                 }
                                 sum += pod->satoshis;
