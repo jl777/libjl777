@@ -92,6 +92,7 @@ void SuperNET_idler(uv_idle_t *handle)
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
     int32_t r;
+    long len;
     char *jsonstr,*retstr,**ptrs,*str,*str2,retbuf[MAX_JSON_FIELD*4];
     if ( Finished_init == 0 )
         return;
@@ -138,9 +139,13 @@ void SuperNET_idler(uv_idle_t *handle)
                 retstr = clonestr("{\"result\":null}");
             str = stringifyM(retstr);
             str2 = stringifyM(jsonstr);
-            sprintf(retbuf,"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
-            queue_enqueue(&ResultsQ,clonestr(retbuf));
+            memcpy(retbuf,&ptrs,sizeof(ptrs));
+            sprintf(retbuf+sizeof(ptrs),"{\"result\":\"%s\",\"ptr\":\"%p\",\"arg\":\"%s\"}",str,ptrs,str2);
             free(str); free(str2);
+            len = sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1;
+            str = malloc(len);
+            memcpy(str,retbuf,len);
+            queue_enqueue(&ResultsQ,str);
             ptrs[1] = retstr;
 
             //free(ptrs[0]); free(ptrs[1]); free(ptrs);
@@ -281,7 +286,7 @@ char *call_SuperNET_JSON(char *JSONstr)
         printf("Finished_init still 0\n");
         return(clonestr("{\"result\":null}"));
     }
-printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
+//printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
