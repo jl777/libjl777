@@ -343,7 +343,7 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
     else
     {
         sprintf(retbuf,"{\"result\":\"pending SuperNET API call\",\"ptr\":\"%p\"}",ptrs);
-        //printf("block.%d returned.(%s)\n",blockflag,retbuf);
+        printf("queue.%d returned.(%s)\n",blockflag,retbuf);
         return(clonestr(retbuf));
     }
 }
