@@ -13,7 +13,7 @@ struct telepod
 {
     struct storage_header H;
     int32_t vout;
-    uint32_t crc,createtime,clonetime,cloneout,podstate,inhwm,podsize;
+    uint32_t crc,pad2,clonetime,cloneout,podstate,inhwm,pad;
     double evolve_amount;
     char clonetxid[MAX_COINTXID_LEN],cloneaddr[MAX_COINADDR_LEN];
     uint64_t senderbits,destbits,unspent,modified,satoshis; // everything after modified is used for crc
@@ -74,7 +74,7 @@ cJSON *coin_specific_json(struct telepod *pod)
 {
     cJSON *tpd;
     tpd = cJSON_CreateObject();
-    cJSON_AddItemToObject(tpd,"t",cJSON_CreateNumber(pod->createtime));
+    cJSON_AddItemToObject(tpd,"t",cJSON_CreateNumber(pod->H.createtime));
     cJSON_AddItemToObject(tpd,"c",cJSON_CreateNumber(pod->crc));
     cJSON_AddItemToObject(tpd,"x",cJSON_CreateString(pod->txid));
     cJSON_AddItemToObject(tpd,"p",cJSON_CreateString(pod->privkey));
@@ -123,7 +123,7 @@ uint32_t calc_telepodcrc(struct telepod *pod)
 {
     uint32_t offset,crc = 0;
     offset = (uint32_t)((long)&pod->modified + sizeof(pod->modified) - (long)pod);
-    crc = _crc32(crc,(void *)((long)pod + offset),(pod->podsize - offset));
+    crc = _crc32(crc,(void *)((long)pod + offset),(pod->H.datalen - offset));
     return(crc);
 }
 
@@ -133,8 +133,8 @@ struct telepod *create_telepod(uint32_t createtime,char *coinstr,uint64_t satosh
     int32_t size;
     size = (int32_t)(sizeof(*pod) + (strlen(privkey) + 1));
     pod = calloc(1,size);
-    pod->createtime = createtime;
-    pod->podsize = size;
+    pod->H.createtime = createtime;
+    pod->H.datalen = size;
     pod->vout = vout;
     pod->cloneout = -1;
     pod->satoshis = satoshis;
@@ -247,6 +247,11 @@ uint64_t scan_telepods(char *coinstr)
                                 }
                                 else
                                 {
+                                    if ( hp->datalen != pod->H.datalen )
+                                    {
+                                        printf("OVERWRITE due to datalen mismatch %d vs %d\n",hp->datalen,pod->H.datalen);
+                                        update_telepod(pod,pod->txid);
+                                    }
                                     disp_telepod("inDB",pod);
                                     free(hp);
                                 }
@@ -274,7 +279,7 @@ struct telepod *conv_BBR_json(struct coin_info *cp,struct cJSON *tpd)
     if ( acctkeys[0] != 0 && basement[0] != 0 )
     {
         pod = create_telepod(0,cp->name,0,"","",acctkeys,basement,-1);
-        if ( (pod->unspent= BBR_telepodstatus(&pod->createtime,cp,pod)) != 0 )
+        if ( (pod->unspent= BBR_telepodstatus(&pod->H.createtime,cp,pod)) != 0 )
             pod->satoshis = pod->unspent;
     }
     return(pod);
@@ -605,7 +610,7 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
         extract_cJSON_str(script,sizeof(script),tpd,"s");
     } else coinaddr[0] = script[0] = 0;
     pod = create_telepod(createtime,cp->name,0,podaddr,script,privkey,txid,vout);
-    if ( get_telepod_info(&pod->unspent,&pod->createtime,cp->name,pod) < 0 )
+    if ( get_telepod_info(&pod->unspent,&pod->H.createtime,cp->name,pod) < 0 )
     {
         printf("Invalid pod (%s) received from %s\n",pod->txid,contact->handle);
         free(pod);
@@ -721,7 +726,7 @@ double calc_telepod_metric(struct telepod **pods,int32_t n,double target,uint32_
     youngest = -1;
     for (i=0; i<n; i++)
     {
-        age = (now - pods[i]->createtime);
+        age = (now - pods[i]->H.createtime);
         agesum += age;
         if ( youngest < 0 || age < youngest )
             youngest = age;

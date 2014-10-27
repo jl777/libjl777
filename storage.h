@@ -130,7 +130,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     key.data = keystr;
     key.size = (int32_t)strlen(keystr) + 1;
     data.flags = 0;
-    if ( (ret= dbp->get(dbp,NULL,&key,&data,0)) != 0 )
+    if ( (ret= dbp->get(dbp,NULL,&key,&data,0)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
         if ( ret != DB_NOTFOUND )
             printf("DB get error.%d\n",ret);
