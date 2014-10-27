@@ -153,7 +153,7 @@ try_again:
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
             //
-        } else fprintf(stderr,"databuf.(%s)\n",databuf);
+        } else if ( specialcase != 0 ) fprintf(stderr,"databuf.(%s)\n",params);
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
         if ( databuf != 0 )
             curl_easy_setopt(curl_handle,CURLOPT_POSTFIELDS,databuf);
