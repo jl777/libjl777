@@ -435,7 +435,7 @@ char *get_account_unspent(struct telepod *inputpods[MAX_COIN_INPUTS],uint64_t *a
                                 strcpy(bestaddr,coinaddr);
                                 addr = bestaddr;
                                 //printf("set %s.%d ADDRESS.(%s) %.8f\n",account,i,coinaddr,dstr(max));
-                                //break;
+                                break;
                             }
                             else if ( inputpods != 0 )
                             {
