@@ -142,7 +142,7 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
     //printf("html hdr.(%s)\n",buffer);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
     libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
-    //printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
+    printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
 }
 
 // this protocol server (always the first one) just knows how to do HTTP

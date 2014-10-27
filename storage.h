@@ -48,7 +48,7 @@ DB *open_database(char *fname,int32_t type,int32_t flags)
     {
         printf("error.%d creating %s database\n",ret,fname);
         return(0);
-    } else printf("Public_dbp created\n");
+    } else printf("%s created\n",fname);
     if ( (ret= dbp->open(dbp,NULL,fname,NULL,type,flags,0)) != 0 )
     {
         printf("error.%d opening %s database\n",ret,fname);
