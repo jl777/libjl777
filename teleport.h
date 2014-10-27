@@ -49,9 +49,9 @@ uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 }
 #include "bitcoinglue.h"
 
-void update_telepod(struct telepod *pod,char *keystr)
+void update_telepod(struct telepod *pod)
 {
-    update_storage(TELEPOD_DATA,keystr,&pod->H);
+    update_storage(TELEPOD_DATA,pod->txid,&pod->H);
 }
 
 char *_podstate(int32_t podstate)
@@ -243,14 +243,14 @@ uint64_t scan_telepods(char *coinstr)
                                 if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
                                 {
                                     disp_telepod("new",pod);
-                                    update_telepod(pod,pod->txid);
+                                    update_telepod(pod);
                                 }
                                 else
                                 {
                                     if ( 0 && hp->datalen != pod->H.datalen )
                                     {
                                         fprintf(stderr,"OVERWRITE due to datalen mismatch %d vs %d\n",hp->datalen,pod->H.datalen);
-                                        update_telepod(pod,pod->txid);
+                                        update_telepod(pod);
                                         fprintf(stderr,"back from update_telepod\n");
                                     }
                                     disp_telepod("inDB",pod);
@@ -415,7 +415,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                 if ( refpod != 0 )
                 {
                     refpod->cloneout = TELEPOD_ERROR_VOUT;
-                    update_telepod(refpod,refpod->txid);
+                    update_telepod(refpod);
                 }
                 printf("error cloning %.8f telepod.(%s) to %s\n",dstr(refsatoshis),refpod!=0?refpod->coinaddr:"transporter",podaddr);
             }
@@ -427,10 +427,10 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     safecopy(refpod->clonetxid,txid,sizeof(refpod->clonetxid));
                     refpod->cloneout = TELEPOD_CONTENTS_VOUT;
                     printf("set refpod.%p (%s).vout%d\n",refpod,refpod->clonetxid,refpod->cloneout);
-                    update_telepod(refpod,refpod->txid);
+                    update_telepod(refpod);
                 }
                 pod = create_telepod((uint32_t)time(NULL),cp->name,refsatoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT);
-                update_telepod(pod,pod->txid);
+                update_telepod(pod);
             }
             //if ( cp->enabled == 0 )
             //    cp->blockheight = (uint32_t)get_blockheight(cp), cp->enabled = 1;
@@ -558,12 +558,12 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             fprintf(stderr,"before if n.%d max.%d pods.%p\n",n,max,pods);
             if ( minage < 0 )
             {
-                pod = calloc(1,data.size + key.size + 1);
+                pod = calloc(1,data.size);
                 fprintf(stderr,"after if alloc pod.%p\n",pod);
                 memcpy(pod,data.data,data.size);
                 fprintf(stderr,"after if 0\n");
-                memcpy(pod+data.size,key.data,key.size);
-                fprintf(stderr,"after if 1 \n");
+                //memcpy(pod+data.size,key.data,key.size);
+                //fprintf(stderr,"after if 1 \n");
                 pods[n++] = pod;
                 fprintf(stderr,"after if 2\n");
                 if ( n >= max )
@@ -658,7 +658,7 @@ void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
         {
             pod = process_telepathic_teleport(cp,contact,tpd);
             if ( pod != 0 )
-                update_telepod(pod,pod->txid);
+                update_telepod(pod);
         }
     }
 }
@@ -725,7 +725,7 @@ int32_t poll_telepods(char *relstr)
                     if ( flag != 0 )
                     {
                         pod->podstate = flag;
-                        update_telepod(pod,(char *)((long)pod + pod->H.datalen));
+                        update_telepod(pod);
                     }
                 }
                 free(pod);
@@ -911,13 +911,13 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
                     if ( withdrawaddr[0] != 0 )
                     {
                         pod->podstate = TELEPOD_WITHDRAWN;
-                        update_telepod(pod,(char *)((long)pod + pod->H.datalen));
+                        update_telepod(pod);
                     }
                     else
                     {
                         attachmentjson = telepathic_transmit(buf,contact,-1,"teleport",attachmentjson);
                         pod->podstate = TELEPOD_OUTBOUND;
-                        update_telepod(pod,(char *)((long)pod + pod->H.datalen));
+                        update_telepod(pod);
                         if ( attachmentjson != 0 )
                             free_json(attachmentjson);
                     }
@@ -1011,7 +1011,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         if ( contactstr != 0 && contactstr[0] != 0 && amount != 0 && coinstr[0] != 0 && withdrawaddr[0] == 0 )
         {
             pod = create_debitcredit(txidstr,cmd,contactstr,coinstr,amount,comment);
-            update_telepod(pod,txidstr);
+            update_telepod(pod);
             item = telepod_dispjson(pod,((double)dir * amount) / SATOSHIDEN);
             free(pod);
             retstr = cJSON_Print(item);
