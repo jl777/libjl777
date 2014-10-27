@@ -465,6 +465,7 @@ int32_t make_traceable_telepods(struct coin_info *cp,char *refcipher,cJSON *ciph
     uint64_t incr,amount;
     struct telepod *pod;
     n = 0;
+    printf("make_traceable_telepods satoshis %.8f\n",dstr(satoshis));
     while ( satoshis >= standard_denominations[(sizeof(standard_denominations)/sizeof(*standard_denominations))-1] )
     {
         amount = satoshis;
@@ -495,6 +496,7 @@ int32_t make_traceable_telepods(struct coin_info *cp,char *refcipher,cJSON *ciph
 char *maketelepods(char *NXTACCTSECRET,char *sender,char *coinstr,int64_t value)
 {
     struct coin_info *cp;
+    printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
         if ( make_traceable_telepods(cp,cp->name,cp->ciphersobj,value) <= 0 )
