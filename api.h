@@ -703,7 +703,7 @@ char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     copy_cJSON(minage,objs[3]);
     copy_cJSON(withdrawaddr,objs[4]);
     printf("amount.(%.8f) minage.(%s) %d\n",amount,minage,atoi(minage));
-    if ( sender[0] != 0 && amount > 0 && valid > 0 && contactstr[0] != 0 )
+    if ( sender[0] != 0 && amount > 0 && valid > 0 )
         retstr = teleport(contactstr,coinstr,(uint64_t)(SATOSHIDEN * amount),atoi(minage),withdrawaddr);
     else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
     return(retstr);
