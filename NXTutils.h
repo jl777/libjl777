@@ -1397,7 +1397,7 @@ int32_t parse_ipaddr(char *ipaddr,char *ip_port)
     if ( ip_port != 0 && ip_port[0] != 0 )
     {
         strcpy(ipaddr,ip_port);
-        for (j=0; ipaddr[j]!=0; j++)
+        for (j=0; ipaddr[j]!=0&&j<60; j++)
             if ( ipaddr[j] == ':' )
             {
                 port = atoi(ipaddr+j+1);

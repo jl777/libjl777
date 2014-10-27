@@ -401,7 +401,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
 {
     int32_t SuperNET_broadcast(char *msg,int32_t duration);
     int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len);
-    char ip_port[64],ipaddr[64],*ptr;
+    char ip_port[64],*ptr;
     struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
@@ -413,10 +413,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
             port = (stats->p2pport == 0) ? BTCD_PORT : stats->p2pport;
         else port = BTCD_PORT;
+        //fprintf(stderr,"port.%d\n",port);
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
-        txid ^= calc_ipbits(ipaddr);
+        txid ^= calc_ipbits(pserver->ipaddr);
         if ( Debuglevel > 0 )
-            printf("%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,msg,(long long)txid,ip_port);
+            fprintf(stderr,"%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,msg,(long long)txid,ip_port);
         ptr = calloc(1,64 + sizeof(len) + len + 1);
         memcpy(ptr,&len,sizeof(len));
         memcpy(&ptr[sizeof(len)],ip_port,strlen(ip_port));

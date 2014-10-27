@@ -237,7 +237,7 @@ uint64_t scan_telepods(char *coinstr)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
-                        fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
+                        //fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
                         if ( strcmp(acct,"telepods") == 0 )
                         {
                             num++;
@@ -256,7 +256,7 @@ uint64_t scan_telepods(char *coinstr)
                                         update_telepod(pod);
                                         fprintf(stderr,"back from update_telepod\n");
                                     }
-                                    disp_telepod("inDB",pod);
+                                    //disp_telepod("inDB",pod);
                                     free(hp);
                                 }
                                 sum += pod->satoshis;
@@ -270,7 +270,7 @@ uint64_t scan_telepods(char *coinstr)
             free(retstr);
         }
     }
-    printf("num telepods.%d sum %.8f\n",num,dstr(sum));
+    //printf("num telepods.%d sum %.8f\n",num,dstr(sum));
     return(sum);
 }
 
@@ -498,7 +498,7 @@ int32_t make_traceable_telepods(struct coin_info *cp,char *refcipher,cJSON *ciph
 char *maketelepods(char *NXTACCTSECRET,char *sender,char *coinstr,int64_t value)
 {
     struct coin_info *cp;
-    printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
+    //printf("maketelepods.%s %.8f\n",coinstr,dstr(value));
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
         if ( make_traceable_telepods(cp,cp->name,cp->ciphersobj,value) <= 0 )
@@ -1040,7 +1040,6 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         }
     } else scan_telepods(coinstr);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,-1);
-    printf("numtelepods.%d\n",n);
     sprintf(retbuf,"{\"result\":\"telepodacct %.8f %s \",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(amount),coinstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     if ( pods != 0 )
     {
