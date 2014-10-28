@@ -18,15 +18,19 @@ extern int32_t IS_LIBTEST;
 int main(int argc,const char *argv[])
 {
     FILE *fp;
+    int32_t retval;
     long stripwhite_ns(char *buf,long len);
 	char *retstr,cmdstr[1024],buf[1024],buf2[1024],ipaddr[64];
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
     else ipaddr[0] = 0;
-    SuperNET_start("SuperNET.conf",ipaddr);
+    retval = SuperNET_start("SuperNET.conf",ipaddr);
     if ( (fp= fopen("horrible.hack","wb")) != 0 )
+    {
+        fwrite(&retval,1,sizeof(retval),fp);
         fclose(fp);
+    }
     while ( 1 )
     {
         sleep(60);
