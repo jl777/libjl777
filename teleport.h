@@ -573,7 +573,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
-            fprintf(stderr,"%s %p minage.%d found.%d %s size.%d/%d podstate.%d createtime.%d\n",coinstr,pod,minage,m,key.data,pod->H.datalen,data.size,pod->podstate,pod->H.createtime);
+            fprintf(stderr,"%s %p minage.%d found.%d %s size.%d/%d podstate.%d time.%d %.8f\n",coinstr,pod,minage,m,key.data,pod->H.datalen,data.size,pod->podstate,pod->H.createtime,dstr(pod->satoshis));
             podstate = pod->podstate;
             createtime = pod->H.createtime;
             if ( minage < 0 )
@@ -676,7 +676,7 @@ int32_t poll_telepods(char *relstr)
     int32_t flag,i,err,n,m = 0;
     struct telepod **pods,*pod,*clonepod;
     double avail,inbound,outbound,maturing,doublespent,cancelled;
-//return(0);
+return(0);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,relstr,-1);
     if ( pods != 0 )
     {

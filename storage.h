@@ -264,12 +264,12 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         data.data = hp;
         data.size = hp->datalen;
-        fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         DB_lock(selector);
         if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         DB_unlock(selector);
-        fprintf(stderr,"after dbp->put\n");
+        //fprintf(stderr,"after dbp->put\n");
     }
 }
 
