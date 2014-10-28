@@ -21,6 +21,7 @@
 #define TELEPOD_DATA 2
 #define PRICE_DATA 3
 #define DEADDROP_DATA 4
+#define PEER_DATA 5
 
 struct storage_header
 {
@@ -35,7 +36,7 @@ struct kademlia_storage
 };
 long Total_stored,Storage_maxitems[16];
 DB_ENV *Storage;
-DB *Public_dbp,*Private_dbp,*Telepod_dbp,*Prices_dbp,*Deaddrops_dbp;
+DB *Public_dbp,*Private_dbp,*Telepod_dbp,*Prices_dbp,*Deaddrops_dbp,*Peers_dbp;
 portable_mutex_t DB_mutex[16];
 int32_t DB_initflags[16];
 
@@ -100,6 +101,7 @@ int32_t init_SuperNET_storage()
             Telepod_dbp = open_database("telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             Prices_dbp = open_database("prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT);
             Deaddrops_dbp = open_database("deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            Peers_dbp = open_database("peers.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
         }
     }
     return(0);
@@ -124,6 +126,7 @@ DB *get_selected_database(int32_t selector)
         case TELEPOD_DATA: return(Telepod_dbp);
         case PRICE_DATA: return(Prices_dbp);
         case DEADDROP_DATA: return(Deaddrops_dbp);
+        case PEER_DATA: return(Peers_dbp);
     }
     return(0);
 }

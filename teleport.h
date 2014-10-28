@@ -261,12 +261,7 @@ uint64_t scan_telepods(char *coinstr)
                                 }
                                 else
                                 {
-                                    if ( 1 && hp->datalen != pod->H.datalen )
-                                    {
-                                        fprintf(stderr,"OVERWRITE due to datalen mismatch %d vs %d\n",hp->datalen,pod->H.datalen);
-                                        update_telepod(pod);
-                                        fprintf(stderr,"back from update_telepod\n");
-                                    }
+                                    update_telepod(pod);
                                     disp_telepod("inDB",pod);
                                     free(hp);
                                 }

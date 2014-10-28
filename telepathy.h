@@ -433,6 +433,7 @@ cJSON *telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *cont
     sprintf(numstr,"%llu",(long long)contact->deaddrop);
     cJSON_AddItemToObject(json,"deaddrop",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(json,"id",cJSON_CreateNumber(sequenceid));
+    cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(time(NULL)));
     if ( type != 0 && type[0] != 0 )
     {
         cJSON_AddItemToObject(json,"type",cJSON_CreateString(type));
