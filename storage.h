@@ -44,17 +44,17 @@ int db_setup(const char *home,const char *data_dir,FILE *errfp,const char *progn
 
 void DB_lock(int32_t selector)
 {
-    if ( DB_initflags[selector] == 0 )
+    /*if ( DB_initflags[selector] == 0 )
     {
         portable_mutex_init(&DB_mutex[selector]);
         DB_initflags[selector] = 1;
     }
-    portable_mutex_lock(&DB_mutex[selector]);
+    portable_mutex_lock(&DB_mutex[selector]);*/
 }
 
 void DB_unlock(int32_t selector)
 {
-    portable_mutex_unlock(&DB_mutex[selector]);
+    //portable_mutex_unlock(&DB_mutex[selector]);
 }
 
 DB *open_database(char *fname,int32_t type,int32_t flags)

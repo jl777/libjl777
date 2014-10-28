@@ -446,6 +446,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     update_telepod(refpod);
                 }
                 pod = create_telepod((uint32_t)time(NULL),cp->name,refsatoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT);
+                pod->podstate = TELEPOD_INBOUND;
                 update_telepod(pod);
             }
             //if ( cp->enabled == 0 )
