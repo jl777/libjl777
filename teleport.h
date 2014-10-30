@@ -1118,6 +1118,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         stripwhite_ns(retstr,strlen(retstr));
         return(retstr);
     }
+    printf("TELEPODACCT.(%s)\n",retbuf);
     return(clonestr(retbuf));
 }
 

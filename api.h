@@ -332,7 +332,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         if ( (ptr= queue_dequeue(&ResultsQ)) != 0 )
         {
             memcpy(&ptrs,ptr,sizeof(ptrs));
-            //fprintf(stderr,"Got ResultsQ.(%s) ptrs.%p %p %p\n",ptr+sizeof(ptrs),ptrs,ptrs[0],ptrs[1]);
+            fprintf(stderr,"Got ResultsQ.(%s) ptrs.%p %p %p\n",ptr+sizeof(ptrs),ptrs,ptrs[0],ptrs[1]);
             if ( ptrs[0] != 0 )
                 free(ptrs[0]);
             if ( ptrs[1] != 0 )
