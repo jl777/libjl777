@@ -12,6 +12,7 @@
 #include <string.h>
 #include <memory.h>
 #include "SuperNET.h"
+#include "cJSON.h"
 
 extern int32_t IS_LIBTEST;
 
