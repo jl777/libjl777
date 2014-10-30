@@ -1298,6 +1298,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*str,*retstr;
     cJSON *json,*item;
     FILE *fp;
+    printf("settings.%p\n",prevaddr);
     if ( prevaddr != 0 )
         return(0);
     copy_cJSON(field,objs[0]);
