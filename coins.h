@@ -569,7 +569,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     cJSON *array,*item,*languagesobj = 0;
     char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
-
+    void close_SuperNET_dbs();
+    close_SuperNET_dbs();
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");

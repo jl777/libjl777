@@ -38,7 +38,7 @@ struct SuperNET_db
     queue_t queue;
     long maxitems,total_stored;
     DB *dbp;
-    uint32_t busy,type,flags;
+    uint32_t busy,type,flags,active;
 };
 
 struct dbreq { DB_TXN *txn; DBT *key,*data; int32_t flags,retval; uint16_t selector,funcid,doneflag,pad; };
@@ -54,7 +54,7 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
     struct dbreq *req;
     n = 0;
     sdb = &SuperNET_dbs[selector];
-    while ( 1 )
+    while ( sdb->active != 0 )
     {
         if ( sdb->busy == 0 && n == 0 )
             usleep(10000);
@@ -71,8 +71,9 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
             n++;
         }
     }
-    fprintf(stderr,"finished processing process_SuperNET_dbqueues\n");
-    exit(0);
+    sdb->dbp->close(sdb->dbp,0);
+    sdb->active = -1;
+    fprintf(stderr,"finished processing process_SuperNET_dbqueue.%d\n",selector);
     return(0);
 }
 
@@ -96,19 +97,22 @@ int32_t _block_on_dbreq(struct dbreq *req)
 struct dbreq *_queue_dbreq(int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 {
     struct SuperNET_db *sdb = &SuperNET_dbs[selector];
-    struct dbreq *req;
-    req = calloc(1,sizeof(*req));
-    req->funcid = funcid;
-    req->selector = selector;
-    req->txn = txn;
-    req->key = key;
-    req->data = data;
-    req->flags = flags;
-    //while ( sdb->busy > 0 )
-    //    usleep(1);
-    sdb->busy++;
-    queue_enqueue(&sdb->queue,req);
-    usleep(10); // allow context switch so request has a chance of completing
+    struct dbreq *req = 0;
+    if ( sdb->active > 0 )
+    {
+        req = calloc(1,sizeof(*req));
+        req->funcid = funcid;
+        req->selector = selector;
+        req->txn = txn;
+        req->key = key;
+        req->data = data;
+        req->flags = flags;
+        //while ( sdb->busy > 0 )
+        //    usleep(1);
+        sdb->busy++;
+        queue_enqueue(&sdb->queue,req);
+        usleep(10); // allow context switch so request has a chance of completing
+    }
     return(req);
 }
 
@@ -127,8 +131,8 @@ int32_t dbcmd(char *debugstr,int32_t funcid,int32_t selector,DB_TXN *txn,DBT *ke
     struct dbreq *req;
     if ( valid_SuperNET_db(debugstr,selector) != 0 )
     {
-        req = _queue_dbreq(funcid,selector,txn,key,data,flags);
-        return(_block_on_dbreq(req));
+        if ( (req= _queue_dbreq(funcid,selector,txn,key,data,flags)) != 0 )
+            return(_block_on_dbreq(req));
     }
     return(-1);
 }
@@ -175,6 +179,27 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags)
     return(sdb->dbp);
 }
 
+void close_SuperNET_dbs()
+{
+    int32_t selector;
+    struct SuperNET_db *sdb;
+    for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
+    {
+        sdb = &SuperNET_dbs[selector];
+        if ( sdb->active > 0 )
+        {
+            sdb->active = 0;
+            while ( sdb->active == 0 )
+            {
+                fprintf(stderr,".");
+                sleep(1);
+                memset(sdb,0,sizeof(*sdb));
+                fprintf(stderr," selector.%d shutdown\n",selector);
+            }
+        }
+    }
+}
+
 int32_t init_SuperNET_storage()
 {
     static int didinit,selectors[NUM_SUPERNET_DBS];
@@ -205,6 +230,7 @@ int32_t init_SuperNET_storage()
             for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
             {
                 selectors[selector] = selector;
+                SuperNET_dbs[selector].active = 1;
                 if ( portable_thread_create((void *)_process_SuperNET_dbqueue,&selectors[selector]) == 0 )
                     printf("ERROR hist process_hashtablequeues\n");
             }

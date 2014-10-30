@@ -1297,6 +1297,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     static int64_t len=0,allocsize=0;
     char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*str,*retstr;
     cJSON *json,*item;
+    FILE *fp;
     if ( prevaddr != 0 )
         return(0);
     copy_cJSON(field,objs[0]);
@@ -1319,6 +1320,12 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             free(retstr);
             retstr = cJSON_Print(json);
             free_json(json);
+            if ( (fp= fopen("SuperNET.conf","wb")) != 0 )
+            {
+                if ( fwrite(retstr,1,strlen(retstr),fp) != strlen(retstr) )
+                    printf("error saving SuperNET.conf\n");
+                fclose(fp);
+            }
         }
         else
         {
