@@ -339,12 +339,16 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
             expand_nxt64bits(key,location);
             printf("store.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
-            add_storage(PRIVATE_DATA,key,privatedatastr);
-            add_storage(PUBLIC_DATA,key,privatedatastr);
+            if ( IS_LIBTEST != 0 )
+            {
+                add_storage(PRIVATE_DATA,key,privatedatastr);
+                add_storage(PUBLIC_DATA,key,privatedatastr);
+            }
         }
         else
         {
-            add_storage(PRIVATE_DATA,key,privatedatastr);
+            if ( IS_LIBTEST != 0 )
+                add_storage(PRIVATE_DATA,key,privatedatastr);
             if ( contact->deaddrop != 0 )
             {
                 contact->numsent++;
