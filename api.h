@@ -1303,7 +1303,9 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     copy_cJSON(value,objs[1]);
     copy_cJSON(reinit,objs[2]);
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
-    if ( field[0] != 0 )
+    if ( retstr != 0 )
+        retstr = clonestr(retstr);
+    if ( retstr != 0 && field[0] != 0 )
     {
         fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,value);
         json = cJSON_Parse(retstr);
