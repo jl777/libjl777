@@ -15,6 +15,7 @@
 #include "cJSON.h"
 
 extern int32_t IS_LIBTEST;
+char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
 
 int main(int argc,const char *argv[])
 {
