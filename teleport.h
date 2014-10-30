@@ -603,13 +603,12 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         }
         cursorp->close(cursorp);
     }
-    //DB_unlock(TELEPOD_DATA);
     //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-    //printf("set nump.%d\n",n);
+    printf("set nump.%d\n",n);
     *nump = n;
     return(pods);
 }
