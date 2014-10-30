@@ -381,7 +381,7 @@ struct coin_info
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
     void **logs;
     cJSON *ciphersobj;
-    char pubaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
+    char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
     
     char name[64],backupdir[512],privacyserver[32],myipaddr[64],transporteraddr[128];

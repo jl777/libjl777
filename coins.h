@@ -469,9 +469,9 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     cp->tradebotfname = clonestr(tradebotfname);
                 if ( extract_cJSON_str(cp->privacyserver,sizeof(cp->privacyserver),json,"privacyServer") > 0 )
                     printf("set default privacyServer to (%s)\n",cp->privacyserver);
-                if ( extract_cJSON_str(cp->pubaddr,sizeof(cp->pubaddr),json,"pubaddr") > 0 )
+                if ( extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"privateaddr") > 0 || extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"pubaddr") > 0 )
                 {
-                    coinaddr = cp->pubaddr;
+                    coinaddr = cp->privateaddr;
                     if ( (privkey= get_telepod_privkey(&coinaddr,cp->coinpubkey,cp)) != 0 )
                     {
                         printf("copy key <- (%s)\n",privkey);
@@ -479,7 +479,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         cp->privatebits = issue_getAccountId(0,privkey);
                         expand_nxt64bits(cp->privateNXTADDR,cp->privatebits);
                         conv_NXTpassword(Global_mp->myprivkey.bytes,Global_mp->mypubkey.bytes,cp->privateNXTACCTSECRET);
-                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->pubaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
+                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->privateaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
@@ -540,7 +540,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 if ( ciphersobj == 0 || (privkeys= validate_ciphers(&cipherids,cp,ciphersobj)) == 0 )
                 {
                     free_cipherptrs(ciphersobj,privkeys,cipherids);
-                    sprintf(buf,"[{\"aes\":\"%s\"}]",cp->pubaddr);
+                    sprintf(buf,"[{\"aes\":\"%s\"}]",cp->privateaddr);
                     cp->ciphersobj = cJSON_Parse(buf);
                 } else cp->ciphersobj = ciphersobj;
                 free_cipherptrs(0,privkeys,cipherids);
@@ -690,7 +690,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         parse_ipaddr(cp->myipaddr,myipaddr);
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {
-                            BTCDaddr = cp->pubaddr;
+                            BTCDaddr = cp->privateaddr;
                             strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->privatebits != 0 )
@@ -698,9 +698,9 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                         }
                         else if ( strcmp(coinstr,"BTC") == 0 )
-                            BTCaddr = cp->pubaddr;
+                            BTCaddr = cp->privateaddr;
                         else if ( strcmp(coinstr,"NXT") == 0 )
-                            pubNXT = cp->pubaddr;
+                            pubNXT = cp->privateNXTADDR;
                      }
                 }
             } else printf("no coins array.%p ?\n",array);

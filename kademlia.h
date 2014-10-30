@@ -1082,7 +1082,7 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
             cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
         }
     }
-    else cJSON_AddItemToObject(json,"pubNXT",cJSON_CreateString(srvnxtaddr));
+    else cJSON_AddItemToObject(json,"privateNXT",cJSON_CreateString(srvnxtaddr));
     init_hexbytes_noT(hexstr,stats->pubkey,sizeof(stats->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )
