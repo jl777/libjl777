@@ -193,11 +193,12 @@ void close_SuperNET_dbs()
             {
                 fprintf(stderr,".");
                 sleep(1);
-                memset(sdb,0,sizeof(*sdb));
                 fprintf(stderr," selector.%d shutdown\n",selector);
+                sdb->active = -1;
             }
         }
     }
+    memset(SuperNET_dbs,0,sizeof(SuperNET_dbs));
 }
 
 int32_t init_SuperNET_storage()
