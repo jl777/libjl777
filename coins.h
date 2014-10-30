@@ -431,7 +431,6 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
         estblocktime = get_API_int(cJSON_GetObjectItem(json,"estblocktime"),300);
         min_telepod_satoshis = get_API_nxt64bits(cJSON_GetObjectItem(json,"min_telepod_satoshis"));
         dust = get_API_nxt64bits(cJSON_GetObjectItem(json,"dust"));
-
         txfee = get_API_nxt64bits(cJSON_GetObjectItem(json,"txfee_satoshis"));
         if ( txfee == 0 )
             txfee = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"txfee")));
@@ -522,9 +521,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 if ( (cp->min_telepod_satoshis= min_telepod_satoshis) == 0 )
                     cp->min_telepod_satoshis = (dust == 0) ? SATOSHIDEN/10000 : dust;
                 if ( dust == 0 )
-                    dust = 100000;
+                    dust = 10000;
                 cp->dust = dust;
-           
                 cp->maxevolveiters = get_API_int(cJSON_GetObjectItem(json,"maxevolveiters"),100);
                 cp->M = get_API_int(cJSON_GetObjectItem(json,"telepod_M"),1);
                 cp->N = get_API_int(cJSON_GetObjectItem(json,"telepod_N"),1);
@@ -561,18 +559,17 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 
 char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
 {
+    static int didinit,exchangeflag;
+    static char ipbuf[64],*buf=0;
+    static int64_t len=0,allocsize=0;
     int32_t init_SuperNET_storage();
-    //int32_t set_pubpeerinfo(char *srvNXTaddr,char *srvipaddr,int32_t srvport,struct peerinfo *peer,char *pubBTCD,char *pubkey,uint64_t pubnxtbits,char *pubBTC);
-    //struct peerinfo *update_peerinfo(int32_t *createdflagp,struct peerinfo *refpeer);
     int32_t init_tradebots(cJSON *languagesobj);
-    static int32_t exchangeflag;
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char ipaddr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*buf=0,*jsonstr;
+    char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
-    int64_t len=0,allocsize=0;
-    //struct peerinfo *refpeer,peer;
+
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
@@ -589,19 +586,19 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     if ( jsonstr != 0 )
     {
         printf("loaded.(%s)\n",jsonstr);
+        if ( MGWconf != 0 )
+            free_json(MGWconf);
         MGWconf = cJSON_Parse(jsonstr);
         if ( MGWconf != 0 )
         {
-            static char ipbuf[64];
             if ( myipaddr == 0 )
             {
-                if ( extract_cJSON_str(ipbuf,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
+                if ( didinit == 0 && extract_cJSON_str(ipbuf,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
                     strcpy(ipbuf,"127.0.0.1");
             } else parse_ipaddr(ipbuf,myipaddr);
             myipaddr = ipbuf;
             if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
                 strcpy(Global_mp->myhandle,"myhandle");
-            printf("parsed\n");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
             init_jdatetime(NXT_GENESISTIME,timezone * 3600);
             languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
@@ -759,33 +756,40 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 }
                 printf("contacts.%d\n",n);
             }
-            void start_polling_exchanges(int32_t exchangeflag);
-            int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
-            if ( init_exchanges(MGWconf,exchangeflag) > 0 )
-                start_polling_exchanges(exchangeflag);
+            if ( didinit == 0 )
+            {
+                void start_polling_exchanges(int32_t exchangeflag);
+                int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
+                if ( init_exchanges(MGWconf,exchangeflag) > 0 )
+                    start_polling_exchanges(exchangeflag);
+            }
         }
         else printf("PARSE ERROR\n");
         free(jsonstr);
     }
-    init_tradebots(languagesobj);
-    if ( ORIGBLOCK[0] == 0 )
+    if ( didinit == 0 )
     {
-        char blockidstr[64];
-        int32_t isrescan,height,timestamp;
-        set_current_NXTblock(&isrescan,0,ORIGBLOCK);
-        for (i=0; i<MIN_NXTCONFIRMS; i++)
-        {
-            strcpy(blockidstr,ORIGBLOCK);
-            set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
-            printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
-        }
+        init_tradebots(languagesobj);
         if ( ORIGBLOCK[0] == 0 )
         {
-            fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
-            exit(1);
+            char blockidstr[64];
+            int32_t isrescan,height,timestamp;
+            set_current_NXTblock(&isrescan,0,ORIGBLOCK);
+            for (i=0; i<MIN_NXTCONFIRMS; i++)
+            {
+                strcpy(blockidstr,ORIGBLOCK);
+                set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
+                printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
+            }
+            if ( ORIGBLOCK[0] == 0 )
+            {
+                fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
+                exit(1);
+            }
+            else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
         }
-        else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
     }
+    didinit = 1;
     return(myipaddr);
 }
 #endif

@@ -286,6 +286,8 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     static int counter;
     int32_t duration,len;
     char ip_port[64],hexstr[8192],msg[MAX_JSON_FIELD],retbuf[MAX_JSON_FIELD*3],*ptr,*str,*msg2;
+    if ( prevaddr != 0 )
+        return(0);
     counter++;
     //printf("BTCDpoll.%d\n",counter);
     //BTCDpoll post_process_bitcoind_RPC.SuperNET can't parse.({"msg":"[{"requestType":"ping","NXT":"13434315136155299987","time":1414310974,"pubkey":"34b173939544eb01515119b5e0b05880eadaae3d268439c9cc1471d8681ecb6d","ipaddr":"209.126.70.159"},{"token":"im9n7c9ka58g3qq4b2oe1d8p7mndlqk0pj4jj1163pkdgs8knb0vsreb0kf6luo1bbk097buojs1k5o5c0ldn6r6aueioj8stgel1221fq40f0cvaqq0bciuniit0isi0dikd363f3bjd9ov24iltirp6h4eua0q"}]","duration":86400})
@@ -336,6 +338,8 @@ char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
 {
     static int counter;
     char retbuf[MAX_JSON_FIELD*3],*ptr,**ptrs;
+    if ( prevaddr != 0 )
+        return(0);
     counter++;
     retbuf[0] = 0;
     if ( retbuf[0] == 0 )
@@ -1150,6 +1154,8 @@ char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
 {
     char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
     int32_t sequenceid,dir;
+    if ( prevaddr != 0 )
+        return(0);
     copy_cJSON(contact,objs[0]);
     sequenceid = get_API_int(objs[1],0);
     copy_cJSON(key,objs[2]);
@@ -1284,7 +1290,49 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     }
     return(retstr);
 }
-    
+
+char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    static char *buf=0;
+    static int64_t len=0,allocsize=0;
+    char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],jsonstr[MAX_JSON_FIELD],*str,*retstr;
+    cJSON *json,*item;
+    if ( prevaddr != 0 )
+        return(0);
+    copy_cJSON(field,objs[0]);
+    copy_cJSON(jsonstr,objs[1]);
+    copy_cJSON(reinit,objs[2]);
+    retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
+    if ( field[0] != 0 )
+    {
+        fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,jsonstr);
+        json = cJSON_Parse(retstr);
+        if ( json != 0 )
+        {
+            if ( jsonstr[0] == 0 )
+                cJSON_DeleteItemFromObject(json,field);
+            else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
+                cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(jsonstr));
+            else cJSON_AddItemToObject(json,field,cJSON_CreateString(jsonstr));
+            free(retstr);
+            retstr = cJSON_Print(json);
+            free_json(json);
+        }
+        else
+        {
+            str = stringifyM(retstr);
+            free(retstr);
+            retstr = malloc(strlen(str) + 512);
+            sprintf(retstr,"{\"error\":\"SuperNET.conf PARSE error\",\"settings\":%s}",str);
+            free(str);
+            str = 0;
+        }
+    }
+    if ( retstr != 0 && strcmp(reinit,"yes") == 0 )
+        init_MGWconf(retstr,0);
+    return(retstr);
+}
+
 char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     // glue
@@ -1293,7 +1341,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "", "ip_port", 0 };
     static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "", 0 };
     static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "", 0 };
-  
+    static char *settings[] = { (char *)settings_func, "settings", "V", "field", "jsonstr", "reinit", 0 };
+
     // multisig
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
@@ -1344,7 +1393,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { GUIpoll,BTCDpoll,gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, telepodacct, savefile, restorefile  };
+     static char **commands[] = { GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, telepodacct, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
