@@ -1312,6 +1312,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
         json = cJSON_Parse(retstr);
         if ( json != 0 )
         {
+            free(retstr);
             if ( field[0] != 0 )
             {
                 if ( value[0] == 0 )
@@ -1319,9 +1320,13 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
                 else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
                     cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(value));
                 else cJSON_AddItemToObject(json,field,cJSON_CreateString(value));
+                retstr = cJSON_Print(json);
             }
-            free(retstr);
-            retstr = cJSON_Print(json);
+            else
+            {
+                unstringify(field);
+                retstr = clonestr(field);
+            }
             free_json(json);
             if ( (fp= fopen("SuperNET.conf","wb")) != 0 )
             {
