@@ -196,12 +196,12 @@ int32_t init_SuperNET_storage()
         }
         else
         {
-            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
-            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
-            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
-            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
-            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
-            open_database(PEER_DATA,"peers.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT | DB_EXCL);
+            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(PEER_DATA,"peers.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
             {
                 selectors[selector] = selector;
