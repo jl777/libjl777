@@ -1306,17 +1306,20 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
     if ( retstr != 0 )
         retstr = clonestr(retstr);
-    if ( retstr != 0 && field[0] != 0 )
+    if ( retstr != 0 )
     {
         fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,value);
         json = cJSON_Parse(retstr);
         if ( json != 0 )
         {
-            if ( value[0] == 0 )
-                cJSON_DeleteItemFromObject(json,field);
-            else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
-                cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(value));
-            else cJSON_AddItemToObject(json,field,cJSON_CreateString(value));
+            if ( field[0] != 0 )
+            {
+                if ( value[0] == 0 )
+                    cJSON_DeleteItemFromObject(json,field);
+                else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
+                    cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(value));
+                else cJSON_AddItemToObject(json,field,cJSON_CreateString(value));
+            }
             free(retstr);
             retstr = cJSON_Print(json);
             free_json(json);
