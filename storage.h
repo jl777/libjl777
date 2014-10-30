@@ -154,17 +154,19 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags)
     struct SuperNET_db *sdb = &SuperNET_dbs[selector];
     if ( valid_SuperNET_db("open_database",selector) == 0 )
     {
-        printf("open_database error illegal selector.%d for (%s)\n",selector,fname);
+        fprintf(stderr,"open_database error illegal selector.%d for (%s)\n",selector,fname);
         return(0);
     }
     if ( (ret= db_create(&sdb->dbp,Storage,0)) != 0 )
     {
-        printf("open_database error.%d creating %s database\n",ret,fname);
+        fprintf(stderr,"open_database error.%d creating %s database\n",ret,fname);
+        exit(-1);
         return(0);
     } else printf("open_database %s created\n",fname);
     if ( (ret= sdb->dbp->open(sdb->dbp,NULL,fname,NULL,type,flags,0)) != 0 )
     {
-        printf("open_database error.%d opening %s database\n",ret,fname);
+        fprintf(stderr,"open_database error.%d opening %s database\n",ret,fname);
+        exit(-2);
         return(0);
     } else printf("open_database %s opened\n",fname);
     safecopy(sdb->name,fname,sizeof(sdb->name));
