@@ -1305,7 +1305,10 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     copy_cJSON(reinit,objs[2]);
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
     if ( retstr != 0 )
+    {
+        printf("cloning.(%s)\n",retstr);
         retstr = clonestr(retstr);
+    }
     if ( retstr != 0 )
     {
         fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,value);
@@ -1315,6 +1318,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             free(retstr);
             if ( field[0] != 0 )
             {
+                printf("FIELD.(%s)\n",field);
                 if ( value[0] == 0 )
                     cJSON_DeleteItemFromObject(json,field);
                 else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
@@ -1325,6 +1329,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             else
             {
                 unstringify(value);
+                printf("unstringify.(%s)\n",value);
                 retstr = clonestr(value);
             }
             free_json(json);
@@ -1344,7 +1349,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             free(str);
             str = 0;
         }
-    }
+    } else printf("cant load SuperNET.conf\n");
     if ( retstr != 0 && strcmp(reinit,"yes") == 0 )
         init_MGWconf(retstr,0);
     return(retstr);
