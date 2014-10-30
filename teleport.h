@@ -554,7 +554,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     *availp = *maturingp = *inboundp = *outboundp = *doublespentp = *cancelledp = 0.;
     if ( dbp == 0 )
         return(0);
-    max = num_in_db(TELEPOD_DATA);
+    max = (int32_t)max_in_db(TELEPOD_DATA);
     max += 100;
     m = 0;
     printf("available_telepods\n");
@@ -605,8 +605,8 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     }
     //DB_unlock(TELEPOD_DATA);
     //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
-    if ( m > num_in_db(TELEPOD_DATA) )
-        set_num_in_db(TELEPOD_DATA,m);
+    if ( m > max_in_db(TELEPOD_DATA) )
+        set_max_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
     //printf("set nump.%d\n",n);

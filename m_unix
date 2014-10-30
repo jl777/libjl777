@@ -2,6 +2,9 @@ pkill SuperNET
 ./BitcoinDarkd stop
 pkill SuperNET
 git pull
+ps aux | grep SuperNET
+ps aux | grep BitcoinDarkd
+echo "there should only be the entries for grep in the above lines"
 rm SuperNET
 make SuperNET
 if make btcd; then
