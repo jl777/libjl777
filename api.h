@@ -1324,8 +1324,8 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             }
             else
             {
-                unstringify(field);
-                retstr = clonestr(field);
+                unstringify(value);
+                retstr = clonestr(value);
             }
             free_json(json);
             if ( (fp= fopen("SuperNET.conf","wb")) != 0 )
