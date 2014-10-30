@@ -114,9 +114,9 @@ struct dbreq *_queue_dbreq(int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,
 
 int32_t valid_SuperNET_db(char *debugstr,int32_t selector)
 {
-    if ( selector < 0 || selector >= NUM_SUPERNET_DBS )
+    if ( IS_LIBTEST == 0 || selector < 0 || selector >= NUM_SUPERNET_DBS )
     {
-        fprintf(stderr,"%s: invalid SuperNET_db selector.%d\n",debugstr,selector);
+        fprintf(stderr,"%s: invalid SuperNET_db selector.%d or DB disabled vi LIBTEST.%d\n",debugstr,selector,IS_LIBTEST);
         return(0);
     }
     return(1);
