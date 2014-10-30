@@ -17,10 +17,13 @@ extern int32_t IS_LIBTEST;
 
 int main(int argc,const char *argv[])
 {
+    long stripwhite_ns(char *buf,long len);
     FILE *fp;
     int32_t retval;
-    long stripwhite_ns(char *buf,long len);
-	char *retstr,cmdstr[1024],buf[1024],buf2[1024],ipaddr[64];
+    cJSON *json;
+    int32_t duration,len;
+    unsigned char data[4098];
+    char params[4096],txidstr[64],buf[1024],ipaddr[64],*retstr;
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
@@ -31,11 +34,30 @@ int main(int argc,const char *argv[])
         fwrite(&retval,1,sizeof(retval),fp);
         fclose(fp);
     }
-    while ( 1 )
+    while ( retval == 0 )
     {
-        sleep(60);
+        sleep(3);
+        sprintf(params,"{\"requestType\":\"GUIpoll\"}");
+        retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"https://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
+        //fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
+        if ( retstr != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                copy_cJSON(buf,cJSON_GetObjectItem(json,"result"));
+                if ( buf[0] != 0 )
+                {
+                    unstringify(buf);
+                    copy_cJSON(txidstr,cJSON_GetObjectItem(json,"txid"));
+                    if ( txidstr[0] != 0 )
+                        fprintf(stderr,"<<<<<<<<<<< GUI poll_for_broadcasts: (%s) for [%s]\n",buf,txidstr);
+                }
+                free_json(json);
+            } else fprintf(stderr,"<<<<<<<<<<< GUI poll_for_broadcasts: PARSE_ERROR.(%s)\n",retstr);
+            free(retstr);
+        } //else fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: bitcoind_RPC returns null\n");
         /*
-        memset(buf,0,sizeof(buf));
+         memset(buf,0,sizeof(buf));
         fgets(buf,sizeof(buf),stdin);
         stripwhite_ns(buf,(int32_t)strlen(buf));
         if ( strcmp("p",buf) == 0 )
