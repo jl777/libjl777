@@ -1295,25 +1295,25 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 {
     static char *buf=0;
     static int64_t len=0,allocsize=0;
-    char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],jsonstr[MAX_JSON_FIELD],*str,*retstr;
+    char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*str,*retstr;
     cJSON *json,*item;
     if ( prevaddr != 0 )
         return(0);
     copy_cJSON(field,objs[0]);
-    copy_cJSON(jsonstr,objs[1]);
+    copy_cJSON(value,objs[1]);
     copy_cJSON(reinit,objs[2]);
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
     if ( field[0] != 0 )
     {
-        fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,jsonstr);
+        fprintf(stderr,"settings: field.(%s) <- (%s)\n",field,value);
         json = cJSON_Parse(retstr);
         if ( json != 0 )
         {
-            if ( jsonstr[0] == 0 )
+            if ( value[0] == 0 )
                 cJSON_DeleteItemFromObject(json,field);
             else if ( (item= cJSON_GetObjectItem(json,field)) != 0 )
-                cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(jsonstr));
-            else cJSON_AddItemToObject(json,field,cJSON_CreateString(jsonstr));
+                cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(value));
+            else cJSON_AddItemToObject(json,field,cJSON_CreateString(value));
             free(retstr);
             retstr = cJSON_Print(json);
             free_json(json);
@@ -1341,7 +1341,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "", "ip_port", 0 };
     static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "", 0 };
     static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "", 0 };
-    static char *settings[] = { (char *)settings_func, "settings", "V", "field", "jsonstr", "reinit", 0 };
+    static char *settings[] = { (char *)settings_func, "settings", "V", "field", "value", "reinit", 0 };
 
     // multisig
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
