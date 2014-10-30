@@ -272,7 +272,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
 {
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
-    unsigned char maxbuf[4096],encodedD[4096],encodedL[4096],*outbuf;
+    unsigned char maxbuf[4096],encodedD[4096],encodedL[4096],encodedF[4096],*outbuf;
     int32_t len,createdflag;//,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
@@ -286,7 +286,8 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);
     memset(maxbuf,0,sizeof(maxbuf)); // always the same size
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
-    memset(encodedL,0,sizeof(encodedL)); // encoded to dest
+    memset(encodedL,0,sizeof(encodedL)); // encoded to onion layers
+    memset(encodedF,0,sizeof(encodedF)); // encoded to prefinal
     outbuf = (unsigned char *)msg;
     len = msglen;
     if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
@@ -310,10 +311,16 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             if ( (len= add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len)) == 0 )
             {
                 outbuf = (unsigned char *)msg;
-                len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,msglen);
+                //len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,msglen);
+                len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,msglen);
             }
         }
-        else len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+        else
+        {
+           // len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+            len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,len);
+        }
+        len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
         txid = route_packet(1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);

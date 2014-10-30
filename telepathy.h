@@ -469,7 +469,6 @@ void init_telepathy_contact(struct contact_info *contact)
     uint64_t randbits;
     for (i=0; i<=MAX_DROPPED_PACKETS; i++)
         create_telepathy_entry(contact,i);
-    printf("entries created\n");
     if ( contact->mydrop == 0 )
     {
         randbits = cp->srvpubnxtbits;
@@ -477,12 +476,9 @@ void init_telepathy_contact(struct contact_info *contact)
             randbits ^= (1L << ((rand()>>8) & 63));
         contact->mydrop = randbits;
     }
-    printf("telepathic_transmit msg.0\n");
     telepathic_transmit(retbuf,contact,0,0,0);
-    printf("check_privategenesis\n");
     if ( (retstr= check_privategenesis(contact)) != 0 )
         free(retstr);
-    printf("done init_telepathy_contact\n");
 }
 
 uint64_t conv_acctstr(char *acctstr)
