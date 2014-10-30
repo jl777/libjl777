@@ -147,6 +147,7 @@ char *createrawtxid_json_params(struct coin_info *cp,struct rawtransaction *rp)
 
 int32_t is_limbotx(char *txid)
 {
+    return(0);
     if ( strcmp(txid,"d768035999fe7d92bb55581530789ab68fc93d352264e14ad755ea247e2471c0") == 0 )
         return(1);
     if ( strcmp(txid,"211d78e93255395dc9272afa759f8ab9905f9eb7b3bb9224fd99e16338a622c6") == 0 )
