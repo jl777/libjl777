@@ -729,7 +729,7 @@ int32_t poll_telepods(char *relstr)
                         case TELEPOD_SPENT:
                             break;
                     }
-                    if ( flag != 0 )
+                    if ( flag != pod->podstate )
                     {
                         pod->podstate = flag;
                         update_telepod(pod);
