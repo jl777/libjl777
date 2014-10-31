@@ -518,10 +518,10 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
     double rate;
     if ( (rate= get_InstantDEX_rate(base,rel)) != 0. )
     {
-        printf("rate %f %s %s %.8f = %f\n",rate,base,rel,dstr(satoshis),rate * ((double)satoshis / SATOSHIDEN));
+        //printf("rate %f %s %s %.8f = %f\n",rate,base,rel,dstr(satoshis),rate * ((double)satoshis / SATOSHIDEN));
         return(rate * ((double)satoshis / SATOSHIDEN));
     }
-    printf("rate %f %s %s %.8f\n",rate,base,rel,dstr(satoshis));
+    //printf("rate %f %s %s %.8f\n",rate,base,rel,dstr(satoshis));
     return(0.);
 }
 
@@ -585,6 +585,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                     continue;
                 }
             }
+            pod->evolve_amount = evolve_amount;
             if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
             {
                 if ( minage >= 0 )
