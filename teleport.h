@@ -601,16 +601,17 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                 else if ( podstate == TELEPOD_CANCELLED ) // we cashed the telepod before destination cloned
                     (*cancelledp) += evolve_amount;
             }
+            printf("avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
             clear_pair(&key,&data);
         }
         cursorp->close(cursorp);
     }
-    printf("avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
+    printf("e avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-    printf("avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
+    printf("E avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
     *nump = n;
     return(pods);
 }
