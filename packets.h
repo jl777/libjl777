@@ -241,10 +241,17 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
                 src = srcbuf;
                 len = onionize(hopNXTaddr,maxbuf,dest,NXTaddr,&src,len);
                 memcpy(srcbuf,dest,len);
+                memcpy(final,dest,len);
                 
-                src = srcbuf;
-                maxlen = onionize(hopNXTaddr,maxbuf,0,NXTaddr,&src,origlen);
-                *srcp = maxbuf;
+                if ( 0 )
+                {
+                    src = srcbuf;
+                    maxlen = onionize(hopNXTaddr,maxbuf,0,NXTaddr,&src,origlen);
+                    *srcp = maxbuf;
+                }
+                else if ( final != 0 )
+                    *srcp = final;
+                else *srcp = maxbuf;
                 if ( final == 0 )
                     break;
                 if ( len > 4096 )
@@ -258,7 +265,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             numlayers--;
         }
     }
-    return(maxlen);
+    if ( 0 ) return(maxlen);
+    return(len);
 }
 
 int32_t has_privacyServer(struct NXT_acct *np)

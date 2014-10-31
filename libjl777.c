@@ -135,7 +135,8 @@ void SuperNET_idler(uv_idle_t *handle)
         {
             char *call_SuperNET_JSON(char *JSONstr);
             jsonstr = ptrs[0];
-            //printf("dequeue JSON_Q.(%s)\n",jsonstr);
+            if ( Debuglevel > 1 )
+                printf("dequeue JSON_Q.(%s)\n",jsonstr);
             if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
                 retstr = clonestr("{\"result\":null}");
             if ( ptrs[2] != 0 )
@@ -322,7 +323,8 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
         txid = calc_txid((uint8_t *)JSONstr,(int32_t)strlen(JSONstr));
         ptrs[2] = (char *)txid;
     }
-    //printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
+    if ( Debuglevel > 1 )
+        printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
     queue_enqueue(&JSON_Q,ptrs);
     if ( blockflag != 0 )
     {
