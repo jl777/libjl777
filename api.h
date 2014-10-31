@@ -158,7 +158,7 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
             "HTTP/1.0 200 OK\x0d\x0a"
             "Server: NXTprotocol.jl777\x0d\x0a"
             "Content-Type: text/html\x0d\x0a"
-            "Access-Control-Allow-Origin: *\x0d\x0a"
+            "Access-Control-Allow-Origin: *\r\n"
             "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
             "Content-Length: %u\x0d\x0a\x0d\x0a",
             (unsigned int)len);
