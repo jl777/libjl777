@@ -432,7 +432,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
                     update_telepod(refpod);
                 }
                 pod = create_telepod((uint32_t)time(NULL),cp->name,refsatoshis,podaddr,"",privkey,txid,TELEPOD_CONTENTS_VOUT);
-                pod->podstate = TELEPOD_INBOUND;
+                pod->podstate = (refpod != 0) ? TELEPOD_INBOUND : TELEPOD_AVAIL;
                 update_telepod(pod);
             }
             //if ( cp->enabled == 0 )
@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-6d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-7d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
@@ -575,14 +575,13 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                 clear_pair(&key,&data);
                 continue;
             }
-            if ( podstate == TELEPOD_AVAIL )
+            if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
             {
-                if ( createtime > (now - minage) )
-                {
+                if ( minage >= 0 )
+                    ADD_TELEPOD
+                if ( minage < 0 || createtime > (now - minage) )
                     (*availp) += evolve_amount;
-                    if ( minage >= 0 )
-                        ADD_TELEPOD
-                } else (*maturingp) += evolve_amount;
+                else (*maturingp) += evolve_amount;
             }
             else if ( podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
                 (*outboundp) += evolve_amount;
@@ -666,7 +665,6 @@ int32_t poll_telepods(char *relstr)
     int32_t flag,i,err,n,m = 0;
     struct telepod **pods,*pod,*clonepod;
     double avail,inbound,outbound,maturing,doublespent,cancelled;
-//return(0);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,relstr,-1);
     if ( pods != 0 )
     {
@@ -713,8 +711,8 @@ int32_t poll_telepods(char *relstr)
                             break;
                             // nothing left to do for these
                         case TELEPOD_DOUBLESPENT:
-                        case TELEPOD_CANCELLED:
                         case TELEPOD_CLONED:
+                        case TELEPOD_CANCELLED:
                         case TELEPOD_SPENT:
                             break;
                     }
