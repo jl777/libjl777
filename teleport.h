@@ -108,7 +108,7 @@ void disp_telepod(char *msg,struct telepod *pod)
 {
     char *str;
     cJSON *podjson;
-    if ( Displevel <= 0 )
+    if ( Debuglevel <= 0 )
         return;
     podjson = telepod_json(pod);
     if ( podjson != 0 )
