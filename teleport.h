@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%-5s.%d minage.%d %s size.%d/%d time.%d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d time.%d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
@@ -604,7 +604,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         set_max_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
         pods[n] = 0;
-    //printf("set nump.%d\n",n);
+    printf("avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
     *nump = n;
     return(pods);
 }
