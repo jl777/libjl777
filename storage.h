@@ -203,13 +203,13 @@ void close_SuperNET_dbs()
 
 int32_t init_SuperNET_storage()
 {
-    static int selectors[NUM_SUPERNET_DBS];
+    static int didinit,selectors[NUM_SUPERNET_DBS];
     int ret,selector;
     if ( IS_LIBTEST == 0 )
         return(0);
-    //if ( didinit == 0 )
+    if ( didinit == 0 )
     {
-        //didinit = 1;
+        didinit = 1;
         if ( (ret = db_env_create(&Storage, 0)) != 0 )
         {
             fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));

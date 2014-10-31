@@ -39,9 +39,10 @@ int main(int argc,const char *argv[])
     while ( retval == 0 )
     {
         sleep(3);
+        continue;
         sprintf(params,"{\"requestType\":\"GUIpoll\"}");
         retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"https://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
-        //fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
+        fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
         if ( retstr != 0 )
         {
             if ( (json= cJSON_Parse(retstr)) != 0 )
