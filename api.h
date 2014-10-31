@@ -198,13 +198,13 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             convert_percent22(str);
             if ( Debuglevel > 2 )
                 printf("RPC GOT.(%s)\n",str);
-            if ( str[0] == 0 || strncmp(str,"html/",5) == 0 )
+            if ( str[0] == 0 || (str[0] != '[' && str[0] != '{') )
             {
                 if ( str[0] == 0 )
                     strcpy(fname,"html/index.html");
-                else strcpy(fname,str);
+                else sprintf(fname,"html/%s",str);
                 buf[0] = 0;
-                if ( strcmp(fname+5,"supernet.js") == 0 )
+                if ( strcmp(str,"supernet.js") == 0 )
                 {
                     if ( (cp= get_coin_info("BTCD")) != 0 )
                         sprintf(buf,"var authToken = btoa(\"%s\");",cp->userpass);

@@ -614,7 +614,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),0);
             APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),7777);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),3);
-            USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),1);
+            USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
             printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             if ( IS_LIBTEST != 0 )
             {
@@ -779,7 +779,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             int32_t isrescan,height,timestamp;
             set_current_NXTblock(&isrescan,0,ORIGBLOCK);
             for (i=0; i<MIN_NXTCONFIRMS; i++)
-            {
+            {break;
                 strcpy(blockidstr,ORIGBLOCK);
                 set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
                 printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
