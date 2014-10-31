@@ -853,7 +853,7 @@ struct telepod **evolve_telepods(int32_t *nump,int32_t maxiters,struct telepod *
             if ( sum >= target )
                 break;
         }
-        //printf("i.%d of n.%d\n",i,n);
+        printf("sum %f vs target %f | i.%d of n.%d\n",sum,target,i,n);
         if ( i == n )
         {
             free(allpods);
@@ -900,9 +900,9 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
         sprintf(buf,"{\"error\":\"cant find contact.(%s) or lack of telepods %.8f %s for %.8f\",\"modval\":\"%llu\"}",contactstr,avail,coinstr,dstr(satoshis),(long long)(satoshis % cp->min_telepod_satoshis));
         return(clonestr(buf));
     }
-    printf("start evolving at %f\n",milliseconds());
+    printf("start evolving.%d at %f\n",n,milliseconds());
     pods = evolve_telepods(&n,cp->maxevolveiters,pods,satoshis);
-    printf("finished evolving at %f\n",milliseconds());
+    printf("finished evolving %d at %f\n",n,milliseconds());
     if ( pods == 0 )
         sprintf(buf,"{\"error\":\"funding evolve failure for %.8f %s to %s\"}",dstr(satoshis),coinstr,contactstr);
     else
