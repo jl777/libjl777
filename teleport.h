@@ -588,7 +588,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
                 if ( minage < 0 || createtime > (now - minage) )
                     (*availp) += evolve_amount;
                 else (*maturingp) += evolve_amount;
-                printf("evolve_amount %.8f satoshis %.8f | %.8f %.8f\n",evolve_amount,dstr(pod->satoshis),*availp,*maturingp);
+                //printf("evolve_amount %.8f satoshis %.8f | %.8f %.8f\n",evolve_amount,dstr(pod->satoshis),*availp,*maturingp);
             }
             else if ( podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
                 (*outboundp) += evolve_amount;
