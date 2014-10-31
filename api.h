@@ -149,10 +149,10 @@ const char * get_mimetype(const char *file)
 	return NULL;
 }
 
-void return_http_str(struct libwebsocket *wsi,char *retstr)
+void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
 {
     int32_t len;
-    unsigned char buffer[1024];
+    unsigned char buffer[8192];
     len = (int32_t)strlen(retstr);
     sprintf((char *)buffer,
             "HTTP/1.0 200 OK\x0d\x0a"
@@ -163,6 +163,8 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
             "Content-Length: %u\x0d\x0a\x0d\x0a",
             (unsigned int)len);
     //printf("html hdr.(%s)\n",buffer);
+    if ( insertstr != 0 && insertstr[0] != 0 )
+        strcat((char *)buffer,insertstr);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
     libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
     if ( Debuglevel > 2 )
@@ -172,8 +174,11 @@ void return_http_str(struct libwebsocket *wsi,char *retstr)
 // this protocol server (always the first one) just knows how to do HTTP
 static int callback_http(struct libwebsocket_context *context,struct libwebsocket *wsi,enum libwebsocket_callback_reasons reason,void *user,void *in,size_t len)
 {
-	char buf[MAX_JSON_FIELD],*retstr,*str;
+    static char *filebuf=0;
+    static int64_t filelen=0,allocsize=0;
+	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],*retstr,*str,*filestr;
     cJSON *json,*array;
+    struct coin_info *cp;
     //if ( len != 0 )
     //printf("reason.%d len.%ld\n",reason,len);
 	switch ( reason )
@@ -193,16 +198,35 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             convert_percent22(str);
             if ( Debuglevel > 2 )
                 printf("RPC GOT.(%s)\n",str);
-            if ( (json= cJSON_Parse(str)) != 0 )
+            if ( str[0] == 0 || strncmp(str,"html/",5) == 0 )
             {
-                retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
-                if ( retstr != 0 )
+                if ( str[0] == 0 )
+                    strcpy(fname,"html/index.html");
+                else strcpy(fname,str);
+                buf[0] = 0;
+                if ( strcmp(fname+5,"supernet.js") == 0 )
                 {
-                    return_http_str(wsi,retstr);
-                    free(retstr);
+                    if ( (cp= get_coin_info("BTCD")) != 0 )
+                        sprintf(buf,"var authToken = btoa(\"%s\");",cp->userpass);
                 }
-                free_json(json);
-            } else printf("couldnt parse.(%s)\n",str);
+                filestr = load_file(fname,&filebuf,&filelen,&allocsize);
+                if ( filestr != 0 )
+                    return_http_str(wsi,filestr,buf);
+                else return_http_str(wsi,str,"ERROR LOADING: ");
+            }
+            else
+            {
+                if ( (json= cJSON_Parse(str)) != 0 )
+                {
+                    retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
+                    if ( retstr != 0 )
+                    {
+                        return_http_str(wsi,retstr,0);
+                        free(retstr);
+                    }
+                    free_json(json);
+                } else printf("couldnt parse.(%s)\n",str);
+            }
             free(str);
             return(-1);
             break;
@@ -228,12 +252,12 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 else retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
                 if ( retstr != 0 )
                 {
-                    return_http_str(wsi,retstr);
+                    return_http_str(wsi,retstr,0);
                     free(retstr);
                 }
                 free_json(json);
             }
-            else return_http_str(wsi,str);
+            else return_http_str(wsi,str,0);
             free(str);
             return(-1);
             break;

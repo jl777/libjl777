@@ -1,4 +1,3 @@
-var authToken = btoa("user:simplepass");
 var rpcport = "14632";
 
 function initRPC(data) {
