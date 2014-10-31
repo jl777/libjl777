@@ -51,9 +51,9 @@ uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 
 void update_telepod(struct telepod *pod)
 {
-    fprintf(stderr,"call update_telepod\n");
+    //fprintf(stderr,"call update_telepod\n");
     update_storage(TELEPOD_DATA,pod->txid,&pod->H);
-    fprintf(stderr,"back update_telepod\n");
+    //fprintf(stderr,"back update_telepod\n");
 }
 
 char *_podstate(int32_t podstate)
@@ -108,6 +108,8 @@ void disp_telepod(char *msg,struct telepod *pod)
 {
     char *str;
     cJSON *podjson;
+    if ( Displevel <= 0 )
+        return;
     podjson = telepod_json(pod);
     if ( podjson != 0 )
     {
@@ -556,7 +558,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         {
             m++;
             pod = data.data;
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 0 )
                 fprintf(stderr,"%-5s.%d minage.%d %s size.%d/%d time.%d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
             if ( pod->H.datalen != data.size )
             {
