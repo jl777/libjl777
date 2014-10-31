@@ -889,6 +889,8 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
     double avail,inbound,outbound,maturing,doublespent,cancelled;
     if ( IS_LIBTEST == 0 )
         return(0);
+    if ( minage == 0 )
+        minage = 3600;
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,minage);
     sprintf(buf,"{\"result\":\"teleport %.8f %s minage.%d -> (%s)\",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(satoshis),coinstr,minage,contactstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     contact = find_contact(contactstr);
