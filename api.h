@@ -1308,7 +1308,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
 {
     static char *buf=0;
     static int64_t len=0,allocsize=0;
-    char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*str,*retstr;
+    char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD*2+1],decodedhex[MAX_JSON_FIELD*2],*str,*retstr;
     cJSON *json,*item;
     FILE *fp;
     printf("settings.%p\n",prevaddr);
@@ -1317,6 +1317,8 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     copy_cJSON(field,objs[0]);
     copy_cJSON(value,objs[1]);
     copy_cJSON(reinit,objs[2]);
+    copy_file("SuperNET.conf.old","backups/SuperNET.conf.old");
+    copy_file("SuperNET.conf","SuperNET.conf.old");
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
     if ( retstr != 0 )
     {
@@ -1342,9 +1344,18 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
             }
             else
             {
-                unstringify(value);
-                printf("unstringify.(%s)\n",value);
-                retstr = clonestr(value);
+                if ( is_hexstr(value) != 0 )
+                {
+                    decode_hex((unsigned char *)decodedhex,(int32_t)strlen(value)/2,value);
+                    retstr = clonestr(decodedhex);
+                    printf("hex.(%s) -> (%s)\n",value,buf);
+                }
+                else
+                {
+                    unstringify(value);
+                    printf("unstringify.(%s)\n",value);
+                    retstr = clonestr(value);
+                }
             }
             free_json(json);
             if ( (fp= fopen("SuperNET.conf","wb")) != 0 )

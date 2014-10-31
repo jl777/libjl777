@@ -192,7 +192,7 @@ void close_SuperNET_dbs()
             while ( sdb->active == 0 )
             {
                 fprintf(stderr,".");
-                sleep(1);
+                usleep(100000);
                 fprintf(stderr," selector.%d shutdown\n",selector);
                 sdb->active = -1;
             }
