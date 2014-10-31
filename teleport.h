@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime);
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
@@ -583,6 +583,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             }
             if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
             {
+                printf("evolve_amount %.8f satoshis %.8f\n",evolve_amount,dstr(pod->satoshis));
                 if ( minage >= 0 )
                     ADD_TELEPOD
                 if ( minage < 0 || createtime > (now - minage) )
