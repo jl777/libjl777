@@ -321,7 +321,10 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
                 Total_stored += (sizeof(*sp) + datalen);
             createdflag = 1;
             if ( is_decimalstr(keystr) && slen < MAX_NXTADDR_LEN )
+            {
+                printf("check decimalstr.(%s)\n",keystr);
                 hashval = calc_nxt64bits(keystr);
+            }
             else hashval = calc_txid((uint8_t *)keystr,slen);
         }
         else
@@ -359,7 +362,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
                 //    Storage->err(Storage,ret,"Transaction commit failed.");
                 //else
                 {
-                    fprintf(stderr,"created.%d DB entry for %s\n",createdflag,keystr);
+                    fprintf(stderr,"created.%d DB entry for (%s)\n",createdflag,keystr);
                     if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) != 0 )
                     {
                         if ( memcmp(sp->data,databuf,datalen) != 0 )

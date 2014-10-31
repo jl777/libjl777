@@ -320,7 +320,7 @@ char *check_privategenesis(struct contact_info *contact)
     return(0);
 }
 
-char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
+char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t sequenceid,char *msg)
 {
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
     uint64_t location;
@@ -329,8 +329,12 @@ char *private_publish(struct contact_info *contact,int32_t sequenceid,char *msg)
         if ( (retstr= check_privategenesis(contact)) != 0 )
             free(retstr);
     }
+    if ( locationp != 0 )
+        *locationp = 0;
     if ( (location= calc_privatedatastr(0,AESpasswordstr,privatedatastr,contact,sequenceid,msg)) != 0 )
     {
+        if ( locationp != 0 )
+            *locationp = location;
         expand_nxt64bits(seqacct,location);
         if ( location != issue_getAccountId(0,AESpasswordstr) )
             printf("ERROR: private_publish location %llu != %llu from (%s)\n",(long long)location,(long long)issue_getAccountId(0,AESpasswordstr),AESpasswordstr);
@@ -430,11 +434,12 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
 
 cJSON *telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *contact,int32_t sequenceid,char *type,cJSON *attachmentjson)
 {
-    char numstr[64],*retstr,*jsonstr;
+    char numstr[64],*retstr,*jsonstr,*str,*str2;
+    uint64_t location;
     cJSON *json = cJSON_CreateObject();
     if ( sequenceid < 0 )
         sequenceid = contact->lastsent+1;
-    sprintf(numstr,"%llu",(long long)contact->deaddrop);
+    sprintf(numstr,"%llu",(long long)contact->mydrop);
     cJSON_AddItemToObject(json,"deaddrop",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(json,"id",cJSON_CreateNumber(sequenceid));
     cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(time(NULL)));
@@ -442,16 +447,26 @@ cJSON *telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *cont
     {
         cJSON_AddItemToObject(json,"type",cJSON_CreateString(type));
         if ( attachmentjson != 0 )
-            cJSON_AddItemToObject(json,"attach",attachmentjson);
+        {
+            str = cJSON_Print(attachmentjson);
+            if ( str != 0 )
+            {
+                str2 = stringifyM(str);
+                free(str);
+                stripwhite_ns(str2,strlen(str2));
+                cJSON_AddItemToObject(json,"attach",cJSON_CreateString(str2));
+                free(str2);
+            }
+        }
     }
     if ( (jsonstr= cJSON_Print(json)) != 0 )
     {
         stripwhite_ns(jsonstr,strlen(jsonstr));
-        retstr = private_publish(contact,sequenceid,jsonstr);
+        retstr = private_publish(&location,contact,sequenceid,jsonstr);
         if ( retstr != 0 )
         {
             strcpy(retbuf,retstr);
-            printf("telepathy.(%s) -> (%s).%d\n",jsonstr,contact->handle,sequenceid);
+            printf("telepathy.(%s) -> (%s).%d @ %llu\n",jsonstr,contact->handle,sequenceid,(long long)location);
             free(retstr);
         } else strcpy(retbuf,"{\"error\":\"no result from private_publish\"}");
         free(jsonstr);
