@@ -245,7 +245,7 @@ uint64_t calc_privatedatastr(bits256 *AESpassword,char *AESpasswordstr,char *pri
             if ( verify_AES_codec(encoded,encodedlen,msg,AESpasswordstr) > 0 )
                 retval = location;
         }
-    }
+    } else fprintf(stderr,"calc_privatedatastr error calculating location for %s.%d\n",contact->handle,sequence);
     return(retval);
 }
 
@@ -351,6 +351,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
         }
         else
         {
+            printf("telepathic.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             if ( IS_LIBTEST != 0 )
                 add_storage(PRIVATE_DATA,key,privatedatastr);
             if ( contact->deaddrop != 0 )

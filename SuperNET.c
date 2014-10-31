@@ -38,7 +38,7 @@ int main(int argc,const char *argv[])
     }
     while ( retval == 0 )
     {
-        sleep(3);
+        sleep(13);
         //continue;
         sprintf(params,"{\"requestType\":\"GUIpoll\"}");
         retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"https://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
