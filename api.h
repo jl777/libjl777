@@ -1378,7 +1378,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
     static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "", 0 };
     static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "", 0 };
     static char *stop[] = { (char *)stop_func, "stop", "", 0 };
-    static char *settings[] = { (char *)settings_func, "settings", "V", "field", "value", "reinit", 0 };
+    static char *settings[] = { (char *)settings_func, "settings", "", "field", "value", "reinit", 0 };
 
     // multisig
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
