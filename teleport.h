@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-7d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime-now);
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
@@ -568,12 +568,18 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             podstate = pod->podstate;
             createtime = pod->H.createtime;
             if ( minage < 0 )
-                ADD_TELEPOD
-            evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
-            if ( evolve_amount == 0. )
             {
-                clear_pair(&key,&data);
-                continue;
+                ADD_TELEPOD
+                evolve_amount = (double)pod->satoshis / SATOSHIDEN;
+            }
+            else
+            {
+                evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
+                if ( evolve_amount == 0. )
+                {
+                    clear_pair(&key,&data);
+                    continue;
+                }
             }
             if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
             {
@@ -690,17 +696,21 @@ int32_t poll_telepods(char *relstr)
                                     flag = TELEPOD_DOUBLESPENT;
                                 printf("Doublespend? txid.%s vout.%d satoshis %.8f vs %.8f\n",pod->txid,pod->vout,dstr(unspent),dstr(pod->satoshis));
                             }
-                            else if ( pod->podstate == TELEPOD_INBOUND && pod->clonetime > now )
+                            else if ( pod->podstate == TELEPOD_INBOUND )
                             {
-                                cp = get_coin_info(pod->coinstr);
-                                if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
+                                if ( pod->clonetime > now )
                                 {
-                                    flag = TELEPOD_CLONED;
-                                    free(clonepod);
+                                    cp = get_coin_info(pod->coinstr);
+                                    if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
+                                    {
+                                        flag = TELEPOD_CLONED;
+                                        free(clonepod);
+                                    }
+                                    else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
                                 }
-                                else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
+                                else if ( pod->clonetime == 0 )
+                                    flag = TELEPOD_AVAIL;
                             }
-                            break;
                             break;
                         case TELEPOD_OUTBOUND:
                             if ( unspent == 0 )
