@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d time.%d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%d %.8f | %s\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate));
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
