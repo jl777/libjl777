@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>SuperNET API</title>
+</head>
+<body>
+    Nxt API<br />
+    <button id="btnGetState">Get State</button><br /><br />
+    BitcoinDark RPC<br />
+    <button id="btnGetBlock">Get Block Count</button><br />
+    <button id="btnGetAddrPrivKey">Get Address Private Key</button><input id="btcdAddr" value="RJnDFVJdJt4cwjZFkjTy7VdH71nzHS5cwg" style="width:500px"/><br /><br />
+    SuperNET API<br />
+    <button id="btnPing">Ping</button><input id="pingAddr" value="209.126.70.159" /><br />
+    <button id="btnDisplayContact">Display Contact</button><br />
+    <button id="btnAddContact">Add Contact</button>Handle:<input id="contactHandle" value="" />Nxt Address<input id="contactAddr" style="width:300px" value="" /><br />
+    <button id="btnRemoveContact">Remove Contact</button>Handle OR Nxt Address<input id="removeContactAddr" style="width:300px" value="" /><br />
+    <button id="btnGetPeers">Get Peers</button><br />
+    <button id="btnTelepathy">Telepathy</button>Contact:<input id="telepathyContact" value="" />Message:<input id="telepathyMsg" value="" />
+    <br />Results:<br />
+    <textarea id="result" cols="100" rows="10"></textarea>
+    <script src="jquery-2.1.1.min.js"></script>
+    <script src="supernet.js"></script>
+</body>
+</html>
