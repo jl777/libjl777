@@ -605,7 +605,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         }
         cursorp->close(cursorp);
     }
-    //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
+    printf("avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",dstr(*availp),dstr(*maturingp),dstr(*inboundp),dstr(*outboundp),dstr(*doublespentp),dstr(*cancelledp),n);
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
     if ( pods != 0 )
