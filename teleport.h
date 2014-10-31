@@ -559,7 +559,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             m++;
             pod = data.data;
             if ( Debuglevel > 0 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime-now);
+                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime);
             if ( pod->H.datalen != data.size )
             {
                 fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
@@ -694,7 +694,7 @@ int32_t poll_telepods(char *relstr)
                             {
                                 if ( unspent == 0 )
                                     flag = TELEPOD_DOUBLESPENT;
-                                printf("Doublespend? txid.%s vout.%d satoshis %.8f vs %.8f\n",pod->txid,pod->vout,dstr(unspent),dstr(pod->satoshis));
+                                fprintf(stderr,"Doublespend? txid.%s vout.%d satoshis %.8f vs %.8f\n",pod->txid,pod->vout,dstr(unspent),dstr(pod->satoshis));
                             }
                             else if ( pod->podstate == TELEPOD_INBOUND )
                             {
@@ -709,7 +709,10 @@ int32_t poll_telepods(char *relstr)
                                     else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
                                 }
                                 else if ( pod->clonetime == 0 )
+                                {
+                                    printf("change inbound to avail\n");
                                     flag = TELEPOD_AVAIL;
+                                }
                             }
                             break;
                         case TELEPOD_OUTBOUND:
