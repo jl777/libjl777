@@ -95,12 +95,19 @@ cJSON *coin_specific_json(struct telepod *pod)
 cJSON *telepod_json(struct telepod *pod)
 {
     cJSON *json,*tpd;
+    char *str;
     json = cJSON_CreateObject();
     if ( pod->podstate != TELEPOD_AVAIL )
         cJSON_AddItemToObject(json,"status",cJSON_CreateString(_podstate(pod->podstate)));
     cJSON_AddItemToObject(json,"c",cJSON_CreateString(pod->coinstr));
     tpd = coin_specific_json(pod);
-    cJSON_AddItemToObject(json,"tpd",tpd);
+    if ( tpd != 0 )
+    {
+        str = cJSON_Print(tpd);
+        stripwhite_ns(str,strlen(str));
+        cJSON_AddItemToObject(json,"tpd",cJSON_CreateString(str));
+        free(str);
+    }
     return(json);
 }
 
