@@ -451,10 +451,10 @@ cJSON *telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *cont
             str = cJSON_Print(attachmentjson);
             if ( str != 0 )
             {
+                stripwhite_ns(str,strlen(str));
                 str2 = stringifyM(str);
+                cJSON_AddItemToObject(json,"attach",cJSON_CreateString(str));
                 free(str);
-                stripwhite_ns(str2,strlen(str2));
-                cJSON_AddItemToObject(json,"attach",cJSON_CreateString(str2));
                 free(str2);
             }
         }

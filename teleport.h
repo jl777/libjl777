@@ -936,7 +936,7 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
             }
         }
         free(pods);
-        if ( withdrawaddr[0] == 0 )
+        if ( withdrawaddr[0] != 0 )
             sprintf(buf,"{\"results\":\"withdrew %.8f %s to %s\",\"num\":%d}",dstr(satoshis),coinstr,withdrawaddr,n);
         else sprintf(buf,"{\"results\":\"teleported %.8f %s to %s\",\"num\":%d}",dstr(satoshis),coinstr,contactstr,n);
     }
