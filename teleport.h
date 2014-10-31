@@ -709,10 +709,7 @@ int32_t poll_telepods(char *relstr)
                                     else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
                                 }
                                 else if ( pod->clonetime == 0 )
-                                {
-                                    printf("change inbound to avail\n");
                                     flag = TELEPOD_AVAIL;
-                                }
                             }
                             break;
                         case TELEPOD_OUTBOUND:
