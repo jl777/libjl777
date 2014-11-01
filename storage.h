@@ -106,8 +106,10 @@ struct dbreq *_queue_dbreq(int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,
         req->funcid = funcid;
         req->selector = selector;
         req->txn = txn;
-        req->key = *key;
-        req->data = *data;
+        if ( key != 0 )
+            req->key = *key;
+        if ( data != 0 )
+            req->data = *data;
         req->flags = flags;
         //while ( sdb->busy > 0 )
         //    usleep(1);
