@@ -787,7 +787,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 return(clonestr(retstr));
             }
         }
-        else if ( datastr != 0 && datastr[0] != 0 && prevaddr != 0 )
+        else if ( datastr != 0 && datastr[0] != 0 )
         {
             void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
             if ( ismynode(prevaddr) == 0 )
@@ -805,6 +805,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
         n = sort_all_buckets(sortbuf,keyhash);
         if ( n != 0 )
         {
+            printf("search n.%d sorted\n",n);
             if ( ismynode(prevaddr) != 0 || remoteflag != 0 ) // user invoked
             {
                 keynp = get_NXTacct(&createdflag,Global_mp,key);
