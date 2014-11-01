@@ -9,17 +9,6 @@
 #ifndef xcode_teleport_h
 #define xcode_teleport_h
 
-struct telepod
-{
-    struct storage_header H;
-    int32_t vout;
-    uint32_t crc,pad2,clonetime,cloneout,podstate,inhwm,pad;
-    double evolve_amount;
-    char clonetxid[MAX_COINTXID_LEN],cloneaddr[MAX_COINADDR_LEN];
-    uint64_t senderbits,destbits,unspent,modified,satoshis; // everything after modified is used for crc
-    char coinstr[8],txid[MAX_COINTXID_LEN],coinaddr[MAX_COINADDR_LEN],script[128];
-    char privkey[];
-};
 
 #define TELEPOD_CONTENTS_VOUT 0 // must be 0
 #define TELEPOD_CHANGE_VOUT 1   // vout 0 is for the pod contents and last one (1 if no change or 2) is marker

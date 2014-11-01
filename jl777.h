@@ -43,6 +43,46 @@
 #define BARI_MEDIAN 14
 #define BARI_AVEPRICE 15
 
+#define ILLEGAL_COIN "ERR"
+#define ILLEGAL_COINASSET "666"
+
+#define MGW_PENDING_DEPOSIT -1
+#define MGW_PENDING_WITHDRAW -2
+#define MGW_FUND_INSTANTDEX -3
+#define MGW_INSTANTDEX_TONXTAE -4
+
+#define NXT_COINASSET "0"
+
+#define GENESISACCT "1739068987193023818"
+#define NODECOIN_SIG 0x63968736
+//#define NXTCOINSCO_PORT 8777
+//#define NXTPROTOCOL_WEBJSON 7777
+#define SUPERNET_PORT 7777
+#define BTCD_PORT 14631
+
+#define NUM_GATEWAYS 3
+#define _NXTSERVER "requestType"
+#define EMERGENCY_PUNCH_SERVER Server_names[0]
+#define POOLSERVER Server_names[1]
+#define MIXER_ADDR Server_names[2]
+
+#define GENESISACCT "1739068987193023818"
+#define GENESISBLOCK "2680262203532249785"
+
+#define DEFAULT_NXT_DEADLINE 720
+#define SATOSHIDEN 100000000L
+#define NXT_TOKEN_LEN 160
+#define MAX_NXT_STRLEN 24
+#define MAX_NXTTXID_LEN MAX_NXT_STRLEN
+#define MAX_NXTADDR_LEN MAX_NXT_STRLEN
+#define POLL_SECONDS 10
+#define NXT_ASSETLIST_INCR 100
+#define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x) / SATOSHIDEN)
+
+#define MAX_COIN_INPUTS 32
+#define MAX_COIN_OUTPUTS 3
+//#define MAX_PRIVKEY_SIZE 768
 
 // system includes
 #include <stdio.h>
@@ -111,6 +151,7 @@ void usleep(int32_t);
 
 #endif
 
+
 #ifdef UDP_OLDWAY
 #define portable_udp_t int32_t
 #else
@@ -146,43 +187,8 @@ void usleep(int32_t);
 #include "cJSON.c"
 #include "bitcoind_RPC.c"
 #include "jsoncodec.h"
+#include "SuperNET.h"
 
-#define ILLEGAL_COIN "ERR"
-#define ILLEGAL_COINASSET "666"
-
-#define MGW_PENDING_DEPOSIT -1
-#define MGW_PENDING_WITHDRAW -2
-#define MGW_FUND_INSTANTDEX -3
-#define MGW_INSTANTDEX_TONXTAE -4
-
-#define NXT_COINASSET "0"
-
-#define GENESISACCT "1739068987193023818"
-#define NODECOIN_SIG 0x63968736
-//#define NXTCOINSCO_PORT 8777
-//#define NXTPROTOCOL_WEBJSON 7777
-#define SUPERNET_PORT 7777
-#define BTCD_PORT 14631
-
-#define NUM_GATEWAYS 3
-#define _NXTSERVER "requestType"
-#define EMERGENCY_PUNCH_SERVER Server_names[0]
-#define POOLSERVER Server_names[1]
-#define MIXER_ADDR Server_names[2]
-
-#define GENESISACCT "1739068987193023818"
-#define GENESISBLOCK "2680262203532249785"
-
-#define DEFAULT_NXT_DEADLINE 720
-#define SATOSHIDEN 100000000L
-#define NXT_TOKEN_LEN 160
-#define MAX_NXT_STRLEN 24
-#define MAX_NXTTXID_LEN MAX_NXT_STRLEN
-#define MAX_NXTADDR_LEN MAX_NXT_STRLEN
-#define POLL_SECONDS 10
-#define NXT_ASSETLIST_INCR 100
-#define SATOSHIDEN 100000000L
-#define dstr(x) ((double)(x) / SATOSHIDEN)
 
 typedef struct queue
 {
@@ -227,27 +233,6 @@ struct NXT_str
     union _NXT_str_buf U;
 };
 
-/*struct Uaddr
-{
-    uint32_t ipbits,numsent,numrecv,lastcontact;
-    float metric;
-};*/
-
-//#define PEER_HELLOSTATE 1
-//#define NUM_PEER_STATES (PEER_HELLOSTATE+1)
-
-struct nodestats
-{
-    uint8_t pubkey[crypto_box_PUBLICKEYBYTES];
-    struct nodestats *eviction;
-    uint64_t nxt64bits,coins[4];
-    uint32_t ipbits,numsent,numrecv,lastcontact,numpings,numpongs;
-    float recvmilli,sentmilli,pingmilli,pongmilli;
-    double pingpongsum;
-    uint16_t p2pport,supernet_port;
-    uint8_t BTCD_p2p,gotencrypted,modified,expired;
-};
-
 struct pserver_info
 {
     uint64_t modified,nxt64bits,hasnxt[64];
@@ -255,19 +240,6 @@ struct pserver_info
     char ipaddr[16];
     uint32_t numips,xorsum,hasnum,numnxt,decrypterrs;
 };
-
-/*struct peerinfo
-{
-    struct nodestats srv;
-    uint64_t srvnxtbits,pubnxtbits,coins[4];
-    struct Uaddr *Uaddrs;
-    uint32_t numUaddrs,bestdist;
-    float startmillis[NUM_PEER_STATES + 1],elapsed[NUM_PEER_STATES + 1];
-    uint8_t states[NUM_PEER_STATES + 1];
-    char pubBTCD[36],pubBTC[36];
-};*/
-union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
-typedef union _bits256 bits256;
 
 struct NXThandler_info
 {
@@ -328,11 +300,6 @@ struct NXT_protocol
 };
 
 struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
-#define MAX_COINTXID_LEN 66
-#define MAX_COINADDR_LEN 66
-#define MAX_COIN_INPUTS 32
-#define MAX_COIN_OUTPUTS 3
-//#define MAX_PRIVKEY_SIZE 768
 
 struct rawtransaction
 {
@@ -703,9 +670,9 @@ double _pairave(float valA,float valB)
 #include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
+#include "storage.h"
 #include "udp.h"
 #include "coincache.h"
-#include "storage.h"
 #include "kademlia.h"
 #include "packets.h"
 #include "mofnfs.h"

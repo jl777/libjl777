@@ -19,26 +19,27 @@ struct telepathy_args
     int numrefs;
 };
 
-struct contact_info
-{
-    bits256 pubkey,shared;
-    char handle[64];
-    uint64_t nxt64bits,deaddrop,mydrop;
-    int32_t numsent,numrecv,lastrecv,lastsent,lastentry;
-} *Contacts;
+struct contact_info *Contacts;
 
 struct telepathy_entry
 {
     uint64_t modified,location,contactbits;
-    //struct kademlia_storage *sp;
+    //struct SuperNET_storage *sp;
     bits256 AESpassword;
     char locationstr[MAX_NXTADDR_LEN];
     int32_t sequenceid;
 };
 
 int32_t Num_contacts,Max_contacts;
-portable_mutex_t Contacts_mutex;
+//portable_mutex_t Contacts_mutex;
 
+
+void update_contact_info(struct contact_info *contact)
+{
+    if ( contact->H.datalen == 0 )
+        contact->H.datalen = sizeof(*contact);
+    update_storage(CONTACT_DATA,contact->handle,&contact->H);
+}
 
 struct telepathy_entry *find_telepathy_entry(char *locationstr)
 {
@@ -53,7 +54,7 @@ struct telepathy_entry *add_telepathy_entry(char *locationstr,struct contact_inf
 {
     int32_t createdflag = 0;
     struct telepathy_entry *tel;
-    struct kademlia_storage *sp;
+    struct SuperNET_storage *sp;
     tel = MTadd_hashtable(&createdflag,Global_mp->Telepathy_tablep,locationstr);
     if ( createdflag != 0 )
     {
@@ -63,7 +64,7 @@ struct telepathy_entry *add_telepathy_entry(char *locationstr,struct contact_inf
         tel->sequenceid = sequenceid;
         if ( sequenceid > contact->lastentry )
             contact->lastentry = sequenceid;
-        if ( (sp= (struct kademlia_storage *)find_storage(PRIVATE_DATA,locationstr)) != 0 )
+        if ( (sp= (struct SuperNET_storage *)find_storage(PRIVATE_DATA,locationstr)) != 0 )
         {
             if ( sequenceid > contact->lastrecv )
                 contact->lastrecv = sequenceid;
@@ -300,7 +301,7 @@ char *check_privategenesis(struct contact_info *contact)
     uint64_t location;
     int32_t sequenceid = 0;
     char AESpasswordstr[512],key[64];
-    struct kademlia_storage *sp;
+    struct SuperNET_storage *sp;
     if ( (location= calc_recvAESkeys(0,AESpasswordstr,contact,sequenceid)) != 0 )
     {
         expand_nxt64bits(key,location);
@@ -365,6 +366,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
                 retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr,0); // find and you shall telepath
             } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");
         }
+        update_contact_info(contact);
     }
     return(retstr);
 }
@@ -381,9 +383,9 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
     if ( (tel= find_telepathy_entry(locationstr)) != 0 )
     {
-        portable_mutex_lock(&Contacts_mutex);
+        //portable_mutex_lock(&Contacts_mutex);
         contact = _find_contact_nxt64bits(tel->contactbits);
-        portable_mutex_unlock(&Contacts_mutex);
+        //portable_mutex_unlock(&Contacts_mutex);
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
@@ -410,6 +412,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         telepathic_teleport(contact,attachjson);
                     }
                     free(jsonstr);
+                    update_contact_info(contact);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }
@@ -528,9 +531,9 @@ struct contact_info *find_contact(char *handle)
     struct contact_info *contact = 0;
     if ( handle == 0 || handle[0] == 0 )
         return(0);
-    portable_mutex_lock(&Contacts_mutex);
+    //portable_mutex_lock(&Contacts_mutex);
     contact = _find_contact(handle);
-    portable_mutex_unlock(&Contacts_mutex);
+    //portable_mutex_unlock(&Contacts_mutex);
     return(contact);
 }
 
@@ -541,14 +544,14 @@ char *getdb(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *se
     int32_t seqid;
     uint64_t location;
     bits256 AESpassword;
-    struct kademlia_storage *sp = 0;
+    struct SuperNET_storage *sp = 0;
     struct contact_info *contact;
     retbuf[0] = 0;
     if ( contactstr[0] == 0 )
     {
         if ( keystr[0] != 0 )
         {
-            if ( (sp= (struct kademlia_storage *)find_storage(PUBLIC_DATA,keystr)) != 0 )
+            if ( (sp= (struct SuperNET_storage *)find_storage(PUBLIC_DATA,keystr)) != 0 )
             {
                 if ( sp->H.datalen < sizeof(hexstr)/2 )
                 {
@@ -569,7 +572,7 @@ char *getdb(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *se
             if ( location != 0 )
             {
                 expand_nxt64bits(locationstr,location);
-                if ( (sp= (struct kademlia_storage *)find_storage(PRIVATE_DATA,locationstr)) != 0 )
+                if ( (sp= (struct SuperNET_storage *)find_storage(PRIVATE_DATA,locationstr)) != 0 )
                 {
                     if ( (json= parse_encrypted_data(0,&seqid,contact,locationstr,sp->data,sp->H.datalen,AESpasswordstr)) != 0 )
                     {
@@ -602,13 +605,13 @@ char *addcontact(char *handle,char *acct)
     handle[sizeof(contact->handle)-1] = 0;
     
     nxt64bits = conv_acctstr(acct);
-    portable_mutex_lock(&Contacts_mutex);
+    //portable_mutex_lock(&Contacts_mutex);
     {
         contact = _find_contact_nxt64bits(nxt64bits);
         if ( contact != 0 && strcmp(contact->handle,handle) != 0 )
         {
             sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
-            portable_mutex_unlock(&Contacts_mutex);
+            //portable_mutex_unlock(&Contacts_mutex);
             if ( Debuglevel > 1 )
                 printf("addcontact: (%s)\n",retstr);
             return(clonestr(retstr));
@@ -629,8 +632,8 @@ char *addcontact(char *handle,char *acct)
         else if ( strcmp(handle,"myhandle") == 0 )
             return(clonestr("{\"error\":\"cant override myhandle\"}"));
     }
-    portable_mutex_unlock(&Contacts_mutex);
-    
+    //portable_mutex_unlock(&Contacts_mutex);
+    contact->removed = 0;
     if ( Debuglevel > 0 )
         printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
     if ( nxt64bits != contact->nxt64bits || memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) == 0 )
@@ -654,6 +657,7 @@ char *addcontact(char *handle,char *acct)
                 sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
             }
         }
+        update_contact_info(contact);
     }
     else
     {
@@ -667,6 +671,32 @@ char *addcontact(char *handle,char *acct)
     return(clonestr(retstr));
 }
 
+void init_Contacts()
+{
+    char *retstr,NXTaddr[64];
+    struct contact_info **contacts,*contact;
+    int32_t i,numcontacts;
+    contacts = (struct contact_info **)copy_all_DBentries(&numcontacts,CONTACT_DATA);
+    if ( contacts == 0 )
+        return;
+    for (i=0; i<numcontacts; i++)
+    {
+        if ( contacts[i]->removed != 0 )
+            continue;
+        expand_nxt64bits(NXTaddr,contacts[i]->nxt64bits);
+        if ( (retstr= addcontact(contacts[i]->handle,NXTaddr)) != 0 )
+        {
+            printf("%s\n",retstr);
+            free(retstr);
+            if ( (contact= _find_contact(contacts[i]->handle)) != 0 )
+                *contact = *contacts[i];
+            else printf("error finding %s right after adding it!\n",contacts[i]->handle);
+        }
+        free(contacts[i]);
+    }
+    free(contacts);
+}
+
 char *removecontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
 {
     struct contact_info *contact;
@@ -674,9 +704,11 @@ char *removecontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,
     handle[sizeof(contact->handle)-1] = 0;
     if ( strcmp("myhandle",handle) == 0 )
         return(0);
-    portable_mutex_lock(&Contacts_mutex);
+    //portable_mutex_lock(&Contacts_mutex);
     if ( (contact= _find_contact(handle)) != 0 )
     {
+        contact->removed = 1;
+        update_contact_info(contact);
         if ( contact != &Contacts[--Num_contacts] )
         {
             *contact = Contacts[Num_contacts];
@@ -691,7 +723,7 @@ char *removecontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,
         }
         sprintf(retstr,"{\"result\":\"handle.(%s) deleted num.%d max.%d\"}",handle,Num_contacts,Max_contacts);
     } else sprintf(retstr,"{\"error\":\"handle.(%s) doesnt exist\"}",handle);
-    portable_mutex_unlock(&Contacts_mutex);
+    //portable_mutex_unlock(&Contacts_mutex);
     printf("REMOVECONTACT.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -714,7 +746,7 @@ char *dispcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,ch
     char retbuf[1024],*retstr = 0;
     handle[sizeof(contact->handle)-1] = 0;
     retbuf[0] = 0;
-    portable_mutex_lock(&Contacts_mutex);
+    //portable_mutex_lock(&Contacts_mutex);
     if ( strcmp(handle,"*") == 0 )
     {
         retstr = clonestr("[");
@@ -735,7 +767,7 @@ char *dispcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,ch
         else sprintf(retbuf,"{\"error\":\"handle.(%s) doesnt exist\"}",handle);
         retstr = clonestr(retbuf);
     }
-    portable_mutex_unlock(&Contacts_mutex);
+   // portable_mutex_unlock(&Contacts_mutex);
     printf("Contact.(%s)\n",retstr);
     return(retstr);
 }

@@ -18,9 +18,8 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr);
 #endif
 #define LOCAL_RESOURCE_PATH INSTALL_DATADIR
 char *resource_path = LOCAL_RESOURCE_PATH;
-
+static volatile int SSL_done;
 static volatile int force_exit = 0;
-static struct libwebsocket_context *context;
 
 struct serveable
 {
@@ -360,6 +359,29 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(clonestr(retbuf));
 }
 
+void queue_GUIpoll(char **ptrs)
+{
+    uint16_t port;
+    uint64_t txid;
+    char *str,*retbuf,*args,ipaddr[64];
+    args = stringifyM(ptrs[0]);
+    str = stringifyM(ptrs[1]);
+    retbuf = malloc(strlen(str) + strlen(args) + 256);
+    memcpy(retbuf,&ptrs,sizeof(ptrs));
+    if ( ((((long long)ptrs[2]) >> 48) & 0xffff) == 0 )
+    {
+        txid = (long long)ptrs[2];
+        port = (txid >> 32) & 0xffff;
+        expand_ipbits(ipaddr,(uint32_t)txid);
+        sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"from\":\"%s\",\"port\":%d,\"args\":%s}",str,ipaddr,port,args);
+    }
+    else sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"txid\":\"%llu\"}",str,(long long)ptrs[2]);
+    free(str); free(args);
+    retbuf = realloc(retbuf,strlen(retbuf+sizeof(ptrs)) + 1);
+    //printf("QUEUED for GUI: (%s) -> (%s)\n",ptrs[0],retbuf+sizeof(ptrs));
+    queue_enqueue(&ResultsQ,retbuf);
+}
+
 char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static int counter;
@@ -412,7 +434,9 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 	int n,opts = 0;
 	const char *iface = NULL;
 	struct lws_context_creation_info info;
-	memset(&info, 0, sizeof info);
+    struct libwebsocket_context *context;
+
+	memset(&info,0,sizeof info);
 	info.port = port;
     /*#if !defined(LWS_NO_DAEMONIZE) && !defined(WIN32)
      if ( lws_daemonize("/tmp/.SuperNET-lock") != 0 )
@@ -420,8 +444,8 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
      fprintf(stderr,"Failed to daemonize\n");
      return(-1);
      }
-     #endif*/
-	signal(SIGINT, sighandler);
+     #endif
+	signal(SIGINT, sighandler);*/
 	lwsl_notice("libwebsockets test server - (C) Copyright 2010-2013 Andy Green <andy@warmcat.com> -  licensed under LGPL2.1\n");
 	info.iface = iface;
 	info.protocols = protocols;
@@ -454,6 +478,7 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 		return -1;
 	}
 	n = 0;
+    SSL_done |= (1 << use_ssl);
 	while ( n >= 0 && !force_exit )
     {
 		n = libwebsocket_service(context,millis);
@@ -1044,7 +1069,9 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(yourip,objs[3]);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
+    {
         retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip);
+    }
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
 }
@@ -1280,7 +1307,6 @@ char *gotpacket_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
 
 char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    int32_t got_newpeer(char *ip_port);
     char ip_port[MAX_JSON_FIELD];
     if ( prevaddr != 0 )
         return(0);
@@ -1294,9 +1320,7 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
 }
 
 char *stop_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    int32_t got_newpeer(char *ip_port);
-    
+{    
     if ( prevaddr != 0 )
         return(0);
     close_SuperNET_dbs();
@@ -1306,7 +1330,7 @@ char *stop_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
 
 char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
+    //char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
     char jsonstr[MAX_JSON_FIELD],ipaddr[64],*retstr = 0;
     cJSON *json;
     int32_t port;
@@ -1518,6 +1542,19 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                     objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
                 retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,prevaddr,sender,valid,objs,j-3,origargstr);
+                if ( prevaddr != 0 )
+                {
+                    char **ptrs = calloc(3,sizeof(*ptrs));
+                    uint64_t port,txid = 0;
+                    char ipaddr[64];
+                    ptrs[0] = clonestr(origargstr);
+                    ptrs[1] = clonestr(retstr);
+                    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+                    txid = calc_ipbits(ipaddr);
+                    txid |= (port << 32);
+                    memcpy(&ptrs[2],&txid,sizeof(ptrs[2]));
+                    queue_GUIpoll(ptrs);
+                }
                 break;
             }
         }

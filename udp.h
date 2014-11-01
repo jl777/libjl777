@@ -60,6 +60,14 @@ struct udp_queuecmd
     int32_t valid;
 };
 
+void update_nodestats_data(struct nodestats *stats)
+{
+    char NXTaddr[64];
+    expand_nxt64bits(NXTaddr,stats->nxt64bits);
+    printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
+    update_storage(NODESTATS_DATA,NXTaddr,&stats->H);
+}
+
 // helper and completion funcs
 void portable_alloc(uv_handle_t *handle,size_t suggested_size,uv_buf_t *buf)
 {
@@ -147,7 +155,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,uv_udp_t
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->udp = handle;
-    if ( queueflag != 0 )
+    if ( 0*queueflag != 0 )
     {
         wr->queuetime = (uint32_t)(1000. * milliseconds());
         queue_enqueue(&sendQ,wr);
@@ -518,6 +526,7 @@ int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int3
             modified = (1 << p2pflag);
             stats->modified |= modified;
             stats->lastcontact = now;
+            update_nodestats_data(stats);
         }
     }
     if ( memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )

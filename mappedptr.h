@@ -36,7 +36,7 @@ void portable_mutex_unlock(portable_mutex_t *mutex)
     uv_mutex_unlock(mutex); //pthread_mutex_unlock(mutex);
 }
 
-portable_thread_t *portable_thread_create(void *funcp,void *argp)
+void *portable_thread_create(void *funcp,void *argp)
 {
     portable_thread_t *ptr;
     ptr = (uv_thread_t *)malloc(sizeof(portable_thread_t));

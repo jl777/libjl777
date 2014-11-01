@@ -12,25 +12,6 @@
 #include "db.h"
 
 #define MAX_KADEMLIA_STORAGE (1024L * 1024L * 1024L)
-#define PUBLIC_DATA 0
-#define PRIVATE_DATA 1
-#define TELEPOD_DATA 2
-#define PRICE_DATA 3
-#define DEADDROP_DATA 4
-#define PEER_DATA 5
-#define NUM_SUPERNET_DBS (PEER_DATA + 1)
-
-struct storage_header
-{
-    uint64_t modified,keyhash;
-    uint32_t datalen,laststored,lastaccess,createtime;
-};
-
-struct kademlia_storage
-{
-    struct storage_header H;
-    unsigned char data[];
-};
 
 struct SuperNET_db
 {
@@ -202,7 +183,7 @@ void close_SuperNET_dbs()
             {
                 fprintf(stderr,".");
                 usleep(100000);
-                fprintf(stderr," selector.%d shutdown\n",selector);
+                fprintf(stderr," %s selector.%d shutdown\n",sdb->name,selector);
                 sdb->active = -1;
             }
         }
@@ -236,7 +217,8 @@ int32_t init_SuperNET_storage()
             open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT);
             open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(PEER_DATA,"peers.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
             {
                 selectors[selector] = selector;
@@ -290,7 +272,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     if ( (ret= dbget(selector,NULL,&key,&data,0)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
         if ( ret != DB_NOTFOUND )
-            fprintf(stderr,"DB get error.%d data.size %d\n",ret,data.size);
+            fprintf(stderr,"DB.%d get error.%d data.size %d\n",selector,ret,data.size);
         else return(0);
     }
     hp = (struct storage_header *)data.data;
@@ -300,15 +282,84 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
     return(ptr);
 }
 
+int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datalen)
+{
+    struct SuperNET_storage *sp;
+    if ( (sp= (struct SuperNET_storage *)find_storage(selector,keystr)) != 0 )
+    {
+        if ( memcmp(sp,databuf,datalen) != 0 )
+            fprintf(stderr,"data cmp error\n");
+        free(sp);
+    } else { fprintf(stderr,"couldnt find sp in DB that was just added\n"); return(-1); }
+    return(dbsync(selector,0));
+}
+
+void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
+{
+    //DB_TXN *txn = 0;
+    DBT key,data;
+    int ret;
+    if ( hp->datalen == 0 )
+    {
+        printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
+        return;
+    }
+    if ( valid_SuperNET_db("update_storage",selector) != 0 )
+    {
+        clear_pair(&key,&data);
+        key.data = keystr;
+        key.size = (uint32_t)strlen(keystr) + 1;
+        if ( hp->keyhash == 0 )
+        {
+            SuperNET_dbs[selector].maxitems++;
+            hp->keyhash = calc_txid((uint8_t *)keystr,key.size);
+        }
+        hp->laststored = (uint32_t)time(NULL);
+        if ( hp->createtime == 0 )
+            hp->createtime = hp->laststored;
+        data.data = hp;
+        data.size = hp->datalen;
+        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
+            Storage->err(Storage,ret,"Database put failed.");
+        else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
+            fprintf(stderr,"updated.%d (%s)\n",selector,keystr);
+        
+       /* //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
+        {
+            clear_pair(&key,&data);
+            key.data = keystr;
+            key.size = slen + 1;
+            sp->H.laststored = now;
+            if ( createdflag != 0 )
+                sp->H.createtime = now;
+            data.data = sp;
+            data.size = (sizeof(*sp) + datalen);
+            if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
+            {
+                Storage->err(Storage,ret,"Database put failed.");
+                //txn->abort(txn);
+            }
+            else
+            {
+                //if ( (ret= txn->commit(txn,0)) != 0 )
+                //    Storage->err(Storage,ret,"Transaction commit failed.");
+                //else
+                {
+                    if ( complete_dbput(selector,keystr,databuf,datalen) == 0 )
+                        fprintf(stderr,"created.%d DB entry for (%s)\n",createdflag,keystr);
+                }
+            }
+        } //else Storage->err(Storage,ret,"Transaction begin failed.");*/
+    }
+}
+
 void add_storage(int32_t selector,char *keystr,char *datastr)
 {
-    uint32_t now = (uint32_t)time(NULL);
-    int32_t datalen,slen,ret,createdflag = 0;
+    int32_t datalen,slen,createdflag = 0;
     unsigned char databuf[8192],space[8192];
     uint64_t hashval = 0;
-    DBT key,data;
-    //DB_TXN *txn = 0;
-    struct kademlia_storage *sp;
+    struct SuperNET_storage *sp;
     if ( valid_SuperNET_db("add_storage",selector) == 0 )
         return;
     if ( selector == PUBLIC_DATA && Total_stored > MAX_KADEMLIA_STORAGE )
@@ -320,7 +371,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     if ( datalen > sizeof(databuf) )
         return;
     decode_hex(databuf,datalen,datastr);
-    if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) == 0 || sp->H.datalen != datalen || memcmp(sp->data,databuf,datalen) != 0 )
+    if ( (sp= (struct SuperNET_storage *)find_storage(selector,keystr)) == 0 || sp->H.datalen != datalen || memcmp(sp->data,databuf,datalen) != 0 )
     {
         slen = (int32_t)strlen(keystr);
         if ( sp == 0 )
@@ -342,65 +393,55 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
             memcpy(space,sp,sizeof(*sp));
             free(sp);
         }
-        sp = (struct kademlia_storage *)space;
+        sp = (struct SuperNET_storage *)space;
         if ( createdflag != 0 )
             sp->H.keyhash = hashval;
         else if ( sp->H.keyhash != hashval )
             printf("ERROR: keyhash.%llu != hashval.%llu (%s)\n",(long long)sp->H.keyhash,(long long)hashval,keystr);
         memcpy(sp->data,databuf,datalen);
-        sp->H.datalen = datalen;
-        //printf("store datalen.%d\n",datalen);
-        //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
-        {
-            clear_pair(&key,&data);
-            key.data = keystr;
-            key.size = slen + 1;
-            sp->H.laststored = now;
-            if ( createdflag != 0 )
-                sp->H.createtime = now;
-            data.data = sp;
-            data.size = (sizeof(*sp) + datalen);
-            if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
-            {
-                Storage->err(Storage,ret,"Database put failed.");
-                //txn->abort(txn);
-            }
-            else
-            {
-                //if ( (ret= txn->commit(txn,0)) != 0 )
-                //    Storage->err(Storage,ret,"Transaction commit failed.");
-                //else
-                {
-                    fprintf(stderr,"created.%d DB entry for (%s)\n",createdflag,keystr);
-                    if ( (sp= (struct kademlia_storage *)find_storage(selector,keystr)) != 0 )
-                    {
-                        if ( memcmp(sp->data,databuf,datalen) != 0 )
-                            fprintf(stderr,"data cmp error\n");
-                        free(sp);
-                    } else fprintf(stderr,"couldnt find sp in DB that was just added\n");
-                    dbsync(selector,0);
-                }
-            }
-        } //else Storage->err(Storage,ret,"Transaction begin failed.");
+        sp->H.datalen = (sizeof(*sp) + datalen);
+        update_storage(selector,keystr,&sp->H);
     }
 }
 
-void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
+struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
 {
+    DB *dbp = get_selected_database(selector);
+    struct storage_header *ptr,**ptrs = 0;
+    int32_t ret,max,m,n = 0;
     DBT key,data;
-    int ret;
-    if ( valid_SuperNET_db("update_storage",selector) != 0 )
+    DBC *cursorp = 0;
+    *nump = 0;
+    if ( dbp == 0 )
+        return(0);
+    max = (int32_t)max_in_db(selector);
+    max += 100;
+    m = 0;
+    dbp->cursor(dbp,NULL,&cursorp,0);
+    if ( cursorp != 0 )
     {
         clear_pair(&key,&data);
-        key.data = keystr;
-        key.size = (uint32_t)strlen(keystr) + 1;
-        hp->laststored = (uint32_t)time(NULL);
-        data.data = hp;
-        data.size = hp->datalen;
-        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
-        if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
-            Storage->err(Storage,ret,"Database put failed.");
-        //fprintf(stderr,"after dbp->put\n");
+        ptrs = (struct storage_header **)calloc(sizeof(struct storage_header *),max+1);
+        while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
+        {
+            m++;
+            ptr = calloc(1,data.size);
+            memcpy(ptr,data.data,data.size);
+            ptrs[n++] = ptr;
+            if ( n >= max )
+            {
+                max += 100;
+                ptrs = (struct storage_header **)realloc(ptrs,sizeof(struct storage_header *)*(max+1));
+            }   clear_pair(&key,&data);
+        }
+        cursorp->close(cursorp);
     }
+    if ( m > max_in_db(selector) )
+        set_max_in_db(selector,m);
+    if ( ptrs != 0 )
+        ptrs[n] = 0;
+    *nump = n;
+    return(ptrs);
 }
+
 #endif
