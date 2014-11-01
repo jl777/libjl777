@@ -439,6 +439,18 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
 }
 
+void set_myipaddr(struct coin_info *cp,char *ipaddr)
+{
+    struct nodestats *stats;
+    struct pserver_info *pserver;
+    strcpy(cp->myipaddr,ipaddr);
+    stats = get_nodestats(cp->srvpubnxtbits);
+    stats->ipbits = calc_ipbits(cp->myipaddr);
+    pserver = get_pserver(0,ipaddr,0,0);
+    pserver->nxt64bits = cp->srvpubnxtbits;
+    add_new_node(cp->srvpubnxtbits);
+}
+
 char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip,char *origargstr)
 {
     uint64_t txid = 0;
@@ -461,7 +473,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         if ( strcmp("127.0.0.1",cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
             printf("AUTO SETTING MYIP <- (%s)\n",destip);
-            strcpy(cp->myipaddr,ipaddr);
+            set_myipaddr(cp,ipaddr);
         }
         if ( verify_addr(prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
             sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s)\"}",sender,origargstr,ipaddr);
@@ -483,7 +495,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     if ( cp != 0 && strcmp("127.0.0.1",cp->myipaddr) == 0 && yourip[0] != 0 && calc_ipbits(yourip) != 0 )
     {
         printf("AUTOUPDATE IP <= (%s)\n",yourip);
-        strcpy(cp->myipaddr,yourip);
+        set_myipaddr(cp,yourip);
     }
     if ( stats != 0 )
     {
