@@ -98,7 +98,7 @@ void SuperNET_idler(uv_idle_t *handle)
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) )
     {
-        r = ((rand() >> 8) % 10);
+        r = ((rand() >> 8) % 2);
         while ( (wr= queue_dequeue(&sendQ)) != 0 )
         {
             if ( wr == firstwr )
@@ -107,7 +107,7 @@ void SuperNET_idler(uv_idle_t *handle)
                 //printf("reached firstwr.%p\n",firstwr);
                 break;
             }
-            if ( (wr->queuetime % 10) == r )
+            if ( (wr->queuetime % 2) == r )
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this

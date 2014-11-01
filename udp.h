@@ -155,7 +155,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,uv_udp_t
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->udp = handle;
-    if ( 0*queueflag != 0 )
+    if ( queueflag != 0 )
     {
         wr->queuetime = (uint32_t)(1000. * milliseconds());
         queue_enqueue(&sendQ,wr);
