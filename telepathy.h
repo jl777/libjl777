@@ -331,8 +331,10 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
     }
     if ( locationp != 0 )
         *locationp = 0;
+    printf("private_publish(%s) -> %s.%d\n",msg,contact->handle,sequenceid);
     if ( (location= calc_privatedatastr(0,AESpasswordstr,privatedatastr,contact,sequenceid,msg)) != 0 )
     {
+        printf("location.%llu\n",(long long)location);
         if ( locationp != 0 )
             *locationp = location;
         expand_nxt64bits(seqacct,location);
