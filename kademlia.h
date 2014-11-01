@@ -80,6 +80,7 @@ int32_t verify_addr(struct sockaddr *addr,char *refipaddr,int32_t refport)
     if ( strcmp(ipaddr,refipaddr) != 0 )//|| refport != port )
     {
         printf("verify_addr error: (%s) vs (%s)\n",refipaddr,ipaddr);
+        strcpy(refipaddr,ipaddr);
         return(-1);
     }
     return(0);
@@ -359,7 +360,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),cp->myipaddr,pubkeystr,HARDCODED_VERSION);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
         }
         else
         {
@@ -442,11 +443,12 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
+    struct coin_info *cp = get_coin_info("BTCD");
     //printf("got ping.%d (%s)\n",ismynode(prevaddr),origargstr);
     retstr[0] = 0;
     if ( ismynode(prevaddr) != 0 ) // user invoked
     {
-        if ( destip != 0 && destip[0] != 0 && ismyipaddr(destip) == 0 )
+        if ( destip != 0 && destip[0] != 0 )
         {
             if ( ismyipaddr(destip) == 0 )
                 txid = send_kademlia_cmd(0,get_pserver(0,destip,0,0),"ping",NXTACCTSECRET,0,0);
@@ -456,8 +458,13 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     }
     else // sender ping'ed us
     {
-        if ( verify_addr(prevaddr,ipaddr,port) < 0 )
-            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s)\"}",sender,origargstr);
+        if ( strcmp("127.0.0.1",cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
+        {
+            printf("AUTO SETTING MYIP <- (%s)\n",destip);
+            strcpy(cp->myipaddr,ipaddr);
+        }
+        if ( verify_addr(prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
+            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s)\"}",sender,origargstr,ipaddr);
         else sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,port,(long long)txid);
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"pong",NXTACCTSECRET,0,0);
     }
@@ -466,12 +473,18 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(clonestr(retstr));
 }
 
-char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port)
+char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip)
 {
     char retstr[1024];
     struct nodestats *stats;
+    struct coin_info *cp = get_coin_info("BTCD");
     stats = get_nodestats(calc_nxt64bits(sender));
     // all the work is already done in update_Kbucket
+    if ( cp != 0 && strcmp("127.0.0.1",cp->myipaddr) == 0 && yourip[0] != 0 && calc_ipbits(yourip) != 0 )
+    {
+        printf("AUTOUPDATE IP <= (%s)\n",yourip);
+        strcpy(cp->myipaddr,yourip);
+    }
     if ( stats != 0 )
     {
         stats->pongmilli = milliseconds();
@@ -710,7 +723,7 @@ char *kademlia_havenode(int32_t valueflag,struct sockaddr *prevaddr,char *verifi
                         addto_hasnxt(pserver,calc_nxt64bits(destNXTaddr));
                     copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,1));
                     copy_cJSON(ipaddr,cJSON_GetArrayItem(item,2));
-                    if ( ipaddr[0] != 0 )
+                    if ( ipaddr[0] != 0 && strcmp(ipaddr,"127.0.0.1") != 0 )
                         addto_hasips(1,pserver,calc_ipbits(ipaddr));
                     copy_cJSON(portstr,cJSON_GetArrayItem(item,3));
                     copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,4));
@@ -956,7 +969,7 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
     struct coin_info *cp = get_coin_info("BTCD");
     uint64_t xorbits;
     int32_t bucketid;
-    char pubkeystr[512],NXTaddr[64],*ptr;
+    char pubkeystr[512],NXTaddr[64],tmpipaddr[64],*ptr;
     struct pserver_info *pserver;
     if ( stats == 0 )
     {
@@ -976,7 +989,9 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
     {
         pserver = get_pserver(0,cp->myipaddr,0,0);
         //fprintf(stderr,"call addto_hasips\n");
-        addto_hasips(1,pserver,stats->ipbits);
+        expand_ipbits(tmpipaddr,stats->ipbits);
+        if ( strcmp("127.0.0.1",tmpipaddr) != 0 )
+            addto_hasips(1,pserver,stats->ipbits);
         xorbits = cp->srvpubnxtbits;
         if ( stats->nxt64bits != 0 )
         {

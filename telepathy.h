@@ -651,7 +651,7 @@ char *addcontact(char *handle,char *acct)
                 contact->shared = curve25519(mysecret,contact->pubkey);
                 fprintf(stderr,"init_telepathy_contact\n");
                 init_telepathy_contact(contact);
-                sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s) SS.%llx\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr,*(long long *)&contact->shared);
+                sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) has pubkey.(%s)\"}",handle,acct,(long long)contact->nxt64bits,pubkeystr);
             }
         }
     }

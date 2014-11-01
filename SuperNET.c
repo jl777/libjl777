@@ -19,12 +19,13 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
 
 int main(int argc,const char *argv[])
 {
+    void unstringify(char *);
     long stripwhite_ns(char *buf,long len);
     FILE *fp;
     int32_t retval;
     cJSON *json;
-    int32_t duration,len;
-    unsigned char data[4098];
+    //int32_t duration,len;
+    //unsigned char data[4098];
     char params[4096],txidstr[64],buf[1024],ipaddr[64],*retstr;
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
