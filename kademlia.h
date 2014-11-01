@@ -812,7 +812,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 keynp->bestbits = 0;
                 int z = 0;
                 threshold = remoteflag * ((isvalue == 0) ? KADEMLIA_MAXTHRESHOLD : KADEMLIA_MINTHRESHOLD);
-                for (i=0; i<n&&i<KADEMLIA_ALPHA; i++)
+                for (i=0; i<n; i++) //&&i<KADEMLIA_ALPHA
                 {
                     destbits = sortbuf[(i<<1) + 1];
                     dist = bitweight(destbits ^ keyhash);
@@ -821,7 +821,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                         if ( (stats= get_nodestats(destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
                         if ( Debuglevel > 1 )
-                            printf("call %llu (%s) dist.%d\n",(long long)destbits,cmd,bitweight(destbits ^ keyhash));
+                            printf("call %llu (%s) dist.%d mydist.%d threshold.%d\n",(long long)destbits,cmd,bitweight(destbits ^ keyhash),mydist,threshold);
                         if ( remoteflag != 0 && origargstr != 0 && datastr != 0 )
                         {
                             expand_nxt64bits(destNXTaddr,destbits);
