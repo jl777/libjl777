@@ -593,7 +593,7 @@ char *addcontact(char *handle,char *acct)
     bits256 mysecret,mypublic;
     struct coin_info *cp = get_coin_info("BTCD");
     struct contact_info *contact;
-    char retstr[1024],pubkeystr[128],*ret;
+    char retstr[1024],pubkeystr[128],RSaddr[64],*ret;
     if ( cp == 0 )
     {
         printf("addcontact: no BTCD cp?\n");
@@ -639,7 +639,10 @@ char *addcontact(char *handle,char *acct)
         contact->pubkey = issue_getpubkey(acct);
         init_hexbytes(pubkeystr,contact->pubkey.bytes,sizeof(contact->pubkey));
         if ( contact->pubkey.txid == 0 )
-            sprintf(retstr,"{\"error\":\"(%s) acct.(%s) has no pubkey.(%s)\"}",handle,acct,pubkeystr);
+        {
+            conv_rsacctstr(RSaddr,nxt64bits);
+            sprintf(retstr,"{\"error\":\"(%s) acct.(%s) has no pubkey.(%s)\",\"RS\":\"%s\"}",handle,acct,pubkeystr,RSaddr);
+        }
         else
         {
             //if ( strcmp(contact->handle,"myhandle") != 0 )
