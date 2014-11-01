@@ -808,7 +808,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                     sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                 }
                 free(sp);
-                //printf("FOUND.(%s)\n",retstr);
+                printf("FOUND.(%s)\n",retstr);
                 return(clonestr(retstr));
             }
         }

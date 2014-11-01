@@ -41,7 +41,7 @@ struct SuperNET_db
     uint32_t busy,type,flags,active;
 };
 
-struct dbreq { DB_TXN *txn; DBT *key,*data; int32_t flags,retval; uint16_t selector,funcid,doneflag,pad; };
+struct dbreq { DB_TXN *txn; DBT key,data; int32_t flags,retval; uint16_t selector,funcid,doneflag,pad; };
 
 long Total_stored;
 DB_ENV *Storage;
@@ -61,10 +61,11 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
         n = 0;
         while ( (req= queue_dequeue(&sdb->queue)) != 0 )
         {
+            printf("DB.%d func.%c key.(%s)\n",selector,req->funcid,req->key.data);
             if ( req->funcid == 'G' )
-                req->retval = sdb->dbp->get(sdb->dbp,req->txn,req->key,req->data,req->flags);
+                req->retval = sdb->dbp->get(sdb->dbp,req->txn,&req->key,&req->data,req->flags);
             else if ( req->funcid == 'P' )
-                req->retval = sdb->dbp->put(sdb->dbp,req->txn,req->key,req->data,req->flags);
+                req->retval = sdb->dbp->put(sdb->dbp,req->txn,&req->key,&req->data,req->flags);
             else if ( req->funcid == 'S' )
                 req->retval = sdb->dbp->sync(sdb->dbp,req->flags);
             else printf("UNEXPECTED SuperNET_db funcid.(%c) %d\n",req->funcid,req->funcid);
@@ -105,8 +106,8 @@ struct dbreq *_queue_dbreq(int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,
         req->funcid = funcid;
         req->selector = selector;
         req->txn = txn;
-        req->key = key;
-        req->data = data;
+        req->key = *key;
+        req->data = *data;
         req->flags = flags;
         //while ( sdb->busy > 0 )
         //    usleep(1);

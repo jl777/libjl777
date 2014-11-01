@@ -31,7 +31,7 @@ int main(int argc,const char *argv[])
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
     else strcpy(ipaddr,"127.0.0.1");
-    retval = SuperNET_start("SuperNET.conf",0);//ipaddr);
+    retval = SuperNET_start("SuperNET.conf",ipaddr);
     if ( (fp= fopen("horrible.hack","wb")) != 0 )
     {
         fwrite(&retval,1,sizeof(retval),fp);
