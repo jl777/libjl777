@@ -63,6 +63,8 @@ struct udp_queuecmd
 void update_nodestats_data(struct nodestats *stats)
 {
     char NXTaddr[64];
+    if ( stats->H.datalen == 0 )
+        stats->H.datalen = sizeof(*stats);
     expand_nxt64bits(NXTaddr,stats->nxt64bits);
     printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
     update_storage(NODESTATS_DATA,NXTaddr,&stats->H);

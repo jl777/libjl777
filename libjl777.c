@@ -107,7 +107,7 @@ void SuperNET_idler(uv_idle_t *handle)
                 //printf("reached firstwr.%p\n",firstwr);
                 break;
             }
-            if ( (wr->queuetime % 2) == r )
+            if ( 1 || (wr->queuetime % 2) == r )
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this
@@ -161,7 +161,10 @@ void SuperNET_idler(uv_idle_t *handle)
         if ( (counter % 10) == 3 )
             poll_telepods("BTCD");
         if ( (counter % 60) == 17 )
+        {
             every_minute(counter/60);
+            update_Allnodes();
+        }
         counter++;
         lastclock = millis;
     }

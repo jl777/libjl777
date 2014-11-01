@@ -26,6 +26,26 @@ uint64_t Allnodes[10000];
 int32_t Numallnodes;
 #define MAX_ALLNODES ((int32_t)(sizeof(Allnodes)/sizeof(*Allnodes)))
 
+void update_Allnodes()
+{
+    int32_t i;
+    char NXTaddr[64];
+    struct nodestats *stats,*sp;
+    for (i=0; i<MAX_ALLNODES; i++)
+    {
+        if ( Allnodes[i] != 0 )
+        {
+            stats = get_nodestats(Allnodes[i]);
+            expand_nxt64bits(NXTaddr,Allnodes[i]);
+            if ( (sp= (struct nodestats *)find_storage(NODESTATS_DATA,NXTaddr)) != 0 )
+            {
+                if ( memcmp(sp,stats,sizeof(*sp)) != 0 )
+                    update_nodestats_data(stats);
+            }
+        }
+    }
+}
+
 struct nodestats *find_nodestats(uint64_t nxt64bits)
 {
     int32_t i;
@@ -701,13 +721,13 @@ char *kademlia_storedata(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *N
             }
         }
         else sp = do_localstore(&txid,key,datastr,NXTACCTSECRET);
-        sprintf(retstr,"{\"result\":\"kademlia_store key.(%s) data.(%s) len.%ld -> txid.%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
+        sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%ld,\"txid\":\"%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
         //free(sortbuf);
     }
     else
     {
         sp = do_localstore(&txid,key,datastr,NXTACCTSECRET);
-        sprintf(retstr,"{\"error\":\"kademlia_store key.(%s) no peers, stored locally\"}",key);
+        sprintf(retstr,"{\"error\":\"kademlia_store\",\"key\":\"%s\",\"msg\":\"no peers, stored locally\"}",key);
     }
     if ( sp != 0 )
         free(sp);
