@@ -340,9 +340,9 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
         expand_nxt64bits(seqacct,location);
         if ( location != issue_getAccountId(0,AESpasswordstr) )
             printf("ERROR: private_publish location %llu != %llu from (%s)\n",(long long)location,(long long)issue_getAccountId(0,AESpasswordstr),AESpasswordstr);
+        expand_nxt64bits(key,location);
         if ( sequenceid == 0 )
         {
-            expand_nxt64bits(key,location);
             printf("store.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             if ( IS_LIBTEST != 0 )
@@ -360,7 +360,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
             {
                 contact->numsent++;
                 contact->lastsent = sequenceid;
-                //printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)location,AESpasswordstr);
+                printf("telepathic send to %s.%d via %llu using %llu (%s)\n",contact->handle,sequenceid,(long long)contact->deaddrop,(long long)location,AESpasswordstr);
                 expand_nxt64bits(key,contact->deaddrop);
                 retstr = kademlia_find("findnode",0,seqacct,AESpasswordstr,seqacct,key,privatedatastr,0); // find and you shall telepath
             } else retstr = clonestr("{\"error\":\"no deaddrop address\"}");
