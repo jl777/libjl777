@@ -72,11 +72,10 @@ int32_t calc_np_dist(struct NXT_acct *np,struct NXT_acct *destnp)
     return(bitweight(a ^ b));
 }
 
-int32_t verify_addr(struct sockaddr *addr,char *refipaddr,int32_t refport)
+int32_t verify_addr(uint16_t *prevportp,struct sockaddr *addr,char *refipaddr,int32_t refport)
 {
-    int32_t port;
     char ipaddr[64];
-    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+    *prevportp = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
     if ( strcmp(ipaddr,refipaddr) != 0 )//|| refport != port )
     {
         printf("verify_addr error: (%s) vs (%s)\n",refipaddr,ipaddr);
@@ -455,6 +454,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
 {
     uint64_t txid = 0;
     char retstr[1024];
+    uint16_t prevport;
     struct coin_info *cp = get_coin_info("BTCD");
     //printf("got ping.%d (%s)\n",ismynode(prevaddr),origargstr);
     retstr[0] = 0;
@@ -475,10 +475,11 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             printf("AUTO SETTING MYIP <- (%s)\n",destip);
             set_myipaddr(cp,ipaddr);
         }
-        if ( verify_addr(prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
-            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s)\"}",sender,origargstr,ipaddr);
+        prevport = 0;
+        if ( verify_addr(&prevport,prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
+            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,port);
         else sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,port,(long long)txid);
-        txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"pong",NXTACCTSECRET,0,0);
+        txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
     }
     if ( ismynode(prevaddr) == 0 && retstr[0] != 0 )
         printf("PING.(%s)\n",retstr);
