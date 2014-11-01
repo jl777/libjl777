@@ -58,6 +58,7 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
     {
         if ( sdb->busy == 0 && n == 0 )
             usleep(10000);
+        n = 0;
         while ( (req= queue_dequeue(&sdb->queue)) != 0 )
         {
             if ( req->funcid == 'G' )
