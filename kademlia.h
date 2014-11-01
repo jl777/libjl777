@@ -438,16 +438,21 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
 }
 
-void set_myipaddr(struct coin_info *cp,char *ipaddr)
+void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits)
 {
     struct nodestats *stats;
     struct pserver_info *pserver;
+    stats = get_nodestats(nxt64bits);
+    stats->ipbits = calc_ipbits(ipaddr);
+    pserver = get_pserver(0,ipaddr,port,0);
+    pserver->nxt64bits = nxt64bits;
+    add_new_node(nxt64bits);
+}
+
+void set_myipaddr(struct coin_info *cp,char *ipaddr,uint16_t port)
+{
     strcpy(cp->myipaddr,ipaddr);
-    stats = get_nodestats(cp->srvpubnxtbits);
-    stats->ipbits = calc_ipbits(cp->myipaddr);
-    pserver = get_pserver(0,ipaddr,0,0);
-    pserver->nxt64bits = cp->srvpubnxtbits;
-    add_new_node(cp->srvpubnxtbits);
+    change_nodeinfo(ipaddr,port,cp->srvpubnxtbits);
 }
 
 char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip,char *origargstr)
@@ -473,12 +478,15 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         if ( strcmp("127.0.0.1",cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
             printf("AUTO SETTING MYIP <- (%s)\n",destip);
-            set_myipaddr(cp,ipaddr);
+            set_myipaddr(cp,ipaddr,0);
         }
         prevport = 0;
         if ( verify_addr(&prevport,prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
-            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,port);
-        else sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,port,(long long)txid);
+        {
+            change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender));
+            sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
+        }
+        else sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
     }
     if ( ismynode(prevaddr) == 0 && retstr[0] != 0 )
@@ -496,7 +504,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     if ( cp != 0 && strcmp("127.0.0.1",cp->myipaddr) == 0 && yourip[0] != 0 && calc_ipbits(yourip) != 0 )
     {
         printf("AUTOUPDATE IP <= (%s)\n",yourip);
-        set_myipaddr(cp,yourip);
+        set_myipaddr(cp,yourip,0);
     }
     if ( stats != 0 )
     {
