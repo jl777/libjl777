@@ -9,8 +9,8 @@
 #ifndef libjl777_kademlia_h
 #define libjl777_kademlia_h
 
-#define KADEMLIA_MINTHRESHOLD 24
-#define KADEMLIA_MAXTHRESHOLD 28
+#define KADEMLIA_MINTHRESHOLD 30
+#define KADEMLIA_MAXTHRESHOLD 32
 
 #define KADEMLIA_ALPHA 7
 #define NODESTATS_EXPIRATION 600
@@ -787,15 +787,18 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                 return(clonestr(retstr));
             }
         }
-        else if ( ismynode(prevaddr) == 0 && datastr != 0 && datastr[0] != 0 && prevaddr != 0 )
+        else if ( datastr != 0 && datastr[0] != 0 && prevaddr != 0 )
         {
             void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
-            datalen = (int32_t)(strlen(datastr) / 2);
-            decode_hex(data,datalen,datastr);
-            if ( prevaddr != 0 )
-                port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
-            else port = 0, strcpy(ipaddr,"localhost");
-            process_telepathic(key,data,datalen,senderbits,ipaddr);
+            if ( ismynode(prevaddr) == 0 )
+            {
+                datalen = (int32_t)(strlen(datastr) / 2);
+                decode_hex(data,datalen,datastr);
+                if ( prevaddr != 0 )
+                    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+                else port = 0, strcpy(ipaddr,"localhost");
+                process_telepathic(key,data,datalen,senderbits,ipaddr);
+            }
             remoteflag = 1;
         }
         memset(sortbuf,0,sizeof(sortbuf));
@@ -837,7 +840,7 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                     }
                 }
             }
-            if ( ismynxtbits(senderbits) == 0 && (isvalue == 0 || datastr == 0) ) // need to respond to sender
+            if ( ismynode(prevaddr) == 0 )//ismynxtbits(senderbits) == 0 && (isvalue == 0 || datastr == 0) ) // need to respond to sender
             {
                 array = cJSON_CreateArray();
                 for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
