@@ -65,7 +65,7 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
             memset(&data,0,sizeof(data));
             if ( req->data != 0 )
                 data = *req->data;
-            printf("DB.%d func.%c key.(%s)\n",selector,req->funcid,data.data);
+            printf("DB.%d func.%c key.(%s)\n",selector,req->funcid,req->key.data);
             if ( req->funcid == 'G' )
                 req->retval = sdb->dbp->get(sdb->dbp,req->txn,&req->key,&data,req->flags);
             else if ( req->funcid == 'P' )
