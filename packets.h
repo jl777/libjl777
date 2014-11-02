@@ -514,6 +514,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
+                    if ( strcmp(nxtip,sender) == 0 )
+                        nxtport = port;
                     if ( encrypted == 0 )
                     {
                         if ( strcmp("ping",checkstr) == 0 && internalflag == 0 )
