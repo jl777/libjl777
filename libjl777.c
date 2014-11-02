@@ -84,6 +84,14 @@ void send_async_message(char *msg)
     uv_async_send(&Tasks_async);
 }*/
 
+char *get_public_srvacctsecret()
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+        return(cp->srvNXTACCTSECRET);
+    else return(GENESIS_SECRET);
+}
+
 void SuperNET_idler(uv_idle_t *handle)
 {
     static int counter;

@@ -22,6 +22,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
 int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
 void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len);
 void expand_ipbits(char *ipaddr,uint32_t ipbits);
+char *get_public_srvacctsecret();
 
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 {
@@ -48,7 +49,7 @@ void build_topology()
     cJSON *array,*item,*ret;
     uint32_t now;
     int32_t i,n,len,numnodes,numcontacts,numipaddrs = 0;
-    char ipaddr[64],**ipaddrs;
+    char ipaddr[64],_cmd[MAX_JSON_FIELD],**ipaddrs;
     uint8_t finalbuf[MAX_JSON_FIELD];
     struct nodestats **nodes;
     struct contact_info **contacts;
@@ -91,8 +92,11 @@ void build_topology()
             {
                 expand_ipbits(ipaddr,nodes[i]->ipbits);
                 printf("(%llu %d %s) ",(long long)nodes[i]->nxt64bits,nodes[i]->lastcontact-now,ipaddr);
-                if ( (len= gen_pingstr((char *)finalbuf,1)) > 0 )
+                if ( gen_pingstr(_cmd,1) > 0 )
+                {
+                    len = construct_tokenized_req(finalbuf,_cmd,get_public_srvacctsecret());
                     send_packet(nodes[i],0,finalbuf,len);
+                }
                 free(nodes[i]);
             }
             free(nodes);
