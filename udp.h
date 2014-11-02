@@ -66,7 +66,7 @@ void update_nodestats_data(struct nodestats *stats)
     if ( stats->H.datalen == 0 )
         stats->H.datalen = sizeof(*stats);
     expand_nxt64bits(NXTaddr,stats->nxt64bits);
-    printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
+    //printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
     update_storage(NODESTATS_DATA,NXTaddr,&stats->H);
 }
 
@@ -306,31 +306,46 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     char ipaddr[64];
     int32_t port,queueflag;
     struct nodestats *stats;
-    struct pserver_info *pserver;
-    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
-    if ( len <= MAX_UDPLEN && Global_mp->udp != 0 )
+    struct pserver_info *pserver = 0;
+    if ( destaddr != 0 )
     {
-        if ( port == 0 || port == BTCD_PORT )
+        port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
+        pserver = get_pserver(0,ipaddr,0,0);
+        if ( peerstats != 0 && len <= MAX_UDPLEN && Global_mp->udp != 0 )
         {
-            printf("send_packet WARNING: send_packet port.%d <- %d\n",port,SUPERNET_PORT);
-            port = SUPERNET_PORT;
-            uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
+            if ( port == 0 || port == BTCD_PORT )
+            {
+                printf("send_packet WARNING: send_packet port.%d <- %d\n",port,SUPERNET_PORT);
+                port = SUPERNET_PORT;
+                uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
+            }
+            queueflag = 1;
+            if ( Debuglevel > 1 )
+                printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
+            portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
         }
-        queueflag = 1;
-        if ( Debuglevel > 1 )
-            printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
-        portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
+        else call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
     }
-    else call_SuperNET_broadcast(get_pserver(0,ipaddr,0,0),(char *)finalbuf,len,0);
-    pserver = get_pserver(0,ipaddr,0,0);
+    else if ( peerstats != 0 && peerstats->ipbits != 0 )
+    {
+        expand_ipbits(ipaddr,peerstats->ipbits);
+        pserver = get_pserver(0,ipaddr,0,0);
+        printf("send packet to (%s) %llu len.%d\n",ipaddr,(long long)peerstats->nxt64bits,len);
+        call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
+    }
+    else
+    {
+        printf("send_packet: cant resolve path for %p %p\n",peerstats,destaddr);
+        return;
+    }
     if ( peerstats != 0 )
     {
-        if ( pserver->nxt64bits == 0 )
+        if ( pserver != 0 && pserver->nxt64bits == 0 )
             pserver->nxt64bits = peerstats->nxt64bits;
         peerstats->numsent++;
         peerstats->sentmilli = milliseconds();
     }
-    else
+    else if ( pserver != 0 )
     {
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
@@ -356,11 +371,17 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
     uint64_t txid = 0;
     int32_t port,createdflag;
     struct NXT_acct *np;
+    struct nodestats *stats = 0;
     if ( len > sizeof(finalbuf) )
     {
         fprintf(stderr,"sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
         return(0);
         exit(-1);
+    }
+    if ( hopNXTaddr != 0 && hopNXTaddr[0] != 0 )
+    {
+        np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
+        stats = &np->stats;
     }
     if ( encrypted != 0 )
     {
@@ -373,35 +394,20 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
         if ( Debuglevel > 0 )
             printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
-        send_packet(0,destaddr,outbuf,len);
+        send_packet(stats,destaddr,outbuf,len);
     }
-    else
+    else if ( stats != 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
-        expand_ipbits(destip,np->stats.ipbits);
-        if ( np->stats.ipbits != 0 )//is_privacyServer(&np->mypeerinfo) != 0 )
+        expand_ipbits(destip,stats->ipbits);
+        if ( stats->ipbits != 0 )
         {
             if ( Debuglevel > 0 )
-                printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,np->stats.supernet_port,len);
-            uv_ip4_addr(destip,np->stats.supernet_port,&addr);
-            send_packet(&np->stats,(struct sockaddr *)&addr,finalbuf,len);
+                printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,stats->supernet_port,len);
+            uv_ip4_addr(destip,stats->supernet_port!=0?stats->supernet_port:SUPERNET_PORT,&addr);
+            send_packet(stats,(struct sockaddr *)&addr,finalbuf,len);
         }
-        /*else
-        {
-            memset(Uaddrs,0,sizeof(Uaddrs));
-            n = sort_topaddrs(Uaddrs,(int32_t)(sizeof(Uaddrs)/sizeof(*Uaddrs)),&np->mypeerinfo);
-            printf("n.%d hopNXTaddr.(%s) narrowcast %s:%d %d via p2p\n",len,hopNXTaddr,destip,np->stats.supernet_port,len);
-            if ( n > 0 )
-            {
-                for (i=0; i<n; i++)
-                {
-                    Uaddrs[i]->numsent++;
-                    uv_ip4_addr(destip,np->stats.supernet_port==0?SUPERNET_PORT:np->stats.supernet_port,&addr);
-                    send_packet(&np->stats,(struct sockaddr *)&addr,finalbuf,len);
-                }
-            }
-        }*/
-    }
+        else { printf("cant route packet.%d without IP address\n",len); return(0); }//send_packet(0,destaddr,outbuf,len);
+    } else { printf("cant route packet.%d without nodestats\n",len); return(0); }
     txid = calc_txid(finalbuf,len);
     return(txid);
 }
@@ -415,7 +421,12 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     struct nodestats *stats;
     struct coin_info *cp = get_coin_info("BTCD");
     unsigned char *outbuf;
-    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+    if ( pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0 )
+    {
+        //printf("no nxtaddr.%llu or null stats.%p ipbits.%x\n",(long long)pserver->nxt64bits,stats,stats!=0?stats->ipbits:0);
+        return(0);
+    }
+    if ( stats != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
