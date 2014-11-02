@@ -509,16 +509,20 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 tmpjson = cJSON_Parse(parmstxt);
                 if ( tmpjson != 0 )
                 {
+                    char nxtip[64];
+                    uint16_t nxtport;
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
+                    copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
+                    nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( encrypted == 0 )
                     {
                         if ( strcmp("ping",checkstr) == 0 && internalflag == 0 )
-                                update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
+                            update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
                     }
                     else
                     {
                         if ( strcmp("pong",checkstr) == 0 && internalflag == 0 )
-                            update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,sender,port,pubkey);
+                            update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
                         valueobj = cJSON_GetObjectItem(tmpjson,"data");
                         if ( is_cJSON_Number(valueobj) != 0 )
                         {
