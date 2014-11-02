@@ -107,11 +107,11 @@ void SuperNET_idler(uv_idle_t *handle)
                 //printf("reached firstwr.%p\n",firstwr);
                 break;
             }
-            if ( 1 || (wr->queuetime % 2) == r )
+            if ( (wr->queuetime % 2) == r )
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this
-                //lastattempt = millis;
+                lastattempt = millis;
                 break;
             }
             if ( firstwr == 0 )
