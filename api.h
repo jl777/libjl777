@@ -377,7 +377,7 @@ void queue_GUIpoll(char **ptrs)
     }
     else sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"txid\":\"%llu\"}",str,(long long)ptrs[2]);
     free(str); free(args);
-    retbuf = realloc(retbuf,strlen(retbuf+sizeof(ptrs)) + 1);
+    retbuf = realloc(retbuf,sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1);
     //printf("QUEUED for GUI: (%s) -> (%s)\n",ptrs[0],retbuf+sizeof(ptrs));
     queue_enqueue(&ResultsQ,retbuf);
 }
