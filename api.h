@@ -1060,17 +1060,18 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
 char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],yourip[MAX_JSON_FIELD],*retstr = 0;
-    uint16_t port;
+    uint16_t port,yourport;
     if ( prevaddr == 0 )
         return(0);
     copy_cJSON(pubkey,objs[0]);
     copy_cJSON(ipaddr,objs[1]);
     port = get_API_int(objs[2],0);
     copy_cJSON(yourip,objs[3]);
+    yourport = get_API_int(objs[4],0);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
     {
-        retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip);
+        retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport);
     }
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
@@ -1447,7 +1448,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
 
     // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
-    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", 0 };
+    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
     static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", "data", 0 };
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", "data", 0 };

@@ -1518,6 +1518,8 @@ struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t superne
     if ( createdp == 0 )
         createdp = &createdflag;
     pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
+    if ( supernet_port != 0 )
+        pserver->port = supernet_port;
     if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
     {
         if ( *createdp != 0 || (supernet_port != 0 && supernet_port != BTCD_PORT && supernet_port != stats->supernet_port) )

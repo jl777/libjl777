@@ -378,7 +378,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
         }
         else
         {
@@ -510,7 +510,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
         if ( notlocalip(cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
             printf("AUTO SETTING MYIP <- (%s)\n",destip);
-            set_myipaddr(cp,ipaddr,0);
+            set_myipaddr(cp,ipaddr,port);
         }
         prevport = 0;
         if ( verify_addr(&prevport,prevaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
@@ -526,7 +526,7 @@ char *kademlia_ping(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     return(clonestr(retstr));
 }
 
-char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip)
+char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip,int32_t yourport)
 {
     char retstr[1024];
     struct nodestats *stats;
@@ -536,7 +536,7 @@ char *kademlia_pong(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
     if ( cp != 0 && notlocalip(cp->myipaddr) == 0 && yourip[0] != 0 && calc_ipbits(yourip) != 0 )
     {
         printf("AUTOUPDATE IP <= (%s)\n",yourip);
-        set_myipaddr(cp,yourip,0);
+        set_myipaddr(cp,yourip,yourport);
     }
     if ( stats != 0 )
     {
