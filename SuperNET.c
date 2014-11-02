@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <memory.h>
+#include <arpa/inet.h>
 #include <sys/time.h>
 #include "SuperNET.h"
 #include "cJSON.h"
@@ -18,7 +19,7 @@
 extern int32_t IS_LIBTEST;
 extern cJSON *MGWconf;
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
-int32_t gen_pingstr(char *cmdstr);
+int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
 void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len);
 void expand_ipbits(char *ipaddr,uint32_t ipbits);
 

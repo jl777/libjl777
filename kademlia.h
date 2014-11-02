@@ -276,12 +276,14 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
     return(data);
 }
 
-int32_t gen_pingstr(char *cmdstr)
+int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
         sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        if ( completeflag != 0 )
+            strcat(cmdstr,"}");
         return((int32_t)strlen(cmdstr));
     } else return(0);
 }
@@ -370,7 +372,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->pingmilli = milliseconds();
             stats->numpings++;
         }
-        gen_pingstr(cmdstr);
+        gen_pingstr(cmdstr,0);
         //sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
     }
     else

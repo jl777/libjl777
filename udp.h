@@ -487,9 +487,8 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
         if ( cmd == 0 )
         {
-            int32_t gen_pingstr(char *cmdstr);
-            gen_pingstr(_cmd);
-            strcat(_cmd,"}");
+            int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
+            gen_pingstr(_cmd,1);
             //sprintf(_cmd,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"}","ping",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr);
         }
         else strcpy(_cmd,cmd);
