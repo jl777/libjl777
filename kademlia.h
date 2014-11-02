@@ -471,6 +471,11 @@ void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits)
     struct pserver_info *pserver;
     stats = get_nodestats(nxt64bits);
     stats->ipbits = calc_ipbits(ipaddr);
+    if ( port != 0 )//(stats->supernet_port == 0 || stats->supernet_port == SUPERNET_PORT) )
+    {
+        printf("OVERRIDE supernet_port.%d -> %d\n",stats->supernet_port,port);
+        stats->supernet_port = port;
+    }
     pserver = get_pserver(0,ipaddr,port,0);
     pserver->nxt64bits = nxt64bits;
     add_new_node(nxt64bits);
