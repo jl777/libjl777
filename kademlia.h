@@ -894,9 +894,12 @@ char *kademlia_find(char *cmd,struct sockaddr *prevaddr,char *verifiedNXTaddr,ch
                                     datalen = (int32_t)(strlen(datastr) / 2);
                                     decode_hex(data,datalen,datastr);
                                     if ( z++ == 0 )
-                                        printf("find pass through (%s)\n",datastr);
+                                        printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                     if ( origargstr != 0 )
+                                    {
                                         txid = directsend_packet(1,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
+                                        fprintf(stderr,"back from direct_send\n");
+                                    }
                                     else printf("no origarg string for pass through?\n");
                                 } else printf("warning: find doesnt have IP address for %s\n",destNXTaddr);
                             }
