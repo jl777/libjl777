@@ -480,7 +480,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         return(clonestr(retjsonstr));
     }
     p2pport = parse_ipaddr(ipaddr,ip_port);
-    uv_ip4_addr(ipaddr,p2pport,(struct sockaddr_in *)&prevaddr);
+    uv_ip4_addr(ipaddr,0,(struct sockaddr_in *)&prevaddr);
     pserver = get_pserver(0,ipaddr,0,p2pport);
     len = (int32_t)strlen(msg);
     if ( is_hexstr(msg) != 0 )
