@@ -634,7 +634,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
         }
         //printf("free sps.%p\n",sps);
         free(keys);
-        if ( Debuglevel > 0 )
+        if ( Debuglevel > 1 )
             printf("Queue n.%d pushstore to %llu\n",n,(long long)newbits);
     }
     return(n);
@@ -657,7 +657,7 @@ uint64_t process_storageQ()
             init_hexbytes_noT(datastr,sp->data,sp->H.datalen);
             //printf("dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
-            if ( Debuglevel > 0 )
+            if ( Debuglevel > 1 )
                 printf("txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
         }
         free(ptr);
