@@ -1515,7 +1515,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
         {
             if ( prevaddr == 0 || strcmp(command,"findnode") != 0 )
             {
-                if ( 1 || strcmp("127.0.0.1",cp->privacyserver) == 0 )
+                if ( 1 || notlocalip(cp->privacyserver) == 0 )
                 {
                     safecopy(NXTACCTSECRET,cp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
                     expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);

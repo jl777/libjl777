@@ -676,7 +676,7 @@ void init_Contacts()
 {
     char *retstr,NXTaddr[64];
     struct contact_info **contacts,*contact;
-    int32_t i,numcontacts;
+    int32_t i,j,n,numcontacts;
     contacts = (struct contact_info **)copy_all_DBentries(&numcontacts,CONTACT_DATA);
     if ( contacts == 0 )
         return;
@@ -690,7 +690,15 @@ void init_Contacts()
             printf("%s\n",retstr);
             free(retstr);
             if ( (contact= _find_contact(contacts[i]->handle)) != 0 )
+            {
                 *contact = *contacts[i];
+                printf("lastrecv.%d lastentry.%d\n",contact->lastrecv,contact->lastentry);
+                n = (contact->lastrecv + MAX_DROPPED_PACKETS);
+                if ( n < (contact->lastentry + 2*MAX_DROPPED_PACKETS) )
+                    n = contact->lastentry + 2*MAX_DROPPED_PACKETS;
+                for (j=contact->lastrecv; j<n; j++)
+                    create_telepathy_entry(contact,j);
+            }
             else printf("error finding %s right after adding it!\n",contacts[i]->handle);
         }
         free(contacts[i]);

@@ -1408,6 +1408,13 @@ int32_t parse_ipaddr(char *ipaddr,char *ip_port)
     return(port);
 }
 
+int32_t notlocalip(char *ipaddr)
+{
+    if ( strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.",ipaddr,4) == 0 )
+        return(0);
+    else return(1);
+}
+
 uint32_t calc_ipbits(char *ip_port)
 {
     char ipaddr[64];

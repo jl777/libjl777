@@ -179,7 +179,7 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
     if ( cp != 0 && nread > 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
-        if ( strcmp("127.0.0.1",ipaddr) == 0 )
+        if ( notlocalip(ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
