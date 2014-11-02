@@ -91,7 +91,7 @@ void build_topology()
             {
                 expand_ipbits(ipaddr,nodes[i]->ipbits);
                 printf("(%llu %d %s) ",(long long)nodes[i]->nxt64bits,nodes[i]->lastcontact-now,ipaddr);
-                if ( (len= gen_pingstr((char *)finalbuf)) > 0 )
+                if ( (len= gen_pingstr((char *)finalbuf,1)) > 0 )
                     send_packet(nodes[i],0,finalbuf,len);
                 free(nodes[i]);
             }
