@@ -341,7 +341,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     {
         if ( (ptr= queue_dequeue(&NarrowQ)) != 0 )
         {
-            printf("Got NarrowQ\n");
+            //printf("Got NarrowQ\n");
             memcpy(&len,ptr,sizeof(len));
             if ( len < 4096 && len > 0 )
             {
