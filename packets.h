@@ -513,8 +513,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     uint16_t nxtport,dontupdate = 0;
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
-                    if ( strcmp(nxtip,"255.255.255.255") == 0 || notlocalip(nxtip) == 0 )
-                        dontupdate = 1;
+                    if ( is_illegal_ipaddr(nxtip) != 0 || notlocalip(nxtip) == 0 )
+                        strcpy(nxtip,sender);
                     printf("nxtip.(%s)\n",nxtip);
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )

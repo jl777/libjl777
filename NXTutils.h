@@ -1448,6 +1448,13 @@ void expand_ipbits(char *ipaddr,uint32_t ipbits)
     //sprintf(ipaddr,"%d.%d.%d.%d",(ipbits>>24)&0xff,(ipbits>>16)&0xff,(ipbits>>8)&0xff,(ipbits&0xff));
 }
 
+int32_t is_illegal_ipaddr(char *ipaddr)
+{
+    char tmp[64];
+    expand_ipbits(tmp,calc_ipbits(ipaddr));
+    return(strcmp(tmp,ipaddr));
+}
+
 char *ipbits_str(uint32_t ipbits)
 {
     static char ipaddr[32];
