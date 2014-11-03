@@ -60,7 +60,7 @@ cJSON *gen_orderbook_txjson(struct orderbook_tx *tx)
     sprintf(numstr,"%.8f",dstr(tx->baseamount)), cJSON_AddItemToObject(json,"srcvol",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)tx->relid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(tx->relamount)), cJSON_AddItemToObject(json,"destvol",cJSON_CreateString(numstr));
-    //printf("sig.%08x t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",tx->sig,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
+    printf("sig.%08x t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",tx->sig,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
     return(json);
 }
 
@@ -365,7 +365,7 @@ void sort_orderbook(struct orderbook *op,struct orderbook_tx **orders,int32_t n,
                 qp->type = tx->type;
                 qp->nxt64bits = tx->nxt64bits;
                 qp->price = ((double)qp->relamount / qp->baseamount);
-                //printf("tx.%p dir.%d base.%llu rel.%llu price %.8f vol %.8f\n",tx,dir,(long long)tx->baseid,(long long)tx->relid,qp->price,((double)qp->baseamount / SATOSHIDEN));
+                printf("tx.%p dir.%d base.%llu rel.%llu price %.8f vol %.8f\n",tx,dir,(long long)tx->baseid,(long long)tx->relid,qp->price,((double)qp->baseamount / SATOSHIDEN));
             }
         }
     }
@@ -431,7 +431,7 @@ int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits
     uint64_t baseamount,relamount;
     baseamount = volume * SATOSHIDEN;
     relamount = (price * baseamount);
-    //printf("bid base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
+    printf("bid base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
     return(init_orderbook_tx(1,tx,type,nxt64bits,obookid,baseamount,relamount));
 }
 
@@ -440,7 +440,7 @@ int32_t ask_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits
     uint64_t baseamount,relamount;
     baseamount = volume * SATOSHIDEN;
     relamount = (price * baseamount);
-    //printf("ask base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
+    printf("ask base.%llu rel.%llu price %.8f vol %.8f\n",(long long)baseamount,(long long)relamount,price,volume);
     return(init_orderbook_tx(-1,tx,type,nxt64bits,obookid,baseamount,relamount));
 }
 
