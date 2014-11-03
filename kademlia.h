@@ -815,7 +815,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
     char retstr[32768],pubkeystr[256],databuf[32768],numstr[64],ipaddr[64],_previpaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
-    int32_t i,n,isvalue,createdflag,prevport,datalen,mydist,dist,remoteflag = 0;
+    int32_t i,n,isvalue,createdflag,datalen,mydist,dist,remoteflag = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct NXT_acct *keynp,*destnp,*np;
     cJSON *array,*item;
@@ -955,7 +955,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         } else if ( Debuglevel > 0 )
             printf("kademlia.(%s) no peers\n",cmd);
     }
-    sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s:%d) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,previpaddr,prevport,key,datastr!=0?strlen(datastr):0,(long long)txid);
+    sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,previpaddr,key,datastr!=0?strlen(datastr):0,(long long)txid);
     //if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));

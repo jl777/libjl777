@@ -553,12 +553,13 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         if ( prevaddr != 0 )
                         {
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
-                            qp->previpbits = calc_ipbits(previpaddr);
                         } else previpaddr[0] = 0;
                         //printf("GOT.(%s)\n",parmstxt);
                         if ( 1 )
                         {
                             qp = calloc(1,sizeof(*qp));
+                            if ( previpaddr[0] != 0 )
+                                qp->previpbits = calc_ipbits(previpaddr);
                             qp->argjson = argjson;
                             qp->valid = valid;
                             qp->tokenized_np = tokenized_np;
