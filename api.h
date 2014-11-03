@@ -308,38 +308,35 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
 	return 0;
 }
 
-char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static int counter;
     int32_t duration,len;
     char ip_port[64],hexstr[8192],msg[MAX_JSON_FIELD],retbuf[MAX_JSON_FIELD*3],*ptr,*str,*msg2;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     counter++;
     //printf("BTCDpoll.%d\n",counter);
     //BTCDpoll post_process_bitcoind_RPC.SuperNET can't parse.({"msg":"[{"requestType":"ping","NXT":"13434315136155299987","time":1414310974,"pubkey":"34b173939544eb01515119b5e0b05880eadaae3d268439c9cc1471d8681ecb6d","ipaddr":"209.126.70.159"},{"token":"im9n7c9ka58g3qq4b2oe1d8p7mndlqk0pj4jj1163pkdgs8knb0vsreb0kf6luo1bbk097buojs1k5o5c0ldn6r6aueioj8stgel1221fq40f0cvaqq0bciuniit0isi0dikd363f3bjd9ov24iltirp6h4eua0q"}]","duration":86400})
     retbuf[0] = 0;
-    if ( (counter % 3) == 0 )
+    if ( (ptr= queue_dequeue(&BroadcastQ)) != 0 )
     {
-        if ( (ptr= queue_dequeue(&BroadcastQ)) != 0 )
+        printf("Got BroadcastQ\n");
+        memcpy(&len,ptr,sizeof(len));
+        str = &ptr[sizeof(len) + sizeof(duration)];
+        if ( len == (strlen(str) + 1) )
         {
-            printf("Got BroadcastQ\n");
-            memcpy(&len,ptr,sizeof(len));
-            str = &ptr[sizeof(len) + sizeof(duration)];
-            if ( len == (strlen(str) + 1) )
-            {
-                memcpy(&duration,&ptr[sizeof(len)],sizeof(duration));
-                memcpy(msg,str,len);
-                ptr[sizeof(len) + sizeof(duration) + len] = 0;
-                msg2 = stringifyM(msg);
-                sprintf(retbuf,"{\"msg\":%s,\"duration\":%d}",msg2,duration);
-                free(msg2);
-                //printf("send back broadcast.(%s)\n",retbuf);
-            } else printf("BTCDpoll BroadcastQ len mismatch %d != %ld (%s)\n",len,strlen(str)+1,str);
-            free(ptr);
-        }
+            memcpy(&duration,&ptr[sizeof(len)],sizeof(duration));
+            memcpy(msg,str,len);
+            ptr[sizeof(len) + sizeof(duration) + len] = 0;
+            msg2 = stringifyM(msg);
+            sprintf(retbuf,"{\"msg\":%s,\"duration\":%d}",msg2,duration);
+            free(msg2);
+            //printf("send back broadcast.(%s)\n",retbuf);
+        } else printf("BTCDpoll BroadcastQ len mismatch %d != %ld (%s)\n",len,strlen(str)+1,str);
+        free(ptr);
     }
-    else if ( (counter % 3) == 1 )
+    if ( retbuf[0] == 0 )
     {
         if ( (ptr= queue_dequeue(&NarrowQ)) != 0 )
         {
@@ -384,11 +381,11 @@ void queue_GUIpoll(char **ptrs)
     queue_enqueue(&ResultsQ,retbuf);
 }
 
-char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static int counter;
     char retbuf[MAX_JSON_FIELD*3],*ptr,**ptrs;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     counter++;
     retbuf[0] = 0;
@@ -490,7 +487,7 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 	return 0;
 }
 
-char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t i,polarity,allflag;
     uint64_t obookid;
@@ -541,7 +538,7 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     return(retstr);
 }
 
-char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     char *retstr = 0;
@@ -555,7 +552,7 @@ char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prev
     return(retstr);
 }
 
-char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     int32_t polarity;//,len;
@@ -564,7 +561,7 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
     struct orderbook_tx tx,*txp;
     //struct coin_info *cp = get_coin_info("BTCD");
     char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     nxt64bits = calc_nxt64bits(sender);
     obookid = get_API_nxt64bits(objs[0]);
@@ -631,24 +628,24 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
     return(retstr);
 }
 
-char *placebid_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *placebid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(placequote_func(prevaddr,1,sender,valid,objs,numobjs,origargstr));
+    return(placequote_func(previpaddr,1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *placeask_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *placeask_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(placequote_func(prevaddr,-1,sender,valid,objs,numobjs,origargstr));
+    return(placequote_func(previpaddr,-1,sender,valid,objs,numobjs,origargstr));
 }
 
-char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static int counter;
-    char previp[64],nexthopNXTaddr[64],destNXTaddr[64],msg[MAX_JSON_FIELD],*retstr = 0;
-    int32_t L,port,len;
+    char nexthopNXTaddr[64],destNXTaddr[64],msg[MAX_JSON_FIELD],*retstr = 0;
+    int32_t L,len;
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(msg,objs[1]);
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
     {
         printf("GOT MESSAGE.(%s) from %s\n",msg,sender);
         return(0);
@@ -658,10 +655,10 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
     {
-        if ( prevaddr != 0 )
+        if ( is_remote_access(previpaddr) != 0 )
         {
-            port = extract_nameport(previp,sizeof(previp),(struct sockaddr_in *)prevaddr);
-            fprintf(stderr,"%d >>>>>>>>>>>>> received message.(%s) NXT.%s from hop.%s/%d\n",counter,msg,sender,previp,port);
+            //port = extract_nameport(previp,sizeof(previp),(struct sockaddr_in *)prevaddr);
+            fprintf(stderr,"%d >>>>>>>>>>>>> received message.(%s) NXT.%s from hop.%s\n",counter,msg,sender,previpaddr);
             counter++;
             //retstr = clonestr("{\"result\":\"received message\"}");
         }
@@ -678,12 +675,12 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,c
     return(retstr);
 }
 
-char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static int counter;
-    char previp[64],nexthopNXTaddr[64],destNXTaddr[64],cmdstr[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
-    int32_t L,port;
-    if ( prevaddr != 0 )
+    char nexthopNXTaddr[64],destNXTaddr[64],cmdstr[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
+    int32_t L;
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(destNXTaddr,objs[0]);
     copy_cJSON(datastr,objs[1]);
@@ -692,10 +689,10 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     //printf("sendmsg_func sender.(%s) valid.%d dest.(%s) (%s)\n",sender,valid,destNXTaddr,origargstr);
     if ( sender[0] != 0 && valid > 0 && destNXTaddr[0] != 0 )
     {
-        if ( prevaddr != 0 )
+        if ( is_remote_access(previpaddr) != 0 )
         {
-            port = extract_nameport(previp,sizeof(previp),(struct sockaddr_in *)prevaddr);
-            fprintf(stderr,"%d >>>>>>>>>>>>> received binary message.(%s) NXT.%s from hop.%s/%d\n",counter,datastr,sender,previp,port);
+            //port = extract_nameport(previp,sizeof(previp),(struct sockaddr_in *)prevaddr);
+            fprintf(stderr,"%d >>>>>>>>>>>>> received binary message.(%s) NXT.%s from hop.%s\n",counter,datastr,sender,previpaddr);
             counter++;
             //retstr = clonestr("{\"result\":\"received message\"}");
         }
@@ -710,10 +707,10 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     return(retstr);
 }
 
-char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char senderNXTaddr[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(senderNXTaddr,objs[0]);
     if ( sender[0] != 0 && valid > 0 )
@@ -722,13 +719,13 @@ char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(retstr);
 }
 
-char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t assetA,assetB;
     double qtyA,qtyB;
     int32_t type;
     char otherNXTaddr[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(otherNXTaddr,objs[0]);
     assetA = get_API_nxt64bits(objs[1]);
@@ -743,7 +740,7 @@ char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     return(retstr);
 }
 
-char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char utx[MAX_JSON_FIELD],full[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(utx,objs[0]);
@@ -755,10 +752,10 @@ char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     return(retstr);
 }
 
-char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char signedtx[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(signedtx,objs[0]);
     if ( sender[0] != 0 && valid > 0 && signedtx[0] != 0 )
@@ -767,14 +764,14 @@ char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     return(retstr);
 }
 
-char *tradebot_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *tradebot_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf;
     static int64_t filelen,allocsize;
     long len;
     cJSON *botjson;
     char code[MAX_JSON_FIELD],retbuf[4096],*str,*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(code,objs[0]);
     printf("tradebotfunc.(%s) sender.(%s) valid.%d code.(%s)\n",origargstr,sender,valid,code);
@@ -820,11 +817,11 @@ char *tradebot_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(retstr);
 }
 
-char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char contactstr[MAX_JSON_FIELD],minage[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],withdrawaddr[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     if ( Historical_done == 0 )
         return(clonestr("{\"error\":\"historical processing is not done yet\"}"));
@@ -840,11 +837,11 @@ char *teleport_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(retstr);
 }
 
-char *telepodacct_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *telepodacct_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     double amount;
     char contactstr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],withdrawaddr[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],cmd[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     if ( Historical_done == 0 )
         return(clonestr("{\"error\":\"historical processing is not done yet\"}"));
@@ -860,11 +857,11 @@ char *telepodacct_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     return(retstr);
 }
 
-char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
     char coinstr[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     value = (SATOSHIDEN * get_API_float(objs[0]));
     copy_cJSON(coinstr,objs[1]);
@@ -875,15 +872,15 @@ char *maketelepods_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *preva
     return(retstr);
 }
 
-char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
     int32_t scanflag;
     char *jsonstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     scanflag = get_API_int(objs[0],0);
-    json = gen_peers_json(prevaddr,NXTaddr,NXTACCTSECRET,sender,scanflag);
+    json = gen_peers_json(previpaddr,NXTaddr,NXTACCTSECRET,sender,scanflag);
     if ( json != 0 )
     {
         jsonstr = cJSON_Print(json);
@@ -892,12 +889,12 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(jsonstr);
 }
 
-char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;
     int32_t L,M,N;
     char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(clonestr("{\"error\":\"savefile is only for local access\"}"));
     copy_cJSON(fname,objs[0]);
     L = get_API_int(objs[1],0);
@@ -918,14 +915,14 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     if ( fp == 0 )
         printf("cant find file (%s)\n",fname);
     if ( fp != 0 && sender[0] != 0 && valid > 0 )
-        retstr = mofn_savefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
+        retstr = mofn_savefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
     return(retstr);
 }
 
-char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;
     char txidstr[MAX_JSON_FIELD];
@@ -933,7 +930,7 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     uint64_t *txids = 0;
     int32_t L,M,N,i,n;
     char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(clonestr("{\"error\":\"restorefile is only for local access\"}"));
     copy_cJSON(fname,objs[0]);
     L = get_API_int(objs[1],0);
@@ -977,7 +974,7 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     }
     fp = fopen(destfname,"wb");
     if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
-        retstr = mofn_restorefile(prevaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
+        retstr = mofn_restorefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
@@ -993,14 +990,14 @@ char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
     return(retstr);
 }
 
-char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char txidstr[MAX_JSON_FIELD],*retstr = 0;
     cJSON *array,*item;
     struct coin_info *cp = get_coin_info("BTCD");
     int32_t targetdist,numthreads,duration,i,n = 0;
     uint64_t refaddr,*txids = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(clonestr("{\"error\":\"can only findaddress locally\"}"));
     refaddr = get_API_nxt64bits(objs[0]);
     array = objs[1];
@@ -1031,33 +1028,33 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevad
             randombytes((unsigned char *)&txids[i],sizeof(txids[i]));
     }
     if ( txids != 0 && sender[0] != 0 && valid > 0 )
-        retstr = findaddress(prevaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
+        retstr = findaddress(previpaddr,NXTaddr,NXTACCTSECRET,sender,refaddr,txids,n,targetdist,duration,numthreads);
     else retstr = clonestr("{\"error\":\"invalid findaddress_func arguments\"}");
     //if ( txids != 0 ) freed on completion
     //    free(txids);
     return(retstr);
 }
 
-char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;
     int32_t L;
     char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(fname,objs[0]);
     copy_cJSON(dest,objs[1]);
     L = get_API_int(objs[2],0);
     fp = fopen(fname,"rb");
     if ( fp != 0 && sender[0] != 0 && valid > 0 )
-        retstr = onion_sendfile(L,prevaddr,NXTaddr,NXTACCTSECRET,sender,dest,fp);
+        retstr = onion_sendfile(L,previpaddr,NXTaddr,NXTACCTSECRET,sender,dest,fp);
     else retstr = clonestr("{\"error\":\"invalid sendfile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
     return(retstr);
 }
 
-char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t port;
     char pubkey[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],*retstr = 0;
@@ -1067,16 +1064,16 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     copy_cJSON(destip,objs[3]);
     //printf("ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = kademlia_ping(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip,origargstr);
+        retstr = kademlia_ping(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip,origargstr);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
     return(retstr);
 }
 
-char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *pong_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],yourip[MAX_JSON_FIELD],*retstr = 0;
     uint16_t port,yourport;
-    if ( prevaddr == 0 )
+    if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(pubkey,objs[0]);
     copy_cJSON(ipaddr,objs[1]);
@@ -1086,16 +1083,16 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
     {
-        retstr = kademlia_pong(prevaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport);
+        retstr = kademlia_pong(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport);
     }
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
 }
 
-char *addcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *addcontact_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(handle,objs[0]);
     copy_cJSON(acct,objs[1]);
@@ -1106,26 +1103,26 @@ char *addcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     return(retstr);
 }
 
-char *removecontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *removecontact_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char handle[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(handle,objs[0]);
     if ( handle[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = removecontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle);
+        retstr = removecontact(previpaddr,NXTaddr,NXTACCTSECRET,sender,handle);
     else retstr = clonestr("{\"error\":\"invalid removecontact_func arguments\"}");
     return(retstr);
 }
 
-char *dispcontact_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *dispcontact_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char handle[MAX_JSON_FIELD],*retstr = 0;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(handle,objs[0]);
     if ( handle[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = dispcontact(prevaddr,NXTaddr,NXTACCTSECRET,sender,handle);
+        retstr = dispcontact(previpaddr,NXTaddr,NXTACCTSECRET,sender,handle);
     else retstr = clonestr("{\"error\":\"invalid dispcontact arguments\"}");
     return(retstr);
 }
@@ -1149,37 +1146,37 @@ void set_kademlia_args(char *key,cJSON *keyobj,cJSON *nameobj)
     else copy_cJSON(key,keyobj);
 }
 
-char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *findnode_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
     set_kademlia_args(key,objs[1],objs[2]);
     copy_cJSON(value,objs[3]);
     if ( Debuglevel > 1 )
-        printf("findnode.%p (%s) (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key,value);
+        printf("findnode.%s (%s) (%s) (%s) (%s)\n",previpaddr,sender,pubkey,key,value);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findnode",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
+        retstr = kademlia_find("findnode",previpaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
     else retstr = clonestr("{\"error\":\"invalid findnode_func arguments\"}");
     return(retstr);
 }
 
-char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *findvalue_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
     set_kademlia_args(key,objs[1],objs[2]);
     copy_cJSON(value,objs[3]);
     if ( Debuglevel > 1 )
-        printf("findvalue.%p (%s) (%s) (%s)\n",prevaddr,sender,pubkey,key);
+        printf("findvalue.%s (%s) (%s) (%s)\n",previpaddr,sender,pubkey,key);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_find("findvalue",prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
+        retstr = kademlia_find("findvalue",previpaddr,NXTaddr,NXTACCTSECRET,sender,key,value,origargstr);
     else retstr = clonestr("{\"error\":\"invalid findvalue_func arguments\"}");
     if ( Debuglevel > 1 )
         printf("back from findvalue\n");
     return(retstr);
 }
 
-char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
@@ -1188,12 +1185,12 @@ char *havenode_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     if ( Debuglevel > 1 )
         printf("got HAVENODE.(%s) for key.(%s) from %s\n",value,key,sender);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_havenode(0,prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
+        retstr = kademlia_havenode(0,previpaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenode_func arguments\"}");
     return(retstr);
 }
 
-char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],value[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
@@ -1202,12 +1199,12 @@ char *havenodeB_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     if ( Debuglevel > 1 )
         printf("got HAVENODEB.(%s) for key.(%s) from %s\n",value,key,sender);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 )
-        retstr = kademlia_havenode(1,prevaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
+        retstr = kademlia_havenode(1,previpaddr,NXTaddr,NXTACCTSECRET,sender,key,value);
     else retstr = clonestr("{\"error\":\"invalid havenodeB_func arguments\"}");
     return(retstr);
 }
 
-char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *store_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],key[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
@@ -1215,17 +1212,17 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
     copy_cJSON(datastr,objs[3]);
     if ( key[0] != 0 && sender[0] != 0 && valid > 0 && datastr[0] != 0 )
     {
-        retstr = kademlia_storedata(prevaddr,NXTaddr,NXTACCTSECRET,sender,key,datastr);
+        retstr = kademlia_storedata(previpaddr,NXTaddr,NXTACCTSECRET,sender,key,datastr);
     }
     else retstr = clonestr("{\"error\":\"invalid store_func arguments\"}");
     return(retstr);
 }
 
-char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
     int32_t sequenceid,dir;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(contact,objs[0]);
     sequenceid = get_API_int(objs[1],0);
@@ -1236,13 +1233,13 @@ char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,cha
         if ( strcmp(dirstr,"send") == 0 )
             dir = 1;
         else dir = -1;
-        retstr = getdb(prevaddr,NXTaddr,NXTACCTSECRET,sender,dir,contact,sequenceid,key);
+        retstr = getdb(previpaddr,NXTaddr,NXTACCTSECRET,sender,dir,contact,sequenceid,key);
     }
     else retstr = clonestr("{\"error\":\"invalid getdb_func arguments\"}");
     return(retstr);
 }
 
-char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static unsigned char zerokey[32];
     char retbuf[MAX_JSON_FIELD],plaintext[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],otheracctstr[MAX_JSON_FIELD],hexstr[65],ret0str[65];
@@ -1279,7 +1276,7 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,ch
     return(clonestr("{\"error\":\"invalid cosign_func arguments\"}"));
 }
 
-char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char retbuf[MAX_JSON_FIELD],resultstr[MAX_JSON_FIELD],seedstr[MAX_JSON_FIELD],hexstr[65];
     bits256 ret,seed,priv,val;
@@ -1307,12 +1304,12 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(clonestr("{\"error\":\"invalid cosigned_func arguments\"}"));
 }
 
-char *gotpacket_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *gotpacket_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port);
     char msg[MAX_JSON_FIELD],ip_port[MAX_JSON_FIELD];
     int32_t duration;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(msg,objs[0]);
     unstringify(msg);
@@ -1321,10 +1318,10 @@ char *gotpacket_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     return(SuperNET_gotpacket(msg,duration,ip_port));
 }
 
-char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char ip_port[MAX_JSON_FIELD];
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(ip_port,objs[0]);
     if ( ip_port[0] != 0 )
@@ -1335,50 +1332,47 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevadd
     return(0);
 }
 
-char *stop_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *stop_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {    
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     close_SuperNET_dbs();
     exit(0);
     return(clonestr("{\"result\":\"stopping SuperNET...\"}"));
 }
 
-char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    //char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr);
-    char jsonstr[MAX_JSON_FIELD],ipaddr[64],*retstr = 0;
+    char jsonstr[MAX_JSON_FIELD],*retstr = 0;
     cJSON *json;
-    int32_t port;
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(jsonstr,objs[0]);
     if ( jsonstr[0] != 0 )
     {
-        if ( prevaddr != 0 )
-            port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
-        else port = 0, strcpy(ipaddr,"noprevaddr");
+        //if ( is_remote_access(previpaddr) != 0 )
+        //    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
+        //else port = 0, strcpy(ipaddr,"noprevaddr");
         unstringify(jsonstr);
-        printf("BTCDjson jsonstr.(%s) from (%s:%d)\n",jsonstr,ipaddr,port);
+        printf("BTCDjson jsonstr.(%s) from (%s)\n",jsonstr,previpaddr);
         json = cJSON_Parse(jsonstr);
         if ( json != 0 )
         {
-            retstr = SuperNET_json_commands(Global_mp,prevaddr,json,sender,valid,origargstr);
+            retstr = SuperNET_json_commands(Global_mp,previpaddr,json,sender,valid,origargstr);
             free_json(json);
         } else printf("PARSE error.(%s)\n",jsonstr);
     }
     return(retstr);
 }
 
-char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf=0;
     static int64_t len=0,allocsize=0;
     char reinit[MAX_JSON_FIELD],field[MAX_JSON_FIELD],value[MAX_JSON_FIELD*2+1],decodedhex[MAX_JSON_FIELD*2],*str,*retstr;
     cJSON *json,*item;
     FILE *fp;
-    printf("settings.%p\n",prevaddr);
-    if ( prevaddr != 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(field,objs[0]);
     copy_cJSON(value,objs[1]);
@@ -1448,7 +1442,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     return(retstr);
 }
 
-char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
+char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     // glue
     static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "", "json", 0 };
@@ -1528,7 +1522,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
         {
-            if ( prevaddr == 0 || strcmp(command,"findnode") != 0 )
+            if ( is_remote_access(previpaddr) == 0 || strcmp(command,"findnode") != 0 )
             {
                 if ( 1 || notlocalip(cp->privacyserver) == 0 )
                 {
@@ -1556,17 +1550,14 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevadd
                     return(0);
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                     objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
-                retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,prevaddr,sender,valid,objs,j-3,origargstr);
-                if ( prevaddr != 0 )
+                retstr = (*(json_handler)cmdinfo[0])(NXTaddr,NXTACCTSECRET,previpaddr,sender,valid,objs,j-3,origargstr);
+                if ( is_remote_access(previpaddr) != 0 )
                 {
                     char **ptrs = calloc(3,sizeof(*ptrs));
-                    uint64_t port,txid = 0;
-                    char ipaddr[64];
+                    uint64_t txid = 0;
                     ptrs[0] = clonestr(origargstr);
                     ptrs[1] = clonestr(retstr);
-                    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
-                    txid = calc_ipbits(ipaddr);
-                    txid |= (port << 32);
+                    txid = calc_ipbits(previpaddr);
                     memcpy(&ptrs[2],&txid,sizeof(ptrs[2]));
                     queue_GUIpoll(ptrs);
                 }

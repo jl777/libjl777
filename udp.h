@@ -53,11 +53,10 @@ struct write_req_t
 
 struct udp_queuecmd
 {
-    struct sockaddr prevaddr;
     cJSON *argjson;
     struct NXT_acct *tokenized_np;
     char *decoded;
-    int32_t valid;
+    uint32_t previpbits,valid;
 };
 
 void update_nodestats_data(struct nodestats *stats)

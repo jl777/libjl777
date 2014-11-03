@@ -548,12 +548,17 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     free_json(tmpjson);
                     if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 ) // just means valid
                     {
+                        char previpaddr[64];
                         struct udp_queuecmd *qp;
+                        if ( prevaddr != 0 )
+                        {
+                            extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
+                            qp->previpbits = calc_ipbits(previpaddr);
+                        } else previpaddr[0] = 0;
                         //printf("GOT.(%s)\n",parmstxt);
                         if ( 1 )
                         {
                             qp = calloc(1,sizeof(*qp));
-                            qp->prevaddr = *prevaddr;
                             qp->argjson = argjson;
                             qp->valid = valid;
                             qp->tokenized_np = tokenized_np;
@@ -563,7 +568,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             argjson = 0;
                             jsonstr = 0;
                         }
-                        else jsonstr = SuperNET_json_commands(Global_mp,prevaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                        else jsonstr = SuperNET_json_commands(Global_mp,previpaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
                         if ( jsonstr != 0 )
                         {
                             //printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);

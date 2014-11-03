@@ -543,7 +543,7 @@ struct madata
 #ifndef MAX
 #define MAX(x,y) (((x)>=(y)) ? (x) : (y))
 #endif
-typedef char *(*json_handler)(char *verifiedNXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr);
+typedef char *(*json_handler)(char *verifiedNXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr);
 
 char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *args);
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
@@ -588,7 +588,7 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
 typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
 char *addcontact(char *handle,char *acct);
-char *SuperNET_json_commands(struct NXThandler_info *mp,struct sockaddr *prevaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {

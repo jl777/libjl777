@@ -21,7 +21,7 @@
  dropout of server detected -> data shuffle?
  */
 
-char *onion_sendfile(int32_t L,struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *dest,FILE *fp)
+char *onion_sendfile(int32_t L,char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *dest,FILE *fp)
 {
     return(0);
 }
@@ -125,7 +125,7 @@ int32_t verify_fragment(char *usbdir,uint64_t txid,unsigned char *fragment,int32
 void calc_shares(unsigned char *shares,unsigned char *secret,int32_t size,int32_t width,int32_t M,int32_t N,unsigned char *sharenrs);
 void gfshare_extract(unsigned char *secretbuf,uint8_t *sharenrs,int32_t N,uint8_t *buffer,int32_t len,int32_t size);
 
-char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename,char *sharenrsstr,uint64_t *txids)
+char *mofn_restorefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename,char *sharenrsstr,uint64_t *txids)
 {
     long i,len;
     cJSON *json;
@@ -169,7 +169,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
             if ( fragments[i] != 0 )
                 continue;
             expand_nxt64bits(key,txids[i]);
-            str = kademlia_find("findvalue",prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,0,0);
+            str = kademlia_find("findvalue",previpaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,0,0);
             if ( str != 0 )
             {
                 if ( (json= cJSON_Parse(str)) != 0 )
@@ -311,7 +311,7 @@ char *mofn_restorefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXT
     return(clonestr(retstr));
 }
 
-char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename)
+char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename)
 {
     long i,len;
     FILE *savefp;
@@ -353,7 +353,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
                 n++;
                 cJSON_AddItemToArray(array,cJSON_CreateString(key));
                 fprintf(stderr,"%s ",key);
-                str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
+                str = kademlia_storedata(previpaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
                 if ( str != 0 )
                 {
                     //printf("i.%ld sharei.%d of %d: %s\n",i,sharei,N,str);
@@ -371,7 +371,7 @@ char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACC
             expand_nxt64bits(key,keyhash);
             cJSON_AddItemToArray(array,cJSON_CreateString(key));
             printf("%s ",key);
-            str = kademlia_storedata(prevaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
+            str = kademlia_storedata(previpaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,datastr);
             if ( str != 0 )
             {
                 //printf("i.%ld: %s\n",i,str);

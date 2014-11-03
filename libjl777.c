@@ -129,7 +129,9 @@ void SuperNET_idler(uv_idle_t *handle)
         if ( (qp= queue_dequeue(&udp_JSON)) != 0 )
         {
             //printf("process qp argjson.%p\n",qp->argjson);
-            jsonstr = SuperNET_json_commands(Global_mp,&qp->prevaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
+            char previpaddr[64];
+            expand_ipbits(previpaddr,qp->previpbits);
+            jsonstr = SuperNET_json_commands(Global_mp,previpaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
             //printf("free qp (%s) argjson.%p\n",jsonstr,qp->argjson);
             if ( jsonstr != 0 )
                 free(jsonstr);
@@ -540,7 +542,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
             }
             //printf("update (%s) (%s:%d) %s\n",verifiedNXTaddr,ipaddr,p2pport,pubkeystr);
             kademlia_update_info(verifiedNXTaddr,ipaddr,p2pport,pubkeystr,(int32_t)time(NULL),1);
-            retstr = SuperNET_json_commands(Global_mp,&prevaddr,json,verifiedNXTaddr,valid,(char *)msg);
+            retstr = SuperNET_json_commands(Global_mp,ipaddr,json,verifiedNXTaddr,valid,(char *)msg);
             if ( cmdstr != 0 )
                 free(cmdstr);
             free_json(json);

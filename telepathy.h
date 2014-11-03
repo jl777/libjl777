@@ -538,7 +538,7 @@ struct contact_info *find_contact(char *handle)
     return(contact);
 }
 
-char *getdb(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int32_t dir,char *contactstr,int32_t sequenceid,char *keystr)
+char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int32_t dir,char *contactstr,int32_t sequenceid,char *keystr)
 {
     char retbuf[4096],hexstr[4096],AESpasswordstr[512],locationstr[64],*jsonstr;
     cJSON *json;
@@ -706,7 +706,7 @@ void init_Contacts()
     free(contacts);
 }
 
-char *removecontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
+char *removecontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
 {
     struct contact_info *contact;
     char retstr[1024];
@@ -748,7 +748,7 @@ void set_contactstr(char *contactstr,struct contact_info *contact)
     sprintf(contactstr,"{\"handle\":\"%s\",\"acct\":\"%s\",\"NXT\":\"%llu\",\"pubkey\":\"%s\"}",contact->handle,rsacctstr,(long long)contact->nxt64bits,pubkeystr);
 }
 
-char *dispcontact(struct sockaddr *prevaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
+char *dispcontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)
 {
     int32_t i;
     struct contact_info *contact;
@@ -868,7 +868,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
     return(0);
 }
 
-char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     //struct coin_info *cp = get_coin_info("BTCD");
     char retbuf[MAX_JSON_FIELD],contactstr[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD],attachmentstr[MAX_JSON_FIELD],*retstr = 0;
@@ -876,7 +876,7 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr
     int32_t sequenceid;
     cJSON *attachmentjson;
     struct contact_info *contact;
-    if ( prevaddr != 0 )//|| cp == 0 )
+    if ( is_remote_access(previpaddr) != 0 )//|| cp == 0 )
         return(0);
     copy_cJSON(contactstr,objs[0]);
     contact = find_contact(contactstr);
@@ -1002,7 +1002,7 @@ void *findaddress_loop(void *ptr)
     return(0);
 }
 
-char *findaddress(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,uint64_t addr,uint64_t *list,int32_t n,int32_t targetdist,int32_t duration,int32_t numthreads)
+char *findaddress(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,uint64_t addr,uint64_t *list,int32_t n,int32_t targetdist,int32_t duration,int32_t numthreads)
 {
     static double lastbest,endmilli,best,metric;
     static uint64_t calcaddr,bestaddr = 0;

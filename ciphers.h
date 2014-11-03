@@ -859,7 +859,7 @@ char **validate_ciphers(int32_t **cipheridsp,struct coin_info *cp,cJSON *ciphers
 int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
 {
     struct coin_info *get_coin_info(char *coinstr);
-    char *mofn_savefile(struct sockaddr *prevaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename);
+    char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename);
     FILE *fp;
     cJSON *json,*txidsobj;
     int M=2,N=3,result;

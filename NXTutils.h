@@ -1415,6 +1415,13 @@ int32_t notlocalip(char *ipaddr)
     else return(1);
 }
 
+int32_t is_remote_access(char *previpaddr)
+{
+    if ( previpaddr != 0 && notlocalip(previpaddr) != 0 )
+        return(1);
+    else return(0);
+}
+
 uint32_t calc_ipbits(char *ip_port)
 {
     char ipaddr[64];
