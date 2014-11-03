@@ -323,7 +323,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
         return(0);
     }
-    else if ( strncmp("find",kadcmd,4) == 0 ) //strcmp(kadcmd,"store") == 0 ||
+    else if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 ) //
     {
         static int lasti;
         static uint64_t txids[8192]; // filter out localloops, maybe not needed anymore?
