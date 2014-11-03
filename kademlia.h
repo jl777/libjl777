@@ -650,15 +650,15 @@ uint64_t process_storageQ()
     struct coin_info *cp = get_coin_info("BTCD");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
-        //fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
+        fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);
         if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key)) != 0 )
         {
             init_hexbytes_noT(datastr,sp->data,sp->H.datalen);
-            //printf("dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
+            fprintf(stderr,"dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
             if ( Debuglevel > 1 )
-                printf("txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
+                fprintf(stderr,"txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
         }
         free(ptr);
     }
@@ -673,6 +673,7 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(key);
     //printf("halflen.%ld\n",strlen(datastr)/2);
+    fprintf(stderr,"do_localstor(%s) <- (%s)\n",key,datastr);
     sp = kademlia_getstored(PUBLIC_DATA,keybits,datastr);
     keynp = get_NXTacct(&createdflag,Global_mp,key);
     *txidp = 0;
