@@ -510,20 +510,22 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 if ( tmpjson != 0 )
                 {
                     char nxtip[64];
-                    uint16_t nxtport;
+                    uint16_t nxtport,dontupdate = 0;
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
+                    if ( strcmp(nxtip,"255.255.255.255") == 0 || notlocalip(nxtip) == 0 )
+                        dontupdate = 1;
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )
                         nxtport = port;
                     if ( encrypted == 0 )
                     {
-                        if ( strcmp("ping",checkstr) == 0 && internalflag == 0 )
+                        if ( strcmp("ping",checkstr) == 0 && internalflag == 0 && dontupdate == 0 )
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
                     }
                     else
                     {
-                        if ( strcmp("pong",checkstr) == 0 && internalflag == 0 )
+                        if ( strcmp("pong",checkstr) == 0 && internalflag == 0 && dontupdate == 0 )
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
                         valueobj = cJSON_GetObjectItem(tmpjson,"data");
                         if ( is_cJSON_Number(valueobj) != 0 )

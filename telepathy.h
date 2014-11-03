@@ -551,13 +551,11 @@ char *addcontact(char *handle,char *acct)
 
 char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    //struct coin_info *cp = get_coin_info("BTCD");
     char retbuf[MAX_JSON_FIELD],contactstr[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD],attachmentstr[MAX_JSON_FIELD],*retstr = 0;
-    //struct telepathy_args args;
     int32_t sequenceid;
     cJSON *attachmentjson;
     struct contact_info *contact;
-    if ( is_remote_access(previpaddr) != 0 )//|| cp == 0 )
+    if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(contactstr,objs[0]);
     contact = find_contact(contactstr);
