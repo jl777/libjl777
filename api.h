@@ -559,7 +559,7 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
     int32_t polarity;//,len;
     uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
     double price,volume;
-    struct orderbook_tx tx;
+    struct orderbook_tx tx,*txp;
     //struct coin_info *cp = get_coin_info("BTCD");
     char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
     if ( prevaddr != 0 )
@@ -594,7 +594,9 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
             txid = calc_txid((uint8_t *)&tx,sizeof(tx));//call_SuperNET_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
             if ( txid != 0 )
             {
-                update_orderbook_tx(1,obookid,&tx,txid);
+                txp = calloc(1,sizeof(*txp));
+                *txp = tx;
+                update_orderbook_tx(1,obookid,txp,txid);
                 expand_nxt64bits(txidstr,txid);
                 sprintf(buf,"{\"result\":\"success\",\"txid\":\"%s\"}",txidstr);
                 retstr = clonestr(buf);
