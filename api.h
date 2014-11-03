@@ -594,6 +594,7 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
             txid = calc_txid((uint8_t *)&tx,sizeof(tx));//call_SuperNET_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
             if ( txid != 0 )
             {
+                update_orderbook_tx(1,obookid,&tx,txid);
                 expand_nxt64bits(txidstr,txid);
                 sprintf(buf,"{\"result\":\"success\",\"txid\":\"%s\"}",txidstr);
                 retstr = clonestr(buf);
