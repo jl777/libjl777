@@ -112,7 +112,7 @@ void build_topology()
             free(contacts);
         }
         printf("numcontacts.%d\n",numcontacts);
-        sleep(10);
+        sleep(100);
     }
 }
 
