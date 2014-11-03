@@ -597,7 +597,7 @@ void add_SuperNET_peer(char *ip_port)
         p2pport = BTCD_PORT;
     pserver = get_pserver(&createdflag,ipaddr,0,p2pport);
     //pserver->S.BTCD_p2p = 1;
-    if ( on_SuperNET_whitelist(ipaddr) != 0 )
+    //if ( on_SuperNET_whitelist(ipaddr) != 0 )
     {
         printf("got_newpeer called. Now connected to.(%s) [%s/%d]\n",ip_port,ipaddr,p2pport);
         p2p_publishpacket(pserver,0);
