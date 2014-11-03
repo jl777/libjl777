@@ -331,7 +331,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         uint64_t txid;
         keybits = calc_nxt64bits(key);
         dist = bitweight(keybits ^ nxt64bits);
-        if ( dist <= KADEMLIA_MAXTHRESHOLD )
+        //if ( dist <= KADEMLIA_MAXTHRESHOLD )
         {
             if ( datastr != 0 )
                 calc_sha256cat(hash.bytes,(uint8_t *)key,(int32_t)strlen(key),(uint8_t *)datastr,(int32_t)strlen(datastr));
@@ -680,7 +680,10 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
     if ( keynp->bestbits != 0 )
     {
         if ( ismynxtbits(keynp->bestdist) == 0 )
+        {
+            printf("store at bestbits\n");
             *txidp = send_kademlia_cmd(keynp->bestdist,0,"store",NXTACCTSECRET,key,datastr);
+        }
         printf("Bestdist.%d bestbits.%llu\n",keynp->bestdist,(long long)keynp->bestbits);
         keynp->bestbits = 0;
         keynp->bestdist = 0;
@@ -715,11 +718,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
             dist = bitweight(destbits ^ keybits);
             if ( ismynxtbits(destbits) == 0 || dist < mydist )
             {
-                if ( (stats= get_nodestats(destbits)) != 0 )
-                {
-                    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
-                        send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
-                }
+                printf("store i.%d of %d, dist.%d vs mydist.%d\n",i,n,dist,mydist);
                 txid = send_kademlia_cmd(destbits,0,"store",NXTACCTSECRET,key,datastr);
             }
             else if ( is_remote_access(previpaddr) == 0 )
@@ -847,7 +846,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                     init_hexbytes_noT(databuf,sp->data,sp->H.datalen);
                     if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
                     {
-                        //printf("call store\n");
+                        printf("found value for (%s)! call store\n",key);
                         txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                     }
                     sprintf(retstr,"{\"data\":\"%s\"}",databuf);
