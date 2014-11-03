@@ -250,7 +250,7 @@ cJSON *create_orderbooks_json()
         {
             item = cJSON_CreateObject();
             expand_nxt64bits(numstr,raw->obookid);
-            cJSON_AddItemToObject(item,"orderbookid",cJSON_CreateString(numstr));
+            cJSON_AddItemToObject(item,"obookid",cJSON_CreateString(numstr));
             expand_nxt64bits(numstr,raw->assetA);
             cJSON_AddItemToObject(item,"assetA",cJSON_CreateString(numstr));
             expand_nxt64bits(numstr,raw->assetB);
@@ -382,13 +382,13 @@ struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity,struct orde
     printf("find_raw_orders.%llu polarity.%d\n",(long long)obookid,polarity);
     if ( (raw= find_raw_orders(obookid)) != 0 )
     {
+        op = (struct orderbook *)calloc(1,sizeof(*op));
+        op->assetA = raw->assetA;
+        op->assetB = raw->assetB;
+        op->polarity = polarity;
         orders = clone_orderptrs(&n,raw,feedorders,numfeeds);
         if ( orders != 0 )
         {
-            op = (struct orderbook *)calloc(1,sizeof(*op));
-            op->assetA = raw->assetA;
-            op->assetB = raw->assetB;
-            op->polarity = polarity;
             sort_orderbook(op,orders,n,raw);
             free(orders);
         }
