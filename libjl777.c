@@ -592,10 +592,13 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
+    if ( 0 )
+    {
     printf("add myhandle\n");
     addcontact(Global_mp->myhandle,cp->privateNXTADDR);
     printf("add mypublic\n");
     addcontact("mypublic",cp->srvNXTADDR);
+    }
     Historical_done = 1;
     Finished_init = 1;
     return(0);
