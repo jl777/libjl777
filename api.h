@@ -555,11 +555,13 @@ char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prev
 
 char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    int32_t polarity;
+    cJSON *json;
+    int32_t polarity;//,len;
     uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
     double price,volume;
     struct orderbook_tx tx;
-    char buf[MAX_JSON_FIELD],txidstr[64],*retstr = 0;
+    //struct coin_info *cp = get_coin_info("BTCD");
+    char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
     if ( prevaddr != 0 )
         return(0);
     nxt64bits = calc_nxt64bits(sender);
@@ -579,13 +581,21 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
             if ( dir*polarity > 0 )
                 bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
             else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
-            printf("need to finish porting this\n");
-            //len = construct_tokenized_req(tx,cmd,NXTACCTSECRET);
-            //txid = call_SuperNET_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
+            //printf("need to finish porting this\n");
+            //len = construct_tokenized_req(&tx,cmdjson,cp->srvNXTACCTSECRET);
+            if ( (json= gen_orderbook_txjson(&tx)) != 0 )
+            {
+                jsonstr = cJSON_Print(json);
+                stripwhite_ns(jsonstr,strlen(jsonstr));
+                printf("%s\n",jsonstr);
+                free_json(json);
+                free(jsonstr);
+            }
+            txid = calc_txid((uint8_t *)&tx,sizeof(tx));//call_SuperNET_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
             if ( txid != 0 )
             {
                 expand_nxt64bits(txidstr,txid);
-                sprintf(buf,"{\"txid\":\"%s\"}",txidstr);
+                sprintf(buf,"{\"result\":\"success\",\"txid\":\"%s\"}",txidstr);
                 retstr = clonestr(buf);
             }
         }
@@ -599,7 +609,7 @@ char *placequote_func(struct sockaddr *prevaddr,int32_t dir,char *sender,int32_t
     {
         if ( (obookid= create_raw_orders(assetA,assetB)) != 0 )
         {
-            sprintf(buf,"{\"obookid\":\"%llu\"}",(long long)obookid);
+            sprintf(buf,"{\"result\":\"success\",\"obookid\":\"%llu\"}",(long long)obookid);
             retstr = clonestr(buf);
         }
         else

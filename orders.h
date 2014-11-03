@@ -50,9 +50,32 @@ void free_orderbook(struct orderbook *op)
     }
 }
 
+cJSON *gen_orderbook_txjson(struct orderbook_tx *tx)
+{
+    cJSON *json = cJSON_CreateObject();
+    char numstr[64];
+    cJSON_AddItemToObject(json,"type",cJSON_CreateNumber(tx->type));
+    sprintf(numstr,"%llu",(long long)tx->nxt64bits), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)tx->baseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(tx->baseamount)), cJSON_AddItemToObject(json,"srcvol",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)tx->relid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(tx->relamount)), cJSON_AddItemToObject(json,"destvol",cJSON_CreateString(numstr));
+    //printf("sig.%08x t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",tx->sig,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
+    return(json);
+}
+
 void display_orderbook_tx(struct orderbook_tx *tx)
 {
-    printf("sig.%08x t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",tx->sig,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
+    cJSON *json;
+    char *jsonstr;
+    if ( (json= gen_orderbook_txjson(tx)) != 0 )
+    {
+        jsonstr = cJSON_Print(json);
+        stripwhite_ns(jsonstr,strlen(jsonstr));
+        printf("%s\n",jsonstr);
+        free_json(json);
+        free(jsonstr);
+    }
 }
 
 int32_t find_orderbook_tx(struct raw_orders *raw,struct orderbook_tx *tx)
