@@ -422,8 +422,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         memcpy(&ptr[sizeof(len)],ip_port,strlen(ip_port));
         memcpy(&ptr[sizeof(len) + 64],msg,len);
         queue_enqueue(&NarrowQ,ptr);
-      //if ( SuperNET_narrowcast(ip_port,(unsigned char *)msg,len) == 0 )
-            return(txid);
+        return(txid);
     }
     else
     {
@@ -445,18 +444,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             memcpy(&ptr[sizeof(len) + sizeof(duration)],msg,len);
             ptr[sizeof(len) + sizeof(duration) + len] = 0;
             queue_enqueue(&BroadcastQ,ptr);
-            //if ( SuperNET_broadcast(msg,duration) == 0 )
-                return(txid);
+            return(txid);
         } else printf("cant broadcast non-JSON.(%s)\n",msg);
     }
     return(txid);
 }
-
-/*int32_t got_newpeer(char *ip_port)
-{
-    queue_enqueue(&P2P_Q,clonestr(ip_port));
-	return(0);
-}*/
 
 char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
 {
@@ -560,7 +552,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     FILE *fp = 0;
     struct coin_info *cp;
     struct NXT_str *tp = 0;
-    //sleep(1);
     if ( myipaddr != 0 )
         myipaddr = clonestr(myipaddr);
     printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
@@ -571,7 +562,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             return(-1);
         fclose(fp);
     }
-   // portable_mutex_init(&Contacts_mutex);
     Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( Global_pNXT == 0 )
@@ -585,22 +575,21 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices (%s)\n",myipaddr);
-    //free(myipaddr);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
     {
         fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
     }
-    if ( 0 )
-    {
-    printf("add myhandle\n");
-    addcontact(Global_mp->myhandle,cp->privateNXTADDR);
-    printf("add mypublic\n");
-    addcontact("mypublic",cp->srvNXTADDR);
-    }
     Historical_done = 1;
     Finished_init = 1;
+    if ( 1 )
+    {
+        printf("add myhandle\n");
+        addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+        printf("add mypublic\n");
+        addcontact("mypublic",cp->srvNXTADDR);
+    }
     return(0);
 }
 
