@@ -379,6 +379,7 @@ struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity,struct orde
     struct orderbook *op = 0;
     struct orderbook_tx **orders;
     struct raw_orders *raw;
+    printf("find_raw_orders.%llu polarity.%d\n",(long long)obookid,polarity);
     if ( (raw= find_raw_orders(obookid)) != 0 )
     {
         orders = clone_orderptrs(&n,raw,feedorders,numfeeds);
