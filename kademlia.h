@@ -41,6 +41,7 @@ void update_Allnodes()
             {
                 if ( memcmp(sp,stats,sizeof(*sp)) != 0 )
                     update_nodestats_data(stats);
+                free(sp);
             }
         }
     }
@@ -659,6 +660,7 @@ uint64_t process_storageQ()
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
             if ( Debuglevel > 1 )
                 fprintf(stderr,"txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
+            free(sp);
         }
         free(ptr);
     }

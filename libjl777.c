@@ -277,6 +277,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         addcontact(Global_mp->myhandle,cp->privateNXTADDR);
         printf("add mypublic\n");
         addcontact("mypublic",cp->srvNXTADDR);
+        printf("finished addcontact\n");
     }
     return(myipaddr);
 }

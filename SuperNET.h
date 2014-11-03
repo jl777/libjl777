@@ -69,7 +69,7 @@ struct contact_info
     bits256 pubkey,shared;
     char handle[64];
     uint64_t nxt64bits,deaddrop,mydrop;
-    int32_t numsent,numrecv,lastrecv,lastsent,lastentry,removed;
+    int32_t numsent,numrecv,lastrecv,lastsent,lastentry;
 };
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);

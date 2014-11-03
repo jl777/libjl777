@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.179"
+#define HARDCODED_VERSION "0.180"
 
 #define NXT_GENESISTIME 1385294400
 #define SMALLVAL .000000000000001
@@ -16,6 +16,7 @@
 #define PUBADDRS_MSGDURATION (3600 * 24)
 #define MAX_ONION_LAYERS 7
 #define pNXT_SIG 0x99999999
+#define MAX_DROPPED_PACKETS 64
 
 #define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
@@ -676,6 +677,8 @@ double _pairave(float valA,float valB)
 #include "kademlia.h"
 #include "packets.h"
 #include "mofnfs.h"
+#include "contacts.h"
+#include "deaddrop.h"
 #include "telepathy.h"
 #include "bitcoind.h"
 #include "atomic.h"

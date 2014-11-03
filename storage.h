@@ -257,6 +257,21 @@ void clear_pair(DBT *key,DBT *data)
     memset(data,0,sizeof(DBT));
 }
 
+int32_t delete_storage(int32_t selector,char *keystr)
+{
+    DB *dbp = get_selected_database(selector);
+    DBT key;
+    if ( dbp != 0 )
+    {
+        memset(&key,0,sizeof(key));
+        key.data = keystr;
+        key.size = (int32_t)strlen(keystr) + 1;
+        dbp->del(dbp, NULL,&key,0);
+        return(dbsync(selector,0));
+    }
+    return(-1);
+}
+
 struct storage_header *find_storage(int32_t selector,char *keystr)
 {
     DBT key,data;
@@ -296,7 +311,6 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
 
 void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
 {
-    //DB_TXN *txn = 0;
     DBT key,data;
     int ret;
     if ( hp->datalen == 0 )
@@ -324,33 +338,6 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
             fprintf(stderr,"updated.%d (%s)\n",selector,keystr);
-        
-       /* //if ( (ret= Storage->txn_begin(Storage,NULL,&txn,0)) == 0 )
-        {
-            clear_pair(&key,&data);
-            key.data = keystr;
-            key.size = slen + 1;
-            sp->H.laststored = now;
-            if ( createdflag != 0 )
-                sp->H.createtime = now;
-            data.data = sp;
-            data.size = (sizeof(*sp) + datalen);
-            if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
-            {
-                Storage->err(Storage,ret,"Database put failed.");
-                //txn->abort(txn);
-            }
-            else
-            {
-                //if ( (ret= txn->commit(txn,0)) != 0 )
-                //    Storage->err(Storage,ret,"Transaction commit failed.");
-                //else
-                {
-                    if ( complete_dbput(selector,keystr,databuf,datalen) == 0 )
-                        fprintf(stderr,"created.%d DB entry for (%s)\n",createdflag,keystr);
-                }
-            }
-        } //else Storage->err(Storage,ret,"Transaction begin failed.");*/
     }
 }
 
