@@ -153,6 +153,8 @@ void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
     int32_t len;
     unsigned char buffer[8192];
     len = (int32_t)strlen(retstr);
+    if ( insertstr != 0 && insertstr[0] != 0 )
+        len += (int32_t)strlen(insertstr);
     sprintf((char *)buffer,
             "HTTP/1.0 200 OK\x0d\x0a"
             "Server: NXTprotocol.jl777\x0d\x0a"
@@ -1386,8 +1388,10 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,struct sockaddr *prevaddr,
     retstr = load_file("SuperNET.conf",&buf,&len,&allocsize);
     if ( retstr != 0 )
     {
-        printf("cloning.(%s)\n",retstr);
+        //printf("cloning.(%s)\n",retstr);
         retstr = clonestr(retstr);
+        if ( field[0] == 0 && value[0] == 0 )
+            return(retstr);
     }
     if ( retstr != 0 )
     {
