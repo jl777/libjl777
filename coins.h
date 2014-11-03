@@ -695,8 +695,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
-                            addcontact(Global_mp->myhandle,cp->privateNXTADDR);
-                            addcontact("mypublic",cp->srvNXTADDR);
+                            //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+                            //addcontact("mypublic",cp->srvNXTADDR);
                         }
                         else if ( strcmp(coinstr,"BTC") == 0 )
                             BTCaddr = cp->privateaddr;

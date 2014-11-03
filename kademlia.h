@@ -693,14 +693,14 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
 
 char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
 {
-    static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
+    //static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[32768];
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     uint64_t keybits,destbits,txid = 0;
     int32_t i,n,dist,mydist;
     struct SuperNET_storage *sp = 0;
     struct coin_info *cp = get_coin_info("BTCD");
-    struct nodestats *stats;
+    //struct nodestats *stats;
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
     {
         printf("kademlia_storedata null args\n");
