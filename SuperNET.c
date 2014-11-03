@@ -178,7 +178,7 @@ int main(int argc,const char *argv[])
     {
         if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
-        else build_topology();
+       // else build_topology();
     }
     while ( 1 ) sleep(60);
     /*
