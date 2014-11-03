@@ -267,13 +267,17 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         struct pserver_info *pserver;
         while ( (cp= get_coin_info("BTCD")) == 0 )
             sleep(1);
+        init_Contacts();
         stats = get_nodestats(cp->srvpubnxtbits);
         stats->p2pport = parse_ipaddr(cp->myipaddr,myipaddr);
         stats->ipbits = calc_ipbits(cp->myipaddr);
         pserver = get_pserver(0,myipaddr,0,0);
         pserver->nxt64bits = cp->srvpubnxtbits;
+        printf("add myhandle\n");
+        addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+        printf("add mypublic\n");
+        addcontact("mypublic",cp->srvNXTADDR);
     }
-    init_Contacts();
     return(myipaddr);
 }
 
@@ -583,13 +587,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     }
     Historical_done = 1;
     Finished_init = 1;
-    if ( 1 )
-    {
-        printf("add myhandle\n");
-        addcontact(Global_mp->myhandle,cp->privateNXTADDR);
-        printf("add mypublic\n");
-        addcontact("mypublic",cp->srvNXTADDR);
-    }
     return(0);
 }
 

@@ -603,37 +603,31 @@ char *addcontact(char *handle,char *acct)
         printf("addcontact: no BTCD cp?\n");
         return(0);
     }
-    handle[sizeof(contact->handle)-1] = 0;
     
     nxt64bits = conv_acctstr(acct);
-    //portable_mutex_lock(&Contacts_mutex);
+    contact = _find_contact_nxt64bits(nxt64bits);
+    if ( contact != 0 && strcmp(contact->handle,handle) != 0 )
     {
-        contact = _find_contact_nxt64bits(nxt64bits);
-        if ( contact != 0 && strcmp(contact->handle,handle) != 0 )
-        {
-            sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
-            //portable_mutex_unlock(&Contacts_mutex);
-            if ( Debuglevel > 1 )
-                printf("addcontact: (%s)\n",retstr);
-            return(clonestr(retstr));
-        }
-        if ( (contact= _find_contact(handle)) == 0 )
-        {
-            if ( Num_contacts >= Max_contacts )
-            {
-                Max_contacts = (Num_contacts + 1);
-                Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
-            }
-            if ( Debuglevel > 1 )
-                printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
-            contact = &Contacts[Num_contacts++];
-            memset(contact,0,sizeof(*contact));
-            safecopy(contact->handle,handle,sizeof(contact->handle));
-        }
-        else if ( strcmp(handle,"myhandle") == 0 )
-            return(clonestr("{\"error\":\"cant override myhandle\"}"));
+        sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
+        if ( Debuglevel > 1 )
+            printf("addcontact: (%s)\n",retstr);
+        return(clonestr(retstr));
     }
-    //portable_mutex_unlock(&Contacts_mutex);
+    if ( (contact= _find_contact(handle)) == 0 )
+    {
+        if ( Num_contacts >= Max_contacts )
+        {
+            Max_contacts = (Num_contacts + 1);
+            Contacts = realloc(Contacts,(sizeof(*Contacts) * Max_contacts));
+        }
+        if ( Debuglevel > 1 )
+            printf("Num_contacts.%d Max.%d\n",Num_contacts,Max_contacts);
+        contact = &Contacts[Num_contacts++];
+        memset(contact,0,sizeof(*contact));
+        safecopy(contact->handle,handle,sizeof(contact->handle));
+    }
+    else if ( strcmp(handle,"myhandle") == 0 )
+        return(clonestr("{\"error\":\"cant override myhandle\"}"));
     contact->removed = 0;
     if ( Debuglevel > 0 )
         printf("%p ADDCONTACT.(%s) lastcontact.%d acct.(%s) -> %llu\n",contact,contact->handle,contact->lastentry,acct,(long long)nxt64bits);
