@@ -655,7 +655,7 @@ uint64_t process_storageQ()
         if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key)) != 0 )
         {
             init_hexbytes_noT(datastr,sp->data,sp->H.datalen);
-            fprintf(stderr,"dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->datalen);
+            fprintf(stderr,"dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->H.datalen);
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
             if ( Debuglevel > 1 )
                 fprintf(stderr,"txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
