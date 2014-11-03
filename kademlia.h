@@ -716,7 +716,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
         {
             destbits = sortbuf[(i<<1) + 1];
             dist = bitweight(destbits ^ keybits);
-            if ( ismynxtbits(destbits) == 0 || dist < mydist )
+            if ( ismynxtbits(destbits) == 0 && dist < mydist )
             {
                 printf("store i.%d of %d, dist.%d vs mydist.%d\n",i,n,dist,mydist);
                 txid = send_kademlia_cmd(destbits,0,"store",NXTACCTSECRET,key,datastr);
