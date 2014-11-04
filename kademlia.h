@@ -398,9 +398,11 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     strcat(cmdstr,"}");
     if ( strcmp(kadcmd,"ping") == 0 )
     {
+        char _tokbuf[MAX_JSON_FIELD];
         struct sockaddr_in destaddr;
         uv_ip4_addr(pserver->ipaddr,SUPERNET_PORT,&destaddr);
-        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,cmdstr,strlen(cmdstr),ALLOCWR_ALLOCFREE);
+        len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
         return(0);
     }
     else return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
