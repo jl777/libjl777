@@ -535,7 +535,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
 {
     uint32_t now = (uint32_t)time(NULL);
     struct telepod *pod,**pods = 0;
-    int32_t i,podstate,flag,ret,m,n = 0;
+    int32_t i,podstate,flag,m,n = 0;
     uint32_t createtime;
     double evolve_amount;
     *nump = 0;

@@ -453,8 +453,10 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
         while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
             m++;
-            ptr = calloc(1,data.size);
-            memcpy(ptr,data.data,data.size);
+            ptr = decondition_storage(&data.size,&SuperNET_dbs[selector],data.data,data.size);
+
+            //ptr = calloc(1,data.size);
+            //memcpy(ptr,data.data,data.size);
             ptrs[n++] = ptr;
             if ( n >= max )
             {
