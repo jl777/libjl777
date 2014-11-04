@@ -341,6 +341,7 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
     {
         if ( memcmp(sp,databuf,datalen) != 0 )
             fprintf(stderr,"data cmp error\n");
+        else fprintf("DB.%d (%s) %d verified\n",selector,keystr,datalen);
         free(sp);
     } else { fprintf(stderr,"couldnt find sp in DB that was just added\n"); return(-1); }
     return(dbsync(selector,0));
@@ -371,7 +372,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->datalen);
-        //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
+        fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->datalen,data.size);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
