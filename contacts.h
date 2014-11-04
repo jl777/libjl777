@@ -139,7 +139,7 @@ void init_Contacts()
         return;
     for (i=0; i<numcontacts; i++)
         fprintf(stderr,"%s\n",contacts[i]->handle);
-    fprintf(stderr,"\n");
+    fprintf(stderr,"contacts\n");
     for (i=0; i<numcontacts; i++)
     {
         expand_nxt64bits(NXTaddr,contacts[i]->nxt64bits);
