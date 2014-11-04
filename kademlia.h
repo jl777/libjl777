@@ -569,11 +569,9 @@ char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
 
 struct SuperNET_storage *kademlia_getstored(int32_t selector,uint64_t keyhash,char *datastr)
 {
-    uint32_t now;
     char key[64];
     struct SuperNET_storage *sp;
     expand_nxt64bits(key,keyhash);
-    now = (uint32_t)time(NULL);
     sp = (struct SuperNET_storage *)find_storage(selector,key);
     if ( datastr == 0 )
         return(sp);
@@ -704,7 +702,6 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
     int32_t i,n,dist,mydist;
     struct SuperNET_storage *sp = 0;
     struct coin_info *cp = get_coin_info("BTCD");
-    //struct nodestats *stats;
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
     {
         printf("kademlia_storedata null args\n");
@@ -725,18 +722,11 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
                 printf("store i.%d of %d, dist.%d vs mydist.%d\n",i,n,dist,mydist);
                 txid = send_kademlia_cmd(destbits,0,"store",NXTACCTSECRET,key,datastr);
             }
-            else if ( is_remote_access(previpaddr) == 0 )
-                sp = do_localstore(&txid,key,datastr,NXTACCTSECRET);
         }
         sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%ld,\"txid\":\"%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
         //free(sortbuf);
     }
-    else
-    {
-        sp = do_localstore(&txid,key,datastr,NXTACCTSECRET);
-        sprintf(retstr,"{\"error\":\"kademlia_store\",\"key\":\"%s\",\"msg\":\"no peers, stored locally\"}",key);
-    }
-    if ( sp != 0 )
+    if ( (sp= do_localstore(&txid,key,datastr,NXTACCTSECRET)) != 0 )
         free(sp);
     //if ( Debuglevel > 0 )
         printf("STORE.(%s)\n",retstr);
@@ -847,7 +837,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
             {
                 if ( sp->data != 0 )
                 {
-                    init_hexbytes_noT(databuf,sp->data,sp->H.datalen);
+                    init_hexbytes_noT(databuf,sp->data,sp->H.datalen-sizeof(*sp));
                     if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
                     {
                         printf("found value for (%s)! call store\n",key);

@@ -410,7 +410,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
             createdflag = 1;
             if ( is_decimalstr(keystr) && slen < MAX_NXTADDR_LEN )
             {
-                printf("check decimalstr.(%s)\n",keystr);
+                //printf("check decimalstr.(%s)\n",keystr);
                 hashval = calc_nxt64bits(keystr);
             }
             else hashval = calc_txid((uint8_t *)keystr,slen);
