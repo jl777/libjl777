@@ -162,6 +162,7 @@ void init_Contacts()
         }
         free(contacts[i]);
     }
+    printf("finished init contacts\n");
     free(contacts);
 }
 

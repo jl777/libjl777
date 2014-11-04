@@ -501,9 +501,11 @@ char *addcontact(char *handle,char *acct)
     {
         sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
         if ( Debuglevel > 1 )
-            printf("addcontact: (%s)\n",retstr);
+            printf("addcontact: existing (%s)\n",retstr);
         return(clonestr(retstr));
     }
+    if ( Debuglevel > 1 )
+        printf("addcontact: new (%s)\n",retstr);
     if ( (contact= find_contact(handle)) == 0 )
     {
         memset(&C,0,sizeof(C));
