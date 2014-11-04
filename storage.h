@@ -222,7 +222,7 @@ int32_t init_SuperNET_storage()
             open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            if ( 0 && cp != 0 )
+            if ( 1 && cp != 0 )
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
@@ -341,6 +341,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
 {
     DBT key,data;
     int ret;
+    struct SuperNET_db *sdb;
     if ( hp->datalen == 0 )
     {
         printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
@@ -348,6 +349,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     }
     if ( valid_SuperNET_db("update_storage",selector) != 0 )
     {
+        sdb = &SuperNET_dbs[selector];
         clear_pair(&key,&data);
         key.data = keystr;
         key.size = (uint32_t)strlen(keystr) + 1;
@@ -359,13 +361,13 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
-        data.data = condition_storage(&data.size,&SuperNET_dbs[selector],hp,hp->datalen);
+        data.data = condition_storage(&data.size,sdb,hp,hp->datalen);
         //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
             fprintf(stderr,"updated.%d (%s)\n",selector,keystr);
-        if ( data.data != 0 )
+        if ( data.data != hp && data.data != 0 )
             free(data.data);
     }
 }
