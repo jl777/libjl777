@@ -157,7 +157,7 @@ void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
         len += (int32_t)strlen(insertstr);
     sprintf((char *)buffer,
             "HTTP/1.0 200 OK\x0d\x0a"
-            "Server: NXTprotocol.jl777\x0d\x0a"
+            "Server: SuperNET\x0d\x0a"
             "Content-Type: text/html\x0d\x0a"
             "Access-Control-Allow-Origin: *\r\n"
             "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
@@ -167,7 +167,7 @@ void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
     if ( insertstr != 0 && insertstr[0] != 0 )
         strcat((char *)buffer,insertstr);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-    libwebsocket_write(wsi,(unsigned char *)retstr,len,LWS_WRITE_HTTP);
+    libwebsocket_write(wsi,(unsigned char *)retstr,strlen(retstr),LWS_WRITE_HTTP);
     if ( Debuglevel > 2 )
         printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
 }
@@ -550,6 +550,20 @@ char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     }
     else retstr = clonestr("{\"error\":\"no orderbooks\"}");
     return(retstr);
+}
+
+void submit_quote(uint64_t obookid,char *quotestr)
+{
+    char NXTaddr[64],keystr[64],datastr[MAX_JSON_FIELD*2],*retstr;
+    struct coin_info *cp = get_coin_info("BTCD");
+    if ( cp != 0 )
+    {
+        strcpy(NXTaddr,cp->privateNXTADDR);
+        expand_nxt64bits(keystr,obookid);
+        retstr = kademlia_storedata(0,NXTaddr,cp->privateNXTACCTSECRET,NXTaddr,keystr,datastr);
+        if ( retstr != 0 )
+            free(retstr);
+    }
 }
 
 char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)

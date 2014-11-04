@@ -387,8 +387,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         {
             if ( strncmp(kadcmd,"have",4) == 0 )
                 encrypted = 1;
-            //else if ( strncmp(kadcmd,"findnode",4) == 0 && datastr != 0 && datastr[0] != 0 )
-            //    encrypted = 4;
+            else if ( (strcmp(kadcmd,"store") == 0 || strcmp(kadcmd,"findnode") == 0) && datastr != 0 && datastr[0] != 0 )
+                encrypted = 4;
             sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld",kadcmd,verifiedNXTaddr,(long)time(NULL));
         }
     }
