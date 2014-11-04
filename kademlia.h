@@ -37,7 +37,7 @@ void update_Allnodes()
         {
             stats = get_nodestats(Allnodes[i]);
             expand_nxt64bits(NXTaddr,Allnodes[i]);
-            if ( (sp= (struct nodestats *)find_storage(NODESTATS_DATA,NXTaddr)) != 0 )
+            if ( (sp= (struct nodestats *)find_storage(NODESTATS_DATA,NXTaddr,0)) != 0 )
             {
                 if ( memcmp(sp,stats,sizeof(*sp)) != 0 )
                     update_nodestats_data(stats);
@@ -572,13 +572,13 @@ struct SuperNET_storage *kademlia_getstored(int32_t selector,uint64_t keyhash,ch
     char key[64];
     struct SuperNET_storage *sp;
     expand_nxt64bits(key,keyhash);
-    sp = (struct SuperNET_storage *)find_storage(selector,key);
+    sp = (struct SuperNET_storage *)find_storage(selector,key,0);
     if ( datastr == 0 )
         return(sp);
     if ( sp != 0 )
         free(sp);
     add_storage(selector,key,datastr);
-    return((struct SuperNET_storage *)find_storage(selector,key));
+    return((struct SuperNET_storage *)find_storage(selector,key,0));
 }
 
 uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits)
@@ -653,7 +653,7 @@ uint64_t process_storageQ()
     {
         fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);
-        if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key)) != 0 )
+        if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key,0)) != 0 )
         {
             init_hexbytes_noT(datastr,sp->data,sp->H.datalen);
             fprintf(stderr,"dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->H.datalen);
@@ -670,9 +670,10 @@ uint64_t process_storageQ()
 void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
 {
     cJSON *json;
-    uint64_t keybits;
-    int32_t len,createdflag;
-    char data[MAX_JSON_FIELD];
+    uint64_t keybits,obookid;
+    int32_t len,createdflag,selector = PUBLIC_DATA;
+    struct InstantDEX_quote Q;
+    char data[MAX_JSON_FIELD],quotedatastr[MAX_JSON_FIELD];
     struct NXT_acct *keynp;
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(key);
@@ -696,12 +697,23 @@ void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
     if ( (data[len-1] == 0 || data[len-1] == '}' || data[len-1] == ']') && (data[0] == '{' || data[0] == '[') )
     {
         json = cJSON_Parse(data);
-        printf("localstorage of InstantDEX orderbook_tx.(%s) %p\n",data,json);
+        //({"requestType":"quote","type":0,"NXT":"13434315136155299987","base":"4551058913252105307","srcvol":"1.01000000","rel":"11060861818140490423","destvol":"0.00606000"}) 0x7f24700111c0
         if ( json != 0 )
+        {
+            uint64_t conv_InstantDEX_json(struct InstantDEX_quote *qp,cJSON *json);
+            obookid = conv_InstantDEX_json(&Q,json);
+            if ( obookid != 0 )
+            {
+                init_hexbytes_noT(quotedatastr,(uint8_t *)&Q,sizeof(Q));
+                datastr = quotedatastr;
+                keybits = obookid;
+                selector = INSTANTDEX_DATA;
+            }
             free_json(json);
+            printf("localstorage of InstantDEX orderbook_tx.(%s) %llu %f %f\n",data,(long long)obookid,Q.price,Q.vol);
+        }
     }
-    printf("len.%d %d %d\n",len,data[len-1],data[0]);
-    if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
+    if ( (sp= kademlia_getstored(selector,keybits,datastr)) != 0 )
         free(sp);
 }
 
@@ -722,6 +734,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
     mydist = bitweight(keybits ^ cp->srvpubnxtbits);
     memset(sortbuf,0,sizeof(sortbuf));
     n = sort_all_buckets(sortbuf,keybits);
+    retstr[0] = 0;
     if ( n != 0 )
     {
         for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
@@ -736,7 +749,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
         }
         sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%ld,\"txid\":\"%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
         //free(sortbuf);
-    }
+    } else sprintf(retstr,"{\"result\":\"localstore only\"}");
     do_localstore(&txid,key,datastr,NXTACCTSECRET);
     //if ( Debuglevel > 0 )
         printf("STORE.(%s)\n",retstr);
@@ -1359,7 +1372,7 @@ cJSON *gen_peers_json(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET
         for (i=0; i<n; i++)
         {
             expand_nxt64bits(key,cp->nxtaccts[i]);
-            init_hexbytes(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
+            init_hexbytes_noT(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
             retstr = kademlia_find("findnode",previpaddr,verifiedNXTaddr,NXTACCTSECRET,sender,key,0,0);
             if ( retstr != 0 )
                 free(retstr);

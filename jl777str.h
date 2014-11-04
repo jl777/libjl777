@@ -288,7 +288,7 @@ char hexbyte(int32_t c)
     else return(0);
 }
 
-int32_t init_hexbytes(char *hexbytes,unsigned char *message,long len)
+int32_t init_hexbytes_truncate(char *hexbytes,unsigned char *message,long len)
 {
     int32_t i,lastnonz = -1;
     for (i=0; i<len; i++)

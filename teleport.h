@@ -243,7 +243,7 @@ uint64_t scan_telepods(char *coinstr)
                             if ( (pod= parse_unspent_json(cp,item)) != 0 )
                             {
                                 //fprintf(stderr,"pod.%p parse_unspent\n",pod);
-                                if ( (hp= find_storage(TELEPOD_DATA,pod->txid)) == 0 )
+                                if ( (hp= find_storage(TELEPOD_DATA,pod->txid,0)) == 0 )
                                 {
                                     disp_telepod("new",pod);
                                     update_telepod(pod);
@@ -950,7 +950,7 @@ struct telepod *create_debitcredit(char *txidstr,char *cmd,char *contactstr,char
     unsigned char tmp[32];
     struct telepod *pod = 0;
     randombytes(tmp,sizeof(tmp));
-    init_hexbytes(txidstr,tmp,sizeof(tmp));
+    init_hexbytes_noT(txidstr,tmp,sizeof(tmp));
     pod = create_telepod((uint32_t)time(NULL),coinstr,satoshis,contactstr,cmd,comment,txidstr,-1);
     return(pod);
 }

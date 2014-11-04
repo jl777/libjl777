@@ -50,11 +50,11 @@ void free_orderbook(struct orderbook *op)
     }
 }
 
-cJSON *gen_orderbook_txjson(struct orderbook_tx *tx)
+cJSON *gen_orderbook_txjson(struct orderbook_tx *tx,int32_t bidflag)
 {
     cJSON *json = cJSON_CreateObject();
     char numstr[64];
-    cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("quote"));
+    cJSON_AddItemToObject(json,"requestType",cJSON_CreateString(bidflag!=0?"bid":"ask"));
     cJSON_AddItemToObject(json,"type",cJSON_CreateNumber(tx->type));
     sprintf(numstr,"%llu",(long long)tx->nxt64bits), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)tx->baseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(numstr));
@@ -65,11 +65,44 @@ cJSON *gen_orderbook_txjson(struct orderbook_tx *tx)
     return(json);
 }
 
-void display_orderbook_tx(struct orderbook_tx *tx)
+uint64_t conv_InstantDEX_json(struct InstantDEX_quote *qp,cJSON *json)
+{
+    uint64_t assetA,assetB,obookid = 0;
+    double srcvol,destvol,polarity = 0.;
+    char basestr[MAX_JSON_FIELD],relstr[MAX_JSON_FIELD],nxtstr[MAX_JSON_FIELD],cmd[MAX_JSON_FIELD];
+    //({"requestType":"[bid|ask]","type":0,"NXT":"13434315136155299987","base":"4551058913252105307","srcvol":"1.01000000","rel":"11060861818140490423","destvol":"0.00606000"}) 0x7f24700111c0
+    if ( json != 0 )
+    {
+        memset(qp,0,sizeof(*qp));
+        copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
+        if ( strcmp(cmd,"bid") == 0 )
+            polarity = 1.;
+        else if ( strcmp(cmd,"ask") == 0 )
+            polarity = -1.;
+        copy_cJSON(basestr,cJSON_GetObjectItem(json,"base")), assetA = calc_nxt64bits(basestr);
+        copy_cJSON(relstr,cJSON_GetObjectItem(json,"rel")), assetB = calc_nxt64bits(relstr);
+        if ( assetA != 0 && assetB != 0 && polarity != 0. )
+        {
+            srcvol = get_API_float(cJSON_GetObjectItem(json,"srcvol"));
+            destvol = get_API_float(cJSON_GetObjectItem(json,"destvol"));
+            if ( srcvol != 0. && destvol != 0. )
+            {
+                copy_cJSON(nxtstr,cJSON_GetObjectItem(json,"NXT")), qp->nxt64bits = calc_nxt64bits(nxtstr);
+                qp->price = (destvol / srcvol);
+                qp->vol = srcvol;
+                obookid = (assetA ^ assetB);
+                printf("conv_InstantDEX_json: obookid.%llu price %f, vol %f\n",(long long)obookid,qp->price,qp->vol);
+            }
+        }
+    }
+    return(obookid);
+}
+
+void display_orderbook_tx(struct orderbook_tx *tx,int32_t dir)
 {
     cJSON *json;
     char *jsonstr;
-    if ( (json= gen_orderbook_txjson(tx)) != 0 )
+    if ( (json= gen_orderbook_txjson(tx,dir)) != 0 )
     {
         jsonstr = cJSON_Print(json);
         stripwhite_ns(jsonstr,strlen(jsonstr));
@@ -359,7 +392,7 @@ void sort_orderbook(struct orderbook *op,struct orderbook_tx **orders,int32_t n,
                 }
                 else
                 {
-                    display_orderbook_tx(tx);
+                    display_orderbook_tx(tx,dir);
                     printf("create_orderbook: unexpected non-dir quote.%p (%llu) base.%llu | (%llu) rel.%llu\n",tx,(long long)tx->baseid,(long long)tx->baseamount,(long long)tx->relid,(long long)tx->relamount);
                     continue;
                 }

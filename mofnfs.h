@@ -46,7 +46,7 @@ char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen,
         (*cipheridsp) = calloc(len+2,sizeof(*cipheridsp));
         for (i=0; i<=len; i++)
         {
-            init_hexbytes(key,passkey.bytes,sizeof(passkey));
+            init_hexbytes_noT(key,passkey.bytes,sizeof(passkey));
             (*cipheridsp)[i] = (pin[i] % NUM_CIPHERS);
             privkeys[i] = clonestr(key);
             //printf("(%d %s) ",(*cipheridsp)[i],privkeys[i]);

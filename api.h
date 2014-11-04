@@ -346,7 +346,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
             {
                 memcpy(ip_port,&ptr[sizeof(len)],64);
                 memcpy(msg,&ptr[sizeof(len) + 64],len);
-                init_hexbytes(hexstr,(unsigned char *)msg,len);
+                init_hexbytes_noT(hexstr,(unsigned char *)msg,len);
                 sprintf(retbuf,"{\"ip_port\":\"%s\",\"hex\":\"%s\",\"len\":%d}",ip_port,hexstr,len);
                 //printf("send back narrow.(%s)\n",retbuf);
             } else printf("BTCDpoll NarrowQ illegal len.%d\n",len);
@@ -560,7 +560,7 @@ void submit_quote(uint64_t obookid,char *quotestr)
     {
         strcpy(NXTaddr,cp->srvNXTADDR);
         expand_nxt64bits(keystr,obookid);
-        init_hexbytes(datastr,(uint8_t *)quotestr,strlen(quotestr)+1);
+        init_hexbytes_noT(datastr,(uint8_t *)quotestr,strlen(quotestr)+1);
         retstr = kademlia_storedata(0,NXTaddr,cp->srvNXTACCTSECRET,NXTaddr,keystr,datastr);
         if ( retstr != 0 )
             free(retstr);
@@ -570,11 +570,10 @@ void submit_quote(uint64_t obookid,char *quotestr)
 char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
-    int32_t polarity;//,len;
+    int32_t polarity;
     uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
     double price,volume;
     struct orderbook_tx tx,*txp;
-    //struct coin_info *cp = get_coin_info("BTCD");
     char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
@@ -595,9 +594,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
             if ( dir*polarity > 0 )
                 bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
             else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
-            //printf("need to finish porting this\n");
-            //len = construct_tokenized_req(&tx,cmdjson,cp->srvNXTACCTSECRET);
-            if ( (json= gen_orderbook_txjson(&tx)) != 0 )
+            if ( (json= gen_orderbook_txjson(&tx,dir*polarity > 0)) != 0 )
             {
                 jsonstr = cJSON_Print(json);
                 stripwhite_ns(jsonstr,strlen(jsonstr));
@@ -606,7 +603,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
                 free_json(json);
                 free(jsonstr);
             }
-            txid = calc_txid((uint8_t *)&tx,sizeof(tx));//call_SuperNET_broadcast((uint8_t *)packet,len,PUBADDRS_MSGDURATION);
+            txid = calc_txid((uint8_t *)&tx,sizeof(tx));
             if ( txid != 0 )
             {
                 txp = calloc(1,sizeof(*txp));
@@ -1276,16 +1273,16 @@ char *cosign_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
         seed = sha;
     }
     if ( seedstr[0] == 0 )
-        init_hexbytes(seedstr,seed.bytes,sizeof(seed));
+        init_hexbytes_noT(seedstr,seed.bytes,sizeof(seed));
     stats = get_nodestats(calc_nxt64bits(otheracctstr));
     if ( strlen(seedstr) == 64 && sender[0] != 0 && valid > 0 && stats != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
     {
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         memcpy(pub.bytes,stats->pubkey,sizeof(pub));
         ret0 = curve25519(priv,pub);
-        init_hexbytes(ret0str,ret0.bytes,sizeof(ret0));
+        init_hexbytes_noT(ret0str,ret0.bytes,sizeof(ret0));
         ret = xor_keys(seed,ret0);
-        init_hexbytes(hexstr,ret.bytes,sizeof(ret));
+        init_hexbytes_noT(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"requestType\":\"cosigned\",\"seed\":\"%s\",\"result\":\"%s\",\"privacct\":\"%s\",\"pubacct\":\"%s\",\"ret0\":\"%s\"}",seedstr,ret0str,NXTaddr,otheracctstr,hexstr);
         return(clonestr(retbuf));
     }
@@ -1313,7 +1310,7 @@ char *cosigned_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         decode_hex(val.bytes,sizeof(val),resultstr);
         memcpy(priv.bytes,Global_mp->loopback_privkey,sizeof(priv));
         ret = sha256_key(xor_keys(seed,curve25519(priv,val)));
-        init_hexbytes(hexstr,ret.bytes,sizeof(ret));
+        init_hexbytes_noT(hexstr,ret.bytes,sizeof(ret));
         sprintf(retbuf,"{\"seed\":\"%s\",\"result\":\"%s\",\"acct\":\"%s\",\"privacct\":\"%llu\",\"pubacct\":\"%llu\",\"input\":\"%s\"}",seedstr,hexstr,NXTaddr,(long long)privacct,(long long)pubacct,resultstr);
         return(clonestr(retbuf));
     }

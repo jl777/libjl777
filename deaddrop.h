@@ -111,7 +111,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
         printf("\n");
     }
     printf("bestaddr.%llu bestmetric %.3f\n",(long long)args->bestaddr,bestmetric);
-    init_hexbytes(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
+    init_hexbytes_noT(otherkeystr,args->otherpubkey.bytes,sizeof(args->otherpubkey));
     printf("Other pubkey.(%s)\n",otherkeystr);
     for (i=0; i<args->numrefs; i++)
         printf("%llu ",(long long)args->refaddrs[i]);

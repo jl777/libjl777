@@ -913,7 +913,7 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
     // jl777: here is where the entire message could be signed;
    // printf("in submit_AM\n");
     memset(hexbytes,0,sizeof(hexbytes));
-    init_hexbytes(hexbytes,(void *)ap,len);
+    init_hexbytes_truncate(hexbytes,(void *)ap,len);
     sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%lld",_NXTSERVER,NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",(long long)MIN_NQTFEE);
     //printf("submit_AM.(%s)\n",cmd);
     jsonstr = issue_NXTPOST(curl_handle,cmd);
