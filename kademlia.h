@@ -396,7 +396,14 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     data = replace_datafield(cmdstr,databuf,&len,datastr);
     strcat(cmdstr,"}");
-    return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
+    if ( strcmp(kadcmd,"ping") == 0 )
+    {
+        struct sockaddr_in destaddr;
+        uv_ip4_addr(pserver->ipaddr,SUPERNET_PORT,&destaddr);
+        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,cmdstr,strlen(cmdstr),ALLOCWR_ALLOCFREE);
+        return(0);
+    }
+    else return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
 }
 
 void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubkeystr,uint32_t lastcontact,int32_t p2pflag)
