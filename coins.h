@@ -753,8 +753,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         {
                             printf("addcontact (%s) <-> (%s)\n",handle,acct);
                             //retstr = addcontact(handle,acct);
-                            if ( retstr != 0 )
-                                free(retstr);
+                            //if ( retstr != 0 )
+                            //   free(retstr);
                         }
                     }
                 }
