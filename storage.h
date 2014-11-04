@@ -15,10 +15,11 @@
 
 struct SuperNET_db
 {
-    char name[64];
+    char name[64],**privkeys;
     queue_t queue;
     long maxitems,total_stored;
     DB *dbp;
+    int32_t *cipherids;
     uint32_t busy,type,flags,active;
 };
 
@@ -195,6 +196,8 @@ int32_t init_SuperNET_storage()
 {
     static int didinit,selectors[NUM_SUPERNET_DBS];
     int ret,selector;
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct SuperNET_db *sdb;
     if ( IS_LIBTEST == 0 )
         return(0);
     if ( didinit == 0 )
@@ -219,6 +222,13 @@ int32_t init_SuperNET_storage()
             open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
+            if ( cp != 0 )
+            {
+                sdb = &SuperNET_dbs[TELEPOD_DATA];
+                sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
+                sdb = &SuperNET_dbs[CONTACT_DATA];
+                sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
+            }
             for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
             {
                 selectors[selector] = selector;
@@ -249,6 +259,27 @@ DB *get_selected_database(int32_t selector)
     if ( valid_SuperNET_db("get_selected_database",selector) != 0 )
         return(SuperNET_dbs[selector].dbp);
     return(0);
+}
+
+void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
+{
+    void *ptr;
+    *lenp = size;
+    if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
+    {
+        ptr = malloc(size);
+        memcpy(ptr,data,size);
+        return(ptr);
+    }
+    else return(ciphers_codec(1,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
+}
+
+void *condition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
+{
+    *lenp = size;
+    if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
+        return(data);
+    else return(ciphers_codec(0,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
 }
 
 void clear_pair(DBT *key,DBT *data)
@@ -290,10 +321,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr)
             fprintf(stderr,"DB.%d get error.%d data.size %d\n",selector,ret,data.size);
         else return(0);
     }
-    hp = (struct storage_header *)data.data;
-    ptr = malloc(data.size);
-    memcpy(ptr,hp,data.size);
-    //fprintf(stderr,"find_storage ret.%p\n",ptr);
+    ptr = decondition_storage(&data.size,&SuperNET_dbs[selector],data.data,data.size);
     return(ptr);
 }
 
@@ -331,13 +359,14 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
-        data.data = hp;
-        data.size = hp->datalen;
+        data.data = condition_storage(&data.size,&SuperNET_dbs[selector],hp,hp->datalen);
         //fprintf(stderr,"update entry.(%s) datalen.%d\n",keystr,hp->datalen);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
             fprintf(stderr,"updated.%d (%s)\n",selector,keystr);
+        if ( data.data != 0 )
+            free(data.data);
     }
 }
 
