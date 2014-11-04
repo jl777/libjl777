@@ -157,6 +157,8 @@ void create_telepathy_entry(struct contact_info *contact,int32_t sequenceid)
     if ( contact->lastentry != 0 && sequenceid <= contact->lastentry )
     {
         printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
+        if ( sequenceid < 0 )
+            exit(-1);
         return;
     }
     if ( (location= calc_recvAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid)) != 0 )
@@ -206,6 +208,7 @@ cJSON *parse_encrypted_data(int32_t updatedb,int32_t *sequenceidp,struct contact
             hint = get_API_int(cJSON_GetObjectItem(json,"hint"),-1);
             if ( hint > 0 )
             {
+                printf("hint.%d\n",hint);
                 for (i=0; i<MAX_DROPPED_PACKETS; i++)
                     create_telepathy_entry(contact,hint+i);
             }
@@ -508,6 +511,7 @@ char *addcontact(char *handle,char *acct)
         update_contact_info(&C);
         if ( (contact= find_handle(handle)) == 0 )
             return(clonestr("{\"error\":\"cant find just created handle?\"}"));
+        fprintf(stderr,"created new contact seqid.%d\n",contact->lastentry);
     }
     else if ( strcmp(handle,"myhandle") == 0 )
         return(clonestr("{\"error\":\"cant override myhandle\"}"));
