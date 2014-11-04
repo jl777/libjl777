@@ -420,11 +420,11 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     struct nodestats *stats;
     struct coin_info *cp = get_coin_info("BTCD");
     unsigned char *outbuf;
-    if ( pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0 )
+    /*if ( pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0 )
     {
-        //printf("no nxtaddr.%llu or null stats.%p ipbits.%x\n",(long long)pserver->nxt64bits,stats,stats!=0?stats->ipbits:0);
+        printf("no nxtaddr.%llu or null stats.%p ipbits.%x\n",(long long)pserver->nxt64bits,stats,stats!=0?stats->ipbits:0);
         return(0);
-    }
+    }*/
     if ( stats != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
