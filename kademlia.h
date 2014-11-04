@@ -693,7 +693,7 @@ void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
     }
     len = (int32_t)strlen(datastr)/2;
     decode_hex((uint8_t *)data,len,datastr);
-    if ( data[len-1] == 0 && (data[0] == '{' || data[0] == '[') )
+    if ( (data[len-1] == 0 || data[len-1] == '}' || data[len-1] == ']') && (data[0] == '{' || data[0] == '[') )
     {
         json = cJSON_Parse(data);
         printf("localstorage of InstantDEX orderbook_tx.(%s) %p\n",data,json);
