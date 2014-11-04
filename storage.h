@@ -20,7 +20,7 @@ struct SuperNET_db
     long maxitems,total_stored;
     DB *dbp;
     int32_t *cipherids;
-    uint32_t busy,type,flags,active;
+    uint32_t busy,type,flags,active,minsize,maxsize;
 };
 
 struct dbreq { DB_TXN *txn; DBT key,*data; int32_t flags,retval; uint16_t selector,funcid,doneflag,pad; };
@@ -143,7 +143,7 @@ int32_t dbsync(int32_t selector,int32_t flags)
     return(dbcmd("dbsync",'S',selector,0,0,0,flags));
 }
 
-DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags)
+DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize)
 {
     int ret;
     struct SuperNET_db *sdb = &SuperNET_dbs[selector];
@@ -167,6 +167,8 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags)
     safecopy(sdb->name,fname,sizeof(sdb->name));
     sdb->type = type;
     sdb->flags = flags;
+    sdb->minsize = minsize;
+    sdb->maxsize = maxsize;
     return(sdb->dbp);
 }
 
@@ -215,14 +217,14 @@ int32_t init_SuperNET_storage()
         }
         else
         {
-            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            if ( 0 && cp != 0 )
+            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
+            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
+            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
+            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
+            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
+            open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info));
+            open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats));
+            if ( 1 && cp != 0 )
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
@@ -264,19 +266,26 @@ DB *get_selected_database(int32_t selector)
 void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
 {
     void *ptr;
-    *lenp = size;
-    if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
+    if ( sdb->privkeys != 0 && sdb->cipherids != 0 )
     {
-        ptr = malloc(size);
-        memcpy(ptr,data,size);
-        return(ptr);
+        *lenp = size;
+        ptr = ciphers_codec(1,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp);
+        if ( *lenp >= sdb->minsize && *lenp <= sdb->maxsize )
+            return(ptr);
+        if ( ptr != 0 )
+            free(ptr);
+        printf("unencrypted entry size.%d\n",*lenp);
     }
-    else return(ciphers_codec(1,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
+    *lenp = size;
+    ptr = malloc(size);
+    memcpy(ptr,data,size);
+    return(ptr);
 }
 
 void *condition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
 {
     *lenp = size;
+    fprintf(stderr,"condition_storage\n");
     if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
         return(data);
     else return(ciphers_codec(0,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
