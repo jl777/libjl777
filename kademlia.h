@@ -667,7 +667,7 @@ uint64_t process_storageQ()
     return(txid);
 }
 
-struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
+void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
 {
     cJSON *json;
     uint64_t keybits;
@@ -678,7 +678,6 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
     keybits = calc_nxt64bits(key);
     //printf("halflen.%ld\n",strlen(datastr)/2);
     fprintf(stderr,"do_localstor(%s) <- (%s)\n",key,datastr);
-    sp = kademlia_getstored(PUBLIC_DATA,keybits,datastr);
     keynp = get_NXTacct(&createdflag,Global_mp,key);
     *txidp = 0;
     if ( keynp->bestbits != 0 )
@@ -701,7 +700,9 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
         if ( json != 0 )
             free_json(json);
     }
-    return(sp);
+    printf("len.%d %d %d\n",len,data[len-1],data[0]);
+    if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
+        free(sp);
 }
 
 char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
@@ -711,7 +712,6 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     uint64_t keybits,destbits,txid = 0;
     int32_t i,n,dist,mydist;
-    struct SuperNET_storage *sp = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
     {
@@ -737,8 +737,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
         sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%ld,\"txid\":\"%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
         //free(sortbuf);
     }
-    if ( (sp= do_localstore(&txid,key,datastr,NXTACCTSECRET)) != 0 )
-        free(sp);
+    do_localstore(&txid,key,datastr,NXTACCTSECRET);
     //if ( Debuglevel > 0 )
         printf("STORE.(%s)\n",retstr);
     return(clonestr(retstr));
