@@ -366,14 +366,24 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     encrypted = 2;
     if ( strcmp(kadcmd,"ping") == 0 )
     {
+        char _tokbuf[MAX_JSON_FIELD];
+        struct sockaddr_in destaddr;
+        int32_t port;
         encrypted = 0;
         stats = get_nodestats(pserver->nxt64bits);
         if ( stats != 0 )
         {
             stats->pingmilli = milliseconds();
             stats->numpings++;
-        }
-        gen_pingstr(cmdstr,0);
+            port = stats->supernet_port;
+        } else port = 0;
+        if ( port == 0 )
+            port = SUPERNET_PORT;
+        gen_pingstr(cmdstr,1);
+        uv_ip4_addr(pserver->ipaddr,port,&destaddr);
+        len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
+        return(0);
         //sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
     }
     else
@@ -396,16 +406,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     data = replace_datafield(cmdstr,databuf,&len,datastr);
     strcat(cmdstr,"}");
-    if ( strcmp(kadcmd,"ping") == 0 )
-    {
-        char _tokbuf[MAX_JSON_FIELD];
-        struct sockaddr_in destaddr;
-        uv_ip4_addr(pserver->ipaddr,SUPERNET_PORT,&destaddr);
-        len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
-        return(0);
-    }
-    else return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
+    return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
 }
 
 void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubkeystr,uint32_t lastcontact,int32_t p2pflag)

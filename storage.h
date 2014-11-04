@@ -274,7 +274,7 @@ void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint
             return(ptr);
         if ( ptr != 0 )
             free(ptr);
-        printf("unencrypted entry size.%d\n",*lenp);
+        //printf("unencrypted entry size.%d\n",*lenp);
     }
     *lenp = size;
     ptr = malloc(size);
@@ -285,7 +285,7 @@ void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint
 void *condition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
 {
     *lenp = size;
-    fprintf(stderr,"condition_storage\n");
+    //fprintf(stderr,"condition_storage\n");
     if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
         return(data);
     else return(ciphers_codec(0,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
@@ -341,7 +341,7 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
     {
         if ( memcmp(sp,databuf,datalen) != 0 )
             fprintf(stderr,"data cmp error\n");
-        else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
+        //else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
         free(sp);
     } else { fprintf(stderr,"couldnt find sp in DB that was just added\n"); return(-1); }
     return(dbsync(selector,0));
@@ -372,7 +372,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->datalen);
-        fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->datalen,data.size);
+        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->datalen,data.size);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->datalen) == 0 )
