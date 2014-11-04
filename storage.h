@@ -222,7 +222,7 @@ int32_t init_SuperNET_storage()
             open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
             open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT);
-            if ( 1 && cp != 0 )
+            if ( 0 && cp != 0 )
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
