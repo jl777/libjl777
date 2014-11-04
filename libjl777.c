@@ -92,6 +92,59 @@ char *get_public_srvacctsecret()
     else return(GENESIS_SECRET);
 }
 
+int32_t expire_nodestats(struct nodestats *stats,uint32_t now)
+{
+    if ( stats->lastcontact != 0 && (now - stats->lastcontact) > NODESTATS_EXPIRATION )
+    {
+        char ipaddr[64];
+        expand_ipbits(ipaddr,stats->ipbits);
+        printf("expire_nodestats %s | %u %u %d\n",ipaddr,now,stats->lastcontact,now - stats->lastcontact);
+        stats->gotencrypted = stats->modified = 0;
+        stats->sentmilli = 0;
+        stats->expired = 1;
+        return(1);
+    }
+    return(0);
+}
+
+void every_minute(int32_t counter)
+{
+    static int broadcast_count;
+    uint32_t now = (uint32_t)time(NULL);
+    int32_t i,n;
+    char ipaddr[64];
+    struct coin_info *cp;
+    struct nodestats *stats;
+    struct pserver_info *pserver;//,*mypserver = 0;
+    if ( Finished_init == 0 )
+        return;
+    now = (uint32_t)time(NULL);
+    cp = get_coin_info("BTCD");
+    if ( cp == 0 )
+        return;
+    //printf("<<<<<<<<<<<<< EVERY_MINUTE\n");
+    //p2p_publishpacket(get_pserver(0,"209.126.70.170",0,0),0);
+    refresh_buckets(cp->srvNXTACCTSECRET);
+    if ( broadcast_count == 0 )
+    {
+        p2p_publishpacket(0,0);
+        update_Kbuckets(get_nodestats(cp->srvpubnxtbits),cp->srvpubnxtbits,cp->myipaddr,0,0,0);
+    }
+    if ( (broadcast_count % 10) == 0 )
+    {
+        for (i=n=0; i<Num_in_whitelist; i++)
+        {
+            expand_ipbits(ipaddr,SuperNET_whitelist[i]);
+            pserver = get_pserver(0,ipaddr,0,0);
+            if ( ismyipaddr(ipaddr) == 0 && ((stats= get_nodestats(pserver->nxt64bits)) == 0 || broadcast_count == 0 || (now - stats->lastcontact) > NODESTATS_EXPIRATION) )
+                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0), n++;
+        }
+        if ( Debuglevel > 0 )
+            printf("PINGED.%d\n",n);
+    }
+    broadcast_count++;
+}
+
 void SuperNET_idler(uv_idle_t *handle)
 {
     static int counter;

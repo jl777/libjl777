@@ -1410,14 +1410,14 @@ int32_t parse_ipaddr(char *ipaddr,char *ip_port)
 
 int32_t notlocalip(char *ipaddr)
 {
-    if ( strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
+    if ( ipaddr == 0 || ipaddr[0] == 0 || strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
         return(0);
     else return(1);
 }
 
 int32_t is_remote_access(char *previpaddr)
 {
-    if ( previpaddr != 0 && notlocalip(previpaddr) != 0 )
+    if ( notlocalip(previpaddr) != 0 )
         return(1);
     else return(0);
 }
