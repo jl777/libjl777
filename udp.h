@@ -318,7 +318,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
                 port = SUPERNET_PORT;
                 uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
             }
-            queueflag = 1*0;
+            queueflag = 1;
             if ( Debuglevel > 1 )
                 printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
             portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
@@ -417,7 +417,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     uint64_t txid = 0;
     int32_t port,L;
     struct sockaddr destaddr;
-    struct nodestats *stats;
+    struct nodestats *stats = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     unsigned char *outbuf;
     /*if ( pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0 )
@@ -425,6 +425,8 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         printf("no nxtaddr.%llu or null stats.%p ipbits.%x\n",(long long)pserver->nxt64bits,stats,stats!=0?stats->ipbits:0);
         return(0);
     }*/
+    if ( pserver->nxt64bits != 0 )
+        stats= get_nodestats(pserver->nxt64bits);
     if ( stats != 0 )
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
