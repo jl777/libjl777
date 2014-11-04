@@ -572,45 +572,34 @@ struct SuperNET_storage *kademlia_getstored(int32_t selector,uint64_t keyhash,ch
 
 uint64_t *find_closer_Kstored(int32_t selector,uint64_t refbits,uint64_t newbits)
 {
-    DB *dbp = get_selected_database(selector);
-    struct SuperNET_storage *sp;
-    int32_t ret,dist,max,m,refdist,n = 0;
-    DBT key,data;
+    struct SuperNET_storage *sp,**sps;
+    int32_t i,numentries,dist,max,m,refdist,n = 0;
     uint64_t *keys = 0;
-    DBC *cursorp = 0;
-    if ( dbp == 0 )
-        return(0);
     max = (int32_t)max_in_db(selector);
-    //printf("find_closer_Kstored max.%d\n",max);
     max += 100;
     m = 0;
-    //DB_lock(selector);
-    dbp->cursor(dbp,NULL,&cursorp,0);
-    if ( cursorp != 0 )
+    sps = (struct SuperNET_storage **)copy_all_DBentries(&numentries,selector);
+    if ( sps == 0 )
+        return(0);
+    keys = (uint64_t *)calloc(sizeof(*keys),max);
+    for (i=0; i<numentries; i++)
     {
-        clear_pair(&key,&data);
-        keys = (uint64_t *)calloc(sizeof(*keys),max);
-        while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
+        sp = sps[i];
+        m++;
+        refdist = bitweight(refbits ^ sp->H.keyhash);
+        dist = bitweight(newbits ^ sp->H.keyhash);
+        if ( dist < refdist )
         {
-            m++;
-            sp = data.data;
-            refdist = bitweight(refbits ^ sp->H.keyhash);
-            dist = bitweight(newbits ^ sp->H.keyhash);
-            if ( dist < refdist )
+            keys[n++] = sp->H.keyhash;
+            if ( n >= max )
             {
-                keys[n++] = sp->H.keyhash;
-                if ( n >= max )
-                {
-                    max += 100;
-                    keys = (uint64_t *)realloc(keys,sizeof(*keys)*max);
-                }
+                max += 100;
+                keys = (uint64_t *)realloc(keys,sizeof(*keys)*max);
             }
-            clear_pair(&key,&data);
         }
-        cursorp->close(cursorp);
+        free(sps[i]);
     }
-    //DB_unlock(selector);
-    //printf("find_closer_Kstored returns n.%d %p\n",n,sps);
+    free(sps);
     if ( m > max_in_db(selector) )
         set_max_in_db(selector,m);
     return(keys);
@@ -991,7 +980,7 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
                 add_new_node(stats->nxt64bits);
                 printf("APPEND.%d: bucket[%d] <- %llu %s then call pushstore\n",bucketid,j,(long long)stats->nxt64bits,ipaddr);
                 if ( cp != 0 && ismynxtbits(stats->nxt64bits) == 0 )
-                    kademlia_pushstore(0,mynxt64bits(),stats->nxt64bits);
+                    kademlia_pushstore(PUBLIC_DATA,mynxt64bits(),stats->nxt64bits);
             }
             else if ( j > 0 )
             {

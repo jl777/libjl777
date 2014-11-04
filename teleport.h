@@ -534,82 +534,73 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
 struct telepod **available_telepods(int32_t *nump,double *availp,double *maturingp,double *inboundp,double *outboundp,double *doublespentp,double *cancelledp,char *coinstr,int32_t minage)
 {
     uint32_t now = (uint32_t)time(NULL);
-    DB *dbp = get_selected_database(TELEPOD_DATA);
     struct telepod *pod,**pods = 0;
-    int32_t podstate,ret,max,m,n = 0;
+    int32_t i,podstate,flag,ret,m,n = 0;
     uint32_t createtime;
     double evolve_amount;
-    DBT key,data;
-    DBC *cursorp = 0;
     *nump = 0;
     *availp = *maturingp = *inboundp = *outboundp = *doublespentp = *cancelledp = 0.;
-    if ( dbp == 0 )
+    pods = (struct telepod **)copy_all_DBentries(&m,TELEPOD_DATA);
+    if ( pods == 0 )
         return(0);
-    max = (int32_t)max_in_db(TELEPOD_DATA);
-    max += 100;
-    m = 0;
-    //printf("available_telepods\n");
-    dbp->cursor(dbp,NULL,&cursorp,0);
-    if ( cursorp != 0 )
+    for (i=0; i<m; i++)
     {
-        clear_pair(&key,&data);
-        pods = (struct telepod **)calloc(sizeof(*pods),max+1);
-        while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
+        flag = 0;
+        pod = pods[i];
+        if ( Debuglevel > 1 )
+            fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,pod->txid,pod->H.datalen,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
+        podstate = pod->podstate;
+        createtime = pod->H.createtime;
+        if ( minage < 0 )
         {
-            m++;
-            pod = data.data;
-            if ( Debuglevel > 1 )
-                fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d/%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,key.data,pod->H.datalen,data.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
-            if ( pod->H.datalen != data.size )
-            {
-                fprintf(stderr,"podsize mismatch error %d != %d, skip: ",pod->H.datalen,data.size);
-                disp_telepod("error",pod);
-            }
-            podstate = pod->podstate;
-            createtime = pod->H.createtime;
-            if ( minage < 0 )
-            {
-                ADD_TELEPOD
-                evolve_amount = (double)pod->satoshis / SATOSHIDEN;
-            }
-            else
-            {
-                evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
-                if ( evolve_amount == 0. )
-                {
-                    clear_pair(&key,&data);
-                    continue;
-                }
-            }
-            pod->evolve_amount = evolve_amount;
-            if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
-            {
-                if ( minage >= 0 )
-                    ADD_TELEPOD
-                if ( minage <= 0 || createtime < (now - minage) )
-                    (*availp) += evolve_amount;
-                else (*maturingp) += evolve_amount;
-                //printf("evolve_amount %.8f satoshis %.8f | %.8f %.8f | %d >? %d\n",evolve_amount,dstr(pod->satoshis),*availp,*maturingp,createtime,(now - minage));
-            }
-            else if ( podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
-                (*outboundp) += evolve_amount;
-            else if ( podstate == TELEPOD_INBOUND ) // we are going to clone this within clonesmear timewindow
-                (*inboundp) += evolve_amount;
-            else if ( telepod_normal_spend(podstate) == 0 ) // inbound -> cloned, outbound->spent
-            {
-                if ( podstate == TELEPOD_DOUBLESPENT ) // sender of inbound telepod cashed in telepod before us
-                    (*doublespentp) += evolve_amount;
-                else if ( podstate == TELEPOD_CANCELLED ) // we cashed the telepod before destination cloned
-                    (*cancelledp) += evolve_amount;
-            }
-            clear_pair(&key,&data);
+            pods[n++] = pod, flag = 1;
+            evolve_amount = (double)pod->satoshis / SATOSHIDEN;
         }
-        cursorp->close(cursorp);
+        else
+        {
+            evolve_amount = calc_convamount(pod->coinstr,coinstr,pod->satoshis);
+            if ( evolve_amount == 0. )
+            {
+                free(pod);
+                continue;
+            }
+        }
+        pod->evolve_amount = evolve_amount;
+        if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
+        {
+            if ( minage >= 0 )
+                pods[n++] = pod, flag = 1;
+            if ( minage <= 0 || createtime < (now - minage) )
+                (*availp) += evolve_amount;
+            else (*maturingp) += evolve_amount;
+            //printf("evolve_amount %.8f satoshis %.8f | %.8f %.8f | %d >? %d\n",evolve_amount,dstr(pod->satoshis),*availp,*maturingp,createtime,(now - minage));
+        }
+        else if ( podstate == TELEPOD_OUTBOUND ) // telepod is waiting to be cloned by destination
+            (*outboundp) += evolve_amount;
+        else if ( podstate == TELEPOD_INBOUND ) // we are going to clone this within clonesmear timewindow
+            (*inboundp) += evolve_amount;
+        else if ( telepod_normal_spend(podstate) == 0 ) // inbound -> cloned, outbound->spent
+        {
+            if ( podstate == TELEPOD_DOUBLESPENT ) // sender of inbound telepod cashed in telepod before us
+                (*doublespentp) += evolve_amount;
+            else if ( podstate == TELEPOD_CANCELLED ) // we cashed the telepod before destination cloned
+                (*cancelledp) += evolve_amount;
+        }
+        if ( flag == 0 )
+            free(pod);
+    }
+    if ( n == 0 )
+    {
+        free(pods);
+        pods = 0;
+    }
+    if ( pods != 0 )
+    {
+        pods[n] = 0;
+        pods = realloc(pods,sizeof(*pods) * (n+1));
     }
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
-    if ( pods != 0 )
-        pods[n] = 0;
     if ( Debuglevel > 1 )
         printf(" avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",*availp,*maturingp,*inboundp,*outboundp,*doublespentp,*cancelledp,n);
     *nump = n;
