@@ -138,6 +138,9 @@ void init_Contacts()
     if ( contacts == 0 )
         return;
     for (i=0; i<numcontacts; i++)
+        fprintf(stderr,"%s\n",contacts[i]->handle);
+    fprintf(stderr,"\n");
+    for (i=0; i<numcontacts; i++)
     {
         expand_nxt64bits(NXTaddr,contacts[i]->nxt64bits);
         if ( (retstr= addcontact(contacts[i]->handle,NXTaddr)) != 0 )
@@ -155,7 +158,7 @@ void init_Contacts()
                     create_telepathy_entry(contact,j);
                 free(contact);
             }
-            else printf("error finding %s right after adding it!\n",contacts[i]->handle);
+            else printf("error finding (%s) right after adding it!\n",contacts[i]->handle);
         }
         free(contacts[i]);
     }
