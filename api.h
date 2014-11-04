@@ -560,6 +560,7 @@ void submit_quote(uint64_t obookid,char *quotestr)
     {
         strcpy(NXTaddr,cp->privateNXTADDR);
         expand_nxt64bits(keystr,obookid);
+        init_hexbytes(datastr,(uint8_t *)quotestr,strlen(quotestr)+1);
         retstr = kademlia_storedata(0,NXTaddr,cp->privateNXTACCTSECRET,NXTaddr,keystr,datastr);
         if ( retstr != 0 )
             free(retstr);
@@ -601,6 +602,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
                 jsonstr = cJSON_Print(json);
                 stripwhite_ns(jsonstr,strlen(jsonstr));
                 printf("%s\n",jsonstr);
+                submit_quote(obookid,jsonstr);
                 free_json(json);
                 free(jsonstr);
             }
