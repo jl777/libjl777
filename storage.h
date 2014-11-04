@@ -40,7 +40,7 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
     while ( sdb->active != 0 )
     {
         if ( sdb->busy == 0 && n == 0 )
-            usleep(10000);
+            usleep(1000);
         n = 0;
         while ( (req= queue_dequeue(&sdb->queue)) != 0 )
         {
@@ -72,7 +72,7 @@ int32_t _block_on_dbreq(struct dbreq *req)
     struct SuperNET_db *sdb = &SuperNET_dbs[req->selector];
     int32_t retval,busy;
     while ( req->doneflag == 0 )
-        usleep(1000); // if not done after the first context switch, likely to take a while
+        usleep(100); // if not done after the first context switch, likely to take a while
     retval = req->retval;
     free(req);
     sdb->busy--;
@@ -143,7 +143,24 @@ int32_t dbsync(int32_t selector,int32_t flags)
     return(dbcmd("dbsync",'S',selector,0,0,0,flags));
 }
 
-DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize)
+int db_compare_double(DB *dbp,const DBT *a,const DBT *b,size_t *locp)
+{
+    int ai, bi;
+    locp = NULL;
+    /*
+     * Returns:
+     * < 0 if a < b
+     * = 0 if a = b
+     * > 0 if a > b
+     */
+    memcpy(&ai,a->data,sizeof(double));
+    memcpy(&bi,b->data,sizeof(double));
+    if ( ai < (bi - SMALLVAL) ) return(-1);
+    else if ( ai > (bi + SMALLVAL) ) return(1);
+    else return(0);
+}
+
+DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize,int32_t sortflag)
 {
     int ret;
     struct SuperNET_db *sdb = &SuperNET_dbs[selector];
@@ -158,6 +175,21 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int3
         exit(-1);
         return(0);
     } else printf("open_database %s created\n",fname);
+    if ( sortflag != 0 )
+    {
+        if ( (ret= sdb->dbp->set_flags(sdb->dbp,DB_DUPSORT)) != 0 )
+        {
+            fprintf(stderr,"set_flags DB_DUPSORT error.%d %s\n",ret,fname);
+            exit(-3);
+            return(0);
+        } else printf("set_flags DB_DUPSORT %s\n",fname);
+        if ( (ret= sdb->dbp->set_dup_compare(sdb->dbp,db_compare_double)) != 0 )
+        {
+            fprintf(stderr,"set_dup_compare error.%d %s\n",ret,fname);
+            exit(-4);
+            return(0);
+        } else printf("set_dup_compare %s\n",fname);
+    }
     if ( (ret= sdb->dbp->open(sdb->dbp,NULL,fname,NULL,type,flags,0)) != 0 )
     {
         fprintf(stderr,"open_database error.%d opening %s database\n",ret,fname);
@@ -217,13 +249,14 @@ int32_t init_SuperNET_storage()
         }
         else
         {
-            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
-            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
-            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
-            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
-            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096);
-            open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info));
-            open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats));
+            open_database(PUBLIC_DATA,"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+            open_database(PRIVATE_DATA,"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+            open_database(TELEPOD_DATA,"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+            open_database(PRICE_DATA,"prices.db",DB_BTREE,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+            open_database(DEADDROP_DATA,"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+            open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info),0);
+            open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats),0);
+            open_database(INSTANTDEX_DATA,"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
             if ( 1 && cp != 0 )
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];

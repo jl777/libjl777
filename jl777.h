@@ -10,7 +10,6 @@
 #define HARDCODED_VERSION "0.181"
 
 #define NXT_GENESISTIME 1385294400
-#define SMALLVAL .000000000000001
 #define MAX_LFACTOR 10
 #define MAX_UDPLEN 1400
 #define PUBADDRS_MSGDURATION (3600 * 24)
@@ -465,13 +464,6 @@ struct price_data
     int32_t numquotes,maxquotes,screenwidth,screenheight,numsplines,polarity;
 };
 
-struct orderbook_tx
-{
-    uint32_t sig,type;
-    uint64_t txid,nxt64bits,baseid,relid;
-    uint64_t baseamount,relamount;
-};
-
 struct quote
 {
     double price,vol;    // must be first!!
@@ -484,6 +476,13 @@ struct orderbook
     uint64_t assetA,assetB;
     struct quote *bids,*asks;
     int32_t numbids,numasks,polarity;
+};
+
+struct orderbook_tx
+{
+    uint32_t sig,type;
+    uint64_t txid,nxt64bits,baseid,relid;
+    uint64_t baseamount,relamount;
 };
 
 struct raw_orders

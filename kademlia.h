@@ -669,8 +669,10 @@ uint64_t process_storageQ()
 
 struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
 {
+    cJSON *json;
     uint64_t keybits;
-    int32_t createdflag;
+    int32_t len,createdflag;
+    char data[MAX_JSON_FIELD];
     struct NXT_acct *keynp;
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(key);
@@ -689,6 +691,15 @@ struct SuperNET_storage *do_localstore(uint64_t *txidp,char *key,char *datastr,c
         printf("Bestdist.%d bestbits.%llu\n",keynp->bestdist,(long long)keynp->bestbits);
         keynp->bestbits = 0;
         keynp->bestdist = 0;
+    }
+    len = (int32_t)strlen(datastr)/2;
+    decode_hex((uint8_t *)data,len,datastr);
+    if ( data[len-1] == 0 && (data[0] == '{' || data[0] == '[') )
+    {
+        json = cJSON_Parse(data);
+        printf("localstorage of InstantDEX orderbook_tx.(%s) %p\n",data,json);
+        if ( json != 0 )
+            free_json(json);
     }
     return(sp);
 }

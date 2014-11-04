@@ -54,6 +54,7 @@ cJSON *gen_orderbook_txjson(struct orderbook_tx *tx)
 {
     cJSON *json = cJSON_CreateObject();
     char numstr[64];
+    cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("quote"));
     cJSON_AddItemToObject(json,"type",cJSON_CreateNumber(tx->type));
     sprintf(numstr,"%llu",(long long)tx->nxt64bits), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)tx->baseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(numstr));
