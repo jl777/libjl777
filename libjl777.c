@@ -180,6 +180,7 @@ void SuperNET_idler(uv_idle_t *handle)
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) )
     {
+        lastattempt = millis;
         r = ((rand() >> 8) % 2);
         while ( (wr= queue_dequeue(&sendQ)) != 0 )
         {
@@ -193,7 +194,6 @@ void SuperNET_idler(uv_idle_t *handle)
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this
-                lastattempt = millis;
                 break;
             }
             if ( firstwr == 0 )
@@ -212,7 +212,6 @@ void SuperNET_idler(uv_idle_t *handle)
             free(qp->decoded);
             free_json(qp->argjson);
             free(qp);
-            lastattempt = millis;
         }
         else if ( (ptrs= queue_dequeue(&JSON_Q)) != 0 )
         {
@@ -225,12 +224,10 @@ void SuperNET_idler(uv_idle_t *handle)
             ptrs[1] = retstr;
             if ( ptrs[2] != 0 )
                 queue_GUIpoll(ptrs);
-            lastattempt = millis;
         }
         if ( process_storageQ() != 0 )
         {
             printf("processed storage\n");
-            lastattempt = millis;
         }
     }
     if ( millis > (lastclock + 1000) )
