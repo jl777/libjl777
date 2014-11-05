@@ -736,8 +736,8 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
                 {
                     int z;
                     for (z=0; z<24; z++)
-                        printf("%02x ",((char *)&Q)[z]);
-                    printf("Q\n");
+                        printf("%02x ",((uint8_t *)&Q)[z]);
+                    printf("Q: %f %f %llu %u %d\n",Q.price,Q.vol,(long long)Q.nxt64bits,Q.timestamp,Q.flags);
                 }
                 if ( (ret= dbput(INSTANTDEX_DATA,0,&key,&data,0)) != 0 )
                     Storage->err(Storage,ret,"Database put failed.");
