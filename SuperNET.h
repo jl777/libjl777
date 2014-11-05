@@ -75,7 +75,7 @@ struct contact_info
     int32_t numsent,numrecv,lastrecv,lastsent,lastentry;
 };
 
-struct InstantDEX_quote { float price,vol; uint64_t nxt64bits; };
+struct InstantDEX_quote { float price,vol; uint64_t nxt64bits; uint32_t timestamp; };
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
 

@@ -532,7 +532,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     cJSON *json;
     uint16_t p2pport;
     struct pserver_info *pserver;
-    uint64_t txid,obookid;
+    uint64_t txid;
     struct sockaddr prevaddr;
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
@@ -571,14 +571,14 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
             printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(0,retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
-        else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
+        /*else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
         {
             if ( update_orderbook_tx(1,obookid,(struct orderbook_tx *)packet,txid) == 0 )
             {
                 ((struct orderbook_tx *)packet)->txid = txid;
                 sprintf(retjsonstr,"{\"result\":\"SuperNET_gotpacket got obbokid.%llu packet txid.%llu\"}",(long long)obookid,(long long)txid);
             } else sprintf(retjsonstr,"{\"result\":\"SuperNET_gotpacket error updating obookid.%llu\"}",(long long)obookid);
-        } else sprintf(retjsonstr,"{\"error\":\"SuperNET_gotpacket cant find obookid\"}");
+        }*/ else sprintf(retjsonstr,"{\"error\":\"SuperNET_gotpacket cant find obookid\"}");
     }
     else
     {

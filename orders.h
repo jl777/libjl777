@@ -55,13 +55,14 @@ cJSON *gen_orderbook_txjson(struct orderbook_tx *tx,int32_t bidflag)
     cJSON *json = cJSON_CreateObject();
     char numstr[64];
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString(bidflag!=0?"bid":"ask"));
+    cJSON_AddItemToObject(json,"time",cJSON_CreateNumber(tx->timestamp));
     cJSON_AddItemToObject(json,"type",cJSON_CreateNumber(tx->type));
     sprintf(numstr,"%llu",(long long)tx->nxt64bits), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)tx->baseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(tx->baseamount)), cJSON_AddItemToObject(json,"srcvol",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)tx->relid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(tx->relamount)), cJSON_AddItemToObject(json,"destvol",cJSON_CreateString(numstr));
-    printf("sig.%08x t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",tx->sig,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
+    printf("age.%-7ld t.%d NXT.%llu baseid.%llu %.8f | relid.%llu %.8f\n",time(NULL)-tx->timestamp,tx->type,(long long)tx->nxt64bits,(long long)tx->baseid,dstr(tx->baseamount),(long long)tx->relid,dstr(tx->relamount));
     return(json);
 }
 
@@ -85,11 +86,12 @@ uint64_t conv_InstantDEX_json(struct InstantDEX_quote *qp,cJSON *json)
         {
             srcvol = get_API_float(cJSON_GetObjectItem(json,"srcvol"));
             destvol = get_API_float(cJSON_GetObjectItem(json,"destvol"));
+            qp->timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"time"),0);
             if ( srcvol != 0. && destvol != 0. )
             {
                 copy_cJSON(nxtstr,cJSON_GetObjectItem(json,"NXT")), qp->nxt64bits = calc_nxt64bits(nxtstr);
                 qp->price = (destvol / srcvol);
-                qp->vol = srcvol;
+                qp->vol = srcvol * polarity;
                 obookid = (assetA ^ assetB);
                 printf("conv_InstantDEX_json: obookid.%llu price %f, vol %f\n",(long long)obookid,qp->price,qp->vol);
             }
@@ -434,7 +436,7 @@ int32_t init_orderbook_tx(int32_t polarity,struct orderbook_tx *tx,int32_t type,
 {
     struct raw_orders *raw;
     memset(tx,0,sizeof(*tx));
-    tx->sig = ORDERBOOK_SIG;
+    tx->timestamp = (uint32_t)time(NULL);
     tx->type = type;
     tx->nxt64bits = nxt64bits;
     if ( (raw= find_raw_orders(obookid)) != 0 )
@@ -703,7 +705,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
     return(clonestr(buf));
 }
 
-uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
+/*uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
 {
     struct orderbook_tx *otx = (struct orderbook_tx *)tx;
     if ( size == sizeof(*otx) && otx->sig == ORDERBOOK_SIG )
@@ -714,7 +716,7 @@ uint64_t is_orderbook_tx(unsigned char *tx,int32_t size)
     return(0);
 }
 
-/*uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
+uint64_t add_jl777_tx(void *origptr,unsigned char *tx,int32_t size,unsigned char *hash,long hashsize)
 {
     int i;
     char retjsonstr[4096];

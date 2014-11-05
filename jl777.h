@@ -480,7 +480,7 @@ struct orderbook
 
 struct orderbook_tx
 {
-    uint32_t sig,type;
+    uint32_t timestamp,type;
     uint64_t txid,nxt64bits,baseid,relid;
     uint64_t baseamount,relamount;
 };
