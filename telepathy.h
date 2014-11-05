@@ -447,7 +447,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 if ( (sp->H.size-sizeof(*sp)) < sizeof(hexstr)/2 )
                 {
                     init_hexbytes_noT(hexstr,sp->data,sp->H.size-sizeof(*sp));
-                    sprintf(retbuf,"{\"requestType\":\"dbret\",\"key\":\"%s\",\"data\":\"%s\"}",keystr,hexstr);
+                    sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"data\":\"%s\"}",NXTaddr,keystr,hexstr);
                 } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
                 free(sp);
             } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
@@ -455,7 +455,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 send_to_ipaddr(previpaddr,retbuf,NXTACCTSECRET);
             else
             {
-                sprintf(retbuf,"{\"requestType\":\"getdb\",\"key\":\"%s\"}",keystr);
+                sprintf(retbuf,"{\"requestType\":\"getdb\",\"NXT\":\"%s\",\"key\":\"%s\"}",NXTaddr,keystr);
                 send_to_ipaddr(destip,retbuf,NXTACCTSECRET);
             }
         } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"no contact and no key\"}");
