@@ -376,13 +376,15 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     }
     if ( bulksize != 0 )
     {
-        size_t retdlen = 0;
+        size_t i,retdlen = 0;
         void *retdata,*p;
         for (DB_MULTIPLE_INIT(p,&data); ;)
         {
             DB_MULTIPLE_NEXT(p,&data,retdata,retdlen);
             if ( p == NULL )
                 break;
+            for (i=0; i<retdlen; i++)
+                printf("%02x ",((uint8_t *)retdata)[i]);
             printf("%p %p: %d\n",p,retdata,(int)retdlen);
         }
         return(data.data);

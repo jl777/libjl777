@@ -733,6 +733,12 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
                 key.size = (uint32_t)strlen(keystr) + 1;
                 data.data = &Q;
                 data.size = sizeof(Q);
+                {
+                    int z;
+                    for (z=0; z<24; z++)
+                        printf("%02x ",((char *)&Q)[z]);
+                    printf("Q\n");
+                }
                 if ( (ret= dbput(INSTANTDEX_DATA,0,&key,&data,0)) != 0 )
                     Storage->err(Storage,ret,"Database put failed.");
                 else dbsync(INSTANTDEX_DATA,0);
