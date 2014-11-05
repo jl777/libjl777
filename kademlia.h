@@ -413,7 +413,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         {
             encrypted = 1;
             sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
-            send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
+            //send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
             //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
             //portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
         }
