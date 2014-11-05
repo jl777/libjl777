@@ -20,7 +20,7 @@ struct SuperNET_db
     long maxitems,total_stored;
     DB *dbp;
     int32_t *cipherids;
-    uint32_t busy,type,flags,active,minsize,maxsize,sortflag;
+    uint32_t busy,type,flags,active,minsize,maxsize,duplicateflag;
 };
 
 struct dbreq { DB_TXN *txn; DBT key,*data; int32_t flags,retval; uint16_t selector,funcid,doneflag,pad; };
@@ -171,7 +171,7 @@ int db_decrdouble(DB *dbp,const DBT *a,const DBT *b,size_t *locp)
     else return(0);
 }
 
-DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize,int32_t sortflag)
+DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize,int32_t duplicateflag)
 {
     int ret;
     struct SuperNET_db *sdb = &SuperNET_dbs[selector];
@@ -186,20 +186,20 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int3
         exit(-1);
         return(0);
     } else printf("open_database %s created\n",fname);
-    if ( sortflag != 0 )
+    if ( duplicateflag != 0 )
     {
-        if ( (ret= sdb->dbp->set_flags(sdb->dbp,DB_DUPSORT)) != 0 )
+        if ( (ret= sdb->dbp->set_flags(sdb->dbp,DB_DUP)) != 0 )
         {
             fprintf(stderr,"set_flags DB_DUPSORT error.%d %s\n",ret,fname);
             exit(-3);
             return(0);
         } else printf("set_flags DB_DUPSORT %s\n",fname);
-        if ( (ret= sdb->dbp->set_dup_compare(sdb->dbp,(sortflag > 0) ? db_incrdouble : db_decrdouble)) != 0 )
+        /*if ( (ret= sdb->dbp->set_dup_compare(sdb->dbp,(sortflag > 0) ? db_incrdouble : db_decrdouble)) != 0 )
         {
             fprintf(stderr,"set_dup_compare error.%d %s\n",ret,fname);
             exit(-4);
             return(0);
-        } else printf("set_dup_compare %s\n",fname);
+        } else printf("set_dup_compare %s\n",fname);*/
     }
     if ( (ret= sdb->dbp->open(sdb->dbp,NULL,fname,NULL,type,flags,0)) != 0 )
     {
@@ -212,7 +212,7 @@ DB *open_database(int32_t selector,char *fname,uint32_t type,uint32_t flags,int3
     sdb->flags = flags;
     sdb->minsize = minsize;
     sdb->maxsize = maxsize;
-    sdb->sortflag = sortflag;
+    sdb->duplicateflag = duplicateflag;
     return(sdb->dbp);
 }
 
