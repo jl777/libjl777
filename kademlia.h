@@ -964,32 +964,31 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 printf("send back.(%s) to %llu\n",value,(long long)senderbits);
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
-                if ( isvalue != 0 )
+            }
+            if ( isvalue != 0 )
+            {
+                sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
+                if ( sp != 0 )
                 {
-                    sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
-                    if ( sp != 0 )
+                    if ( sp->data != 0 )
                     {
-                        if ( sp->data != 0 )
+                        init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
+                        if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
                         {
-                            init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                            if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
-                            {
-                                printf("found value for (%s)! call store\n",key);
-                                txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-                            }
-                            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+                            printf("found value for (%s)! call store\n",key);
+                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                         }
-                        free(sp);
-                        printf("FOUND.(%s)\n",retstr);
-                        return(clonestr(retstr));
+                        sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                     }
+                    free(sp);
+                    printf("FOUND.(%s)\n",retstr);
+                    return(clonestr(retstr));
                 }
             }
-            //free(sortbuf);
         } else if ( Debuglevel > 0 )
             printf("kademlia.(%s) no peers\n",cmd);
     }
-    sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) (%s) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,previpaddr,key,datastr!=0?strlen(datastr):0,(long long)txid);
+    sprintf(retstr,"{\"result\":\"kademlia_%s from.(%s) previp.(%s) key.(%s) datalen.%ld txid.%llu\"}",cmd,sender,previpaddr,key,datastr!=0?strlen(datastr):0,(long long)txid);
     //if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
