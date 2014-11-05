@@ -412,10 +412,17 @@ void sort_orderbook(struct orderbook *op,struct orderbook_tx **orders,int32_t n,
 struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity,struct orderbook_tx **feedorders,int32_t numfeeds)
 {
     int32_t n;
+    char obookstr[64];
     struct orderbook *op = 0;
     struct orderbook_tx **orders;
     struct raw_orders *raw;
+    struct InstantDEX_quote *quotes;
     printf("find_raw_orders.%llu polarity.%d\n",(long long)obookid,polarity);
+    expand_nxt64bits(obookstr,obookid);
+    if ( (quotes= (struct InstantDEX_quote *)find_storage(INSTANTDEX_DATA,obookstr,256*sizeof(*quotes))) != 0 )
+    {
+        free(quotes);
+    }
     if ( (raw= find_raw_orders(obookid)) != 0 )
     {
         op = (struct orderbook *)calloc(1,sizeof(*op));

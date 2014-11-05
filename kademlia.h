@@ -688,36 +688,37 @@ uint64_t process_storageQ()
     return(txid);
 }
 
-void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
+void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRET)
 {
+    DBT key,data;
     cJSON *json;
     uint64_t keybits,obookid;
-    int32_t len,createdflag,selector = PUBLIC_DATA;
+    int32_t ret,len,createdflag;
     struct InstantDEX_quote Q;
-    char data[MAX_JSON_FIELD],quotedatastr[MAX_JSON_FIELD];
+    char decoded[MAX_JSON_FIELD];//,quotedatastr[MAX_JSON_FIELD];
     struct NXT_acct *keynp;
     struct SuperNET_storage *sp;
-    keybits = calc_nxt64bits(key);
+    keybits = calc_nxt64bits(keystr);
     //printf("halflen.%ld\n",strlen(datastr)/2);
-    fprintf(stderr,"do_localstor(%s) <- (%s)\n",key,datastr);
-    keynp = get_NXTacct(&createdflag,Global_mp,key);
+    fprintf(stderr,"do_localstor(%s) <- (%s)\n",keystr,datastr);
+    keynp = get_NXTacct(&createdflag,Global_mp,keystr);
     *txidp = 0;
     if ( keynp->bestbits != 0 )
     {
         if ( ismynxtbits(keynp->bestdist) == 0 )
         {
             printf("store at bestbits\n");
-            *txidp = send_kademlia_cmd(keynp->bestdist,0,"store",NXTACCTSECRET,key,datastr);
+            *txidp = send_kademlia_cmd(keynp->bestdist,0,"store",NXTACCTSECRET,keystr,datastr);
         }
         printf("Bestdist.%d bestbits.%llu\n",keynp->bestdist,(long long)keynp->bestbits);
         keynp->bestbits = 0;
         keynp->bestdist = 0;
     }
     len = (int32_t)strlen(datastr)/2;
-    decode_hex((uint8_t *)data,len,datastr);
-    if ( (data[len-1] == 0 || data[len-1] == '}' || data[len-1] == ']') && (data[0] == '{' || data[0] == '[') )
+    decode_hex((uint8_t *)decoded,len,datastr);
+    if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
     {
-        json = cJSON_Parse(data);
+        json = cJSON_Parse(decoded);
         //({"requestType":"quote","type":0,"NXT":"13434315136155299987","base":"4551058913252105307","srcvol":"1.01000000","rel":"11060861818140490423","destvol":"0.00606000"}) 0x7f24700111c0
         if ( json != 0 )
         {
@@ -725,16 +726,23 @@ void do_localstore(uint64_t *txidp,char *key,char *datastr,char *NXTACCTSECRET)
             obookid = conv_InstantDEX_json(&Q,json);
             if ( obookid != 0 )
             {
-                init_hexbytes_noT(quotedatastr,(uint8_t *)&Q,sizeof(Q));
-                datastr = quotedatastr;
-                keybits = obookid;
-                selector = INSTANTDEX_DATA;
+                //init_hexbytes_noT(quotedatastr,(uint8_t *)&Q,sizeof(Q));
+                //datastr = quotedatastr;
+                clear_pair(&key,&data);
+                key.data = keystr;
+                key.size = (uint32_t)strlen(keystr) + 1;
+                data.data = &Q;
+                data.size = sizeof(Q);
+                if ( (ret= dbput(INSTANTDEX_DATA,0,&key,&data,0)) != 0 )
+                    Storage->err(Storage,ret,"Database put failed.");
+                else dbsync(INSTANTDEX_DATA,0);
+
             }
             free_json(json);
-            printf("localstorage of InstantDEX orderbook_tx.(%s) %llu %f %f\n",data,(long long)obookid,Q.price,Q.vol);
+            printf("localstorage of InstantDEX orderbook_tx.(%s) %llu %f %f\n",decoded,(long long)obookid,Q.price,Q.vol);
         }
     }
-    if ( (sp= kademlia_getstored(selector,keybits,datastr)) != 0 )
+    if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
         free(sp);
 }
 
