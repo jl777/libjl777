@@ -428,7 +428,7 @@ void init_telepathy_contact(struct contact_info *contact)
         free(retstr);
 }
 
-char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int32_t dir,char *contactstr,int32_t sequenceid,char *keystr)
+char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int32_t dir,char *contactstr,int32_t sequenceid,char *keystr,char *destip)
 {
     char retbuf[4096],hexstr[4096],AESpasswordstr[512],locationstr[64],*jsonstr;
     cJSON *json;
@@ -447,11 +447,18 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 if ( (sp->H.size-sizeof(*sp)) < sizeof(hexstr)/2 )
                 {
                     init_hexbytes_noT(hexstr,sp->data,sp->H.size-sizeof(*sp));
-                    sprintf(retbuf,"{\"data\":\"%s\"}",hexstr);
-                } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
+                    sprintf(retbuf,"{\"requestType\":\"dbret\",\"key\":\"%s\",\"data\":\"%s\"}",keystr,hexstr);
+                } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
                 free(sp);
-            } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
-        } else strcpy(retbuf,"{\"error\":\"no contact and no key\"}");
+            } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
+            if ( is_remote_access(previpaddr) != 0 )
+                send_to_ipaddr(previpaddr,retbuf,NXTACCTSECRET);
+            else
+            {
+                sprintf(retbuf,"{\"requestType\":\"getdb\",\"key\":\"%s\"}",keystr);
+                send_to_ipaddr(destip,retbuf,NXTACCTSECRET);
+            }
+        } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"no contact and no key\"}");
     }
     else
     {
@@ -471,12 +478,12 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                         stripwhite_ns(jsonstr,strlen(jsonstr));
                         free_json(json);
                         return(jsonstr);
-                    } else strcpy(retbuf,"{\"error\":\"couldnt decrypt data\"}");
+                    } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"couldnt decrypt data\"}");
                     free(sp);
-                } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
-            } else strcpy(retbuf,"{\"error\":\"cant get location\"}");
+                } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
+            } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant get location\"}");
             free(contact);
-        } else strcpy(retbuf,"{\"error\":\"cant find contact\"}");
+        } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find contact\"}");
     }
     return(clonestr(retbuf));
 }

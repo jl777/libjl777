@@ -1233,7 +1233,7 @@ char *store_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender
 
 char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],*retstr = 0;
+    char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
     int32_t sequenceid,dir;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
@@ -1241,12 +1241,13 @@ char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender
     sequenceid = get_API_int(objs[1],0);
     copy_cJSON(key,objs[2]);
     copy_cJSON(dirstr,objs[3]);
+    copy_cJSON(destip,objs[4]);
     if ( (contact[0] != 0 || key[0] != 0) && sender[0] != 0 && valid > 0 )
     {
         if ( strcmp(dirstr,"send") == 0 )
             dir = 1;
         else dir = -1;
-        retstr = getdb(previpaddr,NXTaddr,NXTACCTSECRET,sender,dir,contact,sequenceid,key);
+        retstr = getdb(previpaddr,NXTaddr,NXTACCTSECRET,sender,dir,contact,sequenceid,key,destip);
     }
     else retstr = clonestr("{\"error\":\"invalid getdb_func arguments\"}");
     return(retstr);
@@ -1491,7 +1492,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *removecontact[] = { (char *)removecontact_func, "removecontact", "V",  "contact", 0 };
     static char *dispcontact[] = { (char *)dispcontact_func, "dispcontact", "V",  "contact", 0 };
     static char *telepathy[] = { (char *)telepathy_func, "telepathy", "V",  "contact", "id", "type", "attach", 0 };
-    static char *getdb[] = { (char *)getdb_func, "getdb", "V",  "contact", "id", "key", "dir", 0 };
+    static char *getdb[] = { (char *)getdb_func, "getdb", "V",  "contact", "id", "key", "dir", "destip", 0 };
     static char *sendmsg[] = { (char *)sendmsg_func, "sendmessage", "V", "dest", "msg", "L", 0 };
     static char *sendbinary[] = { (char *)sendbinary_func, "sendbinary", "V", "dest", "data", "L", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "sender", 0 };

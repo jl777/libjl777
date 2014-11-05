@@ -289,11 +289,30 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
     } else return(0);
 }
 
-uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
+void send_to_ipaddr(char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
 {
     char _tokbuf[MAX_JSON_FIELD];
-    struct sockaddr_in destaddr;
-    int32_t port,i,encrypted,dist,createdflag,len = 0;
+    struct pserver_info *pserver;
+    struct sockaddr destaddr;
+    struct nodestats *stats;
+    int32_t port;
+    pserver = get_pserver(0,ipaddr,0,0);
+    stats = get_nodestats(pserver->nxt64bits);
+    if ( stats != 0 )
+        port = stats->supernet_port;
+    else port = 0;
+    if ( port == 0 )
+        port = SUPERNET_PORT;
+    uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
+    construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
+    portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
+}
+
+uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr)
+{
+    //char _tokbuf[MAX_JSON_FIELD];
+    //struct sockaddr_in destaddr;
+    int32_t i,encrypted,dist,createdflag,len = 0;
     struct nodestats *stats;
     struct NXT_acct *np;
     uint64_t keybits;
@@ -367,12 +386,12 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     encrypted = 2;
     stats = get_nodestats(pserver->nxt64bits);
-    if ( stats != 0 )
+    /*if ( stats != 0 )
         port = stats->supernet_port;
     else port = 0;
     if ( port == 0 )
         port = SUPERNET_PORT;
-    uv_ip4_addr(pserver->ipaddr,port,&destaddr);
+    uv_ip4_addr(pserver->ipaddr,port,&destaddr);*/
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -382,8 +401,9 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->numpings++;
         }
         gen_pingstr(cmdstr,1);
-        len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-        portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
+        send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
+        //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+        //portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
         return(0);
         //sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
     }
@@ -393,8 +413,9 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         {
             encrypted = 1;
             sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
-            len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-            portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
+            send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
+            //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+            //portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
         }
         else
         {
