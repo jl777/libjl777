@@ -655,8 +655,8 @@ uint64_t process_storageQ()
         expand_nxt64bits(key,ptr->keyhash);
         if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key,0)) != 0 )
         {
-            init_hexbytes_noT(datastr,sp->data,sp->H.datalen);
-            fprintf(stderr,"dequeued storageQ %p: (%s) len.%d\n",ptr,datastr,sp->H.datalen);
+            init_hexbytes_noT(datastr,sp->data,sp->H.size-sizeof(*sp));
+            fprintf(stderr,"dequeued storageQ %p: (%s) len.%ld\n",ptr,datastr,sp->H.size-sizeof(*sp));
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
             if ( Debuglevel > 1 )
                 fprintf(stderr,"txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
@@ -860,7 +860,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
             {
                 if ( sp->data != 0 )
                 {
-                    init_hexbytes_noT(databuf,sp->data,sp->H.datalen-sizeof(*sp));
+                    init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
                     if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
                     {
                         printf("found value for (%s)! call store\n",key);

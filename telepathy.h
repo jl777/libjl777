@@ -246,7 +246,7 @@ char *check_privategenesis(struct contact_info *contact)
         sp = kademlia_getstored(PUBLIC_DATA,location,0);
         if ( sp != 0 ) // no need to query if we already have it
         {
-            if ( sp->data != 0 && (json= parse_encrypted_data(0,&sequenceid,contact,key,sp->data,sp->H.datalen-sizeof(*sp),AESpasswordstr)) != 0 )
+            if ( sp->data != 0 && (json= parse_encrypted_data(0,&sequenceid,contact,key,sp->data,sp->H.size-sizeof(*sp),AESpasswordstr)) != 0 )
                 free_json(json);
             free(sp);
         }
@@ -444,9 +444,9 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
         {
             if ( (sp= (struct SuperNET_storage *)find_storage(PUBLIC_DATA,keystr,0)) != 0 )
             {
-                if ( sp->H.datalen < sizeof(hexstr)/2 )
+                if ( (sp->H.size-sizeof(*sp)) < sizeof(hexstr)/2 )
                 {
-                    init_hexbytes_noT(hexstr,sp->data,sp->H.datalen);
+                    init_hexbytes_noT(hexstr,sp->data,sp->H.size-sizeof(*sp));
                     sprintf(retbuf,"{\"data\":\"%s\"}",hexstr);
                 } else strcpy(retbuf,"{\"error\":\"cant find key\"}");
                 free(sp);
@@ -465,7 +465,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 expand_nxt64bits(locationstr,location);
                 if ( (sp= (struct SuperNET_storage *)find_storage(PRIVATE_DATA,locationstr,0)) != 0 )
                 {
-                    if ( (json= parse_encrypted_data(0,&seqid,contact,locationstr,sp->data,sp->H.datalen,AESpasswordstr)) != 0 )
+                    if ( (json= parse_encrypted_data(0,&seqid,contact,locationstr,sp->data,sp->H.size-sizeof(*sp),AESpasswordstr)) != 0 )
                     {
                         jsonstr = cJSON_Print(json);
                         stripwhite_ns(jsonstr,strlen(jsonstr));

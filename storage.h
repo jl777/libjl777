@@ -415,7 +415,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     DBT key,data;
     int ret;
     struct SuperNET_db *sdb;
-    if ( hp->datalen == 0 )
+    if ( hp->size == 0 )
     {
         printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
         return;
@@ -434,11 +434,11 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         hp->laststored = (uint32_t)time(NULL);
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
-        data.data = condition_storage(&data.size,sdb,hp,hp->datalen);
-        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->datalen,data.size);
+        data.data = condition_storage(&data.size,sdb,hp,hp->size);
+        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->size,data.size);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
-        else if ( complete_dbput(selector,keystr,hp,hp->datalen,0) == 0 )
+        else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
             fprintf(stderr,"updated.%d (%s)\n",selector,keystr);
         if ( data.data != hp && data.data != 0 )
             free(data.data);
@@ -462,7 +462,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     if ( datalen > sizeof(databuf) )
         return;
     decode_hex(databuf,datalen,datastr);
-    if ( (sp= (struct SuperNET_storage *)find_storage(selector,keystr,0)) == 0 || sp->H.datalen != datalen || memcmp(sp->data,databuf,datalen) != 0 )
+    if ( (sp= (struct SuperNET_storage *)find_storage(selector,keystr,0)) == 0 || (sp->H.size-sizeof(*sp)) != datalen || memcmp(sp->data,databuf,datalen) != 0 )
     {
         slen = (int32_t)strlen(keystr);
         if ( sp == 0 )
@@ -490,7 +490,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
         else if ( sp->H.keyhash != hashval )
             printf("ERROR: keyhash.%llu != hashval.%llu (%s)\n",(long long)sp->H.keyhash,(long long)hashval,keystr);
         memcpy(sp->data,databuf,datalen);
-        sp->H.datalen = (sizeof(*sp) + datalen);
+        sp->H.size = (sizeof(*sp) + datalen);
         update_storage(selector,keystr,&sp->H);
     }
 }

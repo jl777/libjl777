@@ -36,8 +36,8 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
 
 void update_contact_info(struct contact_info *contact)
 {
-    if ( contact->H.datalen == 0 )
-        contact->H.datalen = sizeof(*contact);
+    if ( contact->H.size == 0 )
+        contact->H.size = sizeof(*contact);
     update_storage(CONTACT_DATA,contact->handle,&contact->H);
 }
 
