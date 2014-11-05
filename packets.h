@@ -550,18 +550,16 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         }
                         else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
                     }
-                    
                     free_json(tmpjson);
                     if ( strcmp(checkstr,"valid") == 0 )
                     {
                         char previpaddr[64];
                         struct udp_queuecmd *qp;
                         if ( prevaddr != 0 )
-                        {
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
-                        } else previpaddr[0] = 0;
+                        else previpaddr[0] = 0;
                         //printf("GOT.(%s)\n",parmstxt);
-                        if ( 1 )
+                        if ( 0 )
                         {
                             qp = calloc(1,sizeof(*qp));
                             if ( previpaddr[0] != 0 )
@@ -573,18 +571,12 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             //printf("queue argjson.%p\n",argjson);
                             queue_enqueue(&udp_JSON,qp);
                             argjson = 0;
-                            jsonstr = 0;
                         }
-                        else jsonstr = SuperNET_json_commands(Global_mp,previpaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
-                        if ( jsonstr != 0 )
+                        else
                         {
-                            //printf("should send tokenized.(%s) to %s\n",jsonstr,tokenized_np->H.U.NXTaddr);
-                            /*if ( (retstr= send_tokenized_cmd(hopNXTaddr,Global_mp->Lfactor,srvNXTaddr,cp->srvNXTACCTSECRET,retjsonstr,tokenized_np->H.U.NXTaddr)) != 0 )
-                             {
-                             printf("sent back via UDP.(%s)\n",retstr);
-                             free(retstr);
-                             }*/
-                            free(jsonstr);
+                            jsonstr = SuperNET_json_commands(Global_mp,previpaddr,argjson,tokenized_np->H.U.NXTaddr,valid,(char *)decoded);
+                            if ( jsonstr != 0 )
+                                free(jsonstr);
                         }
                     }
                     else printf("encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);

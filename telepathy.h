@@ -485,6 +485,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
             free(contact);
         } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find contact\"}");
     }
+    printf("GETDB.(%s)\n",retbuf);
     return(clonestr(retbuf));
 }
 

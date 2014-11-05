@@ -160,7 +160,10 @@ char *clonestr(char *str)
     char *clone;
     if ( str == 0 || str[0] == 0 )
     {
-        printf("warning cloning nullstr.%p\n",str); //while ( 1 ) sleep(1);
+        printf("warning cloning nullstr.%p\n",str);
+#ifdef __APPLE__
+        //while ( 1 ) sleep(1);
+#endif
         str = (char *)"<nullstr>";
     }
     clone = (char *)mymalloc(strlen(str)+1);
