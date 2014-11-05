@@ -842,9 +842,6 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         _previpaddr[0] = 0;
         previpaddr = _previpaddr;
     }
-    //if ( prevaddr != 0 )
-    //    prevport = extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
-   // else prevport = 0, strcpy(previpaddr,"localhost");
     if ( Debuglevel > 0 )
         printf("myNXT.(%s) kademlia_find.(%s) (%s) data.(%s) is_remote_access.%d (%s)\n",verifiedNXTaddr,cmd,key,datastr!=0?datastr:"",is_remote_access(previpaddr),previpaddr==0?"":previpaddr);
     if ( key != 0 && key[0] != 0 )
@@ -853,27 +850,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         keyhash = calc_nxt64bits(key);
         mydist = bitweight(cp->srvpubnxtbits ^ keyhash);
         isvalue = (strcmp(cmd,"findvalue") == 0);
-        if ( isvalue != 0 )
-        {
-            sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
-            if ( sp != 0 )
-            {
-                if ( sp->data != 0 )
-                {
-                    init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                    if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
-                    {
-                        printf("found value for (%s)! call store\n",key);
-                        txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-                    }
-                    sprintf(retstr,"{\"data\":\"%s\"}",databuf);
-                }
-                free(sp);
-                printf("FOUND.(%s)\n",retstr);
-                return(clonestr(retstr));
-            }
-        }
-        else if ( datastr != 0 && datastr[0] != 0 )
+        if ( isvalue == 0 && datastr != 0 && datastr[0] != 0 )
         {
             void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
             if ( is_remote_access(previpaddr) != 0 )
@@ -888,7 +865,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         n = sort_all_buckets(sortbuf,keyhash);
         if ( n != 0 )
         {
-            printf("search n.%d sorted\n",n);
+            //printf("search n.%d sorted\n",n);
             if ( is_remote_access(previpaddr) == 0 || remoteflag != 0 ) // user invoked
             {
                 keynp = get_NXTacct(&createdflag,Global_mp,key);
@@ -966,6 +943,26 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 printf("send back.(%s) to %llu\n",value,(long long)senderbits);
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
+                if ( isvalue != 0 )
+                {
+                    sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
+                    if ( sp != 0 )
+                    {
+                        if ( sp->data != 0 )
+                        {
+                            init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
+                            if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
+                            {
+                                printf("found value for (%s)! call store\n",key);
+                                txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                            }
+                            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+                        }
+                        free(sp);
+                        printf("FOUND.(%s)\n",retstr);
+                        return(clonestr(retstr));
+                    }
+                }
             }
             //free(sortbuf);
         } else if ( Debuglevel > 0 )
