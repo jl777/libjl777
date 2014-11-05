@@ -523,33 +523,36 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     {
                         if ( strcmp("ping",checkstr) == 0 && internalflag == 0 && dontupdate == 0 )
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
+                        if ( strcmp("ping",checkstr) == 0 || strcmp("getdb",checkstr) == 0 )
+                            strcpy(checkstr,"valid");
                     }
                     else
                     {
                         if ( strcmp("pong",checkstr) == 0 && internalflag == 0 && dontupdate == 0 )
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
-                        valueobj = cJSON_GetObjectItem(tmpjson,"data");
-                        if ( is_cJSON_Number(valueobj) != 0 )
-                        {
-                            copy_cJSON(datalenstr,valueobj);
-                            if ( datalen > 0 && datalen >= atoi(datalenstr) )
-                            {
-                                init_hexbytes_noT(datastr,decoded + parmslen,atoi(datalenstr));
-                                cJSON_ReplaceItemInObject(tmpjson,"data",cJSON_CreateString(datastr));
-                                free(parmstxt);
-                                parmstxt = cJSON_Print(tmpjson);
-                                stripwhite_ns(parmstxt,strlen(parmstxt));
-                                free_json(argjson);
-                                argjson = cJSON_Parse(parmstxt);
-                                if ( Debuglevel > 0 )
-                                    printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
-                            }
-                            else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
-                        }
-                        strcpy(checkstr,"ping");
+                        strcpy(checkstr,"valid");
                     }
+                    valueobj = cJSON_GetObjectItem(tmpjson,"data");
+                    if ( is_cJSON_Number(valueobj) != 0 )
+                    {
+                        copy_cJSON(datalenstr,valueobj);
+                        if ( datalen > 0 && datalen >= atoi(datalenstr) )
+                        {
+                            init_hexbytes_noT(datastr,decoded + parmslen,atoi(datalenstr));
+                            cJSON_ReplaceItemInObject(tmpjson,"data",cJSON_CreateString(datastr));
+                            free(parmstxt);
+                            parmstxt = cJSON_Print(tmpjson);
+                            stripwhite_ns(parmstxt,strlen(parmstxt));
+                            free_json(argjson);
+                            argjson = cJSON_Parse(parmstxt);
+                            if ( Debuglevel > 0 )
+                                printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
+                        }
+                        else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
+                    }
+                    
                     free_json(tmpjson);
-                    if ( strcmp(checkstr,"ping") == 0 || strcmp(checkstr,"pong") == 0 ) // just means valid
+                    if ( strcmp(checkstr,"valid") == 0 )
                     {
                         char previpaddr[64];
                         struct udp_queuecmd *qp;
