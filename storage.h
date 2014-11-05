@@ -49,14 +49,7 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
                 data = *req->data;
             //printf("DB.%d func.%c key.(%s)\n",selector,req->funcid,req->key.data);
             if ( req->funcid == 'G' )
-            {
-                if ( req->flags == 0 )
-                    req->retval = sdb->dbp->get(sdb->dbp,req->txn,&req->key,&data,req->flags);
-                else
-                {
-                    
-                }
-            }
+                req->retval = sdb->dbp->get(sdb->dbp,req->txn,&req->key,&data,req->flags);
             else if ( req->funcid == 'P' )
                 req->retval = sdb->dbp->put(sdb->dbp,req->txn,&req->key,&data,req->flags);
             else if ( req->funcid == 'S' )
