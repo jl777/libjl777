@@ -366,7 +366,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         reqflags = DB_MULTIPLE;
         data.ulen = bulksize;
         data.flags = DB_DBT_USERMEM;
-        data.data = malloc(data.ulen);
+        data.data = valloc(data.ulen);
     }
     if ( (ret= dbget(selector,NULL,&key,&data,reqflags)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
