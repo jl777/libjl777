@@ -419,8 +419,9 @@ struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity,struct orde
     struct InstantDEX_quote *quotes;
     printf("find_raw_orders.%llu polarity.%d\n",(long long)obookid,polarity);
     expand_nxt64bits(obookstr,obookid);
-    if ( (quotes= (struct InstantDEX_quote *)find_storage(INSTANTDEX_DATA,obookstr,256*sizeof(*quotes))) != 0 )
+    if ( (quotes= (struct InstantDEX_quote *)find_storage(INSTANTDEX_DATA,obookstr,8*sizeof(*quotes))) != 0 )
     {
+        printf("(%f %f %llu %u)\n",quotes->price,quotes->vol,(long long)quotes->nxt64bits,quotes->timestamp);
         free(quotes);
     }
     if ( (raw= find_raw_orders(obookid)) != 0 )

@@ -370,7 +370,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     key.size = (int32_t)strlen(keystr) + 1;
     if ( bulksize != 0 )
     {
-        reqflags = (DB_MULTIPLE | DB_NEXT);
+        reqflags = DB_MULTIPLE;
         data.ulen = bulksize;
         data.flags = DB_DBT_USERMEM;
         data.data = malloc(data.ulen);
