@@ -376,6 +376,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     }
     if ( bulksize != 0 )
     {
+        struct InstantDEX_quote Q;
         size_t i,retdlen = 0;
         void *retdata,*p;
         for (DB_MULTIPLE_INIT(p,&data); ;)
@@ -386,6 +387,8 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
             for (i=0; i<retdlen; i++)
                 printf("%02x ",((uint8_t *)retdata)[i]);
             printf("%p %p: %d\n",p,retdata,(int)retdlen);
+            Q = *(struct InstantDEX_quote *)retdata;
+            printf("Q: %f %f %llu %u %d\n",Q.price,Q.vol,(long long)Q.nxt64bits,Q.timestamp,Q.flags);
         }
         return(data.data);
     }
