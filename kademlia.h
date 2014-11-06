@@ -692,10 +692,11 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
 {
     DBT key,data;
     cJSON *json;
-    uint64_t keybits,obookid;
+    double price;
+    uint64_t keybits,baseid,relid;
     int32_t ret,len,createdflag;
     struct InstantDEX_quote Q;
-    char decoded[MAX_JSON_FIELD];//,quotedatastr[MAX_JSON_FIELD];
+    char decoded[MAX_JSON_FIELD],checkstr[64];//,quotedatastr[MAX_JSON_FIELD];
     struct NXT_acct *keynp;
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(keystr);
@@ -722,9 +723,10 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
         //({"requestType":"quote","type":0,"NXT":"13434315136155299987","base":"4551058913252105307","srcvol":"1.01000000","rel":"11060861818140490423","destvol":"0.00606000"}) 0x7f24700111c0
         if ( json != 0 )
         {
-            uint64_t conv_InstantDEX_json(struct InstantDEX_quote *qp,cJSON *json);
-            obookid = conv_InstantDEX_json(&Q,json);
-            if ( obookid != 0 )
+            double parse_InstantDEX_json(uint64_t *baseidp,uint64_t *relidp,struct InstantDEX_quote *iQ,cJSON *json);
+            price = parse_InstantDEX_json(&baseid,&relid,&Q,json);
+            expand_nxt64bits(checkstr,baseid ^ relid);
+            if ( relid != 0 && baseid != 0 && strcmp(checkstr,keystr) == 0 )
             {
                 //init_hexbytes_noT(quotedatastr,(uint8_t *)&Q,sizeof(Q));
                 //datastr = quotedatastr;
@@ -737,15 +739,14 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
                     int z;
                     for (z=0; z<24; z++)
                         printf("%02x ",((uint8_t *)&Q)[z]);
-                    printf("Q: %f %f %llu %u %d\n",Q.price,Q.vol,(long long)Q.nxt64bits,Q.timestamp,Q.flags);
+                    
+                    printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type);
                 }
                 if ( (ret= dbput(INSTANTDEX_DATA,0,&key,&data,0)) != 0 )
                     Storage->err(Storage,ret,"Database put failed.");
                 else dbsync(INSTANTDEX_DATA,0);
-
             }
             free_json(json);
-            printf("localstorage of InstantDEX orderbook_tx.(%s) %llu %f %f\n",decoded,(long long)obookid,Q.price,Q.vol);
         }
     }
     if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )

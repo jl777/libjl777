@@ -262,6 +262,7 @@ int32_t init_SuperNET_storage()
             open_database(CONTACT_DATA,"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info),0);
             open_database(NODESTATS_DATA,"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats),0);
             open_database(INSTANTDEX_DATA,"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
+            open_database(ORDERBOOK_DATA,"orderbooks.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct orderbook),sizeof(struct orderbook),0);
             if ( 1 && cp != 0 )
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
@@ -352,8 +353,8 @@ int32_t delete_storage(int32_t selector,char *keystr)
 
 struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulksize)
 {
-    DBT key,data;
-    int32_t ret,reqflags = 0;;
+    DBT key,data,*retdata;
+    int32_t ret,reqflags = 0;
     struct storage_header *hp;
     if ( valid_SuperNET_db("find_storage",selector) == 0 )
         return(0);
@@ -376,21 +377,9 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     }
     if ( bulksize != 0 )
     {
-        struct InstantDEX_quote Q;
-        size_t i,retdlen = 0;
-        void *retdata,*p;
-        for (DB_MULTIPLE_INIT(p,&data); ;)
-        {
-            DB_MULTIPLE_NEXT(p,&data,retdata,retdlen);
-            if ( p == NULL )
-                break;
-            for (i=0; i<retdlen; i++)
-                printf("%02x ",((uint8_t *)retdata)[i]);
-            printf("%p %p: %d\n",p,retdata,(int)retdlen);
-            Q = *(struct InstantDEX_quote *)retdata;
-            printf("Q: %f %f %llu %u %d\n",Q.price,Q.vol,(long long)Q.nxt64bits,Q.timestamp,Q.flags);
-        }
-        return(data.data);
+        retdata = calloc(1,sizeof(*retdata));
+        *retdata = data;
+        return((void *)retdata);
     }
     else return(decondition_storage(&data.size,&SuperNET_dbs[selector],data.data,data.size));
 }

@@ -10,53 +10,71 @@
 
 #ifndef xcode_feeds_h
 #define xcode_feeds_h
+int Num_price_datas; //Num_raw_orders,Max_raw_orders,
+struct price_data **Price_datas;
 
 #define _issue_curl(curl_handle,label,url) bitcoind_RPC(curl_handle,label,url,0,0,0)
 
-struct orderbook *create_orderbook(uint64_t obookid,int32_t polarity,struct orderbook_tx **feedorders,int32_t numfeeds);
+int32_t create_orderbook_tx(int32_t polarity,struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume);
+struct orderbook *create_orderbook(uint64_t baseid,uint64_t relid,struct orderbook_tx **feedorders,int32_t numfeeds);
 void free_orderbook(struct orderbook *op);
-int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t obookid,double price,double volume);
-int32_t ask_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t obookid,double price,double volume);
-uint64_t create_raw_orders(uint64_t assetA,uint64_t assetB);
-struct raw_orders *find_raw_orders(uint64_t obookid);
-int32_t is_orderbook_bid(int32_t polarity,struct raw_orders *raw,struct orderbook_tx *tx);
-struct price_data *get_price_data(uint64_t obookid);
+//int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume);
+//int32_t ask_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume);
+//uint64_t create_raw_orders(uint64_t assetA,uint64_t assetB);
+//struct raw_orders *find_raw_orders(uint64_t obookid);
+//int32_t is_orderbook_bid(int32_t polarity,struct raw_orders *raw,struct orderbook_tx *tx);
+//struct price_data *get_price_data(uint64_t obookid);
 
 
-uint64_t ensure_orderbook(uint64_t *baseidp,uint64_t *relidp,int32_t *polarityp,char *base,char *rel)
+struct price_data *get_price_data(uint64_t baseid,uint64_t relid)
 {
-    uint64_t baseid,relid,obookid;
-    struct raw_orders *raw;
-    *baseidp = baseid = get_orderbook_assetid(base);
-    *relidp = relid = get_orderbook_assetid(rel);
+    int32_t i = 0;
+    if ( Num_price_datas > 0 )
+    {
+        for (i=0; i<Num_price_datas; i++)
+            if ( Price_datas[i]->baseid == baseid && Price_datas[i]->relid == relid )
+                return(Price_datas[i]);
+    }
+    Num_price_datas++;
+    Price_datas = realloc(Price_datas,sizeof(*Price_datas) * Num_price_datas);
+    Price_datas[i] = calloc(1,sizeof(*Price_datas[i]));
+    Price_datas[i]->baseid = relid;
+    Price_datas[i]->relid = relid;
+    return(Price_datas[i]);
+}
+
+void purge_price_data(struct price_data *dp)
+{
+    freep((void **)&dp->allquotes);
+    freep((void **)&dp->display);
+    freep((void **)&dp->pixeltimes);
+    freep((void **)&dp->bars);
+    memset(dp,0,sizeof(*dp));
+}
+
+uint64_t ensure_orderbook(uint64_t *baseidp,uint64_t *relidp,char *base,char *rel)
+{
+    *baseidp = get_orderbook_assetid(base);
+    *relidp = get_orderbook_assetid(rel);
     //printf("base.%s %llu, rel.%s %llu\n",base,(long long)baseid,rel,(long long)relid);
-    if ( baseid == 0 || relid == 0 )
+    if ( *baseidp == 0 || *relidp == 0 )
         return(0);
-    obookid = create_raw_orders(baseid,relid);
-    raw = find_raw_orders(obookid);
-    if ( raw->assetA == baseid && raw->assetB == relid )
-        *polarityp = 1;
-    else if ( raw->assetA == relid && raw->assetB == baseid )
-        *polarityp = -1;
-    else *polarityp = 0;
-    return(obookid);
+    return(*baseidp ^ *relidp);
 }
 
 uint64_t PTL_placebid(char *base,char *rel,double price,double volume)
 {
     uint64_t baseid,relid,obookid;
-    int32_t polarity;
-    obookid = ensure_orderbook(&baseid,&relid,&polarity,base,rel);
-    printf("placebid(%s/%s %.8f vol %.6f) polarity.%d obookid.%llx\n",base,rel,price,volume,polarity,(long long)obookid);
+    obookid = ensure_orderbook(&baseid,&relid,base,rel);
+    printf("placebid(%s/%s %.8f vol %.6f) obookid.%llx\n",base,rel,price,volume,(long long)obookid);
     return(obookid);
 }
 
 uint64_t PTL_placeask(char *base,char *rel,double price,double volume)
 {
     uint64_t baseid,relid,obookid;
-    int32_t polarity;
-    obookid = ensure_orderbook(&baseid,&relid,&polarity,base,rel);
-    printf("placeask(%s/%s %.8f vol %.6f) polarity.%d obookid.%llx\n",base,rel,price,volume,polarity,(long long)obookid);
+    obookid = ensure_orderbook(&baseid,&relid,base,rel);
+    printf("placeask(%s/%s %.8f vol %.6f) obookid.%llx\n",base,rel,price,volume,(long long)obookid);
     return(obookid);
 }
 
@@ -127,9 +145,9 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     ep->basemult = ep->relmult = 1L;
     ep->feedid = feedid;
     ep->type = type;
-    ep->obookid = ensure_orderbook(&ep->baseid,&ep->relid,&ep->polarity,base,rel);
-    ep->P.obookid = ep->obookid;
-    ep->P.polarity = ep->polarity;
+    ep->obookid = ensure_orderbook(&ep->baseid,&ep->relid,base,rel);
+    ep->P.baseid = ep->baseid;
+    ep->P.relid = ep->relid;
     safecopy(ep->P.base,base,sizeof(ep->P.base));
     safecopy(ep->P.rel,rel,sizeof(ep->P.rel));
     if ( ep->obookid == 0 )
@@ -224,9 +242,9 @@ int32_t generate_quote_entry(struct exchange_state *ep)
     return(ep->updated);
 }
 
-struct orderbook_tx **conv_quotes(int32_t *nump,int32_t type,uint64_t nxt64bits,uint64_t obookid,int32_t polarity,double *bids,int32_t numbids,double *asks,int32_t numasks)
+struct orderbook_tx **conv_quotes(int32_t *nump,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double *bids,int32_t numbids,double *asks,int32_t numasks)
 {
-    int32_t iter,i,ret,m,n = 0;
+    int32_t iter,i,m,n = 0;
     double *quotes;
     struct orderbook_tx *tx,**orders = 0;
     if ( (m= (numbids + numasks)) == 0 )
@@ -249,14 +267,9 @@ struct orderbook_tx **conv_quotes(int32_t *nump,int32_t type,uint64_t nxt64bits,
         {
             if ( tx == 0 )
                 tx = (struct orderbook_tx *)calloc(1,sizeof(*tx));
-            if ( iter*polarity > 0 )
-                ret = bid_orderbook_tx(tx,type,nxt64bits,obookid,quotes[i*2],quotes[i*2+1]);
-            else ret = ask_orderbook_tx(tx,type,nxt64bits,obookid,quotes[i*2],quotes[i*2+1]);
-            if ( ret == 0 )
-            {
-                orders[n++] = tx;
-                tx = 0;
-            }
+            create_orderbook_tx(iter,tx,type,nxt64bits,baseid,relid,quotes[i*2],quotes[i*2+1]);
+            orders[n++] = tx;
+            tx = 0;
         }
     }
     if ( tx != 0 )
@@ -318,7 +331,7 @@ struct orderbook_tx **parse_json_orderbook(struct exchange_state *ep,int32_t max
             ep->numbids = parse_json_quotes(ep->bidminmax,bids,bidobj,maxdepth,pricefield,volfield);
         if ( (askobj= cJSON_GetObjectItem(obj,askfield)) != 0 && is_cJSON_Array(askobj) != 0 )
             ep->numasks = parse_json_quotes(ep->askminmax,asks,askobj,maxdepth,pricefield,volfield);
-        orders = conv_quotes(&ep->numbidasks,ep->type,ep->feedid,ep->obookid,ep->polarity,bids,ep->numbids,asks,ep->numasks);
+        orders = conv_quotes(&ep->numbidasks,ep->type,ep->feedid,ep->baseid,ep->relid,bids,ep->numbids,asks,ep->numasks);
         if ( orders != 0 )
             queue_enqueue(&ep->ordersQ,orders);
         free(bids);
@@ -684,7 +697,7 @@ struct orderbook_tx **get_latest_orders(uint32_t *jdatetimep,int32_t *nump,struc
 
 void *poll_exchanges(void *flagp)
 {
-    void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state *ep,uint64_t obookid,int32_t newminuteflag,uint64_t changedmask);
+    void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state *ep,uint64_t baseid,uint64_t relid,int32_t newminuteflag,uint64_t changedmask);
     struct exchange_state *ep;
     uint32_t jdatetime;
     struct orderbook_tx **orders;
@@ -704,12 +717,12 @@ void *poll_exchanges(void *flagp)
                 ep = Activefiles[i];
                 if ( (orders= get_latest_orders(&jdatetime,&n,ep)) != 0 )
                 {
-                    void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime);
+                    void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime);
                     //printf("ep.%p %s lag.%d recalc_bars %s %s %s\n",ep,jdatetime_str(jdatetime),actual_gmt_jdatetime()-jdatetime,ep->name,ep->base,ep->rel);
-                    recalc_bars(&ep->P.PTRS,orders,n,&ep->P,jdatetime);
+                    recalc_bars(1,&ep->P.PTRS,orders,n,&ep->P,jdatetime);
                     ep->P.calctime = jdatetime;
                     
-                    tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->obookid,0,1L << exchangeid);
+                    tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->baseid,ep->relid,0,1L << exchangeid);
                 }
             }
             sleep(1);

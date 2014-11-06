@@ -161,6 +161,8 @@ void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
             "Content-Type: text/html\x0d\x0a"
             "Access-Control-Allow-Origin: *\r\n"
             "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
+            "Access-Control-Allow-Credentials: true\r\n"
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
             "Content-Length: %u\x0d\x0a\x0d\x0a",
             (unsigned int)len);
     //printf("html hdr.(%s)\n",buffer);
@@ -489,18 +491,15 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 
 char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    int32_t i,polarity,allflag;
-    uint64_t obookid;
+    int32_t i,allflag;
+    uint64_t baseid,relid;
     cJSON *json,*bids,*asks,*item;
     struct orderbook *op;
     char obook[64],buf[MAX_JSON_FIELD],assetA[64],assetB[64],*retstr = 0;
-    obookid = get_API_nxt64bits(objs[0]);
-    expand_nxt64bits(obook,obookid);
-    polarity = get_API_int(objs[1],1);
-    if ( polarity == 0 )
-        polarity = 1;
+    baseid = get_API_nxt64bits(objs[0]);
+    relid = get_API_nxt64bits(objs[1]);
     allflag = get_API_int(objs[2],0);
-    if ( obookid != 0 && (op= create_orderbook(obookid,polarity,0,0)) != 0 )
+    if ( baseid != 0 && relid != 0 && (op= create_orderbook(baseid,relid,0,0)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
             retstr = clonestr("{\"error\":\"no bids or asks\"}");
@@ -510,45 +509,32 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             bids = cJSON_CreateArray();
             for (i=0; i<op->numbids; i++)
             {
-                item = create_order_json(&op->bids[i],1,allflag);
-                cJSON_AddItemToArray(bids,item);
+                if ( (item= gen_orderbook_item(&op->bids[i],allflag)) != 0 )
+                    cJSON_AddItemToArray(bids,item);
             }
             asks = cJSON_CreateArray();
             for (i=0; i<op->numasks; i++)
             {
-                item = create_order_json(&op->asks[i],1,allflag);
-                cJSON_AddItemToArray(asks,item);
+                if ( (item= gen_orderbook_item(&op->asks[i],allflag)) != 0 )
+                    cJSON_AddItemToArray(asks,item);
             }
-            expand_nxt64bits(assetA,op->assetA);
-            expand_nxt64bits(assetB,op->assetB);
-            cJSON_AddItemToObject(json,"orderbook",cJSON_CreateString(obook));
-            cJSON_AddItemToObject(json,"assetA",cJSON_CreateString(assetA));
-            cJSON_AddItemToObject(json,"assetB",cJSON_CreateString(assetB));
-            cJSON_AddItemToObject(json,"polarity",cJSON_CreateNumber(polarity));
+            expand_nxt64bits(assetA,op->baseid);
+            expand_nxt64bits(assetB,op->relid);
+            expand_nxt64bits(obook,op->baseid ^ op->relid);
+            cJSON_AddItemToObject(json,"key",cJSON_CreateString(obook));
+            cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(assetA));
+            cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
             cJSON_AddItemToObject(json,"bids",bids);
             cJSON_AddItemToObject(json,"asks",asks);
             retstr = cJSON_Print(json);
         }
         free_orderbook(op);
-    } else
+    }
+    else
     {
-        sprintf(buf,"{\"error\":\"no such orderbook.(%llu)\"}",(long long)obookid);
+        sprintf(buf,"{\"error\":\"no such orderbook.(%llu ^ %llu)\"}",(long long)baseid,(long long)relid);
         retstr = clonestr(buf);
     }
-    return(retstr);
-}
-
-char *getorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    cJSON *json;
-    char *retstr = 0;
-    json = create_orderbooks_json();
-    if ( json != 0 )
-    {
-        retstr = cJSON_Print(json);
-        free_json(json);
-    }
-    else retstr = clonestr("{\"error\":\"no orderbooks\"}");
     return(retstr);
 }
 
@@ -570,36 +556,28 @@ void submit_quote(uint64_t obookid,char *quotestr)
 char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
-    int32_t polarity;
-    uint64_t obookid,nxt64bits,assetA,assetB,txid = 0;
+    uint64_t nxt64bits,baseid,relid,txid = 0;
     double price,volume;
     struct orderbook_tx tx,*txp;
     char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     nxt64bits = calc_nxt64bits(sender);
-    obookid = get_API_nxt64bits(objs[0]);
-    polarity = get_API_int(objs[1],1);
-    if ( polarity == 0 )
-        polarity = 1;
+    baseid = get_API_nxt64bits(objs[0]);
+    relid = get_API_nxt64bits(objs[1]);
     volume = get_API_float(objs[2]);
     price = get_API_float(objs[3]);
-    assetA = get_API_nxt64bits(objs[4]);
-    assetB = get_API_nxt64bits(objs[5]);
-    printf("PLACE QUOTE polarity.%d dir.%d\n",polarity,dir);
-    if ( sender[0] != 0 && find_raw_orders(obookid) != 0 && valid > 0 )
+    if ( sender[0] != 0 && valid > 0 )//find_raw_orders(obookid) != 0 && )
     {
         if ( price != 0. && volume != 0. && dir != 0 )
         {
-            if ( dir*polarity > 0 )
-                bid_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
-            else ask_orderbook_tx(&tx,0,nxt64bits,obookid,price,volume);
-            if ( (json= gen_orderbook_txjson(&tx,dir*polarity > 0)) != 0 )
+            create_orderbook_tx(dir,&tx,0,nxt64bits,baseid,relid,price,volume);
+            if ( (json= gen_InstantDEX_json(&tx.iQ,baseid,relid)) != 0 )
             {
                 jsonstr = cJSON_Print(json);
                 stripwhite_ns(jsonstr,strlen(jsonstr));
                 printf("%s\n",jsonstr);
-                submit_quote(obookid,jsonstr);
+                submit_quote(baseid ^ relid,jsonstr);
                 free_json(json);
                 free(jsonstr);
             }
@@ -608,7 +586,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
             {
                 txp = calloc(1,sizeof(*txp));
                 *txp = tx;
-                update_orderbook_tx(1,obookid,txp,txid);
+                //update_orderbook_tx(1,obookid,txp,txid);
                 expand_nxt64bits(txidstr,txid);
                 sprintf(buf,"{\"result\":\"success\",\"txid\":\"%s\"}",txidstr);
                 retstr = clonestr(buf);
@@ -616,26 +594,26 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
         }
         if ( retstr == 0 )
         {
-            sprintf(buf,"{\"error submitting\":\"place%s error obookid.%llx polarity.%d volume %f price %f\"}",dir>0?"bid":"ask",(long long)obookid,polarity,volume,price);
+            sprintf(buf,"{\"error submitting\":\"place%s error %llu/%llu volume %f price %f\"}",dir>0?"bid":"ask",(long long)baseid,(long long)relid,volume,price);
             retstr = clonestr(buf);
         }
     }
-    else if ( assetA != 0 && assetB != 0 && assetA != assetB )
+   /* else if ( baseid != 0 && relid != 0 && baseid != relid )
     {
-        if ( (obookid= create_raw_orders(assetA,assetB)) != 0 )
+        if ( (obookid= (baseid ^ relid)) != 0 )//create_raw_orders(assetA,assetB)) != 0 )
         {
             sprintf(buf,"{\"result\":\"success\",\"obookid\":\"%llu\"}",(long long)obookid);
             retstr = clonestr(buf);
         }
         else
         {
-            sprintf(buf,"{\"error\":\"couldnt create orderbook for assets %llu and %llu\"}",(long long)assetA,(long long)assetB);
+            sprintf(buf,"{\"error\":\"couldnt create orderbook for assets %llu and %llu\"}",(long long)baseid,(long long)relid);
             retstr = clonestr(buf);
         }
-    }
+    }*/
     else
     {
-        sprintf(buf,"{\"error\":\"place%s error obookid.%llx polarity.%d volume %f price %f\"}",polarity>0?"bid":"ask",(long long)obookid,polarity,volume,price);
+        sprintf(buf,"{\"error\":\"place%s error %llu/%llu dir.%d volume %f price %f\"}",dir>0?"bid":"ask",(long long)baseid,(long long)relid,dir,volume,price);
         retstr = clonestr(buf);
     }
     return(retstr);
@@ -718,6 +696,35 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     //if ( retstr == 0 )
     //    retstr = clonestr("{\"error\":\"invalid sendmessage request\"}");
     return(retstr);
+}
+
+char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
+{
+    char *str;
+    struct NXT_acct *np;
+    queue_t *msgs;
+    cJSON *json,*array = 0;
+    json = cJSON_CreateObject();
+    if ( senderNXTaddr != 0 && senderNXTaddr[0] != 0 )
+    {
+        np = find_NXTacct(NXTaddr,NXTACCTSECRET);
+        msgs = &np->incomingQ;
+    }
+    else msgs = &ALL_messages;
+    while ( (str= queue_dequeue(msgs)) != 0 ) //queue_size(msgs) > 1 &&
+    {
+        if ( array == 0 )
+            array = cJSON_CreateArray();
+        //printf("add str.(%s) size.%d\n",str,queue_size(msgs));
+        cJSON_AddItemToArray(array,cJSON_CreateString(str));
+        free(str);
+        str = 0;
+    }
+    if ( array != 0 )
+        cJSON_AddItemToObject(json,"messages",array);
+    str = cJSON_Print(json);
+    free_json(json);
+    return(str);
 }
 
 char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1503,18 +1510,18 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *teleport[] = { (char *)teleport_func, "teleport", "V", "amount", "contact", "coin", "minage", "withdraw", 0 };
     
     // InstantDEX
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "baseid", "relid", "allfields", 0 };
+    //static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
+    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "baseid", "relid", "volume", "price", 0 };
+    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "baseid", "relid", "volume", "price",0 };
+    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
-    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "obookid", "polarity", "allfields", 0 };
-    static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
-    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
-    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "obookid", "polarity", "volume", "price", "assetA", "assetB", 0 };
-    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
-    
+
     // Tradebot
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, getorderbooks, teleport, telepodacct, savefile, restorefile  };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

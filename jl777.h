@@ -383,8 +383,8 @@ struct InstantDEX_state
     struct price_data *dp;
     struct exchange_state *ep;
     char exchange[64],base[64],rel[64];
-    uint64_t obookid,changedmask;
-    int32_t polarity,numexchanges,event;
+    uint64_t baseid,relid,changedmask;
+    int32_t numexchanges,event;
     uint32_t jdatetime;
     
     int maxbars,numbids,numasks;
@@ -452,7 +452,7 @@ struct price_data
     double lastprice;
     struct exchange_quote *allquotes;
     uint32_t *display,firstjdatetime,lastjdatetime,calctime;
-    uint64_t obookid;
+    uint64_t baseid,relid;
     char base[64],rel[64];
     struct tradebot_ptrs PTRS;
     struct filtered_buf bidfb,askfb,avefb,slopefb,accelfb;
@@ -461,36 +461,39 @@ struct price_data
     double splineprices[MAX_ACTIVE_WIDTH],slopes[MAX_ACTIVE_WIDTH],accels[MAX_ACTIVE_WIDTH];
     double *pixeltimes,timefactor,aveprice,absslope,absaccel,avedisp,aveslope,aveaccel,bidsum,asksum,halfspread;
     double dSplines[NUM_PRICEDATA_SPLINES][4],jdatetimes[NUM_PRICEDATA_SPLINES],splinevals[NUM_PRICEDATA_SPLINES];
-    int32_t numquotes,maxquotes,screenwidth,screenheight,numsplines,polarity;
+    int32_t numquotes,maxquotes,screenwidth,screenheight,numsplines;
 };
 
-struct quote
+/*struct quote
 {
-    double price,vol;    // must be first!!
-    uint32_t type;
-    uint64_t nxt64bits,baseamount,relamount;
+    //double price,vol;    // must be first!!
+    struct InstantDEX_quote iQ;
+    //uint32_t type;
+    //uint64_t nxt64bits,baseamount,relamount;
+};*/
+
+struct orderbook_tx
+{
+    uint64_t baseid,relid;
+    struct InstantDEX_quote iQ;
+    //uint32_t timestamp,type;
+    //uint64_t txid,nxt64bits,baseid,relid;
+    //uint64_t baseamount,relamount;
 };
 
 struct orderbook
 {
-    uint64_t assetA,assetB;
-    struct quote *bids,*asks;
-    int32_t numbids,numasks,polarity;
+    uint64_t baseid,relid;
+    struct InstantDEX_quote *bids,*asks;
+    int32_t numbids,numasks;
 };
 
-struct orderbook_tx
-{
-    uint32_t timestamp,type;
-    uint64_t txid,nxt64bits,baseid,relid;
-    uint64_t baseamount,relamount;
-};
-
-struct raw_orders
+/*struct raw_orders
 {
     uint64_t assetA,assetB,obookid;
     struct orderbook_tx **orders;
     int32_t num,max;
-} **Raw_orders;
+} **Raw_orders;*/
 
 struct exchange_quote { uint32_t jdatetime; float highbid,lowask; };
 #define EXCHANGE_QUOTES_INCR ((int32_t)(4096L / sizeof(struct exchange_quote)))

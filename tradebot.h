@@ -8,6 +8,7 @@
 
 #ifndef xcode_tradebot_h
 #define xcode_tradebot_h
+
 int32_t Num_languages,Max_metalevel;
 
 
@@ -603,7 +604,7 @@ void copy_tradebot_ptrs(struct InstantDEX_state *state,struct tradebot_ptrs *ptr
     state->maxbars = ptrs->maxbars;
 }
 
-void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state *ep,uint64_t obookid,int32_t newminuteflag,uint64_t changedmask)
+void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state *ep,uint64_t baseid,uint64_t relid,int32_t newminuteflag,uint64_t changedmask)
 {
     static int errors;
     struct InstantDEX_state S;
@@ -614,16 +615,17 @@ void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct ex
     S.dp = dp;
     S.ep = ep;
     S.numexchanges = 1;
-    S.obookid = obookid;
+    S.baseid = baseid;
+    S.relid = relid;
     if ( dp != 0 )
     {
-        S.polarity = dp->polarity;
-        copy_tradebot_ptrs(&S,&dp->PTRS,"ALL",dp->base,dp->rel,dp->polarity);
+        //S.polarity = dp->polarity;
+        copy_tradebot_ptrs(&S,&dp->PTRS,"ALL",dp->base,dp->rel,1);//dp->polarity);
     }
     else if ( ep != 0 )
     {
         //printf("copy ptrs from ep.%p (%p %p %p %p)\n",ep,ep->P.PTRS.bids,ep->P.PTRS.inv_bids,ep->P.PTRS.asks,ep->P.PTRS.inv_asks);
-        copy_tradebot_ptrs(&S,&ep->P.PTRS,ep->name,ep->base,ep->rel,ep->polarity);
+        copy_tradebot_ptrs(&S,&ep->P.PTRS,ep->name,ep->base,ep->rel,1);//ep->polarity);
     }
     S.changedmask = changedmask;
     if ( newminuteflag != 0 )

@@ -262,7 +262,7 @@ float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_
     return(0);
 }
 
-void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
+void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
 {
     static int32_t periods[] = { 60, 60*2, 60*3, 60*4, 60*5, 60*10, 60*15, 60*30, 60*60 };
     int32_t maxbars,i,j,ind,numbids,numasks,period,timedist,maxtimedist;
@@ -271,7 +271,7 @@ void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int num
     struct exchange_quote *qp;
     memset(ptrs,0,sizeof(*ptrs));
     ptrs->jdatetime = jdatetime;
-    op = create_orderbook(dp->obookid,dp->polarity,orders,numorders);
+    op = create_orderbook(dp->baseid,dp->relid,orders,numorders);
     if ( op != 0 )
     {
         numbids = op->numbids;
@@ -286,7 +286,7 @@ void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int num
     {
         maxbars = 0;
         period = periods[j];
-        bars = get_bars(&invbars,ptrs,period,dp->polarity);
+        bars = get_bars(&invbars,ptrs,period,polarity);
         if ( bars == 0 )
             fatal("illegal bars period??");
         maxtimedist = period * MAX_TRADEBOT_BARS;
@@ -314,7 +314,7 @@ void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int num
         ptrs->bidnxt[i] = op->bids[i].nxt64bits;
     for (i=0; i<numasks; i++)
         ptrs->asknxt[i] = op->asks[i].nxt64bits;
-    if ( dp->polarity > 0 )
+    /*if ( dp->polarity > 0 )
     {
         strcpy(ptrs->base,dp->base);
         strcpy(ptrs->rel,dp->rel);
@@ -322,22 +322,22 @@ void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int num
         for (i=0; i<numbids; i++)
         {
             ptrs->bidnxt[i] = op->bids[i].nxt64bits;
-            ptrs->bids[i] = op->bids[i].price;
+            ptrs->bids[i] = _iQ_price(&op->bids[i]);
             //printf("%f ",ptrs->bids[i]);
-            ptrs->bidvols[i] = ((double)op->bids[i].baseamount / SATOSHIDEN);
+            ptrs->bidvols[i] = _iQ_volume(&op->bids[i]);
             ptrs->inv_asks[i] = invert_price(op->bids[i].price);
-            ptrs->inv_askvols[i] = ((double)op->bids[i].relamount / SATOSHIDEN);
+            ptrs->inv_askvols[i] = ((double)op->bids[i].iQ.relamount / SATOSHIDEN);
         }
         //printf("numbids.%d %p\n",numbids,ptrs->bids);
         ptrs->numasks = numasks;
         for (i=0; i<numasks; i++)
         {
-            ptrs->asknxt[i] = op->asks[i].nxt64bits;
+            ptrs->asknxt[i] = op->asks[i].iQ.nxt64bits;
             ptrs->asks[i] = op->asks[i].price;
             //printf("%f ",ptrs->asks[i]);
-            ptrs->askvols[i] = ((double)op->asks[i].baseamount / SATOSHIDEN);
+            ptrs->askvols[i] = ((double)op->asks[i].iQ.baseamount / SATOSHIDEN);
             ptrs->inv_bids[i] = invert_price(op->asks[i].price);
-            ptrs->inv_bidvols[i] = ((double)op->asks[i].relamount / SATOSHIDEN);
+            ptrs->inv_bidvols[i] = ((double)op->asks[i].iQ.relamount / SATOSHIDEN);
         }
         //printf("numasks.%d %p\n",numasks,ptrs->asks);
     }
@@ -348,26 +348,26 @@ void recalc_bars(struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int num
         ptrs->numasks = numasks;
         for (i=0; i<numasks; i++)
         {
-            ptrs->asknxt[i] = op->asks[i].nxt64bits;
+            ptrs->asknxt[i] = op->asks[i].iQ.nxt64bits;
             ptrs->asks[i] = invert_price(op->asks[i].price);
-            ptrs->askvols[i] = ((double)op->asks[i].relamount / SATOSHIDEN);
+            ptrs->askvols[i] = ((double)op->asks[i].iQ.relamount / SATOSHIDEN);
             ptrs->inv_bids[i] = op->asks[i].price;
-            ptrs->inv_bidvols[i] = ((double)op->asks[i].baseamount / SATOSHIDEN);
+            ptrs->inv_bidvols[i] = ((double)op->asks[i].iQ.baseamount / SATOSHIDEN);
             //printf("(%f %f) ",ptrs->asks[i],ptrs->inv_asks[i]);
         }
         //printf("%d invasks\n",numasks);
         ptrs->numbids = numbids;
         for (i=0; i<numbids; i++)
         {
-            ptrs->bidnxt[i] = op->bids[i].nxt64bits;
+            ptrs->bidnxt[i] = op->bids[i].iQ.nxt64bits;
             ptrs->bids[i] = invert_price(op->bids[i].price);
-            ptrs->bidvols[i] = ((double)op->bids[i].relamount / SATOSHIDEN);
+            ptrs->bidvols[i] = ((double)op->bids[i].iQ.relamount / SATOSHIDEN);
             ptrs->inv_asks[i] = op->bids[i].price;
-            ptrs->inv_askvols[i] = ((double)op->bids[i].baseamount / SATOSHIDEN);
+            ptrs->inv_askvols[i] = ((double)op->bids[i].iQ.baseamount / SATOSHIDEN);
             //printf("(%f %f) ",ptrs->bids[i],ptrs->inv_bids[i]);
         }
         //printf("%d invbids\n",numbids);
-    }
+    }*/
     if ( op != 0 )
         free_orderbook(op);
 }
