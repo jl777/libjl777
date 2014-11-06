@@ -348,7 +348,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         telepathic_teleport(contact,attachjson);
                     }
                     free(jsonstr);
-                    update_contact_info(contact);
+                    //update_contact_info(contact);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }
