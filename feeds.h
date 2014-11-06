@@ -262,7 +262,7 @@ struct orderbook_tx **conv_quotes(int32_t *nump,int32_t type,uint64_t nxt64bits,
         {
             quotes = bids;
             m = numbids;
-        }
+        } 
         for (i=0; i<m; i++)
         {
             if ( tx == 0 )

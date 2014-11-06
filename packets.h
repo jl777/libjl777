@@ -206,6 +206,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
+return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
@@ -279,13 +280,15 @@ int32_t has_privacyServer(struct NXT_acct *np)
 char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
 {
     uint64_t txid;
-    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64];
+    char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],_hopNXTaddr[64];
     unsigned char maxbuf[4096],encodedD[4096],encodedL[4096],encodedF[4096],*outbuf;
     int32_t len,createdflag;//,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
     expand_nxt64bits(srvNXTaddr,np->stats.nxt64bits);
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    if ( hopNXTaddr == 0 )
+        hopNXTaddr = _hopNXTaddr, hopNXTaddr[0] = 0;
     if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->stats.nxt64bits == 0 )
     {
         sprintf(buf,"\"error\":\"no np.%p or global udp.%p for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,Global_mp->udp,destNXTaddr,(long long)destnp->stats.nxt64bits);

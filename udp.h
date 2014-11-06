@@ -437,7 +437,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
         char hopNXTaddr[64],destNXTaddr[64],*retstr;
         expand_nxt64bits(destNXTaddr,stats->nxt64bits);
-        L = 0*(encrypted>1 ? MAX(encrypted,Global_mp->Lfactor) : 0);
+        L = (encrypted>1 ? MAX(encrypted,Global_mp->Lfactor) : 0);
         if ( Debuglevel > 1 )
             fprintf(stderr,"direct send via sendmessage (%s) %p %d\n",origargstr,data,datalen);
         retstr = sendmessage(hopNXTaddr,L,cp->srvNXTADDR,origargstr,len,destNXTaddr,data,datalen);

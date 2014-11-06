@@ -935,7 +935,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                             printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                         if ( origargstr != 0 )
                                         {
-                                            txid = directsend_packet(1,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
+                                            txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
                                             fprintf(stderr,"back from direct_send\n");
                                         }
                                         else printf("no origarg string for pass through?\n");
