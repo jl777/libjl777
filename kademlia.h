@@ -244,6 +244,11 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     int32_t len = (int32_t)strlen(cmdstr);
     char _tokbuf[4096];
     uint64_t txid;
+    if ( strcmp("0.0.0.0",pserver->ipaddr) == 0 )
+    {
+        printf("_send_kademlia_cmd illegal ip addr %s\n",pserver->ipaddr);
+        return(0);
+    }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     if ( Debuglevel > 1 )
         printf(">>>>>>>> directsend.[%s] encrypted.%d -> (%s)\n",_tokbuf,encrypted,pserver->ipaddr);
