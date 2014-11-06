@@ -355,7 +355,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
             free(contact);
         } else printf("dont have contact info for %llu\n",(long long)tel->contactbits);
         printf("(%s.%d) pass.(%s) | ",contact->handle,tel->sequenceid,AESpasswordstr);
-    }
+    } else printf("find_telepathy_entry: cant find (%s)\n",locationstr);
     if ( cp != 0 )
     {
         char datastr[4096];
