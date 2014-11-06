@@ -942,6 +942,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                         {
                                             txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
                                             fprintf(stderr,"back from direct_send\n");
+                                            return(0);
                                         }
                                         else printf("no origarg string for pass through?\n");
                                     }
