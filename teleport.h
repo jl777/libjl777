@@ -61,6 +61,36 @@ char *_podstate(int32_t podstate)
     return("illegal");
 }
 
+uint32_t calc_telepodcrc(struct telepod *pod)
+{
+    uint32_t offset,crc = 0;
+    offset = (uint32_t)((long)&pod->modified + sizeof(pod->modified) - (long)pod);
+    crc = _crc32(crc,(void *)((long)pod + offset),(pod->H.size - offset));
+    return(crc);
+}
+
+struct telepod *create_telepod(uint32_t createtime,char *coinstr,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout)
+{
+    struct telepod *pod;
+    int32_t size;
+    size = (int32_t)(sizeof(*pod) + (strlen(privkey) + 1));
+    pod = calloc(1,size);
+    pod->H.createtime = createtime;
+    pod->H.size = size;
+    pod->vout = vout;
+    pod->cloneout = -1;
+    pod->satoshis = satoshis;
+    safecopy(pod->coinstr,coinstr,sizeof(pod->coinstr));
+    safecopy(pod->txid,txid,sizeof(pod->txid));
+    safecopy(pod->coinaddr,podaddr,sizeof(pod->coinaddr));
+    safecopy(pod->script,script,sizeof(pod->script));
+    if ( privkey != 0 )
+        strcpy((void *)pod->privkey,privkey);
+    pod->crc = calc_telepodcrc(pod);
+    //disp_telepod("create",pod);
+    return(pod);
+}
+
 cJSON *coin_specific_json(struct telepod *pod)
 {
     cJSON *tpd;
@@ -79,6 +109,41 @@ cJSON *coin_specific_json(struct telepod *pod)
         cJSON_AddItemToObject(tpd,"s",cJSON_CreateString(pod->script));
     }
     return(tpd);
+}
+
+struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_info *contact,cJSON *tpd)
+{
+    int32_t get_telepod_info(uint64_t *unspentp,uint32_t *createtimep,char *coinstr,struct telepod *pod);
+    char podaddr[MAX_JSON_FIELD],script[MAX_JSON_FIELD],privkey[MAX_JSON_FIELD],txid[MAX_JSON_FIELD];
+    struct telepod *pod = 0;
+    uint32_t createtime,vout = -1;
+    uint64_t amount;
+    amount = (SATOSHIDEN * get_API_float(cJSON_GetObjectItem(tpd,"v")));
+    createtime = get_API_int(cJSON_GetObjectItem(tpd,"t"),0);
+    extract_cJSON_str(txid,sizeof(txid),tpd,"x");
+    extract_cJSON_str(privkey,sizeof(privkey),tpd,"p");
+    if ( strcmp(cp->name,"BBR") != 0 )
+    {
+        vout = get_API_int(cJSON_GetObjectItem(tpd,"o"),-1);
+        extract_cJSON_str(podaddr,sizeof(podaddr),tpd,"a");
+        extract_cJSON_str(script,sizeof(script),tpd,"s");
+    } else podaddr[0] = script[0] = 0;
+    pod = create_telepod(createtime,cp->name,0,podaddr,script,privkey,txid,vout);
+    if ( get_telepod_info(&pod->unspent,&pod->H.createtime,cp->name,pod) < 0 )
+    {
+        printf("Invalid pod.%s (%s) received from %s\n",pod->coinaddr,pod->txid,contact->handle);
+        free(pod);
+        pod = 0;
+    }
+    else
+    {
+        pod->satoshis = pod->unspent;
+        pod->senderbits = contact->nxt64bits;
+        if ( pod->clonetime == 0 )
+            pod->clonetime = (uint32_t)(((rand()>>8) % (1+cp->clonesmear)) + time(NULL));
+        printf("[%.8f] pod (%s) received from %s for %.8f %s clonetime in %.1f minutes\n",dstr(amount),pod->txid,contact->handle,dstr(pod->unspent),pod->coinstr,((double)pod->clonetime-time(NULL))/60.);
+    }
+    return(pod);
 }
 
 cJSON *telepod_json(struct telepod *pod)
@@ -120,36 +185,6 @@ void disp_telepod(char *msg,struct telepod *pod)
     //char hexstr[1024];
     //init_hexbytes_noT(hexstr,_get_privkeyptr(pod,calc_multisig_N(pod)),pod->len_plus1-1);
     //printf("%p %6s %13.8f height.%-6d %6s %s %s/vout_%d priv.(%s)\n",pod,msg,dstr(pod->satoshis),pod->height,pod->coinstr,pod->coinaddr,pod->txid,pod->vout,_get_privkeyptr(pod,calc_multisig_N(pod)));
-}
-
-uint32_t calc_telepodcrc(struct telepod *pod)
-{
-    uint32_t offset,crc = 0;
-    offset = (uint32_t)((long)&pod->modified + sizeof(pod->modified) - (long)pod);
-    crc = _crc32(crc,(void *)((long)pod + offset),(pod->H.size - offset));
-    return(crc);
-}
-
-struct telepod *create_telepod(uint32_t createtime,char *coinstr,uint64_t satoshis,char *podaddr,char *script,char *privkey,char *txid,int32_t vout)
-{
-    struct telepod *pod;
-    int32_t size;
-    size = (int32_t)(sizeof(*pod) + (strlen(privkey) + 1));
-    pod = calloc(1,size);
-    pod->H.createtime = createtime;
-    pod->H.size = size;
-    pod->vout = vout;
-    pod->cloneout = -1;
-    pod->satoshis = satoshis;
-    safecopy(pod->coinstr,coinstr,sizeof(pod->coinstr));
-    safecopy(pod->txid,txid,sizeof(pod->txid));
-    safecopy(pod->coinaddr,podaddr,sizeof(pod->coinaddr));
-    safecopy(pod->script,script,sizeof(pod->script));
-    if ( privkey != 0 )
-        strcpy((void *)pod->privkey,privkey);
-    pod->crc = calc_telepodcrc(pod);
-    //disp_telepod("create",pod);
-    return(pod);
 }
 
 char *issue_BBRcmd(struct coin_info *cp,char *method,char *basement,char *acctkeys,uint64_t amount,char *withdrawaddr)
@@ -605,38 +640,6 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         printf(" avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",*availp,*maturingp,*inboundp,*outboundp,*doublespentp,*cancelledp,n);
     *nump = n;
     return(pods);
-}
-
-struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_info *contact,cJSON *tpd)
-{
-    char podaddr[MAX_JSON_FIELD],script[MAX_JSON_FIELD],privkey[MAX_JSON_FIELD],txid[MAX_JSON_FIELD];
-    struct telepod *pod = 0;
-    uint32_t createtime,vout = -1;
-    createtime = get_API_int(cJSON_GetObjectItem(tpd,"t"),0);
-    extract_cJSON_str(txid,sizeof(txid),tpd,"x");
-    extract_cJSON_str(privkey,sizeof(privkey),tpd,"p");
-    if ( strcmp(cp->name,"BBR") != 0 )
-    {
-        vout = get_API_int(cJSON_GetObjectItem(tpd,"v"),-1);
-        extract_cJSON_str(podaddr,sizeof(podaddr),tpd,"a");
-        extract_cJSON_str(script,sizeof(script),tpd,"s");
-    } else podaddr[0] = script[0] = 0;
-    pod = create_telepod(createtime,cp->name,0,podaddr,script,privkey,txid,vout);
-    if ( get_telepod_info(&pod->unspent,&pod->H.createtime,cp->name,pod) < 0 )
-    {
-        printf("Invalid pod.%s (%s) received from %s\n",pod->coinaddr,pod->txid,contact->handle);
-        free(pod);
-        pod = 0;
-    }
-    else
-    {
-        pod->satoshis = pod->unspent;
-        pod->senderbits = contact->nxt64bits;
-        if ( pod->clonetime == 0 )
-            pod->clonetime = (uint32_t)(((rand()>>8) % (1+cp->clonesmear)) + time(NULL));
-        printf("pod (%s) received from %s for %.8f %s clonetime in %.1f minutes\n",pod->txid,contact->handle,dstr(pod->unspent),pod->coinstr,((double)pod->clonetime-time(NULL))/60.);
-    }
-    return(pod);
 }
 
 void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
