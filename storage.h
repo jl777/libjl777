@@ -405,8 +405,8 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     DBT key,data;
     int ret;
     struct SuperNET_db *sdb;
-if ( selector == CONTACT_DATA )
-    return;
+//if ( selector == CONTACT_DATA )
+//    return;
     if ( hp->size == 0 )
     {
         printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
@@ -444,8 +444,8 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     unsigned char databuf[8192],space[8192];
     uint64_t hashval = 0;
     struct SuperNET_storage *sp;
-if ( selector == CONTACT_DATA )
-    return;
+//if ( selector == CONTACT_DATA )
+//    return;
     if ( valid_SuperNET_db("add_storage",selector) == 0 )
         return;
     if ( selector == PUBLIC_DATA && Total_stored > MAX_KADEMLIA_STORAGE )
