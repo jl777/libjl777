@@ -396,16 +396,7 @@ void telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *contac
     }
     if ( (jsonstr= cJSON_Print(json)) != 0 )
     {
-        int i,j,n;
         stripwhite_ns(jsonstr,strlen(jsonstr));
-        n = (int32_t)strlen(jsonstr);
-        for (i=j=0; i<n-4; i++)
-        {
-            if ( jsonstr[i] == '\\' && jsonstr[i+1] == '\\' && jsonstr[i+2] == '\\' && jsonstr[i+3] == '\"' )
-                continue;
-            jsonstr[j++] = jsonstr[i];
-        }
-        jsonstr[j] = 0;
         printf("TRANSMIT2.(%s)\n",attachmentstr);
         retstr = private_publish(&location,contact,sequenceid,jsonstr);
         if ( retstr != 0 )
