@@ -396,7 +396,7 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
             fprintf(stderr,"(%s) data.%d cmp error datalen.%d\n",keystr,selector,datalen);
         //else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
         free(sp);
-    } else { fprintf(stderr,"couldnt find sp in DB that was just added\n"); return(-1); }
+    } else { fprintf(stderr,"couldnt find sp in DB.%d that was just added\n",selector); return(-1); }
     return(dbsync(selector,0));
 }
 
@@ -405,6 +405,8 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     DBT key,data;
     int ret;
     struct SuperNET_db *sdb;
+if ( selector == CONTACT_DATA )
+    return;
     if ( hp->size == 0 )
     {
         printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
