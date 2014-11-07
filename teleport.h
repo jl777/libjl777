@@ -641,23 +641,40 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
 
 void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
 {
-    char coinstr[512],attachstr[MAX_JSON_FIELD];
-    cJSON *tpd;
+    char coinstr[512],attachstr[MAX_JSON_FIELD],tpdstr[MAX_JSON_FIELD];
+    cJSON *tpd,*json;
     struct coin_info *cp;
     struct telepod *pod = 0;
     copy_cJSON(attachstr,attachjson);
     unstringify(attachstr);
     printf("destringified.(%s)\n",attachstr);
-    attachjson = cJSON_Parse(attachstr);
-    if ( attachjson != 0 && extract_cJSON_str(coinstr,sizeof(coinstr),attachjson,"c") > 0 && (tpd= cJSON_GetObjectItem(attachjson,"tpd")) != 0 )
+    json = cJSON_Parse(attachstr);
+    if ( json != 0 )
     {
-        if ( (cp= get_coin_info(coinstr)) != 0 )
+        if ( extract_cJSON_str(coinstr,sizeof(coinstr),attachjson,"c") > 0 )
         {
-            pod = process_telepathic_teleport(cp,contact,tpd);
-            if ( pod != 0 )
-                update_telepod(pod);
-        }
-    }
+            printf("coinstr.(%s)\n",coinstr);
+            if ( (tpd= cJSON_GetObjectItem(attachjson,"tpd")) != 0 )
+            {
+                copy_cJSON(tpdstr,tpd);
+                unstringify(tpdstr);
+                tpd = cJSON_Parse(tpdstr);
+                printf("tpd.(%s) tpd.%p\n",tpdstr,tpd);
+                
+                if ( tpd != 0 )
+                {
+                    if ( (cp= get_coin_info(coinstr)) != 0 )
+                    {
+                        pod = process_telepathic_teleport(cp,contact,tpd);
+                        if ( pod != 0 )
+                            update_telepod(pod);
+                    }
+                    free_json(tpd);
+                }
+            } else printf("tpd.%p parse error\n",tpd);
+        } else printf("cant get coinstr\n");
+        free_json(json);
+    } else printf("attachjson.%p\n",attachjson);
 }
 
 int32_t poll_telepods(char *relstr)
