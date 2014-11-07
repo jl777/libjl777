@@ -27,8 +27,12 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
     {
         contact = contacts[i];
         if ( contact->nxt64bits == nxt64bits )
+        {
+            if ( retcontract != 0 )
+                free(retcontract);
             retcontract = contact;
-        free(contacts[i]);
+        }
+        else free(contacts[i]);
     }
     free(contacts);
     return(retcontract);

@@ -329,7 +329,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
-            //printf("try AESpassword.(%s)\n",AESpasswordstr);
+            printf("contact.(%s) %p try AESpassword.(%s)\n",contact->handle,contact,AESpasswordstr);
             if ( (json= parse_encrypted_data(1,&sequenceid,contact,key,data,datalen,AESpasswordstr)) != 0 )
             {
                 if ( sequenceid == tel->sequenceid )
