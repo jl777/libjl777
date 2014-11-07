@@ -414,7 +414,7 @@ void init_telepathy_contact(struct contact_info *contact)
     int32_t i;
     char retbuf[MAX_JSON_FIELD],*retstr;
     uint64_t randbits;
-    for (i=0; i<=MAX_DROPPED_PACKETS; i++)
+    for (i=0; i<=MAX_DROPPED_PACKETS*3; i++)
         create_telepathy_entry(contact,i);
     if ( contact->mydrop == 0 )
     {
