@@ -359,7 +359,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     struct storage_header *hp;
     if ( valid_SuperNET_db("find_storage",selector) == 0 )
         return(0);
-    //fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
+    fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
     key.data = (keystr);
     key.size = (int32_t)strlen(keystr) + 1;
@@ -372,7 +372,6 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     }
     if ( (ret= dbget(selector,NULL,&key,&data,reqflags)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
-        free(key.data);
         if ( ret != DB_NOTFOUND )
             fprintf(stderr,"DB.%d get error.%d data.size %d\n",selector,ret,data.size);
         else return(0);
