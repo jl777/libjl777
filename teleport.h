@@ -873,7 +873,7 @@ struct telepod **evolve_telepods(int32_t *nump,int32_t maxiters,struct telepod *
 
 char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,char *withdrawaddr)
 {
-    char buf[4096];
+    char buf[4096],*attachmentstr;
     struct telepod *pod,**pods = 0;
     struct contact_info *contact = 0;
     struct coin_info *cp = get_coin_info(coinstr);
@@ -913,12 +913,16 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
                     }
                     else
                     {
-                        attachmentjson = telepathic_transmit(buf,contact,-1,"teleport",attachmentjson);
+                        attachmentstr = cJSON_Print(attachmentjson);
+                        stripwhite_ns(attachmentstr,strlen(attachmentstr));
+                        free_json(attachmentjson);
+                        telepathic_transmit(buf,contact,-1,"teleport",attachmentstr);
+                        free(attachmentstr);
                         pod->podstate = TELEPOD_OUTBOUND;
                         update_telepod(pod);
-                        if ( attachmentjson != 0 )
-                            free_json(attachmentjson);
                     }
+                    if ( attachmentjson != 0 )
+                        free_json(attachmentjson);
                 }
                 free(pod);
             }
