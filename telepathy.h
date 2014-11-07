@@ -311,8 +311,8 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
 
 void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderbits,char *senderip)
 {
-    struct coin_info *cp = get_coin_info("BTCD");
-    uint64_t keybits = calc_nxt64bits(key);
+    //struct coin_info *cp = get_coin_info("BTCD");
+    //uint64_t keybits = calc_nxt64bits(key);
     struct contact_info *contact;
     struct telepathy_entry *tel;
     int32_t sequenceid,i,n;
@@ -349,18 +349,19 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                     }
                     free(jsonstr);
                     update_contact_info(contact);
+                    printf("back from update_contact_info\n");
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }
             free(contact);
         } else printf("dont have contact info for %llu\n",(long long)tel->contactbits);
     } else printf("find_telepathy_entry: cant find (%s)\n",locationstr);
-    if ( cp != 0 )
+    /*if ( cp != 0 )
     {
         char datastr[4096];
         init_hexbytes_noT(datastr,data,datalen);
         printf("process_telepathic: key.(%s) got.(%s) len.%d from %llu dist %2d vs mydist srv %d priv %d | %s\n",key,datastr,datalen,(long long)senderbits,bitweight(keybits ^ senderbits),bitweight(keybits ^ cp->srvpubnxtbits),bitweight(keybits ^ cp->privatebits),senderip);
-    }
+    }*/
 }
 
 cJSON *telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *contact,int32_t sequenceid,char *type,cJSON *attachmentjson)

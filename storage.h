@@ -361,7 +361,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         return(0);
     //fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
-    key.data = clonestr(keystr);
+    key.data = (keystr);
     key.size = (int32_t)strlen(keystr) + 1;
     if ( bulksize != 0 )
     {
@@ -377,7 +377,6 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
             fprintf(stderr,"DB.%d get error.%d data.size %d\n",selector,ret,data.size);
         else return(0);
     }
-    free(key.data);
     if ( bulksize != 0 )
     {
         retdata = calloc(1,sizeof(*retdata));
@@ -416,7 +415,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     {
         sdb = &SuperNET_dbs[selector];
         clear_pair(&key,&data);
-        key.data = clonestr(keystr);
+        key.data = (keystr);
         key.size = (uint32_t)strlen(keystr) + 1;
         if ( hp->keyhash == 0 )
         {
@@ -433,8 +432,10 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
             fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
         if ( data.data != hp && data.data != 0 )
+        {
+            printf("free %p\n",data.data);
             free(data.data);
-        free(key.data);
+        }
     }
 }
 

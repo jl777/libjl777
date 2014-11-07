@@ -899,6 +899,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 datalen = (int32_t)(strlen(datastr) / 2);
                 decode_hex(data,datalen,datastr);
                 process_telepathic(key,data,datalen,senderbits,previpaddr);
+                fprintf(stderr,"back from process_telepathic\n");
             }
             remoteflag = 1;
         }
