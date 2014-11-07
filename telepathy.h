@@ -202,7 +202,7 @@ cJSON *parse_encrypted_data(int32_t updatedb,int32_t *sequenceidp,struct contact
             if ( updatedb != 0 )
             {
                 init_hexbytes_noT(privatedatastr,data,datalen);
-                add_storage(PRIVATE_DATA,key,privatedatastr);
+                //add_storage(PRIVATE_DATA,key,privatedatastr);
                 printf("saved parsed decrypted.(%s)\n",decoded);
             }
             hint = get_API_int(cJSON_GetObjectItem(json,"hint"),-1);
