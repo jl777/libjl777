@@ -40,7 +40,7 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
 
 void update_contact_info(struct contact_info *contact)
 {
-    printf("update_contact_info %p (%s)\n",contact,contact->handle);
+    //printf("update_contact_info %p (%s)\n",contact,contact->handle);
     if ( contact->H.size == 0 )
         contact->H.size = sizeof(*contact);
     update_storage(CONTACT_DATA,contact->handle,&contact->H);
