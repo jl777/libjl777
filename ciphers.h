@@ -714,6 +714,7 @@ uint8_t *encrypt_cipher(int32_t cipher_idx,uint8_t *key,int32_t ks,int32_t ivsiz
         return(0);
     }
     *lenp = len + ivsize;
+    printf("encrypt cipher.%p\n",encoded);
     return(encoded);
 }
 

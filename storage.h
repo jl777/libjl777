@@ -426,7 +426,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->size);
-        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d\n",keystr,hp->size,data.size);
+        fprintf(stderr,"update entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",keystr,hp->size,data.size,hp,data.data);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
