@@ -241,7 +241,7 @@ int32_t calc_bestdist(uint64_t keyhash)
 
 uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char *cmdstr,char *NXTACCTSECRET,unsigned char *data,int32_t datalen)
 {
-    int32_t len = (int32_t)strlen(cmdstr);
+    int32_t len;// = (int32_t)strlen(cmdstr);
     char _tokbuf[4096];
     uint64_t txid;
     if ( strcmp("0.0.0.0",pserver->ipaddr) == 0 )
@@ -669,7 +669,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
 
 uint64_t process_storageQ()
 {
-    uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
+    //uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
     struct storage_queue_entry *ptr;
     char key[64],datastr[8193];
     uint64_t txid = 0;
@@ -941,8 +941,21 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                             printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                         if ( origargstr != 0 )
                                         {
+                                            int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,char *destNXTaddr,unsigned char **payloadp,int32_t len);
+                                            int32_t len;
+                                            char hopNXTaddr[64];
+                                            uint8_t maxbuf[1400],encoded[1400],*outbuf;
                                             //txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
-                                            fprintf(stderr,"back from direct_send\n");
+                                            outbuf = encoded;
+                                            len = (int32_t)strlen(origargstr)+1;
+                                            memcpy(encoded,origargstr,len);
+                                            memcpy(outbuf+len,data,datalen);
+                                            len += datalen;
+                                            
+                                            len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+                                            route_packet(1,0,hopNXTaddr,outbuf,len);
+
+                                            fprintf(stderr,"back from direct_send to (%s)\n",ipaddr);
                                         }
                                         else printf("no origarg string for pass through?\n");
                                     }
@@ -953,7 +966,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                     }
                 }
             }
-            if ( is_remote_access(previpaddr) != 0 )//ismynxtbits(senderbits) == 0 && (isvalue == 0 || datastr == 0) ) // need to respond to sender
+            if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 && remoteflag == 0 ) // need to respond to sender
             {
                 array = cJSON_CreateArray();
                 for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
@@ -986,7 +999,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
-            if ( isvalue != 0 )
+            if ( isvalue != 0 && is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
             {
                 sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
                 if ( sp != 0 )
@@ -994,11 +1007,8 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                     if ( sp->data != 0 )
                     {
                         init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                        if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
-                        {
-                            printf("found value for (%s)! call store\n",key);
-                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-                        }
+                        printf("found value for (%s)! call store\n",key);
+                        txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                         sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                     }
                     free(sp);

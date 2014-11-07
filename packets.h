@@ -206,7 +206,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
-return(0);
+//return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
@@ -281,7 +281,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
 {
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],_hopNXTaddr[64];
-    unsigned char maxbuf[4096],encodedD[4096],encodedL[4096],encodedF[4096],*outbuf;
+    unsigned char maxbuf[4096],encodedD[4096],encoded[4096],encodedL[4096],encodedF[4096],*outbuf;
     int32_t len,createdflag;//,maxlen;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
@@ -296,10 +296,12 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     }
     expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);
     memset(maxbuf,0,sizeof(maxbuf)); // always the same size
+    memset(encoded,0,sizeof(encoded)); // always the same size
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
     memset(encodedL,0,sizeof(encodedL)); // encoded to onion layers
     memset(encodedF,0,sizeof(encodedF)); // encoded to prefinal
-    outbuf = (unsigned char *)msg;
+    memcpy(encoded,msg,msglen);
+    outbuf = encoded;//(unsigned char *)msg;
     len = msglen;
     if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
     {
