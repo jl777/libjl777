@@ -156,7 +156,7 @@ void create_telepathy_entry(struct contact_info *contact,int32_t sequenceid)
     uint64_t location;
     bits256 AESpassword;
     char AESpasswordstr[512],locationstr[64];
-    if ( contact->lastentry != 0 && sequenceid <= contact->lastentry )
+    if ( sequenceid > 300 && contact->lastentry != 0 && sequenceid <= contact->lastentry )
     {
         printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
         if ( sequenceid < 0 )
@@ -206,7 +206,7 @@ cJSON *parse_encrypted_data(int32_t updatedb,int32_t *sequenceidp,struct contact
             if ( updatedb != 0 )
             {
                 init_hexbytes_noT(privatedatastr,data,datalen);
-                //add_storage(PRIVATE_DATA,key,privatedatastr);
+                add_storage(PRIVATE_DATA,key,privatedatastr);
                 printf("saved parsed decrypted.(%s)\n",decoded);
             }
             hint = get_API_int(cJSON_GetObjectItem(json,"hint"),-1);
@@ -342,8 +342,8 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                     if ( contact->lastentry < (tel->sequenceid + MAX_DROPPED_PACKETS) )
                     {
                         n = (contact->lastentry + MAX_DROPPED_PACKETS);
-                        //for (i=contact->lastentry; i<n; i++)
-                        //    create_telepathy_entry(contact,i);
+                        for (i=contact->lastentry; i<n; i++)
+                            create_telepathy_entry(contact,i);
                     }
                     copy_cJSON(typestr,cJSON_GetObjectItem(json,"type"));
                     if ( strcmp(typestr,"teleport") == 0 && (attachjson=cJSON_GetObjectItem(json,"attach")) != 0 )
@@ -352,7 +352,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         telepathic_teleport(contact,attachjson);
                     }
                     free(jsonstr);
-                    //update_contact_info(contact);
+                    update_contact_info(contact);
                     printf("back from update_contact_info\n");
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
