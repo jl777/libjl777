@@ -394,7 +394,7 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
             fprintf(stderr,"(%s) data.%d cmp error datalen.%d\n",keystr,selector,datalen);
         //else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
         free(sp);
-    } else { fprintf(stderr,"couldnt find sp in DB.%d that was just added\n",selector); return(-1); }
+    } else { fprintf(stderr,"couldnt find sp in DB.%d that was just added.(%s)\n",selector,keystr); return(-1); }
     return(dbsync(selector,0));
 }
 

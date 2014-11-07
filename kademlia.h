@@ -246,7 +246,7 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
     uint64_t txid;
     if ( strcmp("0.0.0.0",pserver->ipaddr) == 0 )
     {
-        printf("_send_kademlia_cmd illegal ip addr %s\n",pserver->ipaddr);
+        printf("_send_kademlia_cmd illegal ip addr %s (%s)\n",pserver->ipaddr,cmdstr);
         return(0);
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
@@ -941,7 +941,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                             printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                         if ( origargstr != 0 )
                                         {
-                                            //txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
+                                            txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
                                             fprintf(stderr,"back from direct_send\n");
                                         }
                                         else printf("no origarg string for pass through?\n");

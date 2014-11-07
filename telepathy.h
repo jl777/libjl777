@@ -345,6 +345,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         for (i=contact->lastentry; i<n; i++)
                             create_telepathy_entry(contact,i);
                     }
+                    printf("before telepathic_teleport %p (%s)\n",contact,contact->handle);
                     copy_cJSON(typestr,cJSON_GetObjectItem(json,"type"));
                     if ( strcmp(typestr,"teleport") == 0 && (attachjson=cJSON_GetObjectItem(json,"attach")) != 0 )
                     {
@@ -352,8 +353,9 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         telepathic_teleport(contact,attachjson);
                     }
                     free(jsonstr);
+                    printf("call update_contact_info %p (%s)\n",contact,contact->handle);
                     update_contact_info(contact);
-                    printf("back from update_contact_info\n");
+                    printf("back from update_contact_info.(%s)\n",contact->handle);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }
