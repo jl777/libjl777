@@ -609,7 +609,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
 
 struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_info *contact,cJSON *tpd)
 {
-    char coinaddr[MAX_JSON_FIELD],podaddr[MAX_JSON_FIELD],script[MAX_JSON_FIELD],privkey[MAX_JSON_FIELD],txid[MAX_JSON_FIELD];
+    char podaddr[MAX_JSON_FIELD],script[MAX_JSON_FIELD],privkey[MAX_JSON_FIELD],txid[MAX_JSON_FIELD];
     struct telepod *pod = 0;
     uint32_t createtime,vout = -1;
     createtime = get_API_int(cJSON_GetObjectItem(tpd,"t"),0);
@@ -618,13 +618,13 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
     if ( strcmp(cp->name,"BBR") != 0 )
     {
         vout = get_API_int(cJSON_GetObjectItem(tpd,"v"),-1);
-        extract_cJSON_str(coinaddr,sizeof(coinaddr),tpd,"a");
+        extract_cJSON_str(podaddr,sizeof(podaddr),tpd,"a");
         extract_cJSON_str(script,sizeof(script),tpd,"s");
-    } else coinaddr[0] = script[0] = 0;
+    } else podaddr[0] = script[0] = 0;
     pod = create_telepod(createtime,cp->name,0,podaddr,script,privkey,txid,vout);
     if ( get_telepod_info(&pod->unspent,&pod->H.createtime,cp->name,pod) < 0 )
     {
-        printf("Invalid pod (%s) received from %s\n",pod->txid,contact->handle);
+        printf("Invalid pod.%s (%s) received from %s\n",pod->coinaddr,pod->txid,contact->handle);
         free(pod);
         pod = 0;
     }
@@ -642,7 +642,7 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
 void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
 {
     char coinstr[512],attachstr[MAX_JSON_FIELD],tpdstr[MAX_JSON_FIELD];
-    int i,j,n;
+    int i,j;
     cJSON *tpd,*json;
     struct coin_info *cp;
     struct telepod *pod = 0;
