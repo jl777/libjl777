@@ -41,10 +41,10 @@ struct telepathy_entry *add_telepathy_entry(char *locationstr,struct contact_inf
         tel->sequenceid = sequenceid;
         if ( sequenceid > contact->lastentry )
             contact->lastentry = sequenceid;
-        fprintf(stderr,"check.(%s)\n",locationstr);
+        //fprintf(stderr,"check.(%s)\n",locationstr);
         if ( (sp= (struct SuperNET_storage *)find_storage(PRIVATE_DATA,locationstr,0)) != 0 )
         {
-            fprintf(stderr,"found.(%s)\n",locationstr);
+            //fprintf(stderr,"found.(%s)\n",locationstr);
             if ( sequenceid > contact->lastrecv )
                 contact->lastrecv = sequenceid;
             contact->numrecv++;
@@ -163,11 +163,11 @@ void create_telepathy_entry(struct contact_info *contact,int32_t sequenceid)
             exit(-1);
         return;
     }
-    printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
+    //printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
     if ( (location= calc_recvAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid)) != 0 )
     {
         expand_nxt64bits(locationstr,location);
-        printf("location.(%s)\n",locationstr);
+        //printf("location.(%s)\n",locationstr);
         if ( find_telepathy_entry(locationstr) == 0 )
             add_telepathy_entry(locationstr,contact,AESpassword,sequenceid);
     }
@@ -329,7 +329,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
-            printf("contact.(%s) %p try AESpassword.(%s)\n",contact->handle,contact,AESpasswordstr);
+            //printf("contact.(%s) %p try AESpassword.(%s)\n",contact->handle,contact,AESpasswordstr);
             if ( (json= parse_encrypted_data(1,&sequenceid,contact,key,data,datalen,AESpasswordstr)) != 0 )
             {
                 if ( sequenceid == tel->sequenceid )
@@ -345,7 +345,7 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         for (i=contact->lastentry; i<n; i++)
                             create_telepathy_entry(contact,i);
                     }
-                    printf("before telepathic_teleport %p (%s)\n",contact,contact->handle);
+                    //printf("before telepathic_teleport %p (%s)\n",contact,contact->handle);
                     copy_cJSON(typestr,cJSON_GetObjectItem(json,"type"));
                     if ( strcmp(typestr,"teleport") == 0 && (attachjson=cJSON_GetObjectItem(json,"attach")) != 0 )
                     {
@@ -353,9 +353,9 @@ void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderb
                         telepathic_teleport(contact,attachjson);
                     }
                     free(jsonstr);
-                    printf("call update_contact_info %p (%s)\n",contact,contact->handle);
+                    //printf("call update_contact_info %p (%s)\n",contact,contact->handle);
                     update_contact_info(contact);
-                    printf("back from update_contact_info.(%s)\n",contact->handle);
+                    //printf("back from update_contact_info.(%s)\n",contact->handle);
                 } else printf("sequenceid mismatch %d != %d\n",sequenceid,tel->sequenceid);
                 free_json(json);
             }

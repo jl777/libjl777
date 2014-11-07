@@ -359,7 +359,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     struct storage_header *hp;
     if ( valid_SuperNET_db("find_storage",selector) == 0 )
         return(0);
-    fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
+    //fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
     key.data = (keystr);
     key.size = (int32_t)strlen(keystr) + 1;
@@ -403,8 +403,6 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
     DBT key,data;
     int ret;
     struct SuperNET_db *sdb;
-//if ( selector == CONTACT_DATA )
-//    return;
     if ( hp->size == 0 )
     {
         printf("update_storage.%d zero datalen for (%s)\n",selector,keystr);
@@ -425,14 +423,14 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->size);
-        fprintf(stderr,"update entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",keystr,hp->size,data.size,hp,data.data);
+        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",keystr,hp->size,data.size,hp,data.data);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
             fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
         if ( data.data != hp && data.data != 0 )
         {
-            printf("free %p\n",data.data);
+            //printf("free %p\n",data.data);
             free(data.data);
         }
     }
@@ -444,8 +442,6 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     unsigned char databuf[8192],space[8192];
     uint64_t hashval = 0;
     struct SuperNET_storage *sp;
-//if ( selector == CONTACT_DATA )
-//    return;
     if ( valid_SuperNET_db("add_storage",selector) == 0 )
         return;
     if ( selector == PUBLIC_DATA && Total_stored > MAX_KADEMLIA_STORAGE )
