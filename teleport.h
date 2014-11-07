@@ -641,11 +641,15 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
 
 void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
 {
-    char coinstr[512];
+    char coinstr[512],attachstr[MAX_JSON_FIELD];
     cJSON *tpd;
     struct coin_info *cp;
     struct telepod *pod = 0;
-    if ( extract_cJSON_str(coinstr,sizeof(coinstr),attachjson,"c") > 0 && (tpd= cJSON_GetObjectItem(attachjson,"tpd")) != 0 )
+    copy_cJSON(attachstr,attachjson);
+    unstringify(attachstr);
+    printf("destringified.(%s)\n",attachstr);
+    attachjson = cJSON_Parse(attachstr);
+    if ( attachjson != 0 && extract_cJSON_str(coinstr,sizeof(coinstr),attachjson,"c") > 0 && (tpd= cJSON_GetObjectItem(attachjson,"tpd")) != 0 )
     {
         if ( (cp= get_coin_info(coinstr)) != 0 )
         {
