@@ -654,6 +654,11 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     }
     Historical_done = 1;
     Finished_init = 1;
+    printf("add myhandle\n");
+    addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+    printf("add mypublic\n");
+    addcontact("mypublic",cp->srvNXTADDR);
+    printf("finished addcontact\n");
     return(0);
 }
 

@@ -41,15 +41,17 @@ struct telepathy_entry *add_telepathy_entry(char *locationstr,struct contact_inf
         tel->sequenceid = sequenceid;
         if ( sequenceid > contact->lastentry )
             contact->lastentry = sequenceid;
+        fprintf(stderr,"check.(%s)\n",locationstr);
         if ( (sp= (struct SuperNET_storage *)find_storage(PRIVATE_DATA,locationstr,0)) != 0 )
         {
+            fprintf(stderr,"found.(%s)\n",locationstr);
             if ( sequenceid > contact->lastrecv )
                 contact->lastrecv = sequenceid;
             contact->numrecv++;
             free(sp);
         }
-        printf("add (%s.%d) %llu\n",contact->handle,sequenceid,(long long)tel->location);
-    } else printf("add_telepathy_entry warning: already created %s.%s\n",contact->handle,locationstr);
+        fprintf(stderr,"add (%s.%d) %llu\n",contact->handle,sequenceid,(long long)tel->location);
+    } else fprintf(stderr,"add_telepathy_entry warning: already created %s.%s\n",contact->handle,locationstr);
     return(tel);
 }
 
@@ -161,9 +163,11 @@ void create_telepathy_entry(struct contact_info *contact,int32_t sequenceid)
             exit(-1);
         return;
     }
+    printf("lastentry.%d vs seqid.%d\n",contact->lastentry,sequenceid);
     if ( (location= calc_recvAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid)) != 0 )
     {
         expand_nxt64bits(locationstr,location);
+        printf("location.(%s)\n",locationstr);
         if ( find_telepathy_entry(locationstr) == 0 )
             add_telepathy_entry(locationstr,contact,AESpassword,sequenceid);
     }
