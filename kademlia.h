@@ -941,27 +941,29 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                             printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                         if ( origargstr != 0 )
                                         {
-                                            int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,char *destNXTaddr,unsigned char **payloadp,int32_t len);
-                                            int32_t len;
-                                            char hopNXTaddr[64];
-                                            uint8_t maxbuf[1400],encoded[1400],*outbuf;
-                                            //txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
-                                            outbuf = encoded;
-                                            len = (int32_t)strlen(origargstr)+1;
-                                            memcpy(encoded,origargstr,len);
-                                            memcpy(outbuf+len,data,datalen);
-                                            len += datalen;
-                                            
-                                            len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-                                            route_packet(1,0,hopNXTaddr,outbuf,len);
-
+                                            if ( 0 )
+                                                txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
+                                            else
+                                            {
+                                                int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,char *destNXTaddr,unsigned char **payloadp,int32_t len);
+                                                int32_t len;
+                                                char hopNXTaddr[64];
+                                                uint8_t maxbuf[1400],encoded[1400],*outbuf;
+                                                outbuf = encoded;
+                                                len = (int32_t)strlen(origargstr)+1;
+                                                memcpy(encoded,origargstr,len);
+                                                memcpy(outbuf+len,data,datalen);
+                                                len += datalen;
+                                                hopNXTaddr[0] = 0;
+                                                len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+                                                route_packet(1,0,hopNXTaddr,outbuf,len);
+                                            }
                                             fprintf(stderr,"back from direct_send to (%s)\n",ipaddr);
                                         }
                                         else printf("no origarg string for pass through?\n");
                                     }
                                 } else printf("warning: find doesnt have IP address for %s\n",destNXTaddr);
-                            }
-                            else txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,datastr);
+                            } else txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,datastr);
                         }
                     }
                 }
