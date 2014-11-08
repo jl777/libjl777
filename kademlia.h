@@ -865,16 +865,43 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
     return(clonestr(retstr));
 }
 
+cJSON *gen_find_nodejson(char *NXTaddr)
+{
+    char ipaddr[64],numstr[64];
+    struct nodestats *stats;
+    cJSON *item = 0;
+    if ( (stats = get_nodestats(calc_nxt64bits(NXTaddr))) != 0 )
+    {
+        item = cJSON_CreateArray();
+        cJSON_AddItemToArray(item,cJSON_CreateString(NXTaddr));
+        /*if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+        {
+            init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
+            cJSON_AddItemToArray(item,cJSON_CreateString(pubkeystr));
+        }*/
+        if ( stats->ipbits != 0 )
+        {
+            expand_ipbits(ipaddr,stats->ipbits);
+            cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
+            sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
+            cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
+            sprintf(numstr,"%u",stats->lastcontact);
+            cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
+        }
+    }
+    return(item);
+}
+
 char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr,char *origargstr)
 {
     static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     unsigned char data[MAX_JSON_FIELD];
-    char retstr[32768],pubkeystr[256],databuf[32768],numstr[64],ipaddr[64],_previpaddr[64],destNXTaddr[64],*value;
+    char retstr[32768],databuf[32768],ipaddr[64],_previpaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     int32_t i,n,isvalue,createdflag,datalen,mydist,dist,remoteflag = 0;
     struct coin_info *cp = get_coin_info("BTCD");
-    struct NXT_acct *keynp,*destnp,*np;
+    struct NXT_acct *keynp,*np;
     cJSON *array,*item;
     struct SuperNET_storage *sp;
     struct nodestats *stats;
@@ -948,7 +975,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                                 int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,char *destNXTaddr,unsigned char **payloadp,int32_t len);
                                                 int32_t len;
                                                 char hopNXTaddr[64];
-                                                uint8_t maxbuf[1400],encoded[1400],*outbuf;
+                                                uint8_t maxbuf[MAX_UDPLEN],encoded[MAX_UDPLEN],*outbuf;
                                                 outbuf = encoded;
                                                 len = (int32_t)strlen(origargstr)+1;
                                                 memcpy(encoded,origargstr,len);
@@ -974,25 +1001,8 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 for (i=0; i<n&&i<KADEMLIA_NUMK; i++)
                 {
                     expand_nxt64bits(destNXTaddr,sortbuf[(i<<1) + 1]);
-                    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                    stats = &destnp->stats;
-                    item = cJSON_CreateArray();
-                    cJSON_AddItemToArray(item,cJSON_CreateString(destNXTaddr));
-                    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-                    {
-                        init_hexbytes_noT(pubkeystr,stats->pubkey,sizeof(stats->pubkey));
-                        cJSON_AddItemToArray(item,cJSON_CreateString(pubkeystr));
-                    }
-                    if ( stats->ipbits != 0 )
-                    {
-                        expand_ipbits(ipaddr,stats->ipbits);
-                        cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
-                        sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
-                        cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
-                        sprintf(numstr,"%u",stats->lastcontact);
-                        cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
-                    }
-                    cJSON_AddItemToArray(array,item);
+                    if ( (item= gen_find_nodejson(destNXTaddr)) != 0 )
+                        cJSON_AddItemToArray(array,item);
                 }
                 value = cJSON_Print(array);
                 free_json(array);
@@ -1003,7 +1013,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
             }
             if ( isvalue != 0 && is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
             {
-                sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
+                sp = kademlia_getstored(PUBLIC_DATA,keyhash,0); // need special case for orderbooks
                 if ( sp != 0 )
                 {
                     if ( sp->data != 0 )

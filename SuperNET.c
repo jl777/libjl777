@@ -140,7 +140,7 @@ void *GUIpoll_loop(void *arg)
                     unstringify(buf);
                     copy_cJSON(txidstr,cJSON_GetObjectItem(json,"txid"));
                     if ( txidstr[0] != 0 )
-                        fprintf(stderr,"<<<<<<<<<<< GUI poll_for_broadcasts: (%s) for [%s]\n",buf,txidstr);
+                        fprintf(stderr,"<<<<<<<<<<< GUIpoll: (%s) for [%s]\n",buf,txidstr);
                     else
                     {
                         copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"from"));
@@ -148,7 +148,7 @@ void *GUIpoll_loop(void *arg)
                         unstringify(args);
                         port = (int32_t)get_API_int(cJSON_GetObjectItem(json,"port"),0);
                         if ( args[0] != 0 )
-                            printf("(%s) from (%s:%d) -> (%s)\n",args,ipaddr,port,buf);
+                            printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
                     }
                 }
                 free_json(json);

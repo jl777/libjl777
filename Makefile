@@ -42,6 +42,9 @@ btcd: ../src/BitcoinDarkd; \
 btcdmac: ../src/BitcoinDarkd; \
     cd ../src; rm BitcoinDarkd; make -f makefile.osx; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
 
+install: doesntexist; \
+    sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake
+
 patch0: doesntexist; \
     export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
     unzip db-6.1.19.zip; \

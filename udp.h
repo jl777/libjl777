@@ -361,20 +361,18 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     return(0);
 }*/
 
-uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
+void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
 {
     unsigned char finalbuf[4096];
     char destip[64];
     struct sockaddr_in addr;
-    //struct Uaddr *Uaddrs[8];
-    uint64_t txid = 0;
     int32_t port,createdflag;
     struct NXT_acct *np;
     struct nodestats *stats = 0;
     if ( len > sizeof(finalbuf) )
     {
         fprintf(stderr,"sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
-        return(0);
+        return;
         exit(-1);
     }
     if ( hopNXTaddr != 0 && hopNXTaddr[0] != 0 )
@@ -405,10 +403,8 @@ uint64_t route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTad
             uv_ip4_addr(destip,stats->supernet_port!=0?stats->supernet_port:SUPERNET_PORT,&addr);
             send_packet(stats,(struct sockaddr *)&addr,finalbuf,len);
         }
-        else { printf("cant route packet.%d without IP address\n",len); return(0); }//send_packet(0,destaddr,outbuf,len);
-    } else { printf("cant route packet.%d without nodestats\n",len); return(0); }
-    txid = calc_txid(finalbuf,len);
-    return(txid);
+        else { printf("cant route packet.%d without IP address\n",len); return; }
+    } else { printf("cant route packet.%d without nodestats\n",len); return; }
 }
 
 uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *origargstr,int32_t len,unsigned char *data,int32_t datalen)
@@ -432,6 +428,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     else port = SUPERNET_PORT;
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     len = (int32_t)strlen(origargstr)+1;
+    txid = calc_txid((uint8_t *)origargstr,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
         char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
@@ -467,7 +464,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         {
             if ( Debuglevel > 0 )
                 fprintf(stderr,"route_packet encrypted.%d\n",encrypted);
-            txid = route_packet(encrypted,&destaddr,0,outbuf,len);
+            route_packet(encrypted,&destaddr,0,outbuf,len);
             //printf("got route_packet txid.%llu\n",(long long)txid);
         }
         else printf("directsend_packet: illegal len.%d\n",len);
