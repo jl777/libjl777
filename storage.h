@@ -29,6 +29,23 @@ long Total_stored;
 DB_ENV *Storage;
 struct SuperNET_db SuperNET_dbs[NUM_SUPERNET_DBS];
 
+int32_t valid_SuperNET_db(char *debugstr,int32_t selector)
+{
+    if ( IS_LIBTEST == 0 || selector < 0 || selector >= NUM_SUPERNET_DBS )
+    {
+        fprintf(stderr,"%s: invalid SuperNET_db selector.%d or DB disabled vi LIBTEST.%d\n",debugstr,selector,IS_LIBTEST);
+        return(0);
+    }
+    return(1);
+}
+
+DB *get_selected_database(int32_t selector)
+{
+    if ( valid_SuperNET_db("get_selected_database",selector) != 0 )
+        return(SuperNET_dbs[selector].dbp);
+    return(0);
+}
+
 void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
 {
     struct SuperNET_db *sdb;
@@ -54,6 +71,8 @@ void *_process_SuperNET_dbqueue(void *selectorp) // serialize dbreq functions
                 req->retval = sdb->dbp->put(sdb->dbp,req->txn,&req->key,&data,req->flags);
             else if ( req->funcid == 'S' )
                 req->retval = sdb->dbp->sync(sdb->dbp,req->flags);
+            else if ( req->funcid == 'D' )
+                req->retval = sdb->dbp->del(sdb->dbp,req->txn,&req->key,req->flags);
             else printf("UNEXPECTED SuperNET_db funcid.(%c) %d\n",req->funcid,req->funcid);
             if ( req->data != 0 )
                 *req->data = data;
@@ -105,16 +124,6 @@ struct dbreq *_queue_dbreq(int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,
     return(req);
 }
 
-int32_t valid_SuperNET_db(char *debugstr,int32_t selector)
-{
-    if ( IS_LIBTEST == 0 || selector < 0 || selector >= NUM_SUPERNET_DBS )
-    {
-        fprintf(stderr,"%s: invalid SuperNET_db selector.%d or DB disabled vi LIBTEST.%d\n",debugstr,selector,IS_LIBTEST);
-        return(0);
-    }
-    return(1);
-}
-
 int32_t dbcmd(char *debugstr,int32_t funcid,int32_t selector,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 {
     struct dbreq *req;
@@ -134,6 +143,11 @@ int32_t dbget(int32_t selector,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 int32_t dbput(int32_t selector,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 {
     return(dbcmd("dbput",'P',selector,txn,key,data,flags));
+}
+
+int32_t dbdel(int32_t selector,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
+{
+    return(dbcmd("dbdel",'D',selector,txn,key,data,flags));
 }
 
 int32_t dbsync(int32_t selector,int32_t flags)
@@ -295,13 +309,6 @@ void set_max_in_db(int32_t selector,long num)
         SuperNET_dbs[selector].maxitems = num;
 }
 
-DB *get_selected_database(int32_t selector)
-{
-    if ( valid_SuperNET_db("get_selected_database",selector) != 0 )
-        return(SuperNET_dbs[selector].dbp);
-    return(0);
-}
-
 void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
 {
     void *ptr;
@@ -336,22 +343,6 @@ void clear_pair(DBT *key,DBT *data)
     memset(data,0,sizeof(DBT));
 }
 
-int32_t delete_storage(int32_t selector,char *keystr)
-{
-    // jl777: shouldnt this be queued?
-    DB *dbp = get_selected_database(selector);
-    DBT key;
-    if ( dbp != 0 )
-    {
-        memset(&key,0,sizeof(key));
-        key.data = keystr;
-        key.size = (int32_t)strlen(keystr) + 1;
-        dbp->del(dbp, NULL,&key,0);
-        return(dbsync(selector,0));
-    }
-    return(-1);
-}
-
 struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulksize)
 {
     DBT key,data,*retdata;
@@ -383,6 +374,21 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         return((void *)retdata);
     }
     else return(decondition_storage(&data.size,&SuperNET_dbs[selector],data.data,data.size));
+}
+
+int32_t delete_storage(int32_t selector,char *keystr)
+{
+    if ( valid_SuperNET_db("delete_storage",selector) == 0 )
+        return(-1);
+    DBT key;
+    int32_t ret;
+    memset(&key,0,sizeof(key));
+    key.data = keystr;
+    key.size = (int32_t)strlen(keystr) + 1;
+    if ( (ret= dbdel(selector,0,&key,0,0)) != 0 )
+        printf("error deleting (%s) from DB.%d\n",keystr,selector);
+    else return(dbsync(selector,0));
+    return(-1);
 }
 
 int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datalen,int32_t bulksize)
@@ -463,10 +469,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
                 Total_stored += (sizeof(*sp) + datalen);
             createdflag = 1;
             if ( is_decimalstr(keystr) && slen < MAX_NXTADDR_LEN )
-            {
-                //printf("check decimalstr.(%s)\n",keystr);
                 hashval = calc_nxt64bits(keystr);
-            }
             else hashval = calc_txid((uint8_t *)keystr,slen);
         }
         else
@@ -508,9 +511,6 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
         {
             m++;
             ptr = decondition_storage(&data.size,&SuperNET_dbs[selector],data.data,data.size);
-
-            //ptr = calloc(1,data.size);
-            //memcpy(ptr,data.data,data.size);
             ptrs[n++] = ptr;
             if ( n >= max )
             {

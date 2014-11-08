@@ -354,13 +354,6 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     }
 }
 
-/*int32_t is_privacyServer(struct peerinfo *peer)
-{
-    if ( peer->srvnxtbits == peer->pubnxtbits && peer->srv.ipbits != 0 )//&& peer->srv.supernet_port != 0 )
-        return(1);
-    return(0);
-}*/
-
 void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
 {
     unsigned char finalbuf[4096];

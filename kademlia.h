@@ -350,10 +350,10 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         printf("send_kademlia_cmd.(%s) No destination\n",kadcmd);
         return(0);
     }
-    else if ( strcmp(kadcmd,"store") == 0 || strncmp("find",kadcmd,4) == 0 ) //
+    else if ( strcmp(kadcmd,"ping") != 0 && strcmp("pong",kadcmd) != 0 ) //
     {
         static int lasti;
-        static uint64_t txids[8192]; // filter out localloops, maybe not needed anymore?
+        static uint64_t txids[8192]; // filter out infinite loops
         bits256 hash;
         uint64_t txid;
         keybits = calc_nxt64bits(key);
@@ -391,12 +391,6 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     encrypted = 2;
     stats = get_nodestats(pserver->nxt64bits);
-    /*if ( stats != 0 )
-        port = stats->supernet_port;
-    else port = 0;
-    if ( port == 0 )
-        port = SUPERNET_PORT;
-    uv_ip4_addr(pserver->ipaddr,port,&destaddr);*/
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -407,10 +401,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         }
         gen_pingstr(cmdstr,1);
         send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
-        //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-        //portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
         return(0);
-        //sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pubkeystr,cp->myipaddr,HARDCODED_VERSION);
     }
     else
     {
@@ -743,7 +734,6 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
                     int z;
                     for (z=0; z<24; z++)
                         printf("%02x ",((uint8_t *)&Q)[z]);
-                    
                     printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type);
                 }
                 if ( (ret= dbput(INSTANTDEX_DATA,0,&key,&data,0)) != 0 )
@@ -967,7 +957,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                             printf("find pass through ip.(%s) (%s) (%s)\n",ipaddr,origargstr,datastr);
                                         if ( origargstr != 0 )
                                         {
-                                            if ( 0 )
+                                            if ( 0 ) // this path for some reason causes crash
                                                 txid = directsend_packet(2,get_pserver(0,ipaddr,0,0),origargstr,(int32_t)strlen(origargstr)+1,data,datalen);
                                             else
                                             {
