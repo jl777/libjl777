@@ -545,15 +545,15 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
-         ret = cursorp->get(cursorp,&key,&data,DB_SET);
+        ret = cursorp->get(cursorp,&key,&data,DB_SET);
         while ( ret != DB_NOTFOUND )
         {
             iQ = data.data;
             int z;
-            for (z=0; z<24; z++)
+            for (z=0; z<32; z++)
                 printf("%02x ",((uint8_t *)&iQ)[z]);
             printf("%p key.%d: %s, data.size %d: %llu %u %u | vs %llu %u %u\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
-            if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && iQ->timestamp > refiQ->timestamp )
+            if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && refiQ->timestamp > iQ->timestamp )
             {
                 data.data = refiQ;
                 data.size = sizeof(*refiQ);
@@ -570,6 +570,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     data.data = refiQ;
     data.size = sizeof(*refiQ);
     ret = dbput(selector,0,&key,&data,0);
+    dbsync(selector,0);
     return(ret);
 }
 
