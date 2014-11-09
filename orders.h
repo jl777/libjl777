@@ -338,6 +338,7 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     expand_nxt64bits(obook,baseid ^ relid);
     sprintf(buf,"{\"baseid\":\"%llu\",\"relid\":\"%llu\",\"oldest\":%u}",(long long)baseid,(long long)relid,oldest);
     init_hexbytes_noT(datastr,(uint8_t *)buf,strlen(buf));
+    printf("ORDERBOOK.(%s)\n",buf);
     if ( baseid != 0 && relid != 0 )
         if ( (retstr= kademlia_find("findvalue",previpaddr,NXTaddr,NXTACCTSECRET,sender,obook,datastr,0)) != 0 )
             free(retstr);
