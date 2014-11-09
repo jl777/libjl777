@@ -179,10 +179,10 @@ struct telepod *parse_unspent_json(struct coin_info *cp,cJSON *json)
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
         if ( privkey != 0 )
         {
-            fprintf(stderr,"got podaddr.(%s) privkey.(%s)\n",podaddr,privkey);
+            //fprintf(stderr,"got podaddr.(%s) privkey.(%s)\n",podaddr,privkey);
             pod = create_telepod((uint32_t)time(NULL) - cp->estblocktime*numconfirms,cp->name,amount,podaddr,script,privkey,txid,vout);
             free(privkey);
-            fprintf(stderr,"pod.%p created\n",pod);
+            //fprintf(stderr,"pod.%p created\n",pod);
         }
     }
     else printf("illegal unspent output: (%s) (%s) (%s) %.8f %d\n",txid,podaddr,script,dstr(amount),vout);

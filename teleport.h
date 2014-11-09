@@ -285,8 +285,15 @@ uint64_t scan_telepods(char *coinstr)
                                 }
                                 else
                                 {
-                                    update_telepod(pod);
-                                    disp_telepod("inDB",pod);
+                                    if ( hp->size == pod->H.size )
+                                        pod->H.createtime = hp->createtime;
+                                    if ( hp->size != pod->H.size || memcmp(hp,pod,hp->size) != 0 )
+                                    {
+                                        //printf("size.%d/%d memcmp.%d\n",hp->size,pod->H.size,memcmp(hp,pod,hp->size));
+                                        //disp_telepod("hp",(struct telepod *)hp);
+                                        disp_telepod("pod",pod);
+                                        update_telepod(pod);
+                                    }
                                     free(hp);
                                 }
                                 sum += pod->satoshis;
@@ -429,7 +436,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
         change_podaddr = get_transporter_unspent(inputpods,&availchange,cp);
         if ( change_podaddr == 0 || availchange < refsatoshis+fee )
         {
-            printf("clone_telepod: cant get transporter addr || avail %.8f < %.8f + %.8f\n",dstr(availchange),dstr(refsatoshis),dstr(fee));
+            printf("clone_telepod: cant get funding addr || avail %.8f < %.8f + %.8f\n",dstr(availchange),dstr(refsatoshis),dstr(fee));
             return(0);
         }
         printf("fee (%.8f) changeaddr.(%s) availchange %.8f, refsatoshis %.8f\n",dstr(fee),change_podaddr,dstr(availchange),dstr(refsatoshis));
@@ -583,8 +590,10 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     {
         flag = 0;
         pod = pods[i];
+        if ( coinstr != 0 && coinstr[0] != '*' && strcmp(coinstr,pod->coinstr) != 0 )
+            continue;
         if ( Debuglevel > 1 )
-            fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d lag.%-8d %.8f | %s clone.%d\n",coinstr,m,minage,pod->txid,pod->H.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
+            fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d lag.%-8d %.8f | %s clone.%d\n",pod->coinstr,i,minage,pod->txid,pod->H.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
         podstate = pod->podstate;
         createtime = pod->H.createtime;
         if ( minage < 0 )
@@ -1033,7 +1042,7 @@ cJSON *telepod_dispjson(struct telepod *pod,double netamount)
 char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawaddr,char *comment,char *cmd)
 {
     char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[64];
-    char transporteraddr[128],changeaddr[128],numstr[64];
+    char transporteraddr[128],changeaddr[128],numstr[64],numstr2[64];
     char *addr,*retstr;
     int32_t i,n,dir,numpos,numneg;
     uint64_t availsend,change;
@@ -1079,10 +1088,34 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         }
     } else scan_telepods(coinstr);
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,-1);
-    sprintf(retbuf,"{\"result\":\"telepodacct %.8f %s \",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(amount),coinstr,avail,inbound,outbound,maturing,doublespent,cancelled);
+    if ( coinstr[0] != 0 )
+        cp = get_coin_info(coinstr);
+    if ( cp == 0 )
+        cp = get_coin_info("BTCD");
+    credits = debits = 0.;
+    numpos = numneg = 0;
+    transporteraddr[0] = changeaddr[0] = 0;
+    if ( (addr= get_account_unspent(0,&availsend,cp,"funding")) == 0 )
+        addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"funding\"]");
+    if ( addr != 0 )
+    {
+        strcpy(transporteraddr,addr);
+        free(addr);
+    }
+    if ( (addr= get_account_unspent(0,&change,cp,"changepods")) == 0 )
+        addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"changepods\"]");
+    if ( addr != 0 )
+    {
+        strcpy(changeaddr,addr);
+        free(addr);
+    }
+    sprintf(numstr,"%.8f",dstr(availsend));
+    sprintf(numstr2,"%.8f",dstr(change));
+    sprintf(retbuf,"{\"result\":\"telepodacct %.8f %s \",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f,\"funding\":\"%s\",\"avail\":\"%s\",\"changeaddr\":\"%s\",\"change\":\"%s\"}",dstr(amount),coinstr,avail,inbound,outbound,maturing,doublespent,cancelled,transporteraddr,numstr,changeaddr,numstr2);
     if ( pods != 0 )
     {
         json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"coin",cJSON_CreateString(cp->name));
         array = cJSON_CreateArray();
         contact = find_contact(contactstr);
         if ( contact != 0 )
@@ -1093,28 +1126,6 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         }
         if ( withdrawaddr[0] != 0 )
             cJSON_AddItemToObject(json,"withdrawaddr",cJSON_CreateString(withdrawaddr));
-        if ( coinstr[0] != 0 )
-            cp = get_coin_info(coinstr);
-        if ( cp == 0 )
-            cp = get_coin_info("BTCD");
-        cJSON_AddItemToObject(json,"coin",cJSON_CreateString(cp->name));
-        credits = debits = 0.;
-        numpos = numneg = 0;
-        transporteraddr[0] = changeaddr[0] = 0;
-        if ( (addr= get_account_unspent(0,&availsend,cp,"funding")) == 0 )
-            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"funding\"]");
-        if ( addr != 0 )
-        {
-            strcpy(transporteraddr,addr);
-            free(addr);
-        }
-        if ( (addr= get_account_unspent(0,&change,cp,"changepods")) == 0 )
-            addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"changepods\"]");
-        if ( addr != 0 )
-        {
-            strcpy(changeaddr,addr);
-            free(addr);
-        }
         for (i=0; i<n; i++)
         {
             if ( (pod= pods[i]) != 0 )
@@ -1148,9 +1159,12 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             sprintf(numstr,"%.8f",dstr(availsend));
             cJSON_AddItemToObject(json,"avail",cJSON_CreateString(numstr));
         }
-        cJSON_AddItemToObject(json,"changeaddr",cJSON_CreateString(changeaddr));
-        sprintf(numstr,"%.8f",dstr(change));
-        cJSON_AddItemToObject(json,"change",cJSON_CreateString(numstr));
+        if ( changeaddr[0] != 0 )
+        {
+            cJSON_AddItemToObject(json,"changeaddr",cJSON_CreateString(changeaddr));
+            sprintf(numstr,"%.8f",dstr(change));
+            cJSON_AddItemToObject(json,"change",cJSON_CreateString(numstr));
+        }
         retstr = cJSON_Print(json);
         stripwhite_ns(retstr,strlen(retstr));
         return(retstr);

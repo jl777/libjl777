@@ -22,8 +22,8 @@ struct return_string {
 size_t accumulate(void *ptr, size_t size, size_t nmemb, struct return_string *s);
 void init_string(struct return_string *s);
 double milliseconds();
-char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr);
-char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *params);
+//char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr);
+//char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *params);
 
 
 /************************************************************************
@@ -52,7 +52,7 @@ double milliseconds(void)
  *
  ************************************************************************/
 
-char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
+char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *params)
 {
     long i,j,len;
     char *retstr = 0;
@@ -65,9 +65,9 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
     json = cJSON_Parse(rpcstr);
     if ( json == 0 )
     {
-        fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s can't parse.(%s)\n",debugstr,command,rpcstr);
-        //free(rpcstr);
-        return(rpcstr);
+        fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: %s post_process_bitcoind_RPC.%s can't parse.(%s) params.(%s)\n",debugstr,command,rpcstr,params);
+        free(rpcstr);
+        return(0);
     }
     result = cJSON_GetObjectItem(json,"result");
     error = cJSON_GetObjectItem(json,"error");
@@ -103,7 +103,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr)
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static int numretries,count,count2;
-    static double elapsedsum,elapsedsum2;//,laststart;
+    static double elapsedsum,elapsedsum2;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
     struct return_string s;
@@ -112,17 +112,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     long len;
     int32_t specialcase;
     double starttime;
-/*#ifndef __cplusplus
-    static portable_mutex_t mutex;
-    static int didinit;
-    if ( didinit == 0 )
-    {
-        portable_mutex_init(&mutex);
-        didinit = 1;
-    }
-    portable_mutex_lock(&mutex);
-#endif*/
-    numretries=0;
+    numretries = 0;
     if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
         specialcase = 1;
     else specialcase = 0;
@@ -161,6 +151,7 @@ try_again:
             
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
+            //fprintf(stderr,"url.(%s) userpass.(%s) databuf.(%s)\n",url,userpass,databuf);
             //
         } //else if ( specialcase != 0 ) fprintf(stderr,"databuf.(%s)\n",params);
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
@@ -184,18 +175,12 @@ try_again:
         {
             fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: BTCD.%s timeout params.(%s) s.ptr.(%s) err.%d\n",command,params,s.ptr,res);
             free(s.ptr);
-//#ifndef __cplusplus
-//            portable_mutex_unlock(&mutex);
-//#endif
             return(0);
         }
         else if ( numretries >= 10 )
         {
             fprintf(stderr,"Maximum number of retries exceeded!\n");
             free(s.ptr);
-//#ifndef __cplusplus
- //           portable_mutex_unlock(&mutex);
-//#endif
             return(0);
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,params,numretries);
@@ -212,10 +197,7 @@ try_again:
             elapsedsum += (milliseconds() - starttime);
             if ( (count % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
-//#ifndef __cplusplus
-//            portable_mutex_unlock(&mutex);
-//#endif
-            return(post_process_bitcoind_RPC(debugstr,command,s.ptr));
+            return(post_process_bitcoind_RPC(debugstr,command,s.ptr,params));
         }
         else
         {
@@ -225,17 +207,11 @@ try_again:
             elapsedsum2 += (milliseconds() - starttime);
             if ( (count2 % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s)\n",count2,elapsedsum2/count2,(double)(milliseconds() - starttime),url);
-//#ifndef __cplusplus
- //           portable_mutex_unlock(&mutex);
-//#endif
             return(s.ptr);
         }
     }
     fprintf(stderr,"bitcoind_RPC: impossible case\n");
     free(s.ptr);
-//#ifndef __cplusplus
-//    portable_mutex_unlock(&mutex);
-//#endif
     return(0);
 }
 

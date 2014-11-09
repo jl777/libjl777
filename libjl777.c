@@ -240,7 +240,10 @@ void SuperNET_idler(uv_idle_t *handle)
             free(retstr);
         }
         if ( (counter % 10) == 3 )
+        {
             poll_telepods("BTCD");
+            poll_telepods("BTC");
+        }
         if ( (counter % 60) == 17 )
         {
             every_minute(counter/60);

@@ -173,8 +173,8 @@ char *send_rawtransaction(struct coin_info *cp,char *txbytes)
     //getchar();
     retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendrawtransaction",args);
     if ( retstr != 0 )
-        printf("sendrawtransaction returns.(%s)\n",retstr);
-    else printf("null return from sendrawtransaction\n");
+        fprintf(stderr,"sendrawtransaction returns.(%s)\n",retstr);
+    else fprintf(stderr,"null return from sendrawtransaction\n");
     free(args);
     return(retstr);
 }
