@@ -539,7 +539,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     DBT key,data;
     if ( dbp == 0 )
         return(0);
-    if ( 0 && (ret = Storage->txn_begin(Storage,NULL,&txn,0)) != 0 )
+    if ( 1 && (ret = Storage->txn_begin(Storage,NULL,&txn,0)) != 0 )
     {
         Storage->err(Storage,ret,"Transaction begin failed.");
         return(-1);
@@ -586,7 +586,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
             Storage->err(Storage,ret,"Cursor close failed.");
             txn->abort(txn);
         }
-        else if ( 0 && (ret= txn->commit(txn,0)) != 0 )
+        else if ( 1 && (ret= txn->commit(txn,0)) != 0 )
             Storage->err(Storage,ret,"Transaction commit failed.");
         if ( replaced == 0 )
         {
