@@ -327,6 +327,7 @@ void submit_quote(uint64_t obookid,char *quotestr)
         strcpy(NXTaddr,cp->srvNXTADDR);
         expand_nxt64bits(keystr,obookid);
         init_hexbytes_noT(datastr,(uint8_t *)quotestr,strlen(quotestr)+1);
+        printf("submit_quote.(%s) <- (%s)\n",keystr,datastr);
         retstr = kademlia_storedata(0,NXTaddr,cp->srvNXTACCTSECRET,NXTaddr,keystr,datastr);
         if ( retstr != 0 )
             free(retstr);

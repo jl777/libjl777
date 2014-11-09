@@ -727,7 +727,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
     {
-        printf("kademlia_storedata null args\n");
+        printf("kademlia_storedata null args cp.%p key.%p datastr.%p\n",cp,key,datastr);
         return(0);
     }
     keybits = calc_nxt64bits(key);
