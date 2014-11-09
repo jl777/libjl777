@@ -417,7 +417,7 @@ void check_for_InstantDEX(char *decoded,char *keystr)
                 printf("%02x ",((uint8_t *)&Q)[z]);
             printf("Q.(%s): %llu -> %llu NXT.%llu %u type.%d | price %f\n",keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type,price);
             
-            if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,&Q)) != 0 )
+            if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,keystr,&Q)) != 0 )
                 Storage->err(Storage,ret,"Database replace failed.");
         }
         free_json(json);

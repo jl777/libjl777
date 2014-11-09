@@ -529,7 +529,7 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
     return(ptrs);
 }
 
-int dbreplace_iQ(int32_t selector,struct InstantDEX_quote *refiQ)
+int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
 {
     DB *dbp = get_selected_database(selector);
     struct InstantDEX_quote *iQ;
@@ -543,6 +543,8 @@ int dbreplace_iQ(int32_t selector,struct InstantDEX_quote *refiQ)
     if ( cursorp != 0 )
     {
         clear_pair(&key,&data);
+        key.data = keystr;
+        key.size = (int32_t)(strlen(keystr) + 1);
         ret = cursorp->get(cursorp,&key,&data,DB_SET);
         while ( ret != DB_NOTFOUND )
         {
