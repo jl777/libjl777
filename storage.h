@@ -571,6 +571,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
                 key.size = (int32_t)(strlen(keystr) + 1);
                 data.data = refiQ;
                 data.size = sizeof(*refiQ);
+                printf("cursor put\n");
                 ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
                 printf("REPLACED.%d\n",ret);
                 replaced = 1;
@@ -579,6 +580,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
             ret = cursorp->get(cursorp,&key,&data,DB_NEXT_DUP);
             n++;
         }
+        printf("close cursor\n");
         if ( (ret= cursorp->close(cursorp)) != 0 )
         {
             Storage->err(Storage,ret,"Cursor close failed.");
@@ -588,10 +590,12 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
             Storage->err(Storage,ret,"Transaction commit failed.");
         if ( replaced == 0 )
         {
+            printf("call dbput\n");
             data.data = refiQ;
             data.size = sizeof(*refiQ);
             ret = dbput(selector,0,&key,&data,0);
         }
+        printf("queue sync\n");
         dbsync(selector,0);
     }
     return(ret);
