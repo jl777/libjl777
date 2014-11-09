@@ -206,7 +206,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
-//return(0);
+return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
