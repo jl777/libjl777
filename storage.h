@@ -433,7 +433,9 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
-            fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
+        {
+            //fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
+        }
         if ( data.data != hp && data.data != 0 )
         {
             //printf("free %p\n",data.data);
@@ -560,9 +562,9 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
         while ( ret == 0 )
         {
             iQ = data.data;
-            int z;
-            for (z=0; z<32; z++)
-                printf("%02x ",((uint8_t *)&iQ)[z]);
+            //int z;
+            //for (z=0; z<32; z++)
+            //    printf("%02x ",((uint8_t *)&iQ)[z]);
             printf("%p key.%d: %s, data.size %d: %llu %u %u | vs %llu %u %u\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
             if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && refiQ->timestamp > iQ->timestamp )
             {
@@ -571,16 +573,16 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
                 key.size = (int32_t)(strlen(keystr) + 1);
                 data.data = refiQ;
                 data.size = sizeof(*refiQ);
-                printf("cursor put\n");
+               // printf("cursor put\n");
                 ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
-                printf("REPLACED.%d\n",ret);
+               // printf("REPLACED.%d\n",ret);
                 replaced = 1;
                 break;
             }
             ret = cursorp->get(cursorp,&key,&data,DB_NEXT_DUP);
             n++;
         }
-        printf("close cursor\n");
+        //printf("close cursor\n");
         if ( (ret= cursorp->close(cursorp)) != 0 )
         {
             Storage->err(Storage,ret,"Cursor close failed.");
@@ -590,12 +592,12 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
             Storage->err(Storage,ret,"Transaction commit failed.");
         if ( replaced == 0 )
         {
-            printf("call dbput\n");
+            //printf("call dbput\n");
             data.data = refiQ;
             data.size = sizeof(*refiQ);
             ret = dbput(selector,0,&key,&data,0);
         }
-        printf("queue sync\n");
+        //printf("queue sync\n");
         dbsync(selector,0);
     }
     return(ret);
