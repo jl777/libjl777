@@ -877,17 +877,24 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         keyhash = calc_nxt64bits(key);
         mydist = bitweight(cp->srvpubnxtbits ^ keyhash);
         isvalue = (strcmp(cmd,"findvalue") == 0);
-        if ( isvalue == 0 && datastr != 0 && datastr[0] != 0 )
+        if ( datastr != 0 && datastr[0] != 0 )
         {
-            void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
-            if ( is_remote_access(previpaddr) != 0 )
+            if ( isvalue == 0 )
             {
-                datalen = (int32_t)(strlen(datastr) / 2);
-                decode_hex(data,datalen,datastr);
-                process_telepathic(key,data,datalen,senderbits,previpaddr);
-                fprintf(stderr,"back from process_telepathic\n");
+                void process_telepathic(char *key,uint8_t *data,int32_t len,uint64_t senderbits,char *senderip);
+                if ( is_remote_access(previpaddr) != 0 )
+                {
+                    datalen = (int32_t)(strlen(datastr) / 2);
+                    decode_hex(data,datalen,datastr);
+                    process_telepathic(key,data,datalen,senderbits,previpaddr);
+                    fprintf(stderr,"back from process_telepathic\n");
+                }
+                remoteflag = 1;
             }
-            remoteflag = 1;
+            else // special case for InstantDEX
+            {
+                
+            }
         }
         memset(sortbuf,0,sizeof(sortbuf));
         n = sort_all_buckets(sortbuf,keyhash);
@@ -972,19 +979,40 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
             }
             if ( isvalue != 0 && is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
             {
-                sp = kademlia_getstored(PUBLIC_DATA,keyhash,0); // need special case for orderbooks
-                if ( sp != 0 )
+                char decoded[MAX_JSON_FIELD];
+                int32_t len;
+                if ( datastr != 0 && datastr[0] != 0 ) // special case for InstantDEX
                 {
-                    if ( sp->data != 0 )
+                    len = (int32_t)strlen(datastr)/2;
+                    decode_hex((uint8_t *)decoded,len,datastr);
+                    if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
                     {
-                        init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                        printf("found value for (%s)! call store\n",key);
-                        txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-                        sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+                        int32_t filtered_orderbook(char *retdatastr,char *jsonstr);
+                        if ( filtered_orderbook(databuf,decoded) > 0 )
+                        {
+                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                            sprintf(retstr,"{\"data\":\"%s\",\"instantDEX\":\"%s\"}",databuf,datastr);
+                            printf("FOUND_InstantDEX.(%s)\n",retstr);
+                            return(clonestr(retstr));
+                        }
                     }
-                    free(sp);
-                    printf("FOUND.(%s)\n",retstr);
-                    return(clonestr(retstr));
+                }
+                else
+                {
+                    sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
+                    if ( sp != 0 )
+                    {
+                        if ( sp->data != 0 )
+                        {
+                            init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
+                            printf("found value for (%s)! call store\n",key);
+                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+                        }
+                        free(sp);
+                        printf("FOUND.(%s)\n",retstr);
+                        return(clonestr(retstr));
+                    }
                 }
             }
         } else if ( Debuglevel > 0 )

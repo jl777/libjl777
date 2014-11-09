@@ -186,7 +186,7 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
     }
 }
 
-struct orderbook *create_orderbook(uint64_t refbaseid,uint64_t refrelid,struct orderbook_tx **feedorders,int32_t numfeeds)
+struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid,struct orderbook_tx **feedorders,int32_t numfeeds)
 {
     struct orderbook_tx T;
     int32_t i,iter,numbids,numasks,refflipped,flipped;
@@ -215,7 +215,8 @@ struct orderbook *create_orderbook(uint64_t refbaseid,uint64_t refrelid,struct o
                     flip_iQ(&T.iQ);
                 if ( (T.iQ.type & _FLIPMASK) != refflipped )
                     flip_iQ(&T.iQ);
-                update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
+                if ( T.iQ.timestamp >= oldest )
+                    update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
             }
         }
         if ( (data= origdata) != 0 )
@@ -237,7 +238,8 @@ struct orderbook *create_orderbook(uint64_t refbaseid,uint64_t refrelid,struct o
                     printf("%p %p: %d\n",p,retdata,(int)retdlen);
                     printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)T.iQ.baseamount,(long long)T.iQ.relamount,(long long)T.iQ.nxt64bits,T.iQ.timestamp,T.iQ.type);
                 }
-                update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
+                if ( T.iQ.timestamp >= oldest )
+                    update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
             }
         }
         if ( iter == 0 )
@@ -269,8 +271,61 @@ struct orderbook *create_orderbook(uint64_t refbaseid,uint64_t refrelid,struct o
     return(op);
 }
 
+int32_t filtered_orderbook(char *datastr,char *jsonstr)
+{
+    cJSON *json;
+    uint64_t refbaseid,refrelid;
+    struct orderbook_tx T;
+    int32_t i,refflipped;
+    uint32_t oldest;
+    size_t retdlen = 0;
+    char obookstr[64];
+    void *retdata,*p;
+    DBT *data = 0;
+    datastr[0] = 0;
+    if ( (json= cJSON_Parse(jsonstr)) == 0 )
+        return(-1);
+    refbaseid = get_API_nxt64bits(cJSON_GetObjectItem(json,"baseid"));
+    refrelid = get_API_nxt64bits(cJSON_GetObjectItem(json,"rel"));
+    oldest = get_API_int(cJSON_GetObjectItem(json,"oldest"),0);
+    free_json(json);
+    if ( refbaseid == 0 || refrelid == 0 )
+        return(-2);
+    expand_nxt64bits(obookstr,refbaseid ^ refrelid);
+    if ( refbaseid < refrelid ) refflipped = 0;
+    else refflipped = _FLIPMASK;
+    data = (DBT *)find_storage(INSTANTDEX_DATA,obookstr,65536);
+    if ( data != 0 )
+    {
+        init_hexbytes_noT(datastr,(uint8_t *)"{\"data\":\"",strlen("{\"data\":\""));
+        for (DB_MULTIPLE_INIT(p,data); ;)
+        {
+            DB_MULTIPLE_NEXT(p,data,retdata,retdlen);
+            if ( p == NULL )
+                break;
+            T.iQ = *(struct InstantDEX_quote *)retdata;
+            if ( (T.iQ.type & _FLIPMASK) != refflipped )
+                flip_iQ(&T.iQ);
+            T.baseid = refbaseid;
+            T.relid = refrelid;
+            if ( T.iQ.timestamp >= oldest && retdlen == sizeof(T.iQ) )
+            {
+                for (i=0; i<retdlen; i++)
+                    printf("%02x ",((uint8_t *)retdata)[i]);
+                printf("%p %p: %d\n",p,retdata,(int)retdlen);
+                printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)T.iQ.baseamount,(long long)T.iQ.relamount,(long long)T.iQ.nxt64bits,T.iQ.timestamp,T.iQ.type);
+                init_hexbytes_noT(datastr+strlen(datastr),retdata,retdlen);
+            }
+        }
+    }
+    if ( datastr[0] != 0 )
+        init_hexbytes_noT(datastr+strlen(datastr),(uint8_t *)"\"}",strlen("\"}"));
+    return((int32_t)strlen(datastr));
+}
+
 char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    uint32_t oldest;
     int32_t i,allflag;
     uint64_t baseid,relid;
     cJSON *json,*bids,*asks,*item;
@@ -279,7 +334,8 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     baseid = get_API_nxt64bits(objs[0]);
     relid = get_API_nxt64bits(objs[1]);
     allflag = get_API_int(objs[2],0);
-    if ( baseid != 0 && relid != 0 && (op= create_orderbook(baseid,relid,0,0)) != 0 )
+    oldest = get_API_int(objs[3],0);
+    if ( baseid != 0 && relid != 0 && (op= create_orderbook(oldest,baseid,relid,0,0)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
             retstr = clonestr("{\"error\":\"no bids or asks\"}");
@@ -401,25 +457,35 @@ void check_for_InstantDEX(char *decoded,char *keystr)
     cJSON *json;
     double price;
     uint64_t baseid,relid;
-    int32_t ret;
-    struct InstantDEX_quote Q;
-    char checkstr[64];
+    int32_t ret,i,len;
+    struct InstantDEX_quote Q,iQs[MAX_JSON_FIELD/sizeof(Q)];
+    char checkstr[64],datastr[MAX_JSON_FIELD];
     json = cJSON_Parse(decoded);
     //({"requestType":"quote","type":0,"NXT":"13434315136155299987","base":"4551058913252105307","srcvol":"1.01000000","rel":"11060861818140490423","destvol":"0.00606000"}) 0x7f24700111c0
     if ( json != 0 )
     {
-        price = parse_InstantDEX_json(&baseid,&relid,&Q,json);
-        expand_nxt64bits(checkstr,baseid ^ relid);
-        if ( price != 0. && relid != 0 && baseid != 0 && strcmp(checkstr,keystr) == 0 )
+        if ( extract_cJSON_str(datastr,sizeof(datastr),json,"data") > 0 )
         {
-            int z;
-            for (z=0; z<24; z++)
-                printf("%02x ",((uint8_t *)&Q)[z]);
-            printf("Q.(%s): %llu -> %llu NXT.%llu %u type.%d | price %f\n",keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type,price);
-            
-            if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,keystr,&Q)) != 0 )
+            len = (int32_t)strlen(datastr)/2;
+            decode_hex((uint8_t *)iQs,len,datastr);
+            for (i=0; i<len; i+=sizeof(Q))
             {
-                Storage->err(Storage,ret,"Database replace failed.");
+                Q = iQs[i/sizeof(Q)];
+                printf("%ld Q.(%s): %llu -> %llu NXT.%llu %u type.%d\n",i/sizeof(Q),keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type);
+            }
+        }
+        else
+        {
+            price = parse_InstantDEX_json(&baseid,&relid,&Q,json);
+            expand_nxt64bits(checkstr,baseid ^ relid);
+            if ( price != 0. && relid != 0 && baseid != 0 && strcmp(checkstr,keystr) == 0 )
+            {
+                //int z;
+                //for (z=0; z<24; z++)
+                //    printf("%02x ",((uint8_t *)&Q)[z]);
+                printf("Q.(%s): %llu -> %llu NXT.%llu %u type.%d | price %f\n",keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type,price);
+                if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,keystr,&Q)) != 0 )
+                    Storage->err(Storage,ret,"Database replace failed.");
             }
         }
         free_json(json);
