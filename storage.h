@@ -533,20 +533,31 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
 {
     DB *dbp = get_selected_database(selector);
     struct InstantDEX_quote *iQ;
-    int32_t n,ret = -1;
+    int32_t n,replaced=0,ret = -1;
+    DB_TXN *txn = NULL;
     DBC *cursorp = 0;
     DBT key,data;
     if ( dbp == 0 )
         return(0);
+    if ( (ret = Storage->txn_begin(Storage,NULL,&txn,0)) != 0 )
+    {
+        Storage->err(Storage,ret,"Transaction begin failed.");
+        return(-1);
+    }
     n = 0;
     clear_pair(&key,&data);
     key.data = keystr;
     key.size = (int32_t)(strlen(keystr) + 1);
-    dbp->cursor(dbp,NULL,&cursorp,0);
+    if ( (ret= dbp->cursor(dbp,txn,&cursorp,0)) != 0 )
+    {
+        Storage->err(Storage,ret,"Cursor open failed.");
+        txn->abort(txn);
+        return(-1);
+    }
     if ( cursorp != 0 )
     {
         ret = cursorp->get(cursorp,&key,&data,DB_SET);
-        while ( ret != DB_NOTFOUND )
+        while ( ret == 0 )
         {
             iQ = data.data;
             int z;
@@ -561,20 +572,28 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
                 data.data = refiQ;
                 data.size = sizeof(*refiQ);
                 ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
-                cursorp->close(cursorp);
-                dbsync(selector,0);
                 printf("REPLACED.%d\n",ret);
-                return(ret);
+                replaced = 1;
+                break;
             }
             ret = cursorp->get(cursorp,&key,&data,DB_NEXT_DUP);
             n++;
         }
-        cursorp->close(cursorp);
+        if ( (ret= cursorp->close(cursorp)) != 0 )
+        {
+            Storage->err(Storage,ret,"Cursor close failed.");
+            txn->abort(txn);
+        }
+        else if ( (ret= txn->commit(txn,0)) != 0 )
+            Storage->err(Storage,ret,"Transaction commit failed.");
+        if ( replaced == 0 )
+        {
+            data.data = refiQ;
+            data.size = sizeof(*refiQ);
+            ret = dbput(selector,0,&key,&data,0);
+        }
+        dbsync(selector,0);
     }
-    data.data = refiQ;
-    data.size = sizeof(*refiQ);
-    ret = dbput(selector,0,&key,&data,0);
-    dbsync(selector,0);
     return(ret);
 }
 
