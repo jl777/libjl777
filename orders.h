@@ -414,7 +414,7 @@ void check_for_InstantDEX(char *decoded,char *keystr)
             int z;
             for (z=0; z<24; z++)
                 printf("%02x ",((uint8_t *)&Q)[z]);
-            printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type);
+            printf("Q.(%s): %llu -> %llu NXT.%llu %u type.%d | price %f\n",keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type,price);
             
             if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,&Q)) != 0 )
                 Storage->err(Storage,ret,"Database replace failed.");

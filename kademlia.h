@@ -692,7 +692,7 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(keystr);
     //printf("halflen.%ld\n",strlen(datastr)/2);
-    fprintf(stderr,"do_localstor(%s) <- (%s)\n",keystr,datastr);
+    fprintf(stderr,"do_localstore(%s) <- (%s)\n",keystr,datastr);
     keynp = get_NXTacct(&createdflag,Global_mp,keystr);
     *txidp = 0;
     if ( keynp->bestbits != 0 )
