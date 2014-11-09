@@ -516,7 +516,8 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
             {
                 max += 100;
                 ptrs = (struct storage_header **)realloc(ptrs,sizeof(struct storage_header *)*(max+1));
-            }   clear_pair(&key,&data);
+            }
+            clear_pair(&key,&data);
         }
         cursorp->close(cursorp);
     }
@@ -526,6 +527,42 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
         ptrs[n] = 0;
     *nump = n;
     return(ptrs);
+}
+
+int dbreplace_iQ(int32_t selector,struct InstantDEX_quote *refiQ)
+{
+    DB *dbp = get_selected_database(selector);
+    struct InstantDEX_quote *iQ;
+    int32_t n,ret = -1;
+    DBC *cursorp = 0;
+    DBT key,data;
+    if ( dbp == 0 )
+        return(0);
+    n = 0;
+    dbp->cursor(dbp,NULL,&cursorp,0);
+    if ( cursorp != 0 )
+    {
+        clear_pair(&key,&data);
+        ret = cursorp->get(cursorp,&key,&data,DB_SET);
+        while ( ret != DB_NOTFOUND )
+        {
+            iQ = data.data;
+            printf("key.%d: %s, data: %llu %u %u | vs %llu %u %u\n",n,(char *)key.data,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
+            if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && iQ->timestamp > refiQ->timestamp )
+            {
+                data.data = refiQ;
+                data.size = sizeof(*refiQ);
+                ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
+                dbsync(selector,0);
+                printf("REPLACED.%d\n",ret);
+                return(ret);
+            }
+            ret = cursorp->get(cursorp,&key,&data,DB_NEXT_DUP);
+            n++;
+        }
+        cursorp->close(cursorp);
+    }
+    return(ret);
 }
 
 #endif
