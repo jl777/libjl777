@@ -539,13 +539,13 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     if ( dbp == 0 )
         return(0);
     n = 0;
+    clear_pair(&key,&data);
+    key.data = keystr;
+    key.size = (int32_t)(strlen(keystr) + 1);
     dbp->cursor(dbp,NULL,&cursorp,0);
     if ( cursorp != 0 )
     {
-        clear_pair(&key,&data);
-        key.data = keystr;
-        key.size = (int32_t)(strlen(keystr) + 1);
-        ret = cursorp->get(cursorp,&key,&data,DB_SET);
+         ret = cursorp->get(cursorp,&key,&data,DB_SET);
         while ( ret != DB_NOTFOUND )
         {
             iQ = data.data;
@@ -567,6 +567,9 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
         }
         cursorp->close(cursorp);
     }
+    data.data = refiQ;
+    data.size = sizeof(*refiQ);
+    ret = dbput(selector,0,&key,&data,0);
     return(ret);
 }
 
