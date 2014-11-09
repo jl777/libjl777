@@ -328,7 +328,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     {
         //C SuperNET_gotpacket.([{"requestType":"ping","NXT":"17572279667799017517","time":1413706981,"pubkey":"0514b7ba1da50363f3ad19ef46611754a1beb9815b9828bbc2ba9f0ea8f73f75","ipaddr":"89.212.19.49"},{"token":"3mtbe505lnpm60t52tgkdropg6srt8akoatih62ruuk0t7tqm65act9vu1v0n1g1hk7aiq2e88b0rp536o25rvkeibck3dmhmq68jc5bqb6gape8c2k21frtcdtq26pku0amfvdcvjrbcihed0jce1u0cq93nvoi"}]) from 89.212.19.49:47717 size.344 ascii txid.14809915081856697906 | flood.0
 
-        printf("send_kademlia_cmd.%s srvpubaddr or cp.%p\n",kadcmd,cp);
+        printf("send_kademlia_cmd.%s srvpubaddr or cp.%p dest.%llu\n",kadcmd,cp,(long long)nxt64bits);
         strcpy(NXTACCTSECRET,cp->srvNXTACCTSECRET);
     }
     init_hexbytes_noT(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
@@ -659,7 +659,6 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
 
 uint64_t process_storageQ()
 {
-    //uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
     struct storage_queue_entry *ptr;
     char key[64],datastr[8193];
     uint64_t txid = 0;
@@ -945,7 +944,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                                                 outbuf = encoded;
                                                 len = (int32_t)strlen(origargstr)+1;
                                                 memcpy(encoded,origargstr,len);
-                                                memcpy(outbuf+len,data,datalen);
+                                                memcpy(encoded+len,data,datalen);
                                                 len += datalen;
                                                 hopNXTaddr[0] = 0;
                                                 len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
@@ -973,7 +972,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 value = cJSON_Print(array);
                 free_json(array);
                 stripwhite_ns(value,strlen(value));
-                printf("send back.(%s) to %llu\n",value,(long long)senderbits);
+                printf("send back.(%s) to %llu | (%s)\n",value,(long long)senderbits,NXTACCTSECRET);
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }

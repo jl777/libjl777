@@ -522,7 +522,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
                     if ( is_illegal_ipaddr(nxtip) != 0 || notlocalip(nxtip) == 0 )
                         strcpy(nxtip,sender);
-                    printf("nxtip.(%s)\n",nxtip);
+                    printf("nxtip.(%s) %s\n",nxtip,parmstxt);
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )
                         nxtport = port;
