@@ -549,7 +549,10 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
         while ( ret != DB_NOTFOUND )
         {
             iQ = data.data;
-            printf("key.%d: %s, data: %llu %u %u | vs %llu %u %u\n",n,(char *)key.data,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
+            int z;
+            for (z=0; z<24; z++)
+                printf("%02x ",((uint8_t *)&iQ)[z]);
+            printf("%p key.%d: %s, data.size %d: %llu %u %u | vs %llu %u %u\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
             if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && iQ->timestamp > refiQ->timestamp )
             {
                 data.data = refiQ;
