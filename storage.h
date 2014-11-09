@@ -555,9 +555,13 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
             printf("%p key.%d: %s, data.size %d: %llu %u %u | vs %llu %u %u\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
             if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && refiQ->timestamp > iQ->timestamp )
             {
+                clear_pair(&key,&data);
+                key.data = keystr;
+                key.size = (int32_t)(strlen(keystr) + 1);
                 data.data = refiQ;
                 data.size = sizeof(*refiQ);
                 ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
+                cursorp->close(cursorp);
                 dbsync(selector,0);
                 printf("REPLACED.%d\n",ret);
                 return(ret);
