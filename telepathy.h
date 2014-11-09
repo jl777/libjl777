@@ -450,7 +450,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 {
                     init_hexbytes_noT(hexstr,sp->data,sp->H.size-sizeof(*sp));
                     sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"data\":\"%s\"}",NXTaddr,keystr,hexstr);
-                } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
+                } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"error\":\"cant find key\"}",NXTaddr,keystr);
                 free(sp);
             } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
             if ( is_remote_access(previpaddr) != 0 )
@@ -460,7 +460,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 sprintf(retbuf,"{\"requestType\":\"getdb\",\"NXT\":\"%s\",\"key\":\"%s\"}",NXTaddr,keystr);
                 send_to_ipaddr(destip,retbuf,NXTACCTSECRET);
             }
-        } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"no contact and no key\"}");
+        } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"error\":\"no contact and no key\"}",NXTaddr,keystr);
     }
     else
     {

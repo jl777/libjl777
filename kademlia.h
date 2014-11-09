@@ -743,7 +743,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
             dist = bitweight(destbits ^ keybits);
             if ( ismynxtbits(destbits) == 0 && dist < mydist )
             {
-                printf("store i.%d of %d, dist.%d vs mydist.%d\n",i,n,dist,mydist);
+                printf("store i.%d of %d, (%llu) dist.%d vs mydist.%d\n",i,n,(long long)destbits,dist,mydist);
                 txid = send_kademlia_cmd(destbits,0,"store",NXTACCTSECRET,key,datastr);
             }
         }
@@ -1261,7 +1261,7 @@ char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
 
 cJSON *gen_peerinfo_json(struct nodestats *stats)
 {
-    char srvipaddr[64],srvnxtaddr[64],numstr[64],hexstr[512],coinsjsonstr[1024];
+    char srvipaddr[64],srvnxtaddr[64],RSaddr[64],numstr[64],hexstr[512],coinsjsonstr[1024];
     cJSON *coins,*json = cJSON_CreateObject();
     struct pserver_info *pserver;
     expand_ipbits(srvipaddr,stats->ipbits);
@@ -1288,6 +1288,9 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
         }
     }
     else cJSON_AddItemToObject(json,"privateNXT",cJSON_CreateString(srvnxtaddr));
+    RSaddr[0] = 0;
+    conv_rsacctstr(RSaddr,stats->nxt64bits);
+    cJSON_AddItemToObject(json,"RS",cJSON_CreateString(RSaddr));
     init_hexbytes_noT(hexstr,stats->pubkey,sizeof(stats->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
     if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )

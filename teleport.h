@@ -445,6 +445,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
             memset(&RAW,0,sizeof(RAW));
             if ( (txid= calc_telepod_transaction(cp,&RAW,refpod!=0?refpods:inputpods,refsatoshis,podaddr,fee,changepod,change,change_podaddr)) == 0 )
             {
+                fprintf(stderr,"error calc_telepod_transaction\n");
                 if ( refpod != 0 )
                 {
                     refpod->cloneout = TELEPOD_ERROR_VOUT;
