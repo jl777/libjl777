@@ -330,11 +330,18 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     uint64_t baseid,relid;
     cJSON *json,*bids,*asks,*item;
     struct orderbook *op;
-    char obook[64],buf[MAX_JSON_FIELD],assetA[64],assetB[64],*retstr = 0;
+    char obook[64],buf[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],assetA[64],assetB[64],*retstr = 0;
     baseid = get_API_nxt64bits(objs[0]);
     relid = get_API_nxt64bits(objs[1]);
     allflag = get_API_int(objs[2],0);
     oldest = get_API_int(objs[3],0);
+    expand_nxt64bits(obook,baseid ^ relid);
+    sprintf(buf,"{\"baseid\":\"%llu\",\"relid\":\"%llu\",\"oldest\":%u}",(long long)baseid,(long long)relid,oldest);
+    init_hexbytes_noT(datastr,(uint8_t *)buf,strlen(buf));
+    if ( baseid != 0 && relid != 0 )
+        if ( (retstr= kademlia_find("findvalue",previpaddr,NXTaddr,NXTACCTSECRET,sender,obook,datastr,0)) != 0 )
+            free(retstr);
+    retstr = 0;
     if ( baseid != 0 && relid != 0 && (op= create_orderbook(oldest,baseid,relid,0,0)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
@@ -356,7 +363,6 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             }
             expand_nxt64bits(assetA,op->baseid);
             expand_nxt64bits(assetB,op->relid);
-            expand_nxt64bits(obook,op->baseid ^ op->relid);
             cJSON_AddItemToObject(json,"key",cJSON_CreateString(obook));
             cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(assetA));
             cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
