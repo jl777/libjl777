@@ -426,6 +426,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     data = replace_datafield(cmdstr,databuf,&len,datastr);
     strcat(cmdstr,"}");
+    printf("call _send_kademlia_cmd (%s)\n",cmdstr);
     return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,len));
 }
 
