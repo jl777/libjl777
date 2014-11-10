@@ -462,7 +462,8 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 sprintf(retbuf,"{\"requestType\":\"getdb\",\"NXT\":\"%s\",\"key\":\"%s\"}",NXTaddr,keystr);
                 send_to_ipaddr(destip,retbuf,NXTACCTSECRET);
             }
-            else sprintf(retbuf,"{\"result\":\"nodata\",\"key\":\"%s\"}",keystr);
+            else if ( retbuf[0] == 0 )
+                sprintf(retbuf,"{\"result\":\"nodata\",\"key\":\"%s\"}",keystr);
         } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"error\":\"no contact and no key\"}",NXTaddr,keystr);
     }
     else
