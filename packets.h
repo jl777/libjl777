@@ -206,7 +206,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
     struct pserver_info *pserver;
-return(0);
+//return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
@@ -320,7 +320,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     }
     else if ( len > 0 )
     {
-        if ( L > 0 )
+        if ( 0*L > 0 )
         {
             len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
             if ( (len= add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len)) == 0 )
