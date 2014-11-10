@@ -129,6 +129,7 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
         extract_cJSON_str(script,sizeof(script),tpd,"s");
     } else podaddr[0] = script[0] = 0;
     pod = create_telepod(createtime,cp->name,0,podaddr,script,privkey,txid,vout);
+    printf("created telepod\n");
     if ( get_telepod_info(&pod->unspent,&pod->H.createtime,cp->name,pod) < 0 )
     {
         printf("Invalid pod.%s (%s) received from %s\n",pod->coinaddr,pod->txid,contact->handle);
@@ -687,6 +688,7 @@ void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
                 
                 if ( tpd != 0 )
                 {
+                    printf("check coinstr.(%s) %p\n",coinstr,get_coin_info(coinstr));
                     if ( (cp= get_coin_info(coinstr)) != 0 )
                     {
                         pod = process_telepathic_teleport(cp,contact,tpd);
