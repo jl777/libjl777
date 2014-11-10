@@ -454,7 +454,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                     sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"data\":\"%s\"}",NXTaddr,keystr,hexstr);
                 } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"error\":\"cant find key\"}",NXTaddr,keystr);
                 free(sp);
-            } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
+            } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\",\"key\":\"%s\"}",keystr);
             if ( is_remote_access(previpaddr) != 0 )
                 send_to_ipaddr(previpaddr,retbuf,NXTACCTSECRET);
             else if ( destip[0] != 0 )

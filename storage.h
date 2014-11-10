@@ -442,7 +442,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
         {
-            //fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
+            fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
         }
         if ( data.data != hp && data.data != 0 )
         {
@@ -496,7 +496,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
         memcpy(sp->data,databuf,datalen);
         sp->H.size = (sizeof(*sp) + datalen);
         update_storage(selector,keystr,&sp->H);
-    }
+    } else printf("(%s) <- (%s) already there\n",keystr,datastr);
 }
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
