@@ -1089,7 +1089,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             }
         }
     } else scan_telepods(coinstr);
-    if ( coinstr[0] != 0 && (cp = get_coin_info(coinstr)) == 0 )
+    if ( coinstr != 0 && coinstr[0] != 0 && coinstr[0] != '*' && (cp= get_coin_info(coinstr)) == 0 )
         return(clonestr("{\"error\":\"coin daemon not setup\"}"));
     if ( cp == 0 )
     {

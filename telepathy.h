@@ -315,15 +315,16 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
     return(retstr);
 }
 
-void process_telepathic(char *key,uint8_t *data,int32_t datalen,uint64_t senderbits,char *senderip)
+void process_telepathic(char *key,char *datastr,uint64_t senderbits,char *senderip)
 {
-    //struct coin_info *cp = get_coin_info("BTCD");
-    //uint64_t keybits = calc_nxt64bits(key);
     struct contact_info *contact;
     struct telepathy_entry *tel;
-    int32_t sequenceid,i,n;
+    int32_t sequenceid,i,n,datalen;
+    uint8_t data[8192];
     char AESpasswordstr[512],typestr[1024],locationstr[64],*jsonstr;
     cJSON *json,*attachjson;
+    datalen = (int32_t)(strlen(datastr) / 2);
+    decode_hex(data,datalen,datastr);
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
     if ( (tel= find_telepathy_entry(locationstr)) != 0 )
     {
