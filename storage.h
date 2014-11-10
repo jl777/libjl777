@@ -349,6 +349,7 @@ void clear_pair(DBT *key,DBT *data)
 
 struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulksize)
 {
+    void *ptr = 0;
     DBT key,data,*retdata;
     int32_t ret,reqflags = 0;
     struct storage_header *hp;
@@ -363,13 +364,18 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         reqflags = DB_MULTIPLE;
         data.ulen = bulksize;
         data.flags = DB_DBT_USERMEM;
-        data.data = valloc(data.ulen);
+        data.data = ptr = valloc(data.ulen);
     }
     if ( (ret= dbget(selector,NULL,&key,&data,reqflags)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
         if ( ret != DB_NOTFOUND )
             fprintf(stderr,"DB.%d get error.%d data.size %d\n",selector,ret,data.size);
-        else return(0);
+        else
+        {
+            if ( ptr != 0 )
+                free(ptr);
+            return(0);
+        }
     }
     if ( bulksize != 0 )
     {
@@ -402,7 +408,7 @@ int32_t complete_dbput(int32_t selector,char *keystr,void *databuf,int32_t datal
     {
         if ( memcmp(sp,databuf,datalen) != 0 )
             fprintf(stderr,"(%s) data.%d cmp error datalen.%d\n",keystr,selector,datalen);
-        //else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
+        else fprintf(stderr,"DB.%d (%s) %d verified\n",selector,keystr,datalen);
         free(sp);
     } else { fprintf(stderr,"couldnt find sp in DB.%d that was just added.(%s)\n",selector,keystr); return(-1); }
     return(dbsync(selector,0));
@@ -424,16 +430,14 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         clear_pair(&key,&data);
         key.data = (keystr);
         key.size = (uint32_t)strlen(keystr) + 1;
-        if ( hp->keyhash == 0 )
+        if ( hp->createtime == 0 )
         {
             SuperNET_dbs[selector].maxitems++;
-            hp->keyhash = calc_txid((uint8_t *)keystr,key.size);
+            hp->createtime = (uint32_t)time(NULL);
         }
-        hp->laststored = (uint32_t)time(NULL);
-        if ( hp->createtime == 0 )
-            hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->size);
         fprintf(stderr,"updateDB.%d entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",selector,keystr,hp->size,data.size,hp,data.data);
+        if ( data.size <= 1 ) getchar();
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )

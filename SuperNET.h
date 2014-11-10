@@ -29,8 +29,8 @@
 
 struct storage_header
 {
-    uint64_t modified,keyhash;
-    uint32_t size,laststored,lastaccess,createtime;
+    uint32_t size,createtime;
+    uint64_t keyhash;
 };
 
 struct SuperNET_storage // for public and private data
