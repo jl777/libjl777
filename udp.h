@@ -420,7 +420,9 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
     else port = SUPERNET_PORT;
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
+    stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
+   //len = (int32_t)strlen(origargstr)+1;
     txid = calc_txid((uint8_t *)origargstr,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
@@ -441,8 +443,6 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     else if ( origargstr != 0 )
     {
         encrypted = 0;
-        stripwhite_ns(origargstr,len);
-        len = (int32_t)strlen(origargstr)+1;
         outbuf = (unsigned char *)origargstr;
         if ( data != 0 && datalen > 0 )
         {
