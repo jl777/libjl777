@@ -972,7 +972,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 value = cJSON_Print(array);
                 free_json(array);
                 stripwhite_ns(value,strlen(value));
-                printf("send back.(%s) to %llu | (%s)\n",value,(long long)senderbits,NXTACCTSECRET);
+                fprintf(stderr,"send back.(%s) to %llu | (%s)\n",value,(long long)senderbits,NXTACCTSECRET);
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
