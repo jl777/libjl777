@@ -648,7 +648,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
     if ( Debuglevel > 1 )
-        printf(" avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",*availp,*maturingp,*inboundp,*outboundp,*doublespentp,*cancelledp,n);
+        printf(" %s avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",coinstr,*availp,*maturingp,*inboundp,*outboundp,*doublespentp,*cancelledp,n);
     *nump = n;
     return(pods);
 }
@@ -1089,11 +1089,13 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
             }
         }
     } else scan_telepods(coinstr);
-    pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,-1);
-    if ( coinstr[0] != 0 )
-        cp = get_coin_info(coinstr);
+    if ( coinstr[0] != 0 && (cp = get_coin_info(coinstr)) == 0 )
+        return(clonestr("{\"error\":\"coin daemon not setup\"}"));
     if ( cp == 0 )
+    {
+        strcpy(coinstr,"BTCD");
         cp = get_coin_info("BTCD");
+    }
     credits = debits = 0.;
     numpos = numneg = 0;
     transporteraddr[0] = changeaddr[0] = 0;
@@ -1111,6 +1113,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         strcpy(changeaddr,addr);
         free(addr);
     }
+    pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,-1);
     sprintf(numstr,"%.8f",dstr(availsend));
     sprintf(numstr2,"%.8f",dstr(change));
     sprintf(retbuf,"{\"result\":\"telepodacct %.8f %s \",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f,\"funding\":\"%s\",\"avail\":\"%s\",\"changeaddr\":\"%s\",\"change\":\"%s\"}",dstr(amount),coinstr,avail,inbound,outbound,maturing,doublespent,cancelled,transporteraddr,numstr,changeaddr,numstr2);
