@@ -228,7 +228,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             if ( stats == 0 )
             {
                 printf("WARNINGE: cant get random node!\n");
-                return(maxlen);
+                return(len);
             }
             expand_ipbits(ipaddr,stats->ipbits);
             //if ( stats->ipbits == 0 || stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
@@ -304,7 +304,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     txid = calc_txid(outbuf,len);
     //init_jsoncodec((char *)outbuf,msglen);
     if ( Debuglevel > 1 )
-        printf("\nsendmessage.(%p %d) (%s) len.%d to %s crc.%x\n",data,datalen,msg,msglen,destNXTaddr,_crc32(0,outbuf,len));
+        printf("\nsendmessage.(%p %d) (%s) len.%d to %s crc.%x\n",data,datalen,msg,len,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(maxbuf)-1024 )
     {
         printf("sendmessage, payload too big %d\n",len);
@@ -319,7 +319,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             {
                 outbuf = (unsigned char *)msg;
                 //len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,msglen);
-                len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,msglen);
+                len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,msglen+datalen);
             }
         }
         else
