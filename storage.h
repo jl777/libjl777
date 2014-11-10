@@ -312,6 +312,8 @@ void set_max_in_db(int32_t selector,long num)
 void *decondition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32_t size)
 {
     void *ptr;
+    if ( data == 0 || size == 0 )
+        return(0);
     if ( sdb->privkeys != 0 && sdb->cipherids != 0 )
     {
         *lenp = size;
