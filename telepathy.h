@@ -196,6 +196,7 @@ cJSON *parse_encrypted_data(int32_t updatedb,int32_t *sequenceidp,struct contact
     int32_t i,decodedlen,hint,retransmit;
     char deaddropstr[MAX_JSON_FIELD],decoded[4096],privatedatastr[8192];
     *sequenceidp = -1;
+    memset(decoded,0,sizeof(decoded));
     decodedlen = AES_codec(data,datalen,decoded,AESpasswordstr);
     if ( decodedlen > 0 )
     {
@@ -288,15 +289,15 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             if ( IS_LIBTEST != 0 )
             {
-                //add_storage(PRIVATE_DATA,key,privatedatastr);
-                //add_storage(PUBLIC_DATA,key,privatedatastr);
+                add_storage(PRIVATE_DATA,key,privatedatastr);
+                add_storage(PUBLIC_DATA,key,privatedatastr);
             }
         }
         else
         {
             printf("telepathic.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
-            //if ( IS_LIBTEST != 0 )
-            //    add_storage(PRIVATE_DATA,key,privatedatastr);
+            if ( IS_LIBTEST != 0 )
+                add_storage(PRIVATE_DATA,key,privatedatastr);
             if ( contact->deaddrop != 0 )
             {
                 contact->numsent++;
@@ -400,7 +401,7 @@ void telepathic_transmit(char retbuf[MAX_JSON_FIELD],struct contact_info *contac
         if ( retstr != 0 )
         {
             strcpy(retbuf,retstr);
-            printf("telepathy.(%s) -> (%s).%d @ %llu\n",jsonstr,contact->handle,sequenceid,(long long)location);
+            printf("telepathic_transmit.(%s) -> (%s).%d @ %llu\n",jsonstr,contact->handle,sequenceid,(long long)location);
             free(retstr);
         } else strcpy(retbuf,"{\"error\":\"no result from private_publish\"}");
         free(jsonstr);
@@ -554,8 +555,8 @@ char *addcontact(char *handle,char *acct)
     {
         fprintf(stderr,"publish deaddrop\n");
         telepathic_transmit(retstr,contact,0,0,0);
-        if ( (ret= check_privategenesis(contact)) != 0 )
-            free(ret);
+        //if ( (ret= check_privategenesis(contact)) != 0 )
+        //    free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
     }
     fprintf(stderr,"ADDCONTACT.(%s)\n",retstr);
