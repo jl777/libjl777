@@ -975,7 +975,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
-            if ( z < 7 && isvalue != 0 && is_remote_access(previpaddr) != 0 )
+            if ( isvalue != 0 )
             {
                 char decoded[MAX_JSON_FIELD];
                 int32_t len;
@@ -988,7 +988,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         int32_t filtered_orderbook(char *retdatastr,char *jsonstr);
                         if ( filtered_orderbook(databuf,decoded) > 0 )
                         {
-                            if ( ismynxtbits(senderbits) == 0 )
+                            if ( ismynxtbits(senderbits) == 0 && is_remote_access(previpaddr) != 0 )
                                 txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                             sprintf(retstr,"{\"data\":\"%s\",\"instantDEX\":\"%s\"}",databuf,datastr);
                             printf("FOUND_InstantDEX.(%s)\n",retstr);
@@ -996,23 +996,20 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         }
                     }
                 }
-                else
+                sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
+                if ( sp != 0 )
                 {
-                    sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
-                    if ( sp != 0 )
+                    if ( sp->data != 0 )
                     {
-                        if ( sp->data != 0 )
-                        {
-                            init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                            printf("found value for (%s)! call store.%ld previpaddr.(%s) senderbits.%llu\n",key,sp->H.size-sizeof(*sp),previpaddr,(long long)senderbits);
-                            if ( ismynxtbits(senderbits) == 0 )
-                                txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-                            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
-                        }
-                        free(sp);
-                        printf("FOUND.(%s)\n",retstr);
-                        return(clonestr(retstr));
+                        init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
+                        printf("found value for (%s)! call store.%ld previpaddr.(%s) senderbits.%llu\n",key,sp->H.size-sizeof(*sp),previpaddr,(long long)senderbits);
+                        if ( ismynxtbits(senderbits) == 0 && is_remote_access(previpaddr) != 0 )
+                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                        sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                     }
+                    free(sp);
+                    printf("FOUND.(%s)\n",retstr);
+                    return(clonestr(retstr));
                 }
             }
         } else if ( Debuglevel > 0 )
