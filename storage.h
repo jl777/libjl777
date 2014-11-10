@@ -334,6 +334,8 @@ void *condition_storage(uint32_t *lenp,struct SuperNET_db *sdb,void *data,uint32
 {
     *lenp = size;
     //fprintf(stderr,"condition_storage\n");
+    if ( data == 0 || size <= 0 )
+        return(0);
     if ( sdb->privkeys == 0 || sdb->cipherids == 0 )
         return(data);
     else return(ciphers_codec(0,sdb->privkeys,sdb->cipherids,data,(int32_t *)lenp));
@@ -431,7 +433,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         if ( hp->createtime == 0 )
             hp->createtime = hp->laststored;
         data.data = condition_storage(&data.size,sdb,hp,hp->size);
-        //fprintf(stderr,"update entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",keystr,hp->size,data.size,hp,data.data);
+        fprintf(stderr,"updateDB.%d entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",selector,keystr,hp->size,data.size,hp,data.data);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
         else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 )
