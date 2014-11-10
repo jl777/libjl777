@@ -857,7 +857,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
     char retstr[32768],databuf[32768],ipaddr[64],_previpaddr[64],destNXTaddr[64],*value;
     uint64_t keyhash,senderbits,destbits,txid = 0;
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
-    int32_t z,i,n,isvalue,createdflag,datalen,mydist,dist,remoteflag = 0;
+    int32_t z,i,n,flag,isvalue,createdflag,datalen,mydist,dist,remoteflag = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct NXT_acct *keynp,*np;
     cJSON *array,*item;
@@ -906,11 +906,13 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 keynp = get_NXTacct(&createdflag,Global_mp,key);
                 keynp->bestdist = 10000;
                 keynp->bestbits = 0;
+                flag = 0;
+again:
                 for (i=0; i<n; i++) //&&i<KADEMLIA_ALPHA
                 {
                     destbits = sortbuf[(i<<1) + 1];
                     dist = bitweight(destbits ^ keyhash);
-                    if ( ismynxtbits(destbits) == 0 && dist < mydist )
+                    if ( ismynxtbits(destbits) == 0 && (dist < mydist || (z == 0 && flag == 1)) )
                     {
                         if ( (stats= get_nodestats(destbits)) != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
                             send_kademlia_cmd(destbits,0,"ping",NXTACCTSECRET,0,0);
@@ -958,6 +960,11 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                             } else txid = send_kademlia_cmd(destbits,0,cmd,NXTACCTSECRET,key,datastr);
                         }
                     }
+                }
+                if ( z == 0 && flag == 0 )
+                {
+                    flag = 1;
+                    goto again;
                 }
             }
             if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 && remoteflag == 0 ) // need to respond to sender
