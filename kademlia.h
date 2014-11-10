@@ -900,7 +900,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
         n = sort_all_buckets(sortbuf,keyhash);
         if ( n != 0 )
         {
-            //printf("search n.%d sorted\n",n);
+            printf("search n.%d sorted mydist.%d remoteflag.%d remoteaccess.%d\n",n,mydist,remoteflag,is_remote_access(previpaddr));
             if ( is_remote_access(previpaddr) == 0 || remoteflag != 0 ) // user invoked
             {
                 keynp = get_NXTacct(&createdflag,Global_mp,key);
