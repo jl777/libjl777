@@ -249,6 +249,7 @@ char *check_privategenesis(struct contact_info *contact)
         sp = kademlia_getstored(PUBLIC_DATA,location,0);
         if ( sp != 0 ) // no need to query if we already have it
         {
+            printf("check.%llu  private sp.%p data.%p size %ld\n",(long long)location,sp,sp->data,sp->H.size-sizeof(*sp));
             if ( sp->data != 0 && (json= parse_encrypted_data(0,&sequenceid,contact,key,sp->data,sp->H.size-sizeof(*sp),AESpasswordstr)) != 0 )
                 free_json(json);
             free(sp);
@@ -266,7 +267,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
 {
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
     uint64_t location;
-    if ( 0 && contact->deaddrop == 0 )
+    if ( 1 && contact->deaddrop == 0 )
     {
         if ( (retstr= check_privategenesis(contact)) != 0 )
             free(retstr);
@@ -285,7 +286,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
         expand_nxt64bits(key,location);
         if ( sequenceid == 0 )
         {
-            printf("store.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
+            printf("store.(%s) len.%ld -> %llu DDisat %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             if ( IS_LIBTEST != 0 )
             {
@@ -555,8 +556,8 @@ char *addcontact(char *handle,char *acct)
     {
         fprintf(stderr,"publish deaddrop\n");
         telepathic_transmit(retstr,contact,0,0,0);
-        //if ( (ret= check_privategenesis(contact)) != 0 )
-        //    free(ret);
+        if ( (ret= check_privategenesis(contact)) != 0 )
+            free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);
     }
     fprintf(stderr,"ADDCONTACT.(%s)\n",retstr);
