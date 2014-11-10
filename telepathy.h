@@ -113,9 +113,7 @@ int32_t verify_AES_codec(uint8_t *encoded,int32_t encodedlen,char *msg,char *AES
     if ( decodedlen > 0 )
     {
         if ( strcmp(msg,decoded) == 0 )
-        {
             printf("decrypted.(%s) len.%d\n",decoded,decodedlen);
-        }
         else { printf("AES_codec error on msg.(%s) != (%s)\n",msg,decoded); decodedlen = -1; }
     } else printf("AES_codec unexpected decode error.%d\n",decodedlen);
     return(decodedlen);
@@ -290,15 +288,15 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
             if ( IS_LIBTEST != 0 )
             {
-                add_storage(PRIVATE_DATA,key,privatedatastr);
-                add_storage(PUBLIC_DATA,key,privatedatastr);
+                //add_storage(PRIVATE_DATA,key,privatedatastr);
+                //add_storage(PUBLIC_DATA,key,privatedatastr);
             }
         }
         else
         {
             printf("telepathic.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
-            if ( IS_LIBTEST != 0 )
-                add_storage(PRIVATE_DATA,key,privatedatastr);
+            //if ( IS_LIBTEST != 0 )
+            //    add_storage(PRIVATE_DATA,key,privatedatastr);
             if ( contact->deaddrop != 0 )
             {
                 contact->numsent++;
@@ -583,6 +581,7 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         retstr = clonestr(retbuf);
     }
     else retstr = clonestr("{\"error\":\"invalid telepathy_func arguments\"}");
+    printf("TELEPATHY.(%s)\n",retbuf);
     return(retstr);
 }
 

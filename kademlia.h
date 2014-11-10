@@ -710,7 +710,7 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
     if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
     {
         void check_for_InstantDEX(char *decoded,char *keystr);
-        //check_for_InstantDEX(decoded,keystr);
+        check_for_InstantDEX(decoded,keystr);
     }
     if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
         free(sp);
