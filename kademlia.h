@@ -976,7 +976,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 txid = send_kademlia_cmd(senderbits,0,isvalue==0?"havenode":"havenodeB",NXTACCTSECRET,key,value);
                 free(value);
             }
-            if ( z < 2 && isvalue != 0 && is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 )
+            if ( z < 7 && isvalue != 0 && is_remote_access(previpaddr) != 0 )
             {
                 char decoded[MAX_JSON_FIELD];
                 int32_t len;
@@ -989,7 +989,8 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         int32_t filtered_orderbook(char *retdatastr,char *jsonstr);
                         if ( filtered_orderbook(databuf,decoded) > 0 )
                         {
-                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                            if ( ismynxtbits(senderbits) == 0 )
+                                txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                             sprintf(retstr,"{\"data\":\"%s\",\"instantDEX\":\"%s\"}",databuf,datastr);
                             printf("FOUND_InstantDEX.(%s)\n",retstr);
                             return(clonestr(retstr));
@@ -1004,8 +1005,9 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         if ( sp->data != 0 )
                         {
                             init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
-                            printf("found value for (%s)! call store\n",key);
-                            txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
+                            printf("found value for (%s)! call store.%ld previpaddr.(%s) senderbits.%llu\n",key,sp->H.size-sizeof(*sp),previpaddr,(long long)senderbits);
+                            if ( ismynxtbits(senderbits) == 0 )
+                                txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
                             sprintf(retstr,"{\"data\":\"%s\"}",databuf);
                         }
                         free(sp);

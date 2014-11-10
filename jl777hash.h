@@ -340,6 +340,10 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || strlen(key) >= (*hp_ptr)->keysize )
     {
         printf("MTadd_hashtable illegal key?? (%s)\n",key);
+#ifdef __APPLE__
+        //while ( 1 )
+       //     sleep(1);
+#endif
     }
     ptr = calloc(1,sizeof(*ptr));
     ptr->createdflagp = createdflagp;

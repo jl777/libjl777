@@ -97,7 +97,9 @@ int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordst
         len = decryptflag;
         retdata = ciphers_codec(1,privkeys,cipherids,buf,&len);
         //printf("cipher decrypted.(%s)\n",retdata);
-        memcpy(msg,retdata,len);
+        if ( retdata != 0 )
+            memcpy(msg,retdata,len);
+        else len = 0;
     }
     if ( retdata != 0 )
         free(retdata);
@@ -455,11 +457,12 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
             } else strcpy(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\"}");
             if ( is_remote_access(previpaddr) != 0 )
                 send_to_ipaddr(previpaddr,retbuf,NXTACCTSECRET);
-            else
+            else if ( destip[0] != 0 )
             {
                 sprintf(retbuf,"{\"requestType\":\"getdb\",\"NXT\":\"%s\",\"key\":\"%s\"}",NXTaddr,keystr);
                 send_to_ipaddr(destip,retbuf,NXTACCTSECRET);
             }
+            else sprintf(retbuf,"{\"result\":\"nodata\",\"key\":\"%s\"}",keystr);
         } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"NXT\":\"%s\",\"key\":\"%s\",\"error\":\"no contact and no key\"}",NXTaddr,keystr);
     }
     else
