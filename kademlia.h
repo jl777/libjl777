@@ -530,7 +530,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     char retstr[1024];
     uint16_t prevport;
     struct coin_info *cp = get_coin_info("BTCD");
-    //printf("got ping.%d (%s)\n",ismynode(prevaddr),origargstr);
+    fprintf(stderr,"got ping %p\n",previpaddr);
     retstr[0] = 0;
     if ( is_remote_access(previpaddr) == 0 ) // user invoked
     {
