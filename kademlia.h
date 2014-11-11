@@ -391,8 +391,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         return(0);
     }
     encrypted = 2;
-    stats = get_nodestats(pserver->nxt64bits);
-    fprintf(stderr,"stats.%p\n",stats);
+    stats = get_nodestats(nxt64bits);
+    fprintf(stderr,"stats.%p (%s) %llu\n",stats,kadcmd,(long long)nxt64bits);
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -401,6 +401,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->pingmilli = milliseconds();
             stats->numpings++;
         }
+        fprintf(stderr,"call gen_pingstr\n");
         gen_pingstr(cmdstr,1);
         fprintf(stderr,"send ping.(%s)\n",cmdstr);
         send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
