@@ -227,7 +227,7 @@ void SuperNET_idler(uv_idle_t *handle)
         }
         if ( process_storageQ() != 0 )
         {
-            printf("processed storage\n");
+            //printf("processed storage\n");
         }
     }
     if ( millis > (lastclock + 1000) )

@@ -163,7 +163,7 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
             else memcpy(maxbuf,encoded,len);
         }
     }
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("new len.%d + %ld = %d (%d %d)\n",len,extralen,padlen,*payload_lenp,*max_lenp);
     return(len + (int)extralen);
 }
@@ -476,11 +476,12 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
     }
     else if ( internalflag == 0 )
     {
-        if ( Debuglevel > 2 || len < 400 )
-            printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,recvbuf);
         len = recvlen;
         memcpy(decoded,recvbuf,recvlen);
         encrypted = 0;
+        decoded[recvlen] = 0;
+        if ( Debuglevel > 2 || len > 400 )
+            printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,decoded);
         //return(0);
     }
     else return(0); // if from data field, must decrypt or it is ignored
