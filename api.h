@@ -942,7 +942,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,
     copy_cJSON(ipaddr,objs[1]);
     port = get_API_int(objs[2],0);
     copy_cJSON(destip,objs[3]);
-    fprintf(stderr,"ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
+    //fprintf(stderr,"ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
         retstr = kademlia_ping(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip,origargstr);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
@@ -1418,7 +1418,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
             }
         }
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
-        fprintf(stderr,"SuperNET_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
+        //fprintf(stderr,"SuperNET_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
         for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
         {
             cmdinfo = commands[i];

@@ -312,7 +312,7 @@ void send_to_ipaddr(char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
         port = SUPERNET_PORT;
     uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
     construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
-    fprintf(stderr,"send.(%s)\n",_tokbuf);
+    //fprintf(stderr,"send.(%s)\n",_tokbuf);
     portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
 }
 
@@ -323,10 +323,9 @@ int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nx
     bits256 hash;
     uint64_t txid,keybits;
     int32_t i,dist;
-    fprintf(stderr,"filter %p\n",key);
     keybits = calc_nxt64bits(key);
     dist = bitweight(keybits ^ nxt64bits);
-    fprintf(stderr,"filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
+    //fprintf(stderr,"filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
     //if ( dist <= KADEMLIA_MAXTHRESHOLD )
     {
         if ( datastr != 0 && datastr[0] != 0 )
@@ -352,7 +351,7 @@ int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nx
         }
         txids[i] = txid;
     }
-    fprintf(stderr,"done filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
+    //fprintf(stderr,"done filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
     return(0);
 }
 
@@ -372,7 +371,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     init_hexbytes_noT(pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
     verifiedNXTaddr[0] = 0;
     find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    fprintf(stderr,"send_kademlia_cmd (%s) [%s] pserver.%p\n",verifiedNXTaddr,NXTACCTSECRET,pserver);
+    //fprintf(stderr,"send_kademlia_cmd (%s) [%s] pserver.%p\n",verifiedNXTaddr,NXTACCTSECRET,pserver);
     if ( pserver == 0 )
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
@@ -395,7 +394,6 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     encrypted = 2;
     stats = get_nodestats(nxt64bits);
-    fprintf(stderr,"stats.%p (%s) %llu\n",stats,kadcmd,(long long)nxt64bits);
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -404,11 +402,8 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->pingmilli = milliseconds();
             stats->numpings++;
         }
-        fprintf(stderr,"call gen_pingstr\n");
         gen_pingstr(cmdstr,1);
-        fprintf(stderr,"send ping.(%s)\n",cmdstr);
         send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
-        fprintf(stderr,"send_to_ipaddr.(%s)\n",pserver->ipaddr);
         return(0);
     }
     else
@@ -417,7 +412,6 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         {
             encrypted = 1;
             sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
-            fprintf(stderr,"send pong.(%s)\n",cmdstr);
             //send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
             //return(0);
             //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
@@ -434,16 +428,10 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     if ( key != 0 && key[0] != 0 )
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
-    fprintf(stderr,"replace datafield\n");
     data = replace_datafield(cmdstr,databuf,&datalen,datastr);
-    fprintf(stderr,"back from datafield (%s).%d\n",cmdstr,datalen);
     strcat(cmdstr,"}");
     if ( key == 0 || key[0] == 0 || filter_duplicate_kadcmd(cmdstr,key,datastr,nxt64bits) == 0 )
-    {
-        fprintf(stderr,"call _send_kademlia_cmd (%s) (%s).%d\n",cmdstr,datastr,datalen);
         return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,datalen));
-    }
-    fprintf(stderr,"filtered duplicate\n");
     return(0);
 }
 
@@ -544,11 +532,9 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     char retstr[1024];
     uint16_t prevport;
     struct coin_info *cp = get_coin_info("BTCD");
-    fprintf(stderr,"got ping %p\n",previpaddr);
     retstr[0] = 0;
     if ( is_remote_access(previpaddr) == 0 ) // user invoked
     {
-        fprintf(stderr,"not remote\n");
         if ( destip != 0 && destip[0] != 0 )
         {
             if ( ismyipaddr(destip) == 0 )
@@ -559,20 +545,17 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     }
     else // sender ping'ed us
     {
-        fprintf(stderr,"is remote\n");
         if ( notlocalip(cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
             fprintf(stderr,"AUTO SETTING MYIP <- (%s)\n",destip);
             set_myipaddr(cp,ipaddr,port);
         }
-        fprintf(stderr,"is remote B\n");
         prevport = 0;
         if ( verify_addr(&prevport,previpaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
         {
             change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender));
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
-        fprintf(stderr,"is remote C (%s).%d\n",ipaddr,prevport);
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }

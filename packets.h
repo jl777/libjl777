@@ -494,7 +494,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         {
             parmstxt = clonestr((char *)decoded);
             argjson = cJSON_Parse(parmstxt);
-            fprintf(stderr,"len.%d parmslen.%d datalen.%d (%s)\n",len,parmslen,datalen,parmstxt);
+            //fprintf(stderr,"len.%d parmslen.%d datalen.%d (%s)\n",len,parmslen,datalen,parmstxt);
             free(parmstxt), parmstxt = 0;
         }
         if ( argjson != 0 ) // if it parses, we must have been the ultimate destination
@@ -559,7 +559,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         if ( prevaddr != 0 )
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
-                        fprintf(stderr,"GOT.(%s) np.%p\n",parmstxt,tokenized_np);
+                        //fprintf(stderr,"GOT.(%s) np.%p\n",parmstxt,tokenized_np);
                         if ( 0 )
                         {
                             qp = calloc(1,sizeof(*qp));
