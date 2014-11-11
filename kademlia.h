@@ -312,7 +312,8 @@ void send_to_ipaddr(char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
         port = SUPERNET_PORT;
     uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
     construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
-    portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf),ALLOCWR_ALLOCFREE);
+    fprintf(stderr,"send.(%s)\n",_tokbuf);
+    portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
 }
 
 int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nxt64bits)
@@ -391,6 +392,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     }
     encrypted = 2;
     stats = get_nodestats(pserver->nxt64bits);
+    fprintf(stderr,"stats.%p\n",stats);
     if ( strcmp(kadcmd,"ping") == 0 )
     {
         encrypted = 0;
@@ -400,7 +402,9 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->numpings++;
         }
         gen_pingstr(cmdstr,1);
+        fprintf(stderr,"send ping.(%s)\n",cmdstr);
         send_to_ipaddr(pserver->ipaddr,cmdstr,NXTACCTSECRET);
+        fprintf(stderr,"send_to_ipaddr.(%s)\n",pserver->ipaddr);
         return(0);
     }
     else
