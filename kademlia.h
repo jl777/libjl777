@@ -996,7 +996,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         break;
                 }
             }
-        }
+        } else printf("no candidate destaddrs\n");
         if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 && remoteflag == 0 ) // need to respond to sender
         {
             if ( get_public_datastr(retstr,databuf,keyhash) == 0 )

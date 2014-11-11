@@ -703,7 +703,7 @@ int32_t poll_telepods(char *relstr)
                         pod->podstate = flag;
                         update_telepod(pod);
                     }
-                }
+                } else printf("err.%d for telepod\n",err);
                 free(pod);
             }
         }
