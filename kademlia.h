@@ -721,7 +721,6 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
 
 char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
 {
-    //static unsigned char zerokey[crypto_box_PUBLICKEYBYTES];
     char retstr[32768];
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     uint64_t keybits,destbits,txid = 0;
@@ -773,10 +772,8 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
     if ( key != 0 && key[0] != 0 && value != 0 && value[0] != 0 && (array= cJSON_Parse(value)) != 0 )
     {
         if ( is_remote_access(previpaddr) != 0 )
-        {
-            //extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)prevaddr);
             pserver = get_pserver(0,previpaddr,0,0);
-        } else if ( cp != 0 ) pserver = get_pserver(0,cp->myipaddr,0,0);
+        else if ( cp != 0 ) pserver = get_pserver(0,cp->myipaddr,0,0);
         keynp = get_NXTacct(&createdflag,Global_mp,key);
         //printf("parsed value array.%p\n",array);
         if ( is_cJSON_Array(array) != 0 )

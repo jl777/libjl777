@@ -205,8 +205,6 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     int32_t tmp,origlen=0,maxlen = 0;
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
-    //struct pserver_info *pserver;
-//return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
@@ -228,11 +226,10 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             if ( stats == 0 )
             {
                 fprintf(stderr,"WARNINGE: cant get random node!\n");
-                return(0);
+                numlayers--;
+                continue;
             }
             expand_ipbits(ipaddr,stats->ipbits);
-            //if ( stats->ipbits == 0 || stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
-            //    continue;
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
@@ -262,12 +259,12 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     return(len);
 }
 
-int32_t has_privacyServer(struct NXT_acct *np)
+/*int32_t has_privacyServer(struct NXT_acct *np)
 {
     if ( np->stats.ipbits != 0 && np->stats.nxt64bits != 0 )
         return(1);
     else return(0);
-}
+}*/
 
 int32_t prep_outbuf(uint8_t *outbuf,char *msg,int32_t msglen,uint8_t *data,int32_t datalen)
 {
@@ -288,7 +285,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],_hopNXTaddr[64];
     unsigned char maxbuf[4096],encodedD[4096],encoded[4096],encodedL[4096],encodedF[4096],*outbuf;
-    int32_t len,createdflag;//,maxlen;
+    int32_t len,createdflag;
     struct NXT_acct *np,*destnp;
     np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
     expand_nxt64bits(srvNXTaddr,np->stats.nxt64bits);
@@ -319,21 +316,18 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     }
     else if ( len > 0 )
     {
+        len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
         if ( L > 0 )
         {
-            len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
             if ( (len= add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len)) == 0 )
             {
+                printf("unexpected case of onionlayer error\n");
                 outbuf = encoded;
                 len = prep_outbuf(outbuf,msg,msglen,data,datalen);
                 len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,len);
             }
         }
-        else
-        {
-           // len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-            len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,len);
-        }
+        strcpy(destNXTaddr,hopNXTaddr);
         len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
         route_packet(1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
@@ -500,6 +494,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         {
             parmstxt = clonestr((char *)decoded);
             argjson = cJSON_Parse(parmstxt);
+            fprintf(stderr,"len.%d parmslen.%d datalen.%d (%s)\n",len,parmslen,datalen,parmstxt);
             free(parmstxt), parmstxt = 0;
         }
         if ( argjson != 0 ) // if it parses, we must have been the ultimate destination
@@ -508,7 +503,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
             memset(pubkey,0,sizeof(pubkey));
             parmstxt = verify_tokenized_json(pubkey,senderNXTaddr,&valid,argjson);
             if ( Debuglevel > 1 )
-                printf("len.%d parmslen.%d datalen.%d (%s) valid.%d\n",len,parmslen,datalen,parmstxt,valid);
+                fprintf(stderr,"len.%d parmslen.%d datalen.%d (%s) valid.%d\n",len,parmslen,datalen,parmstxt,valid);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
                 tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
@@ -521,7 +516,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
                     if ( is_illegal_ipaddr(nxtip) != 0 || notlocalip(nxtip) == 0 )
                         strcpy(nxtip,sender);
-                    printf("nxtip.(%s) %s\n",nxtip,parmstxt);
+                    fprintf(stderr,"nxtip.(%s) %s\n",nxtip,parmstxt);
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )
                         nxtport = port;
@@ -552,9 +547,9 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             free_json(argjson);
                             argjson = cJSON_Parse(parmstxt);
                             if ( Debuglevel > 0 )
-                                printf("replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
+                                fprintf(stderr,"replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
                         }
-                        else printf("datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
+                        else fprintf(stderr,"datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
                     }
                     free_json(tmpjson);
                     if ( strcmp(checkstr,"valid") == 0 )
@@ -564,7 +559,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         if ( prevaddr != 0 )
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
-                        //printf("GOT.(%s)\n",parmstxt);
+                        fprintf(stderr,"GOT.(%s)\n",parmstxt);
                         if ( 1 )
                         {
                             qp = calloc(1,sizeof(*qp));
@@ -585,10 +580,10 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                                 free(jsonstr);
                         }
                     }
-                    else printf("encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
+                    else fprintf(stderr,"encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
                 }
             }
-            else printf("valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
+            else fprintf(stderr,"valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
             if ( argjson != 0 )
                 free_json(argjson);
             if ( parmstxt != 0 )
@@ -605,18 +600,18 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
                 if ( Debuglevel > 0 )
-                    printf("Route to {%s} %p\n",destNXTaddr,stats);
+                    fprintf(stderr,"Route to {%s} %p\n",destNXTaddr,stats);
                 if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
                 {
                     outbuf = decoded;
                     len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
                     route_packet(1,0,hopNXTaddr,outbuf,len);
-                } else if ( Debuglevel > 0 ) printf("JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
+                } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
-            } else if ( Debuglevel > 0 ) printf("JSON didnt parse and no destination to forward to\n");
+            } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no destination to forward to\n");
         }
     }
-    else printf("process_packet got unexpected recvlen.%d %s/%d\n",recvlen,sender,port);
+    else fprintf(stderr,"process_packet got unexpected recvlen.%d %s/%d\n",recvlen,sender,port);
     return(0);
 }
 
