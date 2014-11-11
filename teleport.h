@@ -342,7 +342,7 @@ struct telepod *clone_telepod(struct coin_info *cp,struct telepod *refpod,uint64
         refpods[1] = 0;
         if ( refsatoshis != 0 )
         {
-            printf("clone_telepod: unexpected nonzero %.8f refsatoshis\n",dstr(refsatoshis));
+            printf("clone_telepod: refpod.%p unexpected nonzero %.8f refsatoshis\n",refpod,dstr(refsatoshis));
             return(0);
         }
         refsatoshis = refpod->satoshis;
@@ -681,7 +681,7 @@ int32_t poll_telepods(char *relstr)
                             if ( now > pod->clonetime ) // received telepod
                             {
                                 cp = get_coin_info(pod->coinstr);
-                                if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
+                                if ( cp != 0 && (clonepod= clone_telepod(cp,pod,0,0)) != 0 )
                                 {
                                     flag = TELEPOD_CLONED;
                                     free(clonepod);
