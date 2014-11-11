@@ -442,7 +442,7 @@ void update_storage(int32_t selector,char *keystr,struct storage_header *hp)
         //fprintf(stderr,"updateDB.%d entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",selector,keystr,hp->size,data.size,hp,data.data);
         if ( (ret= dbput(selector,0,&key,&data,0)) != 0 )
             Storage->err(Storage,ret,"Database put failed.");
-        else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 && Debuglevel > 2 )
+        else if ( complete_dbput(selector,keystr,hp,hp->size,0) == 0 && Debuglevel > 1 )
             fprintf(stderr,"updated.%d (%s) hp.%p data.data %p\n",selector,keystr,hp,data.data);
         if ( data.data != hp && data.data != 0 )
             free(data.data);
