@@ -242,76 +242,6 @@ int32_t get_telepod_info(uint64_t *unspentp,uint32_t *createtimep,char *coinstr,
     return((*createtimep == 0) ? -1 : 0);
 }
 
-uint64_t scan_telepods(char *coinstr)
-{
-    uint64_t sum = 0;
-    int32_t i,num,n;
-    cJSON *array,*item;
-    char *retstr,params[512],acct[MAX_JSON_FIELD];
-    struct coin_info *cp;
-    struct telepod *pod;
-    struct storage_header *hp;
-    if ( strcmp(coinstr,"BBR") == 0 )
-    {
-        printf("Cant scan BBR for telepods yet\n");
-        return(0);
-    }
-    num = 0;
-    if ( (cp= get_coin_info(coinstr)) != 0 )
-    {
-        sprintf(params,"%d, 99999999",cp->minconfirms);
-        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
-        if ( retstr != 0 && retstr[0] != 0 )
-        {
-            //printf("got.(%s)\n",retstr);
-            if ( (array= cJSON_Parse(retstr)) != 0 )
-            {
-                if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-                {
-                    for (i=0; i<n; i++)
-                    {
-                        item = cJSON_GetArrayItem(array,i);
-                        copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
-                        //fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
-                        if ( strcmp(acct,"telepods") == 0 )
-                        {
-                            num++;
-                            if ( (pod= parse_unspent_json(cp,item)) != 0 )
-                            {
-                                //fprintf(stderr,"pod.%p parse_unspent\n",pod);
-                                if ( (hp= find_storage(TELEPOD_DATA,pod->txid,0)) == 0 )
-                                {
-                                    disp_telepod("new",pod);
-                                    update_telepod(pod);
-                                }
-                                else
-                                {
-                                    if ( hp->size == pod->H.size )
-                                        pod->H.createtime = hp->createtime;
-                                    if ( hp->size != pod->H.size || memcmp(hp,pod,hp->size) != 0 )
-                                    {
-                                        //printf("size.%d/%d memcmp.%d\n",hp->size,pod->H.size,memcmp(hp,pod,hp->size));
-                                        //disp_telepod("hp",(struct telepod *)hp);
-                                        disp_telepod("pod",pod);
-                                        update_telepod(pod);
-                                    }
-                                    free(hp);
-                                }
-                                sum += pod->satoshis;
-                                free(pod);
-                            } else fprintf(stderr,"parse_unspent null\n");
-                        }
-                    }
-                }
-                free(array);
-            }
-            free(retstr);
-        }
-    }
-    printf("num telepods.%d sum %.8f\n",num,dstr(sum));
-    return(sum);
-}
-
 struct telepod *conv_BBR_json(struct coin_info *cp,struct cJSON *tpd)
 {
     struct telepod *pod = 0;
@@ -920,6 +850,76 @@ struct telepod **evolve_telepods(int32_t *nump,int32_t maxiters,struct telepod *
     return(hwmpods);
 }
 
+uint64_t scan_telepods(char *coinstr)
+{
+    uint64_t sum = 0;
+    int32_t i,num,n;
+    cJSON *array,*item;
+    char *retstr,params[512],acct[MAX_JSON_FIELD];
+    struct coin_info *cp;
+    struct telepod *pod;
+    struct storage_header *hp;
+    if ( strcmp(coinstr,"BBR") == 0 )
+    {
+        printf("Cant scan BBR for telepods yet\n");
+        return(0);
+    }
+    num = 0;
+    if ( (cp= get_coin_info(coinstr)) != 0 )
+    {
+        sprintf(params,"%d, 99999999",cp->minconfirms);
+        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
+        if ( retstr != 0 && retstr[0] != 0 )
+        {
+            //printf("got.(%s)\n",retstr);
+            if ( (array= cJSON_Parse(retstr)) != 0 )
+            {
+                if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (i=0; i<n; i++)
+                    {
+                        item = cJSON_GetArrayItem(array,i);
+                        copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
+                        //fprintf(stderr,"%s.%d acct.%s\n",coinstr,i,acct);
+                        if ( strcmp(acct,"telepods") == 0 )
+                        {
+                            num++;
+                            if ( (pod= parse_unspent_json(cp,item)) != 0 )
+                            {
+                                //fprintf(stderr,"pod.%p parse_unspent\n",pod);
+                                if ( (hp= find_storage(TELEPOD_DATA,pod->txid,0)) == 0 )
+                                {
+                                    disp_telepod("new",pod);
+                                    update_telepod(pod);
+                                }
+                                else
+                                {
+                                    if ( hp->size == pod->H.size )
+                                        pod->H.createtime = hp->createtime;
+                                    if ( hp->size != pod->H.size || memcmp(hp,pod,hp->size) != 0 )
+                                    {
+                                        //printf("size.%d/%d memcmp.%d\n",hp->size,pod->H.size,memcmp(hp,pod,hp->size));
+                                        //disp_telepod("hp",(struct telepod *)hp);
+                                        disp_telepod("pod",pod);
+                                        update_telepod(pod);
+                                    }
+                                    free(hp);
+                                }
+                                sum += pod->satoshis;
+                                free(pod);
+                            } else fprintf(stderr,"parse_unspent null\n");
+                        }
+                    }
+                }
+                free(array);
+            }
+            free(retstr);
+        }
+    }
+    printf("num telepods.%d sum %.8f\n",num,dstr(sum));
+    return(sum);
+}
+
 char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,char *withdrawaddr)
 {
     char buf[4096],*attachmentstr;
@@ -934,14 +934,25 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
     if ( minage == 0 )
         minage = 3600;
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,minage);
-    sprintf(buf,"{\"result\":\"teleport %.8f %s minage.%d -> (%s)\",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(satoshis),coinstr,minage,contactstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     contact = find_contact(contactstr);
     if ( (withdrawaddr[0] == 0 && contact == 0) || (uint64_t)(SATOSHIDEN * avail) < satoshis || (satoshis % cp->min_telepod_satoshis) != 0 )
     {
         printf("%s\n",buf);
-        sprintf(buf,"{\"error\":\"cant find contact.(%s) or lack of telepods %.8f %s for %.8f\",\"modval\":\"%llu\"}",contactstr,avail,coinstr,dstr(satoshis),(long long)(satoshis % cp->min_telepod_satoshis));
-        return(clonestr(buf));
+        if ( scan_telepods(coinstr) >= satoshis )
+            pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,minage);
+        else
+        {
+            sprintf(buf,"{\"error\":\"cant find contact.(%s) or lack of telepods %.8f %s for %.8f\",\"modval\":\"%llu\"}",contactstr,avail,coinstr,dstr(satoshis),(long long)(satoshis % cp->min_telepod_satoshis));
+            if ( pods != 0 )
+            {
+                for (i=0; i<n; i++)
+                    free(pods[i]);
+                free(pods);
+            }
+            return(clonestr(buf));
+        }
     }
+    sprintf(buf,"{\"result\":\"teleport %.8f %s minage.%d -> (%s)\",\"avail\":%.8f,\"inbound\":%.8f,\"outbound\":%.8f,\"maturing\":%.8f,\"doublespent\":%.8f,\"cancelled\":%.8f}",dstr(satoshis),coinstr,minage,contactstr,avail,inbound,outbound,maturing,doublespent,cancelled);
     printf("start evolving.%d at %f\n",n,milliseconds());
     pods = evolve_telepods(&n,cp->maxevolveiters,pods,satoshis);
     printf("finished evolving %d at %f\n",n,milliseconds());
