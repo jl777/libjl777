@@ -657,11 +657,11 @@ int32_t poll_telepods(char *relstr)
                 err = 0;
                 unspent = 0;
                 createtime = 0;
-                if ( pod->podstate == TELEPOD_AVAIL && pod->clonetime != 0 )
+                /*if ( pod->podstate == TELEPOD_AVAIL && pod->clonetime != 0 )
                 {
                     pod->podstate = TELEPOD_INBOUND;
                     update_telepod(pod);
-                }
+                }*/
                 if ( pod->podstate == TELEPOD_AVAIL || pod->podstate == TELEPOD_INBOUND || pod->podstate == TELEPOD_OUTBOUND )
                     err = get_telepod_info(&unspent,&createtime,pod->coinstr,pod);
                 //if ( err == 0 )
@@ -677,8 +677,7 @@ int32_t poll_telepods(char *relstr)
                             }
                             break;
                         case TELEPOD_INBOUND:
-                            printf("clonetime.%u vs now.%u = %d | unspent %.8f\n",pod->clonetime,now,pod->clonetime - now,dstr(unspent));
-                            if ( now > pod->clonetime ) // received telepod
+                            if ( pod->clonetime != 0 && now > pod->clonetime ) // received telepod
                             {
                                 cp = get_coin_info(pod->coinstr);
                                 if ( cp != 0 && (clonepod= clone_telepod(cp,pod,0,0)) != 0 )
