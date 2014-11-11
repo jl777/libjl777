@@ -657,6 +657,8 @@ int32_t poll_telepods(char *relstr)
                 err = 0;
                 unspent = 0;
                 createtime = 0;
+                if ( pod->podstate == TELEPOD_AVAIL )
+                    pod->podstate = TELEPOD_INBOUND;
                 if ( pod->podstate == TELEPOD_AVAIL || pod->podstate == TELEPOD_INBOUND || pod->podstate == TELEPOD_OUTBOUND )
                     err = get_telepod_info(&unspent,&createtime,pod->coinstr,pod);
                 //if ( err == 0 )
