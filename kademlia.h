@@ -323,6 +323,7 @@ int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nx
     bits256 hash;
     uint64_t txid,keybits;
     int32_t i,dist;
+    fprintf(stderr,"filter %p\n",key);
     keybits = calc_nxt64bits(key);
     dist = bitweight(keybits ^ nxt64bits);
     fprintf(stderr,"filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
@@ -435,13 +436,15 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         sprintf(cmdstr+strlen(cmdstr),",\"key\":\"%s\"",key);
     fprintf(stderr,"replace datafield\n");
     data = replace_datafield(cmdstr,databuf,&datalen,datastr);
-    fprintf(stderr,"back from datafield\n");
+    fprintf(stderr,"back from datafield (%s).%d\n",cmdstr,datalen);
     strcat(cmdstr,"}");
     if ( filter_duplicate_kadcmd(cmdstr,key,datastr,nxt64bits) == 0 )
     {
         fprintf(stderr,"call _send_kademlia_cmd (%s) (%s).%d\n",cmdstr,datastr,datalen);
         return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,datalen));
-    } else return(0);
+    }
+    fprintf(stderr,"filtered duplicate\n");
+    return(0);
 }
 
 void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubkeystr,uint32_t lastcontact,int32_t p2pflag)
