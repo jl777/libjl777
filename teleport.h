@@ -543,7 +543,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
             }
         }
         pod->evolve_amount = evolve_amount;
-        if ( podstate == TELEPOD_AVAIL || podstate == TELEPOD_CLONED )
+        if ( podstate == TELEPOD_AVAIL )
         {
             if ( minage >= 0 )
                 pods[n++] = pod, flag = 1;
