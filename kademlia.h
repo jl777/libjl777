@@ -139,7 +139,7 @@ int32_t ismynode(struct sockaddr *addr)
     return(ismyipaddr(ipaddr));
 }
 
-uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
+/*uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
 {
     int32_t i,n;
     uint32_t xorsum = 0;
@@ -189,7 +189,7 @@ void addto_hasnxt(struct pserver_info *pserver,uint64_t nxtbits)
     }
     pserver->hasnxt[n % (int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt))] = nxtbits;
     pserver->numnxt++;
-}
+}*/
 
 int32_t sort_all_buckets(uint64_t *sortbuf,uint64_t hash)
 {
@@ -668,7 +668,7 @@ uint64_t process_storageQ()
     uint64_t txid = 0;
     struct SuperNET_storage *sp;
     struct coin_info *cp = get_coin_info("BTCD");
-    fprintf(stderr,"process_storageQ\n");
+    //fprintf(stderr,"process_storageQ\n");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
         fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
@@ -789,12 +789,12 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
                 if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 5 )
                 {
                     copy_cJSON(destNXTaddr,cJSON_GetArrayItem(item,0));
-                    if ( destNXTaddr[0] != 0 )
-                        addto_hasnxt(pserver,calc_nxt64bits(destNXTaddr));
+                    //if ( destNXTaddr[0] != 0 )
+                    //    addto_hasnxt(pserver,calc_nxt64bits(destNXTaddr));
                     copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,1));
                     copy_cJSON(ipaddr,cJSON_GetArrayItem(item,2));
-                    if ( ipaddr[0] != 0 && notlocalip(ipaddr) != 0 )
-                        addto_hasips(1,pserver,calc_ipbits(ipaddr));
+                    //if ( ipaddr[0] != 0 && notlocalip(ipaddr) != 0 )
+                    //    addto_hasips(1,pserver,calc_ipbits(ipaddr));
                     copy_cJSON(portstr,cJSON_GetArrayItem(item,3));
                     copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,4));
                     port = (uint32_t)atol(portstr);
@@ -1111,8 +1111,8 @@ void update_Kbuckets(struct nodestats *stats,uint64_t nxt64bits,char *ipaddr,int
         pserver = get_pserver(0,cp->myipaddr,0,0);
         //fprintf(stderr,"call addto_hasips\n");
         expand_ipbits(tmpipaddr,stats->ipbits);
-        if ( notlocalip(tmpipaddr) != 0 )
-            addto_hasips(1,pserver,stats->ipbits);
+        //if ( notlocalip(tmpipaddr) != 0 )
+        //    addto_hasips(1,pserver,stats->ipbits);
         xorbits = cp->srvpubnxtbits;
         if ( stats->nxt64bits != 0 )
         {
