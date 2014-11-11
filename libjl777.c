@@ -535,7 +535,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    if ( Debuglevel > 0 )
+    if ( Debuglevel > 2 )
         printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     strcpy(retjsonstr,"{\"result\":null}");
     if ( Finished_loading == 0 )
@@ -591,7 +591,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( len == 30 ) // hack against flood
             flood++;
-        if ( Debuglevel > 0 )
+        if ( Debuglevel > 2 )
             printf("C SuperNET_gotpacket.(%s) from %s:%d size.%d ascii txid.%llu | flood.%d\n",msg,ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
