@@ -252,7 +252,7 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
         return(0);
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf(">>>>>>>> directsend.[%s] encrypted.%d -> (%s)\n",_tokbuf,encrypted,pserver->ipaddr);
     txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
@@ -559,7 +559,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }
-   // if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 )
+    if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 )
         fprintf(stderr,"PING.(%s)\n",retstr);
     return(clonestr(retstr));
 }

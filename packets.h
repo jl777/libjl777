@@ -307,7 +307,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     len = prep_outbuf(outbuf,msg,msglen,data,datalen);
     txid = calc_txid(outbuf,len);
     //init_jsoncodec((char *)outbuf,msglen);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("\nsendmessage.(%p %d) (%s) len.%d to %s crc.%x\n",data,datalen,msg,len,destNXTaddr,_crc32(0,outbuf,len));
     if ( len > sizeof(maxbuf)-1024 )
     {
@@ -475,7 +475,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
     }
     else if ( internalflag == 0 )
     {
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 || len < 400 )
             printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,recvbuf);
         len = recvlen;
         memcpy(decoded,recvbuf,recvlen);
@@ -502,7 +502,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
             senderNXTaddr[0] = 0;
             memset(pubkey,0,sizeof(pubkey));
             parmstxt = verify_tokenized_json(pubkey,senderNXTaddr,&valid,argjson);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 fprintf(stderr,"len.%d parmslen.%d datalen.%d (%s) valid.%d\n",len,parmslen,datalen,parmstxt,valid);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
