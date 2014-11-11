@@ -678,7 +678,7 @@ int32_t poll_telepods(char *relstr)
                             break;
                         case TELEPOD_INBOUND:
                             printf("clonetime.%u vs now.%u = %d | unspent %.8f\n",pod->clonetime,now,pod->clonetime - now,dstr(unspent));
-                            if ( pod->clonetime > now ) // received telepod
+                            if ( now > pod->clonetime ) // received telepod
                             {
                                 cp = get_coin_info(pod->coinstr);
                                 if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
