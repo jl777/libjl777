@@ -325,6 +325,7 @@ int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nx
     int32_t i,dist;
     keybits = calc_nxt64bits(key);
     dist = bitweight(keybits ^ nxt64bits);
+    fprintf(stderr,"filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
     //if ( dist <= KADEMLIA_MAXTHRESHOLD )
     {
         if ( datastr != 0 && datastr[0] != 0 )
@@ -350,6 +351,7 @@ int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nx
         }
         txids[i] = txid;
     }
+    fprintf(stderr,"done filter duplicate.(%s) lasti.%d\n",cmdstr,lasti);
     return(0);
 }
 
@@ -437,7 +439,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     strcat(cmdstr,"}");
     if ( filter_duplicate_kadcmd(cmdstr,key,datastr,nxt64bits) == 0 )
     {
-        printf("call _send_kademlia_cmd (%s) (%s).%d\n",cmdstr,datastr,datalen);
+        fprintf(stderr,"call _send_kademlia_cmd (%s) (%s).%d\n",cmdstr,datastr,datalen);
         return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,datalen));
     } else return(0);
 }
