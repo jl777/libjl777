@@ -138,7 +138,8 @@ int32_t direct_onionize(uint64_t nxt64bits,unsigned char *destpubkey,unsigned ch
         char hexstr[1024];
         init_hexbytes_noT(hexstr,destpubkey,crypto_box_PUBLICKEYBYTES);
         hexstr[16] = 0;
-        printf("DIRECT ONIONIZE: pubkey.%s encode len.%d padlen.%d -> dest.%llu ",hexstr,len,padlen,(long long)nxt64bits);
+        if ( Debuglevel > 2 )
+            printf("DIRECT ONIONIZE: pubkey.%s encode len.%d padlen.%d -> dest.%llu ",hexstr,len,padlen,(long long)nxt64bits);
     }
     if ( onlymax != 0 )
     {
@@ -216,7 +217,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     {
         if ( numlayers > MAX_ONION_LAYERS )
             numlayers = MAX_ONION_LAYERS;
-        if ( Debuglevel > 0 )
+        if ( Debuglevel > 1 )
             printf("add_random_onionlayers %d of %d *srcp %p\n",numlayers,Global_mp->Lfactor,*srcp);
         memset(dest,0,sizeof(dest));
         memcpy(srcbuf,*srcp,len);
@@ -225,7 +226,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             stats = get_random_node();
             if ( stats == 0 )
             {
-                fprintf(stderr,"WARNINGE: cant get random node!\n");
+                //fprintf(stderr,"WARNINGE: cant get random node!\n");
                 numlayers--;
                 continue;
             }
@@ -233,7 +234,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             expand_nxt64bits(NXTaddr,stats->nxt64bits);
             if ( strcmp(hopNXTaddr,NXTaddr) != 0 )
             {
-                if ( Debuglevel > 0 )
+                if ( Debuglevel > 1 )
                     printf("add layer %d: NXT.(%s) -> (%s) [%s] len.%d origlen.%d maxlen.%d\n",numlayers,NXTaddr,hopNXTaddr,ipaddr,len,origlen,maxlen);
                 origlen = len;
                 src = srcbuf;
@@ -447,7 +448,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 if ( (len2= deonionize(pubkey2,decoded2,decoded,len,sender,port)) > 0 )
                 {
                     memcpy(&destbits,decoded2,sizeof(destbits));
-                    if ( Debuglevel > 1 )
+                    if ( Debuglevel > 2 )
                         printf("decrypted2 len2.%d dest2.(%llu)\n",len2,(long long)destbits);
                     len = len2;
                     memcpy(decoded,decoded2,len);
@@ -455,7 +456,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 }
                 else
                 {
-                    if ( Debuglevel > 1 )
+                    if ( Debuglevel > 2 )
                         printf("couldnt decrypt2 packet len.%d to %llu\n",len,(long long)destbits);
                     if ( destbits == cp->privatebits || destbits == cp->srvpubnxtbits )
                         return(0);
@@ -599,7 +600,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 struct nodestats *stats;
                 stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
-                if ( Debuglevel > 0 )
+                if ( Debuglevel > 1 )
                     fprintf(stderr,"Route to {%s} %p\n",destNXTaddr,stats);
                 if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
                 {
