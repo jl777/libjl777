@@ -227,8 +227,8 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             stats = get_random_node();
             if ( stats == 0 )
             {
-                printf("WARNINGE: cant get random node!\n");
-                return(len);
+                fprintf(stderr,"WARNINGE: cant get random node!\n");
+                return(0);
             }
             expand_ipbits(ipaddr,stats->ipbits);
             //if ( stats->ipbits == 0 || stats->nxt64bits == 0 || (pserver= get_pserver(0,ipaddr,0,0)) == 0 || pserver_canhop(pserver,hopNXTaddr) < 0 )
@@ -269,6 +269,19 @@ int32_t has_privacyServer(struct NXT_acct *np)
     else return(0);
 }
 
+int32_t prep_outbuf(uint8_t *outbuf,char *msg,int32_t msglen,uint8_t *data,int32_t datalen)
+{
+    int32_t len;
+    memcpy(outbuf,msg,msglen);
+    len = msglen;
+    if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
+    {
+        memcpy(outbuf+len,data,datalen);
+        len += datalen;
+    }
+    return(len);
+}
+
 // I will add support in sendmsg so you can send to NXT addr (numerical/RS), contact handle, IP addr, maybe even NXT alias
 char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
 {
@@ -293,14 +306,8 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     memset(encodedD,0,sizeof(encodedD)); // encoded to dest
     memset(encodedL,0,sizeof(encodedL)); // encoded to onion layers
     memset(encodedF,0,sizeof(encodedF)); // encoded to prefinal
-    memcpy(encoded,msg,msglen);
-    outbuf = encoded;//(unsigned char *)msg;
-    len = msglen;
-    if ( data != 0 && datalen > 0 ) // must properly handle "data" field, eg. set it to "data":%d <- datalen
-    {
-        memcpy(outbuf+msglen,data,datalen);
-        len += datalen;
-    }
+    outbuf = encoded;
+    len = prep_outbuf(outbuf,msg,msglen,data,datalen);
     txid = calc_txid(outbuf,len);
     //init_jsoncodec((char *)outbuf,msglen);
     if ( Debuglevel > 1 )
@@ -317,9 +324,9 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             len = onionize(hopNXTaddr,maxbuf,encodedD,destNXTaddr,&outbuf,len);
             if ( (len= add_random_onionlayers(hopNXTaddr,L,maxbuf,encodedL,&outbuf,len)) == 0 )
             {
-                outbuf = (unsigned char *)msg;
-                //len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,msglen);
-                len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,msglen+datalen);
+                outbuf = encoded;
+                len = prep_outbuf(outbuf,msg,msglen,data,datalen);
+                len = onionize(hopNXTaddr,maxbuf,encodedF,destNXTaddr,&outbuf,len);
             }
         }
         else
