@@ -72,7 +72,7 @@ int32_t deonionize(unsigned char *pubkey,unsigned char *decoded,unsigned char *e
         encoded += crypto_box_PUBLICKEYBYTES;
         memcpy(&payload_len,encoded,sizeof(payload_len));
         encoded += sizeof(payload_len);
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("packedest.%llu srvpub.%llu (%s:%d) payload_len.%d\n",(long long)packetdest,(long long)cp->srvpubnxtbits,senderip,port,payload_len);
         if ( payload_len > 0 && (payload_len + sizeof(payload_len) + sizeof(Global_mp->loopback_pubkey) + sizeof(packetdest)) <= len )
         {
