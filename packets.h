@@ -559,7 +559,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         if ( prevaddr != 0 )
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
-                        fprintf(stderr,"GOT.(%s)\n",parmstxt);
+                        fprintf(stderr,"GOT.(%s) np.%p\n",parmstxt,tokenized_np);
                         if ( 0 )
                         {
                             qp = calloc(1,sizeof(*qp));
