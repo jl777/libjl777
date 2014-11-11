@@ -147,8 +147,8 @@ void *GUIpoll_loop(void *arg)
                         copy_cJSON(args,cJSON_GetObjectItem(json,"args"));
                         unstringify(args);
                         port = (int32_t)get_API_int(cJSON_GetObjectItem(json,"port"),0);
-                        if ( args[0] != 0 && Debuglevel > 2 )
-                            printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
+                        //if ( args[0] != 0 && Debuglevel > 2 )
+                        //    printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
                     }
                 }
                 free_json(json);
