@@ -534,6 +534,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     retstr[0] = 0;
     if ( is_remote_access(previpaddr) == 0 ) // user invoked
     {
+        fprintf(stderr,"not remote\n");
         if ( destip != 0 && destip[0] != 0 )
         {
             if ( ismyipaddr(destip) == 0 )
@@ -544,9 +545,10 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     }
     else // sender ping'ed us
     {
+        fprintf(stderr,"is remote\n");
         if ( notlocalip(cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
-            printf("AUTO SETTING MYIP <- (%s)\n",destip);
+            fprintf(stderr,"AUTO SETTING MYIP <- (%s)\n",destip);
             set_myipaddr(cp,ipaddr,port);
         }
         prevport = 0;
@@ -558,8 +560,8 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }
-    if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 )
-        printf("PING.(%s)\n",retstr);
+   // if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 )
+        fprintf(stderr,"PING.(%s)\n",retstr);
     return(clonestr(retstr));
 }
 
