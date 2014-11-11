@@ -551,12 +551,14 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
             fprintf(stderr,"AUTO SETTING MYIP <- (%s)\n",destip);
             set_myipaddr(cp,ipaddr,port);
         }
+        fprintf(stderr,"is remote B\n");
         prevport = 0;
         if ( verify_addr(&prevport,previpaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
         {
             change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender));
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
+        fprintf(stderr,"is remote C\n");
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }
