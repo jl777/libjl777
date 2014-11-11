@@ -642,7 +642,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
     int32_t n = 0;
     uint64_t *keys,key;
     struct storage_queue_entry *ptr;
-    fprintf(stderr,"pushstore\n");
+    //fprintf(stderr,"pushstore\n");
     if ( (keys= find_closer_Kstored(selector,refbits,newbits)) != 0 )
     {
         while ( (key= keys[n++]) != 0 )
@@ -651,7 +651,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
             ptr->destbits = newbits;
             ptr->selector = selector;
             ptr->keyhash = key;
-            printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
+            //printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
             queue_enqueue(&storageQ,ptr);
         }
         //printf("free sps.%p\n",sps);
@@ -672,14 +672,14 @@ uint64_t process_storageQ()
     //fprintf(stderr,"process_storageQ\n");
     if ( (ptr= queue_dequeue(&storageQ)) != 0 )
     {
-        fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
+        //fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);
         if ( (sp= (struct SuperNET_storage *)find_storage(ptr->selector,key,0)) != 0 )
         {
             init_hexbytes_noT(datastr,sp->data,sp->H.size-sizeof(*sp));
-            fprintf(stderr,"dequeued storageQ %p: (%s) len.%ld\n",ptr,datastr,sp->H.size-sizeof(*sp));
+            //fprintf(stderr,"dequeued storageQ %p: (%s) len.%ld\n",ptr,datastr,sp->H.size-sizeof(*sp));
             txid = send_kademlia_cmd(ptr->destbits,0,"store",cp->srvNXTACCTSECRET,key,datastr);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 fprintf(stderr,"txid.%llu send queued push storage key.(%s) to %llu\n",(long long)txid,key,(long long)ptr->destbits);
             free(sp);
         }
