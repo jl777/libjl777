@@ -335,6 +335,34 @@ uint64_t listunspent(struct telepod *inputpods[MAX_COIN_INPUTS],struct coin_info
     return(sum);
 }
 
+uint64_t check_txout(uint32_t *createtimep,struct coin_info *cp,int32_t minconfirms,char *coinaddr,char *reftxid,int32_t vout,char *refscript)
+{
+    int32_t confirmations;
+    char *retstr,*unspentstr;
+    cJSON *json;
+    int64_t unspent = 0;
+    unspentstr = unspent_json_params(reftxid,vout);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"gettxout",unspentstr);
+    if ( retstr != 0 && retstr[0] != 0 )
+    {
+        json = cJSON_Parse(retstr);
+        if ( json != 0 )
+        {
+            unspent = conv_cJSON_float(json,"value");
+            if ( (confirmations= (int32_t)get_cJSON_int(cJSON_GetObjectItem(json,"confirmations"),0)) >= minconfirms )
+            {
+                *createtimep = (uint32_t)(time(NULL) - confirmations*cp->estblocktime);
+                if ( refscript != 0 )
+                    extract_txvals(coinaddr,refscript,cp->nohexout,json);
+            }
+            free_json(json);
+        }
+        free(retstr);
+    }
+    free(unspentstr);
+    return(unspent);
+}
+
 uint64_t check_txid(uint32_t *createtimep,struct coin_info *cp,int32_t minconfirms,char *coinaddr,char *reftxid,int32_t vout,char *refscript)
 {
     //txid" : "a27335be811bf48f12856a77f922d01bd111892ea64fd5fb42ecd5b5f6ce693a",
@@ -348,9 +376,11 @@ uint64_t check_txid(uint32_t *createtimep,struct coin_info *cp,int32_t minconfir
     int32_t i,n;
     cJSON *array,*item;
     char *retstr,params[512],addr[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],script[MAX_JSON_FIELD];
+    *createtimep = 0;
+    if ( cp->nohexout == 0 )
+        return(check_txout(createtimep,cp,minconfirms,coinaddr,reftxid,vout,refscript));
     sprintf(params,"%d, 99999999, [\"%s\"]",minconfirms,coinaddr);
     //printf("check_txid.(%s)\n",params);
-    *createtimep = 0;
     retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
     if ( retstr != 0 && retstr[0] != 0 )
     {

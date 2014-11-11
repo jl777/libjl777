@@ -662,7 +662,7 @@ void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
     struct telepod *pod = 0;
     copy_cJSON(attachstr,attachjson);
     unstringify(attachstr);
-    printf("destringified.(%s)\n",attachstr);
+    //printf("destringified.(%s)\n",attachstr);
     for (i=j=0; attachstr[i]!=0; i++)
     {
         if ( attachstr[i] == '\\' && attachstr[i+1] == '\\' )
@@ -672,13 +672,13 @@ void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
         } else attachstr[j++] = attachstr[i];
     }
     attachstr[j] = 0;
-    printf("destringified2.(%s)\n",attachstr);
+    //printf("destringified2.(%s)\n",attachstr);
     json = cJSON_Parse(attachstr);
     if ( json != 0 )
     {
         if ( extract_cJSON_str(coinstr,sizeof(coinstr),json,"c") > 0 )
         {
-            printf("coinstr.(%s)\n",coinstr);
+            //printf("coinstr.(%s)\n",coinstr);
             if ( (tpd= cJSON_GetObjectItem(json,"tpd")) != 0 )
             {
                 copy_cJSON(tpdstr,tpd);
@@ -719,7 +719,8 @@ int32_t poll_telepods(char *relstr)
         {
             if ( (pod= pods[i]) != 0 )
             {
-                flag = err = 0;
+                flag = -1;
+                err = 0;
                 unspent = 0;
                 createtime = 0;
                 if ( pod->podstate == TELEPOD_AVAIL || pod->podstate == TELEPOD_INBOUND || pod->podstate == TELEPOD_OUTBOUND )
@@ -753,6 +754,7 @@ int32_t poll_telepods(char *relstr)
                             }
                             break;
                         case TELEPOD_OUTBOUND:
+                            printf("got outbound pod\n");
                             if ( unspent == 0 )
                             {
                                 flag = TELEPOD_SPENT;
@@ -766,7 +768,7 @@ int32_t poll_telepods(char *relstr)
                         case TELEPOD_SPENT:
                             break;
                     }
-                    if ( flag != pod->podstate )
+                    if ( flag >= 0 && flag != pod->podstate )
                     {
                         pod->podstate = flag;
                         update_telepod(pod);

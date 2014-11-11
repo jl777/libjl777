@@ -377,12 +377,36 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
     return(-1);
 }
 
+int32_t extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
+{
+    int32_t numaddresses;
+    cJSON *scriptobj,*addrobj,*hexobj;
+    scriptobj = cJSON_GetObjectItem(txobj,"scriptPubKey");
+    if ( scriptobj != 0 )
+    {
+        addrobj = script_has_address(&numaddresses,scriptobj);
+        if ( coinaddr != 0 )
+            copy_cJSON(coinaddr,addrobj);
+        if ( nohexout != 0 )
+            hexobj = cJSON_GetObjectItem(scriptobj,"asm");
+        else hexobj = cJSON_GetObjectItem(scriptobj,"hex");
+        if ( script != 0 )
+        {
+            copy_cJSON(script,hexobj);
+            if ( nohexout != 0 )
+                convert_to_bitcoinhex(script);
+        }
+        return(0);
+    }
+    return(-1);
+}
+
 uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct coin_txid *tp,int32_t isconfirmed,cJSON *vouts)
 {
     uint64_t value,unspent = 0;
     char coinaddr[4096],script[4096];
-    cJSON *obj,*scriptobj,*addrobj,*hexobj;
-    int32_t i,numaddresses,oldnumvouts,isinternal,flag = 0;
+    cJSON *obj,*addrobj,*hexobj;
+    int32_t i,oldnumvouts,isinternal,flag = 0;
     struct coin_value *vp;
     if ( vouts != 0 )
     {
@@ -398,20 +422,8 @@ uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct
             if ( obj != 0 )
             {
                 addrobj = hexobj = 0;
-                scriptobj = cJSON_GetObjectItem(obj,"scriptPubKey");
                 value = conv_cJSON_float(obj,"value");
-                if ( scriptobj != 0 )
-                {
-                    addrobj = script_has_address(&numaddresses,scriptobj);
-                    if ( cp->nohexout != 0 )
-                        hexobj = cJSON_GetObjectItem(scriptobj,"asm");
-                    else
-                        hexobj = cJSON_GetObjectItem(scriptobj,"hex");
-                }
-                copy_cJSON(script,hexobj);
-                if ( cp->nohexout != 0 )
-                    convert_to_bitcoinhex(script);
-                copy_cJSON(coinaddr,addrobj);
+                extract_txvals(coinaddr,script,cp->nohexout,obj);
                 if ( script[0] == 0 && value > 0 )
                     printf("process_vouts WARNING.(%s) coinaddr,(%s) %s\n",debugstr,coinaddr,script);
                 if ( value == 0 )
