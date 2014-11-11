@@ -438,7 +438,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     data = replace_datafield(cmdstr,databuf,&datalen,datastr);
     fprintf(stderr,"back from datafield (%s).%d\n",cmdstr,datalen);
     strcat(cmdstr,"}");
-    if ( filter_duplicate_kadcmd(cmdstr,key,datastr,nxt64bits) == 0 )
+    if ( key == 0 || key[0] == 0 || filter_duplicate_kadcmd(cmdstr,key,datastr,nxt64bits) == 0 )
     {
         fprintf(stderr,"call _send_kademlia_cmd (%s) (%s).%d\n",cmdstr,datastr,datalen);
         return(_send_kademlia_cmd(encrypted,pserver,cmdstr,NXTACCTSECRET,data,datalen));

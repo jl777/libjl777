@@ -727,6 +727,11 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
     int32_t c;
     int64_t n,i;
     uint64_t lastval,mult,nxt64bits = 0;
+    if ( NXTaddr == 0 )
+    {
+        printf("calling calc_nxt64bits with null ptr!\n");
+        return(0);
+    }
     n = strlen(NXTaddr);
     if ( n >= 22 )
     {
