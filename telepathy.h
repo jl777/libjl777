@@ -269,7 +269,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
 {
     char privatedatastr[8192],AESpasswordstr[512],seqacct[64],key[64],*retstr = 0;
     uint64_t location;
-    if ( 1 && contact->deaddrop == 0 )
+    if ( 0 && contact->deaddrop == 0 )
     {
         if ( (retstr= check_privategenesis(contact)) != 0 )
             free(retstr);
