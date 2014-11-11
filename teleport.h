@@ -138,6 +138,7 @@ struct telepod *process_telepathic_teleport(struct coin_info *cp,struct contact_
     }
     else
     {
+        pod->podstate = TELEPOD_INBOUND;
         pod->satoshis = pod->unspent;
         pod->senderbits = contact->nxt64bits;
         if ( pod->clonetime == 0 )
@@ -623,7 +624,10 @@ void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
                     {
                         pod = process_telepathic_teleport(cp,contact,tpd);
                         if ( pod != 0 )
+                        {
                             update_telepod(pod);
+                            free(pod);
+                        }
                     }
                     free_json(tpd);
                 }
@@ -655,33 +659,31 @@ int32_t poll_telepods(char *relstr)
                 createtime = 0;
                 if ( pod->podstate == TELEPOD_AVAIL || pod->podstate == TELEPOD_INBOUND || pod->podstate == TELEPOD_OUTBOUND )
                     err = get_telepod_info(&unspent,&createtime,pod->coinstr,pod);
-                if ( err == 0 )
+                //if ( err == 0 )
                 {
                     switch ( pod->podstate )
                     {
                         case TELEPOD_AVAIL:
-                        case TELEPOD_INBOUND:
                             if ( unspent != pod->satoshis )
                             {
                                 if ( unspent == 0 )
                                     flag = TELEPOD_DOUBLESPENT;
                                 fprintf(stderr,"Doublespend? txid.%s vout.%d satoshis %.8f vs %.8f\n",pod->txid,pod->vout,dstr(unspent),dstr(pod->satoshis));
                             }
-                            else if ( pod->podstate == TELEPOD_INBOUND )
+                            break;
+                        case TELEPOD_INBOUND:
+                            if ( pod->clonetime > now ) // received telepod
                             {
-                                if ( pod->clonetime > now )
+                                cp = get_coin_info(pod->coinstr);
+                                if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
                                 {
-                                    cp = get_coin_info(pod->coinstr);
-                                    if ( cp != 0 && (clonepod= clone_telepod(cp,pod,pod->satoshis,0)) != 0 )
-                                    {
-                                        flag = TELEPOD_CLONED;
-                                        free(clonepod);
-                                    }
-                                    else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
+                                    flag = TELEPOD_CLONED;
+                                    free(clonepod);
                                 }
-                                else if ( pod->clonetime == 0 )
-                                    flag = TELEPOD_AVAIL;
+                                else printf("error cloning %s %s.%d\n",pod->coinstr,pod->txid,pod->vout);
                             }
+                            else if ( pod->clonetime == 0 && unspent == pod->satoshis ) // cloning case
+                                flag = TELEPOD_AVAIL;
                             break;
                         case TELEPOD_OUTBOUND:
                             printf("got outbound pod\n");
@@ -703,7 +705,7 @@ int32_t poll_telepods(char *relstr)
                         pod->podstate = flag;
                         update_telepod(pod);
                     }
-                } else printf("err.%d for telepod\n",err);
+                //} else printf("err.%d for telepod\n",err);
                 free(pod);
             }
         }
