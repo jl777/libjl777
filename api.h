@@ -1244,6 +1244,22 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     return(retstr);
 }
 
+char *pricedb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char exchange[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],retstr[512];
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(exchange,objs[0]);
+    copy_cJSON(base,objs[1]);
+    copy_cJSON(rel,objs[2]);
+    if ( exchange[0] != 0 && base[0] != 0 && rel[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        sprintf(retstr,"PRICEDB.(%s.%s_%s)\n",exchange,base,rel);
+        add_pricedb(exchange,base,rel);
+    } else strcpy(retstr,"{\"error\":\"bad pricedb paramater\"}");
+    return(clonestr(retstr));
+}
+
 char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf=0;
@@ -1369,7 +1385,6 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     
     // InstantDEX
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "baseid", "relid", "allfields", "oldest", 0 };
-    //static char *getorderbooks[] = { (char *)getorderbooks_func, "getorderbooks", "V", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "baseid", "relid", "volume", "price", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "baseid", "relid", "volume", "price",0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
@@ -1377,9 +1392,10 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
 
     // Tradebot
+    static char *pricedb[] = { (char *)pricedb_func, "pricedb", "V", "exchange", "base", "rel", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile  };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

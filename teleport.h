@@ -41,7 +41,7 @@ uint64_t calc_transporter_fee(struct coin_info *cp,uint64_t satoshis)
 void update_telepod(struct telepod *pod)
 {
     //fprintf(stderr,"call update_telepod\n");
-    update_storage(TELEPOD_DATA,pod->txid,&pod->H);
+    update_storage(&SuperNET_dbs[TELEPOD_DATA],pod->txid,&pod->H);
     //fprintf(stderr,"back update_telepod\n");
 }
 

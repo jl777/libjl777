@@ -66,7 +66,7 @@ void update_nodestats_data(struct nodestats *stats)
         stats->H.size = sizeof(*stats);
     expand_nxt64bits(NXTaddr,stats->nxt64bits);
     //printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
-    update_storage(NODESTATS_DATA,NXTaddr,&stats->H);
+    update_storage(&SuperNET_dbs[NODESTATS_DATA],NXTaddr,&stats->H);
 }
 
 // helper and completion funcs

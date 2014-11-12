@@ -760,18 +760,18 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 }
                 printf("contacts.%d\n",n);
             }
-            if ( didinit == 0 )
+            /*if ( didinit == 0 )
             {
                 void start_polling_exchanges(int32_t exchangeflag);
                 int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
                 if ( init_exchanges(MGWconf,exchangeflag) > 0 )
                     start_polling_exchanges(exchangeflag);
-            }
+            }*/
         }
         else printf("PARSE ERROR\n");
         free(jsonstr);
     }
-    if ( didinit == 0 )
+    /*if ( didinit == 0 )
     {
         init_tradebots(languagesobj);
         if ( ORIGBLOCK[0] == 0 )
@@ -792,7 +792,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             }
             else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
         }
-    }
+    }*/
     didinit = 1;
     return(myipaddr);
 }

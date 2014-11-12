@@ -43,7 +43,7 @@ void update_contact_info(struct contact_info *contact)
     //printf("update_contact_info %p (%s)\n",contact,contact->handle);
     if ( contact->H.size == 0 )
         contact->H.size = sizeof(*contact);
-    update_storage(CONTACT_DATA,contact->handle,&contact->H);
+    update_storage(&SuperNET_dbs[CONTACT_DATA],contact->handle,&contact->H);
 }
 
 uint64_t conv_acctstr(char *acctstr)
@@ -78,7 +78,7 @@ char *removecontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sen
     char retstr[1024];
     if ( strcmp("myhandle",handle) == 0 )
         return(0);
-    if ( (retval= delete_storage(CONTACT_DATA,handle)) == 0 )
+    if ( (retval= delete_storage(&SuperNET_dbs[CONTACT_DATA],handle)) == 0 )
         sprintf(retstr,"{\"result\":\"handle.(%s) deleted\"}",handle);
     else sprintf(retstr,"{\"error\":\"cant delete handle.(%s)\",\"retval\":%d}",handle,retval);
     printf("REMOVECONTACT.(%s)\n",retstr);

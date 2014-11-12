@@ -510,6 +510,7 @@ struct exchange_state
     FILE *fp;
     double lastmilli;
     queue_t ordersQ;
+    void *sdb;
     //struct orderbook_tx **orders;
 };
 

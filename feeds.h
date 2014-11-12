@@ -86,7 +86,6 @@ int32_t PTL_makeoffer(char *base,char *rel,double price,double volume,uint64_t n
 
 void add_exchange_quote(char *name,char *base,char *rel,int32_t recalcflag,struct price_data *dp,struct exchange_quote *qp)
 {
-    //char fname[512];
     if ( qp->highbid == 0 || qp->lowask == 0 || qp->lowask < qp->highbid )
     {
         printf("warning %s %s %s: illegal quote %f %f\n",name,base,rel,qp->highbid,qp->lowask);
@@ -136,6 +135,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     //printf("init_exchange_state %s %s %s\n",name,base,rel);
     ep->writeflag = 1;//writeflag;
     safecopy(ep->name,name,sizeof(ep->name));
+    tolowercase(ep->name);
     safecopy(ep->base,base,sizeof(ep->base));
     safecopy(ep->lbase,base,sizeof(ep->lbase));
     touppercase(ep->base); tolowercase(ep->lbase);
@@ -215,29 +215,41 @@ int32_t generate_quote_entry(struct exchange_state *ep)
         ep->hbla[0] = ep->bidminmax[1], ep->updated = 1;
     if ( ep->hbla[1] == 0. || ep->askminmax[0] != ep->hbla[1] )
         ep->hbla[1] = ep->askminmax[0], ep->updated = 1;
-    if ( ep->updated != 0 && ep->fp != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. )
+    Q.jdatetime = conv_unixtime((uint32_t)time(NULL));
+    Q.highbid = ep->hbla[0];
+    Q.lowask = ep->hbla[1];
+    fprintf(stderr,"%d %12s %s %5s/%-5s %.8f %.8f\n",ep->updated,ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,Q.lowask);
+    //if ( ep->updated != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. )
     {
-        Q.jdatetime = conv_unixtime((uint32_t)time(NULL));
-        /*time_t current_time = time(NULL);
-        
-        struct tm* gmt = gmtime(&current_time);
-        struct tm* loc = localtime(&current_time);
-        
-        printf("current time: %s\n", ctime(&current_time));
-        printf("gmt time %s\n", asctime(gmt));
-        printf("local time %s\n", asctime(loc));*/
-        Q.highbid = ep->hbla[0];
-        Q.lowask = ep->hbla[1];
-        if ( ep->writeflag != 0 && fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
-            printf("error writing quote to %s\n",ep->name);
-       // else
+        if ( ep->sdb != 0 )//&& fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
+        {
+            DBT key,data;
+            int32_t ret;
+            float hbla[2];
+            DB *dbp;
+          	db_recno_t recno = Q.jdatetime;
+            hbla[0] = Q.highbid;
+            hbla[1] = Q.lowask;
+            clear_pair(&key,&data);
+          	key.data = &recno;
+            key.size = sizeof(recno);
+            data.data = hbla;
+            data.size = sizeof(hbla);
+            dbp = ((struct SuperNET_db *)ep->sdb)->dbp;
+            if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
+            //if ( (ret= dbput(ep->sdb,0,&key,&data,0)) != 0 )
+                Storage->err(Storage,ret,"Database put for quote failed.");
+            else dbp->sync(dbp,0);
+        }
+        //add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
+        // else
         {
             //if ( ep->writeflag == 0 )
-                add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
+             //   add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
            // else
            //     printf("%12s %s %5s/%-5s %.8f %.8f\n",ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,Q.lowask);
         }
-        fflush(ep->fp);
+        //fflush(ep->fp);
     }
     return(ep->updated);
 }
@@ -695,14 +707,56 @@ struct orderbook_tx **get_latest_orders(uint32_t *jdatetimep,int32_t *nump,struc
     return(orders);
 }
 
+int32_t poll_exchange_iter(int32_t maxdepth,uint32_t exchangemask)
+{
+    int32_t j,i,starti,n = 0;
+    struct exchange_state *ep;
+    //uint64_t *obooks,*changedmasks;
+    if ( Numactivefiles > 0 )
+    {
+        //printf("poll exchangemask.%x\n",exchangemask);
+        //obooks = calloc(Numactivefiles,sizeof(*obooks)); // maybe dynamically added
+        //changedmasks = calloc(Numactivefiles,sizeof(*changedmasks));
+        starti = ((rand()>>8) % Numactivefiles);
+        for (i=0; i<Numactivefiles; i++)
+        {
+            ep = Activefiles[(starti + i) % Numactivefiles];
+            j = (int32_t)(ep->feedid - 0xfeed0000L);
+            if ( ((1 << j) & exchangemask) == 0 )
+                continue;
+            if ( Lastmillis[j] == 0. || milliseconds() > Lastmillis[j] + 1000 )
+            {
+                //printf("%.3f Last %.3f: check %s\n",milliseconds(),Lastmillis[j],ep->name);
+                if ( ep->lastmilli == 0. || milliseconds() > ep->lastmilli + 5000 )
+                {
+                   // printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),ep->lastmilli,ep->name,ep->base,ep->rel);
+                    (*exchange_funcs[j])(ep,maxdepth);
+                    if ( ep->updated != 0 )
+                    {
+                        //if ( _search_list(ep->obookid,obooks,n) < 0 )
+                        //    obooks[n] = ep->obookid;
+                        //tradebot_event_processor(actual_gmt_jdatetime(),0,&ep,1,ep->obookid,0,1L << j);
+                        //changedmasks[(starti + i) % Numactivefiles] |= (1 << j);
+                        n++;
+                    }
+                    ep->lastmilli = Lastmillis[j] = milliseconds();
+                }
+            }
+        }
+        //free(obooks);
+        //free(changedmasks);
+    }
+    return(n);
+}
+
 void *poll_exchanges(void *flagp)
 {
     void tradebot_event_processor(uint32_t jdatetime,struct price_data *dp,struct exchange_state *ep,uint64_t baseid,uint64_t relid,int32_t newminuteflag,uint64_t changedmask);
     struct exchange_state *ep;
     uint32_t jdatetime;
     struct orderbook_tx **orders;
-    uint64_t *obooks,*changedmasks;
-    int32_t i,j,starti,exchangeid,n,writeflag,maxdepth = 20;
+    uint64_t *changedmasks;
+    int32_t i,exchangeid,n,writeflag,maxdepth = 20;
     writeflag = ((*(int32_t *)flagp) & 1);
     exchangeid = ((*(int32_t *)flagp) >> 1);
     if ( NUM_EXCHANGES > sizeof(*changedmasks)*8 )
@@ -721,7 +775,6 @@ void *poll_exchanges(void *flagp)
                     //printf("ep.%p %s lag.%d recalc_bars %s %s %s\n",ep,jdatetime_str(jdatetime),actual_gmt_jdatetime()-jdatetime,ep->name,ep->base,ep->rel);
                     recalc_bars(1,&ep->P.PTRS,orders,n,&ep->P,jdatetime);
                     ep->P.calctime = jdatetime;
-                    
                     tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->baseid,ep->relid,0,1L << exchangeid);
                 }
             }
@@ -730,54 +783,71 @@ void *poll_exchanges(void *flagp)
     }
     while ( Numactivefiles > 0 )
     {
-        n = 0;
-        obooks = calloc(Numactivefiles,sizeof(*obooks)); // maybe dynamically added
-        changedmasks = calloc(Numactivefiles,sizeof(*changedmasks));
-        starti = ((rand()>>8) % Numactivefiles);
-        for (i=0; i<Numactivefiles; i++)
-        {
-            ep = Activefiles[(starti + i) % Numactivefiles];
-            j = (int32_t)(ep->feedid - 0xfeed0000L);
-            if ( j != exchangeid )
-                continue;
-            if ( Lastmillis[j] == 0. || milliseconds() > Lastmillis[j] + 1000 )
-            {
-                //printf("%.3f Last %.3f: check %s\n",milliseconds(),Lastmillis[j],ep->name);
-                if ( ep->lastmilli == 0. || milliseconds() > ep->lastmilli + 5000 )
-                {
-                    //printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),ep->lastmilli,ep->name,ep->base,ep->rel);
-                    (*exchange_funcs[j])(ep,maxdepth);
-                    if ( ep->updated != 0 )
-                    {
-                        if ( _search_list(ep->obookid,obooks,n) < 0 )
-                            obooks[n++] = ep->obookid;
-                        //tradebot_event_processor(actual_gmt_jdatetime(),0,&ep,1,ep->obookid,0,1L << j);
-                        changedmasks[(starti + i) % Numactivefiles] |= (1 << j);
-                    }
-                    ep->lastmilli = Lastmillis[j] = milliseconds();
-                }
-            }
-        }
-        free(obooks);
-        free(changedmasks);
+        poll_exchange_iter(maxdepth,exchangeid);
         sleep(1);
     }
     return(0);
 }
 
-void start_polling_exchanges(int32_t exchangeflag)
+void start_polling_exchanges(int32_t writeflag)
 {
     static int32_t pollargs[NUM_EXCHANGES+1];
     int32_t i;
     for (i=0; i<=NUM_EXCHANGES; i++)
     {
-        pollargs[i] = ((i<<1) | exchangeflag);
+        pollargs[i] = ((i<<1) | writeflag);
         if ( portable_thread_create((void *)poll_exchanges,&pollargs[i]) == 0 )
             printf("ERROR poll_exchanges\n");
     }
 }
 
-int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag)
+struct exchange_state *add_activefile(int32_t writeflag,char *exchange,char *base,char *rel)
+{
+    static portable_mutex_t mutex;
+    static int didinit;
+    int32_t i;
+    uint64_t feedid;
+    char lbase[512],lrel[512],lexchange[512];
+    struct exchange_state *ep;
+    if ( didinit == 0 )
+    {
+        portable_mutex_init(&mutex);
+        didinit = 1;
+    }
+    for (i=0; i<NUM_EXCHANGES; i++)
+        if ( strcmp(exchange,exchange_names[i]) == 0 )
+            break;
+    if ( i == NUM_EXCHANGES )
+    {
+        printf("cant find exchange.(%s)\n",exchange);
+        return(0);
+    }
+    strcpy(lbase,base), tolowercase(lbase);
+    strcpy(lrel,rel), tolowercase(lrel);
+    strcpy(lexchange,exchange), tolowercase(lexchange);
+    feedid = 0xfeed0000L + i;
+ 	portable_mutex_lock(&mutex);
+    if ( Numactivefiles > 0 )
+    {
+        for (i=0; i<Numactivefiles; i++)
+        {
+            ep = Activefiles[i];
+            if ( strcmp(ep->name,lexchange) == 0 && strcmp(ep->lbase,lbase) == 0 && strcmp(ep->lrel,lrel) == 0 )
+            {
+                portable_mutex_unlock(&mutex);
+                return(ep);
+            }
+        }
+    }
+    Activefiles = realloc(Activefiles,sizeof(*Activefiles) * (Numactivefiles+1));
+    Activefiles[Numactivefiles] = ep = init_exchange_state(writeflag,lexchange,lbase,lrel,feedid,ORDERBOOK_FEED,0);
+    if ( ep != 0 )
+        Activefiles[Numactivefiles++] = ep;
+    portable_mutex_unlock(&mutex);
+    return(ep);
+}
+
+int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
 {
     int32_t i,j,n;
     cJSON *array,*item;
@@ -797,18 +867,13 @@ int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag)
             {
                 item = cJSON_GetArrayItem(array,j);
                 if ( extract_baserel(base,rel,item) == 0 )
-                {
-                    Activefiles = realloc(Activefiles,sizeof(*Activefiles) * (Numactivefiles+1));
-                    Activefiles[Numactivefiles] = init_exchange_state(exchangeflag,exchange_names[i],base,rel,0xfeed0000L + i,ORDERBOOK_FEED,1);
-                    if ( Activefiles[Numactivefiles] != 0 )
-                        Numactivefiles++;
-                }
+                    add_activefile(writeflag,exchange_names[i],base,rel);
             }
         }
     }
-    if ( exchangeflag != 0 )
+    if ( writeflag != 0 )
     {
-        start_polling_exchanges(exchangeflag);
+        start_polling_exchanges(writeflag);
         fprintf(stderr,"finished start_polling_exchanges\n");
         exit(0);
     }
