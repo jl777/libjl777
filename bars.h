@@ -293,9 +293,9 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
         for (i=dp->numquotes-1; i>=0; i--)
         {
             qp = &dp->allquotes[i];
-            timedist = (jdatetime - qp->jdatetime);
+            timedist = (jdatetime - qp->timestamp);
             if ( timedist < 0 )
-                printf("unexpected data from future?? %s vs %s\n",jdatetime_str(jdatetime),jdatetime_str2(qp->jdatetime));
+                printf("unexpected data from future?? %s vs %s\n",jdatetime_str(jdatetime),jdatetime_str2(qp->timestamp));
             else if ( timedist < maxtimedist )
             {
                 ind = (timedist / period);

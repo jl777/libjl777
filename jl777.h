@@ -495,7 +495,7 @@ struct orderbook
     int32_t num,max;
 } **Raw_orders;*/
 
-struct exchange_quote { uint32_t jdatetime; float highbid,lowask; };
+struct exchange_quote { uint32_t timestamp; float highbid,lowask; };
 #define EXCHANGE_QUOTES_INCR ((int32_t)(4096L / sizeof(struct exchange_quote)))
 #define INITIAL_PIXELTIME 60
 
@@ -510,7 +510,7 @@ struct exchange_state
     FILE *fp;
     double lastmilli;
     queue_t ordersQ;
-    void *sdb;
+    char dbname[512];
     //struct orderbook_tx **orders;
 };
 
@@ -674,6 +674,7 @@ double _pairave(float valA,float valB)
 #include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
+#include "dbqueue.h"
 #include "storage.h"
 #include "udp.h"
 #include "coincache.h"

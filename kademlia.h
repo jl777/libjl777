@@ -992,7 +992,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                             }
                         }
                     }
-                    if ( z > 0 )
+                    if ( z > 0 || remoteflag == 0 )
                         break;
                 }
             }

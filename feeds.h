@@ -102,12 +102,12 @@ void add_exchange_quote(char *name,char *base,char *rel,int32_t recalcflag,struc
     dp->asksum += qp->lowask;
     dp->lastprice = _pairaved(qp->highbid,qp->lowask);
     dp->halfspread = (dp->asksum - dp->bidsum) / (dp->numquotes << 1);
-    if ( dp->firstjdatetime == 0 || qp->jdatetime < dp->firstjdatetime )
-        dp->firstjdatetime = qp->jdatetime;
-    if ( qp->jdatetime > dp->lastjdatetime )
-        dp->lastjdatetime = qp->jdatetime;
+    if ( dp->firstjdatetime == 0 || qp->timestamp < dp->firstjdatetime )
+        dp->firstjdatetime = qp->timestamp;
+    if ( qp->timestamp > dp->lastjdatetime )
+        dp->lastjdatetime = qp->timestamp;
     dp->numquotes++;    // do this last so other process only sees it when all changes done
-    printf("%12s %s %5s/%-5s %.8f %.8f\n",name,jdatetime_str(qp->jdatetime),base,rel,qp->highbid,qp->lowask);
+    printf("%12s %s %5s/%-5s %.8f %.8f\n",name,jdatetime_str(qp->timestamp),base,rel,qp->highbid,qp->lowask);
     if ( recalcflag != 0 )
     {
         //recalc_bars(ptrs,orders,numorders,dp,qp->jdatetime);
@@ -156,12 +156,12 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
         free(ep);
         return(0);
     }
-    if ( strcmp(name,"NXT") == 0 )
+    if ( strcmp(name,"nxtae") == 0 )
     {
         ep->basemult = get_asset_mult(ep->baseid);
         if ( ep->relid != ORDERBOOK_NXTID || ep->basemult == 0 )
         {
-            printf("NXT only supports trading against NXT not %s || basemult.%llu is zero\n",ep->rel,(long long)ep->basemult);
+            printf("NXT AE only supports trading against NXT not %s || basemult.%llu is zero\n",ep->rel,(long long)ep->basemult);
             free(ep);
             return(0);
         }
@@ -210,47 +210,21 @@ void prep_exchange_state(struct exchange_state *ep)
 int32_t generate_quote_entry(struct exchange_state *ep)
 {
     struct exchange_quote Q;
+    uint32_t timestamp;
+    struct SuperNET_db *sdb;
     ep->updated = 0;
     if ( ep->hbla[0] == 0. || ep->bidminmax[1] != ep->hbla[0] )
         ep->hbla[0] = ep->bidminmax[1], ep->updated = 1;
     if ( ep->hbla[1] == 0. || ep->askminmax[0] != ep->hbla[1] )
         ep->hbla[1] = ep->askminmax[0], ep->updated = 1;
-    Q.jdatetime = conv_unixtime((uint32_t)time(NULL));
+    timestamp = (uint32_t)time(NULL);
+    Q.timestamp = timestamp;//conv_unixtime(timestamp);
     Q.highbid = ep->hbla[0];
     Q.lowask = ep->hbla[1];
-    fprintf(stderr,"%d %12s %s %5s/%-5s %.8f %.8f\n",ep->updated,ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,Q.lowask);
-    //if ( ep->updated != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. )
-    {
-        if ( ep->sdb != 0 )//&& fwrite(&Q,1,sizeof(Q),ep->fp) != sizeof(Q) )
-        {
-            DBT key,data;
-            int32_t ret;
-            float hbla[2];
-            DB *dbp;
-          	db_recno_t recno = Q.jdatetime;
-            hbla[0] = Q.highbid;
-            hbla[1] = Q.lowask;
-            clear_pair(&key,&data);
-          	key.data = &recno;
-            key.size = sizeof(recno);
-            data.data = hbla;
-            data.size = sizeof(hbla);
-            dbp = ((struct SuperNET_db *)ep->sdb)->dbp;
-            if ( (ret= dbp->put(dbp,0,&key,&data,0)) != 0 )
-            //if ( (ret= dbput(ep->sdb,0,&key,&data,0)) != 0 )
-                Storage->err(Storage,ret,"Database put for quote failed.");
-            else dbp->sync(dbp,0);
-        }
-        //add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
-        // else
-        {
-            //if ( ep->writeflag == 0 )
-             //   add_exchange_quote(ep->name,ep->base,ep->rel,1,&ep->P,&Q);
-           // else
-           //     printf("%12s %s %5s/%-5s %.8f %.8f\n",ep->name,jdatetime_str(Q.jdatetime),ep->base,ep->rel,Q.highbid,Q.lowask);
-        }
-        //fflush(ep->fp);
-    }
+    sdb = find_pricedb(ep->dbname,1);
+    fprintf(stderr,"%d %12s %s %5s/%-5s %.8f %.8f\n",ep->updated,ep->name,jdatetime_str(conv_unixtime(timestamp)),ep->base,ep->rel,Q.highbid,Q.lowask);
+    if ( ep->updated != 0 && sdb != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. ) // ep->updated != 0 &&
+        save_pricequote(sdb,&Q);
     return(ep->updated);
 }
 
@@ -655,7 +629,7 @@ void load_orderbooks()
 }
 #endif
 
-char *exchange_names[] = { "NXT", "bter", "bittrex", "cryptsy", "poloniex", "mintpal" };
+char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex", "mintpal" };
 #define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
 typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
 exchange_func exchange_funcs[NUM_EXCHANGES] =
@@ -878,6 +852,88 @@ int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
         exit(0);
     }
     return(Numactivefiles);
+}
+
+int32_t poll_pricedbs()
+{
+    int32_t maxdepth = 20;
+    char dbname[1024];
+    int32_t i,num,nonz = 0;
+    struct SuperNET_db *sdb;
+    struct exchange_pair *pair;
+    struct exchange_state *ep;
+    struct storage_header **pricedbs,*hp;
+    //fprintf(stderr,"poll_pricedbs\n");
+    if ( (pricedbs= copy_all_DBentries(&num,PRICE_DATA)) != 0 && num > 0 )
+    {
+        //fprintf(stderr,"got numpricedbs.%d\n",num);
+        for (i=0; i<num&&i<MAX_PRICEDBS; i++)
+        {
+            if ( (hp= pricedbs[i]) != 0 )
+            {
+                //fprintf(stderr,"got numpricedbs.%d %d %ld %d\n",num,i,sizeof(struct exchange_pair),hp->size);
+                if ( hp->size == sizeof(struct exchange_pair) )
+                {
+                    pair = (struct exchange_pair *)hp;
+                    set_dbname(dbname,pair->exchange,pair->base,pair->rel);
+                    //fprintf(stderr,"call find_pricedb.(%s)\n",dbname);
+                    sdb = find_pricedb(dbname,1);
+                    if ( sdb->dbp == 0 )
+                    {
+                        fprintf(stderr,"call open_database.(%s)\n",dbname);
+                        if ( open_database(NUM_SUPERNET_DBS,sdb,dbname,DB_BTREE,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct exchange_quote),sizeof(struct exchange_quote),0) == 0 )
+                            printf("error creating pricedb.(%s)\n",dbname);
+                        fprintf(stderr,"call add_activefile.(%s) [%s] %p\n",dbname,sdb->name,sdb);
+                        if ( (ep= add_activefile(1,pair->exchange,pair->base,pair->rel)) != 0 )
+                            strcpy(ep->dbname,dbname);
+                    }
+                    //fprintf(stderr,"call _process_dbiter.(%s)\n",dbname);
+                    //else nonz += _process_dbiter(sdb);
+                    //fprintf(stderr,"back _process_dbiter.(%s)\n",dbname);
+                }
+                free(hp);
+            }
+        }
+        free(pricedbs);
+        //fprintf(stderr,"got poll_exchange_iter.%d\n",num);
+        if ( num > 0 )
+            for (i=0; i<6; i++)
+                poll_exchange_iter(maxdepth,(1<<i));
+    }
+    return(nonz);
+}
+
+char *getquotes(char *exchange,char *base,char *rel,uint32_t oldest)
+{
+    struct exchange_quote *quotes;
+    char dbname[1024],*jsonstr = 0;
+    int32_t i,num;
+    cJSON *array,*item,*json;
+    set_dbname(dbname,exchange,base,rel);
+    if ( (quotes= get_exchange_quotes(&num,dbname,oldest)) != 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"dbname",cJSON_CreateString(dbname));
+        cJSON_AddItemToObject(json,"exchange",cJSON_CreateString(exchange));
+        cJSON_AddItemToObject(json,"base",cJSON_CreateString(base));
+        cJSON_AddItemToObject(json,"rel",cJSON_CreateString(rel));
+        cJSON_AddItemToObject(json,"oldest",cJSON_CreateNumber(oldest));
+        array = cJSON_CreateArray();
+        for (i=0; i<num; i++)
+        {
+            item = cJSON_CreateArray();
+            cJSON_AddItemToArray(item,cJSON_CreateNumber(quotes[i].timestamp));
+            cJSON_AddItemToArray(item,cJSON_CreateNumber(quotes[i].highbid));
+            cJSON_AddItemToArray(item,cJSON_CreateNumber(quotes[i].lowask));
+            cJSON_AddItemToArray(array,item);
+        }
+        cJSON_AddItemToObject(json,"hbla",array);
+        jsonstr = cJSON_Print(json);
+        stripwhite_ns(jsonstr,strlen(jsonstr));
+        free_json(json);
+        free(quotes);
+    }
+    return(jsonstr);
 }
 
 #endif

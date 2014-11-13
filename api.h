@@ -1260,6 +1260,23 @@ char *pricedb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     return(clonestr(retstr));
 }
 
+char *getquotes_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char exchange[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],*retstr;
+    uint32_t oldest;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(exchange,objs[0]);
+    copy_cJSON(base,objs[1]);
+    copy_cJSON(rel,objs[2]);
+    oldest = (uint32_t)get_API_int(objs[3],0);
+    if ( exchange[0] != 0 && base[0] != 0 && rel[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        retstr = getquotes(exchange,base,rel,oldest);
+    } else return(clonestr("{\"error\":\"bad getquotes paramater\"}"));
+    return(retstr);
+}
+
 char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf=0;
@@ -1393,9 +1410,10 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
 
     // Tradebot
     static char *pricedb[] = { (char *)pricedb_func, "pricedb", "V", "exchange", "base", "rel", 0 };
+    static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb  };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

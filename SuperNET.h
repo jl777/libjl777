@@ -79,7 +79,7 @@ struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t time
 
 struct orderbook_info { uint64_t baseid,relid,obookid; };
 
-struct exchange_pair { char exchange[64],base[16],rel[16]; };
+struct exchange_pair { struct storage_header H; char exchange[64],base[16],rel[16]; };
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
 
