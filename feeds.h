@@ -221,7 +221,7 @@ int32_t generate_quote_entry(struct exchange_state *ep)
     Q.timestamp = timestamp;//conv_unixtime(timestamp);
     Q.highbid = ep->hbla[0];
     Q.lowask = ep->hbla[1];
-    sdb = find_pricedb(ep->dbname,1);
+    sdb = find_pricedb(ep->dbname,0);
     fprintf(stderr,"%d %12s %s %5s/%-5s %.8f %.8f\n",ep->updated,ep->name,jdatetime_str(conv_unixtime(timestamp)),ep->base,ep->rel,Q.highbid,Q.lowask);
     if ( ep->updated != 0 && sdb != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. ) // ep->updated != 0 &&
         save_pricequote(sdb,&Q);

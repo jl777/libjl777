@@ -20,8 +20,8 @@ struct SuperNET_db
     queue_t queue;
     long maxitems,total_stored;
     DB *dbp;
-    int32_t *cipherids,selector;
-    uint32_t busy,type,flags,active,minsize,maxsize,duplicateflag;
+    int32_t *cipherids,selector,active;
+    uint32_t busy,type,flags,minsize,maxsize,duplicateflag;
 };
 
 struct dbreq { struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
@@ -149,7 +149,7 @@ DB *open_database(int32_t selector,struct SuperNET_db *sdb,char *fname,uint32_t 
         fprintf(stderr,"open_database error illegal selector.%d for (%s)\n",selector,fname);
         return(0);
      }
-    if ( (ret= db_create(&sdb->dbp,Storage,0)) != 0 )
+    if ( (ret= db_create(&sdb->dbp,Storage,0)) != 0 || sdb->dbp == 0 )
     {
         fprintf(stderr,"open_database error.%d creating %s database\n",ret,fname);
         exit(-1);
@@ -210,7 +210,7 @@ int32_t _process_dbiter(struct SuperNET_db *sdb)
     int32_t n;
     DBT data;
     struct dbreq *req;
-    if ( sdb->active <= 0 )
+    if ( sdb == 0 || sdb->dbp == 0 )
         return(0);
     n = 0;
     while ( (req= queue_dequeue(&sdb->queue)) != 0 )
@@ -274,6 +274,14 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
         sdb->active = -1;
         fprintf(stderr,"finished processing process_SuperNET_dbqueue.%d\n",selector);
     }
+    for (i=0; i<Num_pricedbs; i++)
+    {
+        sdb = &Price_dbs[i];
+        sdb->dbp->close(sdb->dbp,0);
+        memset(sdb,0,sizeof(*sdb));
+        sdb->active = -1;
+        fprintf(stderr,"finished processing Price_dbs.%d\n",i);
+    }
     return(0);
 }
 
@@ -318,13 +326,12 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
 int32_t dbcmd(char *debugstr,int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags,void *cursor)
 {
     struct dbreq *req;
-    if ( sdb->active > 0 )
+    if ( sdb->dbp != 0 && sdb->active > 0 )
     {
         if ( (req= _queue_dbreq(funcid,sdb,txn,key,data,flags,cursor)) != 0 )//&& sdb->selector != NUM_SUPERNET_DBS )
             return(_block_on_dbreq(req));
     }
     return(-1);
-    //return(sdb->selector == NUM_SUPERNET_DBS ? 0 : -1);
 }
 
 int32_t dbget(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)

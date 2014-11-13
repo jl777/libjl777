@@ -186,6 +186,8 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
     }
 }
 
+// combine all orderbooks with flags, maybe even arbitrage, so need cloud quotes
+
 struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid,struct orderbook_tx **feedorders,int32_t numfeeds)
 {
     struct orderbook_tx T;

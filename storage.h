@@ -95,9 +95,9 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
     DBT key,data;
     DBC *cursorp = 0;
     *nump = 0;
-    if ( get_selected_database(selector) == 0 )
-        return(0);
     sdb = &SuperNET_dbs[selector];
+    if ( get_selected_database(selector) == 0 || sdb->active <= 0 )
+        return(0);
     max = (int32_t)max_in_db(selector);
     max += 100;
     m = 0;
@@ -283,6 +283,32 @@ void add_pricedb(char *exchange,char *base,char *rel)
         Storage->err(Storage,ret,"Database put failed.");
     else if ( complete_dbput(&SuperNET_dbs[PRICE_DATA],dbname,&P,sizeof(P),0) == 0 && Debuglevel > 1 )
         fprintf(stderr,"updated.(%s)\n",dbname);
+}
+
+int32_t stop_pricedb(char *exchange,char *base,char *rel)
+{
+    char dbname[MAX_JSON_FIELD];
+    struct SuperNET_db *sdb;
+    DBT key,data;
+    int ret;
+    set_dbname(dbname,exchange,base,rel);
+    clear_pair(&key,&data);
+    key.data = dbname;
+    key.size = (uint32_t)strlen(dbname) + 1;
+    sdb = &SuperNET_dbs[PRICE_DATA];
+    fprintf(stderr,"stop %s\n",dbname);
+    if ( (ret= dbdel(sdb,0,&key,0,0)) != 0 )
+        fprintf(stderr,"error deleting (%s) from DB.%d\n",dbname,sdb->selector);
+    else ret = dbsync(sdb,0);
+    if ( ret == 0 && (sdb= find_pricedb(dbname,0)) != 0 )
+    {
+        fprintf(stderr,"call close %s\n",dbname);
+        sdb->dbp->close(sdb->dbp,0);
+        fprintf(stderr,"finished close %s\n",dbname);
+        memset(sdb,0,sizeof(*sdb));
+        sdb->active = -1;
+    }
+    return(ret);
 }
 
 int32_t delete_storage(struct SuperNET_db *sdb,char *keystr)

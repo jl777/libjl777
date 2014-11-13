@@ -1247,15 +1247,19 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 char *pricedb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char exchange[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],retstr[512];
+    int32_t stopflag;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(exchange,objs[0]);
     copy_cJSON(base,objs[1]);
     copy_cJSON(rel,objs[2]);
+    stopflag = (int32_t)get_API_int(objs[3],0);
     if ( exchange[0] != 0 && base[0] != 0 && rel[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        sprintf(retstr,"PRICEDB.(%s.%s_%s)\n",exchange,base,rel);
-        add_pricedb(exchange,base,rel);
+        sprintf(retstr,"PRICEDB.(%s.%s_%s) stopflag.%d\n",exchange,base,rel,stopflag);
+        if ( stopflag != 0 )
+            stop_pricedb(exchange,base,rel);
+        else add_pricedb(exchange,base,rel);
     } else strcpy(retstr,"{\"error\":\"bad pricedb paramater\"}");
     return(clonestr(retstr));
 }
@@ -1409,7 +1413,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
 
     // Tradebot
-    static char *pricedb[] = { (char *)pricedb_func, "pricedb", "V", "exchange", "base", "rel", 0 };
+    static char *pricedb[] = { (char *)pricedb_func, "pricedb", "V", "exchange", "base", "rel", "stop", 0 };
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
