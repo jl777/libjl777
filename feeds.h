@@ -25,6 +25,17 @@ void free_orderbook(struct orderbook *op);
 //int32_t is_orderbook_bid(int32_t polarity,struct raw_orders *raw,struct orderbook_tx *tx);
 //struct price_data *get_price_data(uint64_t obookid);
 
+char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex" };
+#define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
+typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
+exchange_func exchange_funcs[NUM_EXCHANGES] =
+{
+    parse_NXT, parse_bter, parse_bittrex, parse_cryptsy, parse_poloniex
+};
+
+struct exchange_state **Activefiles; int32_t Numactivefiles;
+double Lastmillis[NUM_EXCHANGES];
+
 
 struct price_data *get_price_data(uint64_t baseid,uint64_t relid)
 {
@@ -222,6 +233,7 @@ int32_t generate_quote_entry(struct exchange_state *ep)
     Q.highbid = ep->hbla[0];
     Q.lowask = ep->hbla[1];
     sdb = find_pricedb(ep->dbname,0);
+    if ( Debuglevel > 2 )
     fprintf(stderr,"%d %12s %s %5s/%-5s %.8f %.8f\n",ep->updated,ep->name,jdatetime_str(conv_unixtime(timestamp)),ep->base,ep->rel,Q.highbid,Q.lowask);
     if ( ep->updated != 0 && sdb != 0 && ep->hbla[0] != 0. && ep->hbla[1] != 0. ) // ep->updated != 0 &&
         save_pricequote(sdb,&Q);
@@ -465,7 +477,7 @@ int32_t parse_bter(struct exchange_state *ep,int32_t maxdepth)
     return(ep->updated);
 }
 
-int32_t parse_mintpal(struct exchange_state *ep,int32_t maxdepth)
+/*int32_t parse_mintpal(struct exchange_state *ep,int32_t maxdepth)
 {
     cJSON *json,*bidobj,*askobj;
     char *buystr,*sellstr;
@@ -501,7 +513,7 @@ int32_t parse_mintpal(struct exchange_state *ep,int32_t maxdepth)
     if ( sellstr != 0 )
         free(sellstr);
     return(ep->updated);
-}
+}*/
 
 cJSON *conv_NXT_quotejson(cJSON *json,char *fieldname,uint64_t ap_mult)
 {
@@ -628,17 +640,6 @@ void load_orderbooks()
         disp_quotepairs("B","Y","okcoin",bids,numbids,asks,numasks);
 }
 #endif
-
-char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex", "mintpal" };
-#define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
-typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
-exchange_func exchange_funcs[NUM_EXCHANGES] =
-{
-    parse_NXT, parse_bter, parse_bittrex, parse_cryptsy, parse_poloniex, parse_mintpal
-};
-
-struct exchange_state **Activefiles; int32_t Numactivefiles;
-double Lastmillis[NUM_EXCHANGES];
 
 int32_t extract_baserel(char *base,char *rel,cJSON *inner)
 {
@@ -897,7 +898,7 @@ int32_t poll_pricedbs()
         free(pricedbs);
         //fprintf(stderr,"got poll_exchange_iter.%d\n",num);
         if ( num > 0 )
-            for (i=0; i<6; i++)
+            for (i=0; i<NUM_EXCHANGES; i++)
                 poll_exchange_iter(maxdepth,(1<<i));
     }
     return(nonz);
