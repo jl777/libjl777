@@ -25,16 +25,6 @@ void free_orderbook(struct orderbook *op);
 //int32_t is_orderbook_bid(int32_t polarity,struct raw_orders *raw,struct orderbook_tx *tx);
 //struct price_data *get_price_data(uint64_t obookid);
 
-char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex" };
-#define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
-typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
-exchange_func exchange_funcs[NUM_EXCHANGES] =
-{
-    parse_NXT, parse_bter, parse_bittrex, parse_cryptsy, parse_poloniex
-};
-
-struct exchange_state **Activefiles; int32_t Numactivefiles;
-double Lastmillis[NUM_EXCHANGES];
 
 
 struct price_data *get_price_data(uint64_t baseid,uint64_t relid)
@@ -640,6 +630,16 @@ void load_orderbooks()
         disp_quotepairs("B","Y","okcoin",bids,numbids,asks,numasks);
 }
 #endif
+char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex" };
+#define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
+typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
+exchange_func exchange_funcs[NUM_EXCHANGES] =
+{
+    parse_NXT, parse_bter, parse_bittrex, parse_cryptsy, parse_poloniex
+};
+
+struct exchange_state **Activefiles; int32_t Numactivefiles;
+double Lastmillis[NUM_EXCHANGES];
 
 int32_t extract_baserel(char *base,char *rel,cJSON *inner)
 {
