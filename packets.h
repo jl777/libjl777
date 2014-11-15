@@ -179,27 +179,6 @@ int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,c
     return(direct_onionize(nxt64bits,np->stats.pubkey,maxbuf,encoded,payloadp,len));
 }
 
-/*int32_t pserver_canhop(struct pserver_info *pserver,char *hopNXTaddr)
-{
-    int32_t createdflag,i = -1;
-    uint32_t *hasips;
-    struct NXT_acct *np;
-    np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
-    if ( (hasips= pserver->hasips) != 0 )
-    {
-        for (i=0; i<pserver->numips&&i<(int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips)); i++)
-            if ( hasips[i] == np->stats.ipbits )
-            {
-                char ipaddr[16];
-                expand_ipbits(ipaddr,hasips[i]);
-                if ( Debuglevel > 1 )
-                    printf(">>>>>>>>>>> HASIP.%s in slot %d of %d\n",ipaddr,i,pserver->numips);
-                return(i);
-            }
-    }
-    return(i);
-}*/
-
 int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbuf,uint8_t *final,uint8_t **srcp,int32_t len)
 {
     char ipaddr[64],NXTaddr[64];
@@ -619,15 +598,15 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
 
 cJSON *gen_pserver_json(struct pserver_info *pserver)
 {
-    cJSON *array,*json = cJSON_CreateObject();
-    int32_t i;
-    char ipaddr[64],NXTaddr[64];
-    uint32_t *ipaddrs;
+    cJSON *json = cJSON_CreateObject(); //*array,
+    //int32_t i;
+    //char ipaddr[64],NXTaddr[64];
+    //uint32_t *ipaddrs;
     struct nodestats *stats;
     double millis = milliseconds();
     if ( pserver != 0 )
     {
-        if ( (ipaddrs= pserver->hasips) != 0 && pserver->numips > 0 )
+        /*if ( (ipaddrs= pserver->hasips) != 0 && pserver->numips > 0 )
         {
             array = cJSON_CreateArray();
             for (i=0; i<pserver->numips&&i<(int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips)); i++)
@@ -648,7 +627,7 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
             }
             cJSON_AddItemToObject(json,"hasnxt",array);
             cJSON_AddItemToObject(json,"numnxt",cJSON_CreateNumber(pserver->numnxt));
-        }
+        }*/
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
             if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
@@ -760,18 +739,18 @@ int32_t update_newaccts(uint64_t *newaccts,int32_t num,uint64_t nxtbits)
 int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    struct pserver_info *pserver,*mypserver;
-    uint32_t ipbits,newips[16];
-    int32_t i,j,k,m,n,num = 0;
-    uint64_t otherbits;
-    char ipaddr[64];
-    struct nodestats *stats;
+    struct pserver_info *mypserver; //*pserver,
+    //uint32_t ipbits,newips[16];
+    int32_t n,num = 0; //i,j,k,m,
+    //uint64_t otherbits;
+    //char ipaddr[64];
+    //struct nodestats *stats;
     n = (Numallnodes < MAX_ALLNODES) ? Numallnodes : MAX_ALLNODES;
     if ( n > 0 && cp != 0 && cp->myipaddr[0] != 0 )
     {
         mypserver = get_pserver(0,cp->myipaddr,0,0);
         num = update_newaccts(newaccts,num,mypserver->nxt64bits);
-        if ( mypserver->hasips != 0 && n != 0 )
+        /*if ( mypserver->hasips != 0 && n != 0 )
         {
             memset(newips,0,sizeof(newips));
             for (i=m=0; i<n; i++)
@@ -821,7 +800,7 @@ int32_t scan_nodes(uint64_t *newaccts,int32_t max,char *NXTACCTSECRET)
                     send_kademlia_cmd(0,get_pserver(0,ipaddr,0,0),"ping",NXTACCTSECRET,0,0);
                 }
             }
-        }
+        }*/
     }
     return(num);
 }

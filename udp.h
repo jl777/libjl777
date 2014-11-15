@@ -61,11 +61,12 @@ struct udp_queuecmd
 
 void update_nodestats_data(struct nodestats *stats)
 {
-    char NXTaddr[64];
+    char NXTaddr[64],ipaddr[64];
     if ( stats->H.size == 0 )
         stats->H.size = sizeof(*stats);
+    expand_ipbits(ipaddr,stats->ipbits);
     expand_nxt64bits(NXTaddr,stats->nxt64bits);
-    //printf("Update nodestats.%s lastcontact %u\n",NXTaddr,stats->lastcontact);
+    printf("Update nodestats.%s (%s) lastcontact %u\n",NXTaddr,ipaddr,stats->lastcontact);
     update_storage(&SuperNET_dbs[NODESTATS_DATA],NXTaddr,&stats->H);
 }
 

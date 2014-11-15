@@ -236,9 +236,9 @@ struct NXT_str
 struct pserver_info
 {
     uint64_t modified,nxt64bits,hasnxt[64];
-    uint32_t hasips[128];
+    //uint32_t hasips[128];//numips,hasnum,numnxt,
     char ipaddr[16];
-    uint32_t numips,xorsum,hasnum,numnxt,decrypterrs,port;
+    uint32_t decrypterrs,port;
 };
 
 struct NXThandler_info

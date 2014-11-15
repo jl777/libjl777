@@ -1483,30 +1483,6 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
     return(server_addr);
 }
 
-/*uint32_t _calc_xorsum(uint32_t *ipbits,int32_t n)
-{
-    uint32_t i,xorsum = 0;
-    if ( ipbits != 0 && n > 0 )
-    {
-        for (i=0; i<n; i++)
-            if ( ipbits[i] != 0 )
-                xorsum ^= ipbits[i];
-    }
-    return(xorsum);
-}
-
-uint32_t calc_xorsum(struct peerinfo **peers,int32_t n)
-{
-    uint32_t i,xorsum = 0;
-    if ( peers != 0 && n > 0 )
-    {
-        for (i=0; i<n; i++)
-            if ( peers[i] != 0 )
-                xorsum ^= peers[i]->srv.ipbits;
-    }
-    return(xorsum);
-}*/
-
 struct nodestats *get_nodestats(uint64_t nxt64bits)
 {
     struct nodestats *stats = 0;

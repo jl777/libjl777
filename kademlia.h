@@ -28,7 +28,8 @@ int32_t Numallnodes;
 
 void update_Allnodes()
 {
-    int32_t i;
+    int32_t i,lag;
+    uint32_t now = (uint32_t)time(NULL);
     char NXTaddr[64];
     struct nodestats *stats,*sp;
     for (i=0; i<MAX_ALLNODES; i++)
@@ -39,6 +40,9 @@ void update_Allnodes()
             expand_nxt64bits(NXTaddr,Allnodes[i]);
             if ( (sp= (struct nodestats *)find_storage(NODESTATS_DATA,NXTaddr,0)) != 0 )
             {
+                lag = (now - sp->lastcontact);
+                if ( lag > NODESTATS_EXPIRATION )
+                    sp->lastcontact = 0;
                 if ( memcmp(sp,stats,sizeof(*sp)) != 0 )
                     update_nodestats_data(stats);
                 free(sp);
@@ -138,58 +142,6 @@ int32_t ismynode(struct sockaddr *addr)
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
     return(ismyipaddr(ipaddr));
 }
-
-/*uint32_t addto_hasips(int32_t recalc_flag,struct pserver_info *pserver,uint32_t ipbits)
-{
-    int32_t i,n;
-    uint32_t xorsum = 0;
-    if ( ipbits == 0 )
-        return(0);
-    n = (pserver->numips < (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))) ? pserver->numips : (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips));
-    if ( pserver->numips > 0 )
-    {
-        for (i=0; i<pserver->numips; i++)
-        {
-            if ( pserver->hasips[i] == ipbits )
-                return(0);
-        }
-    }
-    {
-        char ipstr[64];
-        expand_ipbits(ipstr,ipbits);
-        if ( Debuglevel > 0 )
-            printf("addto_hasips %p n.%d num.%d <- %x %s\n",pserver->hasips,n,pserver->numips,ipbits,ipstr);
-    }
-    pserver->hasips[n % (int)(sizeof(pserver->hasips)/sizeof(*pserver->hasips))] = ipbits;
-    pserver->numips++;
-    n++;
-    if ( recalc_flag != 0 )
-    {
-        for (i=0; i<n; i++)
-            xorsum ^= pserver->hasips[i];
-        pserver->xorsum = xorsum;
-        pserver->hasnum = pserver->numips;
-    }
-    return(xorsum);
-}
-
-void addto_hasnxt(struct pserver_info *pserver,uint64_t nxtbits)
-{
-    int32_t i,n;
-    if ( nxtbits == 0 )
-        return;
-    n = (pserver->numnxt < (int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt))) ? pserver->numnxt : (int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt));
-    if ( pserver->numnxt > 0 )
-    {
-        for (i=0; i<pserver->numnxt; i++)
-        {
-            if ( pserver->hasnxt[i] == nxtbits )
-                return;
-        }
-    }
-    pserver->hasnxt[n % (int)(sizeof(pserver->hasnxt)/sizeof(*pserver->hasnxt))] = nxtbits;
-    pserver->numnxt++;
-}*/
 
 int32_t sort_all_buckets(uint64_t *sortbuf,uint64_t hash)
 {
@@ -784,17 +736,17 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
             {
                 item = cJSON_GetArrayItem(array,i);
                 //printf("item.%p isarray.%d num.%d\n",item,is_cJSON_Array(item),cJSON_GetArraySize(item));
-                if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 5 )
+                if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 4 )
                 {
                     copy_cJSON(destNXTaddr,cJSON_GetArrayItem(item,0));
                     //if ( destNXTaddr[0] != 0 )
                     //    addto_hasnxt(pserver,calc_nxt64bits(destNXTaddr));
-                    copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,1));
-                    copy_cJSON(ipaddr,cJSON_GetArrayItem(item,2));
+                    //copy_cJSON(pubkeystr,cJSON_GetArrayItem(item,1));
+                    copy_cJSON(ipaddr,cJSON_GetArrayItem(item,1));
                     //if ( ipaddr[0] != 0 && notlocalip(ipaddr) != 0 )
                     //    addto_hasips(1,pserver,calc_ipbits(ipaddr));
-                    copy_cJSON(portstr,cJSON_GetArrayItem(item,3));
-                    copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,4));
+                    copy_cJSON(portstr,cJSON_GetArrayItem(item,2));
+                    copy_cJSON(lastcontactstr,cJSON_GetArrayItem(item,3));
                     port = (uint32_t)atol(portstr);
                     lastcontact = (uint32_t)atol(lastcontactstr);
                     //printf("[%s ip.%s %s port.%d lastcontact.%d]\n",destNXTaddr,ipaddr,pubkeystr,port,lastcontact);
