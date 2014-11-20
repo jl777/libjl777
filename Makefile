@@ -48,7 +48,7 @@ install: doesntexist; \
 patch1: doesntexist; \
     cd miniupnpc; \
     make; \
-    cp miniupnpc.a ../libs; \
+    cp libminiupnpc.so ../libs; \
     cd ..;\
 
 
