@@ -185,7 +185,7 @@ try_again:
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,numretries);
         free(s.ptr);
-        usleep((1<<numentries) * 250000);
+        usleep((1<<numretries) * 750000);
         goto try_again;
         
     }

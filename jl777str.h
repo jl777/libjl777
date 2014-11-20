@@ -404,6 +404,10 @@ char *replacequotesM(char *str)
 {
     char *newstr;
     int32_t i,j,n;
+    if ( str == 0 )
+        return(0);
+    else if ( str[0] == 0 )
+        return(str);
     for (i=n=0; str[i]!=0; i++)
         n += (str[i] == '"') ? 3 : 1;
     newstr = (char *)malloc(n + 1);
@@ -424,6 +428,10 @@ char *replacequotesM(char *str)
 char *convert_percent22(char *str)
 {
     int32_t i,j;
+    if ( str == 0 )
+        return(0);
+    else if ( str[0] == 0 )
+        return(str);
     for (i=j=0; str[i]!=0; i++)
     {
         if ( str[i] == '%' && str[i+1] != 0 && str[i+1] == '2' && str[i+2] == '2' )
@@ -437,8 +445,10 @@ char *convert_percent22(char *str)
 char *replace_singlequotes(char *str)
 {
     int32_t i;
-    if ( str == 0 || str[0] == 0 )
+    if ( str == 0 )
         return(0);
+    else if ( str[0] == 0 )
+        return(str);
     for (i=0; str[i]!=0; i++)
     {
         if ( str[i] == '\'' )
@@ -456,6 +466,10 @@ char *stringifyM(char *str)
 {
     char *newstr;
     int32_t i,j,n;
+    if ( str == 0 )
+        return(0);
+    else if ( str[0] == 0 )
+        return(str);
     for (i=n=0; str[i]!=0; i++)
         n += (str[i] == '"') ? 2 : 1;
     newstr = (char *)malloc(n + 3);
@@ -481,6 +495,8 @@ char *unstringify(char *str)
     int32_t i,j,n;
     if ( str == 0 )
         return(0);
+    else if ( str[0] == 0 )
+        return(str);
     n = (int32_t)strlen(str);
     if ( str[0] == '"' && str[n-1] == '"' )
         str[n-1] = 0, i = 1;
