@@ -45,8 +45,15 @@ btcdmac: ../src/BitcoinDarkd; \
 install: doesntexist; \
     sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake
 
+patch1: doesntexist; \
+    cd miniupnpc; \
+    make; \
+    cp miniupnpc.a ../libs; \
+    cd ..;\
+
+
 patch0: doesntexist; \
-    export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
+   export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
     unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
     ../dist/configure; \
@@ -67,6 +74,10 @@ patch: doesntexist; \
     cd ../..;
 
 onetime: doesntexist; \
+    cd miniupnpc; \
+    make; \
+    cp miniupnpc.a ../libs; \
+    cd ..;\
     unzip lws.zip -d libwebsockets; \
     cd libwebsockets/lib; \
     cmake ..; \
