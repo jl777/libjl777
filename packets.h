@@ -173,6 +173,11 @@ int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,c
     uint64_t nxt64bits;
     int32_t createdflag;
     struct NXT_acct *np;
+#ifdef __APPLE__
+    static int debugmsg;
+    if ( debugmsg++ < 33 )
+        printf("strip maxbuf NXT address!\n");
+#endif
     strcpy(hopNXTaddr,destNXTaddr);
     nxt64bits = calc_nxt64bits(destNXTaddr);
     np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
@@ -185,6 +190,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     int32_t tmp,origlen=0,maxlen = 0;
     uint8_t dest[4096],srcbuf[4096],*src = srcbuf;
     struct nodestats *stats;
+//return(0);
     if ( numlayers > 1 )
     {
         tmp = ((rand() >> 8) % numlayers);
@@ -308,7 +314,9 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             }
         }
         strcpy(destNXTaddr,hopNXTaddr);
+        printf("len.%d -> ",len);
         len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+        printf("%d\n",len);
         route_packet(1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);

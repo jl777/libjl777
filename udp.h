@@ -34,7 +34,7 @@ queue_t ALL_messages; //RPC_6777_response
 struct pNXT_info
 {
     //void **coinptrs;
-    //char privacyServer_NXTaddr[64],privacyServer_ipaddr[32],privacyServer_port[16];
+    //char privacyServer_NXTaddr[64],privacyServer_ipaddr[64],privacyServer_port[16];
     // uint64_t privacyServer;
     struct hashtable **orderbook_txidsp,*msg_txids;
 };
@@ -304,7 +304,7 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
 void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
 {
     char ipaddr[64];
-    int32_t port,queueflag;
+    int32_t port,queueflag,p2pflag = 0;
     struct nodestats *stats;
     struct pserver_info *pserver = 0;
     if ( destaddr != 0 )
@@ -324,7 +324,11 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
                 printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
             portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
         }
-        else call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
+        else p2pflag = 1;
+        if ( peerstats != 0 && peerstats->lastcontact < (time(NULL) - 600) )
+            p2pflag = 1;
+        if ( p2pflag != 0 )
+            call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
     }
     else if ( peerstats != 0 && peerstats->ipbits != 0 )
     {
@@ -584,7 +588,7 @@ void add_SuperNET_peer(char *ip_port)
 {
     struct pserver_info *pserver;
     int32_t createdflag,p2pport;
-    char ipaddr[16];
+    char ipaddr[64];
     p2pport = parse_ipaddr(ipaddr,ip_port);
     if ( p2pport == 0 )
         p2pport = BTCD_PORT;

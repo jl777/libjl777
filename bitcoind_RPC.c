@@ -102,7 +102,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *
 
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
-    static int numretries,count,count2;
+    static int count,count2;
     static double elapsedsum,elapsedsum2;
     char *bracket0,*bracket1,*databuf = 0;
     struct curl_slist *headers = NULL;
@@ -110,7 +110,7 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     CURLcode res;
     CURL *curl_handle;
     long len;
-    int32_t specialcase;
+    int32_t specialcase,numretries;
     double starttime;
     numretries = 0;
     if ( debugstr != 0 && strcmp(debugstr,"BTCD") == 0 && command != 0 && strcmp(command,"SuperNET") ==  0 )
@@ -183,9 +183,9 @@ try_again:
             free(s.ptr);
             return(0);
         }
-        fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,params,numretries);
+        fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,numretries);
         free(s.ptr);
-        sleep(3);
+        usleep((1<<numentries) * 250000);
         goto try_again;
         
     }

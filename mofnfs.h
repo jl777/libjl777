@@ -9,6 +9,8 @@
 #ifndef libjl777_mofnfs_h
 #define libjl777_mofnfs_h
 
+#define RESTORE_ARGS "fname", "L", "M", "N", "backup", "password", "dest", "nrs", "txids", "pin"
+
 /*
  compression
  combinatorics on errors
@@ -21,10 +23,10 @@
  dropout of server detected -> data shuffle?
  */
 
-char *onion_sendfile(int32_t L,char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *dest,FILE *fp)
+/*char *onion_sendfile(int32_t L,char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *dest,FILE *fp)
 {
     return(0);
-}
+}*/
 
 char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen,char *pin)
 {
@@ -134,7 +136,7 @@ char *mofn_restorefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRE
     int32_t j,m,n,hwmgood,newlen,good,*cipherids,*lengths,status = 0;
     unsigned char buf[4096],sharenrs[255],refnrs[255],*buffer=0,*decoded,**fragments = 0;
     char retstr[4096],key[64],datastr[8192],*str,**privkeys = 0;
-    if ( N <= 0 )
+    if ( N <= 0 || txids == 0 )
         return(0);
     memset(refnrs,0,sizeof(refnrs));
     memset(sharenrs,0,sizeof(sharenrs));
@@ -305,7 +307,7 @@ char *mofn_restorefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRE
         free(fragments);
         free(lengths);
     }
-    sprintf(retstr,"{\"result\":\"status.%d\",\"completed\":%.3f,\"filesize\":\"%ld\",\"descr\":\"mofn_restorefile M.%d of N.%d sent with Lfactor.%d usbname.(%s) usedpassword.%d reconstructed\"}",status,(double)hwmgood/(n/N),ftell(fp),M,N,L,usbdir,password[0]!=0);
+    sprintf(retstr,"{\"result\":\"status.%d\",\"completed\":%.3f,\"destfile\":\"%s.restore\",\"filesize\":\"%ld\",\"descr\":\"mofn_restorefile M.%d of N.%d sent with Lfactor.%d usbname.(%s) usedpassword.%d usedpin.%d reconstructed\"}",status,(double)hwmgood/(n/N),filename,ftell(fp),M,N,L,usbdir,password != 0 && password[0]!=0,pin != 0 && pin[0]!=0);
     
     printf("RESTORE.(%s)\n",retstr);
     return(clonestr(retstr));
@@ -317,7 +319,7 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     FILE *savefp;
     uint64_t keyhash,txids[1000];
     cJSON *array;
-    int32_t n,sharei,err,*cipherids=0,status = 0;
+    int32_t n,sharei,err,*cipherids=0;//,status = 0;
     unsigned char buf[1024],sharenrs[255],*buffer;
     char *retstr,savefname[512],key[64],datastr[sizeof(buf)*3+1],*str,**privkeys = 0;
     i = n = 0;
@@ -394,24 +396,17 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     free_json(array);
     //printf("strlen.%ld (%s)\n",strlen(str),str);
     retstr = calloc(1,strlen(str)+4096);
+    sprintf(retstr,"{\"fname\":\"%s\",\"L\":%d,\"M\":%d,\"N\":%d,\"nrs\":\"%s\",\"txids\":%s%s%s}",filename,L,M,N,datastr,str,password[0]!=0?",\"password\":\"\"":"",pin[0]!=0?",\"pin\":\"\"":"");
     if ( usbdir != 0 )
     {
         sprintf(savefname,"%s/%s",usbdir,filename);
         if ( (savefp= fopen(savefname,"wb")) != 0 )
         {
-            sprintf(retstr,"./BitcoinDarkd SuperNET '{\"requestType\":\"restorefile\",\"filename\":\"%s\",\"L\":%d,\"M\":%d,\"N\":%d,\"usbdir\":\"%s\",\"destfile\":\"%s.restored\",\"sharenrs\":\"%s\",\"txids\":%s%s}'",filename,L,M,N,usbdir,filename,datastr,str,password[0]!=0?",\"password\":yourPIN":"");
             fprintf(savefp,"%s\n",retstr);
-            printf("%s\n",retstr);
             fclose(savefp);
         }
     }
-    else
-    {
-        sprintf(retstr,"./BitcoinDarkd SuperNET '{\"requestType\":\"restorefile\",\"filename\":\"%s\",\"L\":%d,\"M\":%d,\"N\":%d,\"destfile\":\"%s.restored\",\"sharenrs\":\"%s\",\"txids\":%s%s}'",filename,L,M,N,filename,datastr,str,password[0]!=0?",\"password\":yourPIN":"");
-        printf("%s\n",retstr);
-    }
-    sprintf(retstr,"{\"result\":\"%d\",\"sharenrs\":\"%s\",\"txids\":%s,\"filesize\":\"%ld\",\"descr\":\"mofn_savefile M.%d of N.%d sent with Lfactor.%d usbdir.(%s) usedpassword.%d dont lose the password, sharenrs or txids!\"}",status,datastr,str,ftell(fp),M,N,L,usbdir!=0?usbdir:"",password[0]!=0);
-    //printf("SAVE.(%s)\n",retstr);
+    printf("MofNsave.(%s)\n",retstr);
     free(str);
     if ( 0 && n < sizeof(txids)/sizeof(*txids) )
     {
@@ -427,4 +422,332 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     }
     return(retstr);
 }
+
+char *_restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON *fnameobj,cJSON *Lobj,cJSON *Mobj,cJSON *Nobj,cJSON *backupobj,cJSON *passwordobj,cJSON *destobj,cJSON *nrsobj,cJSON *array,cJSON *pinobj)
+{
+    FILE *fp;
+    char txidstr[MAX_JSON_FIELD];
+    cJSON *item;
+    uint64_t *txids = 0;
+    int32_t L,M,N,i,n;
+    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(clonestr("{\"error\":\"restorefile is only for local access\"}"));
+    copy_cJSON(fname,fnameobj);
+    L = get_API_int(Lobj,0);
+    M = get_API_int(Mobj,1);
+    N = get_API_int(Nobj,1);
+    copy_cJSON(usbname,backupobj);
+    copy_cJSON(password,passwordobj);
+    copy_cJSON(destfname,destobj);
+    copy_cJSON(sharenrs,nrsobj);
+    if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        txids = calloc(n+1,sizeof(*txids));
+        for (i=0; i<n; i++)
+        {
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(txidstr,item);
+            if ( txidstr[0] != 0 )
+                txids[i] = calc_nxt64bits(txidstr);
+        }
+    }
+    copy_cJSON(pin,pinobj);
+    if ( N < 0 )
+        N = 0;
+    else if ( N > 254 )
+        N = 254;
+    if ( M >= N )
+        M = N;
+    else if ( M < 1 )
+        M = 1;
+    if ( destfname[0] == 0 )
+        strcpy(destfname,fname), strcat(destfname,".restore");
+    if ( 0 )
+    {
+        fp = fopen(destfname,"rb");
+        if ( fp != 0 )
+        {
+            fclose(fp);
+            return(clonestr("{\"error\":\"destfilename is already exists\"}"));
+        }
+    }
+    fp = fopen(destfname,"wb");
+    if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
+        retstr = mofn_restorefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
+    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
+    if ( fp != 0 )
+        fclose(fp);
+    if ( txids != 0 )
+        free(txids);
+    {
+        char cmdstr[512];
+        printf("\n*****************\ncompare (%s) vs (%s)\n",fname,destfname);
+        sprintf(cmdstr,"cmp %s %s",fname,destfname);
+        system(cmdstr);
+        printf("done\n\n");
+    }
+    return(retstr);
+}
+
+char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    FILE *fp;
+    int32_t L,M,N;
+    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(clonestr("{\"error\":\"savefile is only for local access\"}"));
+    copy_cJSON(fname,objs[0]);
+    L = get_API_int(objs[1],0);
+    M = get_API_int(objs[2],1);
+    N = get_API_int(objs[3],1);
+    if ( N < 0 )
+        N = 0;
+    else if ( N > 254 )
+        N = 254;
+    if ( M >= N )
+        M = N;
+    else if ( M < 1 )
+        M = 1;
+    copy_cJSON(usbname,objs[4]);
+    copy_cJSON(password,objs[5]);
+    copy_cJSON(pin,objs[6]);
+    fp = fopen(fname,"rb");
+    if ( fp == 0 )
+        printf("cant find file (%s)\n",fname);
+    if ( fp != 0 && sender[0] != 0 && valid > 0 )
+        retstr = mofn_savefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
+    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
+    if ( fp != 0 )
+        fclose(fp);
+    return(retstr);
+}
+
+char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(_restorefile_func(NXTaddr,NXTACCTSECRET,previpaddr,sender,valid,objs[0],objs[1],objs[2],objs[3],objs[4],objs[5],objs[6],objs[7],objs[8],objs[9]));
+}
+
+char *mofn_publish(char *NXTaddr,char *NXTACCTSECRET,char *fname,char *mediatype,char *savestr,int32_t depth,cJSON **maparrayp)
+{
+    char *retstr,*jsonstr,datastr[MAX_JSON_FIELD*2+1],keystr[64];
+    uint64_t txid;
+    int32_t len;
+    cJSON *json,*item;
+    printf("PUBLISH.(%s) (%s) depth.%d\n",mediatype,savestr,depth);
+    if ( depth == 0 )
+    {
+        len = (int32_t)(strlen(savestr));
+        txid = calc_txid((uint8_t *)savestr,len);
+        expand_nxt64bits(keystr,txid);
+        init_hexbytes_noT(datastr,(uint8_t *)savestr,len);
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"mt",cJSON_CreateString(mediatype));
+        cJSON_AddItemToObject(json,"html",cJSON_CreateString(datastr));
+        cJSON_AddItemToObject(json,"d",cJSON_CreateNumber(depth));
+        if ( (*maparrayp) == 0 )
+            (*maparrayp) = cJSON_CreateArray();
+        item = cJSON_CreateArray();
+        cJSON_AddItemToArray(item,cJSON_CreateString(fname));
+        cJSON_AddItemToArray(item,cJSON_CreateString(keystr));
+        cJSON_AddItemToArray((*maparrayp),item);
+        cJSON_AddItemToObject(json,"map",(*maparrayp));
+        jsonstr = cJSON_Print(json);
+        (*maparrayp) = cJSON_DetachItemFromObject(json,"map");
+        free_json(json);
+        stripwhite_ns(jsonstr,strlen(jsonstr));
+        printf("jsonstr.(%s)\n",jsonstr);
+        init_hexbytes_noT(datastr,(uint8_t *)jsonstr,strlen(jsonstr));
+        retstr = kademlia_storedata(0,NXTaddr,NXTACCTSECRET,NXTaddr,keystr,datastr);
+        if ( retstr != 0 )
+            free(retstr);
+        return(jsonstr);
+    }
+    else return(clonestr("{\"error\":\"not implemented yet\"}"));
+}
+
+char *publish_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    FILE *fp,*savefp;
+    int32_t L,M,N,i,n;
+    long len;
+    cJSON *array,*item,*mapjson = 0;
+    char mediatype[MAX_JSON_FIELD],pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*savestr,*savestr2,*retstr = 0;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(clonestr("{\"error\":\"publish is only for local access\"}"));
+    //copy_cJSON(fname,objs[0]);
+    L = get_API_int(objs[1],0);
+    M = get_API_int(objs[2],1);
+    N = get_API_int(objs[3],1);
+    if ( N < 0 )
+        N = 0;
+    else if ( N > 254 )
+        N = 254;
+    if ( M >= N )
+        M = N;
+    else if ( M < 1 )
+        M = 1;
+    copy_cJSON(usbname,objs[4]);
+    copy_cJSON(password,objs[5]);
+    copy_cJSON(pin,objs[6]);
+    array = objs[0];
+    if ( sender[0] != 0 && valid > 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(fname,cJSON_GetArrayItem(item,0));
+            mediatype[0] = 0;
+            if ( cJSON_GetArraySize(item) > 1 )
+                copy_cJSON(mediatype,cJSON_GetArrayItem(item,1));
+            if ( mediatype[0] == 0 )
+                strcpy(mediatype,"text/html");
+            fp = fopen(fname,"rb");
+            if ( fp == 0 )
+            {
+                printf("cant find file (%s)\n",fname);
+                continue;
+            }
+            savestr = mofn_savefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
+            if ( savestr != 0 )
+            {
+                len = strlen(savestr) + 1;
+                if ( len > 1000 )
+                {
+                    char savefname[512];
+                    sprintf(savefname,"/tmp/fname.%d",rand());
+                    if ( (savefp= fopen(savefname,"wb")) != 0 )
+                    {
+                        if ( fwrite(savestr,1,len,savefp) == len )
+                        {
+                            fclose(savefp), savefp = 0;
+                            savestr2 = mofn_savefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,savefname);
+                            if ( savestr2 != 0 )
+                            {
+                                retstr = mofn_publish(NXTaddr,NXTACCTSECRET,fname,mediatype,savestr2,1,&mapjson);
+                                free(savestr2);
+                            } else retstr = clonestr("{\"error\":\"mofn_savefile for big JSON returnstr\"}");
+                        } else retstr = clonestr("{\"error\":\"write error saving big JSON returnstr\"}");
+                        if ( savefp != 0 )
+                            fclose(savefp);
+                        delete_file(savefname);
+                    } else retstr = clonestr("{\"error\":\"couldnt create tmpfile for big JSON returnstr\"}");
+                } else retstr = mofn_publish(NXTaddr,NXTACCTSECRET,fname,mediatype,savestr,0,&mapjson);
+                free(savestr);
+            }
+            fclose(fp), fp = 0;
+        }
+    }
+    else retstr = clonestr("{\"error\":\"invalid publish arguments\"}");
+    printf("publish_func.(%s)\n",retstr);
+    return(retstr);
+}
+
+char *process_htmldata(cJSON **maparrayp,char *mediatype,char *htmlstr,char **bufp,int64_t *lenp,int64_t *allocsizep,char *password,char *pin)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    static char *filebuf,*restoreargs[] = { RESTORE_ARGS, 0 };
+    static int64_t filelen=0,allocsize=0;
+    cJSON *json,*retjson,*htmljson,*objs[16];
+    int32_t j,depth,len;
+    char destfname[1024],jsonstr[MAX_JSON_FIELD],htmldata[MAX_JSON_FIELD],*restorestr,*filestr = 0,*buf = *bufp;
+    printf("process.(%s)\n",htmlstr);
+    if ( (json= cJSON_Parse(htmlstr)) != 0 )
+    {
+        copy_cJSON(htmldata,cJSON_GetObjectItem(json,"html"));
+        copy_cJSON(mediatype,cJSON_GetObjectItem(json,"mt"));
+        *maparrayp = cJSON_GetObjectItem(json,"map");
+        depth = (int32_t)get_API_int(cJSON_GetObjectItem(json,"d"),0);
+        len = (int32_t)strlen(htmldata);
+        if ( len > 1 )
+        {
+            len >>= 1 ;
+            decode_hex((uint8_t *)jsonstr,len,htmldata);
+            jsonstr[len] = 0;
+            if ( (htmljson= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( password != 0 && password[0] != 0 )
+                {
+                    if ( pin != 0 && pin[0] != 0 )
+                        ensure_jsonitem(htmljson,"pin",pin);
+                    ensure_jsonitem(htmljson,"password",password);
+                }
+                ensure_jsonitem(htmljson,"requestType","restorefile");
+                for (j=0; restoreargs[j]!=0; j++)
+                    objs[j] = cJSON_GetObjectItem(htmljson,restoreargs[j]);
+                restorestr = _restorefile_func(cp->srvNXTADDR,cp->srvNXTACCTSECRET,0,cp->srvNXTADDR,1,objs[0],objs[1],objs[2],objs[3],objs[4],objs[5],objs[6],objs[7],objs[8],objs[9]);
+                if ( restorestr != 0 )
+                {
+                    if ( (retjson= cJSON_Parse(restorestr)) != 0 )
+                    {
+                        copy_cJSON(destfname,cJSON_GetObjectItem(retjson,"destfile"));
+                        free(retjson);
+                        filestr = load_file(destfname,&filebuf,&filelen,&allocsize);
+                    }
+                    free(restorestr);
+                }
+                free_json(htmljson);
+            }
+        }
+        if ( maparrayp != 0 )
+            (*maparrayp) = cJSON_DetachItemFromObject(json,"map");
+        free_json(json);
+    }
+    if ( filestr != 0 )
+    {
+        if ( filelen > (*allocsizep - 1) )
+        {
+            *allocsizep = filelen+1;
+            *bufp = buf = realloc(buf,(long)*allocsizep);
+        }
+        if ( filelen > 0 )
+        {
+            memcpy(buf,filestr,filelen);
+            buf[filelen] = 0;
+        }
+        *lenp = filelen;
+    }
+    return(filestr);
+}
+
+char *load_URL64(cJSON **maparrayp,char *mediatype,uint64_t URL64,char **bufp,int64_t *lenp,int64_t *allocsizep,char *password,char *pin)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    int64_t  filesize;
+    cJSON *json;
+    char jsonstr[4096],databuf[4096],keystr[64],*retstr,*filestr=0;
+    int32_t finished;
+    double timeout = milliseconds() + 20000; // 20 seconds timeout
+    *lenp = 0;
+    *maparrayp = 0;
+    if ( cp == 0 )
+        return(0);
+    expand_nxt64bits(keystr,URL64);
+    retstr = 0;
+    databuf[0] = mediatype[0] = 0;
+    filesize = finished = 0;
+    while ( milliseconds() < timeout && finished == 0 )
+    {
+        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,cp->srvNXTADDR,keystr,0,0);
+        if ( retstr != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                copy_cJSON(databuf,cJSON_GetObjectItem(json,"data"));
+                if ( databuf[0] != 0 && (filesize= strlen(databuf)/2) > 0 )
+                {
+                    finished = 1;
+                    decode_hex((void *)jsonstr,(int32_t)filesize,databuf);
+                    filestr = process_htmldata(maparrayp,mediatype,jsonstr,bufp,lenp,allocsizep,password,pin);
+                }
+                free_json(json);
+            }
+            free(retstr);
+        }
+    }
+    if ( mediatype[0] == 0 )
+        strcpy(mediatype,"text/html");
+    return(filestr);
+}
+
 #endif

@@ -174,7 +174,8 @@ void copy_cJSON(char *dest,cJSON *obj);
     uint64_t get_API_nxt64bits(cJSON *obj);
     double get_API_float(cJSON *obj);
     char *get_cJSON_fieldname(cJSON *obj);
-    
+    void ensure_jsonitem(cJSON *json,char *field,char *value);
+
 #ifdef __cplusplus
 }
 #endif

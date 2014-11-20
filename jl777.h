@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.181"
+#define HARDCODED_VERSION "0.199"
 
 #define NXT_GENESISTIME 1385294400
 #define MAX_LFACTOR 10
@@ -237,7 +237,7 @@ struct pserver_info
 {
     uint64_t modified,nxt64bits,hasnxt[64];
     //uint32_t hasips[128];//numips,hasnum,numnxt,
-    char ipaddr[16];
+    char ipaddr[64];
     uint32_t decrypterrs,port;
 };
 
@@ -345,13 +345,14 @@ struct coin_info
     int32_t timestamps[100];
     struct coincache_info CACHE;
     //struct pingpong_queue podQ;
+    cJSON *json;
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
     void **logs;
     cJSON *ciphersobj;
     char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
     
-    char name[64],backupdir[512],privacyserver[32],myipaddr[64],transporteraddr[128];
+    char name[64],backupdir[512],privacyserver[64],myipaddr[64],transporteraddr[128];
     char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
     uint64_t srvpubnxtbits,privatebits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight,nxtaccts[512];
     int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;

@@ -148,43 +148,145 @@ const char * get_mimetype(const char *file)
 	return NULL;
 }
 
-void return_http_str(struct libwebsocket *wsi,char *retstr,char *insertstr)
+void return_http_str(struct libwebsocket *wsi,uint8_t *retstr,int32_t retlen,char *insertstr,char *mediatype)
 {
     int32_t len;
     unsigned char buffer[8192];
-    len = (int32_t)strlen(retstr);
+    len = retlen;
     if ( insertstr != 0 && insertstr[0] != 0 )
         len += (int32_t)strlen(insertstr);
     sprintf((char *)buffer,
-            "HTTP/1.0 200 OK\x0d\x0a"
-            "Server: SuperNET\x0d\x0a"
-            "Content-Type: text/html\x0d\x0a"
+            "HTTP/1.0 200 OK\r\n"
+            "Server: SuperNET\r\n"
+            "Content-Type: %s\r\n"
             "Access-Control-Allow-Origin: *\r\n"
             "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
             "Access-Control-Allow-Credentials: true\r\n"
             "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-            "Content-Length: %u\x0d\x0a\x0d\x0a",
-            (unsigned int)len);
+            "Content-Length: %u\r\n\r\n",
+            mediatype,(unsigned int)len);
     //printf("html hdr.(%s)\n",buffer);
     if ( insertstr != 0 && insertstr[0] != 0 )
         strcat((char *)buffer,insertstr);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-    libwebsocket_write(wsi,(unsigned char *)retstr,strlen(retstr),LWS_WRITE_HTTP);
+    libwebsocket_write(wsi,(unsigned char *)retstr,retlen,LWS_WRITE_HTTP);
     if ( Debuglevel > 2 )
-        printf("SuperNET >>>>>>>>>>>>>> sends back (%s)\n",retstr);
+        printf("SuperNET >>>>>>>>>>>>>> sends back (%s) retlen.%d\n",mediatype,retlen);
+}
+
+uint64_t conv_URL64(char *password,char *pin,char *str)
+{
+    char numstr[64],**pinp,**passwordp;
+    int32_t i,j;
+    pinp = passwordp = 0;
+    for (i=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '?' )
+        {
+            *passwordp = (str + i + 1);
+            for (j=0; (*passwordp)[j]!=0; j++)
+            {
+                if ( (*passwordp)[j] == '&' )
+                {
+                    *pinp = &(*passwordp)[j+1];
+                    (*passwordp)[j] = 0;
+                    printf("pin.(%s) ",*pinp);
+                    break;
+                }
+            }
+            printf("password.(%s)\n",*passwordp);
+            break;
+        }
+        if ( str[i] >= '0' && str[i] <= '9' )
+            numstr[i] = str[i];
+        else return(0);
+    }
+    if ( i >= MAX_NXTTXID_LEN )
+        return(0);
+    numstr[i] = 0;
+    if ( passwordp != 0 )
+        strcpy(password,*passwordp);
+    if ( pinp != 0 )
+        strcpy(pin,*pinp);
+    return(calc_nxt64bits(numstr));
+}
+
+uint64_t html_mappings(cJSON *array,char *fname)
+{
+    static int didinit,numhtmlmappings;
+    static portable_mutex_t mutex;
+    static char *mappings[1000];
+    static uint64_t URL64s[sizeof(mappings)/sizeof(*mappings)];
+    int32_t i,j,n;
+    cJSON *item;
+    uint64_t URL64 = 0;
+    char filename[1024];
+    if ( didinit == 0 )
+    {
+        portable_mutex_init(&mutex);
+        didinit = 1;
+    }
+    if ( array != 0 )
+    {
+        if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        {
+            printf("n.%d items in array\n",n);
+            portable_mutex_lock(&mutex);
+            for (i=0; i<n; i++)
+            {
+                item = cJSON_GetArrayItem(array,i);
+                if ( cJSON_GetArraySize(item) == 2 )
+                {
+                    copy_cJSON(filename,cJSON_GetArrayItem(item,0));
+                    URL64 = get_API_nxt64bits(cJSON_GetArrayItem(item,1));
+                    printf("%d (%s %llu)\n",i,filename,(long long)URL64);
+                    if ( numhtmlmappings > 0 )
+                    {
+                        for (j=0; j<numhtmlmappings; j++)
+                            if ( strcmp(filename,mappings[j]) == 0 )
+                                break;
+                    } else j = 0;
+                    URL64s[j] = URL64;
+                    if ( j == numhtmlmappings && numhtmlmappings < (int32_t)(sizeof(mappings)/sizeof(*mappings)) )
+                    {
+                        mappings[j] = clonestr(filename);
+                        numhtmlmappings++;
+                    }
+                }
+            }
+            portable_mutex_unlock(&mutex);
+        }
+    }
+    else
+    {
+        portable_mutex_lock(&mutex);
+        if ( numhtmlmappings > 0 )
+        {
+            for (j=0; j<numhtmlmappings; j++)
+                if ( strcmp(fname,mappings[j]) == 0 )
+                {
+                    URL64 = URL64s[j];
+                    break;
+                }
+        }
+        portable_mutex_unlock(&mutex);
+    }
+    return(URL64);
 }
 
 // this protocol server (always the first one) just knows how to do HTTP
 static int callback_http(struct libwebsocket_context *context,struct libwebsocket *wsi,enum libwebsocket_callback_reasons reason,void *user,void *in,size_t len)
 {
-    static char *filebuf=0;
+    static char password[512],pin[64],*filebuf=0;
     static int64_t filelen=0,allocsize=0;
-	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],*retstr,*str,*filestr;
-    cJSON *json,*array;
+	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],mediatype[MAX_JSON_FIELD],*retstr,*str,*filestr;
+    cJSON *json,*array,*map;
     struct coin_info *cp;
+    uint64_t URL64;
     //if ( len != 0 )
     //printf("reason.%d len.%ld\n",reason,len);
-	switch ( reason )
+    strcpy(mediatype,"text/html");
+    switch ( reason )
     {
         case LWS_CALLBACK_HTTP:
             if ( len < 1 )
@@ -203,19 +305,35 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 printf("RPC GOT.(%s)\n",str);
             if ( str[0] == 0 || (str[0] != '[' && str[0] != '{') )
             {
+                URL64 = 0;
+                buf[0] = 0;
                 if ( str[0] == 0 )
                     strcpy(fname,"html/index.html");
-                else sprintf(fname,"html/%s",str);
-                buf[0] = 0;
+                else if ( (URL64= html_mappings(0,str)) == 0 )
+                {
+                    if ( (URL64= conv_URL64(password,pin,str)) == 0 )
+                        sprintf(fname,"html/%s",str);
+                } else printf("MAPPED.(%s) -> %llu\n",str,(long long)URL64);
                 if ( strcmp(str,"supernet.js") == 0 )
                 {
+                    strcpy(mediatype,"application/javascript");
                     if ( (cp= get_coin_info("BTCD")) != 0 )
                         sprintf(buf,"var authToken = btoa(\"%s\");",cp->userpass);
                 }
-                filestr = load_file(fname,&filebuf,&filelen,&allocsize);
+                printf("FNAME.(%s) URL64.%llu str.(%s)\n",fname,(long long)URL64,str);
+                if ( URL64 != 0 )
+                {
+                    filestr = load_URL64(&map,mediatype,URL64,&filebuf,&filelen,&allocsize,password,pin);
+                    if ( map != 0 )
+                    {
+                        html_mappings(map,0);
+                        free_json(map);
+                    }
+                }
+                else filestr = load_file(fname,&filebuf,&filelen,&allocsize);
                 if ( filestr != 0 )
-                    return_http_str(wsi,filestr,buf);
-                else return_http_str(wsi,str,"ERROR LOADING: ");
+                    return_http_str(wsi,(uint8_t *)filestr,(int32_t)filelen,buf,mediatype);
+                else return_http_str(wsi,(uint8_t *)str,(int32_t)strlen(str),"ERROR LOADING: ",mediatype);
             }
             else
             {
@@ -224,7 +342,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
                     if ( retstr != 0 )
                     {
-                        return_http_str(wsi,retstr,0);
+                        return_http_str(wsi,(uint8_t *)retstr,(int32_t)strlen(retstr),0,"text/html");
                         free(retstr);
                     }
                     free_json(json);
@@ -255,12 +373,12 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                 else retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
                 if ( retstr != 0 )
                 {
-                    return_http_str(wsi,retstr,0);
+                    return_http_str(wsi,(uint8_t *)retstr,(int32_t)strlen(retstr),0,mediatype);
                     free(retstr);
                 }
                 free_json(json);
             }
-            else return_http_str(wsi,str,0);
+            else return_http_str(wsi,(uint8_t *)str,(int32_t)strlen(str),0,mediatype);
             free(str);
             return(-1);
             break;
@@ -769,107 +887,6 @@ char *getpeers_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(jsonstr);
 }
 
-char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    FILE *fp;
-    int32_t L,M,N;
-    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
-    if ( is_remote_access(previpaddr) != 0 )
-        return(clonestr("{\"error\":\"savefile is only for local access\"}"));
-    copy_cJSON(fname,objs[0]);
-    L = get_API_int(objs[1],0);
-    M = get_API_int(objs[2],1);
-    N = get_API_int(objs[3],1);
-    if ( N < 0 )
-        N = 0;
-    else if ( N > 254 )
-        N = 254;
-    if ( M >= N )
-        M = N;
-    else if ( M < 1 )
-        M = 1;
-    copy_cJSON(usbname,objs[4]);
-    copy_cJSON(password,objs[5]);
-    copy_cJSON(pin,objs[5]);
-    fp = fopen(fname,"rb");
-    if ( fp == 0 )
-        printf("cant find file (%s)\n",fname);
-    if ( fp != 0 && sender[0] != 0 && valid > 0 )
-        retstr = mofn_savefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname);
-    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
-    if ( fp != 0 )
-        fclose(fp);
-    return(retstr);
-}
-
-char *restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    FILE *fp;
-    char txidstr[MAX_JSON_FIELD];
-    cJSON *array,*item;
-    uint64_t *txids = 0;
-    int32_t L,M,N,i,n;
-    char pin[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],sharenrs[MAX_JSON_FIELD],destfname[MAX_JSON_FIELD],usbname[MAX_JSON_FIELD],password[MAX_JSON_FIELD],*retstr = 0;
-    if ( is_remote_access(previpaddr) != 0 )
-        return(clonestr("{\"error\":\"restorefile is only for local access\"}"));
-    copy_cJSON(fname,objs[0]);
-    L = get_API_int(objs[1],0);
-    M = get_API_int(objs[2],1);
-    N = get_API_int(objs[3],1);
-    if ( N < 0 )
-        N = 0;
-    else if ( N > 254 )
-        N = 254;
-    if ( M >= N )
-        M = N;
-    else if ( M < 1 )
-        M = 1;
-    copy_cJSON(usbname,objs[4]);
-    copy_cJSON(password,objs[5]);
-    copy_cJSON(destfname,objs[6]);
-    copy_cJSON(sharenrs,objs[7]);
-    array = objs[8];
-    if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-    {
-        txids = calloc(n+1,sizeof(*txids));
-        for (i=0; i<n; i++)
-        {
-            item = cJSON_GetArrayItem(array,i);
-            copy_cJSON(txidstr,item);
-            if ( txidstr[0] != 0 )
-                txids[i] = calc_nxt64bits(txidstr);
-        }
-    }
-    copy_cJSON(pin,objs[9]);
-    if ( destfname[0] == 0 )
-        strcpy(destfname,fname), strcat(destfname,".restore");
-    if ( 0 )
-    {
-        fp = fopen(destfname,"rb");
-        if ( fp != 0 )
-        {
-            fclose(fp);
-            return(clonestr("{\"error\":\"destfilename is already exists\"}"));
-        }
-    }
-    fp = fopen(destfname,"wb");
-    if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
-        retstr = mofn_restorefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
-    else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
-    if ( fp != 0 )
-        fclose(fp);
-    if ( txids != 0 )
-        free(txids);
-    {
-        char cmdstr[512];
-        printf("\n*****************\ncompare (%s) vs (%s)\n",fname,destfname);
-        sprintf(cmdstr,"cmp %s %s",fname,destfname);
-        system(cmdstr);
-        printf("done\n\n");
-    }
-    return(retstr);
-}
-
 char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char txidstr[MAX_JSON_FIELD],*retstr = 0;
@@ -915,7 +932,7 @@ char *findaddress_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     return(retstr);
 }
 
-char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+/*char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     FILE *fp;
     int32_t L;
@@ -931,6 +948,52 @@ char *sendfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     else retstr = clonestr("{\"error\":\"invalid sendfile_func arguments\"}");
     if ( fp != 0 )
         fclose(fp);
+    return(retstr);
+}*/
+
+int32_t in_jsonarray(cJSON *array,char *value)
+{
+    int32_t i,n;
+    char remote[MAX_JSON_FIELD];
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(remote,cJSON_GetArrayItem(array,i));
+            if ( strcmp(remote,value) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
+char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char coinstr[MAX_JSON_FIELD],method[MAX_JSON_FIELD],params[MAX_JSON_FIELD],*retstr = 0;
+    struct coin_info *cp = 0;
+    copy_cJSON(coinstr,objs[0]);
+    copy_cJSON(method,objs[1]);
+    if ( coinstr[0] != 0 )
+        cp = get_coin_info(coinstr);
+    if ( is_remote_access(previpaddr) != 0 )
+    {
+        if ( in_jsonarray(cJSON_GetObjectItem(MGWconf,"remote"),method) == 0 && in_jsonarray(cJSON_GetObjectItem(cp->json,"remote"),method) == 0 )
+            return(0);
+    }
+    copy_cJSON(params,objs[2]);
+    unstringify(params);
+    printf("passthru.(%s) %p method=%s [%s]\n",coinstr,cp,method,params);
+    //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
+    if ( cp != 0 && method[0] != 0 )
+        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,method,params);
+    else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
+    if ( is_remote_access(previpaddr) != 0 )
+    {
+        
+    }
     return(retstr);
 }
 
@@ -1368,11 +1431,12 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "", 0 };
     static char *stop[] = { (char *)stop_func, "stop", "", 0 };
     static char *settings[] = { (char *)settings_func, "settings", "", "field", "value", "reinit", 0 };
+    static char *passthru[] = { (char *)passthru_func, "passthru", "", "coin", "method", "params", 0 };
 
     // multisig
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
-
+    
     // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", 0 };
@@ -1384,9 +1448,9 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *findaddress[] = { (char *)findaddress_func, "findaddress", "V", "refaddr", "list", "dist", "duration", "numthreads", 0 };
 
     // MofNfs
-    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "filename", "L", "M", "N", "backup", "password", "pin", 0 };
-    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", "filename", "L", "M", "N", "backup", "password", "destfile", "sharenrs", "txids", "pin", 0 };
-    static char *sendfile[] = { (char *)sendfile_func, "sendfile", "V", "filename", "dest", "L", 0 };
+    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "fname", "L", "M", "N", "backup", "password", "pin", 0 };
+    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", RESTORE_ARGS, 0 };
+    static char *publish[] = { (char *)publish_func, "publish", "V", "files", "L", "M", "N", "backup", "password", "pin", 0  };
     
     // Telepathy
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
@@ -1417,7 +1481,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, sendfile, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes  };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru  };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

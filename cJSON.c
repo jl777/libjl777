@@ -884,4 +884,12 @@ char *get_cJSON_fieldname(cJSON *obj)
     else return((char *)"<no cJSON string field>");
 }
 
+void ensure_jsonitem(cJSON *json,char *field,char *value)
+{
+    cJSON *obj = cJSON_GetObjectItem(json,field);
+    if ( obj == 0 )
+        cJSON_AddItemToObject(json,field,cJSON_CreateString(value));
+    else cJSON_ReplaceItemInObject(json,field,cJSON_CreateString(value));
+}
+
 void free_json(cJSON *json) { if ( json != 0 ) cJSON_Delete(json); }

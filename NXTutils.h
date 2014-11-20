@@ -1391,23 +1391,6 @@ int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRE
     // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
 }
 
-int32_t parse_ipaddr(char *ipaddr,char *ip_port)
-{
-    int32_t j,port = 0;
-    if ( ip_port != 0 && ip_port[0] != 0 )
-    {
-        strcpy(ipaddr,ip_port);
-        for (j=0; ipaddr[j]!=0&&j<60; j++)
-            if ( ipaddr[j] == ':' )
-            {
-                port = atoi(ipaddr+j+1);
-                break;
-            }
-        ipaddr[j] = 0;
-    } else strcpy(ipaddr,"127.0.0.1");
-    return(port);
-}
-
 int32_t notlocalip(char *ipaddr)
 {
     if ( ipaddr == 0 || ipaddr[0] == 0 || strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
@@ -1422,24 +1405,6 @@ int32_t is_remote_access(char *previpaddr)
     else return(0);
 }
 
-uint32_t calc_ipbits(char *ip_port)
-{
-    char ipaddr[64];
-    parse_ipaddr(ipaddr,ip_port);
-    return(inet_addr(ipaddr));
-  /*  int32_t a,b,c,d;
-    sscanf(ipaddr,"%d.%d.%d.%d",&a,&b,&c,&d);
-    if ( a < 0 || a > 0xff || b < 0 || b > 0xff || c < 0 || c > 0xff || d < 0 || d > 0xff )
-    {
-        printf("malformed ipaddr?.(%s) -> %d %d %d %d\n",ipaddr,a,b,c,d);
-    }
-#ifdef WIN32
-    return((a<<24) | (b<<16) | (c<<8) | d);
-#else
-    return((d<<24) | (c<<16) | (b<<8) | a);
-#endif*/
-}
-
 void expand_ipbits(char *ipaddr,uint32_t ipbits)
 {
     struct sockaddr_in addr;
@@ -1448,30 +1413,23 @@ void expand_ipbits(char *ipaddr,uint32_t ipbits)
     //sprintf(ipaddr,"%d.%d.%d.%d",(ipbits>>24)&0xff,(ipbits>>16)&0xff,(ipbits>>8)&0xff,(ipbits&0xff));
 }
 
-int32_t is_illegal_ipaddr(char *ipaddr)
-{
-    char tmp[64];
-    expand_ipbits(tmp,calc_ipbits(ipaddr));
-    return(strcmp(tmp,ipaddr));
-}
-
 char *ipbits_str(uint32_t ipbits)
 {
-    static char ipaddr[32];
+    static char ipaddr[64];
     expand_ipbits(ipaddr,ipbits);
     return(ipaddr);
 }
 
 char *ipbits_str2(uint32_t ipbits)
 {
-    static char ipaddr[32];
+    static char ipaddr[64];
     expand_ipbits(ipaddr,ipbits);
     return(ipaddr);
 }
 
 struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
 {
-    char ipaddr[32];
+    char ipaddr[64];
     struct hostent *host;
     struct sockaddr_in server_addr;
     expand_ipbits(ipaddr,ipbits);
@@ -1481,6 +1439,76 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
     memset(&(server_addr.sin_zero),0,8);
     return(server_addr);
+}
+
+char *conv_ipv6(char *ipv6addr)
+{
+    static unsigned char IPV4CHECK[10]; // 80 ZERO BITS for testing
+    char ipv4str[64];
+    struct sockaddr_in6 ipv6sa;
+    in_addr_t *ipv4bin;
+    unsigned char *bytes;
+    int32_t isok;
+    strcpy(ipv4str,ipv6addr);
+    isok = !uv_inet_pton(AF_INET,(const char*)ipv6addr,&ipv6sa.sin6_addr);
+    printf("isok.%d\n",isok);
+    //isok = inet_pton(AF_INET6,ipv6addr,&ipv6sa.sin6_addr);
+    if ( isok != 0 )
+    {
+        bytes = ((struct sockaddr_in6 *)&ipv6sa)->sin6_addr.s6_addr;
+        if ( memcmp(bytes,IPV4CHECK,sizeof(IPV4CHECK)) != 0 ) // check its IPV4 really
+        {
+            bytes += 12;
+            ipv4bin = (in_addr_t *)bytes;
+            if ( inet_ntop(AF_INET,ipv4bin,ipv4str,sizeof(ipv4str)) == 0 )
+                isok = 0;
+        } else isok = 0;
+    }
+    if ( isok != 0 )
+        strcpy(ipv6addr,ipv4str);
+    return(ipv6addr); // it is ipv4 now
+}
+
+int32_t parse_ipaddr(char *ipaddr,char *ip_port)
+{
+    int32_t j,port = 0;
+    if ( ip_port != 0 && ip_port[0] != 0 )
+    {
+        strcpy(ipaddr,conv_ipv6(ip_port));
+        for (j=0; ipaddr[j]!=0&&j<60; j++)
+            if ( ipaddr[j] == ':' )
+            {
+                port = atoi(ipaddr+j+1);
+                break;
+            }
+        ipaddr[j] = 0;
+    } else strcpy(ipaddr,"127.0.0.1");
+    return(port);
+}
+
+uint32_t calc_ipbits(char *ip_port)
+{
+    char ipaddr[64];
+    parse_ipaddr(ipaddr,ip_port);
+    return(inet_addr(ipaddr));
+    /*  int32_t a,b,c,d;
+     sscanf(ipaddr,"%d.%d.%d.%d",&a,&b,&c,&d);
+     if ( a < 0 || a > 0xff || b < 0 || b > 0xff || c < 0 || c > 0xff || d < 0 || d > 0xff )
+     {
+     printf("malformed ipaddr?.(%s) -> %d %d %d %d\n",ipaddr,a,b,c,d);
+     }
+     #ifdef WIN32
+     return((a<<24) | (b<<16) | (c<<8) | d);
+     #else
+     return((d<<24) | (c<<16) | (b<<8) | a);
+     #endif*/
+}
+
+int32_t is_illegal_ipaddr(char *ipaddr)
+{
+    char tmp[64];
+    expand_ipbits(tmp,calc_ipbits(ipaddr));
+    return(strcmp(tmp,ipaddr));
 }
 
 struct nodestats *get_nodestats(uint64_t nxt64bits)
@@ -1959,5 +1987,24 @@ void copy_file(char *src,char *dest) // OS portable
         }
         fclose(srcfp);
     }
+}
+
+void delete_file(char *fname) // OS portable
+{
+    int c = 0;
+    FILE *fp;
+    long i,fpos;
+    if ( (fp= fopen(fname,"rb+")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        fpos = ftell(fp);
+        rewind(fp);
+        for (i=0; i<fpos; i++)
+            fputc(c,fp);
+        fflush(fp);
+        fclose(fp);
+    }
+    if ( (fp= fopen(fname,"wb")) != 0 )
+        fclose(fp);
 }
 #endif

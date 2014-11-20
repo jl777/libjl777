@@ -682,6 +682,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         Daemons[Numcoins] = cp;
                         printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
                         Numcoins++;
+                        cp->json = item;
                         parse_ipaddr(cp->myipaddr,myipaddr);
                         if ( strcmp(coinstr,"BTCD") == 0 )
                         {

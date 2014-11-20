@@ -191,6 +191,7 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
 struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid,struct orderbook_tx **feedorders,int32_t numfeeds)
 {
     struct orderbook_tx T;
+    uint32_t purgetime = ((uint32_t)time(NULL) - NODESTATS_EXPIRATION);
     int32_t i,iter,numbids,numasks,refflipped,flipped;
     size_t retdlen = 0;
     char obookstr[64];
@@ -242,6 +243,10 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
                 }
                 if ( T.iQ.timestamp >= oldest )
                     update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
+                else if ( T.iQ.timestamp < purgetime )
+                {
+                    
+                }
             }
         }
         if ( iter == 0 )

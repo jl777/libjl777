@@ -149,7 +149,7 @@ int32_t sort_all_buckets(uint64_t *sortbuf,uint64_t hash)
     struct nodestats *stats;
     struct pserver_info *pserver;
     int32_t i,j,n;
-    char ipaddr[32];
+    char ipaddr[64];
     for (i=n=0; i<KADEMLIA_NUMBUCKETS; i++)
     {
         for (j=0; j<KADEMLIA_NUMK; j++)
@@ -204,7 +204,7 @@ uint64_t _send_kademlia_cmd(int32_t encrypted,struct pserver_info *pserver,char 
         return(0);
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf(">>>>>>>> directsend.[%s] encrypted.%d -> (%s)\n",_tokbuf,encrypted,pserver->ipaddr);
     txid = directsend_packet(encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);
@@ -678,6 +678,11 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
     uint64_t keybits,destbits,txid = 0;
     int32_t i,n,z,dist,mydist;
     struct coin_info *cp = get_coin_info("BTCD");
+    if ( datastr != 0 && strlen(datastr) > 2048 )
+    {
+        printf("store: datastr too big.%ld\n",strlen(datastr));
+        return(0);
+    }
     if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
     {
         printf("kademlia_storedata null args cp.%p key.%p datastr.%p\n",cp,key,datastr);
@@ -711,7 +716,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
 
 char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *value)
 {
-    char retstr[1024],ipaddr[MAX_JSON_FIELD],destNXTaddr[MAX_JSON_FIELD],pubkeystr[MAX_JSON_FIELD],portstr[MAX_JSON_FIELD],lastcontactstr[MAX_JSON_FIELD];
+    char retstr[1024],ipaddr[MAX_JSON_FIELD],destNXTaddr[MAX_JSON_FIELD],portstr[MAX_JSON_FIELD],lastcontactstr[MAX_JSON_FIELD];
     int32_t i,n,createdflag,dist,mydist;
     uint32_t lastcontact,port;
     uint64_t keyhash,txid = 0;
@@ -719,7 +724,12 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
     struct coin_info *cp = get_coin_info("BTCD");
     struct pserver_info *pserver = 0;
     struct NXT_acct *keynp;
-    keyhash = calc_nxt64bits(key);
+    if ( value != 0 && strlen(value) > 2048 )
+    {
+        printf("havenode datastr too big.%ld\n",strlen(value));
+        return(0);
+    }
+   keyhash = calc_nxt64bits(key);
     mydist = bitweight(cp->srvpubnxtbits ^ keyhash);
     if ( key != 0 && key[0] != 0 && value != 0 && value[0] != 0 && (array= cJSON_Parse(value)) != 0 )
     {
@@ -752,7 +762,7 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
                     //printf("[%s ip.%s %s port.%d lastcontact.%d]\n",destNXTaddr,ipaddr,pubkeystr,port,lastcontact);
                     if ( destNXTaddr[0] != 0 && ipaddr[0] != 0 )
                     {
-                        kademlia_update_info(destNXTaddr,ipaddr,port,pubkeystr,lastcontact,0);
+                        kademlia_update_info(destNXTaddr,ipaddr,port,0,lastcontact,0);
                         dist = bitweight(keynp->H.nxt64bits ^ calc_nxt64bits(destNXTaddr));
                         if ( dist < calc_bestdist(keyhash) )
                         {
@@ -844,13 +854,15 @@ void gen_havenode_str(char *jsonstr,uint64_t *sortbuf,int32_t n)
 int32_t get_public_datastr(char *retstr,char *databuf,uint64_t keyhash)
 {
     struct SuperNET_storage *sp;
+    databuf[0] = 0;
     sp = kademlia_getstored(PUBLIC_DATA,keyhash,0);
     if ( sp != 0 )
     {
         init_hexbytes_noT(databuf,sp->data,sp->H.size-sizeof(*sp));
         //if ( ismynxtbits(senderbits) == 0 && is_remote_access(previpaddr) != 0 )
         //    txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
-        sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+        if ( retstr != 0 )
+            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
         free(sp);
         return(0);
     }
@@ -896,6 +908,11 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
     int32_t z,i,n,iter,isvalue,createdflag,mydist,dist,remoteflag = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct NXT_acct *keynp,*np;
+    if ( datastr != 0 && strlen(datastr) > 2048 )
+    {
+        printf("%s: datastr too big.%ld\n",cmd,strlen(datastr));
+        return(0);
+    }
     if ( previpaddr == 0 )
     {
         _previpaddr[0] = 0;
@@ -949,9 +966,10 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                 }
             }
         } else printf("no candidate destaddrs\n");
+        get_public_datastr(retstr,databuf,keyhash);
         if ( is_remote_access(previpaddr) != 0 && ismynxtbits(senderbits) == 0 && remoteflag == 0 ) // need to respond to sender
         {
-            if ( get_public_datastr(retstr,databuf,keyhash) == 0 )
+            if ( databuf[0] != 0 )
                 txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
             else if ( n > 0 )
             {
