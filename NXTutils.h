@@ -1450,10 +1450,10 @@ char *conv_ipv6(char *ipv6addr)
     unsigned char *bytes;
     int32_t isok;
     strcpy(ipv4str,ipv6addr);
-    isok = !uv_inet_pton(AF_INET,(const char*)ipv6addr,&ipv6sa.sin6_addr);
-    printf("isok.%d\n",isok);
-    //isok = inet_pton(AF_INET6,ipv6addr,&ipv6sa.sin6_addr);
-    if ( isok != 0 )
+    //isok = !uv_inet_pton(AF_INET,(const char*)ipv6addr,&ipv6sa.sin6_addr);
+    //printf("isok.%d\n",isok);
+    isok = inet_pton(AF_INET6,ipv6addr,&ipv6sa.sin6_addr);
+    if ( isok == 0 )
     {
         bytes = ((struct sockaddr_in6 *)&ipv6sa)->sin6_addr.s6_addr;
         if ( memcmp(bytes,IPV4CHECK,sizeof(IPV4CHECK)) != 0 ) // check its IPV4 really

@@ -625,9 +625,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     struct coin_info *cp;
     struct NXT_str *tp = 0;
     //""
-    myipaddr = clonestr("[2607:5300:100:200::b1d]:14631");
+    //myipaddr = clonestr("[2607:5300:100:200::b1d]:14631");
     //myipaddr = clonestr("[2001:16d8:dd24:0:86c9:681e:f931:256]");
-    //myipaddr = clonestr("189.217.1.57");
     if ( myipaddr[0] == '[' )
     {
         myipaddr = clonestr(conv_ipv6(myipaddr));
@@ -636,7 +635,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     if ( myipaddr != 0 )
         myipaddr = clonestr(myipaddr);
     printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
-    getchar();
+    //getchar();
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
     {
         fp = fopen(JSON_or_fname,"rb");
