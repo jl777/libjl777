@@ -678,7 +678,7 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
 {
-    char *str;
+ /*   char *str;
     struct NXT_acct *np;
     queue_t *msgs;
     cJSON *json,*array = 0;
@@ -702,7 +702,8 @@ char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)
         cJSON_AddItemToObject(json,"messages",array);
     str = cJSON_Print(json);
     free_json(json);
-    return(str);
+    return(str);*/
+    return(0);
 }
 
 char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -972,7 +973,7 @@ int32_t in_jsonarray(cJSON *array,char *value)
 
 char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coinstr[MAX_JSON_FIELD],method[MAX_JSON_FIELD],params[MAX_JSON_FIELD],*retstr = 0;
+    char hopNXTaddr[64],tagstr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],method[MAX_JSON_FIELD],params[MAX_JSON_FIELD],*str2,*cmdstr,*retstr = 0;
     struct coin_info *cp = 0;
     copy_cJSON(coinstr,objs[0]);
     copy_cJSON(method,objs[1]);
@@ -985,16 +986,30 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     }
     copy_cJSON(params,objs[2]);
     unstringify(params);
-    printf("passthru.(%s) %p method=%s [%s]\n",coinstr,cp,method,params);
+    copy_cJSON(tagstr,objs[3]);
+    printf("tag.(%s) passthru.(%s) %p method=%s [%s]\n",tagstr,coinstr,cp,method,params);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
-    if ( cp != 0 && method[0] != 0 )
+    if ( cp != 0 && method[0] != 0 && sender[0] != 0 && valid > 0 )
         retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,method,params);
-    else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
+    else retstr = clonestr("{\"error\":\"invalid passthru_func arguments\"}");
     if ( is_remote_access(previpaddr) != 0 )
     {
-        
+        cmdstr = malloc(strlen(retstr)+512);
+        str2 = stringifyM(retstr);
+        sprintf(cmdstr,"{\"requestType\":\"remote\",\"coin\":\"%s\",\"method\":\"%s\",\"tag\":\"%s\",\"result\":\"%s\"}",coinstr,method,tagstr,str2);
+        free(str2);
+        hopNXTaddr[0] = 0;
+        retstr = send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender);
+        free(cmdstr);
     }
     return(retstr);
+}
+
+char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    if ( is_remote_access(previpaddr) == 0 )
+        return(clonestr("{\"error\":\"cant remote locally\"}"));
+    return(clonestr(origargstr));
 }
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1421,19 +1436,90 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
+char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],*retstr = 0;
+    int32_t M,N,n;
+    struct contact_info **contacts = 0;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(coin,objs[0]);
+    copy_cJSON(refacct,objs[1]);
+    M = (int32_t)get_API_int(objs[2],1);
+    N = (int32_t)get_API_int(objs[3],1);
+    if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        contacts = conv_contacts_json(&n,objs[4]);
+        retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n);
+    }
+    if ( contacts != 0 )
+        free(contacts);
+    if ( retstr != 0 )
+        return(retstr);
+    return(clonestr("{\"error\":\"bad genmultisig_func paramater\"}"));
+}
+
+char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    struct coin_info *cp;
+    char hopNXTaddr[0],refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],cmdstr[MAX_JSON_FIELD];
+    if ( is_remote_access(previpaddr) == 0 )
+        return(0);
+    copy_cJSON(coin,objs[0]);
+    copy_cJSON(refNXTaddr,objs[1]);
+    if ( coin[0] != 0 && refNXTaddr[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        cp = get_coin_info(coin);
+        if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
+        {
+            sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"coin\":\"%s\",\"refNXT\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",coin,refNXTaddr,acctcoinaddr,pubkey);
+            return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
+        }
+    }
+    return(clonestr("{\"error\":\"bad getmsigpubkey_func paramater\"}"));
+}
+
+char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
+    struct contact_info *contact;
+    if ( is_remote_access(previpaddr) == 0 )
+        return(0);
+    copy_cJSON(coin,objs[0]);
+    copy_cJSON(refNXTaddr,objs[1]);
+    copy_cJSON(acctcoinaddr,objs[2]);
+    copy_cJSON(pubkey,objs[3]);
+    if ( coin[0] != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        if ( (contact= find_contact(sender)) != 0 )
+        {
+            replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
+            update_contact_info(contact);
+            free(contact);
+        }
+    }
+    return(clonestr("{\"error\":\"bad setmsigpubkey_func paramater\"}"));
+}
+
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
-    // glue
-    static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "", "json", 0 };
-    static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "", "msg", "dur", "ip_port", 0 };
-    static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "", "ip_port", 0 };
-    static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "", 0 };
-    static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "", 0 };
-    static char *stop[] = { (char *)stop_func, "stop", "", 0 };
-    static char *settings[] = { (char *)settings_func, "settings", "", "field", "value", "reinit", 0 };
-    static char *passthru[] = { (char *)passthru_func, "passthru", "", "coin", "method", "params", 0 };
+    // local glue
+    static char *gotjson[] = { (char *)gotjson_func, "BTCDjson", "V", "json", 0 };
+    static char *gotpacket[] = { (char *)gotpacket_func, "gotpacket", "V", "msg", "dur", "ip_port", 0 };
+    static char *gotnewpeer[] = { (char *)gotnewpeer_func, "gotnewpeer", "V", "ip_port", 0 };
+    static char *BTCDpoll[] = { (char *)BTCDpoll_func, "BTCDpoll", "V", 0 };
+    static char *GUIpoll[] = { (char *)GUIpoll_func, "GUIpoll", "V", 0 };
+    static char *stop[] = { (char *)stop_func, "stop", "V", 0 };
+    static char *settings[] = { (char *)settings_func, "settings", "V", "field", "value", "reinit", 0 };
+    
+    // passthru
+    static char *passthru[] = { (char *)passthru_func, "passthru", "V", "coin", "method", "params", "tag", 0 };
+    static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
 
     // multisig
+    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", 0 };
+    static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", 0 };
+    static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
@@ -1481,7 +1567,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru  };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

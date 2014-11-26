@@ -87,6 +87,133 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     return(ret);
 }
 
+void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
+{
+    memset(key,0,sizeof(*key));
+    strcpy(coinaddr,coin);
+    strcat(coinaddr+strlen(coin)+1,addr);
+    key->data = coinaddr;
+    key->size = (int32_t)(strlen(coin) + strlen(addr) + 2);
+}
+
+void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag)
+{
+    struct SuperNET_db *sdb = &SuperNET_dbs[ADDRESS_DATA];
+    char coinaddr[512];
+    DBT key,data;
+    int32_t ret;
+    clear_pair(&key,&data);
+    _set_address_key(&key,coinaddr,coin,addr);
+    data.data = bp;
+    data.size = (int32_t)sizeof(*bp);
+    printf("entry%d %d %d | (%s %s).%d\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size);
+    if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
+    //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
+        AStorage->err(AStorage,ret,"add_address: Database put failed.");
+    else if ( syncflag != 0 )
+        dbsync(sdb,0);
+    //sdb->dbp->sync(sdb->dbp,0);
+}
+
+struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *addr,struct address_entry *bp,int32_t syncflag)
+{
+    struct SuperNET_db *sdb;
+    struct address_entry B,*vec = 0;
+    int32_t i,n,iter,ret,replaced = 0;
+    char coinaddr[512];
+    DB_TXN *txn = NULL;
+    DBC *cursorp = 0;
+    DBT key,data;
+    *nump = 0;
+    sdb = &SuperNET_dbs[ADDRESS_DATA];
+    if ( (ret = AStorage->txn_begin(AStorage,NULL,&txn,0)) != 0 )
+    {
+        AStorage->err(AStorage,ret,"Transaction begin failed.");
+        return(0);
+    }
+    if ( (ret= dbcursor(sdb,txn,&cursorp,0)) != 0 )
+    {
+        AStorage->err(AStorage,ret,"Cursor open failed.");
+        txn->abort(txn);
+        return(0);
+    }
+    if ( cursorp != 0 )
+    {
+        for (iter=n=0; iter<2; iter++)
+        {
+            i = 0;
+            clear_pair(&key,&data);
+            _set_address_key(&key,coinaddr,coin,addr);
+            ret = cursorget(sdb,txn,cursorp,&key,&data,DB_SET);
+            //ret = cursorp->get(cursorp,&key,&data,DB_SET);
+            while ( ret == 0 )
+            {
+                ret = cursorget(sdb,txn,cursorp,&key,&data,DB_NEXT_DUP);
+                if ( data.size != sizeof(*vec) )
+                    printf("error data.size %d for %d of %d\n",data.size,i,n);
+                else
+                {
+                    memcpy(&B,data.data,sizeof(B));
+                    if ( iter == 1 && i < n )
+                        vec[i] = B;
+                    else if ( iter == 0 && bp != 0 && B.blocknum == bp->blocknum && B.txind == bp->txind && B.v == bp->v )
+                    {
+                        clear_pair(&key,&data);
+                        _set_address_key(&key,coinaddr,coin,addr);
+                        bp->isinternal = B.isinternal;
+                        data.data = bp;
+                        data.size = sizeof(*bp);
+                        ret = cursorput(sdb,txn,cursorp,&key,&data,DB_CURRENT);
+                        //ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
+                        replaced = 1;
+                        break;
+                    }
+                    printf("entry.%d %d %d %d | (%s).%d\n",i,B.blocknum,B.txind,B.v,key.data,key.size);
+                    i++;
+                }
+            }
+            if ( bp == 0 )
+            {
+                if ( iter == 0 )
+                {
+                    (*nump) = n = i;
+                    vec = calloc(n,sizeof(*vec));
+                }
+                else if ( i != n )
+                {
+                    printf("after iter.%d i.%d vs n.%d\n",iter,i,n);
+                    free(vec);
+                    vec = 0;
+                }
+            }
+            else if ( replaced == 0 )
+                break;
+        }
+        if ( (ret= cursorclose(sdb,cursorp)) != 0 )
+        {
+            AStorage->err(AStorage,ret,"Cursor close failed.");
+            txn->abort(txn);
+        }
+        else if ( (ret= txn->commit(txn,0)) != 0 )
+            AStorage->err(AStorage,ret,"Transaction commit failed.");
+    }
+    if ( bp != 0 && replaced == 0 )
+    {
+        clear_pair(&key,&data);
+        _set_address_key(&key,coinaddr,coin,addr);
+        data.data = bp;
+        data.size = sizeof(*bp);
+        if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
+            Storage->err(Storage,ret,"add_address: Database put failed.");
+        else if ( syncflag != 0 )
+        {
+            //sdb->dbp->sync(sdb->dbp,0);
+            dbsync(sdb,0);
+        }
+    }
+    return(vec);
+}
+
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
 {
     struct storage_header *ptr,**ptrs = 0;
@@ -131,6 +258,69 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
         ptrs[n] = 0;
     *nump = n;
     return(ptrs);
+}
+
+void set_coin_blockheight(char *coin,uint32_t blocknum)
+{
+    int32_t i;
+    struct coin_info *cp;
+    if ( blocknum > 0 ) // might not finish current block, so set to previous block
+        blocknum--;
+    if ( blocknum == 0 )
+        return;
+    for (i=0; i<Numcoins; i++)
+    {
+        if ( (cp= Daemons[i]) != 0 && strcmp(coin,cp->name) == 0 )
+        {
+            if ( blocknum > cp->blockheight )
+            {
+                printf("%s new blockheight.%d\n",coin,blocknum);
+                cp->blockheight = blocknum;
+            }
+        }
+    }
+}
+
+int32_t scan_address_entries()
+{
+    struct SuperNET_db *sdb;
+    char buf[512];
+    int32_t ret,n = 0;
+    DBT key,data;
+    DBC *cursorp = 0;
+    struct address_entry B;
+    sdb = &SuperNET_dbs[ADDRESS_DATA];
+    if ( (ret= dbcursor(sdb,NULL,&cursorp,0)) != 0 )
+   //if ( (ret= sdb->dbp->cursor(sdb->dbp,NULL,&cursorp,0)) != 0 )
+    {
+        Storage->err(Storage,ret,"copy_all_DBentries: Cursor open failed.");
+        return(0);
+    }
+    if ( cursorp != 0 )
+    {
+        clear_pair(&key,&data);
+        key.data = buf;
+        key.size = 40;
+        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_IGNORE_LEASE | DB_NEXT)) == 0 )
+        //while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
+        {
+            cursorget(sdb,NULL,cursorp,&key,&data,DB_CURRENT);
+            if ( data.size == sizeof(B) )
+            {
+                memcpy(&B,data.data,sizeof(B));
+                printf("n.%-6d %7u %u %u | (%s %s).%d\n",n,B.blocknum,B.txind,B.v,key.data,key.data+strlen(key.data)+1,key.size);
+                set_coin_blockheight("BTCD",B.blocknum);
+            }
+            n++;
+            clear_pair(&key,&data);
+            key.data = buf;
+            key.size = 40;
+        }
+        cursorclose(sdb,cursorp);
+        //cursorp->close(cursorp);
+    }
+    //fprintf(stderr,"done copy all dB.%d\n",selector);
+    return(n);
 }
 
 struct exchange_quote *get_exchange_quotes(int32_t *nump,char *dbname,int32_t oldest)
@@ -438,6 +628,7 @@ int32_t init_SuperNET_storage()
             open_database(NODESTATS_DATA,&SuperNET_dbs[NODESTATS_DATA],"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats),0);
             open_database(INSTANTDEX_DATA,&SuperNET_dbs[INSTANTDEX_DATA],"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
             open_database(PRICE_DATA,&SuperNET_dbs[PRICE_DATA],"prices.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct exchange_pair),sizeof(struct exchange_pair),0);
+            open_database(MULTISIG_DATA,&SuperNET_dbs[MULTISIG_DATA],"multisig.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct multisig_addr),sizeof(struct multisig_addr) + sizeof(struct pubkey_info)*16,0);
             if ( cp != 0 ) // encrypted dbs
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
@@ -445,6 +636,17 @@ int32_t init_SuperNET_storage()
                 sdb = &SuperNET_dbs[CONTACT_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
             }
+            if ( (ret = db_env_create(&AStorage, 0)) != 0 )
+            {
+                fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
+                return(-1);
+            }
+            else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
+            {
+                fprintf(stderr,"error.%d opening Astorage\n",ret);
+                return(-2);
+            }
+            open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
             if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
                 printf("ERROR hist process_hashtablequeues\n");
         }

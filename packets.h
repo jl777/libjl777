@@ -265,7 +265,6 @@ int32_t prep_outbuf(uint8_t *outbuf,char *msg,int32_t msglen,uint8_t *data,int32
     return(len);
 }
 
-// I will add support in sendmsg so you can send to NXT addr (numerical/RS), contact handle, IP addr, maybe even NXT alias
 char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
 {
     uint64_t txid;

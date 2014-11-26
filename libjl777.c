@@ -266,7 +266,7 @@ void run_UVloop(void *arg)
 void run_libwebsockets(void *arg)
 {
     int32_t usessl = *(int32_t *)arg;
-    init_API_port(usessl,APIPORT-!usessl,APISLEEP);
+    init_API_port(usessl,APIPORT+!usessl,APISLEEP);
 }
 
 void init_NXThashtables(struct NXThandler_info *mp)
@@ -274,13 +274,15 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_acct *np = 0;
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp = 0;
-    struct NXT_guid *gp = 0;
+    //struct NXT_guid *gp = 0;
+    struct coin_txid *ctp = 0;
+    struct withdraw_info *wp = 0;
     struct pserver_info *pp = 0;
     struct telepathy_entry *tel = 0;
     //struct kademlia_storage *sp = 0;
-    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*Pserver,*Telepathy_hash;
-    if ( NXTguids == 0 )
-        NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*Pserver,*Telepathy_hash,*Redeems,*Coin_txids;
+    //if ( NXTguids == 0 )
+    //    NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
     if ( NXTasset_txids == 0 )
         NXTasset_txids = hashtable_create("NXTasset_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_assettxid),((long)&tp->H.U.txid[0] - (long)tp),sizeof(tp->H.U.txid),((long)&tp->H.modified - (long)tp));
     if ( NXTassets == 0 )
@@ -291,14 +293,19 @@ void init_NXThashtables(struct NXThandler_info *mp)
         Telepathy_hash = hashtable_create("Telepath_hash",HASHTABLES_STARTSIZE,sizeof(struct telepathy_entry),((long)&tel->locationstr[0] - (long)tel),sizeof(tel->locationstr),((long)&tel->modified - (long)tel));
     if ( Pserver == 0 )
         Pserver = hashtable_create("Pservers",HASHTABLES_STARTSIZE,sizeof(struct pserver_info),((long)&pp->ipaddr[0] - (long)pp),sizeof(pp->ipaddr),((long)&pp->modified - (long)pp));
+    if ( Redeems == 0 )
+        Redeems = hashtable_create("Redeems",HASHTABLES_STARTSIZE,sizeof(struct withdraw_info),((long)&wp->redeemtxid[0] - (long)wp),sizeof(wp->redeemtxid),((long)&wp->modified - (long)wp));
+    if ( Coin_txids == 0 )
+        Coin_txids = hashtable_create("Coin_txids",HASHTABLES_STARTSIZE,sizeof(struct coin_txid),((long)&ctp->txid[0] - (long)ctp),sizeof(ctp->txid),((long)&ctp->modified - (long)ctp));
     if ( mp != 0 )
     {
         mp->Telepathy_tablep = &Telepathy_hash;
         mp->Pservers_tablep = &Pserver;
-        mp->NXTguid_tablep = &NXTguids;
+        mp->redeemtxids = &Redeems;
         mp->NXTaccts_tablep = &NXTaddrs;
         mp->NXTassets_tablep = &NXTassets;
         mp->NXTasset_txids_tablep = &NXTasset_txids;
+        mp->coin_txids = &Coin_txids;
         printf("init_NXThashtables: %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids);
     }
 }
@@ -322,6 +329,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
+    if ( portable_thread_create((void *)Coinloop,0) == 0 )
+        printf("ERROR hist Coinloop SSL\n");
     Finished_loading = 1;
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
@@ -624,18 +633,13 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     FILE *fp = 0;
     struct coin_info *cp;
     struct NXT_str *tp = 0;
-    //""
     //myipaddr = clonestr("[2607:5300:100:200::b1d]:14631");
     //myipaddr = clonestr("[2001:16d8:dd24:0:86c9:681e:f931:256]");
     if ( myipaddr[0] == '[' )
-    {
         myipaddr = clonestr(conv_ipv6(myipaddr));
-        //myipaddr[strlen(myipaddr)-1] = 0;
-    }
     if ( myipaddr != 0 )
         myipaddr = clonestr(myipaddr);
     printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
-    //getchar();
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
     {
         fp = fopen(JSON_or_fname,"rb");
@@ -668,6 +672,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     addcontact(Global_mp->myhandle,cp->privateNXTADDR);
     printf("add mypublic\n");
     addcontact("mypublic",cp->srvNXTADDR);
+    if ( Global_mp->gatewayid >= 0 )
+        register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
     printf("finished addcontact\n");
     return(0);
 }

@@ -22,11 +22,12 @@ union _asset_price { uint64_t assetoshis,price; };
 struct NXT_assettxid
 {
     struct NXT_str H;
-    uint64_t AMtxidbits,txidbits,assetbits,senderbits,receiverbits,quantity;
+    uint64_t AMtxidbits,txidbits,assetbits,senderbits,receiverbits,quantity,redeemtxid;
     union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
-    struct NXT_guid *duplicatehash;
-    char *cointxid,*redeemtxid;
-    char *guid,*comment;
+    //struct NXT_guid *duplicatehash;
+    uint32_t coinblocknum,cointxind,coinv;
+    char *cointxid;
+    char *comment;//*guid,
     int32_t completed,timestamp,vout;
 };
 
@@ -57,22 +58,21 @@ struct other_addr
 struct NXT_acct
 {
     struct NXT_str H;
-    struct coin_acct *coinaccts;
     struct NXT_asset **assets;
-    uint64_t *quantities,bestbits;
-    int64_t buyqty,buysum,sellqty,sellsum,quantity;
+    uint64_t *quantities,bestbits,quantity;
     struct NXT_assettxid_list **txlists;    // one list for each asset in acct
-    int32_t maxassets,numassets,numcoinaccts,bestdist;
+    int32_t maxassets,numassets,bestdist;//numcoinaccts
+    int64_t buyqty,buysum,sellqty,sellsum;
     double profits;
+    //struct coin_acct *coinaccts;
     // fields for NXTorrent
-    double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
-    queue_t incomingQ;
-    char *signedtx;
-    
+    //double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
+    //queue_t incomingQ;
     //uint16_t udp_port;
     //uv_stream_t *tcp,*connect;
+    //char dispname[128];//,udp_sender[64];//,tcp_sender[64];
     struct nodestats stats;
-    char dispname[128],NXTACCTSECRET[128];//,udp_sender[64];//,tcp_sender[64];
+    char *signedtx,NXTACCTSECRET[128];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 

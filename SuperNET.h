@@ -19,12 +19,17 @@
 #define CONTACT_DATA 4
 #define NODESTATS_DATA 5
 #define INSTANTDEX_DATA 6
-#define PRICE_DATA 7
+#define MULTISIG_DATA 7
+#define ADDRESS_DATA 8
+#define PRICE_DATA 9
 #define NUM_SUPERNET_DBS (PRICE_DATA+1)
 #define SMALLVAL .000000000000001
 
 #define MAX_COINTXID_LEN 66
 #define MAX_COINADDR_LEN 66
+#define MAX_NXT_STRLEN 24
+#define MAX_NXTTXID_LEN MAX_NXT_STRLEN
+#define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 
 struct storage_header
 {
@@ -73,6 +78,7 @@ struct contact_info
     char handle[64];
     uint64_t nxt64bits,deaddrop,mydrop;
     int32_t numsent,numrecv,lastrecv,lastsent,lastentry;
+    char jsonstr[32768];
 };
 
 struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t timestamp,type; };
@@ -80,6 +86,18 @@ struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t time
 struct orderbook_info { uint64_t baseid,relid,obookid; };
 
 struct exchange_pair { struct storage_header H; char exchange[64],base[16],rel[16]; };
+
+struct pubkey_info { uint64_t nxt64bits; char pubkey[256],coinaddr[128]; };
+
+struct multisig_addr
+{
+    struct storage_header H;
+    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],redeemScript[2048],coinstr[16];
+    uint32_t m,n,created,tbd;
+    struct pubkey_info pubkeys[];
+};
+
+struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
 

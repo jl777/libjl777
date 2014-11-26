@@ -51,6 +51,9 @@
 #define BBR_COINID 39
 #define XMR_COINID 40
 #define BTM_COINID 41
+#define CHA_COINID 42
+#define OPAL_COINID 43
+#define BITS_COINID 44
 
 #define BTC_MARKER "17outUgtsnLkguDuXm14tcQ7dMbdD8KZGK"
 #define LTC_MARKER "Le9hFCEGKDKp7qYpzfWyEFAq58kSQsjAqX"
@@ -93,6 +96,9 @@
 #define BBR_MARKER "1D9hJ1nEjwuhxZMk6fupoTjKLtS2KzkfCQ7kF25k5B6Sc4UJjt9FrvDNYomVd4ZVHv36FskVRJGZa1JZAnZ35GiuAHf7gBy" //"99c9794748071f0a557e8152a99fc47ff1d47b86e056fe85baa50c80b3fd5e5f"
 #define XMR_MARKER "47sghzufGhJJDQEbScMCwVBimTuq6L5JiRixD8VeGbpjCTA12noXmi4ZyBZLc99e66NtnKff34fHsGRoyZk3ES1s1V4QVcB" //6e1eb2b0abe3cef6acb62facff7a2f070e40b4898a0d7c0f1f6f09654fc3552b
 #define BTM_MARKER "bX4cpvqvfHB87YiDJAHB656TwVZBpD1VR2"
+#define CHA_MARKER "1AYNVduuf4X4jLzJ7f9Zpj7Ykz6WYkdS99"
+#define OPAL_MARKER "oJwRshRPXxgmntiS44hYQaf9Ahf7o4HT18"
+#define BITS_MARKER "BPeZsNiahkKF54YxvSJpeNgSaWbyXo4NPF"
 
 int32_t Numcoins;
 struct coin_info **Daemons;
@@ -187,6 +193,9 @@ char *coinid_str(int32_t coinid)
         case BBR_COINID: return("BBR");
         case XMR_COINID: return("XMR");
         case BTM_COINID: return("BTM");
+        case CHA_COINID: return("CHA");
+        case OPAL_COINID: return("OPAL");
+        case BITS_COINID: return("BITS");
     }
     return(ILLEGAL_COIN);
 }
@@ -254,6 +263,9 @@ char *get_backupmarker(char *coinstr)
         case BBR_COINID: return(BBR_MARKER);
         case XMR_COINID: return(XMR_MARKER);
         case BTM_COINID: return(BTM_MARKER);
+        case CHA_COINID: return(CHA_MARKER);
+        case OPAL_COINID: return(OPAL_MARKER);
+        case BITS_COINID: return(BITS_MARKER);
     }
     return(0);
 }
@@ -412,16 +424,35 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
 {
     void add_new_node(uint64_t nxt64bits);
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
-    int32_t useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
-    char rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
+    int32_t i,j,n,useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
+    char numstr[64],rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*privkey,*coinaddr,**privkeys;
-    cJSON *ciphersobj;
+    cJSON *ciphersobj,*limbo;
     struct nodestats *stats;
-    uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust;
+    uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust,redeemtxid,*limboarray = 0;
     struct coin_info *cp = 0;
     printf("init_coin.(%s)\n",cJSON_Print(json));
     if ( json != 0 )
     {
+        limbo = cJSON_GetObjectItem(json,"limbo");
+        if ( limbo != 0 && is_cJSON_Array(limbo) != 0 )
+        {
+            n = cJSON_GetArraySize(limbo);
+            if ( n > 0 )
+            {
+                limboarray = calloc(n+1,sizeof(*limboarray));
+                for (i=j=0; i<n; i++)
+                {
+                    copy_cJSON(numstr,cJSON_GetArrayItem(limbo,i));
+                    if ( (redeemtxid= calc_nxt64bits(numstr)) != 0 )
+                    {
+                        printf("%llu ",(long long)redeemtxid);
+                        limboarray[j++] = redeemtxid;
+                    }
+                }
+                printf("LIMBO ARRAY of %d of %d redeemtxids\n",j,n);
+            }
+        }
         nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),0);
         useaddmultisig = get_API_int(cJSON_GetObjectItem(json,"useaddmultisig"),0);
         blockheight = get_API_int(cJSON_GetObjectItem(json,"blockheight"),0);
@@ -455,8 +486,10 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
+                portable_mutex_init(&cp->consensus_mutex);
                 extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
                 cp->coinid = conv_coinstr(coinstr);
+                cp->limboarray = limboarray;
                 if ( cp->coinid >= 0 && cp->coinid < 256 )
                     Global_mp->coins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
                 if ( strcmp(cp->name,"BTCD") == 0 )
@@ -612,6 +645,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
             IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);
+            SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
             APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),3);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),1);
@@ -622,7 +656,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             {
                 NXT_FORKHEIGHT = 173271;
                 if ( NXTAPIURL[0] == 0 )
-                    strcpy(NXTAPIURL,"http://127.0.0.1:7876/nxt");
+                    strcpy(NXTAPIURL,"https://127.0.0.1:7876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"7117166754336896747");
                 //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
@@ -644,8 +678,14 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
             extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
+            Global_mp->gatewayid = -1;
             for (i=0; i<3; i++)
+            {
+                Global_mp->gensocks[i] = -1;
+                if ( strcmp(myipaddr,Server_names[i]) == 0 )
+                    Global_mp->gatewayid = i;
                 printf("%s | ",Server_names[i]);
+            }
             printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK);
             array = cJSON_GetObjectItem(MGWconf,"whitelist");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
@@ -704,6 +744,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             if ( IS_LIBTEST != 0 )
             {
                 ensure_directory("storage");
+                ensure_directory("addresses");
                 init_SuperNET_storage();
             }
             if ( NXTACCTSECRET[0] == 0 )

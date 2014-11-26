@@ -94,7 +94,8 @@ void build_topology()
                 printf("(%llu %d %s) ",(long long)nodes[i]->nxt64bits,nodes[i]->lastcontact-now,ipaddr);
                 if ( gen_pingstr(_cmd,1) > 0 )
                 {
-                    len = construct_tokenized_req(finalbuf,_cmd,get_public_srvacctsecret());
+                    int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET);
+                    len = construct_tokenized_req((char *)finalbuf,_cmd,get_public_srvacctsecret());
                     send_packet(nodes[i],0,finalbuf,len);
                 }
                 free(nodes[i]);
@@ -127,7 +128,7 @@ void *GUIpoll_loop(void *arg)
         sleep(1);
         //continue;
         sprintf(params,"{\"requestType\":\"GUIpoll\"}");
-        retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"http://127.0.0.1:7776",(char *)"",(char *)"SuperNET",params);
+        retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"http://127.0.0.1:7778",(char *)"",(char *)"SuperNET",params);
         //fprintf(stderr,"<<<<<<<<<<< SuperNET poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
         if ( retstr != 0 )
         {
@@ -164,6 +165,7 @@ int main(int argc,const char *argv[])
     FILE *fp;
     int32_t retval;
     char ipaddr[64];
+
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
@@ -203,3 +205,186 @@ int main(int argc,const char *argv[])
 // stubs
 int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
 int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
+
+#ifdef chanc3r
+//Miniupnp code for supernet by chanc3r
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#define snprintf _snprintf
+#else
+// for IPPROTO_TCP / IPPROTO_UDP
+#include <netinet/in.h>
+#endif
+#include "miniwget.h"
+#include "miniupnpc.h"
+#include "upnpcommands.h"
+#include "upnperrors.h"
+
+// redirect port on external upnp enabled router to port on *this* host
+int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description) {
+    
+    //  Discovery parameters
+    struct UPNPDev * devlist = 0;
+    struct UPNPUrls urls;
+    struct IGDdatas data;
+    int i;
+    char lanaddr[64];	// my ip address on the LAN
+    const char* leaseDuration="0";
+    
+    //  Redirect & test parameters
+    char intClient[40];
+    char intPort[6];
+    char externalIPAddress[40];
+    char duration[16];
+    int error=0;
+    
+    //  Find UPNP devices on the network
+    if ((devlist=upnpDiscover(2000, 0, 0,0, 0, &error))) {
+        struct UPNPDev * device = 0;
+        printf("UPNP INIALISED: List of UPNP devices found on the network.\n");
+        for(device = devlist; device; device = device->pNext) {
+            printf("UPNP INFO: dev [%s] \n\t st [%s]\n",
+                   device->descURL, device->st);
+        }
+    } else {
+        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
+        return 0;
+    }
+    
+    //  Output whether we found a good one or not.
+    if((error = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr)))) {
+        switch(error) {
+            case 1:
+                printf("UPNP OK: Found valid IGD : %s\n", urls.controlURL);
+                break;
+            case 2:
+                printf("UPNP WARN: Found a (not connected?) IGD : %s\n", urls.controlURL);
+                break;
+            case 3:
+                printf("UPNP WARN: UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
+                break;
+            default:
+                printf("UPNP WARN: Found device (igd ?) : %s\n", urls.controlURL);
+        }
+        printf("UPNP OK: Local LAN ip address : %s\n", lanaddr);
+    } else {
+        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
+        return 0;
+    }
+    
+    //  Get the external IP address (just because we can really...)
+    if(UPNP_GetExternalIPAddress(urls.controlURL,
+                                 data.first.servicetype,
+                                 externalIPAddress)!=UPNPCOMMAND_SUCCESS)
+        printf("UPNP WARN: GetExternalIPAddress failed.\n");
+    else
+        printf("UPNP OK: ExternalIPAddress = %s\n", externalIPAddress);
+    
+    //  Check for existing supernet mapping - from this host and another host
+    //  In theory I can adapt this so multiple nodes can exist on same lan and choose a different portmap
+    //  for each one :)
+    //  At the moment just delete a conflicting portmap and override with the one requested.
+    i=0;
+    error=0;
+    do {
+        char index[6];
+        char extPort[6];
+        char desc[80];
+        char enabled[6];
+        char rHost[64];
+        char protocol[4];
+        
+        snprintf(index, 6, "%d", i++);
+        
+        if(!(error=UPNP_GetGenericPortMappingEntry(urls.controlURL,
+                                                   data.first.servicetype,
+                                                   index,
+                                                   extPort, intClient, intPort,
+                                                   protocol, desc, enabled,
+                                                   rHost, duration))) {
+            // printf("%2d %s %5s->%s:%-5s '%s' '%s' %s\n",i, protocol, extPort, intClient, intPort,desc, rHost, duration);
+            
+            // check for an existing supernet mapping on this host
+            if(!strcmp(lanaddr, intClient)) { // same host
+                if(!strcmp(protocol,proto)) { //same protocol
+                    if(!strcmp(intPort,iport)) { // same port
+                        printf("UPNP WARN: existing mapping found (%s:%s)\n",lanaddr,iport);
+                        if(!strcmp(extPort,eport)) {
+                            printf("UPNP OK: exact mapping already in place (%s:%s->%s)\n", lanaddr, iport, eport);
+                            FreeUPNPUrls(&urls);
+                            freeUPNPDevlist(devlist);
+                            return 1;
+                            
+                        } else { // delete old mapping
+                            printf("UPNP WARN: deleting existing mapping (%s:%s->%s)\n",lanaddr, iport, extPort);
+                            if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
+                                printf("UPNP WARN: error deleting old mapping (%s:%s->%s) continuing\n", lanaddr, iport, extPort);
+                            else printf("UPNP OK: old mapping deleted (%s:%s->%s)\n",lanaddr, iport, extPort);
+                        }
+                    }
+                }
+            } else { // ipaddr different - check to see if requested port is already mapped
+                if(!strcmp(protocol,proto)) {
+                    if(!strcmp(extPort,eport)) {
+                        printf("UPNP WARN: EXT port conflict mapped to another ip (%s-> %s vs %s)\n", extPort, lanaddr, intClient);
+                        if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
+                            printf("UPNP WARN: error deleting conflict mapping (%s:%s) continuing\n", intClient, extPort);
+                        else printf("UPNP OK: conflict mapping deleted (%s:%s)\n",intClient, extPort);
+                    }
+                }
+            }
+        } else
+            printf("UPNP OK: GetGenericPortMappingEntry() End-of-List (%d entries) \n", i);
+    } while(error==0);
+    
+    //  Set the requested port mapping
+    if((i=UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                              eport, iport, lanaddr, description,
+                              proto, 0, leaseDuration))!=UPNPCOMMAND_SUCCESS) {
+        printf("UPNP ERROR: AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
+               eport, iport, lanaddr, i, strupnperror(i));
+        
+        FreeUPNPUrls(&urls);
+        freeUPNPDevlist(devlist);
+        return 0; //error - adding the port map primary failure
+    }
+    
+    if((i=UPNP_GetSpecificPortMappingEntry(urls.controlURL,
+                                           data.first.servicetype,
+                                           eport, proto, NULL/*remoteHost*/,
+                                           intClient, intPort, NULL/*desc*/,
+                                           NULL/*enabled*/, duration))!=UPNPCOMMAND_SUCCESS) {
+        printf("UPNP ERROR: GetSpecificPortMappingEntry(%s, %s, %s) failed with code %d (%s)\n", eport, iport, lanaddr,
+               i, strupnperror(i));
+        FreeUPNPUrls(&urls);
+        freeUPNPDevlist(devlist);
+        return 0; //error - port map wasnt returned by query so likely failed.
+    }
+    else {
+        printf("UPNP OK: EXT (%s:%s) %s redirected to INT (%s:%s) (duration=%s)\n",
+               externalIPAddress, eport, proto, intClient, intPort, duration);
+    }
+    
+    FreeUPNPUrls(&urls);
+    freeUPNPDevlist(devlist);
+    return 1; //ok - we are mapped:)
+}
+
+int main(int argc, char ** argv) {
+    if(argc<2) {
+        printf("TEST ERROR: missing params\n");
+        printf("TEST usage: %s ext-port int-port\n",argv[0]);
+        exit(1);
+    }
+    if(!upnpredirect(argv[1],argv[2],"UDP", "SuperNET Peer")) {
+        printf("TEST ERROR: failed redirect\n");
+        exit(1);
+    }
+    exit (0);
+}
+#endif

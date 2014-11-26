@@ -16,6 +16,14 @@ struct contact_info *find_handle(char *handle)
     return((struct contact_info *)find_storage(CONTACT_DATA,handle,0));
 }
 
+void update_contact_info(struct contact_info *contact)
+{
+    //printf("update_contact_info %p (%s)\n",contact,contact->handle);
+    if ( contact->H.size == 0 )
+        contact->H.size = sizeof(*contact);
+    update_storage(&SuperNET_dbs[CONTACT_DATA],contact->handle,&contact->H);
+}
+
 struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
 {
     struct contact_info **contacts,*contact,*retcontract = 0;
@@ -36,14 +44,6 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
     }
     free(contacts);
     return(retcontract);
-}
-
-void update_contact_info(struct contact_info *contact)
-{
-    //printf("update_contact_info %p (%s)\n",contact,contact->handle);
-    if ( contact->H.size == 0 )
-        contact->H.size = sizeof(*contact);
-    update_storage(&SuperNET_dbs[CONTACT_DATA],contact->handle,&contact->H);
 }
 
 uint64_t conv_acctstr(char *acctstr)
@@ -70,6 +70,38 @@ struct contact_info *find_contact(char *contactstr)
             contact = find_contact_nxt64bits(nxt64bits);
     }
     return(contact);
+}
+
+struct contact_info **conv_contacts_json(int32_t *nump,cJSON *array)
+{
+    int32_t i,j,n;
+    char contactstr[MAX_JSON_FIELD];
+    struct contact_info *contact,**contacts = 0;
+    cJSON *item;
+    *nump = 0;
+    if ( array == 0 || is_cJSON_Array(array) == 0 || (n= cJSON_GetArraySize(array)) <= 0 )
+        return(0);
+    contacts = calloc(n+1,sizeof(*contacts));
+    for (i=j=0; i<n; i++)
+    {
+        item = cJSON_GetArrayItem(array,i);
+        copy_cJSON(contactstr,item);
+        if ( contactstr[0] > 0 )
+        {
+            if ( (contact= find_contact(contactstr)) != 0 )
+            {
+                if ( contact->nxt64bits != 0 )
+                    contacts[j++] = contact;
+                free(contact);
+            }
+        }
+    }
+    if ( (*nump= j) == 0 )
+    {
+        free(contacts);
+        contacts = 0;
+    }
+    return(contacts);
 }
 
 char *removecontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,char *handle)

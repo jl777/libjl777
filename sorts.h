@@ -191,6 +191,21 @@ static int _decreasing_uint64(const void *a,const void *b)
 #undef uint64_b
 }
 
+static int _cmp_strings(const void *a,const void *b)
+{
+#define str_a ((char *)a)
+#define str_b ((char *)b)
+    return(strcmp(str_a,str_b));
+#undef double_a
+#undef double_b
+}
+
+int32_t revsortstrs(char *buf,uint32_t num,int32_t size)
+{
+	qsort(buf,num,size,_cmp_strings);
+	return(0);
+}
+
 int32_t revsortfs(float *buf,uint32_t num,int32_t size)
 {
 	qsort(buf,num,size,_decreasing_float);

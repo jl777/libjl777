@@ -25,7 +25,7 @@ struct SuperNET_db
 };
 
 struct dbreq { struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
-DB_ENV *Storage;
+DB_ENV *Storage,*AStorage;
 struct SuperNET_db SuperNET_dbs[NUM_SUPERNET_DBS],Price_dbs[MAX_PRICEDBS];
 long Total_stored,Num_pricedbs;
 
@@ -149,7 +149,7 @@ DB *open_database(int32_t selector,struct SuperNET_db *sdb,char *fname,uint32_t 
         fprintf(stderr,"open_database error illegal selector.%d for (%s)\n",selector,fname);
         return(0);
      }
-    if ( (ret= db_create(&sdb->dbp,Storage,0)) != 0 || sdb->dbp == 0 )
+    if ( (ret= db_create(&sdb->dbp,selector == ADDRESS_DATA ? AStorage : Storage,0)) != 0 || sdb->dbp == 0 )
     {
         fprintf(stderr,"open_database error.%d creating %s database\n",ret,fname);
         exit(-1);
