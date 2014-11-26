@@ -90,6 +90,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
 void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
 {
     memset(key,0,sizeof(*key));
+    memset(coinaddr,0,16);
     strcpy(coinaddr,coin);
     strcat(coinaddr+strlen(coin)+1,addr);
     key->data = coinaddr;
@@ -106,7 +107,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
-    printf("entry %d %d %d | (%s %s).%d [%s]\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,addr);
+    printf("entry %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,coin,strlen(coin),addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
         AStorage->err(AStorage,ret,"add_address: Database put failed.");
