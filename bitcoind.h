@@ -1190,7 +1190,7 @@ void *Coinloop(void *ptr)
     int64_t height;
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
-    iterate_MGW("7117166754336896747","11060861818140490423");
+    //iterate_MGW("7117166754336896747","11060861818140490423");
 
     for (i=0; i<Numcoins; i++)
     {
