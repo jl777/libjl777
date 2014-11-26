@@ -606,7 +606,6 @@ struct multisig_addr *gen_multisig_addr(int32_t M,int32_t N,struct coin_info *cp
                 strcpy(msig->pubkeys[j].pubkey,pubkey);
                 msig->pubkeys[j].nxt64bits = contact->nxt64bits;
             }
-            free_json(json);
             if ( flag == 0 )
             {
                 free(msig);
@@ -940,7 +939,7 @@ int64_t process_NXTtransaction(char *sender,char *receiver,cJSON *item,char *ref
     struct NXT_AMhdr *hdr;
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp;
-    int32_t height,timestamp,coinid,dir = 0;
+    int32_t height,timestamp=0,coinid,dir = 0;
     int64_t type,subtype,n,assetoshis = 0;
     assetid[0] = 0;
     if ( item != 0 )
@@ -1349,7 +1348,7 @@ void update_asset_actions(struct multisig_addr **msigs,int32_t nummsigs)
     struct batch_info *otherwp;
     //struct replicated_coininfo *lp;
     uint64_t pending_withdraw,pending,unspent,sum,balance;
-    int32_t gatewayid,coinid,createdflag,i,j,n,maxtimestamp = 0;
+    int32_t gatewayid,createdflag,i,j,n,maxtimestamp = 0;
     // printf("update_asset_actions height.%d %d\n",height,mp->timestamps[height]);
     for (i=0; i<Numcoins; i++)
     {
@@ -1368,11 +1367,11 @@ void update_asset_actions(struct multisig_addr **msigs,int32_t nummsigs)
             cointxid = cp->withdrawinfos[0].W.cointxid;
             if ( cp->BATCH.rawtx.batchcrc == cp->withdrawinfos[0].rawtx.batchcrc && cointxid[0] != 0 )
             {
-                printf("crc.%08x/%08x check for %s.%s\n",cp->BATCH.rawtx.batchcrc,cp->withdrawinfos[0].rawtx.batchcrc,coinid_str(coinid),cointxid);
+                printf("crc.%08x/%08x check for %s.%s\n",cp->BATCH.rawtx.batchcrc,cp->withdrawinfos[0].rawtx.batchcrc,cp->name,cointxid);
                 cointp = MTadd_hashtable(&createdflag,Global_mp->coin_txids,cointxid);
                 if ( cointp->numvouts == cp->BATCH.rawtx.numoutputs && cointp->numvins == cp->BATCH.rawtx.numinputs )
                 {
-                    printf("Found BATCH %s on blockchain.%s\n",cointxid,coinid_str(coinid));
+                    printf("Found BATCH %s on blockchain.%s\n",cointxid,cp->name);
                     //mark_as_sent(cp->BATCH.W.redeems,cp->BATCH.W.numredeems);
                     cp->BATCH.rawtx.batchcrc = 0;
                     memset(cp->BATCH.W.cointxid,0,sizeof(cp->BATCH.W.cointxid));
@@ -1406,7 +1405,7 @@ void update_asset_actions(struct multisig_addr **msigs,int32_t nummsigs)
                     }
                 }
             }
-            fprintf(stderr,"\n-> %s unspent %.8f (%.8f) vs pending_withdraws %.8f numredeems.%d numoutputs.%d\n",coinid_str(coinid),dstr(unspent),dstr(sum),dstr(pending),cp->BATCH.rawtx.numredeems,cp->BATCH.rawtx.numoutputs);
+            fprintf(stderr,"\n-> %s unspent %.8f (%.8f) vs pending_withdraws %.8f numredeems.%d numoutputs.%d\n",cp->name,dstr(unspent),dstr(sum),dstr(pending),cp->BATCH.rawtx.numredeems,cp->BATCH.rawtx.numoutputs);
             if ( pending > 0 )
             {
                 signedbytes = calc_batchwithdraw(msigs,nummsigs,cp,&cp->BATCH.rawtx,pending,unspent,accts,n,ap);

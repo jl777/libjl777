@@ -303,7 +303,7 @@ int32_t scan_address_entries()
     void *bigbuf;
     struct SuperNET_db *sdb;
     char buf[512];
-    int32_t createdflag,ret,uniq,m,n = 0;
+    int32_t createdflag=0,ret,uniq,m,n = 0;
     DBT key,data;
     DBC *cursorp = 0;
     void *retdata,*retkey,*p;

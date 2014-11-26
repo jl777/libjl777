@@ -1462,7 +1462,7 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     struct coin_info *cp;
-    char hopNXTaddr[0],refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],cmdstr[MAX_JSON_FIELD];
+    char hopNXTaddr[64],refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],cmdstr[MAX_JSON_FIELD];
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(coin,objs[0]);

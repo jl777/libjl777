@@ -329,8 +329,12 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
+#ifndef __APPLE__
+    Coinloop(0);
+#else
     if ( portable_thread_create((void *)Coinloop,0) == 0 )
         printf("ERROR hist Coinloop SSL\n");
+#endif
     Finished_loading = 1;
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
