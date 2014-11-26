@@ -106,7 +106,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
-    printf("entry%d %d %d | (%s %s).%d\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size);
+    printf("entry %d %d %d | (%s %s).%d [%s]\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
         AStorage->err(AStorage,ret,"add_address: Database put failed.");
@@ -300,8 +300,9 @@ int32_t scan_address_entries()
     {
         clear_pair(&key,&data);
         key.data = buf;
-        key.size = 40;
-        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_IGNORE_LEASE | DB_NEXT)) == 0 )
+        key.ulen = sizeof(buf);
+        key.flags = DB_DBT_USERMEM;
+        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT)) == 0 )
         //while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
         {
             cursorget(sdb,NULL,cursorp,&key,&data,DB_CURRENT);
@@ -314,7 +315,8 @@ int32_t scan_address_entries()
             n++;
             clear_pair(&key,&data);
             key.data = buf;
-            key.size = 40;
+            key.ulen = sizeof(buf);
+            key.flags = DB_DBT_USERMEM;
         }
         cursorclose(sdb,cursorp);
         //cursorp->close(cursorp);
