@@ -899,6 +899,7 @@ uint64_t get_txindstr(char *txidstr,char *coinaddr,char *script,struct coin_info
                             numvouts = cJSON_GetArraySize(vouts);
                             if ( vout < numvouts )
                             {
+                                obj = cJSON_GetArrayItem(vouts,vout);
                                 value = conv_cJSON_float(obj,"value");
                                 extract_txvals(coinaddr,script,cp->nohexout,obj);
                                 if ( script[0] == 0 && value > 0 )
@@ -1181,48 +1182,16 @@ int32_t skip_address(char *NXTaddr)
     return(0);
 }
 
-
-void foo(int32_t *nump,int32_t selector)
-{
-    struct SuperNET_db *sdb;
-    int32_t ret,n = 0;
-    DBT key,data;
-    struct address_entry B;
-    DBC *cursorp = 0;
-    *nump = 0;
-    sdb = &SuperNET_dbs[selector];
-    if ( (ret= dbcursor(sdb,NULL,&cursorp,0)) != 0 )
-    {
-        Storage->err(Storage,ret,"copy_all_DBentries: Cursor open failed.");
-        return;
-    }
-    if ( cursorp != 0 )
-    {
-        clear_pair(&key,&data);
-        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT)) == 0 )
-        {
-            if ( data.size == sizeof(B) )
-            {
-                memcpy(&B,data.data,sizeof(B));
-                printf("n.%-6d %7u %u %u | (%s).%d\n",n,B.blocknum,B.txind,B.v,key.data,key.size);
-            }
-            n++;
-            clear_pair(&key,&data);
-        }
-        cursorclose(sdb,cursorp);
-    }
-    //fprintf(stderr,"done copy all dB.%d\n",selector);
-    *nump = n;
-}
-
 void *Coinloop(void *ptr)
 {
+    int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid);
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
     printf("Coinloop numcoins.%d\n",Numcoins);
-    //foo(&i,ADDRESS_DATA);
     scan_address_entries();
+    iterate_MGW("7117166754336896747","11060861818140490423");
+
     for (i=0; i<Numcoins; i++)
     {
         if ( (cp= Daemons[i]) != 0 )

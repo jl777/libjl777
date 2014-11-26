@@ -790,15 +790,14 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj)
     coinid = (int)get_cJSON_int(obj,"coinid");
     nameobj = cJSON_GetObjectItem(obj,"coin");
     copy_cJSON(namestr,nameobj);
-    if ( namestr[0] != 0 )
+    if ( namestr[0] != 0 && strcmp(namestr,"BTCD") == 0 )
     {
         cp = get_coin_info(namestr);
-        if ( conv_coinstr(namestr) != coinid )
+        if ( cp == 0 || conv_coinstr(namestr) != coinid )
         {
-            printf("name miscompare %s.%d != %s.%d\n",cp->name,conv_coinstr(namestr),namestr,coinid);
+            printf("name miscompare %s.%d != %s.%d\n",cp!=0?cp->name:"nullcp",conv_coinstr(namestr),namestr,coinid);
             return(0);
         }
-        msig = alloc_multisig_addr(cp->name,NUM_GATEWAYS-1,NUM_GATEWAYS,NXTaddr);
         addrobj = cJSON_GetObjectItem(obj,"address");
         redeemobj = cJSON_GetObjectItem(obj,"redeemScript");
         pubkeysobj = cJSON_GetObjectItem(obj,"pubkey");
@@ -806,12 +805,13 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj)
         if ( nxtobj != 0 )
         {
             copy_cJSON(nxtstr,nxtobj);
-            if ( strcmp(nxtstr,NXTaddr) != 0 )
+            if ( NXTaddr != 0 && strcmp(nxtstr,NXTaddr) != 0 )
                 printf("WARNING: mismatched NXTaddr.%s vs %s\n",nxtstr,NXTaddr);
         }
         //printf("msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
-        if ( addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
+        if ( nxtstr[0] != 0 && addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
         {
+            msig = alloc_multisig_addr(cp->name,NUM_GATEWAYS-1,NUM_GATEWAYS,nxtstr);
             n = cJSON_GetArraySize(pubkeysobj);
             copy_cJSON(msig->redeemScript,redeemobj);
             copy_cJSON(msig->multisigaddr,addrobj);
@@ -828,7 +828,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj)
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
         return(msig);
     }
-    printf("decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
+    //printf("decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
     return(0);
 }
 
@@ -840,7 +840,7 @@ void process_MGW_message(struct json_AM *ap,char *sender,char *receiver,char *tx
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        printf("func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        //printf("func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
@@ -848,11 +848,12 @@ void process_MGW_message(struct json_AM *ap,char *sender,char *receiver,char *tx
                 //update_coinacct_addresses(ap->H.nxt64bits,argjson,txid,-1);
                 break;
             case BIND_DEPOSIT_ADDRESS:
-                if ( is_gateway_addr(sender) != 0 )
+                if ( is_gateway_addr(sender) != 0 && (msig= decode_msigjson(0,argjson)) != 0 )
                 {
+                    printf("%p func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     update_msig_info(msig);
                     free(msig);
-                } else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
+                } //else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
                 break;
             case DEPOSIT_CONFIRMED:
                 // need to mark cointxid with AMtxid to prevent confirmation process generating AM each time
@@ -912,10 +913,10 @@ int32_t ensure_wp(struct coin_info *cp,uint64_t amount,char *NXTaddr,char *redee
 {
     int32_t createdflag;
     struct withdraw_info *wp;
-    if ( is_limbo_redeem(cp->name,redeemtxid) != 0 )
-        return(-1);
     if ( cp != 0 )
     {
+        if ( is_limbo_redeem(cp->name,redeemtxid) != 0 )
+            return(-1);
         wp = MTadd_hashtable(&createdflag,Global_mp->redeemtxids,redeemtxid);
         if ( createdflag != 0 )
         {
@@ -924,7 +925,7 @@ int32_t ensure_wp(struct coin_info *cp,uint64_t amount,char *NXTaddr,char *redee
             strcpy(wp->NXTaddr,NXTaddr);
             printf("%s ensure redeem.%s %.8f -> NXT.%s\n",cp->name,redeemtxid,dstr(amount),NXTaddr);
         }
-    } else printf("Unexpected missing replicated_coininfo for coin.%s\n",cp->name);
+    } else if ( cp != 0 ) printf("Unexpected missing replicated_coininfo for coin.%s\n",cp->name);
     return(0);
 }
 
@@ -1018,7 +1019,7 @@ int64_t process_NXTtransaction(char *sender,char *receiver,cJSON *item,char *ref
                                             printf("got comment.(%s) cointxidstr.(%s)\n",tp->comment,cointxid);
                                             if ( cointxid[0] != 0 )
                                                 tp->cointxid = clonestr(cointxid);
-                                        }
+                                        } else cointxid[0] = 0;
                                         free_json(commentobj);
                                     }
                                     if ( coinid >= 0 && is_limbo_redeem(ap->name,txid) == 0 )
@@ -1191,15 +1192,23 @@ int64_t init_NXT_transactions(char *refNXTaddr,char *refassetid)
     int64_t val,netsatoshis = 0;
     int32_t i,n;
     cJSON *item,*json,*array;
-    sprintf(cmd,"%s=getAccountTransactions&acccount=%s",_NXTSERVER,refNXTaddr);
+    if ( refNXTaddr[0] == 0 || refassetid[0] == 0 )
+    {
+        printf("illegal refNXT.(%s) or asset.(%s)\n",refNXTaddr,refassetid);
+        return(0);
+    }
+    sprintf(cmd,"%s=getAccountTransactions&account=%s",_NXTSERVER,refNXTaddr);
+    printf("init_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,refassetid,cmd);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
+        //printf("(%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
                 for (i=0; i<n; i++)
                 {
+                    fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     val =  process_NXTtransaction(sender,receiver,item,refNXTaddr,assetid);
                     if ( refassetid != 0 && strcmp(assetid,refassetid) == 0 )
@@ -1209,7 +1218,7 @@ int64_t init_NXT_transactions(char *refNXTaddr,char *refassetid)
             free_json(json);
         }
         free(jsonstr);
-    }
+    } else printf("error with init_NXT_transactions.(%s)\n",cmd);
     return(netsatoshis);
 }
 

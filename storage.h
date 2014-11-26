@@ -284,11 +284,15 @@ void set_coin_blockheight(char *coin,uint32_t blocknum)
 
 int32_t scan_address_entries()
 {
+    int32_t bulksize = 1024 * 1024;
+    void *bigbuf;
     struct SuperNET_db *sdb;
     char buf[512];
-    int32_t ret,n = 0;
+    int32_t createdflag,ret,uniq,m,n = 0;
     DBT key,data;
     DBC *cursorp = 0;
+    void *retdata,*retkey,*p;
+    size_t retdlen,retkeylen;
     struct address_entry B;
     sdb = &SuperNET_dbs[ADDRESS_DATA];
     if ( (ret= dbcursor(sdb,NULL,&cursorp,0)) != 0 )
@@ -297,30 +301,50 @@ int32_t scan_address_entries()
         Storage->err(Storage,ret,"copy_all_DBentries: Cursor open failed.");
         return(0);
     }
+    uniq = m = 0;
     if ( cursorp != 0 )
     {
+        bigbuf = valloc(bulksize);
         clear_pair(&key,&data);
         key.data = buf;
         key.ulen = sizeof(buf);
         key.flags = DB_DBT_USERMEM;
-        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT)) == 0 )
-        //while ( (ret= cursorp->get(cursorp,&key,&data,DB_NEXT)) == 0 )
+        data.ulen = bulksize;
+        data.flags = DB_DBT_USERMEM;
+        data.data = bigbuf;
+        retkey = buf;
+        retkeylen = sizeof(buf);
+        //n.362300  108872 2 0 | (BTCD RNvD9Nv2MRvQ4Y3KjEAsTz5FGsukZHEp2n).512 | 31131 m.31385
+        //n.270300   86260 2 0 | (BTCD RCyhi6SyxTAAajEd6WiS6uDrkRgQvfBaD3).512 | 20936
+        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT|DB_MULTIPLE_KEY)) == 0 )
+        //while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT|DB_MULTIPLE)) == 0 )
         {
-            cursorget(sdb,NULL,cursorp,&key,&data,DB_CURRENT);
-            if ( data.size == sizeof(B) )
+            m++;
+            for (DB_MULTIPLE_INIT(p,&data); ;)
             {
-                memcpy(&B,data.data,sizeof(B));
-                printf("n.%-6d %7u %u %u | (%s %s).%d\n",n,B.blocknum,B.txind,B.v,key.data,key.data+strlen(key.data)+1,key.size);
-                set_coin_blockheight("BTCD",B.blocknum);
+                DB_MULTIPLE_KEY_NEXT(p,&data,retkey,retkeylen,retdata,retdlen);
+                //DB_MULTIPLE_NEXT(p,&data,retdata,retdlen);
+                if ( p == NULL )
+                    break;
+                memcpy(&B,retdata,sizeof(B));
+                //add_hashtable(&createdflag,Global_mp->coin_txids,retkey+strlen(retkey)+1);
+                uniq += createdflag;
+                if ( (n % 100) == 0 )
+                    printf("n.%-6d %7u %u %u | (%s %s).%ld | %d m.%d\n",n,B.blocknum,B.txind,B.v,retkey,retkey+strlen(retkey)+1,retkeylen,uniq,m);
+                set_coin_blockheight(retkey,B.blocknum);
+                n++;
             }
-            n++;
             clear_pair(&key,&data);
             key.data = buf;
             key.ulen = sizeof(buf);
             key.flags = DB_DBT_USERMEM;
+            data.ulen = bulksize;
+            data.flags = DB_DBT_USERMEM;
+            data.data = bigbuf;
         }
         cursorclose(sdb,cursorp);
         //cursorp->close(cursorp);
+        free(bigbuf);
     }
     //fprintf(stderr,"done copy all dB.%d\n",selector);
     return(n);

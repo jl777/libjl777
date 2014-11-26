@@ -290,7 +290,7 @@ int32_t _block_on_dbreq(struct dbreq *req)
     struct SuperNET_db *sdb = req->sdb;//&SuperNET_dbs[req->selector];
     int32_t retval,busy;
     while ( req->doneflag == 0 )
-        usleep(5000); // if not done after the first context switch, likely to take a while
+        usleep(500); // if not done after the first context switch, likely to take a while
     retval = req->retval;
     free(req);
     sdb->busy--;
