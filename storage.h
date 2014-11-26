@@ -120,7 +120,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
 {
     struct SuperNET_db *sdb;
     struct address_entry B,*vec = 0;
-    int32_t i,n,iter,ret,replaced = 0;
+    int32_t i,j,k,n,iter,ret,replaced = 0;
     char coinaddr[512];
     DB_TXN *txn = NULL;
     DBC *cursorp = 0;
@@ -140,7 +140,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
     }
     if ( cursorp != 0 )
     {
-        for (iter=n=0; iter<2; iter++)
+        for (iter=n=j=0; iter<2; iter++)
         {
             i = 0;
             clear_pair(&key,&data);
@@ -156,7 +156,21 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
                 {
                     memcpy(&B,data.data,sizeof(B));
                     if ( iter == 1 && i < n )
-                        vec[i] = B;
+                    {
+                        if ( j > 0 )
+                        {
+                            for (k=0; k<j; k++)
+                                if ( memcmp(&vec[k],&B,sizeof(B)) == 0 )
+                                    break;
+                        } else k = 0;
+                        if ( k == j )
+                            vec[j++] = B;
+                        else
+                        {
+                            //ret = cursordel(sdb,txn,cursorp,0);
+                            //printf("should DELETE!!!\n");
+                        }
+                    }
                     else if ( iter == 0 && bp != 0 && B.blocknum == bp->blocknum && B.txind == bp->txind && B.v == bp->v )
                     {
                         clear_pair(&key,&data);
@@ -177,7 +191,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
             {
                 if ( iter == 0 )
                 {
-                    (*nump) = n = i;
+                    n = i;
                     vec = calloc(n,sizeof(*vec));
                 }
                 else if ( i != n )
@@ -186,6 +200,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
                     free(vec);
                     vec = 0;
                 }
+                (*nump) = j;
             }
             else if ( replaced == 0 )
                 break;

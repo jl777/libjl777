@@ -228,6 +228,7 @@ int32_t _process_dbiter(struct SuperNET_db *sdb)
             case 'O': req->retval = sdb->dbp->cursor(sdb->dbp,req->txn,req->cursor,req->flags); break;
             case 'C': req->retval = ((DBC *)req->cursor)->close(req->cursor); break;
             case 'g': req->retval = ((DBC *)req->cursor)->get(req->cursor,&req->key,&data,req->flags); break;
+            case 'd': req->retval = ((DBC *)req->cursor)->del(req->cursor,req->flags); break;
             case 'p': req->retval = ((DBC *)req->cursor)->put(req->cursor,&req->key,&data,req->flags); break;
             default:
                 printf("UNEXPECTED SuperNET_db funcid.(%c) %d\n",req->funcid,req->funcid);
@@ -363,6 +364,11 @@ int32_t dbcursor(struct SuperNET_db *sdb,DB_TXN *txn,DBC **cursor,int32_t flags)
 int32_t cursorget(struct SuperNET_db *sdb,DB_TXN *txn,DBC *cursor,DBT *key,DBT *data,int32_t flags)
 {
     return(dbcmd("cursorget",'g',sdb,txn,key,data,flags,cursor));
+}
+
+int32_t cursordel(struct SuperNET_db *sdb,DB_TXN *txn,DBC *cursor,int32_t flags)
+{
+    return(dbcmd("cursordel",'d',sdb,txn,0,0,flags,cursor));
 }
 
 int32_t cursorput(struct SuperNET_db *sdb,DB_TXN *txn,DBC *cursor,DBT *key,DBT *data,int32_t flags)

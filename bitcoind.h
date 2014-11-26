@@ -180,6 +180,118 @@ char *send_rawtransaction(struct coin_info *cp,char *txbytes)
     return(retstr);
 }
 
+cJSON *script_has_address(int32_t *nump,cJSON *scriptobj)
+{
+    int32_t i,n;
+    cJSON *addresses,*addrobj;
+    if ( scriptobj == 0 )
+        return(0);
+    addresses = cJSON_GetObjectItem(scriptobj,"addresses");
+    *nump = 0;
+    if ( addresses != 0 )
+    {
+        *nump = n = cJSON_GetArraySize(addresses);
+        for (i=0; i<n; i++)
+        {
+            addrobj = cJSON_GetArrayItem(addresses,i);
+            return(addrobj);
+        }
+    }
+    return(0);
+}
+
+#define OP_HASH160_OPCODE 0xa9
+#define OP_EQUAL_OPCODE 0x87
+#define OP_DUP_OPCODE 0x76
+#define OP_EQUALVERIFY_OPCODE 0x88
+#define OP_CHECKSIG_OPCODE 0xac
+
+int32_t add_opcode(char *hex,int32_t offset,int32_t opcode)
+{
+    hex[offset + 0] = hexbyte((opcode >> 4) & 0xf);
+    hex[offset + 1] = hexbyte(opcode & 0xf);
+    return(offset+2);
+}
+
+void calc_script(char *script,char *pubkey)
+{
+    int32_t offset,len;
+    offset = 0;
+    len = (int32_t)strlen(pubkey);
+    offset = add_opcode(script,offset,OP_DUP_OPCODE);
+    offset = add_opcode(script,offset,OP_HASH160_OPCODE);
+    offset = add_opcode(script,offset,len/2);
+    memcpy(script+offset,pubkey,len), offset += len;
+    offset = add_opcode(script,offset,OP_EQUALVERIFY_OPCODE);
+    offset = add_opcode(script,offset,OP_CHECKSIG_OPCODE);
+    script[offset] = 0;
+}
+
+int32_t convert_to_bitcoinhex(char *scriptasm)
+{
+    //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
+    char *hex,pubkey[512];
+    int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
+    len = (int32_t)strlen(scriptasm);
+    // worlds most silly assembler!
+    OP_HASH160_len = strlen("OP_DUP OP_HASH160");
+    OP_EQUAL_len = strlen("OP_EQUALVERIFY OP_CHECKSIG");
+    if ( strncmp(scriptasm,"OP_DUP OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUALVERIFY OP_CHECKSIG",OP_EQUAL_len) == 0 )
+    {
+        middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
+        memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
+        pubkey[middlelen] = 0;
+        
+        hex = calloc(1,len+1);
+        calc_script(hex,pubkey);
+        //printf("(%s) -> script.(%s) (%s)\n",scriptasm,pubkey,hex);
+        strcpy(scriptasm,hex);
+        free(hex);
+        return((int32_t)(2+middlelen+2));
+    }
+    // printf("cant assembly anything but OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
+    return(-1);
+}
+
+int32_t extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
+{
+    int32_t numaddresses;
+    cJSON *scriptobj,*addrobj,*hexobj;
+    scriptobj = cJSON_GetObjectItem(txobj,"scriptPubKey");
+    if ( scriptobj != 0 )
+    {
+        addrobj = script_has_address(&numaddresses,scriptobj);
+        if ( coinaddr != 0 )
+            copy_cJSON(coinaddr,addrobj);
+        if ( nohexout != 0 )
+            hexobj = cJSON_GetObjectItem(scriptobj,"asm");
+        else hexobj = cJSON_GetObjectItem(scriptobj,"hex");
+        if ( script != 0 )
+        {
+            copy_cJSON(script,hexobj);
+            if ( nohexout != 0 )
+                convert_to_bitcoinhex(script);
+        }
+        return(0);
+    }
+    return(-1);
+}
+
+char *unspent_json_params(char *txid,int32_t vout)
+{
+    char *unspentstr;
+    cJSON *array,*nobj,*txidobj;
+    array = cJSON_CreateArray();
+    nobj = cJSON_CreateNumber(vout);
+    txidobj = cJSON_CreateString(txid);
+    cJSON_AddItemToArray(array,txidobj);
+    cJSON_AddItemToArray(array,nobj);
+    unspentstr = cJSON_Print(array);
+    free_json(array);
+    return(unspentstr);
+}
+
+#ifdef oldway
 struct coin_value *update_coin_value(int32_t height,int32_t numoutputs,struct coin_info *cp,int32_t isinternal,int32_t isconfirmed,struct coin_txid *tp,int32_t i,struct coin_value *vp,int64_t value,char *coinaddr,char *script)
 {
     if ( vp == 0 )
@@ -305,103 +417,6 @@ int32_t process_vins(struct coin_info *cp,uint32_t height,struct coin_txid *tp,i
     return(flag);
 }
 
-cJSON *script_has_address(int32_t *nump,cJSON *scriptobj)
-{
-    int32_t i,n;
-    cJSON *addresses,*addrobj;
-    if ( scriptobj == 0 )
-        return(0);
-    addresses = cJSON_GetObjectItem(scriptobj,"addresses");
-    *nump = 0;
-    if ( addresses != 0 )
-    {
-        *nump = n = cJSON_GetArraySize(addresses);
-        for (i=0; i<n; i++)
-        {
-            addrobj = cJSON_GetArrayItem(addresses,i);
-            return(addrobj);
-        }
-    }
-    return(0);
-}
-
-#define OP_HASH160_OPCODE 0xa9
-#define OP_EQUAL_OPCODE 0x87
-#define OP_DUP_OPCODE 0x76
-#define OP_EQUALVERIFY_OPCODE 0x88
-#define OP_CHECKSIG_OPCODE 0xac
-
-int32_t add_opcode(char *hex,int32_t offset,int32_t opcode)
-{
-    hex[offset + 0] = hexbyte((opcode >> 4) & 0xf);
-    hex[offset + 1] = hexbyte(opcode & 0xf);
-    return(offset+2);
-}
-
-void calc_script(char *script,char *pubkey)
-{
-    int32_t offset,len;
-    offset = 0;
-    len = (int32_t)strlen(pubkey);
-    offset = add_opcode(script,offset,OP_DUP_OPCODE);
-    offset = add_opcode(script,offset,OP_HASH160_OPCODE);
-    offset = add_opcode(script,offset,len/2);
-    memcpy(script+offset,pubkey,len), offset += len;
-    offset = add_opcode(script,offset,OP_EQUALVERIFY_OPCODE);
-    offset = add_opcode(script,offset,OP_CHECKSIG_OPCODE);
-    script[offset] = 0;
-}
-
-int32_t convert_to_bitcoinhex(char *scriptasm)
-{
-    //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
-    char *hex,pubkey[512];
-    int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
-    len = (int32_t)strlen(scriptasm);
-    // worlds most silly assembler!
-    OP_HASH160_len = strlen("OP_DUP OP_HASH160");
-    OP_EQUAL_len = strlen("OP_EQUALVERIFY OP_CHECKSIG");
-    if ( strncmp(scriptasm,"OP_DUP OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUALVERIFY OP_CHECKSIG",OP_EQUAL_len) == 0 )
-    {
-        middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
-        memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
-        pubkey[middlelen] = 0;
-        
-        hex = calloc(1,len+1);
-        calc_script(hex,pubkey);
-        //printf("(%s) -> script.(%s) (%s)\n",scriptasm,pubkey,hex);
-        strcpy(scriptasm,hex);
-        free(hex);
-        return((int32_t)(2+middlelen+2));
-    }
-    // printf("cant assembly anything but OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
-    return(-1);
-}
-
-int32_t extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
-{
-    int32_t numaddresses;
-    cJSON *scriptobj,*addrobj,*hexobj;
-    scriptobj = cJSON_GetObjectItem(txobj,"scriptPubKey");
-    if ( scriptobj != 0 )
-    {
-        addrobj = script_has_address(&numaddresses,scriptobj);
-        if ( coinaddr != 0 )
-            copy_cJSON(coinaddr,addrobj);
-        if ( nohexout != 0 )
-            hexobj = cJSON_GetObjectItem(scriptobj,"asm");
-        else hexobj = cJSON_GetObjectItem(scriptobj,"hex");
-        if ( script != 0 )
-        {
-            copy_cJSON(script,hexobj);
-            if ( nohexout != 0 )
-                convert_to_bitcoinhex(script);
-        }
-        return(0);
-    }
-    return(-1);
-}
-
 uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct coin_txid *tp,int32_t isconfirmed,cJSON *vouts)
 {
     uint64_t value,unspent = 0;
@@ -449,20 +464,6 @@ uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct
         }
     }
     return(flag);
-}
-
-char *unspent_json_params(char *txid,int32_t vout)
-{
-    char *unspentstr;
-    cJSON *array,*nobj,*txidobj;
-    array = cJSON_CreateArray();
-    nobj = cJSON_CreateNumber(vout);
-    txidobj = cJSON_CreateString(txid);
-    cJSON_AddItemToArray(array,txidobj);
-    cJSON_AddItemToArray(array,nobj);
-    unspentstr = cJSON_Print(array);
-    free_json(array);
-    return(unspentstr);
 }
 
 uint64_t calc_coin_unspent(char *script,struct coin_info *cp,struct coin_txid *tp,int32_t vout)
@@ -604,6 +605,7 @@ int32_t add_bitcoind_uniquetxids(struct coin_info *cp,int64_t blockheight)
     }
     return(0);
 }
+#endif
 
 // ADDRESS_DATA DB
 
@@ -624,7 +626,7 @@ void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int
 {
     struct address_entry B;
     set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
-    _add_address_entry(coin,addr,&B,1||syncflag);
+    _add_address_entry(coin,addr,&B,syncflag);
 }
 
 void update_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag)
@@ -647,26 +649,12 @@ char *get_transaction(struct coin_info *cp,char *txidstr)
     char *rawtransaction=0,txid[4096]; //*retstr=0,*str,
     sprintf(txid,"\"%s\", 1",txidstr);
     rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid);
-    /*if ( rawtransaction != 0 )
-    {
-        if ( rawtransaction[0] != 0 )
-        {
-            str = malloc(strlen(rawtransaction)+4);
-            sprintf(str,"\"%s\"",rawtransaction);
-            retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
-            free(str);
-            if ( retstr == 0 )
-                printf("null retstr from decoderawtransaction (%s)\n",rawtransaction);
-        }
-        free(rawtransaction);
-    } else printf("null rawtransaction from (%s) (%s)\n",txid,txidstr);
-    return(retstr);*/
     return(rawtransaction);
 }
 
-int32_t calc_isinternal(struct coin_info *cp,char *coinaddr,uint32_t height,int32_t i,int32_t numvouts)
+int32_t calc_isinternal(struct coin_info *cp,char *coinaddr_v0,uint32_t height,int32_t i,int32_t numvouts)
 {
-    if ( i == 0 && cp->marker != 0 && strcmp(cp->marker,coinaddr) == 0 )
+    if ( coinaddr_v0 == 0 || (cp->marker != 0 && strcmp(cp->marker,coinaddr_v0) == 0) )
     {
         if ( height < cp->forkheight )
             return((i > 1) ? 1 : 0);
@@ -677,6 +665,7 @@ int32_t calc_isinternal(struct coin_info *cp,char *coinaddr,uint32_t height,int3
 
 uint64_t update_vouts(int32_t *isinternalp,char *coinaddr,char *script,struct coin_info *cp,uint32_t blockheight,int32_t txind,cJSON *vouts,int32_t vind,int32_t syncflag)
 {
+    char coinaddr_v0[1024];
     uint64_t value,unspent = 0;
     cJSON *obj;
     int32_t i,numvouts,flag = 0;
@@ -687,16 +676,18 @@ uint64_t update_vouts(int32_t *isinternalp,char *coinaddr,char *script,struct co
         for (i=0; i<numvouts; i++)
         {
             obj = cJSON_GetArrayItem(vouts,i);
-            if ( obj != 0 && (vind < 0 || i == vind) )
+            extract_txvals(coinaddr,script,cp->nohexout,obj);
+            if ( i == 0 )
+                strcpy(coinaddr_v0,coinaddr);
+            if ( vind < 0 || i == vind )
             {
                 value = conv_cJSON_float(obj,"value");
-                extract_txvals(coinaddr,script,cp->nohexout,obj);
                 if ( script[0] == 0 && value > 0 )
                     printf("process_vouts WARNING coinaddr,(%s) %s\n",coinaddr,script);
                 if ( value == 0 )
                     continue;
                 unspent += value;
-                (*isinternalp) = flag = calc_isinternal(cp,coinaddr,blockheight,i,numvouts);
+                (*isinternalp) = flag = calc_isinternal(cp,coinaddr_v0,blockheight,i,numvouts);
                 add_address_entry(cp->name,coinaddr,blockheight,txind,-1,i,flag,0,syncflag * (i == (numvouts-1) || vind < 0));
             }
         }
@@ -858,13 +849,15 @@ int32_t update_address_infos(struct coin_info *cp,uint32_t blockheight)
     return(flag);
 }
 
-uint64_t get_txindstr(char *txidstr,char *coinaddr,char *script,struct coin_info *cp,uint32_t blockheight,int32_t txind,int32_t vout)
+uint64_t get_txindstr(int32_t *numvoutsp,char *txidstr,char *coinaddr,char *script,struct coin_info *cp,uint32_t blockheight,int32_t txind,int32_t vout)
 {
     char numstr[128],buf[1024],*blocktxt,*retstr,*blockhashstr=0;
     uint64_t value = 0;
     cJSON *obj,*json,*txobj,*vouts,*txjson;
     int32_t blockid,n,numvouts,flag = 0;
     sprintf(numstr,"%u",blockheight);
+    if ( numvoutsp != 0 )
+        *numvoutsp = 0;
     blockhashstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getblockhash",numstr);
     if ( blockhashstr == 0 || blockhashstr[0] == 0 )
     {
@@ -897,6 +890,8 @@ uint64_t get_txindstr(char *txidstr,char *coinaddr,char *script,struct coin_info
                         {
                             vouts = cJSON_GetObjectItem(txjson,"vout");
                             numvouts = cJSON_GetArraySize(vouts);
+                            if ( numvoutsp != 0 )
+                                *numvoutsp = numvouts;
                             if ( vout < numvouts )
                             {
                                 obj = cJSON_GetArrayItem(vouts,vout);
@@ -1184,13 +1179,13 @@ int32_t skip_address(char *NXTaddr)
 
 void *Coinloop(void *ptr)
 {
-    int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid);
+    int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid,int32_t reloadflag);
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
-    //iterate_MGW("7117166754336896747","11060861818140490423");
+    iterate_MGW("7117166754336896747","11060861818140490423",0);
 
     for (i=0; i<Numcoins; i++)
     {

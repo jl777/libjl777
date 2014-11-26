@@ -656,7 +656,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             {
                 NXT_FORKHEIGHT = 173271;
                 if ( NXTAPIURL[0] == 0 )
-                    strcpy(NXTAPIURL,"http://127.0.0.1:7876/nxt");
+                    strcpy(NXTAPIURL,"https://127.0.0.1:7876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"7117166754336896747");
                 //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";

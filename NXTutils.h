@@ -433,7 +433,7 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
 {
     cJSON *json;
     uint64_t mult = 1;
-    char *jsonstr,buf[1024];
+    char *jsonstr,buf[4096];
     int32_t i;
     jsonstr = issue_getAsset(0,assetidstr);
     if ( jsonstr != 0 )

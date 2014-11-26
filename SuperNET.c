@@ -35,7 +35,7 @@ cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
         else sprintf(params,"{\"requestType\":\"%s\",\"%s\":\"%s\"}",cmd,field0,arg0);
     }
     else sprintf(params,"{\"requestType\":\"%s\"}",cmd);
-    retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"http://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
+    retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"https://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
     if ( retstr != 0 )
     {
         json = cJSON_Parse(retstr);

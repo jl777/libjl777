@@ -604,7 +604,7 @@ int32_t SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
 int32_t NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
-char NXTAPIURL[MAX_JSON_FIELD] = { "http://127.0.0.1:7876/nxt" };
+char NXTAPIURL[MAX_JSON_FIELD] = { "https://127.0.0.1:7876/nxt" };
 char NXTSERVER[MAX_JSON_FIELD] = { "http://127.0.0.1:7876/nxt?requestType" };
 
 struct hashtable *orderbook_txids;

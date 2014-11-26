@@ -243,14 +243,15 @@ struct withdraw_info *parse_batch_json(struct withdraw_info *W,cJSON *argjson)
 
 struct withdraw_info *parse_moneysent_json(struct withdraw_info *W,cJSON *argjson)
 {
-    int64_t total;
-    int32_t i,j,n,numxps,createdflag,timestamp,vout,coinid = -1;
-    char buf[512],assetidstr[512],NXTtxidstr[64],txin[1024];
-    cJSON *array,*item;
+    //int64_t total;
+    //int32_t i,j,n,numxps,vout;
+    int32_t createdflag,timestamp,coinid = -1;
+    char buf[512],assetidstr[512],NXTtxidstr[64];//,txin[1024];
+    cJSON *array;//,*item;
     struct NXT_assettxid *tp;
     struct coin_txid *cointp;
     struct coin_info *cp;
-    struct crosschain_info **xps;
+    //struct crosschain_info **xps;
     struct withdraw_info *wp = 0;
     if ( argjson != 0 )
     {
@@ -1028,7 +1029,7 @@ int64_t process_NXTtransaction(char *sender,char *receiver,cJSON *item,char *ref
                                         {
                                             printf("%s got comment.(%s) gotredeem.(%s) coinid.%d %.8f\n",ap->name,tp->comment,cointxid,coinid,dstr(tp->quantity * ap->mult));
                                             tp->redeemtxid = calc_nxt64bits(txid);
-                                            printf("protocol redeem.(%s)\n",txid);
+                                            //printf("protocol redeem.(%s)\n",txid);
                                             dir = -1;
                                             if ( tp->comment != 0 )
                                                 tp->completed = MGW_PENDING_WITHDRAW;
@@ -1208,7 +1209,7 @@ int64_t init_NXT_transactions(char *refNXTaddr,char *refassetid)
             {
                 for (i=0; i<n; i++)
                 {
-                    fprintf(stderr,"%d/%d ",i,n);
+                    //fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     val =  process_NXTtransaction(sender,receiver,item,refNXTaddr,assetid);
                     if ( refassetid != 0 && strcmp(assetid,refassetid) == 0 )
@@ -1220,94 +1221,6 @@ int64_t init_NXT_transactions(char *refNXTaddr,char *refassetid)
         free(jsonstr);
     } else printf("error with init_NXT_transactions.(%s)\n",cmd);
     return(netsatoshis);
-}
-
-int32_t ready_to_xferassets()
-{
-    // if fresh reboot, need to wait the xfer max duration + 1 block before running this
-    static uint32_t firsttime,firstNXTblock;
-    if ( firsttime == 0 )
-        firsttime = (uint32_t)time(NULL);
-    if ( time(NULL) < (firsttime + DEPOSIT_XFER_DURATION*60) )
-        return(0);
-    if ( firstNXTblock == 0 )
-        firstNXTblock = get_NXTblock();
-    if ( firstNXTblock == 0 || get_NXTblock() < (firstNXTblock + 3) )
-        return(0);
-    if ( add_pendingxfer(0,0) != 0 )
-        return(0);
-    return(1);
-}
-
-int32_t process_msigdeposits(struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr)
-{
-    char txidstr[1024],coinaddr[1024],script[4096],comment[4096];
-    struct NXT_assettxid *tp;
-    uint64_t xfertxid,value;
-    int32_t j,nonz = 0;
-    for (j=0; j<ap->num; j++)
-    {
-        tp = ap->txids[j];
-        if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
-            break;
-    }
-    if ( j == ap->num )
-    {
-        value = get_txindstr(txidstr,coinaddr,script,cp,entry->blocknum,entry->txind,entry->v);
-        if ( strcmp(msigaddr,coinaddr) == 0 && txidstr[0] != 0 )
-        {
-            for (j=0; j<ap->num; j++)
-            {
-                tp = ap->txids[j];
-                if ( tp->receiverbits == nxt64bits && tp->cointxid != 0 && strcmp(tp->cointxid,txidstr) == 0 )
-                {
-                    printf("set cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
-                    tp->cointxind = entry->txind;
-                    tp->coinv = entry->v;
-                    tp->coinblocknum = entry->blocknum;
-                    break;
-                }
-            }
-            if ( j == ap->num )
-            {
-                if ( ready_to_xferassets() > 0 )
-                {
-                    sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v);
-                    printf("Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
-                    xfertxid = 0;//issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,refassetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment);
-                    add_pendingxfer(0,xfertxid);
-                    nonz++;
-                    // get xfer txid, add to list and wait for it to get to blockchain before iterating again
-                }
-            }
-        }
-    }
-    return(nonz);
-}
-
-int32_t process_msigaddr(struct NXT_asset *ap,char *refassetid,char *NXTaddr,struct coin_info *cp,char *msigaddr)
-{
-    struct address_entry *entries,*entry;
-    int32_t i,n,nonz = 0;
-    uint64_t nxt64bits;
-    if ( ap->mult == 0 )
-    {
-        printf("ap->mult is ZERO for %s?\n",refassetid);
-        return(-1);
-    }
-    nxt64bits = calc_nxt64bits(NXTaddr);
-    if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
-    {
-        init_NXT_transactions(NXTaddr,refassetid);
-        for (i=0; i<n; i++)
-        {
-            entry = &entries[i];
-            if ( entry->vinflag == 0 && entry->isinternal == 0 && ap->num > 0 )
-                nonz += process_msigdeposits(cp,entry,nxt64bits,ap,msigaddr);
-        }
-        free(entries);
-    }
-    return(nonz);
 }
 
 uint64_t update_assetacct_actions(uint64_t *pending_withdrawp,struct coin_info *cp,struct NXT_acct *np,struct NXT_asset *ap,int32_t maxtimestamp)
@@ -1538,7 +1451,105 @@ void update_asset_actions(struct multisig_addr **msigs,int32_t nummsigs)
         free(accts);
 }
 
-int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid)
+int32_t ready_to_xferassets()
+{
+    // if fresh reboot, need to wait the xfer max duration + 1 block before running this
+    static uint32_t firsttime,firstNXTblock;
+    if ( firsttime == 0 )
+        firsttime = (uint32_t)time(NULL);
+    if ( time(NULL) < (firsttime + DEPOSIT_XFER_DURATION*60) )
+        return(0);
+    if ( firstNXTblock == 0 )
+        firstNXTblock = get_NXTblock();
+    if ( firstNXTblock == 0 || get_NXTblock() < (firstNXTblock + 3) )
+        return(0);
+    if ( add_pendingxfer(0,0) != 0 )
+        return(0);
+    return(1);
+}
+
+int32_t process_msigdeposits(struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr)
+{
+    char txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096];
+    struct NXT_assettxid *tp;
+    uint64_t xfertxid,value;
+    int32_t j,numvouts,nonz = 0;
+    for (j=0; j<ap->num; j++)
+    {
+        tp = ap->txids[j];
+        //printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
+        if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
+            break;
+    }
+    if ( j == ap->num )
+    {
+        value = get_txindstr(&numvouts,txidstr,coinaddr,script,cp,entry->blocknum,entry->txind,entry->v);
+        if ( entry->v == numvouts-1 )
+        {
+            get_txindstr(0,txidstr,coinaddr_v0,script_v0,cp,entry->blocknum,entry->txind,0);
+            if ( strcmp(coinaddr_v0,cp->marker) == 0 )
+                return(0);
+        }
+        if ( strcmp(msigaddr,coinaddr) == 0 && txidstr[0] != 0 )
+        {
+            for (j=0; j<ap->num; j++)
+            {
+                tp = ap->txids[j];
+                if ( tp->receiverbits == nxt64bits && tp->cointxid != 0 && strcmp(tp->cointxid,txidstr) == 0 )
+                {
+                    printf("set cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
+                    tp->cointxind = entry->txind;
+                    tp->coinv = entry->v;
+                    tp->coinblocknum = entry->blocknum;
+                    break;
+                }
+            }
+            if ( j == ap->num )
+            {
+                printf("UNPAID cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
+                //if ( ready_to_xferassets() > 0 )
+                {
+                    sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v);
+                    printf(">>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
+                    xfertxid = 0;//issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,refassetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment);
+                    add_pendingxfer(0,xfertxid);
+                    nonz++;
+                    // get xfer txid, add to list and wait for it to get to blockchain before iterating again
+                }
+            }
+        }
+    }
+    return(nonz);
+}
+
+int32_t process_msigaddr(struct NXT_asset *ap,char *refassetid,char *NXTaddr,struct coin_info *cp,char *msigaddr)
+{
+    struct address_entry *entries,*entry;
+    int32_t i,n,nonz = 0;
+    uint64_t nxt64bits;
+    if ( ap->mult == 0 )
+    {
+        printf("ap->mult is ZERO for %s?\n",refassetid);
+        return(-1);
+    }
+    nxt64bits = calc_nxt64bits(NXTaddr);
+    if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
+    {
+        init_NXT_transactions(NXTaddr,refassetid);
+        printf(">>>>>>>>>>>>>>>> %d address entries for (%s)\n",n,msigaddr);
+        for (i=0; i<n; i++)
+        {
+            entry = &entries[i];
+            printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d ap->num.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,ap->num,entry->blocknum,entry->txind,entry->v);
+            if ( entry->vinflag == 0 && entry->isinternal == 0 && ap->num > 0 )
+                nonz += process_msigdeposits(cp,entry,nxt64bits,ap,msigaddr);
+        }
+        free(entries);
+    }
+    return(nonz);
+}
+
+int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid,int32_t reloadflag)
 {
     struct storage_header **msigs;
     struct multisig_addr *msig;
@@ -1552,14 +1563,17 @@ int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid)
         printf("dont have cp for (%s)\n",refassetid);
         return(-1);
     }
+    if ( 0 || reloadflag != 0 )
+        init_NXT_transactions(mgwNXTaddr,refassetid); // side effect updates MULTISIG_DATA
     ap = get_NXTasset(&createdflag,Global_mp,refassetid);
-    init_NXT_transactions(mgwNXTaddr,refassetid); // side effect updates MULTISIG_DATA
     if ( (msigs= copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
     {
+        printf("got n.%d msigs\n",n);
         for (i=0; i<n; i++)
         {
             if ( (msig= (struct multisig_addr *)msigs[i]) != 0 )
             {
+                printf("MULTISIG: %s: %d of %d %s %s\n",cp->name,i,n,msig->coinstr,msig->multisigaddr);
                 if ( strcmp(msig->coinstr,cp->name) == 0 )
                     nonz += (process_msigaddr(ap,refassetid,msig->NXTaddr,cp,msig->multisigaddr) > 0);
                 free(msig);
