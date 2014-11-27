@@ -1160,7 +1160,7 @@ char *calc_batchwithdraw(struct multisig_addr **msigs,int32_t nummsigs,struct co
     return(batchsigned);
 }
 
-int32_t is_special_addr(char *NXTaddr)
+/*int32_t is_special_addr(char *NXTaddr)
 {
     extern int32_t is_gateway_addr(char *);
     if ( strcmp(NXTaddr,NXTISSUERACCT) == 0 || is_gateway_addr(NXTaddr) != 0 )
@@ -1177,18 +1177,63 @@ int32_t skip_address(char *NXTaddr)
     if ( strcmp(NXTaddr,GENESISACCT) == 0 || is_special_addr(NXTaddr) != 0 )
         return(1);
     return(0);
+}*/
+
+char *get_bitcoind_pubkey(char *pubkey,struct coin_info *cp,char *coinaddr)
+{
+    char addr[256],*retstr;
+    cJSON *json,*pubobj;
+    pubkey[0] = 0;
+    if ( cp == 0 )
+    {
+        printf("get_bitcoind_pubkey null cp?\n");
+        return(0);
+    }
+    sprintf(addr,"\"%s\"",coinaddr);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"validateaddress",addr);
+    if ( retstr != 0 )
+    {
+        printf("got retstr.(%s)\n",retstr);
+        json = cJSON_Parse(retstr);
+        if ( json != 0 )
+        {
+            pubobj = cJSON_GetObjectItem(json,"pubkey");
+            copy_cJSON(pubkey,pubobj);
+            printf("got.%s get_coinaddr_pubkey (%s)\n",cp->name,pubkey);
+            free_json(json);
+        } else printf("get_coinaddr_pubkey.%s: parse error.(%s)\n",cp->name,retstr);
+        free(retstr);
+        return(pubkey);
+    } else printf("%s error issuing validateaddress\n",cp->name);
+    return(0);
+}
+
+char *get_acct_coinaddr(char *coinaddr,struct coin_info *cp,char *NXTaddr)
+{
+    char addr[128];
+    char *retstr;
+    coinaddr[0] = 0;
+    sprintf(addr,"\"%s\"",NXTaddr);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getaccountaddress",addr);
+    if ( retstr != 0 )
+    {
+        strcpy(coinaddr,retstr);
+        free(retstr);
+        return(coinaddr);
+    }
+    return(0);
 }
 
 void *Coinloop(void *ptr)
 {
-    int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid,int32_t reloadflag);
+    //int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid,int32_t reloadflag);
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
 #ifdef __APPLE__
-    iterate_MGW("7117166754336896747","11060861818140490423",0);
+    //iterate_MGW("7117166754336896747","11060861818140490423",0);
 #endif
     
     for (i=0; i<Numcoins; i++)
@@ -1199,15 +1244,6 @@ void *Coinloop(void *ptr)
             //load_telepods(cp,maxnofile);
         }
     }
-    /*while ( Historical_done == 0 ) // must process all historical msig addresses and asset transfers
-    {
-        sleep(1);
-        continue;
-    }
-    printf("Start coinloop\n");
-    //void init_Teleport();
-    //init_Teleport();
-    printf("teleport initialized\n");*/
     while ( 1 )
     {
         processed = 0;

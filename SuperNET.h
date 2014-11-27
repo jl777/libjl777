@@ -87,12 +87,13 @@ struct orderbook_info { uint64_t baseid,relid,obookid; };
 
 struct exchange_pair { struct storage_header H; char exchange[64],base[16],rel[16]; };
 
-struct pubkey_info { uint64_t nxt64bits; char pubkey[256],coinaddr[128]; };
+struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
 
 struct multisig_addr
 {
     struct storage_header H;
     char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],redeemScript[2048],coinstr[16];
+    uint64_t sender,modified;
     uint32_t m,n,created,tbd;
     struct pubkey_info pubkeys[];
 };

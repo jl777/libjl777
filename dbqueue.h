@@ -20,8 +20,9 @@ struct SuperNET_db
     queue_t queue;
     long maxitems,total_stored;
     DB *dbp;
+    struct hashtable *ramtable;
     int32_t *cipherids,selector,active;
-    uint32_t busy,type,flags,minsize,maxsize,duplicateflag;
+    uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
 };
 
 struct dbreq { struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
@@ -213,7 +214,7 @@ int32_t _process_dbiter(struct SuperNET_db *sdb)
     if ( sdb == 0 || sdb->dbp == 0 )
         return(0);
     n = 0;
-    while ( (req= queue_dequeue(&sdb->queue)) != 0 )
+    if ( (req= queue_dequeue(&sdb->queue)) != 0 )
     {
         memset(&data,0,sizeof(data));
         if ( req->data != 0 )
@@ -222,7 +223,27 @@ int32_t _process_dbiter(struct SuperNET_db *sdb)
         switch ( req->funcid )
         {
             case 'G': req->retval = sdb->dbp->get(sdb->dbp,req->txn,&req->key,&data,req->flags); break;
-            case 'P': req->retval = sdb->dbp->put(sdb->dbp,req->txn,&req->key,&data,req->flags); break;
+            case 'P':
+                req->retval = sdb->dbp->put(sdb->dbp,req->txn,&req->key,&data,req->flags);
+                if ( sdb->overlap_write != 0 )
+                {
+                    //printf("overlapped write data.%p\n",req->data->data);
+                    if ( req->data != 0 && req->data->data != 0 )
+                    {
+                        if ( req->key.data != 0 )
+                            free(req->key.data);
+                        free(req->data->data);
+                        free(req->data);
+                    }
+                    free(req);
+                    sdb->dbp->sync(sdb->dbp,0);
+                    sdb->busy--;
+                    n = queue_size(&sdb->queue);
+                    if ( n > 0 )
+                        fprintf(stderr,"%d ",n);
+                    return(1);
+                }
+                break;
             case 'S': req->retval = sdb->dbp->sync(sdb->dbp,req->flags); break;
             case 'D': req->retval = sdb->dbp->del(sdb->dbp,req->txn,&req->key,req->flags); break;
             case 'O': req->retval = sdb->dbp->cursor(sdb->dbp,req->txn,req->cursor,req->flags); break;
@@ -265,7 +286,7 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
             for (i=0; i<Num_pricedbs; i++)
                 n += _process_dbiter(&Price_dbs[i]);
             if ( n == 0 )
-                usleep(5000);
+                usleep(10000);
         }
     }
     for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
@@ -288,17 +309,20 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
 
 int32_t _block_on_dbreq(struct dbreq *req)
 {
-    struct SuperNET_db *sdb = req->sdb;//&SuperNET_dbs[req->selector];
-    int32_t retval,busy;
-    while ( req->doneflag == 0 )
-        usleep(500); // if not done after the first context switch, likely to take a while
-    retval = req->retval;
-    free(req);
-    sdb->busy--;
-    if ( (busy= sdb->busy) != 0 ) // busy is not critical for data integrity, but helps with dbreq latency
+    struct SuperNET_db *sdb = req->sdb;
+    int32_t busy,retval = 0;
+    if ( sdb->overlap_write == 0 )
     {
-        fprintf(stderr,"_block_on_dbreq: unlikely case of busy.%d != 0, (%d) for (%s)\n",busy,sdb->busy,sdb->name);
-        sdb->busy = 0;
+        while ( req->doneflag == 0 )
+            usleep(5000); // if not done after the first context switch, likely to take a while
+        retval = req->retval;
+        free(req);
+        sdb->busy--;
+        if ( (busy= sdb->busy) != 0 ) // busy is not critical for data integrity, but helps with dbreq latency
+        {
+            fprintf(stderr,"_block_on_dbreq: unlikely case of busy.%d != 0, (%d) for (%s)\n",busy,sdb->busy,sdb->name);
+            sdb->busy = 0;
+        }
     }
     return(retval);
 }
@@ -313,13 +337,20 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
         req->sdb = sdb;
         req->txn = txn;
         if ( key != 0 )
+        {
             req->key = *key;
+            if ( sdb->overlap_write != 0 )
+            {
+                req->key.data = calloc(1,key->size);
+                memcpy(req->key.data,key->data,key->size);
+            }
+        }
         req->data = data;
         req->flags = flags;
         req->cursor = cursor;
         sdb->busy++;
         queue_enqueue(&sdb->queue,req);
-        usleep(10); // allow context switch so request has a chance of completing
+        usleep(1000); // allow context switch so request has a chance of completing
     }
     return(req);
 }
@@ -329,7 +360,7 @@ int32_t dbcmd(char *debugstr,int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,
     struct dbreq *req;
     if ( sdb->dbp != 0 && sdb->active > 0 )
     {
-        if ( (req= _queue_dbreq(funcid,sdb,txn,key,data,flags,cursor)) != 0 )//&& sdb->selector != NUM_SUPERNET_DBS )
+        if ( (req= _queue_dbreq(funcid,sdb,txn,key,data,flags,cursor)) != 0 )
             return(_block_on_dbreq(req));
     }
     return(-1);

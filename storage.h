@@ -255,9 +255,10 @@ struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector)
     {
         clear_pair(&key,&data);
         ptrs = (struct storage_header **)calloc(sizeof(struct storage_header *),max+1);
-        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT)) == 0 )
+        while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT)) == 0 )//&& data.size > 0 )
         {
             m++;
+            //printf("%d size.%d\n",n,data.size);
             ptr = decondition_storage(&data.size,sdb,data.data,data.size);
             ptrs[n++] = ptr;
             if ( n >= max )
@@ -644,7 +645,8 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 int32_t init_SuperNET_storage()
 {
     static int didinit;
-    int ret;
+    int i,m,n,ret,createdflag;
+    struct multisig_addr *msig = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct SuperNET_db *sdb;
     if ( IS_LIBTEST == 0 )
@@ -657,7 +659,7 @@ int32_t init_SuperNET_storage()
             fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
             return(-1);
         }
-        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
+        else if ( (ret= Storage->open(Storage,"storage",DB_CREATE|DB_INIT_LOG|0*DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
         {
             fprintf(stderr,"error.%d opening storage\n",ret);
             return(-2);
@@ -673,6 +675,9 @@ int32_t init_SuperNET_storage()
             open_database(INSTANTDEX_DATA,&SuperNET_dbs[INSTANTDEX_DATA],"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
             open_database(PRICE_DATA,&SuperNET_dbs[PRICE_DATA],"prices.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct exchange_pair),sizeof(struct exchange_pair),0);
             open_database(MULTISIG_DATA,&SuperNET_dbs[MULTISIG_DATA],"multisig.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct multisig_addr),sizeof(struct multisig_addr) + sizeof(struct pubkey_info)*16,0);
+            
+            //SuperNET_dbs[MULTISIG_DATA].overlap_write = 1;
+            SuperNET_dbs[MULTISIG_DATA].ramtable = hashtable_create("multisigs",HASHTABLES_STARTSIZE,sizeof(struct multisig_addr)+sizeof(struct pubkey_info)*16,((long)&msig->multisigaddr[0] - (long)msig),sizeof(msig->multisigaddr),((long)&msig->modified - (long)msig));
             if ( cp != 0 ) // encrypted dbs
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
@@ -685,7 +690,7 @@ int32_t init_SuperNET_storage()
                 fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
                 return(-1);
             }
-            else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
+            else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|0*DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
             {
                 fprintf(stderr,"error.%d opening Astorage\n",ret);
                 return(-2);
@@ -693,6 +698,24 @@ int32_t init_SuperNET_storage()
             open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
             if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
                 printf("ERROR hist process_hashtablequeues\n");
+            {
+                struct multisig_addr **msigs,*msigram;
+                sdb = &SuperNET_dbs[MULTISIG_DATA];
+                if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
+                {
+                    for (i=m=0; i<n; i++)
+                    {
+                        msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
+                        printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
+                        if ( createdflag != 0 )
+                            *msigram = *msigs[i], m++;
+                        else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                        free(msigs[i]);
+                    }
+                    free(msigs);
+                    printf("initialized %d of %d msig in RAM\n",m,n);
+                }
+            }
         }
     }
     return(0);

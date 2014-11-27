@@ -313,7 +313,7 @@ uint64_t get_orderbook_assetid(char *coinstr)
     return(virtassetid);
 }
 
-int32_t is_gateway_addr(char *addr)
+/*int32_t is_gateway_addr(char *addr)
 {
     int32_t i;
     if ( strcmp(addr,NXTISSUERACCT) == 0 )
@@ -326,7 +326,7 @@ int32_t is_gateway_addr(char *addr)
             return(1);
     }
     return(0);
-}
+}*/
 
 char *parse_conf_line(char *line,char *field)
 {
