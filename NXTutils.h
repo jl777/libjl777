@@ -1172,7 +1172,7 @@ uint32_t get_NXTblock()
     char cmd[256],scanstr[256],blockstr[1025];
     sprintf(cmd,"%s=getBlockchainStatus",_NXTSERVER);
     isrescan = 0;
-    retval = extract_NXTfield(0,0,cmd,0,0);
+    /*retval = extract_NXTfield(0,0,cmd,0,0);
     if ( retval.json != 0 )
     {
         numblocks = (int32_t)get_cJSON_int(retval.json,"numberOfBlocks");
@@ -1187,9 +1187,9 @@ uint32_t get_NXTblock()
     }
     else
     {
-        printf("error getBlockchainStatus\n");
+        printf("error getBlockchainStatus\n");*/
         numblocks = set_current_NXTblock(&isrescan,0,blockstr);
-    }
+   // }
     if ( isrescan != 0 )
         return(0);
     return(numblocks - 1);

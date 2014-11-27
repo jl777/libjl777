@@ -1466,10 +1466,10 @@ int32_t ready_to_xferassets()
         firsttime = (uint32_t)time(NULL);
     if ( time(NULL) < (firsttime + DEPOSIT_XFER_DURATION*60) )
         return(0);
-    if ( firstNXTblock == 0 )
+    /*if ( firstNXTblock == 0 )
         firstNXTblock = get_NXTblock();
     if ( firstNXTblock == 0 || get_NXTblock() < (firstNXTblock + 3) )
-        return(0);
+        return(0);*/
     if ( add_pendingxfer(0,0) != 0 )
         return(0);
     return(1);
