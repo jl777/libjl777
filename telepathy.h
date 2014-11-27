@@ -50,7 +50,8 @@ struct telepathy_entry *add_telepathy_entry(char *locationstr,struct contact_inf
             contact->numrecv++;
             free(sp);
         }
-        fprintf(stderr,"add (%s.%d) %llu\n",contact->handle,sequenceid,(long long)tel->location);
+        if ( Debuglevel > 2 )
+            fprintf(stderr,"add (%s.%d) %llu\n",contact->handle,sequenceid,(long long)tel->location);
     } else fprintf(stderr,"add_telepathy_entry warning: already created %s.%s\n",contact->handle,locationstr);
     return(tel);
 }

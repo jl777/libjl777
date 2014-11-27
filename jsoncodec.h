@@ -89,7 +89,7 @@ int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,u
             else decoded[j++] = rawdecoded[i];
         }
         decoded[j++] = 0;
-    } else printf("zlib retval.%d\n",retval);
+    } //else if ( Debuglevel > 2 ) printf("zlib retval.%d\n",retval);
     free(rawdecoded);
     return(retval);
 }

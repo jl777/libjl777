@@ -460,7 +460,7 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
             free_json(json);
         }
         free(jsonstr);
-        printf("init_asset(%s) decimals.%d mult.%ld\n",assetidstr,ap->decimals,(long)ap->mult);
+        //printf("init_asset(%s) decimals.%d mult.%ld\n",assetidstr,ap->decimals,(long)ap->mult);
         return(ap);
     }
     printf("ERROR init_asset(%s)\n",assetidstr);
@@ -1317,7 +1317,7 @@ struct NXT_assettxid *add_NXT_assettxid(struct NXT_asset **app,char *assetidstr,
         tp->assetbits = ap->assetbits;
         tp->txidbits = calc_nxt64bits(txid);
         tp->timestamp = timestamp;
-        printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
+        //printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
         if ( ap->num >= ap->max )
         {
             ap->max = ap->num + NXT_ASSETLIST_INCR;

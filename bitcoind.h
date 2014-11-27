@@ -811,7 +811,8 @@ uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheigh
             for (txind=0; txind<n; txind++)
             {
                 copy_cJSON(txid,cJSON_GetArrayItem(txobj,txind));
-                printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txid);
+                if ( Debuglevel > 2 )
+                    printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txid);
                 if ( txidstr != 0 )
                 {
                     if ( txid[0] != 0 && strcmp(txid,txidstr) == 0 )
@@ -879,7 +880,8 @@ uint64_t get_txindstr(int32_t *numvoutsp,char *txidstr,char *coinaddr,char *scri
             if ( txind < n )
             {
                 copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
-                printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txidstr);
+                if ( Debuglevel > 2 )
+                    printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txidstr);
                 if ( txidstr[0] != 0 )
                 {
                     retstr = get_transaction(cp,txidstr);
@@ -1216,7 +1218,8 @@ void *Coinloop(void *ptr)
             cp->RTblockheight = (int32_t)height;
             if ( cp->blockheight < (height - cp->min_confirms) )
             {
-                printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
+                if ( Debuglevel > 2 )
+                    printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
                 if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
                 {
                     processed++;
@@ -1226,7 +1229,8 @@ void *Coinloop(void *ptr)
         }
         if ( processed == 0 )
         {
-            printf("Coinloop: no work, sleep\n");
+            if ( Debuglevel > 2 )
+                printf("Coinloop: no work, sleep\n");
             sleep(10);
         }
     }
