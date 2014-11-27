@@ -841,6 +841,8 @@ int32_t update_address_infos(struct coin_info *cp,uint32_t blockheight)
     if ( blockhashstr == 0 || blockhashstr[0] == 0 )
     {
         printf("couldnt get blockhash for %u\n",blockheight);
+        if ( blockhashstr != 0 )
+            free(blockhashstr);
         return(flag);
     }
     if ( (height= get_blocktxind(&txind,cp,blockheight,blockhashstr,0)) != blockheight )

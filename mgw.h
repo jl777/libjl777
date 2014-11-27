@@ -1461,7 +1461,7 @@ int32_t ready_to_xferassets()
 {
     // if fresh reboot, need to wait the xfer max duration + 1 block before running this
     static uint32_t firsttime,firstNXTblock;
-    printf("lag.%ld %d\n",time(NULL)-firsttime,get_NXTblock()-firstNXTblock);
+    printf("lag.%ld\n",time(NULL)-firsttime);//,get_NXTblock()-firstNXTblock);
     if ( firsttime == 0 )
         firsttime = (uint32_t)time(NULL);
     if ( time(NULL) < (firsttime + DEPOSIT_XFER_DURATION*60) )
@@ -1471,7 +1471,10 @@ int32_t ready_to_xferassets()
     if ( firstNXTblock == 0 || get_NXTblock() < (firstNXTblock + 3) )
         return(0);*/
     if ( add_pendingxfer(0,0) != 0 )
+    {
+        printf("waiting for pendingxfer\n");
         return(0);
+    }
     return(1);
 }
 
