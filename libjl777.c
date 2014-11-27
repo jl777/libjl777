@@ -329,8 +329,6 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
-    if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
-        printf("ERROR hist run_libwebsockets SSL\n");
 #ifndef __APPLE__
     Coinloop(0);
 #else
@@ -341,6 +339,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
+    if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
+        printf("ERROR hist run_libwebsockets SSL\n");
     while ( SSL_done == 0 )
         usleep(100000);
     if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
