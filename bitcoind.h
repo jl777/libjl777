@@ -329,7 +329,7 @@ char *oldget_transaction(struct coin_info *cp,char *txidstr)
 char *get_transaction(struct coin_info *cp,char *txidstr)
 {
     char *rawtransaction=0,*retstr=0,*str=0,txid[4096];
-    sprintf(txid,"[%s, 1]",txidstr);
+    sprintf(txid,"[\"%s\", \"1\"]",txidstr);
     rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid);
     if ( rawtransaction != 0 )
     {
