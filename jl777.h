@@ -305,7 +305,7 @@ struct NXT_protocol
 
 struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 
-union _coin_value_ptr { char *script; char *coinbase; };
+//union _coin_value_ptr { char *script; char *coinbase; };
 
 struct coin_txidind
 {
@@ -316,7 +316,7 @@ struct coin_txidind
     char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[MAX_NXTADDR_LEN],*script;
 };
 
-struct coin_value
+/*struct coin_value
 {
     int64_t modified,value;
     char *txid;
@@ -324,7 +324,7 @@ struct coin_value
     union _coin_value_ptr U;
     int32_t parent_vout,spent_vin,pending_spendvin,isconfirmed,iscoinbase,isinternal;
     char coinaddr[MAX_COINADDR_LEN];
-};
+};*/
 
 struct unspent_info
 {

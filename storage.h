@@ -107,8 +107,8 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
-    if ( Debuglevel > 2 )
-        printf("entry %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,coin,strlen(coin),addr);
+   // if ( Debuglevel > 2 )
+        printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,coin,strlen(coin),addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
         AStorage->err(AStorage,ret,"add_address: Database put failed.");
@@ -180,6 +180,8 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
                         data.data = bp;
                         data.size = sizeof(*bp);
                         ret = cursorput(sdb,txn,cursorp,&key,&data,DB_CURRENT);
+                        printf("Replace spent.%d isinternal.%d vinflag.%d | ",B.spent,B.isinternal,B.vinflag);
+                        printf("dbupdate entry.%d %d %d %d\n",i,B.blocknum,B.txind,B.v);
                         //ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
                         replaced = 1;
                         break;
@@ -335,7 +337,7 @@ int32_t scan_address_entries()
         //n.362300  108872 2 0 | (BTCD RNvD9Nv2MRvQ4Y3KjEAsTz5FGsukZHEp2n).512 | 31131 m.31385
         //n.270300   86260 2 0 | (BTCD RCyhi6SyxTAAajEd6WiS6uDrkRgQvfBaD3).512 | 20936
         while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT|DB_MULTIPLE_KEY)) == 0 )
-        //while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT|DB_MULTIPLE)) == 0 )
+         //while ( (ret= cursorget(sdb,NULL,cursorp,&key,&data,DB_NEXT|DB_MULTIPLE)) == 0 )
         {
             m++;
             for (DB_MULTIPLE_INIT(p,&data); ;)

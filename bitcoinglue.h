@@ -313,7 +313,7 @@ char *submit_withdraw(struct coin_info *cp,struct batch_info *wp,struct batch_in
     long len;
     int32_t i,retval = 0;//createdflag
     char fname[512],cointxid[4096],*signed2transaction,*retstr;
-    struct coin_txidind *tp;
+    //struct coin_txidind *tp;
     struct rawtransaction *rp = &wp->rawtx;
     if ( cp == 0 )
         return(0);
@@ -348,7 +348,7 @@ char *submit_withdraw(struct coin_info *cp,struct batch_info *wp,struct batch_in
                 else printf("unexpected %s cointxid.%s already there before submit??\n",cp->name,cointxid);
                 printf("rawtxid len.%ld submitted.%s\n",strlen(signed2transaction),cointxid);
                 for (i=0; i<wp->rawtx.numinputs; i++)
-                    ((struct coin_value *)wp->rawtx.inputs[i])->pendingspend = tp;
+                    ((struct coin_txidind *)wp->rawtx.inputs[i])->entry.spent = 1;
                 return(clonestr(cointxid));
             } else printf("error null cointxid\n");
         } else printf("error submit raw.%s\n",signed2transaction);

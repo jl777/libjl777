@@ -64,6 +64,7 @@ struct NXT_acct
     int32_t maxassets,numassets,bestdist;//numcoinaccts
     int64_t buyqty,buysum,sellqty,sellsum;
     double profits;
+    uint32_t timestamps[64];
     //struct coin_acct *coinaccts;
     // fields for NXTorrent
     //double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
