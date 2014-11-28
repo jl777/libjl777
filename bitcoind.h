@@ -429,7 +429,7 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
                                         printf("process input.(%s)\n",coinaddr);
                                         if ( (oldblockheight= get_blocktxind(&oldtxind,cp,0,blockhash,txid)) > 0 )
                                         {
-                                            update_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0);
+                                            add_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0);
                                             add_address_entry(cp->name,coinaddr,blockheight,txind,i,-1,-1,1,syncflag * (i == (numvins-1) ||                                      vind < 0));
                                         } else printf("error getting oldblockheight (%s %s)\n",blockhash,txid);
                                     } else printf("unexpected error vout.%d vs numvouts.%d\n",vout,numvouts);

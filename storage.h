@@ -107,7 +107,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
-   // if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,coin,strlen(coin),addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
@@ -180,14 +180,17 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
                         data.data = bp;
                         data.size = sizeof(*bp);
                         ret = cursorput(sdb,txn,cursorp,&key,&data,DB_CURRENT);
-                        printf("Replace spent.%d isinternal.%d vinflag.%d | ",B.spent,B.isinternal,B.vinflag);
-                        printf("dbupdate entry.%d %d %d %d\n",i,B.blocknum,B.txind,B.v);
+                        if ( Debuglevel > 2 )
+                        {
+                            printf("Replace spent.%d isinternal.%d vinflag.%d | ",B.spent,B.isinternal,B.vinflag);
+                            printf("dbupdate entry.%d %d %d %d\n",i,B.blocknum,B.txind,B.v);
+                        }
                         //ret = cursorp->put(cursorp,&key,&data,DB_CURRENT);
                         replaced = 1;
                         break;
                     }
                     if ( Debuglevel > 2 )
-                        printf("dbupdate entry.%d %d %d %d | (%s).%d\n",i,B.blocknum,B.txind,B.v,key.data,key.size);
+                        printf("iter.%d dbupdate entry.%d %d %d %d | (%s).%d\n",iter,i,B.blocknum,B.txind,B.v,key.data,key.size);
                     i++;
                 }
             }
