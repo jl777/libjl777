@@ -9,24 +9,24 @@
 #ifndef xcode_bitcoinglue_h
 #define xcode_bitcoinglue_h
 
-struct coin_value *conv_telepod(struct telepod *pod)
+struct coin_txidind *conv_telepod(struct telepod *pod)
 {
-    struct coin_value *vp;
+    struct coin_txidind *vp;
     vp = calloc(1,sizeof(*vp));
     vp->value = pod->satoshis;
-    vp->txid = pod->txid;
-    vp->parent_vout = pod->vout;
+    safecopy(vp->txid,pod->txid,sizeof(vp->txid));
+    vp->entry.v = pod->vout;
     safecopy(vp->coinaddr,pod->coinaddr,sizeof(vp->coinaddr));
-    vp->U.script = clonestr(pod->script);
+    vp->script = clonestr(pod->script);
     return(vp);
 }
 
-void free_coin_value(struct coin_value *vp)
+void free_coin_txidind(struct coin_txidind *vp)
 {
     if ( vp != 0 )
     {
-        if ( vp->U.script != 0 )
-            free(vp->U.script);
+        if ( vp->script != 0 )
+            free(vp->script);
         free(vp);
     }
 }
@@ -40,7 +40,7 @@ void purge_rawtransaction(struct rawtransaction *raw)
         free(raw->signedtx);
     for (i=0; i<raw->numinputs; i++)
         if ( raw->inputs[i] != 0 )
-            free_coin_value(raw->inputs[i]);
+            free_coin_txidind(raw->inputs[i]);
 }
 
 char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
@@ -311,9 +311,9 @@ char *submit_withdraw(struct coin_info *cp,struct batch_info *wp,struct batch_in
 {
     FILE *fp;
     long len;
-    int32_t i,createdflag,retval = 0;
+    int32_t i,retval = 0;//createdflag
     char fname[512],cointxid[4096],*signed2transaction,*retstr;
-    struct coin_txid *tp;
+    struct coin_txidind *tp;
     struct rawtransaction *rp = &wp->rawtx;
     if ( cp == 0 )
         return(0);
@@ -342,9 +342,9 @@ char *submit_withdraw(struct coin_info *cp,struct batch_info *wp,struct batch_in
                     fclose(fp);
                     printf("wrote.(%s) to file.(%s)\n",signed2transaction,fname);
                 }
-                tp = MTadd_hashtable(&createdflag,Global_mp->coin_txids,cointxid);
-                if ( createdflag != 0 )
-                    tp->hasinternal = 1;
+                //tp = MTadd_hashtable(&createdflag,Global_mp->coin_txids,cointxid);
+                //if ( createdflag != 0 )
+                //    tp->hasinternal = 1;
                 else printf("unexpected %s cointxid.%s already there before submit??\n",cp->name,cointxid);
                 printf("rawtxid len.%ld submitted.%s\n",strlen(signed2transaction),cointxid);
                 for (i=0; i<wp->rawtx.numinputs; i++)
@@ -673,7 +673,7 @@ uint64_t get_txid_vout(int32_t *nump,struct coin_info *cp,char *txid,uint32_t vo
 
 uint64_t get_unspent_value(char *script,struct coin_info *cp,struct telepod *pod)
 {
-    uint64_t unspentB,unspent = 0;
+    /*uint64_t unspentB,unspent = 0;
     struct coin_txid *tp;
     int32_t createdflag;
     //script[0] = 0;
@@ -693,6 +693,7 @@ uint64_t get_unspent_value(char *script,struct coin_info *cp,struct telepod *pod
         else unspent = unspentB;
     }
     printf("%s) txid unspent %.8f\n",pod->txid,dstr(unspent));
-    return(unspent);
+    return(unspent);*/
+    return(0);
 }
 #endif

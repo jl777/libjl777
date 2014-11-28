@@ -51,12 +51,12 @@ uint32_t get_blockheight(struct coin_info *cp)
     {
         height = (uint32_t)issue_bitcoind_command(0,cp,"getinfo","blocks","");
         cp->lastheighttime = microseconds();
-        if ( cp->CACHE.ignorelist == 0 && height > 0 )
+        /*if ( cp->CACHE.ignorelist == 0 && height > 0 )
         {
             cp->CACHE.ignoresize = (int32_t)(height + 1000000);
             cp->CACHE.ignorelist = malloc(cp->CACHE.ignoresize);
             memset(cp->CACHE.ignorelist,1,cp->CACHE.ignoresize);
-        }
+        }*/
     }
     return(height);
 }
@@ -109,38 +109,28 @@ cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct
     int32_t i;
     char *txid;
     cJSON *json,*array;
-    struct coin_value *vp;
+    struct coin_txidind *vp;
     array = cJSON_CreateArray();
     for (i=0; i<rp->numinputs; i++)
     {
         if ( localcoinaddrs != 0 )
             localcoinaddrs[i] = 0;
         vp = rp->inputs[i];
-        if ( vp->iscoinbase != 0 )
+        txid = vp->txid;
+        if ( txid == 0 || vp->script == 0 )
         {
-            printf("unexpected coinbase in spending input\n");
+            printf("unexpected missing txid or script\n");
             free_json(array);
             return(0);
         }
-        else
-        {
-            if ( (txid= vp->txid) == 0 && vp->parent != 0 )
-                txid = vp->parent->txid;
-            if ( txid == 0 || vp->U.script == 0 )
-            {
-                printf("unexpected missing txid or script\n");
-                free_json(array);
-                return(0);
-            }
-            json = cJSON_CreateObject();
-            cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid));
-            cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vp->parent_vout));
-            cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->U.script));
-            //cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(vp->redeemScript));
-            if ( localcoinaddrs != 0 )
-                localcoinaddrs[i] = vp->coinaddr;
-            cJSON_AddItemToArray(array,json);
-        }
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid));
+        cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vp->entry.v));
+        cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->script));
+        //cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(vp->redeemScript));
+        if ( localcoinaddrs != 0 )
+            localcoinaddrs[i] = vp->coinaddr;
+        cJSON_AddItemToArray(array,json);
     }
     return(array);
 }
@@ -290,322 +280,6 @@ char *unspent_json_params(char *txid,int32_t vout)
     free_json(array);
     return(unspentstr);
 }
-
-#ifdef oldway
-struct coin_value *update_coin_value(int32_t height,int32_t numoutputs,struct coin_info *cp,int32_t isinternal,int32_t isconfirmed,struct coin_txid *tp,int32_t i,struct coin_value *vp,int64_t value,char *coinaddr,char *script)
-{
-    if ( vp == 0 )
-        vp = calloc(1,sizeof(*vp));
-    vp->value = value;
-    vp->parent = tp;
-    vp->parent_vout = i;
-    if ( height < cp->forkheight )
-        vp->isinternal = (i > 1) ? isinternal : 0;
-    else vp->isinternal = (i == numoutputs-1) ? isinternal : 0;
-    safecopy(vp->coinaddr,coinaddr,sizeof(vp->coinaddr));
-    if ( script != 0 )
-    {
-        if ( script[0] != 0 )
-        {
-            if ( vp->U.script != 0 )
-                free(vp->U.script);
-            vp->U.script = clonestr(script);
-        }
-        else printf("update_coin_value: null script? %s.(%d)\n",coinaddr,i);
-    }
-    //vp->xp = update_crosschain_info(isinternal,coinid,tp,vp,isconfirmed,vp->xp,value,coinaddr);
-    tp->hasinternal += vp->isinternal;
-    vp->isconfirmed += isconfirmed;
-    if ( isinternal != 0 )
-        printf("height.%d isinternal.%d %s isconfirmed.%d %.8f -> %s.v%d\n",height,vp->isinternal,cp->name,isconfirmed,dstr(value),coinaddr,vp->parent_vout);
-    return(vp);
-}
-
-struct coin_txid *find_coin_txid(struct coin_info *cp,char *txid)
-{
-    uint64_t hashval;
-    if ( cp == 0 )
-        return(0);
-    hashval = MTsearch_hashtable(&cp->CACHE.coin_txids,txid);
-    if ( hashval == HASHSEARCH_ERROR )
-        return(0);
-    else return(cp->CACHE.coin_txids->hashtable[hashval]);
-}
-
-//extern int32_t is_relevant_coinvalue(int32_t spentflag,struct coin_info *cp,char *txid,int32_t vout,uint64_t value,char *asmbuf,uint32_t blocknum);
-
-int32_t process_vins(struct coin_info *cp,uint32_t height,struct coin_txid *tp,int32_t isconfirmed,cJSON *vins)
-{
-    cJSON *obj,*txidobj,*coinbaseobj;
-    int32_t i,vout,oldnumvins,flag = 0;
-    char txid[4096],coinbase[4096];
-    struct coin_value *vp;
-    struct coin_txid *vintp;
-    if ( vins != 0 )
-    {
-        oldnumvins = tp->numvins;
-        tp->numvins = cJSON_GetArraySize(vins);
-        tp->vins = realloc(tp->vins,tp->numvins * sizeof(*tp->vins));
-        if ( oldnumvins < tp->numvins )
-            memset(&tp->vins[oldnumvins],0,(tp->numvins - oldnumvins) * sizeof(*tp->vins));
-        for (i=0; i<tp->numvins; i++)
-        {
-            obj = cJSON_GetArrayItem(vins,i);
-            if ( tp->numvins == 1  )
-            {
-                coinbaseobj = cJSON_GetObjectItem(obj,"coinbase");
-                copy_cJSON(coinbase,coinbaseobj);
-                if ( strlen(coinbase) > 1 )
-                {
-                    //printf("got coinbase.(%s)\n",coinbase);
-                    vp = calloc(1,sizeof(*vp));
-                    vp->parent_vout = 0;
-                    vp->parent = tp;
-                    vp->iscoinbase = 1;
-                    vp->U.coinbase = clonestr(coinbase);
-                    tp->vins[0] = vp;
-                    //printf("txid.%s is coinbase.%s\n",tp->txid,coinbase);
-                    return(flag);
-                }
-            }
-            txidobj = cJSON_GetObjectItem(obj,"txid");
-            if ( txidobj != 0 && cJSON_GetObjectItem(obj,"vout") != 0 )
-            {
-                vout = (int)get_cJSON_int(obj,"vout");
-                copy_cJSON(txid,txidobj);
-                vintp = find_coin_txid(cp,txid);
-                if ( vintp != 0 && vintp->vouts != 0 )
-                {
-                    //printf("%s vin.%d %.8f\n",txid,i,dstr(vintp->vouts[vout]->value));
-                    if ( vout >= 0 && vout < vintp->numvouts )
-                    {
-                        //printf("got txid.%s in i.%d: vintp.%p vouts.%p (%s)\n",txid,i,vintp,vintp!=0?vintp->vouts:0,vintp->vouts[vout]->coinaddr);
-                        vintp->vouts[vout]->spent = tp;
-                        vintp->vouts[vout]->spent_vin = i;
-                        flag = 1;
-                        if ( 0 )//is_relevant_coinvalue(1,cp,vintp->txid,i,vintp->vouts[vout]->value,"",height) != 0 )
-                        {
-                            if ( tp->hasinternal == 0 )
-                            {
-                                printf("unexpected non-internal txid.%s vin.%d internal address %s %s.%d!\n",tp->txid,i,vintp->vouts[vout]->coinaddr,txid,vout);
-                                tp->hasinternal = 1;
-                            }
-                        }
-                        vp = vintp->vouts[vout];
-                        if ( vp == 0 || vp->parent_vout != vout || vp->parent != vintp )
-                        {
-                            if ( vp != 0 )
-                                printf("error finding vin txid.%s vout.%d | %p %d %p %p\n",txid,vout,vp,vp->parent_vout,vp->parent,vintp);
-                        }
-                        else
-                        {
-                            tp->vins[i] = vp;
-                            if ( isconfirmed != 0 )
-                            {
-                                vp->spent = tp, vp->spent_vin = i;
-                                if ( vp->pendingspend != 0 && (tp != vp->pendingspend || i != vp->pending_spendvin) )
-                                    printf("WARNING: confirm spend %p.%d, pending %p.%d\n",tp,i,vp->pendingspend,vp->pending_spendvin);
-                            }
-                            else vp->pendingspend = tp, vp->pending_spendvin = i;
-                        }
-                    }
-                    //else printf("vout.%d error when txid.%s numvouts.%d\n",vout,txid,vintp->numvouts);
-                }
-            } else printf("tp->numvins.%d missing txid.vout for %s\n",tp->numvins,tp->txid);
-        }
-    }
-    return(flag);
-}
-
-uint32_t process_vouts(int32_t height,char *debugstr,struct coin_info *cp,struct coin_txid *tp,int32_t isconfirmed,cJSON *vouts)
-{
-    uint64_t value,unspent = 0;
-    char coinaddr[4096],script[4096];
-    cJSON *obj;
-    int32_t i,oldnumvouts,isinternal,flag = 0;
-    struct coin_value *vp;
-    if ( vouts != 0 )
-    {
-        oldnumvouts = tp->numvouts;
-        tp->numvouts = cJSON_GetArraySize(vouts);
-        tp->vouts = realloc(tp->vouts,tp->numvouts*sizeof(*tp->vouts));
-        if ( oldnumvouts < tp->numvouts )
-            memset(&tp->vouts[oldnumvouts],0,(tp->numvouts-oldnumvouts) * sizeof(*tp->vouts));
-        isinternal = 0;
-        for (i=0; i<tp->numvouts; i++)
-        {
-            obj = cJSON_GetArrayItem(vouts,i);
-            if ( obj != 0 )
-            {
-                value = conv_cJSON_float(obj,"value");
-                extract_txvals(coinaddr,script,cp->nohexout,obj);
-                if ( script[0] == 0 && value > 0 )
-                    printf("process_vouts WARNING.(%s) coinaddr,(%s) %s\n",debugstr,coinaddr,script);
-                if ( value == 0 )
-                    continue;
-                if ( i == 0 && cp->marker != 0 && strcmp(cp->marker,coinaddr) == 0 )
-                {
-                    isinternal = 1;
-                    flag = 1;
-                }
-                vp = update_coin_value(height,tp->numvouts,cp,isinternal,isconfirmed,tp,i,tp->vouts[i],value,coinaddr,script);
-                if ( vp != 0 )
-                {
-                    tp->vouts[i] = vp;
-                    if ( vp->spent == 0 && vp->pendingspend == 0 )
-                        unspent += value;
-                    //printf("%s vout.%d %.8f\n",tp->txid,i,dstr(value));
-                    //if ( is_relevant_coinvalue(0,cp,tp->txid,i,value,script,height) != 0 )
-                    //    flag = 1;
-                }
-                // else if ( value > 0 )   // OP_RETURN has no value and no address
-                //     printf("unexpected error nval.%d for i.%d of %d | scriptobj %p (%s) addrobj.%p debugstr.(%s)\n",nval,i,tp->numvouts,scriptobj,tp->txid,addrobj,debugstr);
-            }
-        }
-    }
-    return(flag);
-}
-
-uint64_t calc_coin_unspent(char *script,struct coin_info *cp,struct coin_txid *tp,int32_t vout)
-{
-    int32_t i,flag;
-    char *retstr,*unspentstr;
-    cJSON *json;
-    struct coin_value *vp;
-    int64_t unspent = 0;
-    for (i=0; i<tp->numvouts; i++)
-    {
-        if ( vout >= 0 && i != vout )
-            continue;
-        vp = tp->vouts[i];
-        if ( vp != 0 )
-        {
-            unspentstr = unspent_json_params(tp->txid,i);
-            retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"gettxout",unspentstr);
-            flag = 0;
-            if ( retstr != 0 && retstr[0] != 0 )
-            {
-                json = cJSON_Parse(retstr);
-                if ( json != 0 )
-                {
-                    unspent += conv_cJSON_float(json,"value");
-                    flag = 1;
-                    free_json(json);
-                }
-                free(retstr);
-            }
-            if ( (vp->spent == 0 && flag == 0) || (vp->spent != 0 && flag != 0) )
-            {
-                printf("unspent tracking mismatch?? vp->spent %p vs flag.%d for txid.%s vout.%d (%s)\n",vp->spent,flag,tp->txid,i,unspentstr);
-            }
-            free(unspentstr);
-        }
-    }
-    return(unspent);
-}
-
-void update_coin_values(struct coin_info *cp,struct coin_txid *tp,int64_t blockheight)
-{
-    char *rawtransaction=0,*retstr=0,*str=0,txid[4096];
-    cJSON *json;
-    int32_t isconfirmed;
-    tp->numvouts = tp->numvins = 0;
-    tp->height = (int32_t)blockheight;
-    isconfirmed = (blockheight <= (cp->RTblockheight - cp->min_confirms));
-    sprintf(txid,"\"%s\"",tp->txid);
-    if ( (retstr= tp->decodedrawtx) == 0 )
-    {
-        rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid);
-        if ( rawtransaction != 0 )
-        {
-            if ( rawtransaction[0] != 0 )
-            {
-                str = malloc(strlen(rawtransaction)+4);
-                //printf("got rawtransaction.(%s)\n",rawtransaction);
-                sprintf(str,"\"%s\"",rawtransaction);
-                retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
-                if ( retstr != 0 && retstr[0] != 0 )
-                {
-                    tp->decodedrawtx = retstr;
-                    if ( cp->CACHE.cachefp != 0 )
-                        update_coincache(cp->CACHE.cachefp,tp->txid,(uint8_t *)retstr,(int32_t)strlen(retstr)+1);
-                } else printf("null retstr from decoderawtransaction (%s)\n",str);
-            }
-            if ( rawtransaction != 0 )
-                free(rawtransaction);
-        } else printf("null rawtransaction\n");
-    }
-    if ( retstr != 0 && retstr[0] != 0 )
-    {
-        json = cJSON_Parse(retstr);
-        if ( json != 0 )
-        {
-            if ( process_vouts((int32_t)blockheight,retstr,cp,tp,isconfirmed,cJSON_GetObjectItem(json,"vout")) != 0 )
-                cp->CACHE.ignorelist[blockheight] = 0;
-            if ( process_vins(cp,(uint32_t)blockheight,tp,isconfirmed,cJSON_GetObjectItem(json,"vin")) != 0 )
-                cp->CACHE.ignorelist[blockheight] = 0;
-            free_json(json);
-        }
-    } else printf("error decoding.(%s)\n",retstr);
-    if ( str != 0 )
-        free(str);
-    //if ( retstr != 0 ) its in cache dont free!
-    //    free(retstr);
-}
-
-int32_t add_bitcoind_uniquetxids(struct coin_info *cp,int64_t blockheight)
-{
-    char txid[4096],numstr[128],*blockhashstr=0,*blocktxt;
-    cJSON *json,*txidobj,*txobj;
-    int32_t i,n,createdflag;
-    struct coin_txid *tp;
-    int64_t block;
-    block = (long)blockheight;
-    sprintf(numstr,"%ld",(long)block);
-    ensure_coincache_blocks(&cp->CACHE,(int32_t)block);
-    if ( (blocktxt= cp->CACHE.blocks[block]) == 0 )
-    {
-        blockhashstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getblockhash",numstr);
-        if ( blockhashstr == 0 || blockhashstr[0] == 0 )
-        {
-            printf("couldnt get blockhash for %ld at %ld\n",(long)block,(long)blockheight);
-            return(-1);
-        }
-        //if ( 1 || RTmode != 0 || (block % 100) == 0 )
-            fprintf(stderr,"%s block.%ld blockhash.%s | lag.%lld\n",cp->name,(long)block,blockhashstr,(long long)(get_blockheight(cp)-block));
-        sprintf(txid,"\"%s\"",blockhashstr);
-        if ( cp->CACHE.blocks[block] != 0 )
-            free(cp->CACHE.blocks[block]);
-        cp->CACHE.blocks[block] = blocktxt = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getblock",txid);
-        if ( blocktxt != 0 && blocktxt[0] != 0 )
-            update_coincache(cp->CACHE.blocksfp,numstr,(uint8_t *)blocktxt,(int32_t)strlen(blocktxt)+1);
-        else printf("error getting blocktxt from (%s)\n",blockhashstr);
-        free(blockhashstr);
-    }
-    if ( blocktxt != 0 && blocktxt[0] != 0 )
-    {
-        json = cJSON_Parse(blocktxt);
-        if ( json != 0 )
-        {
-            txobj = cJSON_GetObjectItem(json,"tx");
-            n = cJSON_GetArraySize(txobj);
-            for (i=0; i<n; i++)
-            {
-                txidobj = cJSON_GetArrayItem(txobj,i);
-                copy_cJSON(txid,txidobj);
-                //printf("blocktxt.%ld i.%d of n.%d %s\n",(long)block,i,n,txid);
-                if ( txid[0] != 0 )
-                {
-                    tp = MTadd_hashtable(&createdflag,&cp->CACHE.coin_txids,txid);
-                    update_coin_values(cp,tp,block);
-                }
-            }
-            free_json(json);
-        } else printf("getblock error parsing.(%s)\n",txid);
-    }
-    return(0);
-}
-#endif
 
 // ADDRESS_DATA DB
 
@@ -942,7 +616,7 @@ char *find_good_changeaddr(struct multisig_addr **msigs,int32_t nummsigs,struct 
 int64_t calc_batchinputs(struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,struct rawtransaction *rp,int64_t amount)
 {
     int64_t sum = 0;
-    struct coin_value *vp;
+    struct coin_txidind *vp;
     int32_t i;
     struct unspent_info *up = &cp->unspent;
     if ( rp == 0 || up == 0 )
@@ -1007,7 +681,7 @@ void sort_rawoutputs(struct rawtransaction *rp)
     }
 }
 
-struct rawinput_entry { char str[MAX_COINTXID_LEN]; struct coin_value *input; struct crosschain_info *xp; };
+struct rawinput_entry { char str[MAX_COINTXID_LEN]; struct coin_txidind *input; struct crosschain_info *xp; };
 void sort_rawinputs(struct rawtransaction *rp)
 {
     struct rawinput_entry sortbuf[MAX_MULTISIG_INPUTS];
@@ -1020,7 +694,7 @@ void sort_rawinputs(struct rawtransaction *rp)
         {
             if ( rp->inputs[i] != 0 )//&& rp->xps[i] != 0 )
             {
-                sprintf(sortbuf[n].str,"%s.%d",rp->inputs[i]->coinaddr,rp->inputs[i]->parent_vout);
+                sprintf(sortbuf[n].str,"%s.%d",rp->inputs[i]->coinaddr,rp->inputs[i]->entry.v);
                 sortbuf[n].input = rp->inputs[i];
                 //sortbuf[n].xp = rp->xps[i];
                 //fprintf(stderr,"i.%d of %d: %s %p %p\n",i,rp->numinputs,sortbuf[n].str,sortbuf[n].input,sortbuf[n].xp);
@@ -1162,25 +836,6 @@ char *calc_batchwithdraw(struct multisig_addr **msigs,int32_t nummsigs,struct co
     return(batchsigned);
 }
 
-/*int32_t is_special_addr(char *NXTaddr)
-{
-    extern int32_t is_gateway_addr(char *);
-    if ( strcmp(NXTaddr,NXTISSUERACCT) == 0 || is_gateway_addr(NXTaddr) != 0 )
-        return(1);
-    else return(0);
-}
-
-int32_t skip_address(char *NXTaddr)
-{
-    if ( strcmp(NXTaddr,"4551058913252105307") == 0 ) // mistakenly sent to BTC asset id
-        return(1);
-    if ( strcmp(NXTaddr,NXTISSUERACCT) == 0 )
-        return(1);
-    if ( strcmp(NXTaddr,GENESISACCT) == 0 || is_special_addr(NXTaddr) != 0 )
-        return(1);
-    return(0);
-}*/
-
 char *get_bitcoind_pubkey(char *pubkey,struct coin_info *cp,char *coinaddr)
 {
     char addr[256],*retstr;
@@ -1226,18 +881,187 @@ char *get_acct_coinaddr(char *coinaddr,struct coin_info *cp,char *NXTaddr)
     return(0);
 }
 
+struct btcinput_data
+{
+    unsigned char txid[32];
+    uint32_t vout;
+    int64_t scriptlen;
+    uint32_t sequenceid;
+    unsigned char script[];
+};
+
+struct btcoutput_data
+{
+    int64_t value,pk_scriptlen;
+    unsigned char pk_script[];
+};
+
+struct btcinput_data *decode_btcinput(int32_t *offsetp,char *txbytes)
+{
+    struct btcinput_data *ptr,I;
+    int32_t i;
+    memset(&I,0,sizeof(I));
+    for (i=0; i<32; i++)
+        I.txid[31-i] = _decode_hex(txbytes + *offsetp), (*offsetp) += 2;
+    I.vout = _decode_hexint(offsetp,txbytes);
+    I.scriptlen = _decode_varint(offsetp,txbytes);
+    if ( I.scriptlen > 1024 )
+    {
+        printf("decode_btcinput: very long script starting at offset.%d of (%s)\n",*offsetp,txbytes);
+        return(0);
+    }
+    ptr = calloc(1,sizeof(*ptr) + I.scriptlen);
+    *ptr = I;
+    for (i=0; i<I.scriptlen; i++)
+        ptr->script[i] = _decode_hex(txbytes + *offsetp), (*offsetp) += 2;
+    ptr->sequenceid = _decode_hexint(offsetp,txbytes);
+    return(ptr);
+}
+
+struct btcoutput_data *decode_btcoutput(int32_t *offsetp,char *txbytes)
+{
+    int32_t i;
+    struct btcoutput_data *ptr,btcO;
+    memset(&btcO,0,sizeof(btcO));
+    btcO.value = _decode_hexlong(offsetp,txbytes);
+    btcO.pk_scriptlen = _decode_varint(offsetp,txbytes);
+    if ( btcO.pk_scriptlen > 1024 )
+    {
+        printf("decode_btcoutput: very long script starting at offset.%d of (%s)\n",*offsetp,txbytes);
+        return(0);
+    }
+    ptr = calloc(1,sizeof(*ptr) + btcO.pk_scriptlen);
+    *ptr = btcO;
+    for (i=0; i<btcO.pk_scriptlen; i++)
+        ptr->pk_script[i] = _decode_hex(txbytes + *offsetp), (*offsetp) += 2;
+    return(ptr);
+}
+
+uint32_t calc_vin0seqstart(char *txbytes)
+{
+    struct btcinput_data *btcinput,*firstinput = 0;
+    struct btcoutput_data *btcoutput;
+    char buf[4096];
+    int64_t numinputs,numoutputs;
+    int32_t i,vin0seqstart,locktime,version,offset = 0;
+    version = _decode_hexint(&offset,txbytes);
+    numinputs = _decode_varint(&offset,txbytes);
+    vin0seqstart = 0;
+    for (i=0; i<numinputs; i++)
+    {
+        btcinput = decode_btcinput(&offset,txbytes);
+        if ( btcinput != 0 )
+        {
+            init_hexbytes_noT(buf,btcinput->txid,32);
+            printf("(%s vout%d) ",buf,btcinput->vout);
+        }
+        if ( i == 0 )
+        {
+            firstinput = btcinput;
+            vin0seqstart = offset - sizeof(int32_t)*2;
+        }
+        else if ( btcinput != 0 ) free(btcinput);
+    }
+    printf("-> ");
+    numoutputs = _decode_varint(&offset,txbytes);
+    for (i=0; i<numoutputs; i++)
+    {
+        btcoutput = decode_btcoutput(&offset,txbytes);
+        if ( btcoutput != 0 )
+        {
+            init_hexbytes_noT(buf,btcoutput->pk_script,btcoutput->pk_scriptlen);
+            printf("(%s %.8f) ",buf,dstr(btcoutput->value));
+            free(btcoutput);
+        }
+    }
+    locktime = _decode_hexint(&offset,txbytes);
+    printf("version.%d 1st.seqid %d @ %d numinputs.%d numoutputs.%d locktime.%d\n",version,firstinput!=0?firstinput->sequenceid:0xffffffff,vin0seqstart,(int)numinputs,(int)numoutputs,locktime);
+    //0100000001ac8511d408d35e62ccc7925ed2437022e9b7e9e731197a42a58495e4465439d10000000000ffffffff0200dc5c24020000001976a914bf685a09e61215c7e824d0b73bc6d6d3ba9d9d9688ac00c2eb0b000000001976a91414b24a5b6f8c8df0f7c9b519d362618ca211e60988ac00000000
+    if ( firstinput != 0 )
+        return(vin0seqstart);
+    else return(-1);
+}
+
+void subatomic_uint32_splicer(char *txbytes,int32_t offset,uint32_t spliceval)
+{
+    int32_t i;
+    uint32_t x;
+    if ( offset < 0 )
+    {
+        static int foo;
+        if ( foo++ < 3 )
+            printf("subatomic_uint32_splicer illegal offset.%d\n",offset);
+        return;
+    }
+    for (i=0; i<4; i++)
+    {
+        x = spliceval & 0xff; spliceval >>= 8;
+        txbytes[offset + i*2] = hexbyte((x>>4) & 0xf);
+        txbytes[offset + i*2 + 1] = hexbyte(x & 0xf);
+    }
+}
+
+uint32_t extract_sequenceid(struct coin_info *cp,char *rawtx,int32_t vind)
+{
+    uint32_t sequenceid = 0;
+    cJSON *json,*vin,*item;
+    char *retstr,*str;
+    str = malloc(strlen(rawtx)+4);
+    //printf("got rawtransaction.(%s)\n",rawtransaction);
+    sprintf(str,"\"%s\"",rawtx);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
+    if ( retstr != 0 && retstr[0] != 0 )
+    {
+        //printf("decoded.(%s)\n",retstr);
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( (vin= cJSON_GetObjectItem(json,"vin")) != 0 )
+            {
+                if ( (item= cJSON_GetArrayItem(vin,vind)) != 0 )
+                    sequenceid = (uint32_t)get_API_int(cJSON_GetObjectItem(item,"sequence"),0);
+            }
+            free_json(json);
+        }
+    }
+    if ( retstr != 0 )
+        free(retstr);
+    free(str);
+    return(sequenceid);
+}
+
+int32_t replace_bitcoin_sequenceid(struct coin_info *cp,char *rawtx,uint32_t newbytes)
+{
+    char numstr[9];
+    int32_t i,n;
+    uint32_t val;
+    n = (int32_t)(strlen(rawtx) - 8);
+    for (i=0; i<n; i++)
+        if ( memcmp(&rawtx[i],"ffffffff",8) == 0 )
+            break;
+    if ( i < n )
+    {
+        init_hexbytes_noT(numstr,(void *)&newbytes,4);
+        memcpy(&rawtx[i],numstr,8);
+        if ( cp != 0 )
+        {
+            if ( (val= extract_sequenceid(cp,rawtx,0)) != newbytes )
+            {
+                printf("val.%u != newbytes.%u\n",val,newbytes);
+                return(-1);
+            }
+        }
+        return(i);
+    }
+    return(-1);
+}
+
 void *Coinloop(void *ptr)
 {
-    //int32_t iterate_MGW(char *mgwNXTaddr,char *refassetid,int32_t reloadflag);
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
-#ifdef __APPLE__
-    //iterate_MGW("7117166754336896747","11060861818140490423",0);
-#endif
-    
     for (i=0; i<Numcoins; i++)
     {
         if ( (cp= Daemons[i]) != 0 )
@@ -1256,7 +1080,7 @@ void *Coinloop(void *ptr)
             cp->RTblockheight = (int32_t)height;
             if ( cp->blockheight < (height - cp->min_confirms) )
             {
-                if ( Debuglevel > 2 )
+                //if ( Debuglevel > 2 )
                     printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
                 if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
                 {

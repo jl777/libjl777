@@ -275,7 +275,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp = 0;
     //struct NXT_guid *gp = 0;
-    struct coin_txid *ctp = 0;
+    struct coin_txidind *ctp = 0;
     struct withdraw_info *wp = 0;
     struct pserver_info *pp = 0;
     struct telepathy_entry *tel = 0;
@@ -296,7 +296,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
     if ( Redeems == 0 )
         Redeems = hashtable_create("Redeems",HASHTABLES_STARTSIZE,sizeof(struct withdraw_info),((long)&wp->redeemtxid[0] - (long)wp),sizeof(wp->redeemtxid),((long)&wp->modified - (long)wp));
     if ( Coin_txids == 0 )
-        Coin_txids = hashtable_create("Coin_txids",HASHTABLES_STARTSIZE,sizeof(struct coin_txid),((long)&ctp->txid[0] - (long)ctp),sizeof(ctp->txid),((long)&ctp->modified - (long)ctp));
+        Coin_txids = hashtable_create("Coin_txids",HASHTABLES_STARTSIZE,sizeof(struct coin_txidind),((long)&ctp->indstr[0] - (long)ctp),sizeof(ctp->indstr),((long)&ctp->modified - (long)ctp));
     if ( mp != 0 )
     {
         mp->Telepathy_tablep = &Telepathy_hash;
@@ -327,14 +327,23 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("ERROR hist process_hashtablequeues\n");
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
+    if ( 0 )
+    {
+        uint32_t before,after;
+        char *rawtx = clonestr("0100000074fc77540156a5b19aaada0496780b1fbce72f7647da5f940883da7ee5d5774f673c6703c401000000fdfd0000483045022100f0b26a43136af6c28d381f461a9fcd30309788456cb81784dbc68ee85ae4151d022036fc96c4edd7b87e762bb139d5d34838a88054c37173236236f72940b2e5309801473044022068ae115a397d9a6f462b78416d58582736fa38ecc4eab2c26759e1e58d6326bc02204e148ab84d49b0f1c8aab1033819ad90c536c604ce24dab419013a5914d39d8a014c695221035827b3c432eb5a528a21657d36a1b61dd85078a6ba5f328bed2d928c173a46c421024ae5e013fda966cf8544025534012156f84a40a5672a894c42e144b0664202502102acdb9c782d499de9b98e8b166fc22bd68895e2293cb49e4a2e071f1254d1a7aa53aeffffffff0340420f00000000001976a9148466f34f39c23547abf922d422e3e5322fdf156588ac20cd8800020000001976a914cd073e0a5d4225f2577113400c3abf9ac1ad2cc488ac60c791e50600000017a914194a1499c343beefe3127e041f480ee4aef058408700000000");
+        before = extract_sequenceid(get_coin_info("BTCD"),rawtx,0);
+        replace_bitcoin_sequenceid(get_coin_info("BTCD"),rawtx,12345678);
+        after = extract_sequenceid(get_coin_info("BTCD"),rawtx,0);
+        printf("newtx.(%s) before.%u after.%u\n",rawtx,before,after); getchar();
+    }
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
-#ifndef __APPLE__
-    Coinloop(0);
-#else
+//#ifndef __APPLE__
+//    Coinloop(0);
+//#else
     if ( portable_thread_create((void *)Coinloop,0) == 0 )
         printf("ERROR hist Coinloop SSL\n");
-#endif
+//#endif
     Finished_loading = 1;
     printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
@@ -664,6 +673,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices (%s)\n",myipaddr);
+    uint64_t pendingtxid; ready_to_xferassets(&pendingtxid);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
     {

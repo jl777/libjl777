@@ -340,9 +340,9 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
     if ( comment != 0 )
     {
-        if ( Global_mp->NXTheight >= DGSBLOCK )
+        //if ( Global_mp->NXTheight >= DGSBLOCK )
             strcat(cmd,"&message=");
-        else strcat(cmd,"&comment=");
+        //else strcat(cmd,"&comment=");
         strcat(cmd,comment);
     }
     jsontxt = issue_NXTPOST(curl_handle,cmd);
@@ -1164,32 +1164,33 @@ int32_t set_current_NXTblock(int32_t *isrescanp,CURL *curl_handle,char *blockids
     return(numblocks);
 }
 
-uint32_t get_NXTblock()
+int32_t get_NXTblock(int32_t *timestampp)
 {
     int32_t isrescan,numblocks = 0;
-    union NXTtype retval;
-    cJSON *scanjson;
-    char cmd[256],scanstr[256],blockstr[1025];
+    cJSON *scanjson,*json;
+    char cmd[256],scanstr[256],*retstr;
     sprintf(cmd,"%s=getBlockchainStatus",_NXTSERVER);
     isrescan = 0;
-    /*retval = extract_NXTfield(0,0,cmd,0,0);
-    if ( retval.json != 0 )
+    if ( (retstr = issue_NXTPOST(0,cmd)) != 0 )
     {
-        numblocks = (int32_t)get_cJSON_int(retval.json,"numberOfBlocks");
-        scanjson = cJSON_GetObjectItem(retval.json,"isScanning");
-        if ( scanjson != 0 )
+        //printf("get_NXTblock status.(%s)\n",retstr);
+        if ( (json= cJSON_Parse(retstr)) != 0 )
         {
-            copy_cJSON(scanstr,scanjson);
-            if ( strcmp(scanstr,"true") == 0 )
-                isrescan = 1;
+            numblocks = (int32_t)get_cJSON_int(json,"numberOfBlocks");
+            if ( timestampp != 0 )
+                *timestampp = (int32_t)get_cJSON_int(json,"timestamp");
+            scanjson = cJSON_GetObjectItem(json,"isScanning");
+            if ( scanjson != 0 )
+            {
+                copy_cJSON(scanstr,scanjson);
+                if ( strcmp(scanstr,"true") == 0 )
+                    isrescan = 1;
+            }
+            free_json(json);
         }
-        free_json(retval.json);
+        free(retstr);
     }
-    else
-    {
-        printf("error getBlockchainStatus\n");*/
-        numblocks = set_current_NXTblock(&isrescan,0,blockstr);
-   // }
+    printf("isrescan.%d numblocks.%d\n",isrescan,numblocks);
     if ( isrescan != 0 )
         return(0);
     return(numblocks - 1);

@@ -307,11 +307,20 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 
 union _coin_value_ptr { char *script; char *coinbase; };
 
+struct coin_txidind
+{
+    int64_t modified;
+    uint64_t redeemtxid,value;
+    struct address_entry entry;
+    int32_t numvouts;
+    char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[MAX_NXTADDR_LEN],*script;
+};
+
 struct coin_value
 {
     int64_t modified,value;
     char *txid;
-    struct coin_txid *parent,*spent,*pendingspend;
+    struct coin_txidind *parent,*spent,*pendingspend;
     union _coin_value_ptr U;
     int32_t parent_vout,spent_vin,pending_spendvin,isconfirmed,iscoinbase,isinternal;
     char coinaddr[MAX_COINADDR_LEN];
@@ -319,15 +328,14 @@ struct coin_value
 
 struct unspent_info
 {
-    int64_t maxunspent,unspent,maxavail,minavail,smallest_msigunspent;
-    struct coin_value **vps,*maxvp,*minvp;
+    int64_t maxunspent,unspent,maxavail,minavail;
+    struct coin_txidind **vps,*maxvp,*minvp;
     int32_t maxvps,num;
-    char smallest_msig[128];
 };
 
 struct rawtransaction
 {
-    struct coin_value *inputs[MAX_COIN_INPUTS];
+    struct coin_txidind *inputs[MAX_COIN_INPUTS];
     char *destaddrs[MAX_COIN_OUTPUTS],txid[MAX_COINADDR_LEN];
     uint64_t redeems[MAX_MULTISIG_OUTPUTS+MAX_MULTISIG_INPUTS];
     int64_t amount,change,inputsum,destamounts[MAX_COIN_OUTPUTS];
@@ -357,29 +365,19 @@ struct batch_info
     struct rawtransaction rawtx;
 };
 
-struct coin_txid
-{
-    int64_t modified;
-    uint64_t confirmedAMbits,NXTxferbits,redeemtxid;
-    char *decodedrawtx;
-    int32_t numvins,numvouts,hasinternal,height;
-    struct coin_value **vins,**vouts;
-    char txid[MAX_COINTXID_LEN];
-};
-
-struct coincache_info
+/*struct coincache_info
 {
     FILE *cachefp,*blocksfp;
     struct hashtable *coin_txids;
     char **blocks,*ignorelist;
     int32_t ignoresize,lastignore,numblocks,purgedblock;
-};
+};*/
 
 struct coin_info
 {
     int32_t timestamps[100];
     struct batch_info BATCH,withdrawinfos[16];
-    struct coincache_info CACHE;
+    //struct coincache_info CACHE;
     struct unspent_info unspent;
     portable_mutex_t consensus_mutex;
     //struct pingpong_queue podQ;
@@ -716,7 +714,7 @@ double _pairave(float valA,float valB)
 #include "dbqueue.h"
 #include "storage.h"
 #include "udp.h"
-#include "coincache.h"
+//#include "coincache.h"
 #include "kademlia.h"
 #include "packets.h"
 #include "mofnfs.h"
@@ -725,9 +723,9 @@ double _pairave(float valA,float valB)
 #include "telepathy.h"
 #include "NXTsock.h"
 #include "bitcoind.h"
-#include "mgw.h"
 #include "atomic.h"
 #include "teleport.h"
+#include "mgw.h"
 
 #include "feeds.h"
 #include "orders.h"
