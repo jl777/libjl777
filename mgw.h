@@ -1174,7 +1174,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
                     }
                 }
                 free(msig);
-            }
+            } 
         }
         if ( up->num > 1 )
             sort_vps(up->vps,up->num);
