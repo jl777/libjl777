@@ -339,7 +339,8 @@ char *get_transaction(struct coin_info *cp,char *txidstr)
             sprintf(str,"\"%s\"",rawtransaction);
             retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
             if ( retstr == 0 )
-                printf("null retstr from decoderawtransaction (%s)\n",str);
+                printf("null retstr from decoderawtransaction (%s)\n",retstr);
+            free(str);
         }
         free(rawtransaction);
     } else printf("null rawtransaction\n");
