@@ -318,12 +318,32 @@ struct address_entry *get_address_entries(int32_t *nump,char *coin,char *addr)
     return(dbupdate_address_entries(nump,coin,addr,0,0));
 }
 
-char *get_transaction(struct coin_info *cp,char *txidstr)
+char *oldget_transaction(struct coin_info *cp,char *txidstr)
 {
     char *rawtransaction=0,txid[4096]; //*retstr=0,*str,
     sprintf(txid,"\"%s\"",txidstr);
     rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"gettransaction",txid);
     return(rawtransaction);
+}
+
+char *get_transaction(struct coin_info *cp,char *txidstr)
+{
+    char *rawtransaction=0,*retstr=0,*str=0,txid[4096];
+    sprintf(txid,"\"%s\" 1",txidstr);
+    rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid);
+    if ( rawtransaction != 0 )
+    {
+        if ( rawtransaction[0] != 0 )
+        {
+            str = malloc(strlen(rawtransaction)+4);
+            sprintf(str,"\"%s\"",rawtransaction);
+            retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"decoderawtransaction",str);
+            if ( retstr == 0 )
+                printf("null retstr from decoderawtransaction (%s)\n",str);
+        }
+        free(rawtransaction);
+    } else printf("null rawtransaction\n");
+    return(retstr);
 }
 
 int32_t calc_isinternal(struct coin_info *cp,char *coinaddr_v0,uint32_t height,int32_t i,int32_t numvouts)
@@ -426,7 +446,7 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
                                             printf("zero value? (%s) vout.%d\n",transaction,vout);
                                             continue;
                                         }
-                                        printf("process input.(%s)\n",coinaddr);
+                                        //printf("process input.(%s)\n",coinaddr);
                                         if ( (oldblockheight= get_blocktxind(&oldtxind,cp,0,blockhash,txid)) > 0 )
                                         {
                                             add_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0);
