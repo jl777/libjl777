@@ -331,7 +331,7 @@ char *get_transaction(struct coin_info *cp,char *txidstr)
     char *rawtransaction=0,*retstr=0,*str=0,txid[4096];
     sprintf(txid,"[\"%s\", 1]",txidstr);
     rawtransaction = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid);
-    if ( rawtransaction != 0 )
+   /* if ( rawtransaction != 0 )
     {
         if ( rawtransaction[0] != 0 )
         {
@@ -343,8 +343,8 @@ char *get_transaction(struct coin_info *cp,char *txidstr)
             free(str);
         }
         free(rawtransaction);
-    } else printf("null rawtransaction\n");
-    return(retstr);
+    } else printf("null rawtransaction\n");*/
+    return(rawtransaction);
 }
 
 int32_t calc_isinternal(struct coin_info *cp,char *coinaddr_v0,uint32_t height,int32_t i,int32_t numvouts)
