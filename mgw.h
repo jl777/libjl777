@@ -878,7 +878,7 @@ int32_t ready_to_xferassets(uint64_t *txidp)
         firstNXTblock = get_NXTblock(0);
     if ( time(NULL) < (firsttime + DEPOSIT_XFER_DURATION*60) )
         return(0);
-    if ( firstNXTblock <= 0 || get_NXTblock(0) < (firstNXTblock + 3) )
+    if ( firstNXTblock <= 0 || get_NXTblock(0) < (firstNXTblock + DEPOSIT_XFER_DURATION) )
         return(0);
     if ( (*txidp= add_pendingxfer(0,0)) != 0 )
     {

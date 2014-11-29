@@ -27,7 +27,7 @@ char *get_public_srvacctsecret();
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 {
     cJSON *json;
-    char params[1024],*retstr;
+    char params[1024],*retstr,*url;
     if ( field0 != 0 && field0[0] != 0 )
     {
         if ( field0 != 0 && field0[0] != 0 )
@@ -35,7 +35,8 @@ cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
         else sprintf(params,"{\"requestType\":\"%s\",\"%s\":\"%s\"}",cmd,field0,arg0);
     }
     else sprintf(params,"{\"requestType\":\"%s\"}",cmd);
-    retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"https://127.0.0.1:7777",(char *)"",(char *)"SuperNET",params);
+    url = (USESSL == 0) ? (char *)"http://127.0.0.1:7778" : (char *)"https://127.0.0.1:7777";
+    retstr = bitcoind_RPC(0,(char *)"BTCD",url,(char *)"",(char *)"SuperNET",params);
     if ( retstr != 0 )
     {
         json = cJSON_Parse(retstr);
