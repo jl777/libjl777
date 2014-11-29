@@ -255,7 +255,7 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**otheraddrs_tablep,**Telepathy_tablep,**redeemtxids,**coin_txids;//,**Storage_tablep,**Private_tablep;,**NXTguid_tablep,
+    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**otheraddrs_tablep,**Telepathy_tablep,**redeemtxids,**coin_txidinds,**coin_txidmap;//,**Storage_tablep,**Private_tablep;,**NXTguid_tablep,
     cJSON *accountjson;
     //FILE *storage_fps[2];
     uv_udp_t *udp;
@@ -310,10 +310,18 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 struct coin_txidind
 {
     int64_t modified;
-    uint64_t redeemtxid,value;
+    uint64_t redeemtxid,value,unspent;
     struct address_entry entry;
     int32_t numvouts;
     char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[MAX_NXTADDR_LEN],*script;
+};
+
+struct coin_txidmap
+{
+    uint64_t modified;
+    uint32_t blocknum;
+    uint16_t txind,v;
+    char txidmapstr[MAX_COINTXID_LEN];
 };
 
 /*struct coin_value

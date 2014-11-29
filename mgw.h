@@ -8,7 +8,7 @@
 #ifndef mgw_h
 #define mgw_h
 
-#define DEPOSIT_XFER_DURATION 1
+#define DEPOSIT_XFER_DURATION (13/13)
 #define MIN_DEPOSIT_FACTOR 5
 
 #define GET_COINDEPOSIT_ADDRESS 'g'
@@ -839,7 +839,8 @@ int32_t init_NXT_transactions(int32_t txtype,char *refNXTaddr,struct coin_info *
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
     if ( coinid > 0 && np->timestamps[coinid] != 0 )
         sprintf(cmd + strlen(cmd),"&timestamp=%d",cp->timestamps[coinid]);
-    //printf("init_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,refassetid,cmd);
+    if ( Debuglevel > 2 )
+        printf("init_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
         //printf("(%s)\n",jsonstr);
@@ -935,12 +936,9 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 total += value;
                 if ( forceflag > 0 )// || ready_to_xferassets() > 0 )
                 {
-                    //if ( forceflag > 0 )
-                    {
-                        expand_nxt64bits(NXTaddr,nxt64bits);
-                        depositid = issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment);
-                        add_pendingxfer(0,depositid);
-                    } //else depositid = 0;
+                    expand_nxt64bits(NXTaddr,nxt64bits);
+                    depositid = issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment);
+                    add_pendingxfer(0,depositid);
                     if ( transferjsonp != 0 )
                     {
                         if ( *transferjsonp == 0 )
@@ -957,19 +955,52 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     return(total);
 }
 
+struct coin_txidmap *get_txid(struct coin_info *cp,char *txidstr,uint32_t blocknum,int32_t txind,int32_t v)
+{
+    char buf[1024],coinaddr[1024],script[4096],checktxidstr[1024];
+    int32_t createdflag;
+    struct coin_txidmap *tp;
+    sprintf(buf,"%s_%s_%d",txidstr,cp->name,v);
+    tp = MTadd_hashtable(&createdflag,Global_mp->coin_txidmap,buf);
+    if ( createdflag != 0 )
+    {
+        if ( blocknum == 0xffffffff || txind < 0 )
+        {
+            blocknum = get_txidind(&txind,cp,txidstr,v);
+            if ( txind >= 0 && blocknum < 0xffffffff )
+            {
+                get_txoutstr(0,checktxidstr,coinaddr,script,cp,blocknum,txind,v);
+                if ( strcmp(checktxidstr,txidstr) != 0 )
+                    printf("checktxid.(%s) != (%s)???\n",checktxidstr,txidstr);
+                else printf("txid.(%s) (%d %d %d) verified\n",txidstr,blocknum,txind,v);
+            }
+        }
+        tp->blocknum = blocknum;
+        tp->txind = txind;
+        tp->v = v;
+    }
+    return(tp);
+}
+
 struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry)
 {
     char indstr[32],script[MAX_JSON_FIELD],origtxidstr[256];
     struct coin_txidind *cointp;
+    struct coin_txidmap *tp;
+    uint64_t ind;
     int32_t createdflag,spentflag;
     uint32_t blocknum;
     uint16_t txind,v;
-    uint64_t ind;
     if ( entry->vinflag != 0 )
     {
         v = get_txinstr(origtxidstr,cp,entry->blocknum,entry->txind,entry->v);
-        printf("spent (%s).%d\n",origtxidstr,v);
-        return(0);
+        tp = get_txid(cp,origtxidstr,0xffffffff,-1,v);
+        blocknum = tp->blocknum;
+        txind = tp->txind;
+        if ( v != tp->v )
+            fprintf(stderr,"error (%d != %d)\n",v,tp->v);
+        if ( Debuglevel > 2 )
+            printf("get_cointp.(%016llx) spent.(%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
     else
@@ -982,21 +1013,23 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
     ind = ((uint64_t)blocknum << 32) | ((uint64_t)txind << 16) | v;
     strcpy(indstr,cp->name);
     expand_nxt64bits(indstr+strlen(indstr),ind);
-    cointp = MTadd_hashtable(&createdflag,Global_mp->coin_txids,indstr);
+    cointp = MTadd_hashtable(&createdflag,Global_mp->coin_txidinds,indstr);
     if ( createdflag != 0 )
     {
         cointp->entry = *entry;
         cointp->value = get_txoutstr(&cointp->numvouts,cointp->txid,cointp->coinaddr,script,cp,blocknum,txind,v);
         cointp->script = clonestr(script);
+        if ( entry->vinflag == 0 )
+            get_txid(cp,cointp->txid,blocknum,txind,v);
     }
     if ( spentflag != 0 )
         cointp->entry.spent = 1;
-    if ( createdflag != 0 && cointp->entry.spent == 0 )
-        printf("unspent %.8f: %s.v%d %s\n",dstr(cointp->value),cointp->txid,cointp->entry.v,cointp->coinaddr);
+    if ( cointp->entry.spent != 0 && cointp->script != 0 )
+        free(cointp->script), cointp->script = 0;
     return(cointp);
 }
 
-uint64_t process_msigaddr(uint64_t *unspentp,cJSON **transferjsonp,int32_t forceflag,struct NXT_asset *ap,char *refassetid,char *NXTaddr,struct coin_info *cp,char *msigaddr)
+uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transferjsonp,int32_t forceflag,struct NXT_asset *ap,char *refassetid,char *NXTaddr,struct coin_info *cp,char *msigaddr)
 {
     struct address_entry *entries,*entry;
     int32_t i,n;
@@ -1018,7 +1051,8 @@ uint64_t process_msigaddr(uint64_t *unspentp,cJSON **transferjsonp,int32_t force
             entry = &entries[i];
             if ( entry->vinflag == 0 )
                 amount += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr);
-            printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
+            if ( Debuglevel > 2 )
+                printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
         }
         for (i=0; i<n; i++)
@@ -1034,6 +1068,9 @@ uint64_t process_msigaddr(uint64_t *unspentp,cJSON **transferjsonp,int32_t force
                     printf("ERROR: %.8f != %.8f | %s %s.%d\n",dstr(unspent),dstr(cointp->value),cp->name,cointp->txid,cointp->entry.v);
                 else*/
                 {
+                    cointp->unspent = unspent;
+                    printf("%s | %.8f\n",cointp->txid,dstr(cointp->unspent));
+                    (*numunspentp)++;
                     (*unspentp) += unspent;
                     update_unspent_funds(cp,cointp,0);
                 }
@@ -1048,6 +1085,7 @@ int32_t valid_msig(struct multisig_addr *msig,char *coinstr,char *specialNXT,cha
 {
     int32_t i,match = 0;
     char NXTaddr[64],gatewayNXTaddr[64],ipaddr[64];
+    //printf("%s %s M.%d N.%d %llu vs %s (%s %s %s)\n",msig->coinstr,coinstr,msig->m,msig->n,(long long)msig->sender,specialNXT,gateways[0],gateways[1],gateways[2]);
     if ( strcmp(msig->coinstr,coinstr) == 0 && msig->m == M && msig->n == N )
     {
         expand_nxt64bits(NXTaddr,msig->sender);
@@ -1099,7 +1137,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
     cJSON *json,*transferjson = 0;
     struct unspent_info *up;
     uint64_t pendingtxid,circulation,unspent,total = 0;
-    int32_t i,n,createdflag,readyflag;
+    int32_t i,n,nonz,numunspent,createdflag,readyflag;
     struct NXT_asset *ap;
     struct storage_header **msigs;
     struct multisig_addr *msig;
@@ -1155,11 +1193,13 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
     if ( (msigs= copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
     {
         readyflag = ready_to_xferassets(&pendingtxid);
-        if ( Debuglevel > 2 )
-            printf("got n.%d msigs\n",n);
+        if ( Debuglevel > 1 )
+            printf("got n.%d msigs readyflag.%d\n",n,readyflag);
         update_unspent_funds(cp,0,n*1000);
+        nonz = numunspent = 0;
         for (i=0; i<n; i++)
         {
+            //fprintf(stderr,"(%d %p) ",i,msigs[i]);
             if ( (msig= (struct multisig_addr *)msigs[i]) != 0 )
             {
                 if ( valid_msig(msig,coin,specialNXT,gateways,ipaddrs,numgateways-1,numgateways) != 0 )
@@ -1169,8 +1209,14 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
                     if ( strcmp(msig->coinstr,cp->name) == 0 )
                     {
                         init_NXT_transactions(2,msig->NXTaddr,cp);
-                        //if ( readyflag > 0 )
-                            total += (process_msigaddr(&unspent,&transferjson,transferassets,ap,assetstr,msig->NXTaddr,cp,msig->multisigaddr) > 0);
+                        if ( readyflag > 0 )
+                        {
+                            int32_t tmp;
+                            tmp = numunspent;
+                            total += (process_msigaddr(&numunspent,&unspent,&transferjson,transferassets,ap,assetstr,msig->NXTaddr,cp,msig->multisigaddr) > 0);
+                            if ( numunspent > tmp )
+                                nonz++;
+                        }
                     }
                 }
                 free(msig);
@@ -1178,7 +1224,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
         }
         if ( up->num > 1 )
             sort_vps(up->vps,up->num);
-        printf("max %.8f min %.8f median %.8f |unspent %.8f\n",dstr(up->maxavail),dstr(up->minavail),dstr((up->maxavail+up->minavail)/2),dstr(up->unspent));
+        printf("max %.8f min %.8f median %.8f |unspent %.8f numunspent.%d in nonz.%d accts\n",dstr(up->maxavail),dstr(up->minavail),dstr((up->maxavail+up->minavail)/2),dstr(up->unspent),numunspent,nonz);
         free(msigs);
     }
     if ( transferjson != 0 )

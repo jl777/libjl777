@@ -1190,7 +1190,7 @@ int32_t get_NXTblock(int32_t *timestampp)
         }
         free(retstr);
     }
-    printf("isrescan.%d numblocks.%d\n",isrescan,numblocks);
+    //printf("isrescan.%d numblocks.%d\n",isrescan,numblocks);
     if ( isrescan != 0 )
         return(0);
     return(numblocks - 1);

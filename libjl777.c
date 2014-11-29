@@ -276,11 +276,12 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_assettxid *tp = 0;
     //struct NXT_guid *gp = 0;
     struct coin_txidind *ctp = 0;
+    struct coin_txidmap *map = 0;
     struct withdraw_info *wp = 0;
     struct pserver_info *pp = 0;
     struct telepathy_entry *tel = 0;
     //struct kademlia_storage *sp = 0;
-    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*Pserver,*Telepathy_hash,*Redeems,*Coin_txids;
+    static struct hashtable *NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*Pserver,*Telepathy_hash,*Redeems,*Coin_txidinds,*Coin_txidmap;
     //if ( NXTguids == 0 )
     //    NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
     if ( NXTasset_txids == 0 )
@@ -295,8 +296,10 @@ void init_NXThashtables(struct NXThandler_info *mp)
         Pserver = hashtable_create("Pservers",HASHTABLES_STARTSIZE,sizeof(struct pserver_info),((long)&pp->ipaddr[0] - (long)pp),sizeof(pp->ipaddr),((long)&pp->modified - (long)pp));
     if ( Redeems == 0 )
         Redeems = hashtable_create("Redeems",HASHTABLES_STARTSIZE,sizeof(struct withdraw_info),((long)&wp->redeemtxid[0] - (long)wp),sizeof(wp->redeemtxid),((long)&wp->modified - (long)wp));
-    if ( Coin_txids == 0 )
-        Coin_txids = hashtable_create("Coin_txids",HASHTABLES_STARTSIZE,sizeof(struct coin_txidind),((long)&ctp->indstr[0] - (long)ctp),sizeof(ctp->indstr),((long)&ctp->modified - (long)ctp));
+    if ( Coin_txidinds == 0 )
+        Coin_txidinds = hashtable_create("Coin_txidinds",HASHTABLES_STARTSIZE,sizeof(struct coin_txidind),((long)&ctp->indstr[0] - (long)ctp),sizeof(ctp->indstr),((long)&ctp->modified - (long)ctp));
+    if ( Coin_txidmap == 0 )
+        Coin_txidmap = hashtable_create("Coin_txidmap",HASHTABLES_STARTSIZE,sizeof(struct coin_txidmap),((long)&map->txidmapstr[0] - (long)map),sizeof(map->txidmapstr),((long)&map->modified - (long)map));
     if ( mp != 0 )
     {
         mp->Telepathy_tablep = &Telepathy_hash;
@@ -305,7 +308,8 @@ void init_NXThashtables(struct NXThandler_info *mp)
         mp->NXTaccts_tablep = &NXTaddrs;
         mp->NXTassets_tablep = &NXTassets;
         mp->NXTasset_txids_tablep = &NXTasset_txids;
-        mp->coin_txids = &Coin_txids;
+        mp->coin_txidinds = &Coin_txidinds;
+        mp->coin_txidmap = &Coin_txidmap;
         printf("init_NXThashtables: %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids);
     }
 }
