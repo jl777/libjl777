@@ -16,7 +16,7 @@
 #include "SuperNET.h"
 #include "cJSON.h"
 
-extern int32_t IS_LIBTEST;
+extern int32_t IS_LIBTEST,USESSL;
 extern cJSON *MGWconf;
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
 int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
@@ -24,10 +24,15 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
 void expand_ipbits(char *ipaddr,uint32_t ipbits);
 char *get_public_srvacctsecret();
 
+char *SuperNET_url()
+{
+    return((USESSL == 0) ? (char *)"http://127.0.0.1:7778" : (char *)"https://127.0.0.1:7777");
+}
+
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 {
     cJSON *json;
-    char params[1024],*retstr,*url;
+    char params[1024],*retstr;
     if ( field0 != 0 && field0[0] != 0 )
     {
         if ( field0 != 0 && field0[0] != 0 )
@@ -35,8 +40,7 @@ cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
         else sprintf(params,"{\"requestType\":\"%s\",\"%s\":\"%s\"}",cmd,field0,arg0);
     }
     else sprintf(params,"{\"requestType\":\"%s\"}",cmd);
-    url = (USESSL == 0) ? (char *)"http://127.0.0.1:7778" : (char *)"https://127.0.0.1:7777";
-    retstr = bitcoind_RPC(0,(char *)"BTCD",url,(char *)"",(char *)"SuperNET",params);
+    retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
     if ( retstr != 0 )
     {
         json = cJSON_Parse(retstr);
@@ -129,7 +133,7 @@ void *GUIpoll_loop(void *arg)
         sleep(1);
         //continue;
         sprintf(params,"{\"requestType\":\"GUIpoll\"}");
-        retstr = bitcoind_RPC(0,(char *)"BTCD",(char *)"http://127.0.0.1:7778",(char *)"",(char *)"SuperNET",params);
+        retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
         //fprintf(stderr,"<<<<<<<<<<< SuperNET poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
         if ( retstr != 0 )
         {
