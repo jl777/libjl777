@@ -652,14 +652,20 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
             Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
-            if ( USESSL == 0 )
-                strcpy(NXTAPIURL,"http://127.0.0.1:");
-            else strcpy(NXTAPIURL,"https://127.0.0.1:");
+            if ( NXTAPIURL[0] == 0 )
+            {
+                if ( USESSL == 0 )
+                    strcpy(NXTAPIURL,"http://127.0.0.1:");
+                else strcpy(NXTAPIURL,"https://127.0.0.1:");
+                if ( ismainnet != 0 )
+                    strcat(NXTAPIURL,"7876/nxt");
+                else strcat(NXTAPIURL,"6876/nxt");
+            }
+            strcpy(NXTSERVER,NXTAPIURL);
+            strcat(NXTSERVER,"?requestType");
             if ( ismainnet != 0 )
             {
                 NXT_FORKHEIGHT = 173271;
-                if ( NXTAPIURL[0] == 0 )
-                    strcat(NXTAPIURL,"7876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"7117166754336896747");
                 //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
@@ -667,16 +673,12 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             else
             {
                 DGSBLOCK = 0;
-                if ( NXTAPIURL[0] == 0 )
-                    strcat(NXTAPIURL,"6876/nxt");
                 if ( NXTISSUERACCT[0] == 0 )
                     strcpy(NXTISSUERACCT,"18232225178877143084");
                 //origblock = "16787696303645624065";   //"91889681853055765";//"16787696303645624065";
             }
             //if ( ORIGBLOCK[0] == 0 )
              //   strcpy(ORIGBLOCK,origblock);
-            strcpy(NXTSERVER,NXTAPIURL);
-            strcat(NXTSERVER,"?requestType");
             extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
             extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
             extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
