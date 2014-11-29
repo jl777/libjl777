@@ -1085,6 +1085,7 @@ int32_t valid_msig(struct multisig_addr *msig,char *coinstr,char *specialNXT,cha
 {
     int32_t i,match = 0;
     char NXTaddr[64],gatewayNXTaddr[64],ipaddr[64];
+return(1);
     //printf("%s %s M.%d N.%d %llu vs %s (%s %s %s)\n",msig->coinstr,coinstr,msig->m,msig->n,(long long)msig->sender,specialNXT,gateways[0],gateways[1],gateways[2]);
     if ( strcmp(msig->coinstr,coinstr) == 0 && msig->m == M && msig->n == N )
     {
