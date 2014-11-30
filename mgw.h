@@ -1174,7 +1174,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
         update_msig_info(0,1);
     }
     circulation = unspent = 0;
-    if ( ready_to_xferassets(&pendingtxid) <= 0 && pendingtxid != 0 )
+    if ( 0 && ready_to_xferassets(&pendingtxid) <= 0 && pendingtxid != 0 )
     {
         char txidstr[64],sender[64],receiver[64];
         uint64_t val;
