@@ -90,11 +90,11 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
 void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
 {
     memset(key,0,sizeof(*key));
-    memset(coinaddr,0,16);
     strcpy(coinaddr,coin);
     strcat(coinaddr+strlen(coin)+1,addr);
     key->data = coinaddr;
     key->size = (int32_t)(strlen(coin) + strlen(addr) + 2);
+    printf("[%s] + [%s] = (%s)\n",coin,addr,coinaddr);
 }
 
 void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag)
@@ -104,6 +104,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     DBT key,data;
     int32_t ret;
     clear_pair(&key,&data);
+    memset(coinaddr,0,sizeof(coinaddr));
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
@@ -145,6 +146,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
         {
             i = 0;
             clear_pair(&key,&data);
+            memset(coinaddr,0,sizeof(coinaddr));
             _set_address_key(&key,coinaddr,coin,addr);
             ret = cursorget(sdb,txn,cursorp,&key,&data,DB_SET);
             //ret = cursorp->get(cursorp,&key,&data,DB_SET);
@@ -175,6 +177,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
                     else if ( iter == 0 && bp != 0 && B.blocknum == bp->blocknum && B.txind == bp->txind && B.v == bp->v )
                     {
                         clear_pair(&key,&data);
+                        memset(coinaddr,0,sizeof(coinaddr));
                         _set_address_key(&key,coinaddr,coin,addr);
                         bp->isinternal = B.isinternal;
                         data.data = bp;
@@ -223,6 +226,7 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
     if ( bp != 0 && replaced == 0 )
     {
         clear_pair(&key,&data);
+        memset(coinaddr,0,sizeof(coinaddr));
         _set_address_key(&key,coinaddr,coin,addr);
         data.data = bp;
         data.size = sizeof(*bp);

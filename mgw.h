@@ -8,7 +8,7 @@
 #ifndef mgw_h
 #define mgw_h
 
-#define DEPOSIT_XFER_DURATION (13/13)
+#define DEPOSIT_XFER_DURATION (13)
 #define MIN_DEPOSIT_FACTOR 5
 
 #define GET_COINDEPOSIT_ADDRESS 'g'
@@ -793,7 +793,7 @@ uint64_t process_NXTtransaction(char *sender,char *receiver,cJSON *item,char *re
                                     {
                                         if ( strcmp(receiver,refNXTaddr) == 0 )
                                         {
-                                            if ( Debuglevel > 2 )
+                                            if ( Debuglevel > 1 )
                                                 printf("%s got comment.(%s) gotredeem.(%s) coinid.%d %.8f\n",ap->name,tp->comment,cointxid,coinid,dstr(tp->quantity * ap->mult));
                                             tp->redeemtxid = calc_nxt64bits(txid);
                                             //printf("protocol redeem.(%s)\n",txid);
@@ -999,7 +999,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
         txind = tp->txind;
         if ( v != tp->v )
             fprintf(stderr,"error (%d != %d)\n",v,tp->v);
-        if ( Debuglevel > 2 )
+      //  if ( Debuglevel > 2 )
             printf("get_cointp.(%016llx) spent.(%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
@@ -1069,9 +1069,9 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
                 else*/
                 {
                     cointp->unspent = unspent;
-                    printf("%s | %.8f\n",cointp->txid,dstr(cointp->unspent));
                     (*numunspentp)++;
                     (*unspentp) += unspent;
+                    printf("%s | %16.8f total %.8f\n",cointp->txid,dstr(cointp->unspent),dstr((*unspentp)));
                     update_unspent_funds(cp,cointp,0);
                 }
             }
@@ -1085,7 +1085,6 @@ int32_t valid_msig(struct multisig_addr *msig,char *coinstr,char *specialNXT,cha
 {
     int32_t i,match = 0;
     char NXTaddr[64],gatewayNXTaddr[64],ipaddr[64];
-return(1);
     //printf("%s %s M.%d N.%d %llu vs %s (%s %s %s)\n",msig->coinstr,coinstr,msig->m,msig->n,(long long)msig->sender,specialNXT,gateways[0],gateways[1],gateways[2]);
     if ( strcmp(msig->coinstr,coinstr) == 0 && msig->m == M && msig->n == N )
     {

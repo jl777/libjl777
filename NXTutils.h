@@ -2092,6 +2092,7 @@ void delete_file(char *fname) // OS portable
         fclose(fp);
 }
 
+#ifdef oldway
 void **addto_listptr(int32_t *nump,void **list,void *ptr)
 {
     int32_t i,n = *nump;
@@ -2263,5 +2264,6 @@ struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimes
     *nump = n;
     return(accts);
 }
+#endif
 
 #endif
