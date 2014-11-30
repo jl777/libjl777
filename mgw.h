@@ -1174,11 +1174,12 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
         update_msig_info(0,1);
     }
     circulation = unspent = 0;
-    if ( 0 && ready_to_xferassets(&pendingtxid) <= 0 && pendingtxid != 0 )
+    if ( ready_to_xferassets(&pendingtxid) <= 0 && pendingtxid != 0 )
     {
         char txidstr[64],sender[64],receiver[64];
         uint64_t val;
         expand_nxt64bits(txidstr,pendingtxid);
+        printf("pendingtxid.%s\n",txidstr);
         if ( (retstr= issue_getTransaction(0,txidstr)) != 0 )
         {
             if ( (json= cJSON_Parse(retstr)) != 0 )
@@ -1195,7 +1196,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t transferassets,char *c
         readyflag = ready_to_xferassets(&pendingtxid);
         if ( Debuglevel > 1 )
             printf("got n.%d msigs readyflag.%d\n",n,readyflag);
-        update_unspent_funds(cp,0,n*1000);
+        update_unspent_funds(cp,0,n*1000); // maybe need a matrix?
         nonz = numunspent = 0;
         for (i=0; i<n; i++)
         {
