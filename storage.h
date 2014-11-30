@@ -94,7 +94,7 @@ void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
     strcat(coinaddr+strlen(coin)+1,addr);
     key->data = coinaddr;
     key->size = (int32_t)(strlen(coin) + strlen(addr) + 2);
-    printf("[%s] + [%s] = (%s)\n",coin,addr,coinaddr);
+    //printf("[%s] + [%s] = (%s)\n",coin,addr,coinaddr);
 }
 
 void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag)

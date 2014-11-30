@@ -57,6 +57,8 @@ void update_unspent_funds(struct coin_info *cp,struct coin_txidind *cointp,int32
 {
     struct unspent_info *up = &cp->unspent;
     uint64_t value;
+    if ( n == 0 )
+        n = 1000;
     if ( n > up->maxvps )
     {
         up->vps = realloc(up->vps,n * sizeof(*up->vps));
