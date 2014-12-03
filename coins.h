@@ -651,6 +651,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),1);
             printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
+            ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
             Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
             if ( NXTAPIURL[0] == 0 )
             {

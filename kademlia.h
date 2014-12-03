@@ -516,7 +516,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     return(clonestr(retstr));
 }
 
-char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip,int32_t yourport)
+char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip,int32_t yourport,char *tag)
 {
     char retstr[1024];
     struct nodestats *stats;
@@ -532,9 +532,9 @@ char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         stats->pongmilli = milliseconds();
         stats->pingpongsum += (stats->pongmilli - stats->pingmilli);
         stats->numpongs++;
-        sprintf(retstr,"{\"result\":\"kademlia_pong\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\",\"lag\":%.3f,\"numpings\":%d,\"numpongs\":%d,\"ave\":%.3f\"}",sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
+        sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\",\"lag\":%.3f,\"numpings\":%d,\"numpongs\":%d,\"ave\":%.3f\"}",tag,sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
-    else sprintf(retstr,"{\"result\":\"kademlia_pong\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\"}",sender,ipaddr,port);
+    else sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\"}",tag,sender,ipaddr,port);
     //if ( Debuglevel > 0 )
         printf("PONG.(%s)\n",retstr);
     return(clonestr(retstr));

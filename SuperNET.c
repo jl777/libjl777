@@ -170,7 +170,7 @@ int main(int argc,const char *argv[])
     FILE *fp;
     int32_t retval;
     char ipaddr[64];
-
+    extern int32_t ENABLE_GUIPOLL;
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
@@ -181,7 +181,7 @@ int main(int argc,const char *argv[])
         fwrite(&retval,1,sizeof(retval),fp);
         fclose(fp);
     }
-    if ( retval == 0 )
+    if ( retval == 0 && ENABLE_GUIPOLL != 0 )
     {
         if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
             printf("ERROR hist process_hashtablequeues\n");

@@ -1029,7 +1029,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,
 
 char *pong_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char pubkey[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],yourip[MAX_JSON_FIELD],*retstr = 0;
+    char pubkey[MAX_JSON_FIELD],tag[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],yourip[MAX_JSON_FIELD],*retstr = 0;
     uint16_t port,yourport;
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
@@ -1038,10 +1038,11 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,
     port = get_API_int(objs[2],0);
     copy_cJSON(yourip,objs[3]);
     yourport = get_API_int(objs[4],0);
+    copy_cJSON(tag,objs[5]);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
     {
-        retstr = kademlia_pong(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport);
+        retstr = kademlia_pong(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport,tag);
     }
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
@@ -1503,8 +1504,8 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
 
 char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD];
-    int32_t rescan,transferassets;
+    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD];
+    int32_t rescan,actionflag;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(NXT0,objs[0]);
@@ -1516,10 +1517,12 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     copy_cJSON(coin,objs[6]);
     copy_cJSON(asset,objs[7]);
     rescan = (int32_t)get_API_int(objs[8],0);
-    transferassets = (int32_t)get_API_int(objs[9],0);
+    actionflag = (int32_t)get_API_int(objs[9],0);
     copy_cJSON(specialNXT,objs[10]);
+    copy_cJSON(exclude0,objs[11]);
+    copy_cJSON(exclude1,objs[12]);
     if ( ((NXT0[0] != 0 && NXT1[0] != 0 && NXT2[0] != 0) || (ip0[0] != 0 && ip1[0] != 0 && ip2[0] != 0)) && sender[0] != 0 && valid > 0 )
-        return(MGWdeposits(specialNXT,rescan,transferassets,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2));
+        return(MGWdeposits(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1));
     return(clonestr("{\"error\":\"bad MGWdeposits_func paramater\"}"));
 }
 
@@ -1542,13 +1545,13 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", 0 };
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "transferassets", "specialNXT", 0 };
+    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
     // Kademlia DHT
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
-    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", 0 };
+    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
     static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", "data", 0 };
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", "data", 0 };

@@ -53,7 +53,7 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
     (*podaddrp) = podaddr;
     if ( podaddr != 0 )
     {
-        sprintf(args,"\"%s\"",podaddr);
+        sprintf(args,"[\"%s\"]",podaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
         //fprintf(stderr,"got podaddr.(%s) privkey.%p\n",podaddr,privkey);
         if ( privkey != 0 )
@@ -80,15 +80,18 @@ cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *r
     int32_t allocflag,i,nonz = 0;
     cJSON *array;
     char args[1024];
+    printf("create privkeys %p numinputs.%d\n",privkeys,numinputs);
     if ( privkeys == 0 )
     {
         privkeys = calloc(numinputs,sizeof(*privkeys));
         for (i=0; i<numinputs; i++)
         {
-            sprintf(args,"\"%s\"",rp->inputs[i]->coinaddr);
+            sprintf(args,"[\"%s\"]",rp->inputs[i]->coinaddr);
+            fprintf(stderr,"(%s).%d ",rp->inputs[i]->coinaddr,i);
             privkeys[i] = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
         }
         allocflag = 1;
+        fprintf(stderr,"allocated\n");
     } else allocflag = 0;
     array = cJSON_CreateArray();
     for (i=0; i<numinputs; i++)
@@ -96,13 +99,13 @@ cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *r
         if ( cp != 0 && privkeys[i] != 0 )
         {
             nonz++;
-            //printf("%s ",localcoinaddrs[i]);
+            printf("(%s %s) ",privkeys[i],rp->inputs[i]->coinaddr);
             cJSON_AddItemToArray(array,cJSON_CreateString(privkeys[i]));
         }
     }
     if ( nonz == 0 )
         free_json(array), array = 0;
-    //else printf("privkeys.%d of %d: %s\n",nonz,numinputs,cJSON_Print(array));
+    else printf("privkeys.%d of %d: %s\n",nonz,numinputs,cJSON_Print(array));
     if ( allocflag != 0 )
     {
         for (i=0; i<numinputs; i++)
@@ -136,6 +139,7 @@ char *createsignraw_json_params(struct coin_info *cp,struct rawtransaction *rp,c
             else free_json(vinsobj);
         }
         else free_json(rawobj);
+        printf("vinsobj.%p keysobj.%p rawobj.%p\n",vinsobj,keysobj,rawobj);
     }
     return(paramstr);
 }
@@ -277,7 +281,7 @@ int32_t sign_rawtransaction(char *deststr,unsigned long destsize,struct coin_inf
     int32_t completed = -1;
     char *retstr,*signparams;
     deststr[0] = 0;
-    printf("sign_rawtransaction rawbytes.(%s)\n",rawbytes);
+    printf("sign_rawtransaction rawbytes.(%s) %p\n",rawbytes,privkeys);
     signparams = createsignraw_json_params(cp,rp,rawbytes,privkeys);
     if ( signparams != 0 )
     {

@@ -334,10 +334,11 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( 0 )
     {
         uint32_t before,after;
+        int32_t numinputs;
         char *rawtx = clonestr("0100000074fc77540156a5b19aaada0496780b1fbce72f7647da5f940883da7ee5d5774f673c6703c401000000fdfd0000483045022100f0b26a43136af6c28d381f461a9fcd30309788456cb81784dbc68ee85ae4151d022036fc96c4edd7b87e762bb139d5d34838a88054c37173236236f72940b2e5309801473044022068ae115a397d9a6f462b78416d58582736fa38ecc4eab2c26759e1e58d6326bc02204e148ab84d49b0f1c8aab1033819ad90c536c604ce24dab419013a5914d39d8a014c695221035827b3c432eb5a528a21657d36a1b61dd85078a6ba5f328bed2d928c173a46c421024ae5e013fda966cf8544025534012156f84a40a5672a894c42e144b0664202502102acdb9c782d499de9b98e8b166fc22bd68895e2293cb49e4a2e071f1254d1a7aa53aeffffffff0340420f00000000001976a9148466f34f39c23547abf922d422e3e5322fdf156588ac20cd8800020000001976a914cd073e0a5d4225f2577113400c3abf9ac1ad2cc488ac60c791e50600000017a914194a1499c343beefe3127e041f480ee4aef058408700000000");
-        before = extract_sequenceid(get_coin_info("BTCD"),rawtx,0);
+        before = extract_sequenceid(&numinputs,get_coin_info("BTCD"),rawtx,0);
         replace_bitcoin_sequenceid(get_coin_info("BTCD"),rawtx,12345678);
-        after = extract_sequenceid(get_coin_info("BTCD"),rawtx,0);
+        after = extract_sequenceid(&numinputs,get_coin_info("BTCD"),rawtx,0);
         printf("newtx.(%s) before.%u after.%u\n",rawtx,before,after); getchar();
     }
     if ( myipaddr != 0 )

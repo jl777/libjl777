@@ -312,7 +312,8 @@ struct coin_txidind
     int64_t modified;
     uint64_t redeemtxid,value,unspent;
     struct address_entry entry;
-    int32_t numvouts;
+    int32_t numvouts,numinputs;
+    uint32_t seq0,seq1;
     char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[MAX_NXTADDR_LEN],*script;
 };
 
@@ -343,10 +344,10 @@ struct unspent_info
 
 struct rawtransaction
 {
-    struct coin_txidind *inputs[MAX_COIN_INPUTS];
-    char *destaddrs[MAX_COIN_OUTPUTS],txid[MAX_COINADDR_LEN];
+    struct coin_txidind *inputs[MAX_MULTISIG_INPUTS];
+    char *destaddrs[MAX_MULTISIG_OUTPUTS],txid[MAX_COINADDR_LEN];
     uint64_t redeems[MAX_MULTISIG_OUTPUTS+MAX_MULTISIG_INPUTS];
-    int64_t amount,change,inputsum,destamounts[MAX_COIN_OUTPUTS];
+    int64_t amount,change,inputsum,destamounts[MAX_MULTISIG_OUTPUTS];
     int32_t numoutputs,numinputs,completed,broadcast,confirmed,numredeems;
     uint32_t batchcrc;
     long batchsize;
@@ -621,7 +622,7 @@ static long server_xferred;
 int Servers_started;
 queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ;
 //struct pingpong_queue PeerQ;
-int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL;
+int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL;
 uint32_t *SuperNET_whitelist;
 int32_t Historical_done;
 struct NXThandler_info *Global_mp;

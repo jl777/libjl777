@@ -374,6 +374,14 @@ char *oldget_transaction(struct coin_info *cp,char *txidstr)
     return(rawtransaction);
 }
 
+
+char *get_rawtransaction(struct coin_info *cp,char *txidstr)
+{
+    char txid[4096];
+    sprintf(txid,"[\"%s\"]",txidstr);
+    return(bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getrawtransaction",txid));
+}
+
 char *get_transaction(struct coin_info *cp,char *txidstr)
 {
     char *rawtransaction=0,txid[4096];
@@ -685,15 +693,15 @@ int64_t calc_batchinputs(struct multisig_addr **msigs,int32_t nummsigs,struct co
         return(0);
     }
     rp->inputsum = rp->numinputs = 0;
-    for (i=0; i<up->num&&i<((int)(sizeof(rp->inputs)/sizeof(*rp->inputs))); i++)
+    for (i=0; i<up->num&&i<((int)(sizeof(rp->inputs)/sizeof(*rp->inputs)))-1; i++)
     {
         vp = up->vps[i];
-        if ( vp == 0 )//|| (rp->xps[rp->numinputs] = vp->xp) == 0 )
+        if ( vp == 0 )
             continue;
         sum += vp->value;
-        //fprintf(stderr,"input.%d value %.8f\n",rp->numinputs,dstr(vp->value));
-        rp->inputs[rp->numinputs++] = vp;
-        if ( sum >= (amount + cp->txfee) )
+        fprintf(stderr,"%p %s input.%d value %.8f\n",vp,vp->coinaddr,rp->numinputs,dstr(vp->value));
+        rp->inputs[rp->numinputs++] = (sum < (amount + cp->txfee)) ? vp : up->vps[up->num-1];
+        if ( sum >= (amount + cp->txfee) && rp->numinputs > 1 )
         {
             rp->amount = amount;
             rp->change = (sum - amount - cp->txfee);
@@ -741,7 +749,7 @@ void sort_rawoutputs(struct rawtransaction *rp)
     }
 }
 
-struct rawinput_entry { char str[MAX_COINTXID_LEN]; struct coin_txidind *input; struct crosschain_info *xp; };
+struct rawinput_entry { char str[MAX_COINTXID_LEN]; struct coin_txidind *input; void *xp; };
 void sort_rawinputs(struct rawtransaction *rp)
 {
     struct rawinput_entry sortbuf[MAX_MULTISIG_INPUTS];
@@ -861,7 +869,7 @@ uint64_t scale_batch_outputs(struct coin_info *cp,struct rawtransaction *rp)
     return(MGWfee + amount);
 }
 
-char *calc_batchwithdraw(struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,struct rawtransaction *rp,int64_t estimated,int64_t balance,struct NXT_acct **accts,int32_t numaccts,struct NXT_asset *ap)
+char *calc_batchwithdraw(struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,struct rawtransaction *rp,int64_t estimated,int64_t balance,struct NXT_asset *ap)
 {
     char *createrawtxid_json_params(struct coin_info *cp,struct rawtransaction *rp);
     int64_t retA;
@@ -941,11 +949,13 @@ char *get_acct_coinaddr(char *coinaddr,struct coin_info *cp,char *NXTaddr)
     return(0);
 }
 
-uint32_t extract_sequenceid(struct coin_info *cp,char *rawtx,int32_t vind)
+uint32_t extract_sequenceid(int32_t *numinputsp,struct coin_info *cp,char *rawtx,int32_t vind)
 {
-    uint32_t sequenceid = 0;
+    uint32_t sequenceid = 0xffffffff;
+    int32_t numinputs;
     cJSON *json,*vin,*item;
     char *retstr,*str;
+    *numinputsp = 0;
     str = malloc(strlen(rawtx)+4);
     //printf("got rawtransaction.(%s)\n",rawtransaction);
     sprintf(str,"\"%s\"",rawtx);
@@ -955,8 +965,9 @@ uint32_t extract_sequenceid(struct coin_info *cp,char *rawtx,int32_t vind)
         //printf("decoded.(%s)\n",retstr);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
-            if ( (vin= cJSON_GetObjectItem(json,"vin")) != 0 )
+            if ( (vin= cJSON_GetObjectItem(json,"vin")) != 0 && is_cJSON_Array(vin) != 0 && (numinputs= cJSON_GetArraySize(vin)) > vind )
             {
+                *numinputsp = numinputs;
                 if ( (item= cJSON_GetArrayItem(vin,vind)) != 0 )
                     sequenceid = (uint32_t)get_API_int(cJSON_GetObjectItem(item,"sequence"),0);
             }
@@ -972,7 +983,7 @@ uint32_t extract_sequenceid(struct coin_info *cp,char *rawtx,int32_t vind)
 int32_t replace_bitcoin_sequenceid(struct coin_info *cp,char *rawtx,uint32_t newbytes)
 {
     char numstr[9];
-    int32_t i,n;
+    int32_t i,n,numinputs;
     uint32_t val;
     n = (int32_t)(strlen(rawtx) - 8);
     for (i=0; i<n; i++)
@@ -984,7 +995,7 @@ int32_t replace_bitcoin_sequenceid(struct coin_info *cp,char *rawtx,uint32_t new
         memcpy(&rawtx[i],numstr,8);
         if ( cp != 0 )
         {
-            if ( (val= extract_sequenceid(cp,rawtx,0)) != newbytes )
+            if ( (val= extract_sequenceid(&numinputs,cp,rawtx,0)) != newbytes )
             {
                 printf("val.%u != newbytes.%u\n",val,newbytes);
                 return(-1);

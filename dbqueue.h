@@ -320,7 +320,7 @@ int32_t _block_on_dbreq(struct dbreq *req)
         sdb->busy--;
         if ( (busy= sdb->busy) != 0 ) // busy is not critical for data integrity, but helps with dbreq latency
         {
-            fprintf(stderr,"_block_on_dbreq: unlikely case of busy.%d != 0, (%d) for (%s)\n",busy,sdb->busy,sdb->name);
+            //fprintf(stderr,"_block_on_dbreq: unlikely case of busy.%d != 0, (%d) for (%s)\n",busy,sdb->busy,sdb->name);
             sdb->busy = 0;
         }
     }
