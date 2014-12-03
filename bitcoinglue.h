@@ -119,7 +119,7 @@ cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *r
 char *createsignraw_json_params(struct coin_info *cp,struct rawtransaction *rp,char *rawbytes,char **privkeys)
 {
     char *paramstr = 0;
-    cJSON *array,*rawobj,*vinsobj,*keysobj;
+    cJSON *array,*rawobj,*vinsobj=0,*keysobj=0;
     rawobj = cJSON_CreateString(rawbytes);
     if ( rawobj != 0 )
     {
