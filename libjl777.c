@@ -346,7 +346,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 //#ifndef __APPLE__
 //    Coinloop(0);
 //#else
-    if ( portable_thread_create((void *)Coinloop,0) == 0 )
+    if ( IS_LIBTEST > 1 && portable_thread_create((void *)Coinloop,0) == 0 )
         printf("ERROR hist Coinloop SSL\n");
 //#endif
     Finished_loading = 1;
