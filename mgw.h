@@ -397,12 +397,14 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],pubkey[1024],acctcoinaddr[128],buf[1024],*retstr = 0;
     int32_t i,valid = 0;
+    printf("GENMULTISIG\n");
     refNXTaddr[0] = 0;
     if ( (refcontact= find_contact(refacct)) != 0 )
     {
         if ( refcontact->nxt64bits != 0 )
             expand_nxt64bits(refNXTaddr,refcontact->nxt64bits);
     }
+    printf("GENMULTISIG.(%s) n.%d\n",refNXTaddr,n);
     if ( refNXTaddr[0] == 0 )
         return(clonestr("\"error\":\"genmultisig couldnt find refcontact\"}"));
     for (i=0; i<n; i++)

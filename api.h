@@ -1479,7 +1479,7 @@ char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
         cp = get_coin_info(coin);
         if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
         {
-            sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"coin\":\"%s\",\"refNXT\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",coin,refNXTaddr,acctcoinaddr,pubkey);
+            sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXT\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",NXTaddr,coin,refNXTaddr,acctcoinaddr,pubkey);
             return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
         }
     }
