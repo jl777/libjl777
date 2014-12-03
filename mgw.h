@@ -334,7 +334,7 @@ int32_t issue_createmultisig(struct coin_info *cp,struct multisig_addr *msig)
 
 struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct coin_info *cp,char *refNXTaddr,struct contact_info **contacts)
 {
-    int32_t i,j,flag = 0;
+    int32_t i,flag = 0;
     char acctcoinaddr[128],pubkey[1024];
     struct contact_info *contact;
     struct multisig_addr *msig;
@@ -350,9 +350,9 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
             if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 )
             //if ( (j= replace_msig_json(sender,0,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr,i)) >= 0 )
             {
-                strcpy(msig->pubkeys[j].coinaddr,acctcoinaddr);
-                strcpy(msig->pubkeys[j].pubkey,pubkey);
-                msig->pubkeys[j].nxt64bits = contact->nxt64bits;
+                strcpy(msig->pubkeys[i].coinaddr,acctcoinaddr);
+                strcpy(msig->pubkeys[i].pubkey,pubkey);
+                msig->pubkeys[i].nxt64bits = contact->nxt64bits;
             }
         }
     }
