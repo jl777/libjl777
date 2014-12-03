@@ -1440,7 +1440,8 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],*retstr = 0;
-    int32_t i,M,N,n = 0;
+    int32_t i,M,N,n = 0
+    ;
     struct contact_info **contacts = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);

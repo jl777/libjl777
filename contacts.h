@@ -26,7 +26,7 @@ void update_contact_info(struct contact_info *contact)
 
 struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
 {
-    struct contact_info **contacts,*contact,*retcontract = 0;
+    struct contact_info **contacts,*contact,*retcontact = 0;
     int32_t i,numcontacts;
     contacts = (struct contact_info **)copy_all_DBentries(&numcontacts,CONTACT_DATA);
     if ( contacts == 0 )
@@ -36,20 +36,21 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
         contact = contacts[i];
         if ( contact->nxt64bits == nxt64bits )
         {
-            if ( retcontract != 0 )
-                free(retcontract);
-            retcontract = contact;
+            if ( retcontact != 0 )
+                free(retcontact);
+            retcontact = contact;
         }
         else free(contacts[i]);
     }
     free(contacts);
-    if ( retcontract == 0 )
+    if ( retcontact == 0 )
     {
-        retcontract = calloc(1,sizeof(*contact));
-        retcontract->nxt64bits = nxt64bits;
-        update_contact_info(retcontract);
+        retcontact = calloc(1,sizeof(*contact));
+        retcontact->nxt64bits = nxt64bits;
+        expand_nxt64bits(retcontact->handle,nxt64bits);
+        update_contact_info(retcontact);
     }
-    return(retcontract);
+    return(retcontact);
 }
 
 uint64_t conv_acctstr(char *acctstr)
