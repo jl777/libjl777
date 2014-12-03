@@ -1433,7 +1433,7 @@ struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,cha
     if ( np->numcoins > 0 )
     {
         for (i=0; i<np->numcoins; i++)
-            if ( strcmp(np->coins[i]->name,coinstr) == 0 )
+            if ( np->coins[i] != 0 && strcmp(np->coins[i]->name,coinstr) == 0 )
                 return(np->coins[i]);
     }
     return(0);
@@ -1459,8 +1459,8 @@ void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *
     struct acct_coin *acp;
     if ( (acp= find_NXT_coininfo(&np,nxt64bits,coinstr)) == 0 )
     {
-        np->coins[np->numcoins++] = acp = calloc(1,sizeof(*np->coins));
-        strcpy(acp->name,coinstr);
+        np->coins[np->numcoins++] = acp = calloc(1,sizeof(*acp));
+        safecopy(acp->name,coinstr,sizeof(acp->name));
     }
     acp->pubkey = clonestr(pubkey);
     acp->acctcoinaddr = clonestr(acctcoinaddr);
