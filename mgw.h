@@ -225,6 +225,7 @@ int32_t replace_msig_json(int32_t replaceflag,char *refNXTaddr,char *acctcoinadd
         array = cJSON_GetObjectItem(json,"coins");
         if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) >= 0 )
         {
+            printf("array of %d\n",n);
             for (i=0; i<n; i++)
             {
                 item = cJSON_GetArrayItem(array,i);
@@ -251,6 +252,7 @@ int32_t replace_msig_json(int32_t replaceflag,char *refNXTaddr,char *acctcoinadd
         }
         if ( replaceflag != 0 )
         {
+            printf("replaceflag.%d\n",replaceflag);
             if ( flag == 0 )
             {
                 item = cJSON_CreateObject();
@@ -270,15 +272,18 @@ int32_t replace_msig_json(int32_t replaceflag,char *refNXTaddr,char *acctcoinadd
             str = cJSON_Print(json);
             stripwhite_ns(str,strlen(str));
             strcpy(jsonstr,str);
+            printf("new jsonstr.(%s)\n",jsonstr);
             free(str);
         }
         free_json(json);
+        printf("returni.%d\n",i);
         return(i);
-    }
+    } else printf("Parse error.(%s)\n",jsonstr);
     if ( replaceflag != 0 && flag == 0 )
     {
         //sprintf(jsontxt,"{\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
         sprintf(jsonstr,"{\"coins\":[{\"coin\":\"%s\",\"NXTaddr\":\"%s\",\"address\":\"%s\",\"pubkey\":\"%s\"}]}",coinstr,refNXTaddr,acctcoinaddr,pubkey);
+        printf("set jsonstr.(%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
             free_json(json);
         else printf("PARSEERROR.(%s)\n",jsonstr);
