@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.199"
+#define HARDCODED_VERSION "0.256"
 
 #define NXT_GENESISTIME 1385294400
 #define MAX_LFACTOR 10

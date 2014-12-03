@@ -707,25 +707,25 @@ int32_t init_SuperNET_storage()
                     return(-2);
                 }
                 open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
-                if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
-                    printf("ERROR hist process_hashtablequeues\n");
+            }
+            if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
+                printf("ERROR hist process_hashtablequeues\n");
+            {
+                struct multisig_addr **msigs,*msigram;
+                sdb = &SuperNET_dbs[MULTISIG_DATA];
+                if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
                 {
-                    struct multisig_addr **msigs,*msigram;
-                    sdb = &SuperNET_dbs[MULTISIG_DATA];
-                    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
+                    for (i=m=0; i<n; i++)
                     {
-                        for (i=m=0; i<n; i++)
-                        {
-                            msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                            printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
-                            if ( createdflag != 0 )
-                                *msigram = *msigs[i], m++;
-                            else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
-                            free(msigs[i]);
-                        }
-                        free(msigs);
-                        printf("initialized %d of %d msig in RAM\n",m,n);
+                        msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
+                        printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
+                        if ( createdflag != 0 )
+                            *msigram = *msigs[i], m++;
+                        else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                        free(msigs[i]);
                     }
+                    free(msigs);
+                    printf("initialized %d of %d msig in RAM\n",m,n);
                 }
             }
         }
