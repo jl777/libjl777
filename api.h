@@ -1440,7 +1440,7 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],*retstr = 0;
-    int32_t M,N,n;
+    int32_t i,M,N,n = 0;
     struct contact_info **contacts = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
@@ -1454,7 +1454,12 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
         retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n);
     }
     if ( contacts != 0 )
+    {
+        for (i=0; i<n; i++)
+            if ( contacts[i] != 0 )
+                free(contacts[i]);
         free(contacts);
+    }
     if ( retstr != 0 )
         return(retstr);
     return(clonestr("{\"error\":\"bad genmultisig_func paramater\"}"));

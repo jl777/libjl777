@@ -43,6 +43,12 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
         else free(contacts[i]);
     }
     free(contacts);
+    if ( retcontract == 0 )
+    {
+        retcontract = calloc(1,sizeof(*contact));
+        retcontract->nxt64bits = nxt64bits;
+        update_contact_info(retcontract);
+    }
     return(retcontract);
 }
 
@@ -92,7 +98,7 @@ struct contact_info **conv_contacts_json(int32_t *nump,cJSON *array)
             {
                 if ( contact->nxt64bits != 0 )
                     contacts[j++] = contact;
-                free(contact);
+                //free(contact);
             }
         }
     }
