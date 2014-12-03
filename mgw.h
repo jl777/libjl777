@@ -1209,7 +1209,7 @@ char *wait_for_pendingtxid(struct coin_info *cp,char *specialNXTaddrs[],char *re
 
 char *process_deposits(uint64_t *unspentp,struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,char *ipaddrs[],char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr,struct NXT_asset *ap,int32_t transferassets,uint64_t circulation)
 {
-    uint64_t pendingtxid,unspent,total = 0;
+    uint64_t pendingtxid,unspent = 0,total = 0;
     int32_t i,m,max,readyflag,tmp,nonz,numunspent;
     struct multisig_addr *msig;
     struct address_entry *entries;
