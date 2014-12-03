@@ -1459,8 +1459,8 @@ void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *
         np->coins[np->numcoins++] = acp = calloc(1,sizeof(*np->coins));
         strcpy(acp->name,coinstr);
     }
-    strcpy(acp->pubkey,pubkey);
-    strcpy(acp->acctcoinaddr,acctcoinaddr);
+    acp->pubkey = clonestr(pubkey);
+    acp->acctcoinaddr = clonestr(acctcoinaddr);
 }
 
 void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
