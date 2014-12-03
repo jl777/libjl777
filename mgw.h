@@ -334,7 +334,7 @@ int32_t issue_createmultisig(struct coin_info *cp,struct multisig_addr *msig)
 
 struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct coin_info *cp,char *refNXTaddr,struct contact_info **contacts)
 {
-    int32_t i,flag = 0;
+    int32_t i ,flag = 0;
     char acctcoinaddr[128],pubkey[1024];
     struct contact_info *contact;
     struct multisig_addr *msig;
@@ -392,8 +392,6 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 printf("Is me.%llu\n",(long long)contact->nxt64bits);
                 if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                 {
-                    //valid += (replace_msig_json(NXTaddr,1,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr,i) >= 0);
-                    //update_contact_info(contact);
                     add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
                     valid++;
                 }

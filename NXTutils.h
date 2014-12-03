@@ -1442,10 +1442,13 @@ struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,cha
 struct acct_coin *get_NXT_coininfo(char *acctcoinaddr,char *pubkey,uint64_t nxt64bits,char *coinstr)
 {
     struct acct_coin *acp;
+    acctcoinaddr[0] = pubkey[0] = 0;
     if ( (acp= find_NXT_coininfo(0,nxt64bits,coinstr)) == 0 )
     {
-        strcpy(pubkey,acp->pubkey);
-        strcpy(acctcoinaddr,acp->acctcoinaddr);
+        if ( acp->pubkey != 0 )
+            strcpy(pubkey,acp->pubkey);
+        if ( acp->acctcoinaddr != 0 )
+            strcpy(acctcoinaddr,acp->acctcoinaddr);
     }
     return(0);
 }
