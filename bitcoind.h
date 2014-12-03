@@ -298,24 +298,32 @@ void set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,
 void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag)
 {
     struct address_entry B;
-   // if ( strlen(addr) < 10 ) while ( 1 ) sleep(60);
-    set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
-    _add_address_entry(coin,addr,&B,syncflag);
+    if ( IS_LIBTEST > 1 )
+    {
+        // if ( strlen(addr) < 10 ) while ( 1 ) sleep(60);
+        set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
+        _add_address_entry(coin,addr,&B,syncflag);
+    }
 }
 
 void update_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag)
 {
     struct address_entry B,*vec;
     int32_t n;
-    set_address_entry(&B,blocknum,txind,vin,vout,0,spent);
-    if ( (vec= dbupdate_address_entries(&n,coin,addr,&B,1||syncflag)) != 0 )
-        free(vec);
+    if ( IS_LIBTEST > 1 )
+    {
+        set_address_entry(&B,blocknum,txind,vin,vout,0,spent);
+        if ( (vec= dbupdate_address_entries(&n,coin,addr,&B,1||syncflag)) != 0 )
+            free(vec);
+    }
 }
 
 struct address_entry *get_address_entries(int32_t *nump,char *coin,char *addr)
 {
     *nump = 0;
-    return(dbupdate_address_entries(nump,coin,addr,0,0));
+    if ( IS_LIBTEST > 1 )
+        return(dbupdate_address_entries(nump,coin,addr,0,0));
+    else return(0);
 }
 
 char *get_blockhashstr(struct coin_info *cp,uint32_t blockheight)

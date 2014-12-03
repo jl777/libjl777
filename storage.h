@@ -694,35 +694,38 @@ int32_t init_SuperNET_storage()
                 sdb = &SuperNET_dbs[CONTACT_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
             }
-            if ( (ret = db_env_create(&AStorage, 0)) != 0 )
+            if ( IS_LIBTEST > 1 )
             {
-                fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
-                return(-1);
-            }
-            else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
-            {
-                fprintf(stderr,"error.%d opening Astorage\n",ret);
-                return(-2);
-            }
-            open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
-            if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
-                printf("ERROR hist process_hashtablequeues\n");
-            {
-                struct multisig_addr **msigs,*msigram;
-                sdb = &SuperNET_dbs[MULTISIG_DATA];
-                if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
+                if ( (ret = db_env_create(&AStorage, 0)) != 0 )
                 {
-                    for (i=m=0; i<n; i++)
+                    fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
+                    return(-1);
+                }
+                else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
+                {
+                    fprintf(stderr,"error.%d opening Astorage\n",ret);
+                    return(-2);
+                }
+                open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
+                if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
+                    printf("ERROR hist process_hashtablequeues\n");
+                {
+                    struct multisig_addr **msigs,*msigram;
+                    sdb = &SuperNET_dbs[MULTISIG_DATA];
+                    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
                     {
-                        msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                        printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
-                        if ( createdflag != 0 )
-                            *msigram = *msigs[i], m++;
-                        else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
-                        free(msigs[i]);
+                        for (i=m=0; i<n; i++)
+                        {
+                            msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
+                            printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
+                            if ( createdflag != 0 )
+                                *msigram = *msigs[i], m++;
+                            else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                            free(msigs[i]);
+                        }
+                        free(msigs);
+                        printf("initialized %d of %d msig in RAM\n",m,n);
                     }
-                    free(msigs);
-                    printf("initialized %d of %d msig in RAM\n",m,n);
                 }
             }
         }
