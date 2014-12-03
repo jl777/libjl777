@@ -371,7 +371,6 @@ void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,u
     {
         fprintf(stderr,"sendmessage: len.%d > sizeof(finalbuf) %ld\n",len,sizeof(finalbuf));
         return;
-        exit(-1);
     }
     if ( hopNXTaddr != 0 && hopNXTaddr[0] != 0 )
     {

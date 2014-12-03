@@ -55,16 +55,19 @@ struct other_addr
     char addr[128];
 };
 
+struct acct_coin { char name[16],*acctcoinaddr,*pubkey; };
+
 struct NXT_acct
 {
     struct NXT_str H;
     struct NXT_asset **assets;
     uint64_t *quantities,bestbits,quantity;
     struct NXT_assettxid_list **txlists;    // one list for each asset in acct
-    int32_t maxassets,numassets,bestdist;//numcoinaccts
+    int32_t maxassets,numassets,bestdist,numcoins;//numcoinaccts
     int64_t buyqty,buysum,sellqty,sellsum;
     double profits;
     uint32_t timestamps[64];
+    struct acct_coin *coins[64];
     //struct coin_acct *coinaccts;
     // fields for NXTorrent
     //double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given

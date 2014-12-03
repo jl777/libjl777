@@ -1490,18 +1490,21 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
 {
     char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
     struct contact_info *contact;
+    struct coin_info *cp;
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refNXTaddr,objs[1]);
     copy_cJSON(acctcoinaddr,objs[2]);
     copy_cJSON(pubkey,objs[3]);
-    if ( coin[0] != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
+    cp = get_coin_info(coin);
+    if ( cp != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        if ( (contact= find_contact(sender)) != 0 )
+        if ( (contact= find_contact(sender)) != 0 && contact->nxt64bits != 0 )
         {
-            replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
-            update_contact_info(contact);
+            add_NXT_coininfo(contact->nxt64bits,coin,acctcoinaddr,pubkey);
+            //replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
+            //update_contact_info(contact);
             free(contact);
         }
     }

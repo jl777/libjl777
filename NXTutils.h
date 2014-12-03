@@ -1421,6 +1421,48 @@ struct NXT_assettxid *update_assettxid_list(char *sender,char *receiver,char *as
     return(tp);
 }
 
+struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,char *coinstr)
+{
+    char NXTaddr[64];
+    struct NXT_acct *np;
+    int32_t i,createdflag;
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    if ( npp != 0 )
+        (*npp) = np;
+    if ( np->numcoins > 0 )
+    {
+        for (i=0; i<np->numcoins; i++)
+            if ( strcmp(np->coins[i]->name,coinstr) == 0 )
+                return(np->coins[i]);
+    }
+    return(0);
+}
+
+struct acct_coin *get_NXT_coininfo(char *acctcoinaddr,char *pubkey,uint64_t nxt64bits,char *coinstr)
+{
+    struct acct_coin *acp;
+    if ( (acp= find_NXT_coininfo(0,nxt64bits,coinstr)) == 0 )
+    {
+        strcpy(pubkey,acp->pubkey);
+        strcpy(acctcoinaddr,acp->acctcoinaddr);
+    }
+    return(0);
+}
+
+void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey)
+{
+    struct NXT_acct *np;
+    struct acct_coin *acp;
+    if ( (acp= find_NXT_coininfo(&np,nxt64bits,coinstr)) == 0 )
+    {
+        np->coins[np->numcoins] = calloc(1,sizeof(*np->coins));
+        strcpy(np->coins[np->numcoins++]->name,coinstr);
+    }
+    strcpy(acp->pubkey,pubkey);
+    strcpy(acp->acctcoinaddr,acctcoinaddr);
+}
+
 void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
 {
     uint64_t hashval;
@@ -1430,39 +1472,6 @@ void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
     else hashval ^= (1L << vout);
     expand_nxt64bits(NXTcointxid,hashval);
 }
-
-#ifdef BTC_COINID
-struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxid,int32_t vout)
-{
-    char *assetid_str();
-    char NXTcointxid[64];
-    int32_t createdflag,ind,i,n;
-    struct NXT_acct *np;
-    struct NXT_asset *ap;
-    struct NXT_assettxid **txids,*tp;
-    if ( cointxid[0] == 0 || NXTaddr[0] == 0 )
-    {
-        printf("search_cointxid: cointxid.(%s) vout.%d NXT.%s\n",cointxid,vout,NXTaddr);
-        return(0);
-    }
-    calc_NXTcointxid(NXTcointxid,cointxid,vout);
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    ap = get_NXTasset(&createdflag,Global_mp,assetid_str(coinid));
-    ind = get_asset_in_acct(np,ap,0);
-    if ( ind >= 0 )
-    {
-        txids = np->txlists[ind]->txids;
-        n = np->txlists[ind]->num;
-        for (i=0; i<n; i++)
-        {
-            tp = txids[i];
-            if ( strcmp(tp->H.txid,NXTcointxid) == 0 )
-                return(tp);
-        }
-    }
-    return(0);
-}
-#endif
 
 int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET)
 {
@@ -1846,23 +1855,6 @@ int32_t is_valid_NXTtxid(char *txid)
     return(1);
 }
 
-void ensure_directory(char *dirname) // jl777: does this work in windows?
-{
-    FILE *fp;
-    char fname[512],cmd[512];
-    sprintf(fname,"%s/tmp",dirname);
-    if ( (fp= fopen(fname,"rb")) == 0 )
-    {
-        sprintf(cmd,"mkdir %s",dirname);
-        if ( system(cmd) != 0 )
-            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
-        fp = fopen(fname,"wb");
-        if ( fp != 0 )
-            fclose(fp);
-    }
-    else fclose(fp);
-}
-
 int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,char *NXTACCTSECRET,char *ipaddr,uint32_t port)
 {
     int32_t createdflag;
@@ -2017,6 +2009,60 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
     return(0);
 }
 
+void ensure_directory(char *dirname) // jl777: does this work in windows?
+{
+    FILE *fp;
+    char fname[512],cmd[512];
+    sprintf(fname,"%s/tmp",dirname);
+    if ( (fp= fopen(fname,"rb")) == 0 )
+    {
+        sprintf(cmd,"mkdir %s",dirname);
+        if ( system(cmd) != 0 )
+            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
+        fp = fopen(fname,"wb");
+        if ( fp != 0 )
+            fclose(fp);
+    }
+    else fclose(fp);
+}
+
+void copy_file(char *src,char *dest) // OS portable
+{
+    int c;
+    FILE *srcfp,*destfp;
+    if ( (srcfp= fopen(src,"rb")) != 0 )
+    {
+        if ( (destfp= fopen(dest,"wb")) != 0 )
+        {
+            while ( (c= fgetc(srcfp)) != EOF )
+                fputc(c,destfp);
+            fclose(destfp);
+        }
+        fclose(srcfp);
+    }
+}
+
+void delete_file(char *fname) // OS portable
+{
+    int c = 0;
+    FILE *fp;
+    long i,fpos;
+    if ( (fp= fopen(fname,"rb+")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        fpos = ftell(fp);
+        rewind(fp);
+        for (i=0; i<fpos; i++)
+            fputc(c,fp);
+        fflush(fp);
+        fclose(fp);
+    }
+    if ( (fp= fopen(fname,"wb")) != 0 )
+        fclose(fp);
+}
+
+#ifdef oldway
+
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
     char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
@@ -2057,42 +2103,6 @@ int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
     return(quantity);
 }
 
-void copy_file(char *src,char *dest) // OS portable
-{
-    int c;
-    FILE *srcfp,*destfp;
-    if ( (srcfp= fopen(src,"rb")) != 0 )
-    {
-        if ( (destfp= fopen(dest,"wb")) != 0 )
-        {
-            while ( (c= fgetc(srcfp)) != EOF )
-                fputc(c,destfp);
-            fclose(destfp);
-        }
-        fclose(srcfp);
-    }
-}
-
-void delete_file(char *fname) // OS portable
-{
-    int c = 0;
-    FILE *fp;
-    long i,fpos;
-    if ( (fp= fopen(fname,"rb+")) != 0 )
-    {
-        fseek(fp,0,SEEK_END);
-        fpos = ftell(fp);
-        rewind(fp);
-        for (i=0; i<fpos; i++)
-            fputc(c,fp);
-        fflush(fp);
-        fclose(fp);
-    }
-    if ( (fp= fopen(fname,"wb")) != 0 )
-        fclose(fp);
-}
-
-#ifdef oldway
 void **addto_listptr(int32_t *nump,void **list,void *ptr)
 {
     int32_t i,n = *nump;
@@ -2264,6 +2274,39 @@ struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimes
     *nump = n;
     return(accts);
 }
+
+#ifdef BTC_COINID
+struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxid,int32_t vout)
+{
+    char *assetid_str();
+    char NXTcointxid[64];
+    int32_t createdflag,ind,i,n;
+    struct NXT_acct *np;
+    struct NXT_asset *ap;
+    struct NXT_assettxid **txids,*tp;
+    if ( cointxid[0] == 0 || NXTaddr[0] == 0 )
+    {
+        printf("search_cointxid: cointxid.(%s) vout.%d NXT.%s\n",cointxid,vout,NXTaddr);
+        return(0);
+    }
+    calc_NXTcointxid(NXTcointxid,cointxid,vout);
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    ap = get_NXTasset(&createdflag,Global_mp,assetid_str(coinid));
+    ind = get_asset_in_acct(np,ap,0);
+    if ( ind >= 0 )
+    {
+        txids = np->txlists[ind]->txids;
+        n = np->txlists[ind]->num;
+        for (i=0; i<n; i++)
+        {
+            tp = txids[i];
+            if ( strcmp(tp->H.txid,NXTcointxid) == 0 )
+                return(tp);
+        }
+    }
+    return(0);
+}
+#endif
 #endif
 
 #endif

@@ -188,6 +188,58 @@ char *create_multisig_json(struct multisig_addr *msig)
     return(clonestr(jsontxt));
 }
 
+struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
+{
+    int32_t j,M,n,coinid;
+    char nxtstr[512],coinstr[64],ipaddr[64];
+    struct multisig_addr *msig = 0;
+    cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj;
+    coinid = (int)get_cJSON_int(obj,"coinid");
+    nameobj = cJSON_GetObjectItem(obj,"coin");
+    copy_cJSON(coinstr,nameobj);
+    if ( coinstr[0] != 0 )
+    {
+        addrobj = cJSON_GetObjectItem(obj,"address");
+        redeemobj = cJSON_GetObjectItem(obj,"redeemScript");
+        pubkeysobj = cJSON_GetObjectItem(obj,"pubkey");
+        nxtobj = cJSON_GetObjectItem(obj,"NXTaddr");
+        if ( nxtobj != 0 )
+        {
+            copy_cJSON(nxtstr,nxtobj);
+            if ( NXTaddr != 0 && strcmp(nxtstr,NXTaddr) != 0 )
+                printf("WARNING: mismatched NXTaddr.%s vs %s\n",nxtstr,NXTaddr);
+        }
+        //printf("msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
+        if ( nxtstr[0] != 0 && addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
+        {
+            n = cJSON_GetArraySize(pubkeysobj);
+            M = (int32_t)get_API_int(cJSON_GetObjectItem(obj,"M"),n-1);
+            msig = alloc_multisig_addr(coinstr,M,n,nxtstr,sender);
+            safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
+            copy_cJSON(msig->redeemScript,redeemobj);
+            copy_cJSON(msig->multisigaddr,addrobj);
+            for (j=0; j<n; j++)
+            {
+                pobj = cJSON_GetArrayItem(pubkeysobj,j);
+                if ( pobj != 0 )
+                {
+                    copy_cJSON(msig->pubkeys[j].coinaddr,cJSON_GetObjectItem(pobj,"address"));
+                    copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
+                    msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
+                    copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
+                    //printf("ip%d.(%s) ",j,ipaddr);
+                    if ( ipaddr[0] == 0 && j < 3 )
+                        strcpy(ipaddr,Server_names[j]);
+                    msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
+                } else { free(msig); msig = 0; }
+            }
+        } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
+        return(msig);
+    }
+    //printf("decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
+    return(0);
+}
+
 char *createmultisig_json_params(struct multisig_addr *msig,char *acctparm)
 {
     int32_t i;
@@ -212,84 +264,6 @@ char *createmultisig_json_params(struct multisig_addr *msig,char *acctparm)
     }
     //printf("createmultisig_json_params.%s\n",paramstr);
     return(paramstr);
-}
-
-int32_t replace_msig_json(int32_t replaceflag,char *refNXTaddr,char *acctcoinaddr,char *pubkey,char *coinstr,char *jsonstr)
-{
-    cJSON *array,*item,*json;
-    int32_t flag,n,i = -1;
-    char coin[1024],refaddr[1024],*str;
-    flag = 0;
-    if ( (json= cJSON_Parse(jsonstr)) != 0 )
-    {
-        array = cJSON_GetObjectItem(json,"coins");
-        if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) >= 0 )
-        {
-            printf("array of %d\n",n);
-            for (i=0; i<n; i++)
-            {
-                item = cJSON_GetArrayItem(array,i);
-                copy_cJSON(coin,cJSON_GetObjectItem(item,"coin"));
-                copy_cJSON(refaddr,cJSON_GetObjectItem(item,"NXTaddr"));
-                if ( strcmp(coin,coinstr) == 0 && strcmp(refaddr,refNXTaddr) == 0 )
-                {
-                    if ( replaceflag != 0 )
-                    {
-                        ensure_jsonitem(item,"pubkey",pubkey);
-                        ensure_jsonitem(item,"addr",acctcoinaddr);
-                        flag = 1;
-                    }
-                    else
-                    {
-                        copy_cJSON(pubkey,cJSON_GetObjectItem(item,"pubkey"));
-                        copy_cJSON(acctcoinaddr,cJSON_GetObjectItem(item,"addr"));
-                    }
-                    break;
-                }
-            }
-            if ( i == n )
-                i = -1;
-        }
-        if ( replaceflag != 0 )
-        {
-            printf("replaceflag.%d\n",replaceflag);
-            if ( flag == 0 )
-            {
-                item = cJSON_CreateObject();
-                ensure_jsonitem(item,"coin",coinstr);
-                ensure_jsonitem(item,"NXTaddr",refNXTaddr);
-                ensure_jsonitem(item,"address",acctcoinaddr);
-                ensure_jsonitem(item,"pubkey",pubkey);
-                if ( array != 0 )
-                    cJSON_AddItemToArray(array,item);
-                else
-                {
-                    array = cJSON_CreateArray();
-                    cJSON_AddItemToArray(array,item);
-                    cJSON_AddItemToObject(json,"coins",array);
-                }
-            }
-            str = cJSON_Print(json);
-            stripwhite_ns(str,strlen(str));
-            strcpy(jsonstr,str);
-            printf("new jsonstr.(%s)\n",jsonstr);
-            free(str);
-        }
-        free_json(json);
-        printf("returni.%d\n",i);
-        return(i);
-    } else printf("Parse error.(%s)\n",jsonstr);
-    if ( replaceflag != 0 && flag == 0 )
-    {
-        //sprintf(jsontxt,"{\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
-        sprintf(jsonstr,"{\"coins\":[{\"coin\":\"%s\",\"NXTaddr\":\"%s\",\"address\":\"%s\",\"pubkey\":\"%s\"}]}",coinstr,refNXTaddr,acctcoinaddr,pubkey);
-        printf("set jsonstr.(%s)\n",jsonstr);
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-            free_json(json);
-        else printf("PARSEERROR.(%s)\n",jsonstr);
-        return(0);
-    }
-    return(-1);
 }
 
 int32_t issue_createmultisig(struct coin_info *cp,struct multisig_addr *msig)
@@ -370,20 +344,16 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
     for (i=0; i<N; i++)
     {
         flag = 0;
-        if ( (contact= contacts[i]) != 0 && (contact->jsonstr[0] == '[' || contact->jsonstr[0] == '{') )
+        if ( (contact= contacts[i]) != 0 && contact->nxt64bits != 0 )
         {
             acctcoinaddr[0] = pubkey[0] = 0;
-            if ( (j= replace_msig_json(0,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr)) >= 0 )
+            if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 )
+            //if ( (j= replace_msig_json(sender,0,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr,i)) >= 0 )
             {
                 strcpy(msig->pubkeys[j].coinaddr,acctcoinaddr);
                 strcpy(msig->pubkeys[j].pubkey,pubkey);
                 msig->pubkeys[j].nxt64bits = contact->nxt64bits;
             }
-            /*if ( flag == 0 )
-             {
-             free(msig);
-             return(0);
-             }*/
         }
     }
     flag = issue_createmultisig(cp,msig);
@@ -422,8 +392,10 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 printf("Is me.%llu\n",(long long)contact->nxt64bits);
                 if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                 {
-                    valid += replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr);
-                    update_contact_info(contact);
+                    //valid += (replace_msig_json(NXTaddr,1,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr,i) >= 0);
+                    //update_contact_info(contact);
+                    add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
+                    valid++;
                 }
                 else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,refNXTaddr,acctcoinaddr,pubkey);
             }
@@ -454,58 +426,6 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         retstr = clonestr(buf);
     }
     return(retstr);
-}
-
-struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
-{
-    int32_t j,M,n,coinid;
-    char nxtstr[512],coinstr[64],ipaddr[64];
-    struct multisig_addr *msig = 0;
-    cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj;
-    coinid = (int)get_cJSON_int(obj,"coinid");
-    nameobj = cJSON_GetObjectItem(obj,"coin");
-    copy_cJSON(coinstr,nameobj);
-    if ( coinstr[0] != 0 )
-    {
-        addrobj = cJSON_GetObjectItem(obj,"address");
-        redeemobj = cJSON_GetObjectItem(obj,"redeemScript");
-        pubkeysobj = cJSON_GetObjectItem(obj,"pubkey");
-        nxtobj = cJSON_GetObjectItem(obj,"NXTaddr");
-        if ( nxtobj != 0 )
-        {
-            copy_cJSON(nxtstr,nxtobj);
-            if ( NXTaddr != 0 && strcmp(nxtstr,NXTaddr) != 0 )
-                printf("WARNING: mismatched NXTaddr.%s vs %s\n",nxtstr,NXTaddr);
-        }
-        //printf("msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
-        if ( nxtstr[0] != 0 && addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
-        {
-            n = cJSON_GetArraySize(pubkeysobj);
-            M = (int32_t)get_API_int(cJSON_GetObjectItem(obj,"M"),n-1);
-            msig = alloc_multisig_addr(coinstr,M,n,nxtstr,sender);
-            safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
-            copy_cJSON(msig->redeemScript,redeemobj);
-            copy_cJSON(msig->multisigaddr,addrobj);
-            for (j=0; j<n; j++)
-            {
-                pobj = cJSON_GetArrayItem(pubkeysobj,j);
-                if ( pobj != 0 )
-                {
-                    copy_cJSON(msig->pubkeys[j].coinaddr,cJSON_GetObjectItem(pobj,"address"));
-                    copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
-                    msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
-                    copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
-                    //printf("ip%d.(%s) ",j,ipaddr);
-                    if ( ipaddr[0] == 0 && j < 3 )
-                        strcpy(ipaddr,Server_names[j]);
-                    msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
-                } else { free(msig); msig = 0; }
-            }
-        } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
-        return(msig);
-    }
-    //printf("decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
-    return(0);
 }
 
 // network aware funcs
