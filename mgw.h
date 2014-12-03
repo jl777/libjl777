@@ -412,19 +412,19 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         acctcoinaddr[0] = pubkey[0] = 0;
         if ( (contact= contacts[i]) != 0 && contact->nxt64bits != 0 )
         {
-            expand_nxt64bits(destNXTaddr,contact->nxt64bits);
             if ( ismynxtbits(contact->nxt64bits) != 0 )
             {
                 printf("Is me.%llu\n",(long long)contact->nxt64bits);
-                if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,destNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
+                if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                 {
                     valid += replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,cp->name,contact->jsonstr);
                     update_contact_info(contact);
                 }
-                else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,destNXTaddr,acctcoinaddr,pubkey);
+                else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,refNXTaddr,acctcoinaddr,pubkey);
             }
             else
             {
+                expand_nxt64bits(destNXTaddr,contact->nxt64bits);
                 hopNXTaddr[0] = 0;
                 sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,coinstr,refNXTaddr);
                 printf("SENDREQ.(%s)\n",buf);
