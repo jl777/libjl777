@@ -387,7 +387,7 @@ int32_t pubkeycmp(struct pubkey_info *ref,struct pubkey_info *cmp)
         return(1);
     if ( strcmp(ref->coinaddr,cmp->coinaddr) != 0 )
         return(2);
-    if ( strcmp(ref->nxt64bits,cmp->nxt64bits) != 0 )
+    if ( ref->nxt64bits != cmp->nxt64bits )
         return(3);
     return(0);
 }
@@ -462,7 +462,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 }
                 else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,refNXTaddr,acctcoinaddr,pubkey);
             }
-            else if ( iter == 1 )
+            else if ( iter == 1 && ismynxtbits(contact->nxt64bits) == 0 )
             {
                 acctcoinaddr[0] = pubkey[0] = 0;
                 printf("check with get_NXT_coininfo\n");
