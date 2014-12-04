@@ -592,7 +592,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
         {
             case GET_COINDEPOSIT_ADDRESS:
                 // start address gen
-                printf("GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                //printf("GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                 //update_coinacct_addresses(ap->H.nxt64bits,argjson,txid,-1);
                 break;
             case BIND_DEPOSIT_ADDRESS:
