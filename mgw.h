@@ -399,11 +399,14 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             }
             else
             {
-                expand_nxt64bits(destNXTaddr,contact->nxt64bits);
-                hopNXTaddr[0] = 0;
-                sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,coinstr,refNXTaddr);
-                printf("SENDREQ.(%s)\n",buf);
-                retstr = send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destNXTaddr);
+                if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
+                {
+                    expand_nxt64bits(destNXTaddr,contact->nxt64bits);
+                    hopNXTaddr[0] = 0;
+                    sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,coinstr,refNXTaddr);
+                    printf("SENDREQ.(%s)\n",buf);
+                    retstr = send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destNXTaddr);
+                } else valid++;
             }
         }
     }

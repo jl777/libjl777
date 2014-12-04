@@ -109,7 +109,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
     if ( Debuglevel > 1 )
-        printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,key.data+strlen(key.data)+1,key.size,coin,strlen(coin),addr);
+        printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,(void *)((long)key.data+strlen(key.data)+1),key.size,coin,strlen(coin),addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
         AStorage->err(AStorage,ret,"add_address: Database put failed.");
@@ -357,7 +357,7 @@ int32_t scan_address_entries()
                 //add_hashtable(&createdflag,Global_mp->coin_txids,retkey+strlen(retkey)+1);
                 uniq += createdflag;
                 if ( (n % 10000) == 0 )
-                    printf("n.%-6d %7u %u %u | (%s %s).%ld | %d m.%d\n",n,B.blocknum,B.txind,B.v,retkey,retkey+strlen(retkey)+1,retkeylen,uniq,m);
+                    printf("n.%-6d %7u %u %u | (%s %s).%ld | %d m.%d\n",n,B.blocknum,B.txind,B.v,retkey,(void *)((long)retkey+strlen(retkey)+1),retkeylen,uniq,m);
                 set_coin_blockheight(retkey,B.blocknum);
                 n++;
             }
