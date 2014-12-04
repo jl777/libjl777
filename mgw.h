@@ -381,6 +381,52 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     }
 }
 
+int32_t pubkeycmp(struct pubkey_info *ref,struct pubkey_info *cmp)
+{
+    if ( strcmp(ref->pubkey,cmp->pubkey) != 0 )
+        return(1);
+    if ( strcmp(ref->coinaddr,cmp->coinaddr) != 0 )
+        return(2);
+    if ( strcmp(ref->nxt64bits,cmp->nxt64bits) != 0 )
+        return(3);
+    return(0);
+}
+
+int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
+{
+    int32_t i,x;
+    if ( ref == 0 )
+        return(-1);
+    if ( strcmp(ref->multisigaddr,msig->multisigaddr) != 0 || msig->m != ref->m || msig->n != ref->n )
+    {
+        printf("A ref.(%s) vs msig.(%s)\n",ref->multisigaddr,msig->multisigaddr);
+        return(1);
+    }
+    if ( strcmp(ref->NXTaddr,msig->NXTaddr) != 0 )
+    {
+        printf("B ref.(%s) vs msig.(%s)\n",ref->NXTaddr,msig->NXTaddr);
+        return(2);
+    }
+    if ( strcmp(ref->redeemScript,msig->redeemScript) != 0 )
+    {
+        printf("C ref.(%s) vs msig.(%s)\n",ref->redeemScript,msig->redeemScript);
+        return(3);
+    }
+    for (i=0; i<ref->n; i++)
+        if ( (x= pubkeycmp(&ref->pubkeys[i],&msig->pubkeys[i])) != 0 )
+        {
+            switch ( x )
+            {
+                case 1: printf("P.%d pubkey ref.(%s) vs msig.(%s)\n",x,ref->pubkeys[i].pubkey,msig->pubkeys[i].pubkey); break;
+                case 2: printf("P.%d pubkey ref.(%s) vs msig.(%s)\n",x,ref->pubkeys[i].coinaddr,msig->pubkeys[i].coinaddr); break;
+                case 3: printf("P.%d pubkey ref.(%llu) vs msig.(%llu)\n",x,(long long)ref->pubkeys[i].nxt64bits,(long long)msig->pubkeys[i].nxt64bits); break;
+                default: printf("unexpected retval.%d\n",x);
+            }
+            return(4+i);
+        }
+    return(0);
+}
+
 char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n)
 {
     struct coin_info *cp = get_coin_info(coinstr);
@@ -439,11 +485,19 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         {
             if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
                 update_msig_info(msig,1);
-            else free(dbmsig);
-            retstr = create_multisig_json(msig);
-            if ( flag != 0 )
-                broadcast_bindAM(refNXTaddr,msig);
-            free(msig);
+            else
+            {
+                if ( msigcmp(dbmsig,msig) == 0 )
+                    free(msig), msig = 0;
+                free(dbmsig);
+            }
+            if ( msig != 0 )
+            {
+                retstr = create_multisig_json(msig);
+                if ( flag != 0 )
+                    broadcast_bindAM(refNXTaddr,msig);
+                free(msig);
+            }
         }
     }
     else
