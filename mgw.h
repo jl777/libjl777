@@ -777,7 +777,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
         printf("update_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        printf("(%s)\n",jsonstr);
+        //printf("(%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -1472,9 +1472,9 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     struct multisig_addr **msigs;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
-    if ( cp == 0 )
+    if ( cp == 0 || ap == 0 )
     {
-        sprintf(retbuf,"{\"error\":\"dont have coin_info for (%s)\"}",assetstr);
+        sprintf(retbuf,"{\"error\":\"dont have coin_info for (%s) ap.%p\"}",assetstr,ap);
         return(clonestr(retbuf));
     }
     if ( firsttimestamp == 0 )
@@ -1484,10 +1484,13 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
         return(wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid));
     circulation = calc_circulation(0,ap,specialNXTaddrs);
     retstr = retstr2 = 0;
+    printf("circulation %.8f\n",dstr(circulation));
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
     {
+        printf("nummsigs.%d\n",nummsigs);
         if ( actionflag >= 0 )
             retstr = process_deposits(&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
+        printf("actionflag.%d retstr.%p\n",actionflag,retstr);
         if ( actionflag <= 0 )
         {
             if ( actionflag < 0 )
