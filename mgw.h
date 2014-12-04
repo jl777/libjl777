@@ -592,7 +592,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
         {
             case GET_COINDEPOSIT_ADDRESS:
                 // start address gen
-                //printf("GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                printf("GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                 //update_coinacct_addresses(ap->H.nxt64bits,argjson,txid,-1);
                 break;
             case BIND_DEPOSIT_ADDRESS:
@@ -1100,16 +1100,22 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
     struct coin_info *btcdcp;
     uint64_t pendingtxid;
     int32_t i;
+    printf("update.0\n");
     ready_to_xferassets(&pendingtxid);
+    printf("update.1\n");
     if ( (btcdcp= get_coin_info("BTCD")) != 0 )
     {
         update_NXT_transactions(specialNXTaddrs,1,btcdcp->srvNXTADDR,cp);
         update_NXT_transactions(specialNXTaddrs,1,btcdcp->privateNXTADDR,cp);
     }
+    printf("update.2\n");
     update_NXT_transactions(specialNXTaddrs,1,refNXTaddr,cp);
+    printf("update.3\n");
     update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
-    for (i=0; i<numgateways; i++)
+    printf("update.4\n");
+        for (i=0; i<numgateways; i++)
         update_NXT_transactions(specialNXTaddrs,1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
+    printf("update.5\n");
     update_msig_info(0,1); // sync MULTISIG_DATA
     return(pendingtxid);
 }
