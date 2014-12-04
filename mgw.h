@@ -940,7 +940,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
         txind = tp->txind;
         if ( v != tp->v )
             fprintf(stderr,"error (%d != %d)\n",v,tp->v);
-      //  if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             printf("get_cointpspent.(%016llx) (%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
@@ -1095,22 +1095,16 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
     struct coin_info *btcdcp;
     uint64_t pendingtxid;
     int32_t i;
-    printf("update.0\n");
     ready_to_xferassets(&pendingtxid);
-    printf("update.1\n");
     if ( (btcdcp= get_coin_info("BTCD")) != 0 )
     {
         update_NXT_transactions(specialNXTaddrs,1,btcdcp->srvNXTADDR,cp);
         update_NXT_transactions(specialNXTaddrs,1,btcdcp->privateNXTADDR,cp);
     }
-    printf("update.2\n");
     update_NXT_transactions(specialNXTaddrs,1,refNXTaddr,cp);
-    printf("update.3\n");
     update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
-    printf("update.4\n");
         for (i=0; i<numgateways; i++)
         update_NXT_transactions(specialNXTaddrs,1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
-    printf("update.5\n");
     update_msig_info(0,1); // sync MULTISIG_DATA
     return(pendingtxid);
 }
