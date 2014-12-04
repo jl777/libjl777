@@ -514,7 +514,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
         txid ^= calc_ipbits(pserver->ipaddr);
         if ( Debuglevel > 1 )
-            fprintf(stderr,"%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,msg,(long long)txid,ip_port);
+        {
+            char debugstr[4096];
+            init_hexbytes_noT(debugstr,(uint8_t *)msg,len);
+            fprintf(stderr,"%s NARROWCAST.(%s) txid.%llu (%s)\n",pserver->ipaddr,debugstr,(long long)txid,ip_port);
+        }
         ptr = calloc(1,64 + sizeof(len) + len + 1);
         memcpy(ptr,&len,sizeof(len));
         memcpy(&ptr[sizeof(len)],ip_port,strlen(ip_port));
@@ -535,7 +539,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
                 free(cmdstr);
             free_json(array);
             if ( Debuglevel > 1 )
-                printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu len.%d\n",msg,valid,duration,(long long)txid,len);
+            {
+                char debugstr[4096];
+                init_hexbytes_noT(debugstr,(uint8_t *)msg,len);
+                printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu len.%d\n",debugstr,valid,duration,(long long)txid,len);
+            }
             ptr = calloc(1,sizeof(len) + sizeof(duration) + len);
             memcpy(ptr,&len,sizeof(len));
             memcpy(&ptr[sizeof(len)],&duration,sizeof(duration));

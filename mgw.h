@@ -648,7 +648,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
-        fprintf(stderr,"start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+        //fprintf(stderr,"start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -747,7 +747,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         }
     }
     else printf("unexpected error iterating timestamp.(%d) txid.(%s)\n",timestamp,txid);
-    fprintf(stderr,"finish type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+    //fprintf(stderr,"finish type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
     return(retbits);
 }
 
