@@ -630,7 +630,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
 uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *receiver,cJSON *item,char *refNXTaddr,char *assetid,int32_t syncflag,struct coin_info *cp)
 {
     int32_t conv_coinstr(char *);
-    char AMstr[4096],txid[1024],comment[1024],*assetidstr,*commentstr = 0;
+    char AMstr[4096],txid[4096],comment[4096],*assetidstr,*commentstr = 0;
     cJSON *senderobj,*attachment,*message,*assetjson,*commentobj,*cointxidobj;
     char cointxid[128];
     unsigned char buf[4096];
@@ -638,7 +638,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp;
     uint64_t retbits = 0;
-    int32_t height,timestamp=0,coinid,dir = 0;
+    int32_t height,timestamp=0,coinid;
     int64_t type,subtype,n,assetoshis = 0;
     assetid[0] = 0;
     if ( item != 0 )
@@ -648,6 +648,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
+        fprintf(stderr,"start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -729,14 +730,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                             if ( Debuglevel > 1 )
                                                 printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) coinid.%d %.8f\n",ap->name,txid,tp->comment,cointxid,coinid,dstr(tp->quantity * ap->mult));
                                             tp->redeemtxid = calc_nxt64bits(txid);
-                                            //printf("protocol redeem.(%s)\n",txid);
-                                            dir = -1;
-                                            //if ( tp->comment != 0 )
-                                            //    tp->completed = MGW_PENDING_WITHDRAW;
-                                            //ensure_wp(get_coin_info(ap->name),tp->quantity * ap->mult,sender,txid);
                                         }
-                                        else if ( strcmp(sender,refNXTaddr) == 0 )
-                                            dir = 1;
                                     }
                                 }
                                 break;
@@ -753,7 +747,8 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         }
     }
     else printf("unexpected error iterating timestamp.(%d) txid.(%s)\n",timestamp,txid);
-    return(retbits);//assetoshis * dir);
+    fprintf(stderr,"finish type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+    return(retbits);
 }
 
 int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *refNXTaddr,struct coin_info *cp)
@@ -771,7 +766,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
     sprintf(cmd,"%s=getAccountTransactions&account=%s&type=%d",_NXTSERVER,refNXTaddr,txtype);
     coinid = conv_coinstr(cp->name);
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
-    if ( coinid > 0 && np->timestamps[coinid] != 0 )
+    if ( coinid > 0 && np->timestamps[coinid] != 0 && coinid < 64 )
         sprintf(cmd + strlen(cmd),"&timestamp=%d",cp->timestamps[coinid]);
     if ( Debuglevel > 2 )
         printf("update_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
@@ -784,7 +779,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
             {
                 for (i=0; i<n; i++)
                 {
-                    if ( Debuglevel > 2 )
+                    if ( Debuglevel > 1 )
                         fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
