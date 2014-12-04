@@ -370,7 +370,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig,*dbmsig;
     struct contact_info *contact,*refcontact = 0;
-    char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],pubkey[1024],acctcoinaddr[128],buf[1024],*retstr = 0;
+    char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     int32_t i,valid = 0;
     printf("GENMULTISIG\n");
     refNXTaddr[0] = 0;
@@ -399,6 +399,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             }
             else
             {
+                printf("check with get_NXT_coininfo\n");
                 if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
                     expand_nxt64bits(destNXTaddr,contact->nxt64bits);
@@ -410,6 +411,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             }
         }
     }
+    fprintf(stderr,"valid == %d\n",valid);
     if ( valid == N )
     {
         if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refacct,contacts)) != 0 )
