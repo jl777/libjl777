@@ -689,9 +689,7 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
     uint64_t addr;
     uint8_t hash[32];
     calc_sha256(0,mysecret,(unsigned char *)pass,(int32_t)strlen(pass));
-    mysecret[0] &= 248;
-    mysecret[31] &= 127;
-    mysecret[31] |= 64;
+    mysecret[0] &= 248, mysecret[31] &= 127, mysecret[31] |= 64;
     curve25519_donna(mypublic,mysecret,basepoint);
     calc_sha256(0,hash,mypublic,32);
     memcpy(&addr,hash,sizeof(addr));

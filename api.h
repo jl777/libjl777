@@ -1440,11 +1440,10 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],*retstr = 0;
-    int32_t i,M,N,n = 0
-    ;
+    int32_t i,M,N,n = 0;
     struct contact_info **contacts = 0;
-    if ( is_remote_access(previpaddr) != 0 )
-        return(0);
+    //if ( is_remote_access(previpaddr) != 0 )
+    //    return(0);
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refacct,objs[1]);
     M = (int32_t)get_API_int(objs[2],1);
@@ -1469,18 +1468,25 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     struct coin_info *cp;
-    char hopNXTaddr[64],refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],cmdstr[MAX_JSON_FIELD];
-    if ( is_remote_access(previpaddr) == 0 )
-        return(0);
+    char hopNXTaddr[64],refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],myacctcoinaddr[MAX_JSON_FIELD],mypubkey[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],cmdstr[MAX_JSON_FIELD];
+    //if ( is_remote_access(previpaddr) == 0 )
+    //    return(0);
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refNXTaddr,objs[1]);
+    copy_cJSON(myacctcoinaddr,objs[2]);
+    copy_cJSON(mypubkey,objs[3]);
     if ( coin[0] != 0 && refNXTaddr[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         cp = get_coin_info(coin);
-        if ( cp != 0 && get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
+        if ( cp != 0 )
         {
-            sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",NXTaddr,coin,refNXTaddr,acctcoinaddr,pubkey);
-            return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
+            if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
+                add_NXT_coininfo(calc_nxt64bits(sender),cp->name,myacctcoinaddr,mypubkey);
+            if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
+            {
+                sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",NXTaddr,coin,refNXTaddr,acctcoinaddr,pubkey);
+                return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
+            }
         }
     }
     return(clonestr("{\"error\":\"bad getmsigpubkey_func paramater\"}"));
@@ -1554,7 +1560,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
 
     // MGW
     static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", 0 };
-    static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", 0 };
+    static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
     static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
