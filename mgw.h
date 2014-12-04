@@ -777,7 +777,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
         printf("update_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        //printf("(%s)\n",jsonstr);
+        printf("(%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -1168,16 +1168,13 @@ char *process_deposits(uint64_t *unspentp,struct multisig_addr **msigs,int32_t n
                 {
                     if ( Debuglevel > 2 )
                         printf("MULTISIG: %s: %d of %d %s %s\n",cp->name,i,nummsigs,msig->coinstr,msig->multisigaddr);
-                    //if ( strcmp(msig->coinstr,cp->name) == 0 )
+                    update_NXT_transactions(specialNXTaddrs,2,msig->NXTaddr,cp);
+                    if ( readyflag > 0 && pendingtxid == 0 )
                     {
-                        update_NXT_transactions(specialNXTaddrs,2,msig->NXTaddr,cp);
-                        if ( readyflag > 0 && pendingtxid == 0 )
-                        {
-                            tmp = numunspent;
-                            total += process_msigaddr(&numunspent,&unspent,&transferjson,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr);
-                            if ( numunspent > tmp )
-                                nonz++;
-                        }
+                        tmp = numunspent;
+                        total += process_msigaddr(&numunspent,&unspent,&transferjson,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr);
+                        if ( numunspent > tmp )
+                            nonz++;
                     }
                 }
             }
@@ -1451,8 +1448,8 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
             replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)rp->redeems[0]);
             replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)(rp->redeems[0]>>32));
             printf("modified BATCHSIGNED.(%s) %08x%08x\n",batchsigned,extract_sequenceid(&numinputs,cp,batchsigned,1),extract_sequenceid(&numinputs,cp,batchsigned,0));
-            add_pendingxfer(0,~rp->redeems[0]);
             // submit and then wait for it
+            add_pendingxfer(0,~rp->redeems[0]);
         }
     }
     else
