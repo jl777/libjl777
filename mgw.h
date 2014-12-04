@@ -454,7 +454,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             {
                 myacctcoinaddr[0] = mypubkey[0] = 0;
                 printf("Is me.%llu\n",(long long)contact->nxt64bits);
-                if ( cp != 0 && get_acct_coinaddr(myacctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(mypubkey,cp,acctcoinaddr) != 0 )
+                if ( cp != 0 && get_acct_coinaddr(myacctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(mypubkey,cp,myacctcoinaddr) != 0 && myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                 {
                     flag++;
                     add_NXT_coininfo(contact->nxt64bits,cp->name,myacctcoinaddr,mypubkey);
