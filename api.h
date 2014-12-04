@@ -1491,6 +1491,7 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
     struct contact_info *contact;
     struct coin_info *cp;
+    printf("setmsigpubkey(%s)\n",previpaddr);
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(coin,objs[0]);
@@ -1498,6 +1499,7 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     copy_cJSON(acctcoinaddr,objs[2]);
     copy_cJSON(pubkey,objs[3]);
     cp = get_coin_info(coin);
+    printf("coin.(%s) %p ref.(%s) acc.(%s) pub.(%s)\n",coin,cp,refNXTaddr,acctcoinaddr,pubkey);
     if ( cp != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         if ( (contact= find_contact(sender)) != 0 && contact->nxt64bits != 0 )

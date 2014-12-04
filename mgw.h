@@ -973,7 +973,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
 {
     struct address_entry *entries,*entry;
     int32_t i,n;
-    uint32_t createtime = 0;
+    //uint32_t createtime = 0;
     struct coin_txidind *cointp;
     uint64_t nxt64bits,unspent,pendingdeposits = 0;
     if ( ap->mult == 0 )
