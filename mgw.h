@@ -8,7 +8,7 @@
 #ifndef mgw_h
 #define mgw_h
 
-#define DEPOSIT_XFER_DURATION (13/13)
+#define DEPOSIT_XFER_DURATION 5
 #define MIN_DEPOSIT_FACTOR 5
 
 #define GET_COINDEPOSIT_ADDRESS 'g'
@@ -487,7 +487,6 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             else if ( iter == 1 && ismynxtbits(contact->nxt64bits) == 0 )
             {
                 acctcoinaddr[0] = pubkey[0] = 0;
-                printf("check with get_NXT_coininfo\n");
                 if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
                     expand_nxt64bits(destNXTaddr,contact->nxt64bits);
@@ -498,6 +497,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     printf("SENDREQ.(%s)\n",buf);
                     retstr = send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destNXTaddr);
                 } else valid++;
+                printf("check with get_NXT_coininfo i.%d valid.%d\n",i,valid);
             }
         }
     }
@@ -505,26 +505,27 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     {
         if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refacct,contacts)) != 0 )
         {
+            retstr = create_multisig_json(msig,0);
             if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
             {
                 update_msig_info(msig,1);
-                retstr = create_multisig_json(msig,0);
+                free(msig);
             }
             else
             {
                 if ( msigcmp(dbmsig,msig) == 0 )
                     free(msig), msig = 0;
-                retstr = create_multisig_json(dbmsig,0);
                 free(dbmsig);
             }
+            printf("retstr.(%s)\n",retstr);
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
                 send_to_ipaddr(1,previpaddr,retstr,NXTACCTSECRET);
-            if ( msig != 0 )
+            /*if ( msig != 0 )
             {
                 if ( 0 && flag != 0 )
                     broadcast_bindAM(refNXTaddr,msig);
                 free(msig);
-            }
+            }*/
         }
     }
     if ( valid != N || retstr == 0 )
