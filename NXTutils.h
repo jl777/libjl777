@@ -1976,6 +1976,8 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
     {
         parmsobj = cJSON_GetArrayItem(json,0);
         copy_cJSON(NXTaddr,cJSON_GetObjectItem(parmsobj,"NXT"));
+        if ( NXTaddr[0] == 0 )
+            copy_cJSON(NXTaddr,cJSON_GetObjectItem(parmsobj,"sender"));
         secondobj = cJSON_GetArrayItem(json,1);
         tokenobj = cJSON_GetObjectItem(secondobj,"token");
         copy_cJSON((char *)encoded,tokenobj);

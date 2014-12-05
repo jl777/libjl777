@@ -452,7 +452,7 @@ int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
 char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n)
 {
     struct coin_info *cp = get_coin_info(coinstr);
-    struct multisig_addr *msig,*dbmsig;
+    struct multisig_addr *msig;//,*dbmsig;
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     int32_t i,iter,flag,valid = 0;

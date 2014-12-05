@@ -266,7 +266,7 @@ void send_to_ipaddr(int32_t tokenizeflag,char *ipaddr,char *jsonstr,char *NXTACC
     if ( tokenizeflag != 0 )
         construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
     else safecopy(_tokbuf,jsonstr,sizeof(_tokbuf));
-    //fprintf(stderr,"send.(%s)\n",_tokbuf);
+    fprintf(stderr,"send_to_ipaddr.(%s)\n",_tokbuf);
     portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
 }
 
