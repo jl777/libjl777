@@ -1448,7 +1448,9 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     M = (int32_t)get_API_int(objs[2],1);
     N = (int32_t)get_API_int(objs[3],1);
     copy_cJSON(destip,objs[5]);
-    if ( destip[0] != 0 && strcmp(cp->myipaddr,destip) != 0 )
+    if ( strcmp(cp->myipaddr,destip) == 0 )
+        destip[0] = 0;
+    if ( destip[0] != 0 )
     {
         printf("dest.%s myip.%s\n",cp->myipaddr,destip);
         if ( is_illegal_ipaddr(destip) == 0 )
