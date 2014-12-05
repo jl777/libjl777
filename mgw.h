@@ -677,7 +677,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        //printf("func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        printf("func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
@@ -714,7 +714,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
         }
         if ( argjson != 0 )
             free_json(argjson);
-    }// else printf("can't JSON parse (%s)\n",ap->U.jsonstr);
+    } else printf("can't JSON parse (%s)\n",ap->U.jsonstr);
 }
 
 uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *receiver,cJSON *item,char *refNXTaddr,char *assetid,int32_t syncflag,struct coin_info *cp)
@@ -738,7 +738,8 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
-        //fprintf(stderr,"start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+        if ( strcmp(txid,"9366367254950472318") == 0 )
+            fprintf(stderr,"AMAMAMAM start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -756,7 +757,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
             if ( message != 0 && type == 1 )
             {
                 copy_cJSON(AMstr,message);
-                //printf("AM message.(%s).%ld\n",AMstr,strlen(AMstr));
+                printf("txid.%s AM message.(%s).%ld\n",txid,AMstr,strlen(AMstr));
                 n = strlen(AMstr);
                 if ( is_hexstr(AMstr) != 0 )
                 {
