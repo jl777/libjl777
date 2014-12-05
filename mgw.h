@@ -506,7 +506,8 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refacct,contacts)) != 0 )
         {
             retstr = create_multisig_json(msig,0);
-            if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
+            update_msig_info(msig,1);
+            /*if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
             {
                 update_msig_info(msig,1);
                 free(msig);
@@ -515,8 +516,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             {
                 if ( msigcmp(dbmsig,msig) == 0 )
                     free(msig), msig = 0;
-                free(dbmsig);
-            }
+            }*/
             printf("retstr.(%s)\n",retstr);
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
                 send_to_ipaddr(1,previpaddr,retstr,NXTACCTSECRET);
