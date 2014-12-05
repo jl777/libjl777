@@ -186,7 +186,7 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
     pubkeyjsontxt[0] = 0;
     for (i=0; i<msig->n; i++)
         len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? "," : "");
-    sprintf(jsontxt,"{\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
+    sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
     printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
     return(clonestr(jsontxt));
 }
@@ -383,6 +383,26 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     }
 }
 
+void add_MGWaddr(char *previpaddr,char *sender,char *origargstr)
+{
+    cJSON *origargjson,*argjson;
+    struct multisig_addr *msig;
+    char *retstr;
+    if ( (origargjson= cJSON_Parse(origargstr)) != 0 )
+    {
+        if ( is_cJSON_Array(origargjson) != 0 )
+            argjson = cJSON_GetArrayItem(origargjson,0);
+        else argjson = origargjson;
+        if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
+        {
+            retstr = create_multisig_json(msig,1);
+            printf("add_MGWaddr(%s)\n",retstr);
+            broadcast_bindAM(msig->NXTaddr,msig);
+            free(msig);
+        }
+    }
+}
+
 int32_t pubkeycmp(struct pubkey_info *ref,struct pubkey_info *cmp)
 {
     if ( strcmp(ref->pubkey,cmp->pubkey) != 0 )
@@ -436,7 +456,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     int32_t i,iter,flag,valid = 0;
-    printf("GENMULTISIG\n");
+    printf("GENMULTISIG from (%s)\n",previpaddr);
     refNXTaddr[0] = 0;
     if ( (refcontact= find_contact(refacct)) != 0 )
     {
@@ -486,17 +506,22 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refacct,contacts)) != 0 )
         {
             if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
+            {
                 update_msig_info(msig,1);
+                retstr = create_multisig_json(msig,0);
+            }
             else
             {
                 if ( msigcmp(dbmsig,msig) == 0 )
                     free(msig), msig = 0;
+                retstr = create_multisig_json(dbmsig,0);
                 free(dbmsig);
             }
+            if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
+                send_to_ipaddr(previpaddr,retstr,NXTACCTSECRET);
             if ( msig != 0 )
             {
-                retstr = create_multisig_json(msig,0);
-                if ( flag != 0 )
+                if ( 0 && flag != 0 )
                     broadcast_bindAM(refNXTaddr,msig);
                 free(msig);
             }

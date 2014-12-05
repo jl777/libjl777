@@ -1439,15 +1439,17 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],*retstr = 0;
+    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
     int32_t i,M,N,n = 0;
+    struct coin_info *cp = get_coin_info("BTCD");
     struct contact_info **contacts = 0;
-    //if ( is_remote_access(previpaddr) != 0 )
-    //    return(0);
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refacct,objs[1]);
     M = (int32_t)get_API_int(objs[2],1);
     N = (int32_t)get_API_int(objs[3],1);
+    copy_cJSON(destip,objs[4]);
+    if ( is_remote_access(previpaddr) != 0 && (cp == 0 || strcmp(cp->myipaddr,destip) != 0) )
+        return(0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         contacts = conv_contacts_json(&n,objs[4]);
@@ -1519,6 +1521,16 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     return(clonestr("{\"error\":\"bad setmsigpubkey_func paramater\"}"));
 }
 
+char *MGWaddr_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    printf("MGWaddr_func(%s)\n",origargstr);
+    if ( is_remote_access(previpaddr) == 0 )
+        return(0);
+    if ( sender[0] != 0 && valid > 0 )
+        add_MGWaddr(previpaddr,sender,origargstr);
+    return(clonestr(origargstr));
+}
+
 char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD];
@@ -1559,8 +1571,9 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
 
     // MGW
-    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", 0 };
+    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", "destip", 0 };
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
+    static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
     static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
@@ -1610,7 +1623,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits, MGWaddr };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
