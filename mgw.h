@@ -185,7 +185,7 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
     char jsontxt[65536],pubkeyjsontxt[65536];
     pubkeyjsontxt[0] = 0;
     for (i=0; i<msig->n; i++)
-        len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? "," : "");
+        len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
     sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
     printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
     return(clonestr(jsontxt));
