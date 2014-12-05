@@ -1459,8 +1459,8 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
             return(clonestr("{\"result\":\"genmultisig forwarded\"}"));
         } else return(clonestr("{\"error\":\"genmultisig_func illegal destip\"}"));
     }
-    if ( is_remote_access(previpaddr) != 0 && (cp == 0 || strcmp(cp->myipaddr,destip) != 0) )
-        return(0);
+    //if ( is_remote_access(previpaddr) != 0 && (cp == 0 || strcmp(cp->myipaddr,destip) != 0) )
+    //    return(0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         contacts = conv_contacts_json(&n,objs[4]);
