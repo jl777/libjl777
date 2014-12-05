@@ -503,7 +503,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     }
     if ( valid == N )
     {
-        if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refacct,contacts)) != 0 )
+        if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,contacts)) != 0 )
         {
             retstr = create_multisig_json(msig,0);
             update_msig_info(msig,1);
