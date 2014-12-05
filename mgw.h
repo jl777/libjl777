@@ -518,7 +518,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 free(dbmsig);
             }
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
-                send_to_ipaddr(previpaddr,retstr,NXTACCTSECRET);
+                send_to_ipaddr(1,previpaddr,retstr,NXTACCTSECRET);
             if ( msig != 0 )
             {
                 if ( 0 && flag != 0 )

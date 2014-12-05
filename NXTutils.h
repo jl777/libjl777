@@ -1539,7 +1539,7 @@ struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
 char *conv_ipv6(char *ipv6addr)
 {
     static unsigned char IPV4CHECK[10]; // 80 ZERO BITS for testing
-    char ipv4str[64];
+    char ipv4str[4096];
     struct sockaddr_in6 ipv6sa;
     in_addr_t *ipv4bin;
     unsigned char *bytes;
