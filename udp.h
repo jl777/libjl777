@@ -400,7 +400,7 @@ void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,u
             uv_ip4_addr(destip,stats->supernet_port!=0?stats->supernet_port:SUPERNET_PORT,&addr);
             send_packet(stats,(struct sockaddr *)&addr,finalbuf,len);
         }
-        else { printf("cant route packet.%d without IP address\n",len); return; }
+        else { printf("cant route packet.%d without IP address to %llu\n",len,(long long)stats->nxt64bits); return; }
     } else { printf("cant route packet.%d without nodestats\n",len); return; }
 }
 
