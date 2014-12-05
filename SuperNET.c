@@ -13,6 +13,22 @@
 #include <memory.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+
+//Miniupnp code for supernet by chanc3r
+#include <time.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#define snprintf _snprintf
+#else
+// for IPPROTO_TCP / IPPROTO_UDP
+#include <netinet/in.h>
+#endif
+#include "miniupnpc/miniwget.h"
+#include "miniupnpc/miniupnpc.h"
+#include "miniupnpc/upnpcommands.h"
+#include "miniupnpc/upnperrors.h"
+
+
 #include "SuperNET.h"
 #include "cJSON.h"
 
@@ -165,23 +181,6 @@ void *GUIpoll_loop(void *arg)
     return(0);
 }
 
-//Miniupnp code for supernet by chanc3r
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#ifdef _WIN32
-#include <winsock2.h>
-#define snprintf _snprintf
-#else
-// for IPPROTO_TCP / IPPROTO_UDP
-#include <netinet/in.h>
-#endif
-#include "miniupnpc/miniwget.h"
-#include "miniupnpc/miniupnpc.h"
-#include "miniupnpc/upnpcommands.h"
-#include "miniupnpc/upnperrors.h"
 
 // redirect port on external upnp enabled router to port on *this* host
 int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description) {
