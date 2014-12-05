@@ -426,7 +426,6 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
-   //len = (int32_t)strlen(origargstr)+1;
     txid = calc_txid((uint8_t *)origargstr,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {

@@ -339,6 +339,11 @@ int main(int argc,const char *argv[])
     int32_t retval;
     char ipaddr[64],*oldport,*newport,portstr[64];
     extern int32_t ENABLE_GUIPOLL;
+    sprintf(portstr,"%d",SUPERNET_PORT);
+    oldport = newport = portstr;
+    if ( upnpredirect(oldport,newport,"UDP","SuperNET Peer") == 0 )
+        printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
+
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);
@@ -349,10 +354,6 @@ int main(int argc,const char *argv[])
         fwrite(&retval,1,sizeof(retval),fp);
         fclose(fp);
     }
-    sprintf(portstr,"%d",SUPERNET_PORT);
-    oldport = newport = portstr;
-    if ( upnpredirect(oldport,newport,"UDP","SuperNET Peer") == 0 )
-        printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
     if ( retval == 0 && ENABLE_GUIPOLL != 0 )
     {
         if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )

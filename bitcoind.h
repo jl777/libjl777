@@ -1019,6 +1019,14 @@ void *Coinloop(void *ptr)
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
+    init_Contacts();
+    if ( (cp= get_coin_info("BTCD")) != 0 )
+    {
+        printf("add myhandle\n");
+        addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+        printf("add mypublic\n");
+        addcontact("mypublic",cp->srvNXTADDR);
+    }
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
     for (i=0; i<Numcoins; i++)

@@ -695,15 +695,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         exit(-1);
     }
     Historical_done = 1;
-    if ( 1 )
-    {
-        init_Contacts();
-        printf("add myhandle\n");
-        addcontact(Global_mp->myhandle,cp->privateNXTADDR);
-        printf("add mypublic\n");
-        addcontact("mypublic",cp->srvNXTADDR);
-    }
-    //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
+     //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
     //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
     Finished_init = 1;
     printf("finished addcontact\n");
