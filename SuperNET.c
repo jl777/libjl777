@@ -165,53 +165,6 @@ void *GUIpoll_loop(void *arg)
     return(0);
 }
 
-int main(int argc,const char *argv[])
-{
-    FILE *fp;
-    int32_t retval;
-    char ipaddr[64];
-    extern int32_t ENABLE_GUIPOLL;
-    IS_LIBTEST = 1;
-    if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
-        strcpy(ipaddr,argv[1]);
-    else strcpy(ipaddr,"127.0.0.1");
-    retval = SuperNET_start("SuperNET.conf",ipaddr);
-    if ( (fp= fopen("horrible.hack","wb")) != 0 )
-    {
-        fwrite(&retval,1,sizeof(retval),fp);
-        fclose(fp);
-    }
-    if ( retval == 0 && ENABLE_GUIPOLL != 0 )
-    {
-        if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
-            printf("ERROR hist process_hashtablequeues\n");
-       // else build_topology();
-    }
-    while ( 1 ) sleep(60);
-    /*
-         memset(buf,0,sizeof(buf));
-        fgets(buf,sizeof(buf),stdin);
-        stripwhite_ns(buf,(int32_t)strlen(buf));
-        if ( strcmp("p",buf) == 0 )
-            strcpy(buf2,"\"getpeers\"}'");
-        else if ( strcmp("q",buf) == 0 )
-            exit(0);
-        else if ( buf[0] == 'P' && buf[1] == ' ' )
-            sprintf(buf2,"\"ping\",\"destip\":\"%s\"}'",buf+2);
-        else strcpy(buf2,buf);
-        sprintf(cmdstr,"{\"requestType\":%s",buf2);
-        retstr = SuperNET_JSON(cmdstr);
-        printf("input.(%s) -> (%s)\n",cmdstr,retstr);
-        if ( retstr != 0 )
-            free(retstr);*/
-    return(0);
-}
-
-// stubs
-int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
-int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
-
-#ifdef chanc3r
 //Miniupnp code for supernet by chanc3r
 
 #include <stdio.h>
@@ -225,10 +178,10 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 // for IPPROTO_TCP / IPPROTO_UDP
 #include <netinet/in.h>
 #endif
-#include "miniwget.h"
-#include "miniupnpc.h"
-#include "upnpcommands.h"
-#include "upnperrors.h"
+#include "miniupnpc/miniwget.h"
+#include "miniupnpc/miniupnpc.h"
+#include "miniupnpc/upnpcommands.h"
+#include "miniupnpc/upnperrors.h"
 
 // redirect port on external upnp enabled router to port on *this* host
 int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description) {
@@ -380,7 +333,55 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     return 1; //ok - we are mapped:)
 }
 
-int main(int argc, char ** argv) {
+
+int main(int argc,const char *argv[])
+{
+    FILE *fp;
+    int32_t retval;
+    char ipaddr[64],*oldport,*newport,portstr[64];
+    extern int32_t ENABLE_GUIPOLL;
+    IS_LIBTEST = 1;
+    if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
+        strcpy(ipaddr,argv[1]);
+    else strcpy(ipaddr,"127.0.0.1");
+    retval = SuperNET_start("SuperNET.conf",ipaddr);
+    if ( (fp= fopen("horrible.hack","wb")) != 0 )
+    {
+        fwrite(&retval,1,sizeof(retval),fp);
+        fclose(fp);
+    }
+    sprintf(portstr,"%d",SUPERNET_PORT);
+    oldport = newport = portstr;
+    if ( upnpredirect(oldport,newport,"UDP","SuperNET Peer") == 0 )
+        printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
+    if ( retval == 0 && ENABLE_GUIPOLL != 0 )
+    {
+        if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
+            printf("ERROR hist process_hashtablequeues\n");
+        // else build_topology();
+    }
+    while ( 1 ) sleep(60);
+    /*
+     memset(buf,0,sizeof(buf));
+     fgets(buf,sizeof(buf),stdin);
+     stripwhite_ns(buf,(int32_t)strlen(buf));
+     if ( strcmp("p",buf) == 0 )
+     strcpy(buf2,"\"getpeers\"}'");
+     else if ( strcmp("q",buf) == 0 )
+     exit(0);
+     else if ( buf[0] == 'P' && buf[1] == ' ' )
+     sprintf(buf2,"\"ping\",\"destip\":\"%s\"}'",buf+2);
+     else strcpy(buf2,buf);
+     sprintf(cmdstr,"{\"requestType\":%s",buf2);
+     retstr = SuperNET_JSON(cmdstr);
+     printf("input.(%s) -> (%s)\n",cmdstr,retstr);
+     if ( retstr != 0 )
+     free(retstr);*/
+    return(0);
+}
+/*
+int main(int argc, char ** argv)
+{
     if(argc<2) {
         printf("TEST ERROR: missing params\n");
         printf("TEST usage: %s ext-port int-port\n",argv[0]);
@@ -391,5 +392,11 @@ int main(int argc, char ** argv) {
         exit(1);
     }
     exit (0);
-}
+}*/
+
+// stubs
+int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
+int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
+
+#ifdef chanc3r
 #endif

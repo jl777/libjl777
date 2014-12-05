@@ -472,6 +472,7 @@ void check_for_InstantDEX(char *decoded,char *keystr)
     double price;
     uint64_t baseid,relid;
     int32_t ret,i,len;
+    struct SuperNET_db *sdb = &SuperNET_dbs[INSTANTDEX_DATA];
     struct InstantDEX_quote Q,iQs[MAX_JSON_FIELD/sizeof(Q)];
     char checkstr[64],datastr[MAX_JSON_FIELD];
     json = cJSON_Parse(decoded);
@@ -499,7 +500,7 @@ void check_for_InstantDEX(char *decoded,char *keystr)
                 //    printf("%02x ",((uint8_t *)&Q)[z]);
                 printf(">>>>>> Q.(%s): %llu -> %llu NXT.%llu %u type.%d | price %f\n",keystr,(long long)Q.baseamount,(long long)Q.relamount,(long long)Q.nxt64bits,Q.timestamp,Q.type,price);
                 if ( (ret= dbreplace_iQ(INSTANTDEX_DATA,keystr,&Q)) != 0 )
-                    Storage->err(Storage,ret,"Database replace failed.");
+                    sdb->storage->err(sdb->storage,ret,"Database replace failed.");
             }
         }
         free_json(json);

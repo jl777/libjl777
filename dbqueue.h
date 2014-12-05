@@ -20,13 +20,13 @@ struct SuperNET_db
     queue_t queue;
     long maxitems,total_stored;
     DB *dbp;
+    DB_ENV *storage;
     struct hashtable *ramtable;
     int32_t *cipherids,selector,active;
     uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
 };
 
 struct dbreq { struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
-DB_ENV *Storage,*AStorage;
 struct SuperNET_db SuperNET_dbs[NUM_SUPERNET_DBS],Price_dbs[MAX_PRICEDBS];
 long Total_stored,Num_pricedbs;
 
@@ -144,13 +144,29 @@ int db_decrdouble(DB *dbp,const DBT *a,const DBT *b,size_t *locp)
 
 DB *open_database(int32_t selector,struct SuperNET_db *sdb,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize,int32_t duplicateflag)
 {
-    int ret;
+    int ret,i;
+    char dirname[512];
+    for (i=0; fname[i]!=0; i++)
+        if ( (dirname[i]= fname[i]) == '.' )
+            break;
+    dirname[i] = 0;
+    ensure_directory(dirname);
+    if ( (ret = db_env_create(&sdb->storage, 0)) != 0 )
+    {
+        fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
+        return(0);
+    }
+    else if ( (ret= sdb->storage->open(sdb->storage,dirname,DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
+    {
+        fprintf(stderr,"error.%d opening storage\n",ret);
+        return(0);
+    }
     if ( valid_SuperNET_db("open_database",selector) == 0 )
     {
         fprintf(stderr,"open_database error illegal selector.%d for (%s)\n",selector,fname);
         return(0);
      }
-    if ( (ret= db_create(&sdb->dbp,selector == ADDRESS_DATA ? AStorage : Storage,0)) != 0 || sdb->dbp == 0 )
+    if ( (ret= db_create(&sdb->dbp,sdb->storage,0)) != 0 || sdb->dbp == 0 )
     {
         fprintf(stderr,"open_database error.%d creating %s database\n",ret,fname);
         exit(-1);

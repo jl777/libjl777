@@ -748,11 +748,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 }
             } else printf("no coins array.%p ?\n",array);
             if ( IS_LIBTEST != 0 )
-            {
-                ensure_directory("storage");
-                ensure_directory("addresses");
                 init_SuperNET_storage();
-            }
             if ( NXTACCTSECRET[0] == 0 )
                 gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
             nxt64bits = issue_getAccountId(0,NXTACCTSECRET);

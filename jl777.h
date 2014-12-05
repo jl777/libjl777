@@ -64,7 +64,6 @@
 #define NODECOIN_SIG 0x63968736
 //#define NXTCOINSCO_PORT 8777
 //#define NXTPROTOCOL_WEBJSON 7777
-#define SUPERNET_PORT 7777
 #define BTCD_PORT 14631
 
 #define NUM_GATEWAYS 3
@@ -360,7 +359,7 @@ struct server_request_header { int32_t retsize,argsize,variant,funcid; };
 struct withdraw_info
 {
     struct server_request_header H;
-    uint64_t modified,AMtxidbits;
+    uint64_t modified,AMtxidbits,approved[16];
     int64_t amount,moneysent;
     int32_t coinid,srcgateway,destgateway,twofactor,authenticated,submitted,confirmed;
     char withdrawaddr[64],NXTaddr[MAX_NXTADDR_LEN],redeemtxid[MAX_NXTADDR_LEN],comment[1024];
@@ -392,7 +391,7 @@ struct coin_info
     //struct pingpong_queue podQ;
     cJSON *json;
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
-    void **logs;
+    //void **logs;
     cJSON *ciphersobj;
     char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];

@@ -150,7 +150,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
         }
         printf("add (%s)\n",msig->multisigaddr);
         if ( (ret= dbput(sdb,0,&key,datap,0)) != 0 )
-            Storage->err(Storage,ret,"Database put for quote failed.");
+            sdb->storage->err(sdb->storage,ret,"Database put for quote failed.");
         else if ( syncflag != 0 ) ret = dbsync(sdb,0);
     } return(1);
     return(ret);
@@ -171,19 +171,21 @@ struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char
     return(msig);
 }
 
-long calc_pubkey_jsontxt(char *jsontxt,struct pubkey_info *ptr,char *postfix)
+long calc_pubkey_jsontxt(int32_t truncated,char *jsontxt,struct pubkey_info *ptr,char *postfix)
 {
-    sprintf(jsontxt,"{\"address\":\"%s\",\"pubkey\":\"%s\",\"srv\":\"%llu\"}%s",ptr->coinaddr,ptr->pubkey,(long long)ptr->nxt64bits,postfix);//\"ipaddr\":\"%s\"ptr->server,
+    if ( truncated == 0 )
+        sprintf(jsontxt,"{\"pubkey\":\"%s\",\"srv\":\"%llu\"}%s",ptr->pubkey,(long long)ptr->nxt64bits,postfix);
+    else sprintf(jsontxt,"{\"address\":\"%s\",\"pubkey\":\"%s\",\"srv\":\"%llu\"}%s",ptr->coinaddr,ptr->pubkey,(long long)ptr->nxt64bits,postfix);
     return(strlen(jsontxt));
 }
 
-char *create_multisig_json(struct multisig_addr *msig)
+char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
 {
     long i,len = 0;
     char jsontxt[65536],pubkeyjsontxt[65536];
     pubkeyjsontxt[0] = 0;
     for (i=0; i<msig->n; i++)
-        len += calc_pubkey_jsontxt(pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? "," : "");
+        len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? "," : "");
     sprintf(jsontxt,"{\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
     printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
     return(clonestr(jsontxt));
@@ -370,7 +372,7 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     struct coin_info *cp = get_coin_info("BTCD");
     char *jsontxt,*AMtxid,AM[4096];
     struct json_AM *ap = (struct json_AM *)AM;
-    if ( cp != 0 && (jsontxt= create_multisig_json(msig)) != 0 )
+    if ( cp != 0 && (jsontxt= create_multisig_json(msig,1)) != 0 )
     {
         printf(">>>>>>>>>>>>>>>>>>>>>>>>>> send bind address AM\n");
         set_json_AM(ap,GATEWAY_SIG,BIND_DEPOSIT_ADDRESS,refNXTaddr,0,jsontxt,1);
@@ -493,7 +495,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             }
             if ( msig != 0 )
             {
-                retstr = create_multisig_json(msig);
+                retstr = create_multisig_json(msig,0);
                 if ( flag != 0 )
                     broadcast_bindAM(refNXTaddr,msig);
                 free(msig);
@@ -508,7 +510,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     return(retstr);
 }
 
-// network aware funcs
+/*network aware funcs
 void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
 {
     struct batch_info W;
@@ -552,27 +554,7 @@ int32_t process_directnet_syncwithdraw(struct batch_info *wp,char *clientip)
     }
     return(sizeof(*wp));
 }
-// end of network funcs
-
-/*int32_t ensure_wp(struct coin_info *cp,uint64_t amount,char *NXTaddr,char *redeemtxid)
-{
-    int32_t createdflag;
-    struct withdraw_info *wp;
-    if ( cp != 0 )
-    {
-        if ( is_limbo_redeem(cp->name,redeemtxid) != 0 )
-            return(-1);
-        wp = MTadd_hashtable(&createdflag,Global_mp->redeemtxids,redeemtxid);
-        if ( createdflag != 0 )
-        {
-            wp->amount = amount;
-            wp->coinid = conv_coinstr(cp->name);//coinid;
-            strcpy(wp->NXTaddr,NXTaddr);
-            printf("%s ensure redeem.%s %.8f -> NXT.%s\n",cp->name,redeemtxid,dstr(amount),NXTaddr);
-        }
-    } else if ( cp != 0 ) printf("Unexpected missing replicated_coininfo for coin.%s\n",cp->name);
-    return(0);
-}*/
+*/ //end of network funcs
 
 uint64_t add_pendingxfer(int32_t removeflag,uint64_t txid)
 {
@@ -1468,7 +1450,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
 {
     struct NXT_assettxid *tp;
     struct rawtransaction *rp;
-    int32_t i,j,numredeems,numinputs;
+    int32_t i,j,numredeems;
     uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,sum,pending_withdraw = 0;
     char withdrawaddr[64],sender[64],redeemtxid[64],*destaddrs[MAX_MULTISIG_OUTPUTS],*destaddr="",*batchsigned,*str,*retstr = 0;
     if ( ap->num <= 0 )
@@ -1515,7 +1497,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
                 printf("max numredeems\n");
                 break;
             }
-            break; // process one at a time
+            //break; // process one at a time
         }
         printf("pending_withdraw %.8f -> sum %.8f numredeems.%d numoutputs.%d\n",dstr(pending_withdraw),dstr(sum),rp->numredeems,rp->numoutputs);
         pending_withdraw = sum;
@@ -1523,10 +1505,13 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)rp->redeems[0]);
-            replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)(rp->redeems[0]>>32));
-            printf("modified BATCHSIGNED.(%s) %08x%08x\n",batchsigned,extract_sequenceid(&numinputs,cp,batchsigned,1),extract_sequenceid(&numinputs,cp,batchsigned,0));
+            //replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)rp->redeems[0]);
+            //replace_bitcoin_sequenceid(cp,batchsigned,(uint32_t)(rp->redeems[0]>>32));
+            //printf("modified BATCHSIGNED.(%s) %08x%08x\n",batchsigned,extract_sequenceid(&numinputs,cp,batchsigned,1),extract_sequenceid(&numinputs,cp,batchsigned,0));
             // submit and then wait for it
+            // use old style for this as it is only for the MGW servers themselves
+            // encoding into tx is too untested
+            // realtime MGW AM size problem
             add_pendingxfer(0,~rp->redeems[0]);
         }
     }
