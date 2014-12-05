@@ -1450,6 +1450,7 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     copy_cJSON(destip,objs[5]);
     if ( destip[0] != 0 && strcmp(cp->myipaddr,destip) != 0 )
     {
+        printf("dest.%s myip.%s\n",cp->myipaddr,destip);
         if ( is_illegal_ipaddr(destip) == 0 )
         {
             send_to_ipaddr(0,destip,origargstr,NXTACCTSECRET);
