@@ -1680,6 +1680,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
             //printf("needvalid.(%c) sender.(%s) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],sender,valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
             if ( strcmp(cmdinfo[1],command) == 0 )
             {
+                printf("%d %d\n",cmdinfo[2][0],valid);
                 if ( cmdinfo[2][0] != 0 && valid <= 0 )
                     return(0);
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
@@ -1689,8 +1690,10 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
                 {
                     char **ptrs = calloc(3,sizeof(*ptrs));
                     uint64_t txid = 0;
-                    ptrs[0] = clonestr(origargstr);
-                    ptrs[1] = clonestr(retstr);
+                    if ( origargstr != 0 )
+                        ptrs[0] = clonestr(origargstr);
+                    if ( retstr != 0 )
+                        ptrs[1] = clonestr(retstr);
                     txid = calc_ipbits(previpaddr);
                     memcpy(&ptrs[2],&txid,sizeof(ptrs[2]));
                     queue_GUIpoll(ptrs);
