@@ -30,7 +30,7 @@ clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
 SuperNET: $(TARGET); \
-    pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libjl777.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm
+    pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libminiupnpc.a libs/libjl777.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm
 
 special: /usr/lib/libjl777.so; \
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lc -lcurl -lm -ldl; \
@@ -45,14 +45,14 @@ btcdmac: ../src/BitcoinDarkd; \
 install: doesntexist; \
     sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libdb5.3-dev libdb5.3++-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake
 
-patch1: doesntexist; \
+patch: doesntexist; \
     cd miniupnpc; \
     make libminiupnpc.a; \
     cp libminiupnpc.a ../libs; \
     cd ..;\
 
 
-patch0: doesntexist; \
+patch1: doesntexist; \
    export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \
     unzip db-6.1.19.zip; \
     cd db-6.1.19/build_unix; \
@@ -62,7 +62,7 @@ patch0: doesntexist; \
     cp *.h ../../includes; \
     cp libdb.a ../../libs;
 
-patch: doesntexist; \
+patch2: doesntexist; \
     unzip lws.zip -d libwebsockets; \
     cd libwebsockets/lib; \
     cmake ..; \
@@ -73,7 +73,22 @@ patch: doesntexist; \
     cp lib/*  ../../libs; \
     cd ../..;
 
+patch3: doesntexist; \
+    echo "expanding nacl"; \
+    bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -; \
+    cd nacl-20090405; \
+    echo "compiling nacl, this will take some time"; \
+    ./do; \
+    cd ..; \
+    echo "randombytes.o and libnacl.a are in the build directory of nacl-20090405"; \
+    echo `date`; \
+    echo `ls -l nacl-20090405/build/*/lib/amd64/randombytes.o`; \
+    cp nacl-20090405/build/*/lib/amd64/randombytes.o libs
+
 onetime: doesntexist; \
+    make patch3; make patch2; make patch1; make patch;
+
+oldonetime: doesntexist; \
     cd miniupnpc; \
     make; \
     cp miniupnpc.a ../libs; \
