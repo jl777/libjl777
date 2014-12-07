@@ -214,7 +214,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
             if ( NXTaddr != 0 && strcmp(nxtstr,NXTaddr) != 0 )
                 printf("WARNING: mismatched NXTaddr.%s vs %s\n",nxtstr,NXTaddr);
         }
-        fprintf(stderr,"msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
+        //printf("msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
         if ( nxtstr[0] != 0 && addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
         {
             n = cJSON_GetArraySize(pubkeysobj);
@@ -860,7 +860,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
     coinid = conv_coinstr(cp->name);
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
     if ( coinid > 0 && np->timestamps[coinid] != 0 && coinid < 64 )
-        sprintf(cmd + strlen(cmd),"&timestamp=%d",cp->timestamps[coinid]);
+        sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
     if ( Debuglevel > 2 )
         printf("update_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
@@ -1305,7 +1305,7 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
         sprintf(cmd+strlen(cmd),"&height=%d",height);
     if ( (retstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        //printf("circ.(%s) <- (%s)\n",retstr,cmd);
+        printf("circ.(%s) <- (%s)\n",retstr,cmd);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"accountAssets")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
