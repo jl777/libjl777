@@ -197,6 +197,8 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
     char nxtstr[512],coinstr[64],ipaddr[64];
     struct multisig_addr *msig = 0;
     cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj;
+    if ( obj == 0 )
+        return(0);
     coinid = (int)get_cJSON_int(obj,"coinid");
     nameobj = cJSON_GetObjectItem(obj,"coin");
     copy_cJSON(coinstr,nameobj);
@@ -212,7 +214,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
             if ( NXTaddr != 0 && strcmp(nxtstr,NXTaddr) != 0 )
                 printf("WARNING: mismatched NXTaddr.%s vs %s\n",nxtstr,NXTaddr);
         }
-        //printf("msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
+        fprintf(stderr,"msig.%p %p %p %p\n",msig,addrobj,redeemobj,pubkeysobj);
         if ( nxtstr[0] != 0 && addrobj != 0 && redeemobj != 0 && pubkeysobj != 0 )
         {
             n = cJSON_GetArraySize(pubkeysobj);
@@ -238,8 +240,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
             }
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
         return(msig);
-    }
-    //printf("decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
+    } else fprintf(stderr,"decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
     return(0);
 }
 
@@ -678,22 +679,22 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        printf("func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
                 // start address gen
-                printf("GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                fprintf(stderr,"GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                 //update_coinacct_addresses(ap->H.nxt64bits,argjson,txid,-1);
                 break;
             case BIND_DEPOSIT_ADDRESS:
                 if ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
                 {
-                    //printf("%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                    fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     if ( strcmp(msig->coinstr,coinstr) == 0 )
                     {
                         if ( update_msig_info(msig,syncflag) == 0 )
-                            printf("%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                            fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     }
                     free(msig);
                 } //else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
