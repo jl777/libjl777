@@ -955,10 +955,10 @@ int32_t issue_generateToken(CURL *curl_handle,char encoded[NXT_TOKEN_LEN],char *
     return(-1);
 }
 
-char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *reftxid,char *NXTACCTSECRET)
+char *submit_AM(int32_t deadline,char *recipient,struct NXT_AMhdr *ap,char *reftxid,char *NXTACCTSECRET)
 {
     //union NXTtype retval;
-    int32_t len,deadline = 720;
+    int32_t len;
     cJSON *json,*txjson,*errjson;
     char hexbytes[4096],cmd[5120],txid[MAX_NXTADDR_LEN],*jsonstr,*retstr = 0;
     len = ap->size;//(int32_t)sizeof(*ap);
@@ -969,10 +969,12 @@ char *submit_AM(CURL *curl_handle,char *recipient,struct NXT_AMhdr *ap,char *ref
     }
     memset(hexbytes,0,sizeof(hexbytes));
     init_hexbytes_truncate(hexbytes,(void *)ap,len);
+    if ( deadline == 0 )
+        deadline = 720;
     sprintf(cmd,"%s=sendMessage&secretPhrase=%s&recipient=%s&message=%s&deadline=%u%s&feeNQT=%lld&messageIsText=false",_NXTSERVER,NXTACCTSECRET,recipient,hexbytes,deadline,reftxid!=0?reftxid:"",(long long)MIN_NQTFEE);
     //printf("submit_AM.(%s)\n",cmd);
-    jsonstr = issue_NXTPOST(curl_handle,cmd);
-    printf("back from issue_NXTPOST.(%s) %p\n",jsonstr,curl_handle);
+    jsonstr = issue_NXTPOST(0,cmd);
+    printf("back from issue_NXTPOST.(%s)\n",jsonstr);
     if ( jsonstr != 0 )
     {
         json = cJSON_Parse(jsonstr);

@@ -86,9 +86,6 @@ patch3: doesntexist; \
     cp nacl-20090405/build/*/lib/amd64/randombytes.o libs
 
 onetime: doesntexist; \
-    make patch3; make patch2; make patch1; make patch;
-
-oldonetime: doesntexist; \
     cd miniupnpc; \
     make; \
     cp miniupnpc.a ../libs; \
