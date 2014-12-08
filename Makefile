@@ -88,7 +88,7 @@ patch3: doesntexist; \
 onetime: doesntexist; \
     cd miniupnpc; \
     make; \
-    cp miniupnpc.a ../libs; \
+    cp libminiupnpc.a ../libs; \
     cd ..;\
     unzip lws.zip -d libwebsockets; \
     cd libwebsockets/lib; \

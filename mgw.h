@@ -107,8 +107,10 @@ struct multisig_addr *find_msigaddr(char *msigaddr)
 int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
 {
     struct coin_info *refcp = get_coin_info("BTCD");
+    int32_t i,n,ismine;
+    cJSON *json,*array,*json2;
     struct multisig_addr *msig;
-    //char NXTaddr[64];
+    char addr[1024],args[1024],*retstr,*retstr2;
     if ( cp == 0 || refcp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
@@ -130,6 +132,41 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
         "account" : ""
     }
 */
+    sprintf(args,"\"%s\"",msig->multisigaddr);
+    retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"validateaddress",args);
+    if ( retstr != 0 )
+    {
+        printf("got retstr.(%s)\n",retstr);
+        if ( (json = cJSON_Parse(retstr)) != 0 )
+        {
+            if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    ismine = 0;
+                    copy_cJSON(addr,cJSON_GetArrayItem(array,i));
+                    if ( addr[0] != 0 )
+                    {
+                        sprintf(args,"\"%s\"",addr);
+                        retstr2 = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"validateaddress",args);
+                        if ( retstr2 != 0 )
+                        {
+                            if ( (json2 = cJSON_Parse(retstr2)) != 0 )
+                            {
+                                ismine = (int32_t)get_API_int(cJSON_GetObjectItem(json2,"ismine"),0);
+                                printf("(%s) ismine.%d\n",addr,ismine);
+                            } free(retstr2);
+                        }
+                    }
+                    if ( ismine != 0 )
+                    {
+                        strcpy(normaladdr,addr);
+                        break;
+                    }
+                }
+            } free_json(json);
+        } free(retstr);
+    }
     // use validateaddress
     strcpy(normaladdr,msigaddr);
     return(-1);
