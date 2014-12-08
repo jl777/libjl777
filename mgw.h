@@ -160,7 +160,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
         msig->created = msigram->created;
     //if ( msigram->sender == 0 && msig->sender != 0 )
     //    createdflag = 1;
-    if ( createdflag != 0 )//|| memcmp(msigram,msig,msig->H.size) != 0 )
+    if ( createdflag != 0 || memcmp(msigram,msig,msig->H.size) != 0 )
     {
         clear_pair(&key,&data);
         key.data = msig->multisigaddr;
