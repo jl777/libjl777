@@ -104,14 +104,15 @@ struct multisig_addr *find_msigaddr(char *msigaddr)
     //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
 }
 
-int32_t map_msigaddr(char *coinstr,char *normaladdr,char *msigaddr)
+int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
 {
-    struct coin_info *cp = get_coin_info("BTCD");
+    struct coin_info *refcp = get_coin_info("BTCD");
     struct multisig_addr *msig;
     struct pubkey_info *ptr;
     //char NXTaddr[64];
+    char *privkey,args[512];
     int32_t i;
-    if ( cp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
+    if ( cp == 0 || refcp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
         return(0);
@@ -119,19 +120,20 @@ int32_t map_msigaddr(char *coinstr,char *normaladdr,char *msigaddr)
     for (i=0; i<msig->n; i++)
     {
         ptr = &msig->pubkeys[i];
-        if ( ptr->nxt64bits == cp->srvpubnxtbits || ptr->nxt64bits == cp->privatebits )
+        if ( ptr->nxt64bits == refcp->srvpubnxtbits || ptr->nxt64bits == refcp->privatebits )
         {
             strcpy(normaladdr,ptr->coinaddr);
             return(1);
         }
-    }
-    /*if ( nxt64bits != 0 )
-    {
-        expand_nxt64bits(NXTaddr,nxt64bits);
-        if ( (cp= get_coin_info(coinstr)) != 0 && get_acct_coinaddr(normaladdr,cp,NXTaddr) != 0 )
+        sprintf(args,"[\"%s\"]",ptr->coinaddr);
+        privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+        if ( privkey != 0 )
+        {
+            strcpy(normaladdr,ptr->coinaddr);
+            free(privkey);
             return(1);
+        }
     }
-    strcpy(normaladdr,ptr->coinaddr);*/
     strcpy(normaladdr,msigaddr);
     return(-1);
 }
