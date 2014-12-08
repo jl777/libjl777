@@ -77,7 +77,7 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
 
 cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *rp,char **privkeys,int32_t numinputs)
 {
-    int32_t map_msigaddr(char *,char *);
+    int32_t map_msigaddr(char *coinstr,char *normaladdr,char *msigaddr);
     int32_t allocflag,i,nonz = 0;
     cJSON *array;
     char args[1024],normaladdr[1024];
@@ -87,7 +87,7 @@ cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *r
         privkeys = calloc(numinputs,sizeof(*privkeys));
         for (i=0; i<numinputs; i++)
         {
-            if ( map_msigaddr(normaladdr,rp->inputs[i]->coinaddr) >= 0 )
+            if ( map_msigaddr(cp->name,normaladdr,rp->inputs[i]->coinaddr) >= 0 )
             {
                 sprintf(args,"[\"%s\"]",normaladdr);
                 fprintf(stderr,"(%s) -> (%s).%d ",normaladdr,normaladdr,i);

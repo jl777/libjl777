@@ -104,11 +104,12 @@ struct multisig_addr *find_msigaddr(char *msigaddr)
     //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
 }
 
-int32_t map_msigaddr(char *normaladdr,char *msigaddr)
+int32_t map_msigaddr(char *coinstr,char *normaladdr,char *msigaddr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     struct multisig_addr *msig;
     struct pubkey_info *ptr;
+    //char NXTaddr[64];
     int32_t i;
     if ( cp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
@@ -124,7 +125,14 @@ int32_t map_msigaddr(char *normaladdr,char *msigaddr)
             return(1);
         }
     }
-    normaladdr[0] = 0;
+    /*if ( nxt64bits != 0 )
+    {
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        if ( (cp= get_coin_info(coinstr)) != 0 && get_acct_coinaddr(normaladdr,cp,NXTaddr) != 0 )
+            return(1);
+    }
+    strcpy(normaladdr,ptr->coinaddr);*/
+    strcpy(normaladdr,msigaddr);
     return(-1);
 }
 
