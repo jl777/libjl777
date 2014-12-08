@@ -127,6 +127,7 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
         }
         sprintf(args,"[\"%s\"]",ptr->coinaddr);
         privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+        printf("%s -> (%s)\n",args,privkey);
         if ( privkey != 0 )
         {
             strcpy(normaladdr,ptr->coinaddr);
@@ -261,12 +262,13 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
                     msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
                     copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
-                    //printf("ip%d.(%s) ",j,ipaddr);
+                    fprintf(stderr,"{(%s) (%s) %llu ip.(%s)}.%d ",msig->pubkeys[j].coinaddr,msig->pubkeys[j].pubkey,(long long)msig->pubkeys[j].nxt64bits,ipaddr,j);
                     if ( ipaddr[0] == 0 && j < 3 )
                         strcpy(ipaddr,Server_names[j]);
                     msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
                 } else { free(msig); msig = 0; }
             }
+            fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
         return(msig);
     } else fprintf(stderr,"decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
