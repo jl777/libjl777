@@ -600,7 +600,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         if ( (len<<1) == 30 ) // hack against flood
             flood++;
         if ( Debuglevel > 0 )
-            printf("gotpacket.(%s) %d | Finished_loading.%d | flood.%d duplicates.%d\n",msg,duration,Finished_loading,flood,duplicates);
+            printf("gotpacket %d | Finished_loading.%d | flood.%d duplicates.%d\n",duration,Finished_loading,flood,duplicates);
         if ( is_encrypted_packet(packet,len) != 0 )
             process_packet(0,retjsonstr,packet,len,0,&prevaddr,ipaddr,0);
         /*else if ( (obookid= is_orderbook_tx(packet,len)) != 0 )
@@ -626,7 +626,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         if ( len == 30 ) // hack against flood
             flood++;
         if ( Debuglevel > 2 )
-            printf("C SuperNET_gotpacket.(%s) from %s:%d size.%d ascii txid.%llu | flood.%d\n",msg,ipaddr,p2pport,len,(long long)txid,flood);
+            printf("C SuperNET_gotpacket from %s:%d size.%d ascii txid.%llu | flood.%d\n",ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
             cJSON *argjson;
@@ -650,7 +650,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
                 retstr = clonestr("{\"result\":null}");
             return(retstr);
         }
-        else printf("cJSON_Parse error.(%s)\n",msg);
+        //else printf("cJSON_Parse error.(%s)\n",msg);
     }
     return(clonestr(retjsonstr));
 }

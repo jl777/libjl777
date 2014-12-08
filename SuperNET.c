@@ -341,9 +341,11 @@ int main(int argc,const char *argv[])
     extern int32_t ENABLE_GUIPOLL;
     sprintf(portstr,"%d",SUPERNET_PORT);
     oldport = newport = portstr;
+#ifndef __linux__
     if ( upnpredirect(oldport,newport,"UDP","SuperNET Peer") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
-
+#endif
+    
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
         strcpy(ipaddr,argv[1]);

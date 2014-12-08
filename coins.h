@@ -641,7 +641,10 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
             MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
             GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
+            FIRST_NXTBLOCK = get_API_int(cJSON_GetObjectItem(MGWconf,"FIRST_NXTBLOCK"),0);
             extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
+            if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
+                FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
             IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);

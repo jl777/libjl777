@@ -1064,6 +1064,24 @@ int32_t set_json_AM(struct json_AM *ap,int32_t sig,int32_t funcid,char *nxtaddr,
     return(0);
 }
 
+uint32_t get_NXTtimestamp(char *blockstr,uint32_t blocknum)
+{
+    cJSON *json;
+    uint32_t timestamp = 0;
+    char cmd[4096],*jsonstr;
+    sprintf(cmd,"%s=getBlock&block=%s&height=%u",NXTSERVER,blockstr,blocknum);
+    if ( (jsonstr= issue_curl(0,cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"timestamp"),0);
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(timestamp);
+}
+
 void set_next_NXTblock(CURL *curl_handle,int32_t *timestamp,char *nextblock,char *blockidstr)
 {
     union NXTtype retval;
