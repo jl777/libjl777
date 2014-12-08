@@ -108,33 +108,29 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
 {
     struct coin_info *refcp = get_coin_info("BTCD");
     struct multisig_addr *msig;
-    struct pubkey_info *ptr;
     //char NXTaddr[64];
-    char *privkey,args[512];
-    int32_t i;
     if ( cp == 0 || refcp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
         return(0);
     }
-    for (i=0; i<msig->n; i++)
-    {
-        ptr = &msig->pubkeys[i];
-        if ( ptr->nxt64bits == refcp->srvpubnxtbits || ptr->nxt64bits == refcp->privatebits )
-        {
-            strcpy(normaladdr,ptr->coinaddr);
-            return(1);
-        }
-        sprintf(args,"[\"%s\"]",ptr->coinaddr);
-        privkey = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
-        printf("%s -> (%s)\n",args,privkey);
-        if ( privkey != 0 )
-        {
-            strcpy(normaladdr,ptr->coinaddr);
-            free(privkey);
-            return(1);
-        }
+   /* {
+        "isvalid" : true,
+        "address" : "bUNry9zFx9EQnukpUNDgHRsw6zy3eUs8yR",
+        "ismine" : true,
+        "isscript" : true,
+        "script" : "multisig",
+        "hex" : "522103a07d28c8d4eaa7e90dc34133fec204f9cf7740d5fd21acc00f9b0552e6bd721e21036d2b86cb74aaeaa94bb82549c4b6dd9666355241d37c371b1e0a17d060dad1c82103ceac7876e4655cf4e39021cf34b7228e1d961a2bcc1f8e36047b40149f3730ff53ae",
+        "addresses" : [
+                       "RGjegNGJDniYFeY584Adfgr8pX2uQegfoj",
+                       "RQWB6GWe67EHCYurSiffYbyZPi7RGcrZa2",
+                       "RWVebRCCVMz3YWrZEA9Lc3VWKH9kog5wYg"
+                       ],
+        "sigsrequired" : 2,
+        "account" : ""
     }
+*/
+    // use validateaddress
     strcpy(normaladdr,msigaddr);
     return(-1);
 }

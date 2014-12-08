@@ -193,7 +193,7 @@ int32_t server_request(int32_t *sdp,char *destserver,struct server_request_heade
         rc = getaddrinfo(server, servport, &hints, &res);
         if ( rc != 0 )
         {
-            printf("Host not found --> %s\n", gai_strerror((int)rc));
+            printf("Host not found (%s:%s) --> %s\n",server,servport,gai_strerror((int)rc));
             //if (rc == EAI_SYSTEM)
                 printf("getaddrinfo() failed\n");
             *sdp = -1;
