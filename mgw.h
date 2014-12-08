@@ -628,6 +628,8 @@ void _update_redeembits(struct coin_info *cp,uint64_t redeembits,uint64_t AMtxid
     struct NXT_asset *ap;
     int32_t createdflag;
     int32_t i,n = 0;
+    if ( cp == 0 )
+        return;
     if ( cp->limboarray != 0 )
         for (n=0; cp->limboarray[n]!=0; n++)
             ;
