@@ -663,11 +663,11 @@ void update_redeembits(cJSON *argjson,uint64_t AMtxidbits)
         for (i=0; i<n; i++)
         {
             copy_cJSON(redeemtxid,cJSON_GetArrayItem(array,i));
-            if ( redeemtxid[0] != 0 && is_limbo_redeem(coinstr,redeemtxid) == 0 )
+            if ( redeemtxid[0] != 0 )//&& is_limbo_redeem(coinstr,redeemtxid) == 0 )
                 _update_redeembits(coinstr,calc_nxt64bits(redeemtxid),AMtxidbits);
         }
     }
-    if ( extract_cJSON_str(redeemtxid,sizeof(redeemtxid),argjson,"redeemtxid") > 0 && is_limbo_redeem(coinstr,redeemtxid) == 0 )
+    if ( extract_cJSON_str(redeemtxid,sizeof(redeemtxid),argjson,"redeemtxid") > 0 )//&& is_limbo_redeem(coinstr,redeemtxid) == 0 )
         _update_redeembits(coinstr,calc_nxt64bits(redeemtxid),AMtxidbits);
 }
 
@@ -709,7 +709,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
             case MONEY_SENT:
                 //if ( is_gateway_addr(sender) != 0 )
                 //    update_money_sent(argjson,txid,height);
-                 if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 )
+                 //if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 )
                     update_redeembits(argjson,calc_nxt64bits(txid));
                 break;
             default: printf("funcid.(%c) not handled\n",ap->funcid);
@@ -1374,9 +1374,9 @@ int32_t add_redeem(char *destaddrs[],uint64_t *destamounts,uint64_t *redeems,uin
 {
     int32_t j;
     uint64_t amount;
-    if ( destaddr == 0 || destaddr[0] == 0 )
+    if ( destaddr == 0 || destaddr[0] == 0 || numredeems >= MAX_MULTISIG_OUTPUTS-1 )
     {
-        printf("add_redeem with null destaddr.%p\n",destaddr);
+        printf("add_redeem with null destaddr.%p numredeems.%d\n",destaddr,numredeems);
         return(numredeems);
     }
     amount = tp->quantity * ap->mult - (cp->txfee + cp->NXTfee_equiv);
@@ -1689,18 +1689,20 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
     for (i=0; i<ap->num; i++)
     {
         tp = ap->txids[i];
-        printf("%d of %d: redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
+        //printf("%d of %d: redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
         if ( tp->redeemtxid != 0 && tp->receiverbits == nxt64bits && tp->assetbits == ap->assetbits )
         {
             str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
             expand_nxt64bits(sender,tp->senderbits);
             if ( (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 && tp->AMtxidbits == 0 )
             {
-                printf(">>>>>>>>>>\n");
+                //printf(">>>>>>>>>>\n");
                 stripwhite(destaddr,strlen(destaddr));
                 numredeems = process_destaddr(destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
+                if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
+                    break;
             }
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("%s %s %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
         }
     }
