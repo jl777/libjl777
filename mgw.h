@@ -818,7 +818,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                     }
                                     if ( coinid >= 0 && is_limbo_redeem(ap->name,txid) == 0 )
                                     {
-                                        if ( strcmp(receiver,refNXTaddr) == 0 )
+                                        //if ( strcmp(receiver,refNXTaddr) == 0 )
                                         {
                                             if ( Debuglevel > 1 )
                                                 printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) coinid.%d %.8f\n",ap->name,txid,tp->comment,cointxid,coinid,dstr(tp->quantity * ap->mult));
