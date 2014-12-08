@@ -690,9 +690,9 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
             case BIND_DEPOSIT_ADDRESS:
                 if ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
                 {
-                    fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     if ( strcmp(msig->coinstr,coinstr) == 0 )
                     {
+                        fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         if ( update_msig_info(msig,syncflag) == 0 )
                             fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     }
@@ -923,7 +923,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
-        //printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
+        printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
         if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
             break;
     }
@@ -1092,7 +1092,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             entry = &entries[i];
             if ( entry->vinflag == 0 )
                 pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr);
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 1 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
         }
