@@ -77,18 +77,22 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
 
 cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *rp,char **privkeys,int32_t numinputs)
 {
+    int32_t map_msigaddr(char *,char *);
     int32_t allocflag,i,nonz = 0;
     cJSON *array;
-    char args[1024];
+    char args[1024],normaladdr[1024];
     printf("create privkeys %p numinputs.%d\n",privkeys,numinputs);
     if ( privkeys == 0 )
     {
         privkeys = calloc(numinputs,sizeof(*privkeys));
         for (i=0; i<numinputs; i++)
         {
-            sprintf(args,"[\"%s\"]",rp->inputs[i]->coinaddr);
-            fprintf(stderr,"(%s).%d ",rp->inputs[i]->coinaddr,i);
-            privkeys[i] = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+            if ( map_msigaddr(normaladdr,rp->inputs[i]->coinaddr) >= 0 )
+            {
+                sprintf(args,"[\"%s\"]",normaladdr);
+                fprintf(stderr,"(%s) -> (%s).%d ",normaladdr,normaladdr,i);
+                privkeys[i] = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
+            }
         }
         allocflag = 1;
         fprintf(stderr,"allocated\n");

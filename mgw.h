@@ -98,8 +98,34 @@ void update_unspent_funds(struct coin_info *cp,struct coin_txidind *cointp,int32
 struct multisig_addr *find_msigaddr(char *msigaddr)
 {
     int32_t createdflag;
+    if ( MTsearch_hashtable(&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr) == HASHSEARCH_ERROR )
+        return(0);
     return(MTadd_hashtable(&createdflag,&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr));
     //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
+}
+
+int32_t map_msigaddr(char *normaladdr,char *msigaddr)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct multisig_addr *msig;
+    struct pubkey_info *ptr;
+    int32_t i;
+    if ( cp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
+    {
+        strcpy(normaladdr,msigaddr);
+        return(0);
+    }
+    for (i=0; i<msig->n; i++)
+    {
+        ptr = &msig->pubkeys[i];
+        if ( ptr->nxt64bits == cp->srvpubnxtbits || ptr->nxt64bits == cp->privatebits )
+        {
+            strcpy(normaladdr,ptr->coinaddr);
+            return(1);
+        }
+    }
+    normaladdr[0] = 0;
+    return(-1);
 }
 
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
@@ -366,7 +392,7 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     struct coin_info *cp = get_coin_info("BTCD");
     char *jsontxt,*AMtxid,AM[4096];
     struct json_AM *ap = (struct json_AM *)AM;
-    if ( cp != 0 && (jsontxt= create_multisig_json(msig,1)) != 0 )
+    if ( cp != 0 && (jsontxt= create_multisig_json(msig,0)) != 0 )
     {
         printf(">>>>>>>>>>>>>>>>>>>>>>>>>> send bind address AM\n");
         set_json_AM(ap,GATEWAY_SIG,BIND_DEPOSIT_ADDRESS,refNXTaddr,0,jsontxt,1);
@@ -389,7 +415,7 @@ void add_MGWaddr(char *previpaddr,char *sender,char *origargstr)
         else argjson = origargjson;
         if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
         {
-            retstr = create_multisig_json(msig,1);
+            retstr = create_multisig_json(msig,0);
             printf("add_MGWaddr(%s)\n",retstr);
             broadcast_bindAM(msig->NXTaddr,msig);
             free(msig);
@@ -1084,7 +1110,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             entry = &entries[i];
             if ( entry->vinflag == 0 )
                 pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
         }
@@ -1513,6 +1539,7 @@ char *create_batch_jsontxt(struct coin_info *cp,int *firstitemp)
 char *broadcast_moneysentAM(struct coin_info *cp,int32_t height)
 {
     cJSON *argjson;
+    uint64_t AMtxidbits;
     int32_t i,firstitem = 0;
     char AM[4096],*jsontxt,*AMtxid = 0;
     struct json_AM *ap = (struct json_AM *)AM;
@@ -1537,9 +1564,11 @@ char *broadcast_moneysentAM(struct coin_info *cp,int32_t height)
             }
             else
             {
+                AMtxidbits = calc_nxt64bits(AMtxid);
+                add_pendingxfer(0,AMtxidbits);
                 argjson = cJSON_Parse(jsontxt);
                 if ( argjson != 0 )
-                    update_redeembits(argjson,calc_nxt64bits(AMtxid)); //update_money_sent(argjson,AMtxid,height);
+                    update_redeembits(argjson,AMtxidbits); //update_money_sent(argjson,AMtxid,height);
                 else printf("parse error (%s)\n",jsontxt);
             }
             free(jsontxt);
