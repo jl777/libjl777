@@ -501,25 +501,15 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         {
             retstr = create_multisig_json(msig,0);
             update_msig_info(msig,1);
-            /*if ( (dbmsig= find_msigaddr(msig->multisigaddr)) == 0 )
-            {
-                update_msig_info(msig,1);
-                free(msig);
-            }
-            else
-            {
-                if ( msigcmp(dbmsig,msig) == 0 )
-                    free(msig), msig = 0;
-            }*/
             printf("retstr.(%s)\n",retstr);
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
                 send_to_ipaddr(1,previpaddr,retstr,NXTACCTSECRET);
-            /*if ( msig != 0 )
+            if ( msig != 0 )
             {
-                if ( 0 && flag != 0 )
+                if ( 0 && flag != 0 ) // let the client do this
                     broadcast_bindAM(refNXTaddr,msig);
                 free(msig);
-            }*/
+            }
         }
     }
     if ( valid != N || retstr == 0 )
