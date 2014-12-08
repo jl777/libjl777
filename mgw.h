@@ -636,6 +636,7 @@ void _update_redeembits(char *coinstr,uint64_t redeembits,uint64_t AMtxidbits)
     struct NXT_asset *ap;
     int32_t createdflag;
     int32_t i;
+    printf("set AMtxidbits.%llu -> %s.(%llu)\n",(long long)AMtxidbits,coinstr,(long long)redeembits);
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
         ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
@@ -709,7 +710,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
             case MONEY_SENT:
                 //if ( is_gateway_addr(sender) != 0 )
                 //    update_money_sent(argjson,txid,height);
-                 //if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 )
+                  if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 )
                     update_redeembits(argjson,calc_nxt64bits(txid));
                 break;
             default: printf("funcid.(%c) not handled\n",ap->funcid);
