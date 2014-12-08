@@ -923,7 +923,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
-        printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
+        //printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
         if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
             break;
     }
@@ -956,7 +956,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
             if ( j == ap->num )
             {
                 //printf("UNPAID cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
-                sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v);
+                sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\"}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value));
                 printf(">>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
                 if ( forceflag > 0 )
@@ -1216,13 +1216,13 @@ char *wait_for_pendingtxid(struct coin_info *cp,char *specialNXTaddrs[],char *re
     cJSON *json;
     uint64_t val;
     expand_nxt64bits(txidstr,pendingtxid);
-    sprintf(retbuf,"{\"result\",\"pendingtxid\",\"waitingfor\":\"%llu\"}",(long long)pendingtxid);
+    sprintf(retbuf,"{\"result\":\"pendingtxid\",\"waitingfor\":\"%llu\"}",(long long)pendingtxid);
     if ( (retstr= issue_getTransaction(0,txidstr)) != 0 )
     {
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( (val= process_NXTtransaction(specialNXTaddrs,sender,receiver,json,refNXTaddr,assetstr,1,cp)) != 0 )
-                sprintf(retbuf,"{\"result\",\"pendingtxid\",\"processed\":\"%llu\"}",(long long)val);
+                sprintf(retbuf,"{\"result\":\"pendingtxid\",\"processed\":\"%llu\"}",(long long)val);
             free_json(json);
         }
         free(retstr);
@@ -1689,16 +1689,18 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
     for (i=0; i<ap->num; i++)
     {
         tp = ap->txids[i];
+        printf("%d of %d: redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
         if ( tp->redeemtxid != 0 && tp->receiverbits == nxt64bits && tp->assetbits == ap->assetbits )
         {
             str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
             expand_nxt64bits(sender,tp->senderbits);
             if ( (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 && tp->AMtxidbits == 0 )
             {
+                printf(">>>>>>>>>>\n");
                 stripwhite(destaddr,strlen(destaddr));
                 numredeems = process_destaddr(destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
             }
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 1 )
                 printf("%s %s %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
         }
     }
@@ -1742,7 +1744,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
                 fprintf(stderr,"all gateways match\n");
                 if ( Global_mp->gatewayid == 0 )
                 {
-                    if ( sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
+                    if ( 0 && sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
                     {
                         fprintf(stderr,"done and publish\n");
                         publish_withdraw_info(cp,&cp->BATCH);
