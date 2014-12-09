@@ -153,7 +153,7 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
                         {
                             if ( (json2 = cJSON_Parse(retstr2)) != 0 )
                             {
-                                ismine = (int32_t)get_API_int(cJSON_GetObjectItem(json2,"ismine"),0);
+                                ismine = is_cJSON_True(cJSON_GetObjectItem(json2,"ismine"));
                                 printf("(%s) ismine.%d\n",addr,ismine);
                             } free(retstr2);
                         }
