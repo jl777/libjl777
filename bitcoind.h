@@ -236,10 +236,10 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
         middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
         memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
     }
-    else if ( strncmp(scriptasm,"OP_HASH160",strlen("OP_HASH160")) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUAL",strlen("OP_EQUAL")) == 0 )
+    else if ( strncmp(scriptasm,"OP_HASH160",strlen("OP_HASH160")) == 0 && strncmp(scriptasm+len-strlen("OP_EQUAL"),"OP_EQUAL",strlen("OP_EQUAL")) == 0 )
     {
-        middlelen = len - strlen("OP_HASH160") - strlen("OP_EQUAL") - 2;
-        memcpy(pubkey,scriptasm+strlen("OP_HASH160")+1,middlelen);
+        middlelen = len - strlen("OP_HASH160") - strlen("OP_EQUAL");
+        memcpy(pubkey,scriptasm+strlen("OP_HASH160"),middlelen);
         msigmode = 1;
     }
     else return(-1);
@@ -249,7 +249,8 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
     
     hex = calloc(1,len+1);
     calc_script(hex,pubkey,msigmode);
-    printf("(%s) -> script.(%s) (%s)\n",scriptasm,pubkey,hex);
+    if ( msigmode != 0 )
+        printf("assembler (%s) -> script.(%s) (%s)\n",scriptasm,pubkey,hex);
     strcpy(scriptasm,hex);
     free(hex);
     return((int32_t)(2+middlelen+2));
