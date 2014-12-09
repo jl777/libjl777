@@ -208,52 +208,63 @@ void calc_script(char *script,char *pubkey,int msigmode)
     int32_t offset,len;
     offset = 0;
     len = (int32_t)strlen(pubkey);
-    if ( msigmode == 0 )
-        offset = add_opcode(script,offset,OP_DUP_OPCODE);
+    offset = add_opcode(script,offset,OP_DUP_OPCODE);
     offset = add_opcode(script,offset,OP_HASH160_OPCODE);
     offset = add_opcode(script,offset,len/2);
     memcpy(script+offset,pubkey,len), offset += len;
-    if ( msigmode == 0 )
-    {
-        offset = add_opcode(script,offset,OP_EQUALVERIFY_OPCODE);
-        offset = add_opcode(script,offset,OP_CHECKSIG_OPCODE);
-    }
-    else offset = add_opcode(script,offset,OP_EQUAL_OPCODE);
+    offset = add_opcode(script,offset,OP_EQUALVERIFY_OPCODE);
+    offset = add_opcode(script,offset,OP_CHECKSIG_OPCODE);
     script[offset] = 0;
+}
+
+int32_t origconvert_to_bitcoinhex(char *scriptasm)
+{
+    //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
+    char *hex;
+    int32_t middlelen,offset,len,OP_HASH160_len,OP_EQUAL_len;
+    len = (int32_t)strlen(scriptasm);
+    OP_HASH160_len = strlen("OP_HASH160");
+    OP_EQUAL_len = strlen("OP_EQUAL");
+    if ( strncmp(scriptasm,"OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUAL",OP_EQUAL_len) == 0 )
+    {
+        hex = calloc(1,len+1);
+        offset = 0;
+        offset = add_opcode(hex,offset,OP_HASH160_OPCODE);
+        middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
+        offset = add_opcode(hex,offset,middlelen/2);
+        memcpy(hex+offset,scriptasm+OP_HASH160_len+1,middlelen);
+        hex[offset+middlelen] = hexbyte((OP_EQUAL_OPCODE >> 4) & 0xf);
+        hex[offset+middlelen+1] = hexbyte(OP_EQUAL_OPCODE & 0xf);
+        hex[offset+middlelen+2] = 0;
+        printf("(%s) -> (%s)\n",scriptasm,hex);
+        strcpy(scriptasm,hex);
+        free(hex);
+        return((int32_t)(2+middlelen+2));
+    }
+    // printf("cant assembly anything but OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
+    return(-1);
 }
 
 int32_t convert_to_bitcoinhex(char *scriptasm)
 {
-    //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
     char *hex,pubkey[512];
-    int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len,msigmode = 0;
+    int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
     len = (int32_t)strlen(scriptasm);
-    // worlds second silliest assembler!
     OP_HASH160_len = strlen("OP_DUP OP_HASH160");
     OP_EQUAL_len = strlen("OP_EQUALVERIFY OP_CHECKSIG");
     if ( strncmp(scriptasm,"OP_DUP OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUALVERIFY OP_CHECKSIG",OP_EQUAL_len) == 0 )
     {
         middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
         memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
+        pubkey[middlelen] = 0;
+        
+        hex = calloc(1,len+1);
+        calc_script(hex,pubkey,msigmode);
+        strcpy(scriptasm,hex);
+        free(hex);
+        return((int32_t)(2+middlelen+2));
     }
-    else if ( strncmp(scriptasm,"OP_HASH160",strlen("OP_HASH160")) == 0 && strncmp(scriptasm+len-strlen("OP_EQUAL"),"OP_EQUAL",strlen("OP_EQUAL")) == 0 )
-    {
-        middlelen = len - strlen("OP_HASH160") - strlen("OP_EQUAL");
-        memcpy(pubkey,scriptasm+strlen("OP_HASH160"),middlelen);
-        msigmode = 1;
-    }
-    else return(-1);
-    // printf("cant assembly anything but OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
-    // printf("or OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
-    pubkey[middlelen] = 0;
-    
-    hex = calloc(1,len+1);
-    calc_script(hex,pubkey,msigmode);
-    if ( msigmode != 0 )
-        printf("assembler (%s) -> script.(%s) (%s)\n",scriptasm,pubkey,hex);
-    strcpy(scriptasm,hex);
-    free(hex);
-    return((int32_t)(2+middlelen+2));
+    return(origconvert_to_bitcoinhex(scriptasm));
 }
 
 int32_t extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
