@@ -104,14 +104,14 @@ struct multisig_addr *find_msigaddr(char *msigaddr)
     //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
 }
 
-int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
+int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,char *msigaddr)
 {
     struct coin_info *refcp = get_coin_info("BTCD");
     int32_t i,n,ismine;
     cJSON *json,*array,*json2;
     struct multisig_addr *msig;
     char addr[1024],args[1024],*retstr,*retstr2;
-    normaladdr[0] = 0;
+    redeemScript[0] = normaladdr[0] = 0;
     if ( cp == 0 || refcp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
@@ -153,15 +153,15 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
                         if ( retstr2 != 0 )
                         {
                             if ( (json2 = cJSON_Parse(retstr2)) != 0 )
-                            {
                                 ismine = is_cJSON_True(cJSON_GetObjectItem(json2,"ismine"));
-                            } free(retstr2);
+                            free(retstr2);
                         }
                     }
                     if ( ismine != 0 )
                     {
                         printf("(%s) ismine.%d\n",addr,ismine);
                         strcpy(normaladdr,addr);
+                        copy_cJSON(redeemScript,cJSON_GetObjectItem(json,"hex"));
                         break;
                     }
                 }
