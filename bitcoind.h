@@ -259,7 +259,7 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
         pubkey[middlelen] = 0;
         
         hex = calloc(1,len+1);
-        calc_script(hex,pubkey,msigmode);
+        calc_script(hex,pubkey,0);
         strcpy(scriptasm,hex);
         free(hex);
         return((int32_t)(2+middlelen+2));
