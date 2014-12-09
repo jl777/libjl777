@@ -111,6 +111,7 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
     cJSON *json,*array,*json2;
     struct multisig_addr *msig;
     char addr[1024],args[1024],*retstr,*retstr2;
+    normaladdr[0] = 0;
     if ( cp == 0 || refcp == 0 || (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
@@ -154,12 +155,12 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
                             if ( (json2 = cJSON_Parse(retstr2)) != 0 )
                             {
                                 ismine = is_cJSON_True(cJSON_GetObjectItem(json2,"ismine"));
-                                printf("(%s) ismine.%d\n",addr,ismine);
                             } free(retstr2);
                         }
                     }
                     if ( ismine != 0 )
                     {
+                        printf("(%s) ismine.%d\n",addr,ismine);
                         strcpy(normaladdr,addr);
                         break;
                     }
