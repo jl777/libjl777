@@ -136,7 +136,7 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
     retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"validateaddress",args);
     if ( retstr != 0 )
     {
-        printf("got retstr.(%s)\n",retstr);
+        //printf("got retstr.(%s)\n",retstr);
         if ( (json = cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -167,7 +167,8 @@ int32_t map_msigaddr(struct coin_info *cp,char *normaladdr,char *msigaddr)
             } free_json(json);
         } free(retstr);
     }
-    // use validateaddress
+    if ( normaladdr[0] != 0 )
+        return(1);
     strcpy(normaladdr,msigaddr);
     return(-1);
 }
