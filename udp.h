@@ -522,7 +522,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     datacrc = _crc32(0,data,datalen);
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"src\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,cp->myipaddr,(long)time(NULL),fragi,numfrags,totalcrc,checkcrc);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
-        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"sendfrag\",\"data\":%d}",len);
+        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"sendfrag\",\"data\":%d}",datalen);
     else
     {
         if ( checkcrc != datacrc )
