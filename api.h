@@ -1588,8 +1588,8 @@ char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 {
     char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD];
     uint32_t fragi,numfrags,totalcrc,datacrc;
-    printf("gotfrag_func(%s)\n",origargstr);
-    if ( is_remote_access(previpaddr) != 0 )
+    printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
+    if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(name,objs[1]);
     fragi = (uint32_t)get_API_int(objs[2],0);
@@ -1599,6 +1599,30 @@ char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     datacrc = (uint32_t)get_API_int(objs[6],0);
     if ( name[0] != 0 && src[0] != 0 && sender[0] != 0 && valid > 0 )
         gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,totalcrc,datacrc);
+    return(clonestr(origargstr));
+}
+
+char *startxfer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD];
+    int32_t datalen = 0;
+    uint8_t *data = 0;
+    printf("startxfer_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(fname,objs[1]);
+    copy_cJSON(dest,objs[2]);
+    copy_cJSON(datastr,objs[3]);
+    if ( (fname[0] != 0 || datastr[0] != 0) && dest[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        if ( datastr[0] != 0 )
+        {
+            datalen = (int32_t)strlen(datastr) / 2;
+            data = malloc(datalen);
+            decode_hex(data,datalen,datastr);
+        }
+        return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,fname,data,datalen));
+    }
     return(clonestr(origargstr));
 }
 
@@ -1631,6 +1655,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", 0 };
     static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", 0 };
     static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "src", "totalcrc", "datacrc", 0 };
+    static char *startxfer[] = { (char *)startxfer_func, "startxfer", "V", "fname", "dest", "data", 0 };
 
     // Kademlia DHT
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
@@ -1674,7 +1699,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits, MGWaddr, sendfrag, gotfrag };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits, MGWaddr, sendfrag, gotfrag, startxfer };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
