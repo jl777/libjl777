@@ -496,6 +496,59 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
     return(0);
 }
 
+/*args.mytxid = myhash.txid;
+args.othertxid = otherhash.txid;
+args.refaddr = cp->privatebits;
+args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
+start_task(Task_mindmeld,"telepathy",1000000,(void *)&args,sizeof(args));
+retstr = clonestr(retbuf);*/
+
+char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t checkcrc,char *datastr)
+{
+    char cmdstr[4096],_tokbuf[4096];
+    struct pserver_info *pserver;
+    struct coin_info *cp = get_coin_info("BTCD");
+    int32_t len,datalen = 0;
+    unsigned char *data = 0;
+    uint32_t datacrc;
+    uint64_t txid;
+    if ( cp == 0 || datastr == 0 || datastr[0] == 0 )
+        return(clonestr("{\"error\":\"no BTCD coin info\"}"));
+    pserver = get_pserver(0,dest,0,0);
+    datalen = (int32_t)strlen(datastr)/2;
+    
+    data = malloc(datalen);
+    decode_hex(data,datalen,datastr);
+    datacrc = _crc32(0,data,datalen);
+    sprintf(cmdstr,"{\"NXT\":\"%s\",\"src\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,cp->myipaddr,(long)time(NULL),fragi,numfrags,totalcrc,checkcrc);
+    if ( previpaddr == 0 || previpaddr[0] == 0 )
+        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"sendfrag\",\"data\":%d}",len);
+    else
+    {
+        if ( checkcrc != datacrc )
+            strcat(cmdstr,",\"error\":\"crcerror\"}");
+        else
+        {
+            // update data
+        }
+        strcat(cmdstr,",\"requestType\":\"gotfrag\"}");
+    }
+    len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
+    txid = directsend_packet(1,pserver,_tokbuf,len,data,datalen);
+    if ( data != 0 )
+        free(data);
+    return(clonestr(_tokbuf));
+}
+
+char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t datacrc)
+{
+    char cmdstr[4096];
+    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"src\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u}",sender,src,fragi,numfrags,totalcrc,datacrc);
+    // mark as sent
+    return(clonestr("{\"result\":\"gotfrag\"}"));
+}
+
+
 int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int32_t encryptedflag,int32_t p2pflag,unsigned char pubkey[crypto_box_PUBLICKEYBYTES],char *ipaddr,int32_t port)
 {
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];

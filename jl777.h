@@ -171,7 +171,7 @@ void usleep(int32_t);
 // includes that include actual code
 //#include "includes/crypto_box.h"
 #include "tweetnacl.c"
-#ifdef WIN32
+#if __i686__ || __i386__
 #include "curve25519-donna.c"
 #else
 #include "curve25519-donna-c64.c"

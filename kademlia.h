@@ -864,7 +864,7 @@ int32_t get_public_datastr(char *retstr,char *databuf,uint64_t keyhash)
         //if ( ismynxtbits(senderbits) == 0 && is_remote_access(previpaddr) != 0 )
         //    txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
         if ( retstr != 0 )
-            sprintf(retstr,"{\"data\":\"%s\"}",databuf);
+            sprintf(retstr,"{\"key\":\"%llu\",\"data\":\"%s\",\"sp\":\"%p\"}",(long long)keyhash,databuf,sp);
         free(sp);
         return(0);
     }

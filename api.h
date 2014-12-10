@@ -1566,6 +1566,41 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     return(clonestr("{\"error\":\"bad MGWdeposits_func paramater\"}"));
 }
 
+char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char name[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD];
+    uint32_t fragi,numfrags,totalcrc,datacrc;
+    printf("sendfrag_func(%s)\n",origargstr);
+    copy_cJSON(name,objs[1]);
+    fragi = (uint32_t)get_API_int(objs[2],0);
+    numfrags = (uint32_t)get_API_int(objs[3],0);
+    copy_cJSON(dest,objs[4]);
+    totalcrc = (uint32_t)get_API_int(objs[5],0);
+    datacrc = (uint32_t)get_API_int(objs[6],0);
+    copy_cJSON(datastr,objs[7]);
+    if ( name[0] != 0 && dest[0] != 0 && sender[0] != 0 && valid > 0 )
+        return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,totalcrc,datacrc,datastr));
+    return(clonestr("{\"error\":\"bad sendfrag_func paramater\"}"));
+}
+
+char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD];
+    uint32_t fragi,numfrags,totalcrc,datacrc;
+    printf("gotfrag_func(%s)\n",origargstr);
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(name,objs[1]);
+    fragi = (uint32_t)get_API_int(objs[2],0);
+    numfrags = (uint32_t)get_API_int(objs[3],0);
+    copy_cJSON(src,objs[4]);
+    totalcrc = (uint32_t)get_API_int(objs[5],0);
+    datacrc = (uint32_t)get_API_int(objs[6],0);
+    if ( name[0] != 0 && src[0] != 0 && sender[0] != 0 && valid > 0 )
+        gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,totalcrc,datacrc);
+    return(clonestr(origargstr));
+}
+
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
     // local glue
@@ -1590,9 +1625,13 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
-    // Kademlia DHT
+    // IP comms
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", 0 };
+    static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "dest", "totalcrc", "datacrc", "data", 0 };
+    static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "src", "totalcrc", "datacrc", 0 };
+
+    // Kademlia DHT
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
     static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", "data", 0 };
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", "data", 0 };
@@ -1634,7 +1673,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits, MGWaddr };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWdeposits, MGWaddr, sendfrag, gotfrag };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
