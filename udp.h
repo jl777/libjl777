@@ -522,7 +522,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     data = malloc(datalen);
     decode_hex(data,datalen,datastr);
     datacrc = _crc32(0,data,datalen);
-    sprintf(cmdstr,"{\"NXT\":\"%s\",\"src\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,cp->myipaddr,(long)time(NULL),fragi,numfrags,totalcrc,checkcrc);
+    sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totalcrc,checkcrc);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
     {
         pserver = get_pserver(0,dest,0,0);
