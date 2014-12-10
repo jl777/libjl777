@@ -1580,7 +1580,7 @@ char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     copy_cJSON(datastr,objs[7]);
     if ( name[0] != 0 && dest[0] != 0 && sender[0] != 0 && valid > 0 )
         return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,totalcrc,datacrc,datastr));
-    else printf("error sendfrag: sender.(%s) fragi.%d num.%d crc %u %u\n",sender,fragi,numfrags,totalcrc,datacrc);
+    else printf("error sendfrag: name.(%s) dest.(%s) valid.%d sender.(%s) fragi.%d num.%d crc %u %u\n",name,dest,valid,sender,fragi,numfrags,totalcrc,datacrc);
     return(clonestr("{\"error\":\"bad sendfrag_func paramater\"}"));
 }
 
