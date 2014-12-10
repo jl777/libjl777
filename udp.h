@@ -513,8 +513,10 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     uint32_t datacrc;
     uint64_t txid;
     if ( cp == 0 || datastr == 0 || datastr[0] == 0 )
+    {
+        printf("sendfrag err cp.%p datastr.%p\n",cp,datastr);
         return(clonestr("{\"error\":\"no BTCD coin info\"}"));
-    pserver = get_pserver(0,dest,0,0);
+    }
     datalen = (int32_t)strlen(datastr)/2;
     
     data = malloc(datalen);
@@ -522,19 +524,26 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     datacrc = _crc32(0,data,datalen);
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"src\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,cp->myipaddr,(long)time(NULL),fragi,numfrags,totalcrc,checkcrc);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
+    {
+        pserver = get_pserver(0,dest,0,0);
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"sendfrag\",\"data\":%d}",datalen);
+    }
     else
     {
+        pserver = get_pserver(0,previpaddr,0,0);
         if ( checkcrc != datacrc )
             strcat(cmdstr,",\"error\":\"crcerror\"}");
         else
         {
             // update data
         }
+        free(data);
+        data = 0;
         strcat(cmdstr,",\"requestType\":\"gotfrag\"}");
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(1,pserver,_tokbuf,len,data,datalen);
+    printf("send back (%s)\n",cmdstr);
     if ( data != 0 )
         free(data);
     return(clonestr(_tokbuf));
