@@ -305,6 +305,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
         Pendings = hashtable_create("Pendings",HASHTABLES_STARTSIZE,sizeof(struct transfer_args),((long)&args->hashstr[0] - (long)args),sizeof(args->hashstr),((long)&args->modified - (long)args));
     if ( mp != 0 )
     {
+        mp->pending_xfers = &Pendings;
         mp->Telepathy_tablep = &Telepathy_hash;
         mp->Pservers_tablep = &Pserver;
         mp->redeemtxids = &Redeems;
