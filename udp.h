@@ -607,12 +607,12 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     else
     {
         pserver = get_pserver(0,previpaddr,0,0);
-        if ( checkcrc != datacrc || (fragi < numfrags && numfrags == args->numblocks) )
+        if ( checkcrc != datacrc )
             strcat(cmdstr,",\"error\":\"crcerror\"");
         else
         {
-            memcpy(args->data + fragi*args->blocksize,data,datalen);
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc);
+            memcpy(args->data + fragi*args->blocksize,data,datalen);
             if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
             {
                 checkcrc = _crc32(0,args->data,args->totallen);
