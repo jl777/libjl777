@@ -604,7 +604,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     data = malloc(datalen);
     decode_hex(data,datalen,datastr);
     datacrc = _crc32(0,data,datalen);
-    sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"datalen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
+    sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
     {
         pserver = get_pserver(0,dest,0,0);
@@ -631,7 +631,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(1,pserver,_tokbuf,len,data,datalen);
-    printf("send back (%s)\n",cmdstr);
+    printf("send back (%s) len.%d datalen.%d\n",cmdstr,len,datalen);
     if ( data != 0 )
         free(data);
     return(clonestr(_tokbuf));
@@ -679,10 +679,10 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     struct transfer_args *args;
     char cmdstr[4096];
     if ( blocksize == 0 )
-        blocksize = 1024;
+        blocksize = 512;
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
-    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"src\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"datalen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
+    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"src\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
     args = create_transfer_args(previpaddr,sender,src,name,totallen,blocksize,totalcrc,0);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     return(clonestr("{\"result\":\"gotfrag\"}"));
@@ -694,7 +694,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize=0;
     struct transfer_args *args;
     int64_t len;
-    int32_t totalcrc,blocksize = 1024;
+    int32_t totalcrc,blocksize = 512;
     if ( data == 0 || datalen == 0 )
     {
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);

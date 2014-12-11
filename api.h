@@ -1569,7 +1569,7 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char name[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD];
-    uint32_t fragi,numfrags,totalcrc,datacrc,datalen,blocksize;
+    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize;
     printf("sendfrag_func(%s)\n",origargstr);
     copy_cJSON(name,objs[1]);
     fragi = (uint32_t)get_API_int(objs[2],0);
@@ -1578,10 +1578,10 @@ char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     totalcrc = (uint32_t)get_API_int(objs[5],0);
     datacrc = (uint32_t)get_API_int(objs[6],0);
     copy_cJSON(datastr,objs[7]);
-    datalen = (uint32_t)get_API_int(objs[8],0);
+    totallen = (uint32_t)get_API_int(objs[8],0);
     blocksize = (uint32_t)get_API_int(objs[9],0);
     if ( name[0] != 0 && dest[0] != 0 && sender[0] != 0 && valid > 0 )
-        return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,datalen,blocksize,totalcrc,datacrc,datastr));
+        return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,datastr));
     else printf("error sendfrag: name.(%s) dest.(%s) valid.%d sender.(%s) fragi.%d num.%d crc %u %u\n",name,dest,valid,sender,fragi,numfrags,totalcrc,datacrc);
     return(clonestr("{\"error\":\"bad sendfrag_func paramater\"}"));
 }
@@ -1589,7 +1589,7 @@ char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD];
-    uint32_t fragi,numfrags,totalcrc,datacrc,datalen,blocksize;
+    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize;
     printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
@@ -1599,10 +1599,10 @@ char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     copy_cJSON(src,objs[4]);
     totalcrc = (uint32_t)get_API_int(objs[5],0);
     datacrc = (uint32_t)get_API_int(objs[6],0);
-    datalen = (uint32_t)get_API_int(objs[7],0);
+    totallen = (uint32_t)get_API_int(objs[7],0);
     blocksize = (uint32_t)get_API_int(objs[8],0);
     if ( name[0] != 0 && src[0] != 0 && sender[0] != 0 && valid > 0 )
-        gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,datalen,blocksize,totalcrc,datacrc);
+        gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
     return(clonestr(origargstr));
 }
 
@@ -1657,8 +1657,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     // IP comms
     static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
     static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", 0 };
-    static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", "datalen", "blocksize", 0 };
-    static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "src", "totalcrc", "datacrc", "datalen", "blocksize", 0 };
+    static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", "totallen", "blocksize", 0 };
+    static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "src", "totalcrc", "datacrc", "totallen", "blocksize", 0 };
     static char *startxfer[] = { (char *)startxfer_func, "startxfer", "V", "fname", "dest", "data", 0 };
 
     // Kademlia DHT
