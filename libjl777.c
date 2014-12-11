@@ -27,8 +27,11 @@ void aftertask(uv_work_t *req,int status)
     {
         fprintf(stderr,"req.%p task.%s complete status.%d\n",req,task->name,status);
         free(task);
+        req->data = 0;
     } else fprintf(stderr,"task.%p complete\n",req);
-    uv_close((uv_handle_t *)&Tasks_async,NULL);
+    free(req);
+    //uv_close((uv_handle_t *)&Tasks_async,NULL);
+    //uv_close((uv_handle_t *)req,NULL);
 }
 
 void Task_handler(uv_work_t *req)
@@ -39,6 +42,7 @@ void Task_handler(uv_work_t *req)
         //fprintf(stderr,"Task.(%s) sleep.%d\n",task->name,task->sleepmicros);
         if ( task->func != 0 )
         {
+            //printf("Task_handler.(%p)\n",*(void **)task->args);
             if ( (*task->func)(task->args,task->argsize) < 0 )
                 break;
             if ( task->sleepmicros != 0 )
@@ -54,6 +58,7 @@ uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32
     struct task_info *task;
     task = calloc(1,sizeof(*task) + argsize);
     memcpy(task->args,args,argsize);
+    //printf("start_tasks copy %p %p\n",*(void **)args,*(void **)task->args);
     task->func = func;
     task->argsize = argsize;
     safecopy(task->name,name,sizeof(task->name));

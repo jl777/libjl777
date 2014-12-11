@@ -601,7 +601,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
     struct batch_info W;
     int32_t gatewayid;
     wp->W.coinid = conv_coinstr(cp->name);
-    sprintf(batchname,"MGWBATCH.%s",cp->name);
+    sprintf(batchname,"%s.MGW%d",cp->name,Global_mp->gatewayid);
     if ( wp->W.coinid < 0 || refcp == 0 )
     {
         printf("unknown coin.(%s) refcp.%p\n",cp->name,refcp);
@@ -617,7 +617,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
             cp->withdrawinfos[gatewayid] = *wp;
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH));
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),60);
             if ( retstr != 0 )
                 free(retstr);
         }

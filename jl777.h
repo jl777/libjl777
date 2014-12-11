@@ -137,12 +137,6 @@
 #include "includes/gettimeofday.h"
 
 
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
-void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
-long jl777strlen(char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NULL)??\n"); return(0); } return(strlen(str)); }
-#define malloc jl777malloc
-#define calloc jl777calloc
-#define strlen jl777strlen
 
 #ifdef __MINGW32__
 #elif __MINGW64__
@@ -154,6 +148,28 @@ void usleep(int32_t);
 
 #endif
 
+FILE *jl777fopen(char *fname,char *mode)
+{
+    char *clonestr(char *);
+    FILE *fp;
+    int32_t i;
+    char *name = clonestr(fname);
+    for (i=0; name[i]!=0; i++)
+        if ( name[i] == '/' )
+            name[i] = '/';
+    fp = fopen(name,mode);
+    free(name);
+    return(fp);
+}
+#define fopen jl777fopen
+
+
+void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
+void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
+long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NULL)??\n"); return(0); } return(strlen(str)); }
+#define malloc jl777malloc
+#define calloc jl777calloc
+#define strlen jl777strlen
 
 #ifdef UDP_OLDWAY
 #define portable_udp_t int32_t
@@ -311,7 +327,7 @@ struct transfer_args
     uint64_t modified;
     char previpaddr[64],sender[64],dest[64],name[512],hashstr[65];
     uint8_t *data;
-    uint32_t datalen,blocksize,numblocks,completed;
+    uint32_t totallen,blocksize,numblocks,completed,timeout;
     uint32_t *timestamps,*crcs,*ackcrcs,totalcrc;
 };
 

@@ -226,8 +226,8 @@ int32_t origconvert_to_bitcoinhex(char *scriptasm)
     char *hex;
     int32_t middlelen,offset,len,OP_HASH160_len,OP_EQUAL_len;
     len = (int32_t)strlen(scriptasm);
-    OP_HASH160_len = strlen("OP_HASH160");
-    OP_EQUAL_len = strlen("OP_EQUAL");
+    OP_HASH160_len = (int32_t)strlen("OP_HASH160");
+    OP_EQUAL_len = (int32_t)strlen("OP_EQUAL");
     if ( strncmp(scriptasm,"OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUAL",OP_EQUAL_len) == 0 )
     {
         hex = calloc(1,len+1);
@@ -253,8 +253,8 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
     char *hex,pubkey[512];
     int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
     len = (int32_t)strlen(scriptasm);
-    OP_HASH160_len = strlen("OP_DUP OP_HASH160");
-    OP_EQUAL_len = strlen("OP_EQUALVERIFY OP_CHECKSIG");
+    OP_HASH160_len = (int32_t)strlen("OP_DUP OP_HASH160");
+    OP_EQUAL_len = (int32_t)strlen("OP_EQUALVERIFY OP_CHECKSIG");
     if ( strncmp(scriptasm,"OP_DUP OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUALVERIFY OP_CHECKSIG",OP_EQUAL_len) == 0 )
     {
         middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;

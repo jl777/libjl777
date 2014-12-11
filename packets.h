@@ -504,7 +504,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
                     if ( is_illegal_ipaddr(nxtip) != 0 || notlocalip(nxtip) == 0 )
                         strcpy(nxtip,sender);
-                    fprintf(stderr,"nxtip.(%s) %s\n",nxtip,parmstxt);
+                    if ( Debuglevel > 2 )
+                        fprintf(stderr,"nxtip.(%s) %s\n",nxtip,parmstxt);
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )
                         nxtport = port;
@@ -534,7 +535,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             stripwhite_ns(parmstxt,strlen(parmstxt));
                             free_json(argjson);
                             argjson = cJSON_Parse(parmstxt);
-                            if ( Debuglevel > 0 )
+                            if ( Debuglevel > 2 )
                                 fprintf(stderr,"replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
                         }
                         else fprintf(stderr,"datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
