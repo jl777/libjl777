@@ -1611,12 +1611,12 @@ char *startxfer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD];
     int32_t datalen = 0;
     uint8_t *data = 0;
-    printf("startxfer_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
-    copy_cJSON(fname,objs[1]);
-    copy_cJSON(dest,objs[2]);
-    copy_cJSON(datastr,objs[3]);
+    copy_cJSON(fname,objs[0]);
+    copy_cJSON(dest,objs[1]);
+    copy_cJSON(datastr,objs[2]);
+    printf("startxfer_func(%s) is remote.%d fname(%s)\n",origargstr,is_remote_access(previpaddr),fname);
     if ( (fname[0] != 0 || datastr[0] != 0) && dest[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         if ( datastr[0] != 0 )

@@ -498,10 +498,13 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
 
 struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *dest,char *name,uint32_t datalen,uint32_t blocksize,uint32_t totalcrc,uint8_t *data)
 {
+    uint64_t txid;
     char hashstr[4096];
     struct transfer_args *args;
     int32_t createdflag,remains,i;
     sprintf(hashstr,"%s.%s.%u.%u.%u",sender,name,datalen,totalcrc,blocksize);
+    txid = calc_txid((uint8_t *)hashstr,(int32_t)strlen(hashstr));
+    sprintf(hashstr,"%llx",(long long)txid);
     args = MTadd_hashtable(&createdflag,Global_mp->pending_xfers,hashstr);
     if ( createdflag != 0 )
     {
