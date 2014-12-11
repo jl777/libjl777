@@ -596,12 +596,15 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
 // network aware funcs
 void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
 {
+    struct coin_info *refcp = get_coin_info("BTCD");
+    char batchname[128],*retstr;
     struct batch_info W;
     int32_t gatewayid;
     wp->W.coinid = conv_coinstr(cp->name);
-    if ( wp->W.coinid < 0 )
+    sprintf(batchname,"MGWBATCH.%s",cp->name);
+    if ( wp->W.coinid < 0 || refcp == 0 )
     {
-        printf("unknown coin.(%s)\n",cp->name);
+        printf("unknown coin.(%s) refcp.%p\n",cp->name,refcp);
         return;
     }
     wp->W.srcgateway = Global_mp->gatewayid;
@@ -612,12 +615,19 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         fprintf(stderr,"publish_withdraw_info.%d -> %d coinid.%d %.8f crc %08x\n",Global_mp->gatewayid,gatewayid,wp->W.coinid,dstr(wp->W.amount),W.rawtx.batchcrc);
         if ( gatewayid == Global_mp->gatewayid )
             cp->withdrawinfos[gatewayid] = *wp;
-        else if ( server_request(&Global_mp->gensocks[gatewayid],Server_names[gatewayid],&W.W.H,MULTIGATEWAY_VARIANT,MULTIGATEWAY_SYNCWITHDRAW) == sizeof(W) )
+        else
+        {
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH));
+            if ( retstr != 0 )
+                free(retstr);
+        }
+        
+        /*if ( server_request(&Global_mp->gensocks[gatewayid],Server_names[gatewayid],&W.W.H,MULTIGATEWAY_VARIANT,MULTIGATEWAY_SYNCWITHDRAW) == sizeof(W) )
         {
             portable_mutex_lock(&cp->consensus_mutex);
             cp->withdrawinfos[gatewayid] = W;
             portable_mutex_unlock(&cp->consensus_mutex);
-        }
+        }*/
         fprintf(stderr,"got publish_withdraw_info.%d -> %d coinid.%d %.8f crc %08x\n",Global_mp->gatewayid,gatewayid,wp->W.coinid,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc);
     }
 }
@@ -638,6 +648,7 @@ int32_t process_directnet_syncwithdraw(struct batch_info *wp,char *clientip)
     return(sizeof(*wp));
 }
 //end of network funcs
+
 
 uint64_t add_pendingxfer(int32_t removeflag,uint64_t txid)
 {

@@ -244,6 +244,16 @@ struct pserver_info
     uint32_t decrypterrs,port;
 };
 
+struct NXT_protocol_parms
+{
+    cJSON *argjson;
+    int32_t mode,type,subtype,priority,height;
+    char *txid,*sender,*receiver,*argstr;
+    void *AMptr;
+    char *assetid,*comment;
+    int64_t assetoshis;
+};
+
 struct NXThandler_info
 {
     double fractured_prob;  // probability NXT network is fractured, eg. major fork or attack in progress
@@ -254,7 +264,7 @@ struct NXThandler_info
     void *handlerdata;
     char *origblockidstr,lastblock[256],blockidstr[256];
     queue_t hashtable_queue[2];
-    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**otheraddrs_tablep,**Telepathy_tablep,**redeemtxids,**coin_txidinds,**coin_txidmap;//,**Storage_tablep,**Private_tablep;,**NXTguid_tablep,
+    struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**otheraddrs_tablep,**Telepathy_tablep,**redeemtxids,**coin_txidinds,**coin_txidmap,**pending_xfers;//,**Storage_tablep,**Private_tablep;,**NXTguid_tablep,
     cJSON *accountjson;
     //FILE *storage_fps[2];
     uv_udp_t *udp;
@@ -277,16 +287,6 @@ extern struct NXThandler_info *Global_mp;
 #define NXTPROTOCOL_TYPEMATCH 3
 #define NXTPROTOCOL_ILLEGALTYPE 666
 
-struct NXT_protocol_parms
-{
-    cJSON *argjson;
-    int32_t mode,type,subtype,priority,height;
-    char *txid,*sender,*receiver,*argstr;
-    void *AMptr;
-    char *assetid,*comment;
-    int64_t assetoshis;
-};
-
 typedef void *(*NXT_handler)(struct NXThandler_info *mp,struct NXT_protocol_parms *parms,void *handlerdata,int32_t height);
 typedef int32_t (*addcache_funcp)(int32_t arg,char *key,void *ptr,int32_t len);
 
@@ -305,6 +305,15 @@ struct NXT_protocol
 struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 
 //union _coin_value_ptr { char *script; char *coinbase; };
+
+struct transfer_args
+{
+    uint64_t modified;
+    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65];
+    uint8_t *data;
+    uint32_t datalen,blocksize,numblocks,completed;
+    uint32_t *timestamps,*crcs,*ackcrcs,totalcrc;
+};
 
 struct coin_txidind
 {
@@ -726,7 +735,7 @@ double _pairave(float valA,float valB)
 #include "contacts.h"
 #include "deaddrop.h"
 #include "telepathy.h"
-#include "NXTsock.h"
+//#include "NXTsock.h"
 #include "bitcoind.h"
 #include "atomic.h"
 #include "teleport.h"
