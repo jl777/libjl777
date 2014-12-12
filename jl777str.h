@@ -274,11 +274,22 @@ int64_t _decode_varint(int32_t *offsetp,char *hex)
 
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
 {
-    int32_t i;
-    for (i=0; i<n; i++)
-        bytes[i] = _decode_hex(&hex[i*2]);
+    int32_t adjust,i = 0;
+    if ( hex[n*2 - 1] == 0 )
+    {
+        bytes[0] = unhex(hex[0]);
+        bytes++;
+        hex++;
+        adjust = 1;
+        n--;
+    } else adjust = 0;
+    if ( n > 0 )
+    {
+        for (i=0; i<n; i++)
+            bytes[i] = _decode_hex(&hex[i*2]);
+    }
     //bytes[i] = 0;
-    return(n);
+    return(n + adjust);
 }
 
 char hexbyte(int32_t c)

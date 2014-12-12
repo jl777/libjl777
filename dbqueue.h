@@ -145,12 +145,17 @@ int db_decrdouble(DB *dbp,const DBT *a,const DBT *b,size_t *locp)
 DB *open_database(int32_t selector,struct SuperNET_db *sdb,char *fname,uint32_t type,uint32_t flags,int32_t minsize,int32_t maxsize,int32_t duplicateflag)
 {
     int ret,i;
-    char dirname[512];
+    char dirname[512],buf[512];
     for (i=0; fname[i]!=0; i++)
         if ( (dirname[i]= fname[i]) == '.' )
             break;
     dirname[i] = 0;
-    ensure_directory(dirname);
+    if ( selector == NUM_SUPERNET_DBS )
+    {
+        sprintf(buf,"prices/%s",dirname);
+        ensure_directory(dirname);
+    }
+    else ensure_directory(dirname);
     if ( (ret = db_env_create(&sdb->storage, 0)) != 0 )
     {
         fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));

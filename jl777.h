@@ -136,6 +136,20 @@
 #include "includes/uv.h"
 #include "includes/gettimeofday.h"
 
+FILE *jl777fopen(char *fname,char *mode)
+{
+    char *clonestr(char *);
+    FILE *fp;
+    int32_t i;
+    char *name = clonestr(fname);
+    for (i=0; name[i]!=0; i++)
+        if ( name[i] == '/' )
+            name[i] = '\\';
+    fp = fopen(name,mode);
+    free(name);
+    return(fp);
+}
+#define fopen jl777fopen
 
 
 #ifdef __MINGW32__
@@ -148,20 +162,6 @@ void usleep(int32_t);
 
 #endif
 
-FILE *jl777fopen(char *fname,char *mode)
-{
-    char *clonestr(char *);
-    FILE *fp;
-    int32_t i;
-    char *name = clonestr(fname);
-    for (i=0; name[i]!=0; i++)
-        if ( name[i] == '/' )
-            name[i] = '/';
-    fp = fopen(name,mode);
-    free(name);
-    return(fp);
-}
-#define fopen jl777fopen
 
 
 void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }

@@ -4,6 +4,7 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
+// follow minconfirms, only load "active":[]
 
 #ifndef mgw_h
 #define mgw_h

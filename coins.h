@@ -592,6 +592,27 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     return(cp);
 }
 
+int32_t is_active_coin(char *coinstr)
+{
+    int32_t i,n;
+    cJSON *array;
+    char str[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"active");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( strcmp(str,coinstr) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
 char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
 {
     static int didinit,exchangeflag;

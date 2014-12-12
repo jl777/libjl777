@@ -1063,7 +1063,7 @@ void *Coinloop(void *ptr)
     scan_address_entries();
     for (i=0; i<Numcoins; i++)
     {
-        if ( (cp= Daemons[i]) != 0 )
+        if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
         {
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
             //load_telepods(cp,maxnofile);
@@ -1075,16 +1075,19 @@ void *Coinloop(void *ptr)
         for (i=0; i<Numcoins; i++)
         {
             cp = Daemons[i];
-            height = get_blockheight(cp);
-            cp->RTblockheight = (int32_t)height;
-            if ( cp->blockheight < (height - cp->min_confirms) )
+            if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
             {
-                //if ( Debuglevel > 2 )
-                    printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
-                if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
+                height = get_blockheight(cp);
+                cp->RTblockheight = (int32_t)height;
+                if ( cp->blockheight < (height - cp->min_confirms) )
                 {
-                    processed++;
-                    cp->blockheight++;
+                    //if ( Debuglevel > 2 )
+                    printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
+                    if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
+                    {
+                        processed++;
+                        cp->blockheight++;
+                    }
                 }
             }
         }
