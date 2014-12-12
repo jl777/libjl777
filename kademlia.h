@@ -229,7 +229,7 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
             len >>= 1;
             sprintf(cmdstr+strlen(cmdstr),",\"data\":%d",len);
             data = databuf;
-            decode_hex(data,len,datastr);
+            len = decode_hex(data,len,datastr);
         }
     }
     *datalenp = len;
@@ -666,30 +666,33 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
         keynp->bestdist = 0;
     }
     len = (int32_t)strlen(datastr)/2;
-    decode_hex((uint8_t *)decoded,len,datastr);
+    len = decode_hex((uint8_t *)decoded,len,datastr);
     if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
         check_for_InstantDEX(decoded,keystr);
     if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
         free(sp);
 }
 
-char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *datastr)
+char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *key,char *_datastr)
 {
-    char retstr[32768];
+    char retstr[32768],datastr[4096];
     uint64_t sortbuf[2 * KADEMLIA_NUMBUCKETS * KADEMLIA_NUMK];
     uint64_t keybits,destbits,txid = 0;
-    int32_t i,n,z,dist,mydist;
+    int32_t i,n,z,dist,mydist,dlen = 0;
+    uint8_t databuf[2048];
     struct coin_info *cp = get_coin_info("BTCD");
-    if ( datastr != 0 && strlen(datastr) > 2048 )
+    if ( _datastr != 0 && (dlen= (int32_t)strlen(_datastr)) > 2048 )
     {
-        printf("store: datastr too big.%ld\n",strlen(datastr));
+        printf("store: datastr too big.%ld\n",strlen(_datastr));
         return(0);
     }
-    if ( cp == 0 || key == 0 || key[0] == 0 || datastr == 0 || datastr[0] == 0 )
+    if ( cp == 0 || key == 0 || key[0] == 0 || _datastr == 0 || _datastr[0] == 0 )
     {
-        printf("kademlia_storedata null args cp.%p key.%p datastr.%p\n",cp,key,datastr);
+        printf("kademlia_storedata null args cp.%p key.%p datastr.%p\n",cp,key,_datastr);
         return(0);
     }
+    dlen = decode_hex(databuf,dlen>>1,_datastr);
+    init_hexbytes_noT(datastr,databuf,dlen);
     keybits = calc_nxt64bits(key);
     mydist = bitweight(keybits ^ cp->srvpubnxtbits);
     memset(sortbuf,0,sizeof(sortbuf));
@@ -708,7 +711,7 @@ char *kademlia_storedata(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSEC
                 z++;
             }
         }
-        sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%ld,\"txid\":\"%llu\"}",key,datastr,strlen(datastr)/2,(long long)txid);
+        sprintf(retstr,"{\"result\":\"kademlia_store\",\"key\":\"%s\",\"data\":\"%s\",\"len\":%d,\"txid\":\"%llu\"}",key,datastr,hexstrlen(datastr),(long long)txid);
     } else sprintf(retstr,"{\"result\":\"localstore only\"}");
     do_localstore(&txid,key,datastr,NXTACCTSECRET);
     //if ( Debuglevel > 0 )
@@ -821,7 +824,7 @@ void passthrough_packet(char *destNXTaddr,char *origargstr,char *datastr)
     char hopNXTaddr[64];
     uint8_t maxbuf[MAX_UDPLEN],encoded[MAX_UDPLEN],encodedF[MAX_UDPLEN],data[MAX_UDPLEN*2],*outbuf;
     datalen = (int32_t)(strlen(datastr) / 2);
-    decode_hex(data,datalen,datastr);
+    datalen = decode_hex(data,datalen,datastr);
     outbuf = encoded;
     len = (int32_t)strlen(origargstr)+1;
     memcpy(encoded,origargstr,len);
@@ -864,7 +867,7 @@ int32_t get_public_datastr(char *retstr,char *databuf,uint64_t keyhash)
         //if ( ismynxtbits(senderbits) == 0 && is_remote_access(previpaddr) != 0 )
         //    txid = send_kademlia_cmd(senderbits,0,"store",NXTACCTSECRET,key,databuf);
         if ( retstr != 0 )
-            sprintf(retstr,"{\"key\":\"%llu\",\"data\":\"%s\",\"sp\":\"%p\"}",(long long)keyhash,databuf,sp);
+            sprintf(retstr,"{\"key\":\"%llu\",\"data\":\"%s\",\"len\":\"%ld\"}",(long long)keyhash,databuf,sp->H.size-sizeof(*sp));
         free(sp);
         return(0);
     }
@@ -886,7 +889,7 @@ int32_t process_special_packets(char *retstr,int32_t isvalue,char *key,char *dat
     else
     {
         len = (int32_t)strlen(datastr)/2;
-        decode_hex((uint8_t *)decoded,len,datastr);
+        len = decode_hex((uint8_t *)decoded,len,datastr);
         if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
         {
             if ( filtered_orderbook(retdatastr,decoded) > 0 )

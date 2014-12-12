@@ -182,8 +182,7 @@ char *mofn_restorefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRE
                     {
                         len >>= 1;
                         fragments[i] = calloc(1,len);
-                        lengths[i] = (int32_t)len;
-                        decode_hex(fragments[i],(int32_t)len,datastr);
+                        lengths[i] = decode_hex(fragments[i],(int32_t)len,datastr);
                         if ( usbdir != 0 && usbdir[0] != 0 )
                             verify_fragment(usbdir,txids[i],fragments[i],lengths[i]);
                         if ( (txid= calc_txid(fragments[i],lengths[i])) != txids[i] )
@@ -662,7 +661,7 @@ char *process_htmldata(cJSON **maparrayp,char *mediatype,char *htmlstr,char **bu
         if ( len > 1 )
         {
             len >>= 1 ;
-            decode_hex((uint8_t *)jsonstr,len,htmldata);
+            len = decode_hex((uint8_t *)jsonstr,len,htmldata);
             jsonstr[len] = 0;
             if ( (htmljson= cJSON_Parse(jsonstr)) != 0 )
             {

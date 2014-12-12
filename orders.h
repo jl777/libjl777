@@ -482,7 +482,7 @@ void check_for_InstantDEX(char *decoded,char *keystr)
         if ( extract_cJSON_str(datastr,sizeof(datastr),json,"data") > 0 )
         {
             len = (int32_t)strlen(datastr)/2;
-            decode_hex((uint8_t *)iQs,len,datastr);
+            len = decode_hex((uint8_t *)iQs,len,datastr);
             for (i=0; i<len; i+=sizeof(Q))
             {
                 Q = iQs[i/sizeof(Q)];

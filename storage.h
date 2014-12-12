@@ -619,7 +619,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     datalen = (int32_t)strlen(datastr) / 2;
     if ( datalen > sizeof(databuf) )
         return;
-    decode_hex(databuf,datalen,datastr);
+    datalen = decode_hex(databuf,datalen,datastr);
     sdb = &SuperNET_dbs[selector];
     //fprintf(stderr,"add_storage.%d\n",selector);
     if ( (sp= (struct SuperNET_storage *)find_storage(sdb->selector,keystr,0)) == 0 || (sp->H.size-sizeof(*sp)) != datalen || memcmp(sp->data,databuf,datalen) != 0 )

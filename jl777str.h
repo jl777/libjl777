@@ -275,13 +275,13 @@ int64_t _decode_varint(int32_t *offsetp,char *hex)
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
 {
     int32_t adjust,i = 0;
-    if ( hex[n*2 - 1] == 0 )
+    if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
     {
         bytes[0] = unhex(hex[0]);
+        printf("n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
         bytes++;
         hex++;
         adjust = 1;
-        n--;
     } else adjust = 0;
     if ( n > 0 )
     {
@@ -290,6 +290,15 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
     }
     //bytes[i] = 0;
     return(n + adjust);
+}
+
+int32_t hexstrlen(char *hexstr)
+{
+    int32_t len;
+    len = (int32_t)strlen(hexstr);
+    if ( (len & 1) != 0 )
+        return((len>>1) + 1);
+    else return(len >> 1);
 }
 
 char hexbyte(int32_t c)

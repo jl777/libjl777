@@ -597,7 +597,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     if ( is_hexstr(msg) != 0 )
     {
         len >>= 1;
-        decode_hex(packet,len,msg);
+        len = decode_hex(packet,len,msg);
         txid = calc_txid(packet,len);//hash,sizeof(hash));
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);

@@ -325,7 +325,7 @@ void process_telepathic(char *key,char *datastr,uint64_t senderbits,char *sender
     char AESpasswordstr[512],typestr[1024],locationstr[64],*jsonstr;
     cJSON *json,*attachjson;
     datalen = (int32_t)(strlen(datastr) / 2);
-    decode_hex(data,datalen,datastr);
+    datalen = decode_hex(data,datalen,datastr);
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
     if ( (tel= find_telepathy_entry(locationstr)) != 0 )
     {

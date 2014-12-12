@@ -596,7 +596,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     }
     datalen = (int32_t)strlen(datastr)/2;
     data = malloc(datalen);
-    decode_hex(data,datalen,datastr);
+    datalen = decode_hex(data,datalen,datastr);
     datacrc = _crc32(0,data,datalen);
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc);
     if ( previpaddr == 0 || previpaddr[0] == 0 )

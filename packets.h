@@ -344,7 +344,7 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
         {
             datalen = (len >> 1);
             data = databuf;
-            decode_hex(data,datalen,datastr);
+            datalen = decode_hex(data,datalen,datastr);
             cJSON_ReplaceItemInObject(json,"data",cJSON_CreateNumber(datalen));
             cmd = cJSON_Print(json);
             stripwhite_ns(cmd,strlen(cmd));
