@@ -526,7 +526,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     uint64_t txid = 0;
     int32_t port;
     if ( SUPERNET_PORT != _SUPERNET_PORT )
-        return(clonestr("{\"error\":private SuperNET}"));
+        return(0);
     if ( Debuglevel > 1 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
