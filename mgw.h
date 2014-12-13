@@ -618,7 +618,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
             cp->withdrawinfos[gatewayid] = *wp;
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),300,"mgw");
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),30,"mgw");
             if ( retstr != 0 )
                 free(retstr);
         }
@@ -1505,13 +1505,14 @@ int32_t add_destaddress(struct rawtransaction *rp,char *destaddr,uint64_t amount
     return(i);
 }
 
-int32_t process_destaddr(cJSON **jsonp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
+int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
 {
     struct address_entry *entries,*entry;
     struct coin_txidind *cointp;
     struct unspent_info *up;
     int32_t j,n,createdflag;
     char numstr[128];
+    cJSON *item;
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
         for (j=0; j<n; j++)
@@ -1554,9 +1555,11 @@ int32_t process_destaddr(cJSON **jsonp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uin
             {
                 up = &cp->unspent;
                 printf("numredeems.%d (%p %p) PENDING REDEEM %s %s %llu %llu %.8f %.8f | %llu\n",numredeems,up->maxvp,up->minvp,cp->name,destaddr,(long long)nxt64bits,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
-                sprintf(numstr,"%llu",(long long)tp->redeemtxid), cJSON_AddItemToObject(*jsonp,"redeemtxid",cJSON_CreateString(numstr));
-                cJSON_AddItemToObject(*jsonp,"destaddr",cJSON_CreateString(destaddr));
-                sprintf(numstr,"%.8f",dstr(tp->quantity * ap->mult)), cJSON_AddItemToObject(*jsonp,"amount",cJSON_CreateString(numstr));
+                item = cJSON_CreateObject();
+                sprintf(numstr,"%llu",(long long)tp->redeemtxid), cJSON_AddItemToObject(item,"redeemtxid",cJSON_CreateString(numstr));
+                cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(destaddr));
+                sprintf(numstr,"%.8f",dstr(tp->quantity * ap->mult)), cJSON_AddItemToObject(item,"amount",cJSON_CreateString(numstr));
+                cJSON_AddItemToArray(*arrayp,item);
                 numredeems = add_redeem(destaddrs,destamounts,redeems,pending_withdrawp,cp,ap,destaddr,tp,numredeems);
                 printf("%p numredeems.%d (%s) %.8f %llu\n",&destaddrs[numredeems-1],numredeems,destaddrs[numredeems-1],dstr(destamounts[numredeems-1]),(long long)redeems[numredeems-1]);
             }
