@@ -1781,7 +1781,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1)
 {
     static int32_t firsttimestamp;
-    char retbuf[4096],*specialNXTaddrs[257],*ipaddrs[3],*retstr,*retstr2;
+    char retbuf[4096],*specialNXTaddrs[257],*ipaddrs[3],*retstr;
     struct coin_info *cp;
     uint64_t pendingtxid,circulation,unspent = 0;
     int32_t i,numgateways,createdflag,nummsigs;
@@ -1801,7 +1801,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,numgateways,specialNXT)) != 0 )
         return(wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid));
     circulation = calc_circulation(0,ap,specialNXTaddrs);
-    retstr = retstr2 = 0;
+    retstr = 0;
     printf("circulation %.8f\n",dstr(circulation));
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
     {
@@ -1828,12 +1828,6 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     }
     if ( retstr == 0 )
         retstr = clonestr("{}");
-    else if ( retstr2 == 0 )
-        retstr2 = clonestr("{}");
-    sprintf(retbuf,"[%s, %s]\n",retstr,retstr2);
-    free(retstr);
-    free(retstr2);
-    retstr = clonestr(retbuf);
     printf("MGWDEPOSITS.(%s)\n",retstr);
     return(retstr);
 }
