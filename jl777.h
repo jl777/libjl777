@@ -325,7 +325,7 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 struct transfer_args
 {
     uint64_t modified;
-    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65];
+    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64];
     uint8_t *data;
     uint32_t totallen,blocksize,numblocks,completed,timeout;
     uint32_t *timestamps,*crcs,*ackcrcs,totalcrc;
@@ -662,6 +662,7 @@ typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
 char *addcontact(char *handle,char *acct);
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
+void handler_gotfile(struct transfer_args *args);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {

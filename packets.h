@@ -211,7 +211,6 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
             stats = get_random_node();
             if ( stats == 0 )
             {
-                //fprintf(stderr,"WARNINGE: cant get random node!\n");
                 numlayers--;
                 continue;
             }
@@ -549,7 +548,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
                         //fprintf(stderr,"GOT.(%s) decoded.%p (%s)\n",parmstxt,decoded,decoded);
-                        if ( 1 )
+                        if ( IS_LIBTEST < 2 )
                         {
                             qp = calloc(1,sizeof(*qp));
                             if ( previpaddr[0] != 0 )

@@ -618,7 +618,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
             cp->withdrawinfos[gatewayid] = *wp;
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),300);
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),300,"mgw");
             if ( retstr != 0 )
                 free(retstr);
         }
@@ -633,7 +633,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
     }
 }
 
-int32_t process_directnet_syncwithdraw(struct batch_info *wp,char *clientip)
+int32_t process_directnet_syncwithdraw(struct batch_info *wp)
 {
     int32_t gatewayid;
     struct coin_info *cp;
@@ -647,6 +647,14 @@ int32_t process_directnet_syncwithdraw(struct batch_info *wp,char *clientip)
         printf("GOT <<<<<<<<<<<< publish_withdraw_info.%d coinid.%d %.8f crc %08x\n",gatewayid,wp->W.coinid,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc);
     }
     return(sizeof(*wp));
+}
+
+void MGW_handler(struct transfer_args *args)
+{
+    printf("MGW_handler(%s %d bytes) vs %ld\n",args->name,args->totallen,sizeof(struct batch_info));
+    if ( args->totallen == sizeof(struct batch_info) )
+        process_directnet_syncwithdraw((struct batch_info *)args->data);
+    getchar();
 }
 //end of network funcs
 

@@ -89,6 +89,20 @@ void send_async_message(char *msg)
     uv_async_send(&Tasks_async);
 }*/
 
+void handler_gotfile(struct transfer_args *args)
+{
+    FILE *fp;
+    char buf[512];
+    sprintf(buf,"archive/%s_%s",args->name,args->handler);
+    if ( (fp= fopen(buf,"wb")) != 0 )
+    {
+        fwrite(args->data,1,args->totallen,fp);
+        fclose(fp);
+    }
+    if ( strcmp(args->handler,"mgw") == 0 )
+        MGW_handler(args);
+}
+
 char *get_public_srvacctsecret()
 {
     struct coin_info *cp = get_coin_info("BTCD");
