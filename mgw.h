@@ -1720,6 +1720,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             sum += destamounts[j];
             expand_nxt64bits(redeemtxid,redeems[j]);
             rp->redeems[rp->numredeems++] = redeems[j];
+            item = cJSON_CreateObject();
             cJSON_AddItemToObject(*jsonp,"redeemtxid",cJSON_CreateString(redeemtxid));
             cJSON_AddItemToObject(*jsonp,"destaddr",cJSON_CreateString(destaddrs[j]));
             sprintf(numstr,"%.8f",dstr(destamounts[j])), cJSON_AddItemToObject(*jsonp,"amount",cJSON_CreateString(numstr));
