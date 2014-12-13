@@ -654,7 +654,7 @@ void MGW_handler(struct transfer_args *args)
     printf("MGW_handler(%s %d bytes) vs %ld\n",args->name,args->totallen,sizeof(struct batch_info));
     if ( args->totallen == sizeof(struct batch_info) )
         process_directnet_syncwithdraw((struct batch_info *)args->data);
-    getchar();
+    //getchar();
 }
 //end of network funcs
 
@@ -1755,7 +1755,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                 fprintf(stderr,"all gateways match\n");
                 if ( Global_mp->gatewayid == 0 )
                 {
-                    if ( 0 && sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
+                    if ( sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
                     {
                         fprintf(stderr,"done and publish\n");
                         publish_withdraw_info(cp,&cp->BATCH);
@@ -1779,6 +1779,10 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         pending_withdraw = 0;
     }
     cJSON_AddItemToObject(*jsonp,"withdraws",array);
+    array = cJSON_CreateArray();
+    for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+        cJSON_AddItemToArray(array,cJSON_CreateNumber(cp->withdrawinfos[gatewayid].rawtx.batchcrc));
+    cJSON_AddItemToObject(*jsonp,"crcs",array);
 }
 
 // need to queue
