@@ -32,7 +32,7 @@
 #include "SuperNET.h"
 #include "cJSON.h"
 
-extern int32_t IS_LIBTEST,USESSL;
+extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT;
 extern cJSON *MGWconf;
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
 int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
@@ -42,7 +42,10 @@ char *get_public_srvacctsecret();
 
 char *SuperNET_url()
 {
-    return((USESSL == 0) ? (char *)"http://127.0.0.1:7778" : (char *)"https://127.0.0.1:7777");
+    static char urls[2][64];
+    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1);
+    sprintf(urls[1],"https://127.0.0.1:%d",SUPERNET_PORT);
+    return(urls[USESSL]);
 }
 
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
@@ -340,7 +343,6 @@ int main(int argc,const char *argv[])
     char ipaddr[64],*oldport,*newport,portstr[64];
     extern int32_t ENABLE_GUIPOLL;
     int32_t bitweight(uint64_t x);
-    extern int32_t SUPERNET_PORT;
     //printf("%llu ^ %llu = %llx wt.%d\n",(unsigned long long)0xef9b64b1eb75d7e6LL,(unsigned long long)0x4b37c5ffc7efba39LL,(unsigned long long)0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL,bitweight(0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL)); getchar();
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
@@ -350,8 +352,12 @@ int main(int argc,const char *argv[])
     sprintf(portstr,"%d",SUPERNET_PORT);
     oldport = newport = portstr;
 #ifndef __linux__
-    if ( upnpredirect(oldport,newport,"UDP","SuperNET Peer") == 0 )
+    if ( upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
+    sprintf(portstr,"%d",SUPERNET_PORT+1);
+    //oldport = newport = portstr;
+    //if ( upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
+    //    printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
 #endif
     
     if ( (fp= fopen("horrible.hack","wb")) != 0 )

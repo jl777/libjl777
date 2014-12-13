@@ -352,8 +352,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     mp->pollseconds = POLL_SECONDS;
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
+    mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
     if ( 0 )
     {
         uint32_t before,after;
@@ -525,6 +525,8 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
+    if ( SUPERNET_PORT != _SUPERNET_PORT )
+        return(clonestr("{\"error\":private SuperNET}"));
     if ( Debuglevel > 1 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
@@ -592,9 +594,11 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    if ( Debuglevel > 2 )
-        printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
+    if ( SUPERNET_PORT != _SUPERNET_PORT )
+        return(clonestr("{\"error\":private SuperNET}"));
     strcpy(retjsonstr,"{\"result\":null}");
+        if ( Debuglevel > 2 )
+        printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     if ( Finished_loading == 0 )
     {
         if ( is_hexstr(msg) == 0 )
