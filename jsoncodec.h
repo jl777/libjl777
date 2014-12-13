@@ -139,6 +139,8 @@ char *decode_json(struct compressed_json *jsn,int32_t dictionaryid)
     unsigned char *decoded;
     unsigned long sublen;
     sublen = jsn->sublen;
+    if ( jsn->origlen >= MAX_JSON_FIELD )
+        return(0);
     decoded = malloc(jsn->origlen+1);
     decoderet = _decode_json(decoded,sublen,jsn->encoded,&sublen,jsn->jsonlen);
     if ( decoderet == 0 )
