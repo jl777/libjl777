@@ -644,21 +644,21 @@ int32_t Do_transfers(void *_args,int32_t argsize)
     struct transfer_args *args = *(struct transfer_args **)_args;
     char datastr[4096],*retstr;
     struct coin_info *cp = get_coin_info("BTCD");
-    int32_t i,remains,num,retval = -1,finished = 0;
+    int32_t i,remains,num,sent,finished,retval = -1;
     uint32_t now = (uint32_t)time(NULL);
     //printf("Do_transfers.args.%p\n",args);
     if ( cp != 0 )
     {
         retval = 0;
-        num = 0;
+        num = sent = finished = 0;
         remains = args->totallen;
         for (i=0; i<args->numblocks; i++)
         {
             if ( Debuglevel > 1 )
-                printf("crc.(%u vs %u) ",args->ackcrcs[i],args->crcs[i]);
+                printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
             if ( args->ackcrcs[i] != args->crcs[i] )
             {
-                if ( (now - args->timestamps[i]) > 1 )
+                if ( sent < 8 && (now - args->timestamps[i]) > 1 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
@@ -669,8 +669,6 @@ int32_t Do_transfers(void *_args,int32_t argsize)
                 }
             } else finished++;
             remains -= args->blocksize;
-            //if ( num > 16 )
-                break;
         }
         if ( finished == args->numblocks )
             retval = -1;
