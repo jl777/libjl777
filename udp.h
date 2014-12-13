@@ -644,13 +644,13 @@ int32_t Do_transfers(void *_args,int32_t argsize)
     struct transfer_args *args = *(struct transfer_args **)_args;
     char datastr[4096],*retstr;
     struct coin_info *cp = get_coin_info("BTCD");
-    int32_t i,remains,num,sent,finished,retval = -1;
+    int32_t i,remains,num,finished,retval = -1;
     uint32_t now = (uint32_t)time(NULL);
     //printf("Do_transfers.args.%p\n",args);
     if ( cp != 0 )
     {
         retval = 0;
-        num = sent = finished = 0;
+        num = finished = 0;
         remains = args->totallen;
         for (i=0; i<args->numblocks; i++)
         {
@@ -658,7 +658,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
                 printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
             if ( args->ackcrcs[i] != args->crcs[i] )
             {
-                if ( sent < 8 && (now - args->timestamps[i]) > 1 )
+                if ( num < 1 && (now - args->timestamps[i]) > 1 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
@@ -673,7 +673,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
         if ( finished == args->numblocks )
             retval = -1;
         if ( Debuglevel > 1 )
-            printf("finished %d of %d len.%d | %s %u to %s\n",finished,args->numblocks,args->totallen,args->name,args->totalcrc,args->dest);
+            printf("numsent.%d finished %d of %d len.%d | %s %u to %s\n",num,finished,args->numblocks,args->totallen,args->name,args->totalcrc,args->dest);
     }
     if ( args->timeout != 0 && now > args->timeout )
     {
@@ -697,7 +697,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         blocksize = 512;
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
-    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"src\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
+    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     return(clonestr(cmdstr));

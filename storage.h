@@ -100,21 +100,36 @@ void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
 void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag)
 {
     struct SuperNET_db *sdb = &SuperNET_dbs[ADDRESS_DATA];
-    char coinaddr[512];
+    char coinaddr[512],dirname[512],fname[512];
     DBT key,data;
     int32_t ret;
+    FILE *fp;
     clear_pair(&key,&data);
     memset(coinaddr,0,sizeof(coinaddr));
     _set_address_key(&key,coinaddr,coin,addr);
     data.data = bp;
     data.size = (int32_t)sizeof(*bp);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,(void *)((long)key.data+strlen(key.data)+1),key.size,coin,strlen(coin),addr);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
     //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
         sdb->storage->err(sdb->storage,ret,"add_address: Database put failed.");
     else if ( syncflag != 0 )
         dbsync(sdb,0);
+    if ( IS_LIBTEST > 2 )
+    {
+        sprintf(dirname,"address/%s",coin);
+        ensure_directory(dirname);
+        sprintf(fname,"%s/%s",dirname,addr);
+        if ( (fp= fopen(fname,"rb+")) == 0 )
+            fp = fopen(fname,"wb");
+        else fseek(fp,0,SEEK_END);
+        if ( fp != 0 )
+        {
+            fwrite(bp,1,sizeof(*bp),fp);
+            fclose(fp);
+        }
+    }
     //sdb->dbp->sync(sdb->dbp,0);
 }
 

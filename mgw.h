@@ -1825,6 +1825,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
             retstr = cJSON_Print(json);
             free_json(json);
             stripwhite_ns(retstr,strlen(retstr));
+            strcat(retstr,"\n");
         }
         for (i=0; i<nummsigs; i++)
             free(msigs[i]);
