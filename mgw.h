@@ -1042,6 +1042,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
             {
                 //printf("UNPAID cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
                 sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\"}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value));
+                pair = cJSON_Parse(comment);
                 printf(">>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
                 if ( forceflag > 0 )
@@ -1053,12 +1054,11 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     {
                         if ( *transferjsonp == 0 )
                             *transferjsonp = cJSON_CreateArray();
-                        pair = cJSON_Parse(comment);
                         sprintf(numstr,"\"%llu\"",(long long)depositid);
                         cJSON_AddItemToObject(pair,"depositid",cJSON_CreateString(numstr));
-                        cJSON_AddItemToArray(*transferjsonp,pair);
                     }
                 }
+                cJSON_AddItemToArray(*transferjsonp,pair);
             }
         }
     }
@@ -1315,16 +1315,17 @@ char *wait_for_pendingtxid(struct coin_info *cp,char *specialNXTaddrs[],char *re
     return(clonestr(retbuf));
 }
 
-char *process_deposits(uint64_t *unspentp,struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,char *ipaddrs[],char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr,struct NXT_asset *ap,int32_t transferassets,uint64_t circulation)
+void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,char *ipaddrs[],char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr,struct NXT_asset *ap,int32_t transferassets,uint64_t circulation)
 {
     uint64_t pendingtxid,unspent = 0,total = 0;
     int32_t i,m,max,readyflag,tmp,nonz,numunspent;
     struct multisig_addr *msig;
     struct address_entry *entries;
     struct unspent_info *up;
-    cJSON *transferjson = 0;
-    char *transferstr=0,*retstr = 0;
+    char numstr[128];
+    cJSON *array;
     *unspentp = 0;
+    array = cJSON_CreateArray();
     if ( msigs != 0 )
     {
         readyflag = ready_to_xferassets(&pendingtxid);
@@ -1354,7 +1355,7 @@ char *process_deposits(uint64_t *unspentp,struct multisig_addr **msigs,int32_t n
                     if ( readyflag > 0 && pendingtxid == 0 )
                     {
                         tmp = numunspent;
-                        total += process_msigaddr(&numunspent,&unspent,&transferjson,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr);
+                        total += process_msigaddr(&numunspent,&unspent,&array,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr);
                         if ( numunspent > tmp )
                             nonz++;
                     }
@@ -1364,19 +1365,12 @@ char *process_deposits(uint64_t *unspentp,struct multisig_addr **msigs,int32_t n
         if ( up->num > 1 )
             sort_vps(up->vps,up->num);
         printf("max %.8f min %.8f median %.8f |unspent %.8f numunspent.%d in nonz.%d accts\n",dstr(up->maxavail),dstr(up->minavail),dstr((up->maxavail+up->minavail)/2),dstr(up->unspent),numunspent,nonz);
-        if ( transferjson != 0 )
-        {
-            transferstr = cJSON_Print(transferjson);
-            free_json(transferjson);
-            stripwhite_ns(transferstr,strlen(transferstr));
-            retstr = malloc(strlen(transferstr) + 4096);
-        } else retstr = malloc(4096);
-        sprintf(retstr,"{\"circulation\":\"%.8f\",\"unspent\":\"%.8f\",\"pendingdeposits\":\"%.8f\",\"transfers\":%s}",dstr(circulation),dstr(unspent),dstr(total),transferstr!=0?transferstr:"[]");
-        if ( transferstr != 0 )
-            free(transferstr);
     }
+    sprintf(numstr,"%.8f",dstr(circulation)), cJSON_AddItemToObject(*jsonp,"circulation",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(unspent)), cJSON_AddItemToObject(*jsonp,"unspent",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(total)), cJSON_AddItemToObject(*jsonp,"pendingdeposits",cJSON_CreateString(numstr));
+    cJSON_AddItemToObject(*jsonp,"deposits",array);
     *unspentp = unspent;
-    return(retstr);
 }
 
 uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTaddrs[])
@@ -1511,13 +1505,13 @@ int32_t add_destaddress(struct rawtransaction *rp,char *destaddr,uint64_t amount
     return(i);
 }
 
-int32_t process_destaddr(char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
+int32_t process_destaddr(cJSON **jsonp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
 {
     struct address_entry *entries,*entry;
     struct coin_txidind *cointp;
     struct unspent_info *up;
     int32_t j,n,createdflag;
-    //char *rawtx;
+    char numstr[128];
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
         for (j=0; j<n; j++)
@@ -1560,6 +1554,9 @@ int32_t process_destaddr(char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamou
             {
                 up = &cp->unspent;
                 printf("numredeems.%d (%p %p) PENDING REDEEM %s %s %llu %llu %.8f %.8f | %llu\n",numredeems,up->maxvp,up->minvp,cp->name,destaddr,(long long)nxt64bits,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
+                sprintf(numstr,"%llu",(long long)tp->redeemtxid), cJSON_AddItemToObject(*jsonp,"redeemtxid",cJSON_CreateString(numstr));
+                cJSON_AddItemToObject(*jsonp,"destaddr",cJSON_CreateString(destaddr));
+                sprintf(numstr,"%.8f",dstr(tp->quantity * ap->mult)), cJSON_AddItemToObject(*jsonp,"amount",cJSON_CreateString(numstr));
                 numredeems = add_redeem(destaddrs,destamounts,redeems,pending_withdrawp,cp,ap,destaddr,tp,numredeems);
                 printf("%p numredeems.%d (%s) %.8f %llu\n",&destaddrs[numredeems-1],numredeems,destaddrs[numredeems-1],dstr(destamounts[numredeems-1]),(long long)redeems[numredeems-1]);
             }
@@ -1666,16 +1663,17 @@ int32_t sign_and_sendmoney(struct coin_info *cp,int32_t height)
     return(MGW_PENDING_WITHDRAW);
 }
 
-char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t unspent,struct coin_info *cp,struct NXT_asset *ap,char *specialNXT,int32_t sendmoney,uint64_t circulation)
+void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsigs,uint64_t unspent,struct coin_info *cp,struct NXT_asset *ap,char *specialNXT,int32_t sendmoney,uint64_t circulation)
 {
     struct NXT_assettxid *tp;
     struct rawtransaction *rp;
     struct batch_info *otherwp;
+    cJSON *array,*item;
     int32_t i,j,numredeems,gatewayid;
     uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,sum,pending_withdraw = 0;
-    char withdrawaddr[64],sender[64],redeemtxid[64],*destaddrs[MAX_MULTISIG_OUTPUTS],*destaddr="",*batchsigned,*str,*retstr = 0;
+    char withdrawaddr[64],sender[64],redeemtxid[64],*destaddrs[MAX_MULTISIG_OUTPUTS],numstr[128],*destaddr="",*batchsigned,*str;
     if ( ap->num <= 0 )
-        return(0);
+        return;
     rp = &cp->BATCH.rawtx;
     clear_BATCH(rp);
     rp->numoutputs = init_batchoutputs(cp,rp,cp->txfee);
@@ -1684,6 +1682,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
     memset(destaddrs,0,sizeof(destaddrs));
     memset(destamounts,0,sizeof(destamounts));
     nxt64bits = calc_nxt64bits(specialNXT);
+    array = cJSON_CreateArray();
     for (i=0; i<ap->num; i++)
     {
         tp = ap->txids[i];
@@ -1696,7 +1695,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
             if ( (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 && tp->AMtxidbits == 0 )
             {
                 stripwhite(destaddr,strlen(destaddr));
-                numredeems = process_destaddr(destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
+                numredeems = process_destaddr(&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
             }
@@ -1704,6 +1703,10 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
                 printf("%s %s %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
         }
     }
+    cJSON_AddItemToObject(*jsonp,"numredeems",cJSON_CreateNumber(numredeems));
+    sprintf(numstr,"%.8f",dstr(pending_withdraw)), cJSON_AddItemToObject(*jsonp,"pending_withdraw",cJSON_CreateString(numstr));
+    cJSON_AddItemToObject(*jsonp,"redeems",array);
+    array = cJSON_CreateArray();
     if ( (int64_t)pending_withdraw >= ((5 * cp->NXTfee_equiv) - (numredeems * (cp->txfee + cp->NXTfee_equiv))) )
     {
         for (sum=j=0; j<numredeems&&rp->numoutputs<(int)(sizeof(rp->destaddrs)/sizeof(*rp->destaddrs))-1; j++)
@@ -1717,6 +1720,10 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
             sum += destamounts[j];
             expand_nxt64bits(redeemtxid,redeems[j]);
             rp->redeems[rp->numredeems++] = redeems[j];
+            cJSON_AddItemToObject(*jsonp,"redeemtxid",cJSON_CreateString(redeemtxid));
+            cJSON_AddItemToObject(*jsonp,"destaddr",cJSON_CreateString(destaddrs[j]));
+            sprintf(numstr,"%.8f",dstr(destamounts[j])), cJSON_AddItemToObject(*jsonp,"amount",cJSON_CreateString(numstr));
+            cJSON_AddItemToArray(array,item);
             if ( rp->numredeems >= (int)(sizeof(rp->redeems)/sizeof(*rp->redeems)) )
             {
                 printf("max numredeems\n");
@@ -1767,7 +1774,7 @@ char *process_withdraws(struct multisig_addr **msigs,int32_t nummsigs,uint64_t u
             printf("%.8f is not enough to pay for MGWfees.%s %.8f for %d redeems\n",dstr(pending_withdraw),cp->name,dstr(cp->NXTfee_equiv),numredeems);
         pending_withdraw = 0;
     }
-    return(retstr);
+    cJSON_AddItemToObject(*jsonp,"withdraws",array);
 }
 
 // need to queue
@@ -1780,6 +1787,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     int32_t i,numgateways,createdflag,nummsigs;
     struct NXT_asset *ap;
     struct multisig_addr **msigs;
+    cJSON *json = 0;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
     if ( cp == 0 || ap == 0 )
@@ -1797,15 +1805,22 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     printf("circulation %.8f\n",dstr(circulation));
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
     {
+        json = cJSON_CreateObject();
         printf("nummsigs.%d\n",nummsigs);
         if ( actionflag >= 0 )
-            retstr = process_deposits(&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
+            process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
         printf("actionflag.%d retstr.%p\n",actionflag,retstr);
         if ( actionflag <= 0 )
         {
             if ( actionflag < 0 )
-                retstr = process_deposits(&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
-            retstr2 = process_withdraws(msigs,nummsigs,unspent,cp,ap,specialNXT,actionflag < 0,circulation);
+                process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
+            process_withdraws(&json,msigs,nummsigs,unspent,cp,ap,specialNXT,actionflag < 0,circulation);
+        }
+        if ( json != 0 )
+        {
+            retstr = cJSON_Print(json);
+            free_json(json);
+            stripwhite_ns(retstr,strlen(retstr));
         }
         for (i=0; i<nummsigs; i++)
             free(msigs[i]);

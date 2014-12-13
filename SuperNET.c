@@ -340,7 +340,13 @@ int main(int argc,const char *argv[])
     char ipaddr[64],*oldport,*newport,portstr[64];
     extern int32_t ENABLE_GUIPOLL;
     int32_t bitweight(uint64_t x);
+    extern int32_t SUPERNET_PORT;
     //printf("%llu ^ %llu = %llx wt.%d\n",(unsigned long long)0xef9b64b1eb75d7e6LL,(unsigned long long)0x4b37c5ffc7efba39LL,(unsigned long long)0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL,bitweight(0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL)); getchar();
+    IS_LIBTEST = 1;
+    if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
+        strcpy(ipaddr,argv[1]);
+    else strcpy(ipaddr,"127.0.0.1");
+    retval = SuperNET_start("SuperNET.conf",ipaddr);
     sprintf(portstr,"%d",SUPERNET_PORT);
     oldport = newport = portstr;
 #ifndef __linux__
@@ -348,11 +354,6 @@ int main(int argc,const char *argv[])
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
 #endif
     
-    IS_LIBTEST = 1;
-    if ( argc > 1 && argv[1] != 0 && strlen(argv[1]) < 32 )
-        strcpy(ipaddr,argv[1]);
-    else strcpy(ipaddr,"127.0.0.1");
-    retval = SuperNET_start("SuperNET.conf",ipaddr);
     if ( (fp= fopen("horrible.hack","wb")) != 0 )
     {
         fwrite(&retval,1,sizeof(retval),fp);
