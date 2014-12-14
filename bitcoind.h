@@ -886,7 +886,7 @@ char *sign_localtx(struct coin_info *cp,struct rawtransaction *rp,char *rawbytes
     char *batchsigned;
     fprintf(stderr,"sign_localtx\n");
     rp->batchsize = strlen(rawbytes);
-    rp->batchcrc = _crc32(0,rawbytes+10,rp->batchsize-10); // skip past timediff
+    rp->batchcrc = _crc32(0,rawbytes+12,rp->batchsize-12); // skip past timediff
     batchsigned = malloc(rp->batchsize + rp->numinputs*512 + 512);
     sign_rawtransaction(batchsigned,rp->batchsize + rp->numinputs*512 + 512,cp,rp,rawbytes,0);
     if ( sizeof(rp->batchsigned) < strlen(rp->batchsigned) )

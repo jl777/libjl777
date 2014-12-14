@@ -654,8 +654,8 @@ int32_t Do_transfers(void *_args,int32_t argsize)
         remains = args->totallen;
         for (i=0; i<args->numblocks; i++)
         {
-            if ( Debuglevel > 1 )
-                printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
+            //if ( Debuglevel > 1 )
+           //     printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
             if ( args->ackcrcs[i] != args->crcs[i] )
             {
                 if ( num < 1 && (now - args->timestamps[i]) > 1 )
@@ -678,7 +678,6 @@ int32_t Do_transfers(void *_args,int32_t argsize)
     if ( args->timeout != 0 && now > args->timeout )
     {
         printf("TIMEOUT %u for %s %u len.%d to %s\n",args->timeout,args->name,args->totalcrc,args->totallen,args->dest);
-        args->completed = 1;
         retval = -1;
     }
     if ( retval < 0 )
@@ -728,7 +727,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         for (i=0; i<args->numblocks; i++)
         {
             args->crcs[i] = _crc32(0,data + i*blocksize,(remains < blocksize) ? remains : blocksize);
-            printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
+            //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
         start_task(Do_transfers,"transfer",100000,(void *)&args,sizeof(args));
