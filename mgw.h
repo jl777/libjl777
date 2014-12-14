@@ -1702,7 +1702,9 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
         if ( cp->BATCH.rawtx.batchcrc != otherwp->rawtx.batchcrc )
         {
             fprintf(stderr,"%08x miscompares with gatewayid.%d which has crc %08x\n",cp->BATCH.rawtx.batchcrc,gatewayid,otherwp->rawtx.batchcrc);
-        } else matches++;
+        }
+        else if ( cp->BATCH.rawtx.batchcrc != 0 )
+            matches++;
     }
     rp = &cp->withdrawinfos[Global_mp->gatewayid].rawtx;
     array = cJSON_CreateArray();
@@ -1711,7 +1713,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     {
         for (i=0; i<rp->numredeems; i++)
         {
-            printf("i.%d (%llu %s %.8f)\n",i,(long long)rp->redeems[i],rp->destaddrs[i],dstr(rp->destamounts[i]));
+            fprintf(stderr,"i.%d (%llu %p %.8f)\n",i,(long long)rp->redeems[i],rp->destaddrs[i],dstr(rp->destamounts[i]));
             item = cJSON_CreateObject();
             sprintf(numstr,"%llu",(long long)rp->redeems[i]), cJSON_AddItemToObject(item,"redeemtxid",cJSON_CreateString(numstr));
             cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i]));
@@ -1863,7 +1865,11 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
             if ( (fp= fopen(batchname,"rb")) != 0 )
             {
                 if ( fread(&tmp,1,sizeof(tmp),fp) == sizeof(tmp) )
+                {
+                    tmp.rawtxbytes = tmp.signedtx = 0;
+                    memset(tmp.inputs,0,sizeof(tmp.inputs));
                     cp->withdrawinfos[gatewayid] = tmp;
+                }
                 fclose(fp);
             }
         }
