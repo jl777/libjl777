@@ -622,13 +622,6 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
             if ( retstr != 0 )
                 free(retstr);
         }
-        
-        /*if ( server_request(&Global_mp->gensocks[gatewayid],Server_names[gatewayid],&W.W.H,MULTIGATEWAY_VARIANT,MULTIGATEWAY_SYNCWITHDRAW) == sizeof(W) )
-        {
-            portable_mutex_lock(&cp->consensus_mutex);
-            cp->withdrawinfos[gatewayid] = W;
-            portable_mutex_unlock(&cp->consensus_mutex);
-        }*/
         fprintf(stderr,"got publish_withdraw_info.%d -> %d coinid.%d %.8f crc %08x\n",Global_mp->gatewayid,gatewayid,wp->W.coinid,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc);
     }
 }
@@ -1740,32 +1733,35 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            publish_withdraw_info(cp,&cp->BATCH);
-            for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+            //if ( sendmoney != 0 )
             {
-                otherwp = &cp->withdrawinfos[gatewayid];
-                if ( cp->BATCH.rawtx.batchcrc != otherwp->rawtx.batchcrc )
+                publish_withdraw_info(cp,&cp->BATCH);
+                for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
                 {
-                    fprintf(stderr,"%08x miscompares with gatewayid.%d which has crc %08x\n",cp->BATCH.rawtx.batchcrc,gatewayid,otherwp->rawtx.batchcrc);
-                    break;
-                }
-            }
-            if ( gatewayid == NUM_GATEWAYS )
-            {
-                fprintf(stderr,"all gateways match\n");
-                if ( Global_mp->gatewayid == 0 )
-                {
-                    if ( sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
+                    otherwp = &cp->withdrawinfos[gatewayid];
+                    if ( cp->BATCH.rawtx.batchcrc != otherwp->rawtx.batchcrc )
                     {
-                        fprintf(stderr,"done and publish\n");
-                        publish_withdraw_info(cp,&cp->BATCH);
+                        fprintf(stderr,"%08x miscompares with gatewayid.%d which has crc %08x\n",cp->BATCH.rawtx.batchcrc,gatewayid,otherwp->rawtx.batchcrc);
+                        break;
                     }
-                    else
+                }
+                if ( sendmoney != 0 && gatewayid == NUM_GATEWAYS )
+                {
+                    fprintf(stderr,"all gateways match\n");
+                    if ( Global_mp->gatewayid == 0 )
                     {
-                        fprintf(stderr,"error signing?\n");
-                        cp->BATCH.rawtx.batchcrc = 0;
-                        cp->withdrawinfos[0].rawtx.batchcrc = 0;
-                        cp->withdrawinfos[0].W.cointxid[0] = 0;
+                        if ( sign_and_sendmoney(cp,(uint32_t)cp->RTblockheight) >= 0 )
+                        {
+                            fprintf(stderr,"done and publish\n");
+                            publish_withdraw_info(cp,&cp->BATCH);
+                        }
+                        else
+                        {
+                            fprintf(stderr,"error signing?\n");
+                            cp->BATCH.rawtx.batchcrc = 0;
+                            cp->withdrawinfos[0].rawtx.batchcrc = 0;
+                            cp->withdrawinfos[0].W.cointxid[0] = 0;
+                        }
                     }
                 }
             }
@@ -1817,13 +1813,16 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
         printf("nummsigs.%d\n",nummsigs);
         if ( actionflag >= 0 )
             process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
-        printf("actionflag.%d retstr.%p\n",actionflag,retstr);
+        retstr = cJSON_Print(json);
+        printf("actionflag.%d retstr.(%s)\n",actionflag,retstr);
+        free(retstr), retstr = 0;
         if ( actionflag <= 0 )
         {
             if ( actionflag < 0 )
                 process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,specialNXT,ap,actionflag > 0,circulation);
             process_withdraws(&json,msigs,nummsigs,unspent,cp,ap,specialNXT,actionflag < 0,circulation);
         }
+        printf("json.%p\n",json);
         if ( json != 0 )
         {
             retstr = cJSON_Print(json);
