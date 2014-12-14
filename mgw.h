@@ -1718,7 +1718,8 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
             fprintf(stderr,"i.%d (%llu %p %.8f)\n",i,(long long)rp->redeems[i],rp->destaddrs[i],dstr(rp->destamounts[i]));
             item = cJSON_CreateObject();
             sprintf(numstr,"%llu",(long long)rp->redeems[i]), cJSON_AddItemToObject(item,"redeemtxid",cJSON_CreateString(numstr));
-            cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i]));
+            if ( rp->destaddrs[i] != 0 )
+                cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i]));
             sprintf(numstr,"%.8f",dstr(rp->destamounts[i])), cJSON_AddItemToObject(item,"amount",cJSON_CreateString(numstr));
             cJSON_AddItemToArray(array,item);
         }
@@ -1870,6 +1871,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
                 {
                     tmp.rawtx.rawtxbytes = tmp.rawtx.signedtx = 0;
                     memset(tmp.rawtx.inputs,0,sizeof(tmp.rawtx.inputs));
+                    memset(tmp.rawtx.destaddrs,0,sizeof(tmp.rawtx.destaddrs));
                     cp->withdrawinfos[gatewayid] = tmp;
                 }
                 fclose(fp);
