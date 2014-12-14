@@ -1922,11 +1922,11 @@ int32_t establish_connection(char *ipaddr,char *NXTACCTSECRET,uint32_t timeout)
         {
             send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0);
             sleep(1);
-            if ( pserver->lastcontact > timeout )
+            if ( pserver->lastcontact > start )
                 return(1);
             fprintf(stderr,"%u ",pserver->lastcontact);
         }
-        fprintf(stderr,"| vs timeout.%u\n",timeout);
+        fprintf(stderr,"| vs start.%u\n",start);
     }
     return(0);
 }
