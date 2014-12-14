@@ -1914,13 +1914,15 @@ int32_t establish_connection(char *ipaddr,char *NXTACCTSECRET,uint32_t timeout)
     timeout += start;
     while ( time(NULL) < timeout )
     {
-        for (i=0; i<10; i++)
+        for (i=0; i<7; i++)
         {
             send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0);
-            usleep(250000);
-            if ( pserver->lastcontact > start )
+            sleep(1);
+            if ( pserver->lastcontact > timeout )
                 return(1);
+            fprintf(stderr,"%u ",pserver->lastcontact);
         }
+        fprintf(stderr,"| vs timeout.%u\n",timeout);
     }
     return(0);
 }
@@ -1933,7 +1935,7 @@ void establish_connections(char *myipaddr,char *NXTACCTSECRET)
     array = cJSON_GetObjectItem(MGWconf,"whitelist");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
-        while ( m != n )
+        while ( m < n-1 )
         {
             for (i=m=0; i<n; i++)
             {
