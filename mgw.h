@@ -1692,8 +1692,10 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     struct rawtransaction *rp;
     cJSON *array,*item;
     uint64_t pendingtxid,AMtxid = 0;
+    if ( Global_mp->gatewayid < 0 )
+        return(0);
     readyflag = ready_to_xferassets(&pendingtxid);
-    printf("%s: readyflag.%d\n",cp->name,readyflag);
+    printf("%s: readyflag.%d gateway.%d\n",cp->name,readyflag,Global_mp->gatewayid);
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
         otherwp = &cp->withdrawinfos[gatewayid];
