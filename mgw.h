@@ -4,7 +4,9 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-// follow minconfirms, only load "active":[]
+//   follow minconfirms for NXT
+// - only load "active":[]
+//   debug cases -2 and -3
 
 #ifndef mgw_h
 #define mgw_h
@@ -1866,8 +1868,8 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
             {
                 if ( fread(&tmp,1,sizeof(tmp),fp) == sizeof(tmp) )
                 {
-                    tmp.rawtxbytes = tmp.signedtx = 0;
-                    memset(tmp.inputs,0,sizeof(tmp.inputs));
+                    tmp.rawtx.rawtxbytes = tmp.rawtx.signedtx = 0;
+                    memset(tmp.rawtx.inputs,0,sizeof(tmp.rawtx.inputs));
                     cp->withdrawinfos[gatewayid] = tmp;
                 }
                 fclose(fp);
