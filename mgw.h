@@ -1860,12 +1860,12 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     if ( firsttimestamp == 0 )
         get_NXTblock(&firsttimestamp);
     json = cJSON_CreateObject();
-    if ( actionflag < -1 )
+    //if ( actionflag < -1 )
     {
         for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
         {
             set_batchname(batchname,cp->name,gatewayid);
-            if ( (fp= fopen(batchname,"rb")) != 0 )
+            if ( gatewayid != Global_mp->gatewayid && (fp= fopen(batchname,"rb")) != 0 )
             {
                 if ( fread(&tmp,1,sizeof(tmp),fp) == sizeof(tmp) )
                 {
@@ -1877,9 +1877,9 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
                 fclose(fp);
             }
         }
-        process_consensus(&json,cp,actionflag == -3);
+        //process_consensus(&json,cp,actionflag == -3);
     }
-    else
+   // else
     {
         numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
         if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,numgateways,specialNXT)) != 0 )
