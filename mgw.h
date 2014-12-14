@@ -1704,11 +1704,12 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     }
     rp = &cp->withdrawinfos[Global_mp->gatewayid].rawtx;
     array = cJSON_CreateArray();
-    printf("numredeems.%d\n",rp->numredeems);
+    printf("json.%p numredeems.%d\n",*jsonp,rp->numredeems);
     if ( rp->numredeems > 0 )
     {
         for (i=0; i<rp->numredeems; i++)
         {
+            printf("(%llu %s %.8f)\n",i,(long long)rp->redeems[i],rp->destaddrs[i],dstr(rp->destamounts[i]));
             item = cJSON_CreateObject();
             sprintf(numstr,"%llu",(long long)rp->redeems[i]), cJSON_AddItemToObject(item,"redeemtxid",cJSON_CreateString(numstr));
             cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i]));
