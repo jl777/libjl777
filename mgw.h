@@ -626,16 +626,18 @@ void set_batchname(char *batchname,char *coinstr,int32_t gatewayid)
 void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
 {
     struct coin_info *refcp = get_coin_info("BTCD");
-    char batchname[128],*retstr;
+    char batchname[512],fname[512],*retstr;
     struct batch_info W;
     int32_t gatewayid;
     FILE *fp;
     wp->W.coinid = conv_coinstr(cp->name);
     set_batchname(batchname,cp->name,Global_mp->gatewayid);
-    if ( (fp= fopen(batchname,"wb")) != 0 )
+    set_handler_fname(fname,batchname,"mgw");
+    if ( (fp= fopen(fname,"wb")) != 0 )
     {
         fwrite(wp,1,sizeof(*wp),fp);
         fclose(fp);
+        printf("created (%s)\n",fname);
     }
     if ( wp->W.coinid < 0 || refcp == 0 )
     {
@@ -1691,8 +1693,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     cJSON *array,*item;
     uint64_t pendingtxid,AMtxid = 0;
     readyflag = ready_to_xferassets(&pendingtxid);
-    printf("readyflag.%d\n",readyflag);
-    rp = &cp->withdrawinfos[Global_mp->gatewayid].rawtx;
+    printf("%s: readyflag.%d\n",cp->name,readyflag);
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
         otherwp = &cp->withdrawinfos[gatewayid];
@@ -1701,7 +1702,9 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
             fprintf(stderr,"%08x miscompares with gatewayid.%d which has crc %08x\n",cp->BATCH.rawtx.batchcrc,gatewayid,otherwp->rawtx.batchcrc);
         } else matches++;
     }
+    rp = &cp->withdrawinfos[Global_mp->gatewayid].rawtx;
     array = cJSON_CreateArray();
+    printf("numredeems.%d\n",rp->numredeems);
     if ( rp->numredeems > 0 )
     {
         for (i=0; i<rp->numredeems; i++)
@@ -1737,6 +1740,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
             }
         }
     }
+    printf("last array\n");
     array = cJSON_CreateArray();
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
         cJSON_AddItemToArray(array,cJSON_CreateNumber(cp->withdrawinfos[gatewayid].rawtx.batchcrc));
