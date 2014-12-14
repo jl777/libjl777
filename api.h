@@ -636,7 +636,7 @@ char *sendmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
             len = (int32_t)strlen(origargstr)+1;
             stripwhite_ns(origargstr,len);
             len = (int32_t)strlen(origargstr)+1;
-            retstr = sendmessage(nexthopNXTaddr,L,sender,origargstr,len,destNXTaddr,0,0);
+            retstr = sendmessage(!prevent_queueing("sendmsg"),nexthopNXTaddr,L,sender,origargstr,len,destNXTaddr,0,0);
         }
     }
     //if ( retstr == 0 )
@@ -668,7 +668,7 @@ char *sendbinary_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         else
         {
             sprintf(cmdstr,"{\"requestType\":\"sendbinary\",\"NXT\":\"%s\",\"data\":\"%s\",\"dest\":\"%s\"}",NXTaddr,datastr,destNXTaddr);
-            retstr = send_tokenized_cmd(nexthopNXTaddr,L,NXTaddr,NXTACCTSECRET,cmdstr,destNXTaddr);
+            retstr = send_tokenized_cmd(!prevent_queueing("sendbinary"),nexthopNXTaddr,L,NXTaddr,NXTACCTSECRET,cmdstr,destNXTaddr);
         }
     }
     //if ( retstr == 0 )
@@ -999,7 +999,7 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         sprintf(cmdstr,"{\"requestType\":\"remote\",\"coin\":\"%s\",\"method\":\"%s\",\"tag\":\"%s\",\"result\":\"%s\"}",coinstr,method,tagstr,str2);
         free(str2);
         hopNXTaddr[0] = 0;
-        retstr = send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender);
+        retstr = send_tokenized_cmd(!prevent_queueing("passthru"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender);
         free(cmdstr);
     }
     return(retstr);
@@ -1498,7 +1498,7 @@ char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
             if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
             {
                 sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",NXTaddr,coin,refNXTaddr,acctcoinaddr,pubkey);
-                return(send_tokenized_cmd(hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
+                return(send_tokenized_cmd(!prevent_queueing("setmsigpubkey"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,cmdstr,sender));
             }
         }
     }
@@ -1544,7 +1544,7 @@ char *MGWaddr_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 
 char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD];
+    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD];
     int32_t rescan,actionflag;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
@@ -1561,8 +1561,9 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     copy_cJSON(specialNXT,objs[10]);
     copy_cJSON(exclude0,objs[11]);
     copy_cJSON(exclude1,objs[12]);
+    copy_cJSON(exclude2,objs[13]);
     if ( ((NXT0[0] != 0 && NXT1[0] != 0 && NXT2[0] != 0) || (ip0[0] != 0 && ip1[0] != 0 && ip2[0] != 0)) && sender[0] != 0 && valid > 0 )
-        return(MGWdeposits(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1));
+        return(MGWdeposits(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2));
     return(clonestr("{\"error\":\"bad MGWdeposits_func paramater\"}"));
 }
 
@@ -1655,7 +1656,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", 0 };
+    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     

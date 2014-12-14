@@ -264,7 +264,7 @@ int32_t prep_outbuf(uint8_t *outbuf,char *msg,int32_t msglen,uint8_t *data,int32
     return(len);
 }
 
-char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
+char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen)
 {
     uint64_t txid;
     char buf[4096],destsrvNXTaddr[64],srvNXTaddr[64],_hopNXTaddr[64];
@@ -312,10 +312,10 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
             }
         }
         strcpy(destNXTaddr,hopNXTaddr);
-        printf("len.%d -> ",len);
+        //printf("len.%d -> ",len);
         len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-        printf("%d\n",len);
-        route_packet(1,0,hopNXTaddr,outbuf,len);
+        //printf("%d\n",len);
+        route_packet(queueflag,1,0,hopNXTaddr,outbuf,len);
         if ( txid == 0 )
             sprintf(buf,"{\"error\":\"%s cant sendmessage.(%s) to %s, len.%d\"}",verifiedNXTaddr,msg,destNXTaddr,len);
         else sprintf(buf,"{\"status\":\"%s sends encrypted sendmessage to %s pending via.(%s), len.%d\"}",verifiedNXTaddr,destNXTaddr,hopNXTaddr,len);
@@ -324,7 +324,7 @@ char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int
     return(clonestr(buf));
 }
 
-char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
+char *send_tokenized_cmd(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr)
 {
     char _tokbuf[4096],datastr[MAX_JSON_FIELD],*cmd = cmdstr;
     unsigned char databuf[4096],*data = 0;
@@ -369,10 +369,10 @@ char *send_tokenized_cmd(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *
             free_json(json);
         }
     }
-    return(sendmessage(hopNXTaddr,L,verifiedNXTaddr,_tokbuf,(int32_t)n+1,destNXTaddr,data,datalen));
+    return(sendmessage(queueflag,hopNXTaddr,L,verifiedNXTaddr,_tokbuf,(int32_t)n+1,destNXTaddr,data,datalen));
 }
 
-int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
+int32_t sendandfree_jsoncmd(int32_t queueflag,int32_t L,char *sender,char *NXTACCTSECRET,cJSON *json,char *destNXTaddr)
 {
     int32_t err = -1;
     cJSON *retjson;
@@ -382,7 +382,7 @@ int32_t sendandfree_jsoncmd(int32_t L,char *sender,char *NXTACCTSECRET,cJSON *js
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     msg = cJSON_Print(json);
     stripwhite_ns(msg,strlen(msg));
-    retstr = send_tokenized_cmd(hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
+    retstr = send_tokenized_cmd(queueflag,hopNXTaddr,L,verifiedNXTaddr,NXTACCTSECRET,msg,destNXTaddr);
     if ( retstr != 0 )
     {
         // printf("sendandfree_jsoncmd.(%s)\n",retstr);
@@ -498,7 +498,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 if ( tmpjson != 0 )
                 {
                     char nxtip[64];
-                    uint16_t nxtport,dontupdate = 0;
+                    uint16_t noqueue,nxtport,dontupdate = 0;
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));
                     if ( is_illegal_ipaddr(nxtip) != 0 || notlocalip(nxtip) == 0 )
@@ -508,6 +508,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     nxtport = (int32_t)get_API_int(cJSON_GetObjectItem(tmpjson,"port"),0);
                     if ( strcmp(nxtip,sender) == 0 )
                         nxtport = port;
+                    noqueue = prevent_queueing(checkstr);
                     if ( encrypted == 0 )
                     {
                         if ( strcmp("ping",checkstr) == 0 && internalflag == 0 && dontupdate == 0 )
@@ -548,7 +549,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
                         //fprintf(stderr,"GOT.(%s) decoded.%p (%s)\n",parmstxt,decoded,decoded);
-                        if ( IS_LIBTEST < 2 )
+                        if ( noqueue == 0 && IS_LIBTEST < 2 )
                         {
                             qp = calloc(1,sizeof(*qp));
                             if ( previpaddr[0] != 0 )
@@ -593,7 +594,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 {
                     outbuf = decoded;
                     len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-                    route_packet(1,0,hopNXTaddr,outbuf,len);
+                    route_packet(1,1,0,hopNXTaddr,outbuf,len);
                 } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
             } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no destination to forward to\n");

@@ -93,7 +93,7 @@ void handler_gotfile(struct transfer_args *args)
 {
     FILE *fp;
     char buf[512];
-    sprintf(buf,"archive/%s_%s",args->name,args->handler);
+    set_handler_fname(buf,args->handler,args->name);
     if ( (fp= fopen(buf,"wb")) != 0 )
     {
         fwrite(args->data,1,args->totallen,fp);
@@ -159,7 +159,7 @@ void every_minute(int32_t counter)
                 if ( gen_pingstr(_cmd,1) > 0 )
                 {
                     len = construct_tokenized_req((char *)finalbuf,_cmd,cp->srvNXTACCTSECRET);
-                    send_packet(nodes[i],0,finalbuf,len);
+                    send_packet(!prevent_queueing("ping"),nodes[i],0,finalbuf,len);
                     pserver = get_pserver(0,ipaddr,0,0);
                     send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
                     p2p_publishpacket(pserver,0);
@@ -722,6 +722,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         exit(-1);
     }
     Historical_done = 1;
+    if ( IS_LIBTEST > 1 )
+        establish_connections(cp->myipaddr,cp->srvNXTACCTSECRET);
     //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
     //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
     Finished_init = 1;

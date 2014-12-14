@@ -59,6 +59,38 @@ struct udp_queuecmd
     uint32_t previpbits,valid;
 };
 
+int32_t prevent_queueing(char *cmd)
+{
+    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 )
+        return(1);
+    return(0);
+}
+
+void set_handler_fname(char *fname,char *handler,char *name)
+{
+    sprintf(fname,"archive/%s_%s",name,handler);
+}
+
+int32_t load_handler_fname(void *dest,int32_t len,char *handler,char *name)
+{
+    FILE *fp;
+    int32_t retval = -1;
+    char fname[1024];
+    set_handler_fname(fname,handler,name);
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        if ( ftell(fp) == len )
+        {
+            rewind(fp);
+            if ( fread(dest,1,len,fp) == len )
+                retval = len;
+        }
+        fclose(fp);
+    }
+    return(retval);
+}
+
 void update_nodestats_data(struct nodestats *stats)
 {
     char NXTaddr[64],ipaddr[64];
@@ -184,7 +216,8 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
         if ( notlocalip(ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
+        pserver->lastcontact = (uint32_t)time(NULL);
+        if ( pserver->nxt64bits != 0 && (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
             stats->numrecv++;
             stats->recvmilli = milliseconds();
@@ -303,10 +336,10 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     return(packet_crc == crc);
 }
 
-void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
+void send_packet(int32_t queueflag,struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
 {
     char ipaddr[64];
-    int32_t port,queueflag,p2pflag = 0;
+    int32_t port,p2pflag = 0;
     struct nodestats *stats;
     struct pserver_info *pserver = 0;
     if ( destaddr != 0 )
@@ -321,7 +354,6 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
                 port = SUPERNET_PORT;
                 uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
             }
-            queueflag = 1;
             if ( Debuglevel > 1 )
                 printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
             portable_udpwrite(queueflag,destaddr,Global_mp->udp,finalbuf,len,ALLOCWR_ALLOCFREE);
@@ -361,7 +393,7 @@ void send_packet(struct nodestats *peerstats,struct sockaddr *destaddr,unsigned 
     }
 }
 
-void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
+void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,unsigned char *outbuf,int32_t len)
 {
     unsigned char finalbuf[4096];
     char destip[64];
@@ -390,7 +422,7 @@ void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,u
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
         if ( Debuglevel > 0 )
             printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
-        send_packet(stats,destaddr,outbuf,len);
+        send_packet(queueflag,stats,destaddr,outbuf,len);
     }
     else if ( stats != 0 )
     {
@@ -400,13 +432,13 @@ void route_packet(int32_t encrypted,struct sockaddr *destaddr,char *hopNXTaddr,u
             if ( Debuglevel > 0 )
                 printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,stats->supernet_port,len);
             uv_ip4_addr(destip,stats->supernet_port!=0?stats->supernet_port:SUPERNET_PORT,&addr);
-            send_packet(stats,(struct sockaddr *)&addr,finalbuf,len);
+            send_packet(queueflag,stats,(struct sockaddr *)&addr,finalbuf,len);
         }
         else { printf("cant route packet.%d without IP address to %llu\n",len,(long long)stats->nxt64bits); return; }
     } else { printf("cant route packet.%d without nodestats\n",len); return; }
 }
 
-uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *origargstr,int32_t len,unsigned char *data,int32_t datalen)
+uint64_t directsend_packet(int32_t queueflag,int32_t encrypted,struct pserver_info *pserver,char *origargstr,int32_t len,unsigned char *data,int32_t datalen)
 {
     static unsigned char zeropubkey[crypto_box_PUBLICKEYBYTES];
     uint64_t txid = 0;
@@ -431,13 +463,13 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
     txid = calc_txid((uint8_t *)origargstr,len);
     if ( encrypted != 0 && stats != 0 && memcmp(zeropubkey,stats->pubkey,sizeof(zeropubkey)) != 0 )
     {
-        char *sendmessage(char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
+        char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
         char hopNXTaddr[64],destNXTaddr[64],*retstr;
         expand_nxt64bits(destNXTaddr,stats->nxt64bits);
         L = (encrypted>1 ? MAX(encrypted,Global_mp->Lfactor) : 0);
         if ( Debuglevel > 2 )
             fprintf(stderr,"direct send via sendmessage (%s) %p %d\n",origargstr,data,datalen);
-        retstr = sendmessage(hopNXTaddr,L,cp->srvNXTADDR,origargstr,len,destNXTaddr,data,datalen);
+        retstr = sendmessage(queueflag,hopNXTaddr,L,cp->srvNXTADDR,origargstr,len,destNXTaddr,data,datalen);
         if ( retstr != 0 )
         {
             if ( Debuglevel > 2 )
@@ -462,7 +494,7 @@ uint64_t directsend_packet(int32_t encrypted,struct pserver_info *pserver,char *
         {
             if ( Debuglevel > 0 )
                 fprintf(stderr,"route_packet encrypted.%d\n",encrypted);
-            route_packet(encrypted,&destaddr,0,outbuf,len);
+            route_packet(queueflag,encrypted,&destaddr,0,outbuf,len);
             //printf("got route_packet txid.%llu\n",(long long)txid);
         }
         else printf("directsend_packet: illegal len.%d\n",len);
@@ -584,7 +616,7 @@ void purge_transfer_args(struct transfer_args *args)
 
 char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t checkcrc,char *datastr,char *handler)
 {
-    char cmdstr[4096],_tokbuf[4096];
+    char cmdstr[4096],_tokbuf[4096],*cmd;
     struct pserver_info *pserver;
     struct transfer_args *args;
     struct coin_info *cp = get_coin_info("BTCD");
@@ -604,11 +636,13 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"handler\":\"%s\"",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc,handler);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
     {
+        cmd = "sendfrag";
         pserver = get_pserver(0,dest,0,0);
-        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"sendfrag\",\"data\":%d}",datalen);
+        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"data\":%d}",cmd,datalen);
     }
     else
     {
+        cmd = "gotfrag";
         pserver = get_pserver(0,previpaddr,0,0);
         if ( checkcrc != datacrc )
             strcat(cmdstr,",\"error\":\"crcerror\"");
@@ -628,10 +662,10 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         }
         free(data);
         data = 0;
-        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"gotfrag\",\"count\":\"%d\",\"checkcrc\":%u}",count,checkcrc);
+        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u}",cmd,count,checkcrc);
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    txid = directsend_packet(1,pserver,_tokbuf,len,data,datalen);
+    txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
     if ( Debuglevel > 2 )
         printf("send back (%s) len.%d datalen.%d\n",cmdstr,len,datalen);
     if ( data != 0 )
