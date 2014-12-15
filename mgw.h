@@ -689,7 +689,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         }
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),60,"mgw");
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),300,"mgw");
             if ( retstr != 0 )
                 free(retstr);
         }
