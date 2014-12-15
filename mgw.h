@@ -1373,7 +1373,11 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
             }
         }
         if ( up->num > 1 )
+        {
             sort_vps(up->vps,up->num);
+            for (i=0; i<10&&i<up->num; i++)
+                printf("(%s) (%s).%d %.8f\n",up->vps[i]->txid,up->vps[i]->coinaddr,up->vps[i]->entry.v,dstr(up->vps[i]->value));
+        }
         printf("max %.8f min %.8f median %.8f |unspent %.8f numunspent.%d in nonz.%d accts\n",dstr(up->maxavail),dstr(up->minavail),dstr((up->maxavail+up->minavail)/2),dstr(up->unspent),numunspent,nonz);
     }
     sprintf(numstr,"%.8f",dstr(circulation)), cJSON_AddItemToObject(*jsonp,"circulation",cJSON_CreateString(numstr));
