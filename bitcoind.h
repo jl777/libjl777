@@ -740,11 +740,16 @@ int64_t calc_batchinputs(struct multisig_addr **msigs,int32_t nummsigs,struct co
         if ( vp == 0 )
             continue;
         sum += vp->value;
-        vp = (sum < (amount + cp->txfee)) ? vp : up->vps[up->num-1];
         fprintf(stderr,"%p (%s).%d %s input.%d value %.8f | sum %.8f amount %.8f\n",vp,vp->txid,vp->entry.v,vp->coinaddr,rp->numinputs,dstr(vp->value),dstr(sum),dstr(amount));
         rp->inputs[rp->numinputs++] = vp;
-        if ( sum >= (amount + cp->txfee) && rp->numinputs > 1 )
+        if ( sum >= (amount + cp->txfee) )
         {
+            if ( (vp= up->vps[up->num - 1]) != 0 )
+            {
+                sum += vp->value;
+                rp->inputs[rp->numinputs++] = vp;
+                fprintf(stderr,"CABOOSE %p (%s).%d %s input.%d value %.8f | sum %.8f amount %.8f\n",vp,vp->txid,vp->entry.v,vp->coinaddr,rp->numinputs,dstr(vp->value),dstr(sum),dstr(amount));
+            }
             rp->amount = amount;
             rp->change = (sum - amount - cp->txfee);
             rp->inputsum = sum;
