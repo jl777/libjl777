@@ -458,11 +458,11 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
                 free(sp);
             } else sprintf(retbuf,"{\"requestType\":\"dbret\",\"error\":\"cant find key\",\"key\":\"%s\"}",keystr);
             if ( is_remote_access(previpaddr) != 0 )
-                send_to_ipaddr(1,previpaddr,retbuf,NXTACCTSECRET);
+                send_to_ipaddr(0,1,previpaddr,retbuf,NXTACCTSECRET);
             else if ( destip[0] != 0 )
             {
                 sprintf(retbuf,"{\"requestType\":\"getdb\",\"NXT\":\"%s\",\"key\":\"%s\"}",NXTaddr,keystr);
-                send_to_ipaddr(1,destip,retbuf,NXTACCTSECRET);
+                send_to_ipaddr(0,1,destip,retbuf,NXTACCTSECRET);
             }
             else if ( retbuf[0] == 0 )
                 sprintf(retbuf,"{\"result\":\"nodata\",\"key\":\"%s\"}",keystr);

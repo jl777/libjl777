@@ -276,9 +276,9 @@ char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXT
     destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
     if ( hopNXTaddr == 0 )
         hopNXTaddr = _hopNXTaddr, hopNXTaddr[0] = 0;
-    if ( np == 0 || destnp == 0 || Global_mp->udp == 0 || destnp->stats.nxt64bits == 0 )
+    if ( np == 0 || destnp == 0 || destnp->stats.nxt64bits == 0 )
     {
-        sprintf(buf,"\"error\":\"no np.%p or global udp.%p for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,Global_mp->udp,destNXTaddr,(long long)destnp->stats.nxt64bits);
+        sprintf(buf,"\"error\":\"no np.%p or global for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,destNXTaddr,(long long)destnp->stats.nxt64bits);
         return(clonestr(buf));
     }
     expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);

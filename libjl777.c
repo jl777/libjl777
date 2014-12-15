@@ -190,12 +190,15 @@ void SuperNET_idler(uv_idle_t *handle)
     static int counter;
     static double lastattempt,lastclock;
     double millis;
+    void *up;
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
     int32_t r;
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
+    if ( (up= queue_dequeue(&UDP_Q)) != 0 )
+        process_udpentry(up);
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) )
     {
@@ -340,6 +343,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
 char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     static int32_t zero,one = 1;
+    struct coin_info *cp;
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
     printf("init_NXTservices.(%s)\n",myipaddr);
     UV_loop = uv_default_loop();
@@ -354,6 +358,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("ERROR hist process_hashtablequeues\n");
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
+    if ( (cp= get_coin_info("BTCD")) != 0 && cp->bridgeport != 0 )
+        cp->bridgeudp = start_libuv_udpserver(4,cp->bridgeport,(void *)on_bridgerecv);
     if ( 0 )
     {
         uint32_t before,after;
@@ -472,24 +478,6 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
         //printf("queue.%d returned.(%s)\n",blockflag,retbuf);
         return(clonestr(retbuf));
     }
-}
-
-char *oldblock_on_SuperNET(int32_t blockflag,char *JSONstr)
-{
-    char **ptrs,*retstr;
-    ptrs = calloc(2,sizeof(*ptrs));
-    ptrs[0] = clonestr(JSONstr);
-    //printf("QUEUE.(%s)\n",JSONstr);
-    queue_enqueue(&JSON_Q,ptrs);
-    if ( blockflag != 0 )
-    {
-        while ( ptrs[1] == 0 )
-            usleep(1000);
-    } else ptrs[1] = clonestr("{\"result\":\"pending SuperNET API call\"}");
-    retstr = ptrs[1];
-    free(ptrs);
-    //printf("block returned.(%s)\n",retstr);
-    return(retstr);
 }
 
 char *SuperNET_JSON(char *JSONstr)

@@ -259,6 +259,36 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
     return(clonestr(jsontxt));
 }
 
+struct multisig_addr *find_NXT_msig(char *NXTaddr,char *coinstr,struct contact_info **contacts,int32_t n)
+{
+    struct multisig_addr **msigs,*retmsig = 0;
+    int32_t i,j,nummsigs;
+    uint64_t nxt64bits;
+    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
+    {
+        nxt64bits = calc_nxt64bits(NXTaddr);
+        for (i=0; i<nummsigs; i++)
+        {
+            if ( strcmp(coinstr,msigs[i]->coinstr) == 0 && strcmp(NXTaddr,msigs[i]->NXTaddr) == 0 )
+            {
+                for (j=0; j<n; j++)
+                    if ( contacts[j]->nxt64bits != msigs[i]->pubkeys[j].nxt64bits )
+                        break;
+                if ( j == n )
+                {
+                    if ( retmsig != 0 )
+                        free(retmsig);
+                    retmsig = msigs[i];
+                }
+            }
+            if ( msigs[i] != retmsig )
+                free(msigs[i]);
+        }
+        free(msigs);
+    }
+    return(retmsig);
+}
+
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
 {
     int32_t j,M,n,coinid;
@@ -579,7 +609,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             update_msig_info(msig,1);
             printf("retstr.(%s)\n",retstr);
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
-                send_to_ipaddr(1,previpaddr,retstr,NXTACCTSECRET);
+                send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
             if ( msig != 0 )
             {
                 if ( 0 && flag != 0 ) // let the client do this
@@ -1845,15 +1875,15 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
 {
     static int32_t firsttimestamp;
-    char retbuf[4096],batchname[512],*specialNXTaddrs[257],*ipaddrs[3],*retstr = 0;
+    char retbuf[4096],*specialNXTaddrs[257],*ipaddrs[3],*retstr = 0;
     struct coin_info *cp;
     uint64_t pendingtxid,circulation,unspent = 0;
-    int32_t i,numgateways,gatewayid,createdflag,nummsigs;
+    int32_t i,numgateways,createdflag,nummsigs;
     struct NXT_asset *ap;
     struct multisig_addr **msigs;
     cJSON *json = 0;
-    FILE *fp;
-    struct batch_info tmp;
+    //FILE *fp;
+    //struct batch_info tmp;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
     if ( cp == 0 || ap == 0 )

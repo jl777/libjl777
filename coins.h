@@ -498,6 +498,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     if ( Global_mp->Lfactor > MAX_LFACTOR )
                         Global_mp->Lfactor = MAX_LFACTOR;
                     cp->srvport = get_API_int(cJSON_GetObjectItem(json,"srvport"),SUPERNET_PORT);
+                    cp->bridgeport = get_API_int(cJSON_GetObjectItem(json,"bridgeport"),0);
+                    extract_cJSON_str(cp->bridgeipaddr,sizeof(cp->bridgeipaddr),json,"bridgeipaddr");
                 }
                 if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
                     cp->tradebotfname = clonestr(tradebotfname);

@@ -64,6 +64,18 @@ uint64_t conv_acctstr(char *acctstr)
     return(nxt64bits);
 }
 
+void free_contacts(struct contact_info **contacts,int32_t n)
+{
+    int32_t i;
+    if ( contacts != 0 )
+    {
+        for (i=0; i<n; i++)
+            if ( contacts[i] != 0 )
+                free(contacts[i]);
+        free(contacts);
+    }
+}
+
 struct contact_info *find_contact(char *contactstr)
 {
     uint64_t nxt64bits = 0;

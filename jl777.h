@@ -348,16 +348,6 @@ struct coin_txidmap
     char txidmapstr[MAX_COINTXID_LEN];
 };
 
-/*struct coin_value
-{
-    int64_t modified,value;
-    char *txid;
-    struct coin_txidind *parent,*spent,*pendingspend;
-    union _coin_value_ptr U;
-    int32_t parent_vout,spent_vin,pending_spendvin,isconfirmed,iscoinbase,isinternal;
-    char coinaddr[MAX_COINADDR_LEN];
-};*/
-
 struct unspent_info
 {
     int64_t maxunspent,unspent,maxavail,minavail;
@@ -378,16 +368,15 @@ struct rawtransaction
     char batchsigned[56000];
 };
 
-struct server_request_header { int32_t retsize,argsize,variant,funcid; };
+//struct server_request_header { int32_t retsize,argsize,variant,funcid; };
 
 struct withdraw_info
 {
-    struct server_request_header H;
+    //struct server_request_header H;
     uint64_t modified,AMtxidbits,approved[16];
     int64_t amount,moneysent;
     int32_t coinid,srcgateway,destgateway,twofactor,authenticated,submitted,confirmed;
     char withdrawaddr[64],NXTaddr[MAX_NXTADDR_LEN],redeemtxid[MAX_NXTADDR_LEN],comment[1024];
-    //struct rawtransaction rawtx;
     char cointxid[MAX_COINTXID_LEN];
 };
 
@@ -397,33 +386,24 @@ struct batch_info
     struct rawtransaction rawtx;
 };
 
-/*struct coincache_info
-{
-    FILE *cachefp,*blocksfp;
-    struct hashtable *coin_txids;
-    char **blocks,*ignorelist;
-    int32_t ignoresize,lastignore,numblocks,purgedblock;
-};*/
-
 struct coin_info
 {
     int32_t timestamps[100];
     struct batch_info BATCH,withdrawinfos[16];
-    //struct coincache_info CACHE;
     struct unspent_info unspent;
     portable_mutex_t consensus_mutex;
-    //struct pingpong_queue podQ;
     cJSON *json;
+    uv_udp_t *bridgeudp;
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
-    //void **logs;
     cJSON *ciphersobj;
     char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
     
-    char name[64],backupdir[512],privacyserver[64],myipaddr[64],transporteraddr[128];
+    char name[64],backupdir[512],privacyserver[64],myipaddr[64],transporteraddr[128],bridgeipaddr[64];
     char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
     uint64_t *limboarray,srvpubnxtbits,privatebits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,blockheight,RTblockheight,nxtaccts[512];
     int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;
+    uint16_t bridgeport;
 };
 
 
@@ -644,7 +624,7 @@ struct hashtable *orderbook_txids;
 uv_loop_t *UV_loop;
 static long server_xferred;
 int Servers_started;
-queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ;
+queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ,UDP_Q;
 //struct pingpong_queue PeerQ;
 int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL;
 uint32_t *SuperNET_whitelist;

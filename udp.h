@@ -51,6 +51,14 @@ struct write_req_t
     int32_t allocflag,queuetime;
 };
 
+struct udp_entry
+{
+    struct sockaddr addr;
+    void *buf;
+    uv_udp_t *udp;
+    int32_t len,internalflag;
+};
+
 struct udp_queuecmd
 {
     cJSON *argjson;
@@ -61,7 +69,9 @@ struct udp_queuecmd
 
 int32_t prevent_queueing(char *cmd)
 {
-    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 )
+    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 ||
+         strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
+        0 )
         return(1);
     return(0);
 }
@@ -200,16 +210,29 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,uv_udp_t
     return(r);
 }
 
-void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
+void process_udpentry(struct udp_entry *up)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    char ipaddr[256],retjsonstr[4096];
+    uint16_t supernet_port;
+    supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&up->addr);
+    if ( notlocalip(ipaddr) == 0 )
+        strcpy(ipaddr,cp->myipaddr);
+    retjsonstr[0] = 0;
+    process_packet(up->internalflag,retjsonstr,up->buf,up->len,up->udp,&up->addr,ipaddr,supernet_port);
+    free(up->buf);
+    free(up);
+}
+
+void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
     uint16_t supernet_port;
     int32_t createdflag;
     struct nodestats *stats;
     struct pserver_info *pserver;
-    struct NXT_acct *np;
+    struct udp_entry *up;
     struct coin_info *cp = get_coin_info("BTCD");
-    char ipaddr[256],retjsonstr[4096],srvNXTaddr[64];
-    retjsonstr[0] = 0;
+    char ipaddr[256],retjsonstr[4096];
     if ( cp != 0 && nread > 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
@@ -222,27 +245,37 @@ void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct 
             stats->numrecv++;
             stats->recvmilli = milliseconds();
         }
-        {
-            //int i;
-            //for (i=0; i<16; i++)
-            //    printf("%02x ",((unsigned char *)rcvbuf->base)[i]);
-            if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
-                printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
-        }
-        //expand_nxt64bits(NXTaddr,cp->pubnxtbits);
-        expand_nxt64bits(srvNXTaddr,cp->srvpubnxtbits);
-        np = process_packet(0,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
+        if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
+            printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
+        if ( queueflag != 0 )
+        {
+            up = calloc(1,sizeof(*up));
+            up->udp = udp;
+            up->internalflag = internalflag;
+            up->buf = rcvbuf->base;
+            up->len = (int32_t)nread;
+            up->addr = *addr;
+            queue_enqueue(&UDP_Q,up);
+        }
+        else process_packet(internalflag,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
     }
-    if ( rcvbuf->base != 0 )
-    {
-        //printf("on_duprecv free.%p\n",rcvbuf->base);
+    else if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
-    }
 }
 
-uv_udp_t *open_udp(struct sockaddr *addr)
+void on_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
+{
+    _on_udprecv(1,0,udp,nread,rcvbuf,addr,flags);
+}
+
+void on_bridgerecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
+{
+    _on_udprecv(0,1,udp,nread,rcvbuf,addr,flags);
+}
+
+uv_udp_t *open_udp(struct sockaddr *addr,void *handler)
 {
     int32_t r;
     uv_udp_t *udp;
@@ -268,7 +301,7 @@ uv_udp_t *open_udp(struct sockaddr *addr)
         fprintf(stderr,"uv_udp_set_broadcast: %d %s\n",r,uv_err_name(r));
         return(0);
     }
-    r = uv_udp_recv_start(udp,portable_alloc,on_udprecv);
+    r = uv_udp_recv_start(udp,portable_alloc,handler);
     if ( r != 0 )
     {
         fprintf(stderr, "uv_udp_recv_start: %d %s\n",r,uv_err_name(r));
@@ -294,7 +327,7 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
         ptr = (const struct sockaddr *)&addr6;
     }
     else { printf("illegal ip4_or_ip6 %d\n",ip4_or_ip6); return(0); }
-    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0);
+    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,handler);
     if ( srv != 0 )
         printf("UDP.%p server started on port %d\n",srv,port);
     else printf("couldnt open_udp on port.%d\n",port);

@@ -1437,42 +1437,58 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
+char *bridge_test(int32_t actionflag,char *NXTACCTSECRET,char *destip,char *origargstr)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    uint16_t bridgeport = 0;
+    if ( strcmp(cp->myipaddr,destip) == 0 )
+    {
+        if ( (bridgeport= cp->bridgeport) == 0 && cp->bridgeipaddr[0] != 0 )
+            destip[0] = 0;
+        else strcpy(destip,cp->bridgeipaddr);
+    }
+    if ( destip[0] != 0 )
+    {
+        if ( is_illegal_ipaddr(destip) == 0 )
+        {
+            if ( actionflag != 0 )
+                send_to_ipaddr(bridgeport,0,destip,origargstr,NXTACCTSECRET);
+            if ( bridgeport != 0 )
+                return(clonestr("{\"result\":\"bridged\"}"));
+            else return(clonestr("{\"result\":\"forwarded\"}"));
+        } else return(clonestr("{\"error\":\"illegal destip\"}"));
+    }
+    return(0);
+}
+
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
-    int32_t i,M,N,n = 0;
-    struct coin_info *cp = get_coin_info("BTCD");
+    int32_t M,N,n = 0;
+    struct multisig_addr *msig;
     struct contact_info **contacts = 0;
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refacct,objs[1]);
     M = (int32_t)get_API_int(objs[2],1);
     N = (int32_t)get_API_int(objs[3],1);
+    contacts = conv_contacts_json(&n,objs[4]);
     copy_cJSON(destip,objs[5]);
-    if ( strcmp(cp->myipaddr,destip) == 0 )
-        destip[0] = 0;
-    if ( destip[0] != 0 )
-    {
-        printf("dest.%s myip.%s\n",cp->myipaddr,destip);
-        if ( is_illegal_ipaddr(destip) == 0 )
-        {
-            send_to_ipaddr(0,destip,origargstr,NXTACCTSECRET);
-            return(clonestr("{\"result\":\"genmultisig forwarded\"}"));
-        } else return(clonestr("{\"error\":\"genmultisig_func illegal destip\"}"));
-    }
-    //if ( is_remote_access(previpaddr) != 0 && (cp == 0 || strcmp(cp->myipaddr,destip) != 0) )
-    //    return(0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        contacts = conv_contacts_json(&n,objs[4]);
+        if ( is_remote_access(previpaddr) != 0 && (retstr= bridge_test(0,NXTACCTSECRET,destip,origargstr)) != 0 )
+        {
+            free(retstr);
+            if ( (msig= find_NXT_msig(coin,sender,contacts,n)) != 0 )
+            {
+                retstr = create_multisig_json(msig,0);
+                free(msig);
+                return(retstr);
+            }
+            return(bridge_test(1,NXTACCTSECRET,destip,origargstr));
+        }
         retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n);
     }
-    if ( contacts != 0 )
-    {
-        for (i=0; i<n; i++)
-            if ( contacts[i] != 0 )
-                free(contacts[i]);
-        free(contacts);
-    }
+    free_contacts(contacts,n);
     if ( retstr != 0 )
         return(retstr);
     return(clonestr("{\"error\":\"bad genmultisig_func paramater\"}"));
@@ -1544,10 +1560,16 @@ char *MGWaddr_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 
 char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD];
+    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD],destip[MAX_JSON_FIELD];
     int32_t rescan,actionflag;
+    char *retstr;
+    copy_cJSON(destip,objs[14]);
     if ( is_remote_access(previpaddr) != 0 )
-        return(0);
+    {
+        if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,origargstr)) != 0 )
+            return(retstr);
+       else return(0);
+    }
     copy_cJSON(NXT0,objs[0]);
     copy_cJSON(NXT1,objs[1]);
     copy_cJSON(NXT2,objs[2]);
@@ -1656,7 +1678,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", 0 };
+    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     

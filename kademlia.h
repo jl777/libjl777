@@ -248,26 +248,37 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
     } else return(0);
 }
 
-void send_to_ipaddr(int32_t tokenizeflag,char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
+void send_to_ipaddr(uint16_t bridgeport,int32_t tokenizeflag,char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
 {
     char _tokbuf[MAX_JSON_FIELD];
     struct pserver_info *pserver;
     struct sockaddr destaddr;
     struct nodestats *stats;
+    struct coin_info *cp = get_coin_info("BTCD");
+    uv_udp_t *udp;
     int32_t port;
-    pserver = get_pserver(0,ipaddr,0,0);
-    stats = get_nodestats(pserver->nxt64bits);
-    if ( stats != 0 )
-        port = stats->supernet_port;
-    else port = 0;
-    if ( port == 0 )
-        port = SUPERNET_PORT;
+    if ( bridgeport == 0 )
+    {
+        udp = Global_mp->udp;
+        pserver = get_pserver(0,ipaddr,0,0);
+        stats = get_nodestats(pserver->nxt64bits);
+        if ( stats != 0 )
+            port = stats->supernet_port;
+        else port = 0;
+        if ( port == 0 )
+            port = SUPERNET_PORT;
+    }
+    else
+    {
+        port = bridgeport;
+        udp = cp->bridgeudp;
+    }
     uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
     if ( tokenizeflag != 0 )
         construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
     else safecopy(_tokbuf,jsonstr,sizeof(_tokbuf));
     fprintf(stderr,"send_to_ipaddr.(%s)\n",_tokbuf);
-    portable_udpwrite(0,(struct sockaddr *)&destaddr,Global_mp->udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
+    portable_udpwrite(0,(struct sockaddr *)&destaddr,udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
 }
 
 int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nxt64bits)
@@ -357,7 +368,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->numpings++;
         }
         gen_pingstr(cmdstr,1);
-        send_to_ipaddr(1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
+        send_to_ipaddr(0,1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
         return(0);
     }
     else
