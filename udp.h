@@ -70,7 +70,8 @@ struct udp_queuecmd
 int32_t prevent_queueing(char *cmd)
 {
     if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 ||
-         strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
+        strcmp("sendfrag",cmd) == 0 || strcmp("gotfrag",cmd) == 0 ||
+        strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
         0 )
         return(1);
     return(0);
@@ -725,7 +726,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
            //     printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
             if ( args->ackcrcs[i] != args->crcs[i] )
             {
-                if ( (now - args->timestamps[i]) > 1 )
+                if ( num < 1 && (now - args->timestamps[i]) > 1 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
