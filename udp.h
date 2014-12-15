@@ -327,7 +327,7 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
         ptr = (const struct sockaddr *)&addr6;
     }
     else { printf("illegal ip4_or_ip6 %d\n",ip4_or_ip6); return(0); }
-    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,handler);
+    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,(void (*)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))handler);
     if ( srv != 0 )
         printf("UDP.%p server started on port %d\n",srv,port);
     else printf("couldnt open_udp on port.%d\n",port);
