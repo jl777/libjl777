@@ -275,7 +275,7 @@ void on_bridgerecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const stru
     _on_udprecv(0,1,udp,nread,rcvbuf,addr,flags);
 }
 
-uv_udp_t *open_udp(struct sockaddr *addr,void *handler)
+uv_udp_t *open_udp(struct sockaddr *addr,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
 {
     int32_t r;
     uv_udp_t *udp;
@@ -310,7 +310,7 @@ uv_udp_t *open_udp(struct sockaddr *addr,void *handler)
     return(udp);
 }
 
-void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
+void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
 {
     void *srv;
     const struct sockaddr *ptr;
@@ -327,7 +327,7 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void *handler)
         ptr = (const struct sockaddr *)&addr6;
     }
     else { printf("illegal ip4_or_ip6 %d\n",ip4_or_ip6); return(0); }
-    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,(void (*)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))handler);
+    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,handler);
     if ( srv != 0 )
         printf("UDP.%p server started on port %d\n",srv,port);
     else printf("couldnt open_udp on port.%d\n",port);
