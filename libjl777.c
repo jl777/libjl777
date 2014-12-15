@@ -197,7 +197,7 @@ void SuperNET_idler(uv_idle_t *handle)
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
-    if ( (up= queue_dequeue(&UDP_Q)) != 0 )
+    while ( (up= queue_dequeue(&UDP_Q)) != 0 )
         process_udpentry(up);
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 10) )
