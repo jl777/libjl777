@@ -758,16 +758,27 @@ int32_t Do_transfers(void *_args,int32_t argsize)
 
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
+    int32_t len;
     struct transfer_args *args;
-    char cmdstr[4096];
+    char cmdstr[MAX_JSON_FIELD*2],datastr[MAX_JSON_FIELD*2];
     if ( blocksize == 0 )
         blocksize = 512;
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
     sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
+    printf("GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
-    return(clonestr(cmdstr));
+    if ( args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
+    {
+        fragi = (fragi + 1) % numfrags;
+        if ( fragi != (numfrags-1) )
+            len = blocksize;
+        else len = (totallen - (blocksize * (numfrags-1)));
+        init_hexbytes_noT(datastr,args->data + fragi*blocksize,len);
+        return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,(fragi+1) % numfrags,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi+1],datastr,"mgw"));
+    }
+    else return(clonestr(cmdstr));
 }
 
 char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint8_t *data,int32_t totallen,int32_t timeout,char *handler)
@@ -799,7 +810,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        start_task(Do_transfers,"transfer",250000,(void *)&args,sizeof(args));
+        start_task(Do_transfers,"transfer",3000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
     } else return(clonestr("{\"error\":\"start_transfer: cant start_transfer\"}"));
 }
