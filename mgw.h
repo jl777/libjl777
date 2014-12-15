@@ -1865,7 +1865,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
         get_NXTblock(&firsttimestamp);
     json = cJSON_CreateObject();
     //if ( actionflag < -1 )
-    {
+    /*{
         for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
         {
             set_batchname(batchname,cp->name,gatewayid);
@@ -1882,7 +1882,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
             }
         }
         //process_consensus(&json,cp,actionflag == -3);
-    }
+    }*/
    // else
     {
         numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
