@@ -710,7 +710,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         exit(-1);
     }
     Historical_done = 1;
-    if ( IS_LIBTEST > 1 )
+    if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
         establish_connections(cp->myipaddr,cp->srvNXTACCTSECRET);
     //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
     //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);

@@ -1428,13 +1428,15 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
         sprintf(cmd+strlen(cmd),"&height=%d",height);
     if ( (retstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        printf("circ.(%s) <- (%s)\n",retstr,cmd);
+        fprintf(stderr,"circ.(%s) <- (%s)\n",retstr,cmd);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"accountAssets")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
+                fprintf(stderr,"n.%d\n",n);
                 for (i=0; i<n; i++)
                 {
+                    fprintf(stderr,"i.%d of n.%d\n",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
                     //printf("%s ",acct);
@@ -1875,7 +1877,8 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
 {
     static int32_t firsttimestamp;
-    char retbuf[4096],*specialNXTaddrs[257],*ipaddrs[3],*retstr = 0;
+    static char **specialNXTaddrs;
+    char retbuf[4096],*ipaddrs[3],*retstr = 0;
     struct coin_info *cp;
     uint64_t pendingtxid,circulation,unspent = 0;
     int32_t i,numgateways,createdflag,nummsigs;
@@ -1915,12 +1918,13 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     }*/
    // else
     {
+        specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs)); // small memleak for now
         numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
         if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,numgateways,specialNXT)) != 0 )
             return(wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid));
         circulation = calc_circulation(0,ap,specialNXTaddrs);
         retstr = 0;
-        printf("circulation %.8f\n",dstr(circulation));
+        fprintf(stderr,"circulation %.8f\n",dstr(circulation));
         if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
         {
             printf("nummsigs.%d\n",nummsigs);
