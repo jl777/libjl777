@@ -689,7 +689,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         }
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),30,"mgw");
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),60,"mgw");
             if ( retstr != 0 )
                 free(retstr);
         }
@@ -1433,10 +1433,10 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
         {
             if ( (array= cJSON_GetObjectItem(json,"accountAssets")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
-                fprintf(stderr,"n.%d\n",n);
+                //fprintf(stderr,"n.%d\n",n);
                 for (i=0; i<n; i++)
                 {
-                    fprintf(stderr,"i.%d of n.%d\n",i,n);
+                    //fprintf(stderr,"i.%d of n.%d\n",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
                     //printf("%s ",acct);

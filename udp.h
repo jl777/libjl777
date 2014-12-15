@@ -725,7 +725,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
            //     printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
             if ( args->ackcrcs[i] != args->crcs[i] )
             {
-                if ( num < 1 && (now - args->timestamps[i]) > 1 )
+                if ( num < 16 && (now - args->timestamps[i]) > 1 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
@@ -797,7 +797,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        start_task(Do_transfers,"transfer",100000,(void *)&args,sizeof(args));
+        start_task(Do_transfers,"transfer",250000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
     } else return(clonestr("{\"error\":\"start_transfer: cant start_transfer\"}"));
 }
