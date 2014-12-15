@@ -124,13 +124,14 @@ cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct
             free_json(array);
             return(0);
         }
+        printf("vp.%p txid.(%s).%d %s %.8f\n",vp,vp->txid,vp->entry.v,vp->coinaddr,dstr(vp->value));
         json = cJSON_CreateObject();
         cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid));
         cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vp->entry.v));
         cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->script));
-        if ( (ret= map_msigaddr(redeemScript,cp,normaladdr,rp->inputs[i]->coinaddr)) >= 0 )
+        if ( (ret= map_msigaddr(redeemScript,cp,normaladdr,vp->coinaddr)) >= 0 )
             cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(redeemScript));
-        else printf("ret.%d redeemScript.(%s) (%s) for (%s)\n",ret,redeemScript,normaladdr,rp->inputs[i]->coinaddr);
+        else printf("ret.%d redeemScript.(%s) (%s) for (%s)\n",ret,redeemScript,normaladdr,vp->coinaddr);
         if ( localcoinaddrs != 0 )
             localcoinaddrs[i] = vp->coinaddr;
         cJSON_AddItemToArray(array,json);
@@ -739,8 +740,9 @@ int64_t calc_batchinputs(struct multisig_addr **msigs,int32_t nummsigs,struct co
         if ( vp == 0 )
             continue;
         sum += vp->value;
-        fprintf(stderr,"%p %s input.%d value %.8f\n",vp,vp->coinaddr,rp->numinputs,dstr(vp->value));
-        rp->inputs[rp->numinputs++] = (sum < (amount + cp->txfee)) ? vp : up->vps[up->num-1];
+        vp = (sum < (amount + cp->txfee)) ? vp : up->vps[up->num-1];
+        fprintf(stderr,"%p (%s).%d %s input.%d value %.8f | sum %.8f amount %.8f\n",vp,vp->txid,vp->entry.v,vp->coinaddr,rp->numinputs,dstr(vp->value),dstr(sum),dstr(amount));
+        rp->inputs[rp->numinputs++] = vp;
         if ( sum >= (amount + cp->txfee) && rp->numinputs > 1 )
         {
             rp->amount = amount;
