@@ -357,9 +357,9 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
-    mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,(void *)on_udprecv);
+    mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,on_udprecv);
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->bridgeport != 0 )
-        cp->bridgeudp = start_libuv_udpserver(4,cp->bridgeport,(void *)on_bridgerecv);
+        cp->bridgeudp = start_libuv_udpserver(4,cp->bridgeport,on_bridgerecv);
     if ( 0 )
     {
         uint32_t before,after;
