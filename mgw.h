@@ -993,8 +993,8 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
         printf("update_NXT_transactions.(%s) for (%s) cmd.(%s) type.%d\n",refNXTaddr,cp->name,cmd,txtype);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        if ( strcmp(refNXTaddr,"7117166754336896747") == 0 )
-            printf("(%s)\n",jsonstr);//, getchar();
+        //if ( strcmp(refNXTaddr,"7117166754336896747") == 0 )
+        //    printf("(%s)\n",jsonstr);//, getchar();
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
