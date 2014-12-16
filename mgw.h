@@ -863,8 +863,11 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
-        //if ( strcmp(txid,"9366367254950472318") == 0 )
-        //    fprintf(stderr,"AMAMAMAM start type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+        if ( strcmp(txid,"7381747177535994063") == 0 )
+        {
+            fprintf(stderr,"[%s] start type.%d subtype.%d txid.(%s)\n",cJSON_Print(item),(int)type,(int)subtype,txid);
+            //getchar();
+        }
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -979,16 +982,19 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
         printf("illegal refNXT.(%s)\n",refNXTaddr);
         return(0);
     }
-    sprintf(cmd,"%s=getAccountTransactions&account=%s&type=%d",_NXTSERVER,refNXTaddr,txtype);
+    sprintf(cmd,"%s=getAccountTransactions&account=%s",_NXTSERVER,refNXTaddr);
+    if ( txtype >= 0 )
+        sprintf(cmd+strlen(cmd),"&type=%d",txtype);
     coinid = conv_coinstr(cp->name);
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
     if ( coinid > 0 && np->timestamps[coinid] != 0 && coinid < 64 )
         sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
-    if ( Debuglevel > 2 )
-        printf("update_NXT_transactions.(%s) for (%s) cmd.(%s)\n",refNXTaddr,cp->name,cmd);
+    if ( Debuglevel > 1 )
+        printf("update_NXT_transactions.(%s) for (%s) cmd.(%s) type.%d\n",refNXTaddr,cp->name,cmd,txtype);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        //printf("(%s)\n",jsonstr);
+        if ( strcmp(refNXTaddr,"7117166754336896747") == 0 )
+            printf("(%s)\n",jsonstr);//, getchar();
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -1324,13 +1330,13 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
     ready_to_xferassets(&pendingtxid);
     if ( (btcdcp= get_coin_info("BTCD")) != 0 )
     {
-        update_NXT_transactions(specialNXTaddrs,1,btcdcp->srvNXTADDR,cp);
-        update_NXT_transactions(specialNXTaddrs,1,btcdcp->privateNXTADDR,cp);
+        update_NXT_transactions(specialNXTaddrs,-1,btcdcp->srvNXTADDR,cp);
+        update_NXT_transactions(specialNXTaddrs,-1,btcdcp->privateNXTADDR,cp);
     }
-    update_NXT_transactions(specialNXTaddrs,1,refNXTaddr,cp);
-    update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
+    update_NXT_transactions(specialNXTaddrs,-1,refNXTaddr,cp);
+    //update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
         for (i=0; i<numgateways; i++)
-        update_NXT_transactions(specialNXTaddrs,1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
+        update_NXT_transactions(specialNXTaddrs,-1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
     update_msig_info(0,1); // sync MULTISIG_DATA
     return(pendingtxid);
 }

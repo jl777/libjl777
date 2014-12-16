@@ -770,7 +770,7 @@ int32_t init_batchoutputs(struct coin_info *cp,struct rawtransaction *rp,uint64_
     return(1);
 }
 
-struct rawoutput_entry { char destaddr[MAX_COINADDR_LEN]; double amount; };
+struct rawoutput_entry { char destaddr[MAX_COINADDR_LEN]; uint64_t redeemtxid; double amount; };
 void sort_rawoutputs(struct rawtransaction *rp)
 {
     struct rawoutput_entry sortbuf[MAX_MULTISIG_OUTPUTS+MAX_MULTISIG_INPUTS];
@@ -782,6 +782,7 @@ void sort_rawoutputs(struct rawtransaction *rp)
         for (i=1; i<rp->numoutputs; i++)
         {
             sortbuf[i-1].amount = rp->destamounts[i];
+            sortbuf[i-1].redeemtxid = rp->redeems[i];
             strcpy(sortbuf[i-1].destaddr,rp->destaddrs[i]);
             //fprintf(stderr,"%d of %d: %s %.8f\n",i-1,rp->numoutputs,sortbuf[i-1].destaddr,dstr(sortbuf[i-1].amount));
         }
@@ -790,6 +791,7 @@ void sort_rawoutputs(struct rawtransaction *rp)
         for (i=0; i<rp->numoutputs-1; i++)
         {
             rp->destamounts[i+1] = sortbuf[i].amount;
+            rp->redeems[i+1] = sortbuf[i].redeemtxid;
             strcpy(rp->destaddrs[i+1],sortbuf[i].destaddr);
             //fprintf(stderr,"%d of %d: %s %.8f\n",i,rp->numoutputs-1,sortbuf[i].destaddr,dstr(sortbuf[i].amount));
         }
