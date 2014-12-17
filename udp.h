@@ -227,9 +227,14 @@ void on_bridgerecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const stru
 
 uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
 {
+    static uv_udp_t *fixed_udp;
     int32_t r;
     uv_udp_t *udp;
     struct sockaddr_in addr;
+#ifdef __APPLE__
+    if ( fixed_udp != 0 )
+        return(fixed_udp);
+#endif
     udp = malloc(sizeof(uv_udp_t));
     r = uv_udp_init(UV_loop,udp);
     if ( r != 0 )
@@ -268,6 +273,7 @@ uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf
             fprintf(stderr,"uv_udp_set_broadcast: %d %s\n",r,uv_err_name(r));
             return(0);
         }
+        fixed_udp = udp;
     }
     else
     {
