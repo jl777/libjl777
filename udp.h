@@ -644,8 +644,8 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->timestamps = calloc(args->numblocks,sizeof(*args->timestamps));
     if ( args->crcs == 0 )
         args->crcs = calloc(args->numblocks,sizeof(*args->crcs));
-    if ( args->ackcrcs == 0 )
-        args->ackcrcs = calloc(args->numblocks,sizeof(*args->ackcrcs));
+    if ( args->gotcrcs == 0 )
+        args->gotcrcs = calloc(args->numblocks,sizeof(*args->gotcrcs));
     if ( args->data == 0 )
         args->data = calloc(1,totallen);
     return(args);
@@ -658,10 +658,10 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     if ( data == 0 ) // sender
     {
         if ( fragi < args->numblocks )
-            args->ackcrcs[fragi] = datacrc;
+            args->gotcrcs[fragi] = datacrc;
         for (i=0; i<args->numblocks; i++)
         {
-            if ( args->crcs[i] == args->ackcrcs[i] )
+            if ( args->crcs[i] == args->gotcrcs[i] )
                 count++;
         }
         if ( Debuglevel > 2 )
@@ -693,8 +693,8 @@ void purge_transfer_args(struct transfer_args *args)
         free(args->data), args->data = 0;
     if ( args->crcs != 0 )
         free(args->crcs), args->crcs = 0;
-    if ( args->ackcrcs != 0 )
-        free(args->ackcrcs), args->ackcrcs = 0;
+    if ( args->gotcrcs != 0 )
+        free(args->gotcrcs), args->gotcrcs = 0;
     if ( args->timestamps != 0 )
         free(args->timestamps), args->timestamps = 0;
 }
@@ -774,8 +774,8 @@ int32_t Do_transfers(void *_args,int32_t argsize)
         for (i=0; i<args->numblocks; i++)
         {
             //if ( Debuglevel > 1 )
-           //     printf("crc[%d].(%u vs %u).%d ",i,args->ackcrcs[i],args->crcs[i],args->ackcrcs[i] != args->crcs[i]);
-            if ( args->ackcrcs[i] != args->crcs[i] )
+           //     printf("crc[%d].(%u vs %u).%d ",i,args->gotcrcs[i],args->crcs[i],args->gotcrcs[i] != args->crcs[i]);
+            if ( args->gotcrcs[i] != args->crcs[i] )
             {
                 if ( num < 1 && (now - args->timestamps[i]) > 1 )
                 {
@@ -809,7 +809,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
 
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
-    int32_t len;
+    int32_t i,len;
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2],datastr[MAX_JSON_FIELD*2];
     if ( blocksize == 0 )
@@ -822,14 +822,20 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     if ( args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
-        fragi = (fragi + 1) % numfrags;
-        if ( fragi != (numfrags-1) )
-            len = blocksize;
-        else len = (totallen - (blocksize * (numfrags-1)));
-        init_hexbytes_noT(datastr,args->data + fragi*blocksize,len);
-        return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,(fragi+1) % numfrags,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi+1],datastr,"mgw"));
+        for (i=1; i<numfrags; i++)
+        {
+            fragi = (fragi + i) % numfrags;
+            if ( args->crcs[fragi] != args->gotcrcs[fragi] )
+            {
+                if ( fragi != (numfrags-1) )
+                    len = blocksize;
+                else len = (totallen - (blocksize * (numfrags-1)));
+                init_hexbytes_noT(datastr,args->data + fragi*blocksize,len);
+                return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,(fragi+1) % numfrags,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi+1],datastr,"mgw"));
+            }
+        }
     }
-    else return(clonestr(cmdstr));
+    return(clonestr(cmdstr));
 }
 
 char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint8_t *data,int32_t totallen,int32_t timeout,char *handler)

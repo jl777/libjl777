@@ -328,7 +328,7 @@ struct transfer_args
     char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64];
     uint8_t *data;
     uint32_t totallen,blocksize,numblocks,completed,timeout;
-    uint32_t *timestamps,*crcs,*ackcrcs,totalcrc;
+    uint32_t *timestamps,*crcs,*gotcrcs,totalcrc;
 };
 
 struct coin_txidind
