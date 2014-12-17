@@ -271,13 +271,18 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     char ipaddr[64];
     struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
+    struct sockaddr_in addr;
     struct pserver_info *pserver;
     int32_t r,supernet_port,createdflag;
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&wr->addr);
         pserver = get_pserver(&createdflag,ipaddr,0,0);
         if ( pserver->udps[wr->isbridge] == 0 )
-            pserver->udps[wr->isbridge] = open_udp(0,0);
+        {
+            uv_ip4_addr("0.0.0.0",0,&addr);
+            if ( (pserver->udps[wr->isbridge]= open_udp((struct sockaddr *)&addr,0)) == 0 )
+                return(-1);
+        }
         if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
         {
             //printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);

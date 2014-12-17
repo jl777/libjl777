@@ -1986,8 +1986,8 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
         {
             switch ( selector )
             {
-                case 0:  p2p_publishpacket(pserver,0); break;
-                case 1:  send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0); break;
+                case 1:  p2p_publishpacket(pserver,0); break;
+                case 0:  send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0); break;
                 case 2:
                     retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,0,zeroes,totallen,timeout,"null");
                     if ( retstr != 0 )
