@@ -838,7 +838,6 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize=0;
     struct transfer_args *args;
     int64_t len;
-    char _name[128];
     int32_t i,remains,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
     {
@@ -862,7 +861,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        start_task(Do_transfers,"transfer",3000000,(void *)&args,sizeof(args));
+        start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
     } else return(clonestr("{\"error\":\"start_transfer: cant start_transfer\"}"));
 }
