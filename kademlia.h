@@ -268,7 +268,7 @@ void send_to_ipaddr(uint16_t bridgeport,int32_t tokenizeflag,char *ipaddr,char *
         isbridge = 0;
     }
     else
-    { 
+    {
         port = bridgeport;
         isbridge = 1;
     }
