@@ -838,6 +838,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize=0;
     struct transfer_args *args;
     int64_t len;
+    char _name[128];
     int32_t i,remains,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
     {
