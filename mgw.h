@@ -2013,7 +2013,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
     array = cJSON_GetObjectItem(MGWconf,"whitelist");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
-        for (iter=0; iter<3; iter++)
+        for (iter=0; iter<2; iter++)
         while ( m < n-1 || m == 0 )
         {
             for (i=m=0; i<n; i++)
