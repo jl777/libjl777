@@ -1994,7 +1994,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
                         free(retstr);
                     break;
             }
-            usleep(100000);
+            sleep(1);
             if ( pserver->lastcontact > start )
                 return(1);
             fprintf(stderr,"%u ",pserver->lastcontact);

@@ -193,17 +193,16 @@ void SuperNET_idler(uv_idle_t *handle)
     void *up;
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
-    int32_t r,flag;
+    int32_t flag;
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
     while ( (up= queue_dequeue(&UDP_Q)) != 0 )
         process_udpentry(up);
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 10) )
+    if ( millis > (lastattempt + 5) )
     {
         lastattempt = millis;
-        r = ((rand() >> 8) % 2);
         while ( (wr= queue_dequeue(&sendQ)) != 0 )
         {
             if ( wr == firstwr )
