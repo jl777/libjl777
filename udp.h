@@ -734,15 +734,18 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         else
         {
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
-            memcpy(args->data + fragi*args->blocksize,data,datalen);
-            if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
+            if ( args->gotcrcs[fragi] != args->crcs[fragi] )
             {
-                checkcrc = _crc32(0,args->data,args->totallen);
-                printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,dest,checkcrc,totalcrc);
-                if ( checkcrc == args->totalcrc )
-                    handler_gotfile(args);
-                args->completed = 1;
-                //purge_transfer_args(args);
+                memcpy(args->data + fragi*args->blocksize,data,datalen);
+                if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
+                {
+                    checkcrc = _crc32(0,args->data,args->totallen);
+                    printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,dest,checkcrc,totalcrc);
+                    if ( checkcrc == args->totalcrc )
+                        handler_gotfile(args);
+                    args->completed = 1;
+                    //purge_transfer_args(args);
+                }
             }
         } args = 0;
         free(data);
@@ -777,7 +780,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
            //     printf("crc[%d].(%u vs %u).%d ",i,args->gotcrcs[i],args->crcs[i],args->gotcrcs[i] != args->crcs[i]);
             if ( args->gotcrcs[i] != args->crcs[i] )
             {
-                if ( num < 1 && (now - args->timestamps[i]) > 1 )
+                if ( num < 1 && (now - args->timestamps[i]) > 3 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
