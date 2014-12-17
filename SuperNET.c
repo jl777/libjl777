@@ -359,7 +359,7 @@ int main(int argc,const char *argv[])
     //if ( upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
     //    printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
 #endif
-    
+    printf("saving retval.%x (%d usessl.%d)\n",retval,retval>>1,retval&1);
     if ( (fp= fopen("horrible.hack","wb")) != 0 )
     {
         fwrite(&retval,1,sizeof(retval),fp);

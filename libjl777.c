@@ -725,6 +725,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
     //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
     printf("finished addcontact SUPERNET_PORT.%d USESSL.%d\n",SUPERNET_PORT,USESSL);
-    return((SUPERNET_PORT << 1) | USESSL);
+    return((SUPERNET_PORT << 1) | (USESSL&1));
 }
 
