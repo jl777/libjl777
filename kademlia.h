@@ -254,12 +254,10 @@ void send_to_ipaddr(uint16_t bridgeport,int32_t tokenizeflag,char *ipaddr,char *
     struct pserver_info *pserver;
     struct sockaddr destaddr;
     struct nodestats *stats;
-    struct coin_info *cp = get_coin_info("BTCD");
-    uv_udp_t *udp;
-    int32_t port;
+    //struct coin_info *cp = get_coin_info("BTCD");
+    int32_t port,isbridge;
     if ( bridgeport == 0 )
     {
-        udp = Global_mp->udp;
         pserver = get_pserver(0,ipaddr,0,0);
         stats = get_nodestats(pserver->nxt64bits);
         if ( stats != 0 )
@@ -267,18 +265,19 @@ void send_to_ipaddr(uint16_t bridgeport,int32_t tokenizeflag,char *ipaddr,char *
         else port = 0;
         if ( port == 0 )
             port = SUPERNET_PORT;
+        isbridge = 0;
     }
     else
     {
         port = bridgeport;
-        udp = cp->bridgeudp;
+        isbridge = 1;
     }
     uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)&destaddr);
     if ( tokenizeflag != 0 )
         construct_tokenized_req(_tokbuf,jsonstr,NXTACCTSECRET);
     else safecopy(_tokbuf,jsonstr,sizeof(_tokbuf));
-    fprintf(stderr,"send_to_ipaddr.(%s)\n",_tokbuf);
-    portable_udpwrite(0,(struct sockaddr *)&destaddr,udp,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
+    fprintf(stderr,"send_to_ipaddr.(%s) isbridge.%d -> %s:%d\n",_tokbuf,isbridge,ipaddr,port);
+    portable_udpwrite(0,(struct sockaddr *)&destaddr,isbridge,_tokbuf,strlen(_tokbuf)+1,ALLOCWR_ALLOCFREE);
 }
 
 int32_t filter_duplicate_kadcmd(char *cmdstr,char *key,char *datastr,uint64_t nxt64bits)

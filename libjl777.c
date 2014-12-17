@@ -193,7 +193,7 @@ void SuperNET_idler(uv_idle_t *handle)
     void *up;
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
-    int32_t r;
+    int32_t r,flag;
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
@@ -208,11 +208,12 @@ void SuperNET_idler(uv_idle_t *handle)
         {
             if ( wr == firstwr )
             {
-                queue_enqueue(&sendQ,wr);
-                //printf("reached firstwr.%p\n",firstwr);
+                //queue_enqueue(&sendQ,wr);
+                process_sendQ_item(wr);
+                printf("SuperNET_idler: reached firstwr.%p\n",firstwr);
                 break;
             }
-            if ( (wr->queuetime % 2) == r )
+            if ( wr->queuetime > lastattempt )
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this
@@ -222,30 +223,39 @@ void SuperNET_idler(uv_idle_t *handle)
                 firstwr = wr;
             queue_enqueue(&sendQ,wr);
         }
-        if ( (qp= queue_dequeue(&udp_JSON)) != 0 )
+        if ( queue_size(&sendQ) != 0 )
+            printf("sendQ size.%d\n",queue_size(&sendQ));
+        flag = 1;
+        while ( flag != 0 )
         {
-            //printf("process qp argjson.%p\n",qp->argjson);
-            char previpaddr[64];
-            expand_ipbits(previpaddr,qp->previpbits);
-            jsonstr = SuperNET_json_commands(Global_mp,previpaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
-            //printf("free qp (%s) argjson.%p\n",jsonstr,qp->argjson);
-            if ( jsonstr != 0 )
-                free(jsonstr);
-            free(qp->decoded);
-            free_json(qp->argjson);
-            free(qp);
-        }
-        else if ( (ptrs= queue_dequeue(&JSON_Q)) != 0 )
-        {
-            char *call_SuperNET_JSON(char *JSONstr);
-            jsonstr = ptrs[0];
-            if ( Debuglevel > 2 )
-                printf("dequeue JSON_Q.(%s)\n",jsonstr);
-            if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
-                retstr = clonestr("{\"result\":null}");
-            ptrs[1] = retstr;
-            if ( ptrs[2] != 0 )
-                queue_GUIpoll(ptrs);
+            flag = 0;
+            if ( (qp= queue_dequeue(&udp_JSON)) != 0 )
+            {
+                //printf("process qp argjson.%p\n",qp->argjson);
+                char previpaddr[64];
+                expand_ipbits(previpaddr,qp->previpbits);
+                jsonstr = SuperNET_json_commands(Global_mp,previpaddr,qp->argjson,qp->tokenized_np->H.U.NXTaddr,qp->valid,qp->decoded);
+                //printf("free qp (%s) argjson.%p\n",jsonstr,qp->argjson);
+                if ( jsonstr != 0 )
+                    free(jsonstr);
+                free(qp->decoded);
+                free_json(qp->argjson);
+                free(qp);
+                flag++;
+            }
+            else if ( (ptrs= queue_dequeue(&JSON_Q)) != 0 )
+            {
+                char *call_SuperNET_JSON(char *JSONstr);
+                jsonstr = ptrs[0];
+                if ( Debuglevel > 2 )
+                    printf("dequeue JSON_Q.(%s)\n",jsonstr);
+                if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
+                    retstr = clonestr("{\"result\":null}");
+                ptrs[1] = retstr;
+                if ( ptrs[2] != 0 )
+                    queue_GUIpoll(ptrs);
+                flag++;
+            }
         }
         if ( process_storageQ() != 0 )
         {
@@ -710,12 +720,12 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         exit(-1);
     }
     Historical_done = 1;
+    Finished_init = 1;
     if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
-        establish_connections(cp->myipaddr,cp->srvNXTACCTSECRET);
+        establish_connections(cp->myipaddr,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
     //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
     //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
-    Finished_init = 1;
     printf("finished addcontact\n");
-    return(0);
+    return((SUPERNET_PORT << 1) | USESSL);
 }
 

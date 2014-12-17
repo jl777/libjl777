@@ -5,8 +5,12 @@
 //  Copyright (c) 2014 jl777. MIT License.
 //
 //   follow minconfirms for NXT
-// - only load "active":[]
-//   debug cases -2 and -3
+// marker/etc in .conf
+// return skipped in gotxfer
+// udp transmit serialize
+// support 'g'
+// debug bridge
+// debug start_xfer (mem problems)
 
 #ifndef mgw_h
 #define mgw_h
@@ -1966,18 +1970,30 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     return(retstr);
 }
 
-int32_t establish_connection(char *ipaddr,char *NXTACCTSECRET,uint32_t timeout)
+int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint32_t timeout,int32_t selector)
 {
-    uint32_t i,start;
+    uint32_t i,start,totallen = 65536;
     struct pserver_info *pserver;
+    uint8_t *zeroes;
+    char *retstr;
     pserver = get_pserver(0,ipaddr,0,0);
     start = (uint32_t)time(NULL);
     timeout += start;
+    zeroes = calloc(1,totallen);
     while ( time(NULL) < timeout )
     {
         for (i=0; i<7; i++)
         {
-            send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0);
+            switch ( selector )
+            {
+                case 0:  p2p_publishpacket(pserver,0); break;
+                case 1:  send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0); break;
+                case 2:
+                    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,0,zeroes,totallen,timeout,"null");
+                    if ( retstr != 0 )
+                        free(retstr);
+                    break;
+            }
             sleep(1);
             if ( pserver->lastcontact > start )
                 return(1);
@@ -1985,24 +2001,26 @@ int32_t establish_connection(char *ipaddr,char *NXTACCTSECRET,uint32_t timeout)
         }
         fprintf(stderr,"| vs start.%u\n",start);
     }
+    free(zeroes);
     return(0);
 }
 
-void establish_connections(char *myipaddr,char *NXTACCTSECRET)
+void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
 {
     char ipaddr[64];
-    int32_t i,n,m = 0;
+    int32_t iter,i,n,m = 0;
     cJSON *array;
     array = cJSON_GetObjectItem(MGWconf,"whitelist");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
+        for (iter=0; iter<3; iter++)
         while ( m < n-1 )
         {
             for (i=m=0; i<n; i++)
             {
                 copy_cJSON(ipaddr,cJSON_GetArrayItem(array,i));
                 if ( strcmp(ipaddr,myipaddr) != 0 )
-                    m += establish_connection(ipaddr,NXTACCTSECRET,15);
+                    m += establish_connection(ipaddr,NXTADDR,NXTACCTSECRET,15,iter);
             }
         }
     }

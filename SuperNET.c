@@ -354,7 +354,7 @@ int main(int argc,const char *argv[])
 #ifndef __linux__
     if ( upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
-    sprintf(portstr,"%d",SUPERNET_PORT+1);
+    //sprintf(portstr,"%d",SUPERNET_PORT+1);
     //oldport = newport = portstr;
     //if ( upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
     //    printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
@@ -365,7 +365,7 @@ int main(int argc,const char *argv[])
         fwrite(&retval,1,sizeof(retval),fp);
         fclose(fp);
     }
-    if ( retval == 0 && ENABLE_GUIPOLL != 0 )
+    if ( retval >= 0 && ENABLE_GUIPOLL != 0 )
     {
         if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
