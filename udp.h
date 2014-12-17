@@ -407,7 +407,7 @@ void send_packet(int32_t queueflag,struct nodestats *peerstats,struct sockaddr *
                 port = SUPERNET_PORT;
                 uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
             }
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
             portable_udpwrite(queueflag,destaddr,0,finalbuf,len,ALLOCWR_ALLOCFREE);
         }
