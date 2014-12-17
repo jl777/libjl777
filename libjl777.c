@@ -718,7 +718,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     {
         fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
         exit(-1);
-    }
+    } 
     Historical_done = 1;
     Finished_init = 1;
     if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )

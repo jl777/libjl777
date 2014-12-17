@@ -322,7 +322,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
 
 void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
 {
-    void *srv;
+    void *srv = 0;
     const struct sockaddr *ptr;
     struct sockaddr_in addr;
     struct sockaddr_in6 addr6;
@@ -339,7 +339,12 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void (*handler)(uv_
     else { printf("illegal ip4_or_ip6 %d\n",ip4_or_ip6); return(0); }
     srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,handler);
     if ( srv != 0 )
-        printf("UDP.%p server started on port %d\n",srv,port);
+    {
+        char ipaddr[64];
+        uint16_t ip_port;
+        ip_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)ptr);
+        printf("UDP.%p server started on port %d <-> (%s:%d)\n",srv,port,ipaddr,ip_port);
+    }
     else printf("couldnt open_udp on port.%d\n",port);
     Servers_started |= 1;
 
