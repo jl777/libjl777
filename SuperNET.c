@@ -352,7 +352,7 @@ int main(int argc,const char *argv[])
     sprintf(portstr,"%d",SUPERNET_PORT);
     oldport = newport = portstr;
 #ifndef __linux__
-    if ( upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
+    if ( 1 && upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
     //sprintf(portstr,"%d",SUPERNET_PORT+1);
     //oldport = newport = portstr;

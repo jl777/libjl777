@@ -262,6 +262,12 @@ uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf
             fprintf(stderr, "uv_udp_recv_start: %d %s\n",r,uv_err_name(r));
             return(0);
         }
+        r = uv_udp_set_broadcast(udp,1);
+        if ( r != 0 )
+        {
+            fprintf(stderr,"uv_udp_set_broadcast: %d %s\n",r,uv_err_name(r));
+            return(0);
+        }
     }
     else
     {
