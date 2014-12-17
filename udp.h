@@ -780,7 +780,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
            //     printf("crc[%d].(%u vs %u).%d ",i,args->gotcrcs[i],args->crcs[i],args->gotcrcs[i] != args->crcs[i]);
             if ( args->gotcrcs[i] != args->crcs[i] )
             {
-                if ( num < 1 && (now - args->timestamps[i]) > 3 )
+                if ( num < 128 && (now - args->timestamps[i]) > 3 )
                 {
                     init_hexbytes_noT(datastr,args->data + i*args->blocksize,(remains < args->blocksize) ? remains : args->blocksize);
                     retstr = sendfrag(0,cp->srvNXTADDR,cp->srvNXTADDR,cp->srvNXTACCTSECRET,args->dest,args->name,i,args->numblocks,args->totallen,args->blocksize,args->totalcrc,args->crcs[i],datastr,args->handler);
