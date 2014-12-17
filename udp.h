@@ -225,10 +225,11 @@ void on_bridgerecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const stru
     _on_udprecv(0,1,udp,nread,rcvbuf,addr,flags);
 }
 
-uv_udp_t *open_udp(struct sockaddr *addr,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
+uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf_t *,const struct sockaddr *,unsigned int))
 {
     int32_t r;
     uv_udp_t *udp;
+    struct sockaddr_in addr;
     udp = malloc(sizeof(uv_udp_t));
     r = uv_udp_init(UV_loop,udp);
     if ( r != 0 )
@@ -236,17 +237,25 @@ uv_udp_t *open_udp(struct sockaddr *addr,void (*handler)(uv_udp_t *,ssize_t,cons
         fprintf(stderr, "uv_udp_init: %d %s\n",r,uv_err_name(r));
         return(0);
     }
-    if ( addr != 0 )
+    /*uv_udp_init(loop, &recv_socket);
+    struct sockaddr_in recv_addr = uv_ip4_addr("0.0.0.0", 68);
+    uv_udp_bind(&recv_socket, recv_addr, 0);
+    uv_udp_recv_start(&recv_socket, alloc_buffer, on_read);
+    
+    uv_udp_init(loop, &send_socket);
+    uv_udp_bind(&send_socket, uv_ip4_addr("0.0.0.0", 0), 0);
+    uv_udp_set_broadcast(&send_socket, 1);*/
+    
+    
+    if ( handler != 0 )
     {
-        r = uv_udp_bind(udp,addr,0);
+        uv_ip4_addr("0.0.0.0",port,&addr);
+        r = uv_udp_bind(udp,(struct sockaddr *)&addr,0);
         if ( r != 0 )
         {
             fprintf(stderr,"uv_udp_bind: %d %s\n",r,uv_err_name(r));
             return(0);
         }
-    }
-    if ( handler != 0 )
-    {
         r = uv_udp_recv_start(udp,portable_alloc,handler);
         if ( r != 0 )
         {
@@ -254,8 +263,15 @@ uv_udp_t *open_udp(struct sockaddr *addr,void (*handler)(uv_udp_t *,ssize_t,cons
             return(0);
         }
     }
-   // else
+    else
     {
+        uv_ip4_addr("0.0.0.0",0,&addr);
+        r = uv_udp_bind(udp,(struct sockaddr *)&addr,0);
+        if ( r != 0 )
+        {
+            fprintf(stderr,"uv_udp_bind: %d %s\n",r,uv_err_name(r));
+            return(0);
+        }
         r = uv_udp_set_broadcast(udp,1);
         if ( r != 0 )
         {
@@ -271,7 +287,6 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     char ipaddr[64];
     struct coin_info *cp = get_coin_info("BTCD");
     struct nodestats *stats;
-    struct sockaddr_in addr;
     struct pserver_info *pserver;
     int32_t r,supernet_port,createdflag;
     {
@@ -279,8 +294,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         pserver = get_pserver(&createdflag,ipaddr,0,0);
         if ( pserver->udps[wr->isbridge] == 0 )
         {
-            uv_ip4_addr("0.0.0.0",0,&addr);
-            if ( (pserver->udps[wr->isbridge]= open_udp((struct sockaddr *)&addr,0)) == 0 )
+            if ( (pserver->udps[wr->isbridge]= open_udp(supernet_port,0)) == 0 )
                 return(-1);
         }
         if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
@@ -342,7 +356,7 @@ void *start_libuv_udpserver(int32_t ip4_or_ip6,uint16_t port,void (*handler)(uv_
         ptr = (const struct sockaddr *)&addr6;
     }
     else { printf("illegal ip4_or_ip6 %d\n",ip4_or_ip6); return(0); }
-    srv = open_udp((port > 0) ? (struct sockaddr *)ptr : 0,handler);
+    srv = open_udp(port,handler);
     if ( srv != 0 )
     {
         char ipaddr[64];
