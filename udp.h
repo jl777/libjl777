@@ -247,7 +247,7 @@ uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf
     uv_udp_set_broadcast(&send_socket, 1);*/
     
     
-    if ( handler != 0 )
+    if ( port != 0 )
     {
         uv_ip4_addr("0.0.0.0",port,&addr);
         r = uv_udp_bind(udp,(struct sockaddr *)&addr,0);
@@ -272,6 +272,12 @@ uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf
             fprintf(stderr,"uv_udp_bind: %d %s\n",r,uv_err_name(r));
             return(0);
         }
+        r = uv_udp_recv_start(udp,portable_alloc,handler);
+        if ( r != 0 )
+        {
+            fprintf(stderr, "uv_udp_recv_start: %d %s\n",r,uv_err_name(r));
+            return(0);
+        }
         r = uv_udp_set_broadcast(udp,1);
         if ( r != 0 )
         {
@@ -294,7 +300,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         pserver = get_pserver(&createdflag,ipaddr,0,0);
         if ( pserver->udps[wr->isbridge] == 0 )
         {
-            if ( (pserver->udps[wr->isbridge]= open_udp(supernet_port,0)) == 0 )
+            if ( (pserver->udps[wr->isbridge]= open_udp(0,on_udprecv)) == 0 )
                 return(-1);
         }
         if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
