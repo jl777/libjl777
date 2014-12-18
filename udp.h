@@ -827,6 +827,7 @@ break;
 
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
+    uint32_t now = (uint32_t)time(NULL);
     int32_t i,j,len;
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2],datastr[MAX_JSON_FIELD*2];
@@ -844,7 +845,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         {
             j = (fragi + i) % numfrags;
             printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
-            if ( args->crcs[j] != args->gotcrcs[j] )
+            if ( args->crcs[j] != args->gotcrcs[j] && (now - args->timestamps[i]) > 3 )
             {
                 if ( j != (numfrags-1) )
                     len = blocksize;
@@ -889,7 +890,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             remains -= blocksize;
         }
         init_hexbytes_noT(datastr,args->data,blocksize<totallen?blocksize:totallen);
-        for (fragi=0; fragi<args->numblocks; fragi+=args->numblocks>>0)
+        for (fragi=0; fragi<args->numblocks; fragi+=args->numblocks>>4)
         {
             args->timestamps[fragi] = (uint32_t)time(NULL);
             if ( fragi != (args->numblocks-1) )

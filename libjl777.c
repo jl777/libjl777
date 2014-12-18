@@ -200,7 +200,7 @@ void SuperNET_idler(uv_idle_t *handle)
 #ifndef TIMESCRAMBLE
     if ( (wr= queue_dequeue(&sendQ)) != 0 )
     {
-        printf("sendQ size.%d\n",queue_size(&sendQ));
+        //printf("sendQ size.%d\n",queue_size(&sendQ));
         process_sendQ_item(wr);
     }
     if ( (up= queue_dequeue(&UDP_Q)) != 0 )
