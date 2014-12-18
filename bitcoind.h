@@ -1117,7 +1117,6 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
             }
         }
     }
-    printf("establish array.%p n.%d m.%d\n",array,n,m);
 }
 
 void *Coinloop(void *ptr)
