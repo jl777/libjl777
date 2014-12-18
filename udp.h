@@ -349,11 +349,11 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     wr->addr = *addr;
     wr->isbridge = isbridge;
     if ( queueflag != 0 )
-    {
+    //{
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
         queue_enqueue(&sendQ,wr);
-    }
-    else r = process_sendQ_item(wr);
+    //}
+   // else r = process_sendQ_item(wr);
     return(r);
 }
 
