@@ -753,7 +753,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         } args = 0;
         free(data);
         data = 0;
-        for (i=count=0; i<args->numfrags; i++)
+        for (i=count=0; i<args->numblocks; i++)
             if ( args->gotcrcs[i] == args->crcs[i] )
                 count++;
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
