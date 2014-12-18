@@ -723,6 +723,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     datalen = decode_hex(data,datalen,datastr);
     datacrc = _crc32(0,data,datalen);
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"handler\":\"%s\"",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc,handler);
+    fprintf(stderr,"SENDFRAG.(%s)\n",cmdstr);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
     {
         cmd = "sendfrag";
@@ -828,7 +829,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
     sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
-    printf("GOTFRAG.(%s)\n",cmdstr);
+    fprintf(stderr,"GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     if ( count < args->numblocks && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
