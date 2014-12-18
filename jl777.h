@@ -214,7 +214,7 @@ typedef struct queue
 #ifdef oldqueue
 	void **buffer;
 #else
-	void *buffer[16];
+	void *buffer[65536];
 #endif
     int32_t capacity,size,in,out,initflag;
 	portable_mutex_t mutex;

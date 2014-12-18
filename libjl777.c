@@ -207,7 +207,7 @@ void SuperNET_idler(uv_idle_t *handle)
         process_udpentry(up);
 #endif
     millis = ((double)uv_hrtime() / 1000000);
-    //if ( millis > (lastattempt + 5) )
+    if ( millis > (lastattempt + 5) )
     {
         lastattempt = millis;
 #ifdef TIMESCRAMBLE
@@ -292,7 +292,7 @@ void SuperNET_idler(uv_idle_t *handle)
         counter++;
         lastclock = millis;
     }
-    usleep(APISLEEP * 1000);
+    //usleep(APISLEEP * 1000);
 }
 
 void run_UVloop(void *arg)
