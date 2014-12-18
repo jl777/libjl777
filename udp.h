@@ -687,6 +687,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             if ( checkcrc != args->totalcrc )
                 printf("totalcrc ERROR %u != %u\n",checkcrc,args->totalcrc);
         }
+        fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
     return(count);
 }
@@ -708,7 +709,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
 {
     char cmdstr[4096],_tokbuf[4096],*cmd;
     struct pserver_info *pserver;
-    struct transfer_args *args;
+    struct transfer_args *args = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     int32_t i,len,count=0,datalen = 0;
     unsigned char *data = 0;
@@ -747,6 +748,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
                 fprintf(stderr,"copied %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
                 if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
                 {
+                    fprintf(stderr,"completed\n");
                     checkcrc = _crc32(0,args->data,args->totallen);
                     printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,dest,checkcrc,totalcrc);
                     if ( checkcrc == args->totalcrc )
@@ -755,12 +757,12 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
                     //purge_transfer_args(args);
                 }
             }
-        } args = 0;
+            for (i=count=0; i<args->numblocks; i++)
+                if ( args->gotcrcs[i] != 0 )
+                    count++;
+        }
         free(data);
         data = 0;
-        for (i=count=0; i<args->numblocks; i++)
-            if ( args->gotcrcs[i] != 0 )
-                count++;
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
     }
     fprintf(stderr,"finish sendfrag\n");
