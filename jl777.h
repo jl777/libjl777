@@ -211,7 +211,11 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 
 typedef struct queue
 {
+#ifdef oldqueue
 	void **buffer;
+#else
+	void *buffer[16];
+#endif
     int32_t capacity,size,in,out,initflag;
 	portable_mutex_t mutex;
 	//pthread_cond_t cond_full;

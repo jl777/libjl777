@@ -31,7 +31,7 @@ struct hashpacket
 
 extern int32_t Historical_done;
 
-
+#ifdef oldqueue
 void queue_enqueue(queue_t *queue,void *value)
 {
     if ( queue->initflag == 0 )
@@ -58,7 +58,7 @@ void queue_enqueue(queue_t *queue,void *value)
     printf("added to Q, size.%d in.%d | %p %p %p\n",queue->size,queue->in,queue->buffer[0],queue->buffer[1],queue->buffer[2]);
     else printf("added to Q, size.%d in %d capacity %d\n",queue->size,queue->in,queue->capacity);
 	*/
-    portable_mutex_unlock(&(queue->mutex));
+    portable_mutex_unlock(&queue->mutex);
 	//pthread_cond_broadcast(&(queue->cond_empty));
 }
 
@@ -70,7 +70,7 @@ void *queue_dequeue(queue_t *queue)
         portable_mutex_init(&queue->mutex);
         queue->initflag = 1;
     }
-    portable_mutex_lock(&(queue->mutex));
+    portable_mutex_lock(&queue->mutex);
 	//while ( queue->size == 0 )
 	//	pthread_cond_wait(&(queue->cond_empty), &(queue->mutex));
     if ( queue->size > 0 )
@@ -83,7 +83,7 @@ void *queue_dequeue(queue_t *queue)
         queue->out %= queue->capacity;
         //printf("new size.%d out.%d\n",queue->size,queue->out);
     }
-	portable_mutex_unlock(&(queue->mutex));
+	portable_mutex_unlock(&queue->mutex);
 	//pthread_cond_broadcast(&(queue->cond_full));
 	return value;
 }
@@ -97,6 +97,69 @@ int32_t queue_size(queue_t *queue)
 	portable_mutex_unlock(&(queue->mutex));
 	return size;
 }
+#else
+
+void lock_queue(queue_t *queue)
+{
+    if ( queue->initflag == 0 )
+    {
+        portable_mutex_init(&queue->mutex);
+        queue->initflag = 1;
+    }
+	portable_mutex_lock(&queue->mutex);
+}
+
+void queue_enqueue(queue_t *queue,void *value)
+{
+    int32_t capacity = (int)(sizeof(queue->buffer)/sizeof(*queue->buffer));
+    printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,capacity);
+    if ( value == 0 )
+    {
+        printf("FATAL type error: queueing empty value\n");
+        return;
+    }
+    lock_queue(queue);
+    while ( ((queue->in+1) % capacity) == queue->out )
+    {
+        portable_mutex_unlock(&queue->mutex);
+        printf("queue %p waiting in.%d vs out.%d\n",queue,queue->in,queue->out);
+        sleep(1);
+        lock_queue(queue);
+    }
+	queue->buffer[queue->in++] = value;
+	queue->size++;
+    queue->in %= capacity;
+    portable_mutex_unlock(&queue->mutex);
+}
+
+void *queue_dequeue(queue_t *queue)
+{
+    void *value = 0;
+    lock_queue(queue);
+    if ( queue->size > 0 )
+    {
+        value = queue->buffer[queue->out];
+        printf("dequeue %lx from %d, size.%d capacity.%d\n",(long)value,queue->out,queue->size,queue->capacity);
+        queue->buffer[queue->out++] = 0;
+        queue->size--;
+        queue->out %= queue->capacity;
+        if ( value == 0 )
+            printf("FATAL type error: empty value in queue?\n");
+    }
+	portable_mutex_unlock(&queue->mutex);
+	return(value);
+}
+
+int32_t queue_size(queue_t *queue)
+{
+    int32_t size = 0;
+    lock_queue(queue);
+    size = queue->size;
+	portable_mutex_unlock(&queue->mutex);
+	return size;
+}
+#endif
+
 
 int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*action)(),queue_t *destq,queue_t *errorq)
 {
