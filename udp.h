@@ -739,7 +739,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         else
         {
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
-            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p\n",cmdstr,datalen,args->data);
+            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %p\n",cmdstr,datalen,args->data,args->gotcrcs,args->crcs);
             if ( args->gotcrcs[fragi] != args->crcs[fragi] )
             {
                 fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
