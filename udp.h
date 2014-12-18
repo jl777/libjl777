@@ -827,7 +827,7 @@ break;
 
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
-    int32_t i,len;
+    int32_t i,j,len;
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2],datastr[MAX_JSON_FIELD*2];
     if ( blocksize == 0 )
@@ -842,16 +842,16 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     {
         for (i=1; i<numfrags; i++)
         {
-            fragi = (fragi + i) % numfrags;
-            printf("i.%d fragi.%d crc.%u vs got.%u\n",i,fragi,args->crcs[fragi],args->gotcrcs[fragi]);
-            if ( args->crcs[fragi] != args->gotcrcs[fragi] )
+            j = (fragi + i) % numfrags;
+            printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
+            if ( args->crcs[j] != args->gotcrcs[j] )
             {
-                if ( fragi != (numfrags-1) )
+                if ( j != (numfrags-1) )
                     len = blocksize;
                 else len = (totallen - (blocksize * (numfrags-1)));
                 init_hexbytes_noT(datastr,args->data + fragi*blocksize,len);
-                args->timestamps[fragi] = (uint32_t)time(NULL);
-                return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,fragi,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi],datastr,"mgw"));
+                args->timestamps[j] = (uint32_t)time(NULL);
+                return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,j,numfrags,totallen,blocksize,totalcrc,args->crcs[j],datastr,"mgw"));
             }
         }
     }
