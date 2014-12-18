@@ -1593,7 +1593,7 @@ char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 {
     char name[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
     uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize;
-    printf("sendfrag_func(%s)\n",origargstr);
+    //printf("sendfrag_func(%s)\n",origargstr);
     copy_cJSON(name,objs[1]);
     fragi = (uint32_t)get_API_int(objs[2],0);
     numfrags = (uint32_t)get_API_int(objs[3],0);
@@ -1614,7 +1614,7 @@ char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 {
     char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
     uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize,count;
-    printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
+    //printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(name,objs[1]);

@@ -453,7 +453,8 @@ void send_packet(int32_t queueflag,struct nodestats *peerstats,struct sockaddr *
     {
         expand_ipbits(ipaddr,peerstats->ipbits);
         pserver = get_pserver(0,ipaddr,0,0);
-        printf("send packet to (%s) %llu len.%d\n",ipaddr,(long long)peerstats->nxt64bits,len);
+        if ( Debuglevel > 1 )
+            printf("send packet to (%s) %llu len.%d\n",ipaddr,(long long)peerstats->nxt64bits,len);
         call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
     }
     else
@@ -629,6 +630,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     args = MTadd_hashtable(&createdflag,Global_mp->pending_xfers,hashstr);
     if ( createdflag != 0 )
     {
+        printf("NEW XFERARGS\n"), getchar();
         safecopy(args->previpaddr,previpaddr,sizeof(args->previpaddr));
         safecopy(args->sender,sender,sizeof(args->sender));
         safecopy(args->dest,dest,sizeof(args->dest));
@@ -789,6 +791,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
                     if ( retstr != 0 )
                         free(retstr);
                     args->timestamps[i] = now;
+break;
                 }
             } else finished++;
             remains -= args->blocksize;
@@ -821,7 +824,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
     sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
-    printf("GOTFRAG.(%s)\n",cmdstr);
+    //printf("GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     if ( args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
@@ -835,7 +838,8 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
                     len = blocksize;
                 else len = (totallen - (blocksize * (numfrags-1)));
                 init_hexbytes_noT(datastr,args->data + fragi*blocksize,len);
-                return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,(fragi+1) % numfrags,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi+1],datastr,"mgw"));
+                args->timestamps[fragi] = (uint32_t)time(NULL);
+                return(sendfrag(0,NXTaddr,NXTaddr,NXTACCTSECRET,previpaddr,name,fragi,numfrags,totallen,blocksize,totalcrc,args->crcs[fragi],datastr,"mgw"));
             }
         }
     }
