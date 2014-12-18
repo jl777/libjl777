@@ -641,7 +641,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->numblocks = (totallen / blocksize);
         if ( (totallen % blocksize) != 0 )
             args->numblocks++;
-        printf("NEW XFERARGS numblocks.%d blocksize.%d totallen.%d\n",args->numblocks,blocksize,totallen);
+        printf("NEW XFERARGS numblocks.%d blocksize.%d totallen.%d (%p %p %p %p)\n",args->numblocks,blocksize,totallen,args->timestamps,args->crcs,args->gotcrcs,args->data);
     }
     if ( args->timestamps == 0 )
         args->timestamps = calloc(args->numblocks,sizeof(*args->timestamps));
@@ -869,14 +869,14 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         args = create_transfer_args(previpaddr,verifiedNXTaddr,dest,name,totallen,blocksize,totalcrc,handler);
         if ( timeout != 0 )
             args->timeout = (uint32_t)time(NULL) + timeout;
-        printf("start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
+        fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
         memcpy(args->data,data,totallen);
         data = args->data;
         remains = totallen;
         for (i=0; i<args->numblocks; i++)
         {
             args->crcs[i] = _crc32(0,data + i*blocksize,(remains < blocksize) ? remains : blocksize);
-            //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
+            printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
         start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
