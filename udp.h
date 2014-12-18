@@ -723,7 +723,6 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     datalen = decode_hex(data,datalen,datastr);
     datacrc = _crc32(0,data,datalen);
     sprintf(cmdstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"name\":\"%s\",\"time\":%ld,\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"handler\":\"%s\"",verifiedNXTaddr,Global_mp->pubkeystr,cp->myipaddr,name,(long)time(NULL),fragi,numfrags,totallen,blocksize,totalcrc,datacrc,handler);
-    fprintf(stderr,"SENDFRAG.(%s)\n",cmdstr);
     if ( previpaddr == 0 || previpaddr[0] == 0 )
     {
         cmd = "sendfrag";
@@ -739,6 +738,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         else
         {
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
+            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p\n",cmdstr,datalen,args->data);
             if ( args->gotcrcs[fragi] != args->crcs[fragi] )
             {
                 memcpy(args->data + fragi*args->blocksize,data,datalen);
