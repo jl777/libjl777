@@ -112,7 +112,7 @@ void lock_queue(queue_t *queue)
 void queue_enqueue(queue_t *queue,void *value)
 {
     int32_t capacity = (int)(sizeof(queue->buffer)/sizeof(*queue->buffer));
-    printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,capacity);
+    //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,capacity);
     if ( value == 0 )
     {
         printf("FATAL type error: queueing empty value\n");
@@ -139,7 +139,7 @@ void *queue_dequeue(queue_t *queue)
     if ( queue->size > 0 )
     {
         value = queue->buffer[queue->out];
-        printf("dequeue %lx from %d, size.%d\n",(long)value,queue->out,queue->size);
+        //printf("dequeue %lx from %d, size.%d\n",(long)value,queue->out,queue->size);
         queue->buffer[queue->out++] = 0;
         queue->size--;
         queue->out %= (int)(sizeof(queue->buffer)/sizeof(*queue->buffer));
