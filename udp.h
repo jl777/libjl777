@@ -890,7 +890,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             remains -= blocksize;
         }
         init_hexbytes_noT(datastr,args->data,blocksize<totallen?blocksize:totallen);
-        for (fragi=0; fragi<args->numblocks; fragi+=args->numblocks>>5)
+        for (fragi=0; fragi<args->numblocks; fragi+=args->numblocks)
         {
             args->timestamps[fragi] = (uint32_t)time(NULL);
             if ( fragi != (args->numblocks-1) )
