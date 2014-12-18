@@ -202,6 +202,7 @@ void SuperNET_idler(uv_idle_t *handle)
 #ifndef TIMESCRAMBLE
     while ( (wr= queue_dequeue(&sendQ)) != 0 )
         process_sendQ_item(wr);
+    printf("sendQ size.%d\n",queue_size(&sendQ));
 #endif
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 5) )
