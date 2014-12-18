@@ -742,7 +742,9 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p\n",cmdstr,datalen,args->data);
             if ( args->gotcrcs[fragi] != args->crcs[fragi] )
             {
-                memcpy(args->data + fragi*args->blocksize,data,datalen);
+                fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
+                memcpy(args->data + fragi*blocksize,data,datalen);
+                fprintf(stderr,"copied %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
                 if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
                 {
                     checkcrc = _crc32(0,args->data,args->totallen);
