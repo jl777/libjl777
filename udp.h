@@ -675,10 +675,10 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     {
         fprintf(stderr,"update_transer_args\n");
         if ( fragi < args->numblocks )
-            args->crcs[fragi] = datacrc;
+            args->gotcrcs[fragi] = datacrc;
         for (i=0; i<args->numblocks; i++)
         {
-            if ( args->crcs[i] != 0 )
+            if ( args->gotcrcs[i] != 0 )
                 count++;
         }
         if ( count == args->numblocks )
@@ -739,8 +739,8 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         else
         {
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
-            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %p\n",cmdstr,datalen,args->data,args->gotcrcs,args->crcs);
-            if ( args->gotcrcs[fragi] != args->crcs[fragi] )
+            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
+            if ( datacrc != args->gotcrcs[fragi] )
             {
                 fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
                 memcpy(args->data + fragi*blocksize,data,datalen);
@@ -754,15 +754,16 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
                     args->completed = 1;
                     //purge_transfer_args(args);
                 }
-            } else count++;
+            }
         } args = 0;
         free(data);
         data = 0;
         for (i=count=0; i<args->numblocks; i++)
-            if ( args->gotcrcs[i] == args->crcs[i] )
+            if ( args->gotcrcs[i] != 0 )
                 count++;
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
     }
+    fprintf(stderr,"finish sendfrag\n");
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
     if ( Debuglevel > 2 )
