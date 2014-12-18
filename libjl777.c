@@ -213,7 +213,7 @@ void SuperNET_idler(uv_idle_t *handle)
                     printf("SuperNET_idler: reached firstwr.%p\n",firstwr);
                 break;
             }
-            if ( wr->queuetime > lastattempt )
+            if ( wr->queuetime == 0 || wr->queuetime > lastattempt )
             {
                 process_sendQ_item(wr);
                 // free(wr); libuv does this

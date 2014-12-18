@@ -630,7 +630,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     args = MTadd_hashtable(&createdflag,Global_mp->pending_xfers,hashstr);
     if ( createdflag != 0 )
     {
-        printf("NEW XFERARGS\n"), getchar();
+        printf("NEW XFERARGS\n");//, getchar();
         safecopy(args->previpaddr,previpaddr,sizeof(args->previpaddr));
         safecopy(args->sender,sender,sizeof(args->sender));
         safecopy(args->dest,dest,sizeof(args->dest));
