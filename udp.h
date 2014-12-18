@@ -630,7 +630,6 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     args = MTadd_hashtable(&createdflag,Global_mp->pending_xfers,hashstr);
     if ( createdflag != 0 )
     {
-        printf("NEW XFERARGS\n");//, getchar();
         safecopy(args->previpaddr,previpaddr,sizeof(args->previpaddr));
         safecopy(args->sender,sender,sizeof(args->sender));
         safecopy(args->dest,dest,sizeof(args->dest));
@@ -642,6 +641,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->numblocks = (totallen / blocksize);
         if ( (totallen % blocksize) != 0 )
             args->numblocks++;
+        printf("NEW XFERARGS numblocks.%d blocksize.%d totallen.%d\n",args->numblocks,blocksize,totallen);
     }
     if ( args->timestamps == 0 )
         args->timestamps = calloc(args->numblocks,sizeof(*args->timestamps));
@@ -651,6 +651,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->gotcrcs = calloc(args->numblocks,sizeof(*args->gotcrcs));
     if ( args->data == 0 )
         args->data = calloc(1,totallen);
+    printf("return args.%p\n",args);
     return(args);
 }
 
