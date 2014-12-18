@@ -197,17 +197,17 @@ void SuperNET_idler(uv_idle_t *handle)
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
-    if ( (up= queue_dequeue(&UDP_Q)) != 0 )
-        process_udpentry(up);
 #ifndef TIMESCRAMBLE
     if ( (wr= queue_dequeue(&sendQ)) != 0 )
     {
         printf("sendQ size.%d\n",queue_size(&sendQ));
         process_sendQ_item(wr);
     }
+    if ( (up= queue_dequeue(&UDP_Q)) != 0 )
+        process_udpentry(up);
 #endif
     millis = ((double)uv_hrtime() / 1000000);
-    if ( millis > (lastattempt + 5) )
+    //if ( millis > (lastattempt + 5) )
     {
         lastattempt = millis;
 #ifdef TIMESCRAMBLE
