@@ -1061,6 +1061,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
     struct pserver_info *pserver;
     uint8_t *zeroes;
     char *retstr;
+    printf("ESTABLISH_CONNECTION.(%s)\n",ipaddr);
     pserver = get_pserver(0,ipaddr,0,0);
     start = (uint32_t)time(NULL);
     timeout += start;
@@ -1116,6 +1117,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
             }
         }
     }
+    printf("establish array.%p n.%d m.%d\n",array,n,m);
 }
 
 void *Coinloop(void *ptr)
