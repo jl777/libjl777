@@ -317,7 +317,7 @@ void set_coin_blockheight(char *coin,uint32_t blocknum)
         {
             if ( blocknum > cp->blockheight )
             {
-                printf("%s new blockheight.%d\n",coin,blocknum);
+                //printf("%s new blockheight.%d\n",coin,blocknum);
                 cp->blockheight = blocknum;
             }
         }
