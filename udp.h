@@ -863,9 +863,9 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static char *buf;
     static int64_t allocsize=0;
     struct transfer_args *args;
-    char datastr[MAX_JSON_FIELD];
+    char datastr[MAX_JSON_FIELD],*retstr = 0;
     int64_t len;
-    int32_t i,remains,totalcrc,blocksize = 512;
+    int32_t remains,datalen,fragi,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
     {
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);
@@ -882,15 +882,24 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         memcpy(args->data,data,totallen);
         data = args->data;
         remains = totallen;
-        for (i=0; i<args->numblocks; i++)
+        for (fragi=0; fragi<args->numblocks; fragi++)
         {
-            args->crcs[i] = _crc32(0,data + i*blocksize,(remains < blocksize) ? remains : blocksize);
+            args->crcs[fragi] = _crc32(0,data + fragi*blocksize,(remains < blocksize) ? remains : blocksize);
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
         init_hexbytes_noT(datastr,args->data,blocksize<totallen?blocksize:totallen);
-        args->timestamps[0] = (uint32_t)time(NULL);
-        return(sendfrag(0,verifiedNXTaddr,verifiedNXTaddr,NXTACCTSECRET,0,name,0,args->numblocks,totallen,blocksize,totalcrc,args->crcs[0],datastr,"mgw"));
+        for (fragi=0; fragi<args->numblocks; fragi+=args->numblocks>>0)
+        {
+            args->timestamps[fragi] = (uint32_t)time(NULL);
+            if ( fragi != (args->numblocks-1) )
+                datalen = blocksize;
+            else datalen = (totallen - (blocksize * (args->numblocks-1)));
+            init_hexbytes_noT(datastr,args->data + fragi*blocksize,datalen);
+            retstr = sendfrag(0,verifiedNXTaddr,verifiedNXTaddr,NXTACCTSECRET,dest,name,fragi,args->numblocks,totallen,blocksize,totalcrc,args->crcs[fragi],datastr,"mgw");
+            if ( retstr != 0 )
+                free(retstr);
+        }
         //start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
     } else return(clonestr("{\"error\":\"start_transfer: cant start_transfer\"}"));
