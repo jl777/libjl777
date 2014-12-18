@@ -1764,9 +1764,9 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
             fprintf(stderr,"i.%d (%llu %p %.8f)\n",i,(long long)rp->redeems[i],rp->destaddrs[i],dstr(rp->destamounts[i]));
             item = cJSON_CreateObject();
             sprintf(numstr,"%llu",(long long)rp->redeems[i]), cJSON_AddItemToObject(item,"redeemtxid",cJSON_CreateString(numstr));
-            if ( rp->destaddrs[i] != 0 )
-                cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i]));
-            sprintf(numstr,"%.8f",dstr(rp->destamounts[i])), cJSON_AddItemToObject(item,"amount",cJSON_CreateString(numstr));
+            if ( rp->destaddrs[i+1] != 0 )
+                cJSON_AddItemToObject(item,"destaddr",cJSON_CreateString(rp->destaddrs[i+1]));
+            sprintf(numstr,"%.8f",dstr(rp->destamounts[i+1])), cJSON_AddItemToObject(item,"amount",cJSON_CreateString(numstr));
             cJSON_AddItemToArray(array,item);
         }
     }

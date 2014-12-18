@@ -431,7 +431,7 @@ void send_packet(int32_t queueflag,struct nodestats *peerstats,struct sockaddr *
     {
         port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
         pserver = get_pserver(0,ipaddr,0,0);
-        if ( peerstats != 0 && len <= MAX_UDPLEN && Global_mp->udp != 0 )
+        if ( peerstats != 0 && len <= MAX_UDPLEN )//&& Global_mp->udp != 0 )
         {
             if ( port == 0 || port == BTCD_PORT )
             {
@@ -516,7 +516,8 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
         {
             if ( Debuglevel > 0 )
                 printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,stats->supernet_port,len);
-            uv_ip4_addr(destip,stats->supernet_port!=0?stats->supernet_port:SUPERNET_PORT,&addr);
+            port = (stats->supernet_port != 0) ? stats->supernet_port : ((stats->supernet_altport != 0) ? stats->supernet_altport : SUPERNET_PORT);
+            uv_ip4_addr(destip,port,&addr);
             send_packet(queueflag,stats,(struct sockaddr *)&addr,finalbuf,len);
         }
         else { printf("cant route packet.%d without IP address to %llu\n",len,(long long)stats->nxt64bits); return; }

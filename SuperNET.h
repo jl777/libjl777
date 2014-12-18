@@ -68,7 +68,7 @@ struct nodestats
     uint32_t ipbits,numsent,numrecv,lastcontact,numpings,numpongs;
     float recvmilli,sentmilli,pingmilli,pongmilli;
     double pingpongsum;
-    uint16_t p2pport,supernet_port;
+    uint16_t p2pport,supernet_port,supernet_altport;
     uint8_t BTCD_p2p,gotencrypted,modified,expired;
 };
 
