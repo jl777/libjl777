@@ -139,10 +139,10 @@ void *queue_dequeue(queue_t *queue)
     if ( queue->size > 0 )
     {
         value = queue->buffer[queue->out];
-        printf("dequeue %lx from %d, size.%d capacity.%d\n",(long)value,queue->out,queue->size,queue->capacity);
+        printf("dequeue %lx from %d, size.%d\n",(long)value,queue->out,queue->size);
         queue->buffer[queue->out++] = 0;
         queue->size--;
-        queue->out %= queue->capacity;
+        queue->out %= (int)(sizeof(queue->buffer)/sizeof(*queue->buffer));
         if ( value == 0 )
             printf("FATAL type error: empty value in queue?\n");
     }
