@@ -673,6 +673,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     }
     else // recipient
     {
+        fprintf(stderr,"update_transer_args\n");
         if ( fragi < args->numblocks )
             args->crcs[fragi] = datacrc;
         for (i=0; i<args->numblocks; i++)

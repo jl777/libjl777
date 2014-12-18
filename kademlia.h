@@ -5,6 +5,8 @@
 //  Created by jl777 on 10/3/14.
 //  Copyright (c) 2014 jl777. MIT license.
 //
+//  "write protect" a working port until it stops working
+
 
 #ifndef libjl777_kademlia_h
 #define libjl777_kademlia_h
@@ -470,7 +472,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
                 {
                     printf("kademlia_update_info: supernet_port %u -> %u | RESET\n",stats->supernet_port,port);
                     stats->supernet_altport = port;
-                    stats->supernet_port = 0;
+                    //stats->supernet_port = 0;
                     changed++;
                 }
             }
