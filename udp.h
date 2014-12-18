@@ -743,12 +743,12 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
             if ( datacrc != args->gotcrcs[fragi] )
             {
-                fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
+                //fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
                 memcpy(args->data + fragi*blocksize,data,datalen);
-                fprintf(stderr,"copied %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
+                //fprintf(stderr,"copied %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
                 if ( (count= update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen)) == args->numblocks )
                 {
-                    fprintf(stderr,"completed\n");
+                    //fprintf(stderr,"completed\n");
                     checkcrc = _crc32(0,args->data,args->totallen);
                     printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,dest,checkcrc,totalcrc);
                     if ( checkcrc == args->totalcrc )
@@ -765,10 +765,10 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         data = 0;
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
     }
-    fprintf(stderr,"finish sendfrag\n");
+    //fprintf(stderr,"finish sendfrag\n");
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("send back (%s) len.%d datalen.%d\n",cmdstr,len,datalen);
     if ( data != 0 )
         free(data);
@@ -782,7 +782,7 @@ int32_t Do_transfers(void *_args,int32_t argsize)
     struct coin_info *cp = get_coin_info("BTCD");
     int32_t i,remains,num,finished,retval = -1;
     uint32_t now = (uint32_t)time(NULL);
-    printf("Do_transfers.args.%p\n",args);
+    //printf("Do_transfers.args.%p\n",args);
     if ( cp != 0 )
     {
         retval = 0;

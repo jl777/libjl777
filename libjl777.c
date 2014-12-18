@@ -595,7 +595,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     if ( SUPERNET_PORT != _SUPERNET_PORT )
         return(clonestr("{\"error\":private SuperNET}"));
     strcpy(retjsonstr,"{\"result\":null}");
-        if ( Debuglevel > 2 )
+    if ( Debuglevel > 2 )
         printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     if ( Finished_loading == 0 )
     {
