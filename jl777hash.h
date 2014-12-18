@@ -50,7 +50,7 @@ void queue_enqueue(queue_t *queue,void *value)
         //printf("increase Q size.%d capacity.%d\n",queue->size,queue->capacity);
 		//pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
     }
-    //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,queue->capacity);
+    printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,queue->capacity);
 	queue->buffer[queue->in++] = value;
 	++queue->size;
     queue->in %= queue->capacity;
@@ -77,7 +77,7 @@ void *queue_dequeue(queue_t *queue)
     {
         value = queue->buffer[queue->out];
         queue->buffer[queue->out] = 0;
-        //printf("dequeue %lx from %d, size.%d capacity.%d\n",(long)value,queue->out,queue->size,queue->capacity);
+        printf("dequeue %lx from %d, size.%d capacity.%d\n",(long)value,queue->out,queue->size,queue->capacity);
         --queue->size;
         ++queue->out;
         queue->out %= queue->capacity;
