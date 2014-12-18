@@ -1082,7 +1082,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
             }
             sleep(1);
             if ( pserver->lastcontact > start )
-                return(1);
+                break;
             fprintf(stderr,"%u ",pserver->lastcontact);
         }
         fprintf(stderr,"| vs start.%u\n",start);
@@ -1092,7 +1092,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
     if ( retstr != 0 )
         free(retstr);
     free(zeroes);
-    return(0);
+    return(pserver->lastcontact > start);
 }
 
 void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
@@ -1119,7 +1119,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
     }
     printf("establish array.%p n.%d m.%d\n",array,n,m);
 }
- 
+
 void *Coinloop(void *ptr)
 {
     int32_t i,processed;
