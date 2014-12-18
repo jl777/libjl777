@@ -863,6 +863,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static char *buf;
     static int64_t allocsize=0;
     struct transfer_args *args;
+    char datastr[MAX_JSON_FIELD];
     int64_t len;
     int32_t i,remains,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
@@ -887,7 +888,10 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
+        init_hexbytes_noT(datastr,args->data,blocksize<totallen?blocksize:totallen);
+        args->timestamps[0] = (uint32_t)time(NULL);
+        return(sendfrag(0,verifiedNXTaddr,verifiedNXTaddr,NXTACCTSECRET,0,name,0,args->numblocks,totallen,blocksize,totalcrc,args->crcs[0],datastr,"mgw"));
+        //start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
     } else return(clonestr("{\"error\":\"start_transfer: cant start_transfer\"}"));
 }
