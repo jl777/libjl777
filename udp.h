@@ -843,6 +843,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         for (i=1; i<numfrags; i++)
         {
             fragi = (fragi + i) % numfrags;
+            printf("i.%d fragi.%d crc.%u vs got.%u\n",i,fragi,args->crcs[fragi],args->gotcrcs[fragi]);
             if ( args->crcs[fragi] != args->gotcrcs[fragi] )
             {
                 if ( fragi != (numfrags-1) )
