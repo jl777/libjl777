@@ -708,7 +708,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     struct pserver_info *pserver;
     struct transfer_args *args;
     struct coin_info *cp = get_coin_info("BTCD");
-    int32_t len,count=0,datalen = 0;
+    int32_t i,len,count=0,datalen = 0;
     unsigned char *data = 0;
     uint32_t datacrc;
     uint64_t txid;
