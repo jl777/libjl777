@@ -651,7 +651,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->gotcrcs = calloc(args->numblocks,sizeof(*args->gotcrcs));
     if ( args->data == 0 )
         args->data = calloc(1,totallen);
-    printf("return args.%p\n",args);
+    //printf("return args.%p\n",args);
     return(args);
 }
 
@@ -768,7 +768,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     //fprintf(stderr,"finish sendfrag\n");
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("send back (%s) len.%d datalen.%d\n",cmdstr,len,datalen);
     if ( data != 0 )
         free(data);
