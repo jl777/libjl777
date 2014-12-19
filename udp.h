@@ -349,11 +349,9 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     wr->addr = *addr;
     wr->isbridge = isbridge;
     if ( queueflag != 0 )
-    //{
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
-        queue_enqueue(&sendQ,wr);
-    //}
-   // else r = process_sendQ_item(wr);
+    //queue_enqueue(&sendQ,wr);
+    else r = process_sendQ_item(wr);
     return(r);
 }
 
@@ -856,7 +854,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         for (i=0; i<numfrags; i++)
         {
             j = (fragi + i + 1) % numfrags;
-            printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
+            //printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
             if ( args->crcs[j] != args->gotcrcs[j] )//&& (now - args->timestamps[i]) > 3 )
             {
                 send_fragi(NXTaddr,NXTACCTSECRET,args,j);
@@ -873,7 +871,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             if ( args->crcs[i] == args->gotcrcs[i] )
                 checkcount++;
         }
-        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d (%d %d %d %d %d %d %d %d)\n",count,checkcount,j,count,args->numblocks,args->blocksize,blocksize,args->totallen,totallen,args->numblocks,numfrags);
+        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d\n",count,checkcount,j);
         fprintf(stderr,"%s",pstr);
     }
     return(clonestr(cmdstr));
