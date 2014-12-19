@@ -1133,7 +1133,7 @@ void *Coinloop(void *ptr)
     {
         //printf("COINLOOP\n");
         //getchar();
-        if ( 1 && IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
+        if ( 0 && IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
            establish_connections(cp->myipaddr,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
         printf("add myhandle\n");
         addcontact(Global_mp->myhandle,cp->privateNXTADDR);

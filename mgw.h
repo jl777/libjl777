@@ -668,7 +668,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
     FILE *fp;
     wp->W.coinid = conv_coinstr(cp->name);
     set_batchname(batchname,cp->name,Global_mp->gatewayid);
-    set_handler_fname(fname,batchname,"mgw");
+    set_handler_fname(fname,"mgw",batchname);
     if ( (fp= fopen(fname,"wb")) != 0 )
     {
         fwrite(wp,1,sizeof(*wp),fp);
@@ -867,11 +867,11 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
-        if ( strcmp(txid,"7381747177535994063") == 0 )
+        /*if ( strcmp(txid,"7381747177535994063") == 0 )
         {
             fprintf(stderr,"[%s] start type.%d subtype.%d txid.(%s)\n",cJSON_Print(item),(int)type,(int)subtype,txid);
             //getchar();
-        }
+        }*/
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -1566,7 +1566,7 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
     struct address_entry *entries,*entry;
     struct coin_txidind *cointp;
     struct unspent_info *up;
-    int32_t j,n,createdflag;
+    int32_t i,j,n,createdflag;
     char numstr[128];
     cJSON *item;
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
@@ -1576,9 +1576,15 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
             entry = &entries[j];
             if ( entry->vinflag == 0 )
             {
-                cointp = _get_cointp(&createdflag,cp->name,entry->blocknum,entry->txind,entry->v);
-                if ( cointp->redeemtxid == tp->redeemtxid )
-                    break;
+                for (i=0; i<n; i++)
+                    if ( entries[i].vinflag != 0 && entries[i].blocknum == entry->blocknum && entries[i].txind == entry->txind && entries[i].v == entry->v )
+                        break;
+                if ( i == n )
+                {
+                    cointp = _get_cointp(&createdflag,cp->name,entry->blocknum,entry->txind,entry->v);
+                    if ( cointp->redeemtxid == tp->redeemtxid )
+                        break;
+                }
             }
         }
         if ( j == n )
@@ -1832,9 +1838,10 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         {
             str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
             expand_nxt64bits(sender,tp->senderbits);
-            if ( (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 && tp->AMtxidbits == 0 )
+            if ( tp->AMtxidbits == 0 && (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 )
             {
                 stripwhite(destaddr,strlen(destaddr));
+                printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(ap->mult * tp->U.assetoshis));
                 numredeems = process_destaddr(&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
