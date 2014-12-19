@@ -1059,13 +1059,13 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
 {
     uint32_t i,start,totallen = 65536;
     struct pserver_info *pserver;
-    uint8_t *zeroes;
+    uint8_t *buf;
     char *retstr;
     printf("ESTABLISH_CONNECTION.(%s)\n",ipaddr);
     pserver = get_pserver(0,ipaddr,0,0);
     start = (uint32_t)time(NULL);
     timeout += start;
-    zeroes = calloc(1,totallen);
+    buf = calloc(1,totallen);
     while ( time(NULL) < timeout )
     {
         for (i=0; i<7; i++)
@@ -1075,7 +1075,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
                 case 2:  p2p_publishpacket(pserver,0); break;
                 case 0:  send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0); break;
                 case 1:
-                    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",zeroes,totallen,timeout,"null");
+                    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null");
                     if ( retstr != 0 )
                         free(retstr);
                     break;
@@ -1087,11 +1087,13 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
         }
         fprintf(stderr,"| vs start.%u\n",start);
     }
+    for (i=0; i<totallen; i++)
+        buf[i] = rand() >> 8;
     //printf("START_TRANSFER\n");
-    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",zeroes,totallen,timeout,"null");
+    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null");
     if ( retstr != 0 )
         free(retstr);
-    free(zeroes);
+    free(buf);
     return(pserver->lastcontact > start);
 }
 
@@ -1129,7 +1131,7 @@ void *Coinloop(void *ptr)
     {
         //printf("COINLOOP\n");
         //if ( 0 && IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
-        //   establish_connections(cp->myipaddr,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
+           establish_connections(cp->myipaddr,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
         printf("add myhandle\n");
         addcontact(Global_mp->myhandle,cp->privateNXTADDR);
         printf("add mypublic\n");
