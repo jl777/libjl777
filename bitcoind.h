@@ -1129,7 +1129,7 @@ void *Coinloop(void *ptr)
     init_Contacts();
     if ( (cp= get_coin_info("BTCD")) != 0 )
     {
-        //printf("COINLOOP\n");
+        printf("COINLOOP\n");
         //if ( 0 && IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
            establish_connections(cp->myipaddr,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
         printf("add myhandle\n");
