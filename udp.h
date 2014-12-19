@@ -871,7 +871,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             if ( args->crcs[i] == args->gotcrcs[i] )
                 checkcount++;
         }
-        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d\n",count,checkcount,j);
+        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d (%d %d %d %d %d %d %d %d)\n",count,checkcount,j,count,args->numblocks,args->blocksize,blocksize,args->totallen,totallen,args->numblocks,numfrags);
         fprintf(stderr,"%s",pstr);
     }
     return(clonestr(cmdstr));
