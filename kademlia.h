@@ -243,7 +243,7 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
-        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
         return((int32_t)strlen(cmdstr));
@@ -378,7 +378,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),Global_mp->isMM,pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
             //send_to_ipaddr(1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
             //return(0);
             //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
@@ -462,7 +462,7 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
             }
             else
             {
-                if ( stats->supernet_port == 0 || stats->supernet_port != port )
+                if ( stats->supernet_port == 0 )//|| stats->supernet_port != port )
                 {
                     printf("kademlia_update_info: supernet_port %u -> %u\n",stats->supernet_port,port);
                     stats->supernet_port = port;
@@ -484,12 +484,13 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
     }
 }
 
-void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits)
+void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits,int32_t isMM)
 {
     struct nodestats *stats;
     struct pserver_info *pserver;
     stats = get_nodestats(nxt64bits);
     stats->ipbits = calc_ipbits(ipaddr);
+    stats->isMM = isMM;
     if ( port != 0 )//(stats->supernet_port == 0 || stats->supernet_port == SUPERNET_PORT) )
     {
         printf("OVERRIDE supernet_port.%d altport.%d -> %d\n",stats->supernet_port,stats->supernet_altport,port);
@@ -501,13 +502,13 @@ void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits)
     add_new_node(nxt64bits);
 }
 
-void set_myipaddr(struct coin_info *cp,char *ipaddr,uint16_t port)
+void set_myipaddr(struct coin_info *cp,char *ipaddr,uint16_t port,int32_t isMM)
 {
     strcpy(cp->myipaddr,ipaddr);
-    change_nodeinfo(ipaddr,port,cp->srvpubnxtbits);
+    change_nodeinfo(ipaddr,port,cp->srvpubnxtbits,isMM);
 }
 
-char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip,char *origargstr)
+char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,int32_t port,char *destip,char *origargstr,int32_t isMM)
 {
     uint64_t txid = 0;
     char retstr[1024];
@@ -529,12 +530,12 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         if ( notlocalip(cp->myipaddr) == 0 && destip[0] != 0 && calc_ipbits(destip) != 0 )
         {
             fprintf(stderr,"AUTO SETTING MYIP <- (%s)\n",destip);
-            set_myipaddr(cp,ipaddr,port);
+            set_myipaddr(cp,ipaddr,port,isMM);
         }
         prevport = 0;
         if ( verify_addr(&prevport,previpaddr,ipaddr,port) < 0 ) // auto-corrects ipaddr
         {
-            change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender));
+            change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender),isMM);
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
@@ -545,7 +546,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     return(clonestr(retstr));
 }
 
-char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip,int32_t yourport,char *tag)
+char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *ipaddr,uint16_t port,char *yourip,int32_t yourport,char *tag,int32_t isMM)
 {
     char retstr[1024];
     struct nodestats *stats;
@@ -554,14 +555,15 @@ char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     if ( cp != 0 && notlocalip(cp->myipaddr) == 0 && yourip[0] != 0 && calc_ipbits(yourip) != 0 )
     {
         printf("AUTOUPDATE IP <= (%s)\n",yourip);
-        set_myipaddr(cp,yourip,yourport);
+        set_myipaddr(cp,yourip,yourport,isMM);
     }
     if ( stats != 0 )
     {
         stats->pongmilli = milliseconds();
         stats->pingpongsum += (stats->pongmilli - stats->pingmilli);
         stats->numpongs++;
-        sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d,\"lag\":\"%.3f\",\"numpings\":%d,\"numpongs\":%d,\"ave\":\"%.3f\"}",tag,sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
+        stats->isMM = isMM;
+        sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"isMM\":\"%d\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d,\"lag\":\"%.3f\",\"numpings\":%d,\"numpongs\":%d,\"ave\":\"%.3f\"}",tag,isMM,sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
     else sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\"}",tag,sender,ipaddr,port);
     //if ( Debuglevel > 0 )
@@ -694,8 +696,8 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
     }
     len = (int32_t)strlen(datastr)/2;
     len = decode_hex((uint8_t *)decoded,len,datastr);
-    if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
-        check_for_InstantDEX(decoded,keystr);
+    //if ( (decoded[len-1] == 0 || decoded[len-1] == '}' || decoded[len-1] == ']') && (decoded[0] == '{' || decoded[0] == '[') )
+    //    check_for_InstantDEX(decoded,keystr);
     if ( (sp= kademlia_getstored(PUBLIC_DATA,keybits,datastr)) != 0 )
         free(sp);
 }
@@ -913,7 +915,7 @@ int32_t process_special_packets(char *retstr,int32_t isvalue,char *key,char *dat
             process_telepathic(key,datastr,senderbits,previpaddr);
         remoteflag = 1;
     }
-    else
+    else if ( 0 )
     {
         len = (int32_t)strlen(datastr)/2;
         len = decode_hex((uint8_t *)decoded,len,datastr);

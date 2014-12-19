@@ -699,6 +699,8 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
         //cJSON_AddItemToObject(json,"is_privacyServer",cJSON_CreateNumber(1));
         cJSON_AddItemToObject(json,"srvNXT",cJSON_CreateString(srvnxtaddr));
         cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
+        if ( stats->isMM != 0 )
+            cJSON_AddItemToObject(json,"MMatrix",cJSON_CreateNumber(stats->isMM));
         sprintf(numstr,"%d",stats->supernet_port);
         if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));

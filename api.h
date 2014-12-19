@@ -1014,15 +1014,16 @@ char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    int32_t port;
+    int32_t port,isMM;
     char pubkey[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],*retstr = 0;
     copy_cJSON(pubkey,objs[0]);
     copy_cJSON(ipaddr,objs[1]);
     port = get_API_int(objs[2],0);
     copy_cJSON(destip,objs[3]);
+    isMM = get_API_int(objs[4],0);
     //fprintf(stderr,"ping got sender.(%s) valid.%d pubkey.(%s) ipaddr.(%s) port.%d destip.(%s)\n",sender,valid,pubkey,ipaddr,port,destip);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = kademlia_ping(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip,origargstr);
+        retstr = kademlia_ping(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,destip,origargstr,isMM);
     else retstr = clonestr("{\"error\":\"invalid ping_func arguments\"}");
     return(retstr);
 }
@@ -1030,7 +1031,7 @@ char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,
 char *pong_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char pubkey[MAX_JSON_FIELD],tag[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],yourip[MAX_JSON_FIELD],*retstr = 0;
-    uint16_t port,yourport;
+    uint16_t port,yourport,isMM;
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(pubkey,objs[0]);
@@ -1039,10 +1040,11 @@ char *pong_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,
     copy_cJSON(yourip,objs[3]);
     yourport = get_API_int(objs[4],0);
     copy_cJSON(tag,objs[5]);
+    isMM = get_API_int(objs[6],0);
     //printf("pong got pubkey.(%s) ipaddr.(%s) port.%d \n",pubkey,ipaddr,port);
     if ( sender[0] != 0 && valid > 0 )
     {
-        retstr = kademlia_pong(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport,tag);
+        retstr = kademlia_pong(previpaddr,NXTaddr,NXTACCTSECRET,sender,ipaddr,port,yourip,yourport,tag,isMM);
     }
     else retstr = clonestr("{\"error\":\"invalid pong_func arguments\"}");
     return(retstr);
@@ -1683,8 +1685,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
     // IP comms
-    static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", 0 };
-    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", 0 };
+    static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", "MMatrix", 0 };
+    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", "MMatrix", 0 };
     static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", "totallen", "blocksize", "handler", 0 };
     static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "totallen", "blocksize", "count", "handler", 0 };
     static char *startxfer[] = { (char *)startxfer_func, "startxfer", "V", "fname", "dest", "data", "timeout", "handler", 0 };

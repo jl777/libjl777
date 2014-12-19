@@ -721,6 +721,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             }
             if ( Global_mp->gatewayid < 0 )
                 Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
+            Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
 
             printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s gatewayid.%d 1st.%d\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK,Global_mp->gatewayid,FIRST_NXTBLOCK);
             array = cJSON_GetObjectItem(MGWconf,"whitelist");

@@ -540,7 +540,7 @@ uint64_t directsend_packet(int32_t queueflag,int32_t encrypted,struct pserver_in
     if ( pserver->nxt64bits != 0 )
         stats = get_nodestats(pserver->nxt64bits);
     if ( stats != 0 )
-        port = stats->supernet_port != 0 ? stats->supernet_port : SUPERNET_PORT;
+        port = stats->supernet_port != 0 ? stats->supernet_port : (stats->supernet_altport != 0 ? stats->supernet_altport : SUPERNET_PORT);
     else port = SUPERNET_PORT;
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     stripwhite_ns(origargstr,len);
