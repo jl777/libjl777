@@ -198,12 +198,12 @@ void SuperNET_idler(uv_idle_t *handle)
     if ( Finished_init == 0 )
         return;
 #ifndef TIMESCRAMBLE
-    if ( (wr= queue_dequeue(&sendQ)) != 0 )
+    while ( (wr= queue_dequeue(&sendQ)) != 0 )
     {
         //printf("sendQ size.%d\n",queue_size(&sendQ));
         process_sendQ_item(wr);
     }
-    if ( (up= queue_dequeue(&UDP_Q)) != 0 )
+    while ( (up= queue_dequeue(&UDP_Q)) != 0 )
         process_udpentry(up);
 #endif
     millis = ((double)uv_hrtime() / 1000000);
