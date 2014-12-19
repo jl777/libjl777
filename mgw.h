@@ -1561,37 +1561,35 @@ int32_t add_destaddress(struct rawtransaction *rp,char *destaddr,uint64_t amount
     return(i);
 }
 
-int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
+int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],uint64_t destamounts[MAX_MULTISIG_OUTPUTS],uint64_t redeems[MAX_MULTISIG_OUTPUTS],uint64_t *pending_withdrawp,struct coin_info *cp,uint64_t nxt64bits,struct NXT_asset *ap,char *destaddr,struct NXT_assettxid *tp,int32_t numredeems)
 {
     struct address_entry *entries,*entry;
     struct coin_txidind *cointp;
     struct unspent_info *up;
-    int32_t i,j,n,createdflag;
+    int32_t j,n,createdflag;
     char numstr[128];
     cJSON *item;
+    *alreadysentp = 0;
     fprintf(stderr,"[");
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
+        fprintf(stderr,"].%d ",n);
         for (j=0; j<n; j++)
         {
             entry = &entries[j];
             if ( entry->vinflag == 0 )
             {
-                fprintf(stderr,"o");
-                for (i=0; i<n; i++)
+                /*for (i=0; i<n; i++)
                     if ( entries[i].vinflag != 0 && entries[i].blocknum == entry->blocknum && entries[i].txind == entry->txind && entries[i].v == entry->v )
                         break;
-                fprintf(stderr,"%d",i==n);
-                if ( i == n )
+                if ( i == n )*/
                 {
                     cointp = _get_cointp(&createdflag,cp->name,entry->blocknum,entry->txind,entry->v);
                     if ( cointp->redeemtxid == tp->redeemtxid )
                         break;
                 }
             }
-            fprintf(stderr,".");
         }
-        fprintf(stderr,"].%d",n);
         if ( j == n )
         {
             /*for (j=0; j<n; j++)
@@ -1820,7 +1818,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     struct NXT_assettxid *tp;
     struct rawtransaction *rp;
     cJSON *array;
-    int32_t i,j,numredeems;
+    int32_t i,j,numredeems,alreadyspent;
     uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,sum,pending_withdraw = 0;
     char withdrawaddr[64],sender[64],redeemtxid[64],*destaddrs[MAX_MULTISIG_OUTPUTS],*destaddr="",*batchsigned,*str;
     if ( ap->num <= 0 )
@@ -1847,7 +1845,8 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             {
                 stripwhite(destaddr,strlen(destaddr));
                 printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
-                numredeems = process_destaddr(&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
+                numredeems = process_destaddr(&alreadyspent,&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
+                tp->AMtxidbits = alreadyspent;
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
             }

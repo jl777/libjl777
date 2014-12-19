@@ -293,7 +293,7 @@ void SuperNET_idler(uv_idle_t *handle)
         counter++;
         lastclock = millis;
     }
-    //usleep(APISLEEP * 1000);
+    usleep(APISLEEP * 1000);
 }
 
 void run_UVloop(void *arg)
