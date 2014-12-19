@@ -671,7 +671,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     }
     else // recipient
     {
-        fprintf(stderr,"update_transer_args\n");
+        //fprintf(stderr,"update_transer_args\n");
         if ( fragi < args->numblocks )
             args->gotcrcs[fragi] = datacrc;
         for (i=0; i<args->numblocks; i++)
@@ -685,7 +685,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             if ( checkcrc != args->totalcrc )
                 printf("totalcrc ERROR %u != %u\n",checkcrc,args->totalcrc);
         }
-        fprintf(stderr,"update_transer_args return count.%d\n",count);
+        //fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
     return(count);
 }
