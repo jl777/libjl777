@@ -4,7 +4,6 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-//   follow minconfirms for NXT
 // marker/etc in .conf
 // support 'g'
 // debug bridge
@@ -864,11 +863,11 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
         copy_cJSON(txid,cJSON_GetObjectItem(item,"transaction"));
         type = get_cJSON_int(item,"type");
         subtype = get_cJSON_int(item,"subtype");
-        /*if ( strcmp(txid,"7381747177535994063") == 0 )
+        if ( strcmp(txid,"11393134458431817279") == 0 )
         {
             fprintf(stderr,"[%s] start type.%d subtype.%d txid.(%s)\n",cJSON_Print(item),(int)type,(int)subtype,txid);
-            //getchar();
-        }*/
+            getchar();
+        }
         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
         height = (int32_t)get_cJSON_int(item,"height");
         senderobj = cJSON_GetObjectItem(item,"sender");
@@ -1403,7 +1402,7 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
                     if ( Debuglevel > 2 )
                         printf("MULTISIG: %s: %d of %d %s %s\n",cp->name,i,nummsigs,msig->coinstr,msig->multisigaddr);
                     update_NXT_transactions(specialNXTaddrs,2,msig->NXTaddr,cp);
-                    if ( readyflag > 0 && pendingtxid == 0 )
+                    if ( transferassets == 0 || (readyflag > 0 && pendingtxid == 0) )
                     {
                         tmp = numunspent;
                         total += process_msigaddr(&numunspent,&unspent,&array,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr);
