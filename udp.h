@@ -740,6 +740,8 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         else
         {
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
+            if ( fragi < args->numblocks )
+                args->crcs[fragi] = checkcrc;
             fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
             if ( datacrc != args->gotcrcs[fragi] )
             {
@@ -758,7 +760,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
                 }
             }
             for (i=count=0; i<args->numblocks; i++)
-                if ( args->gotcrcs[i] != 0 )
+                if ( args->gotcrcs[i] == args->crcs[i] )
                     count++;
         }
         free(data);
@@ -849,7 +851,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     j = -1;
-    if ( count < args->numblocks && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
+    if ( args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
         for (i=0; i<numfrags; i++)
         {
