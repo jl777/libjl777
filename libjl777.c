@@ -9,6 +9,7 @@
 //
 
 #include "jl777.h"
+#define TIMESCRAMBLE
 
 uv_async_t Tasks_async;
 uv_work_t Tasks;
@@ -192,20 +193,11 @@ void SuperNET_idler(uv_idle_t *handle)
     double millis;
     void *up;
     struct udp_queuecmd *qp;
-    struct write_req_t *wr;//,*firstwr = 0;
+    struct write_req_t *wr,*firstwr = 0;
     int32_t flag;
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 )
         return;
-#ifndef TIMESCRAMBLE
-    while ( (wr= queue_dequeue(&sendQ)) != 0 )
-    {
-        //printf("sendQ size.%d\n",queue_size(&sendQ));
-        process_sendQ_item(wr);
-    }
-    while ( (up= queue_dequeue(&UDP_Q)) != 0 )
-        process_udpentry(up);
-#endif
     millis = ((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + 5) )
     {
@@ -272,6 +264,15 @@ void SuperNET_idler(uv_idle_t *handle)
             //printf("processed storage\n");
         }
     }
+#ifndef TIMESCRAMBLE
+    while ( (wr= queue_dequeue(&sendQ)) != 0 )
+    {
+        //printf("sendQ size.%d\n",queue_size(&sendQ));
+        process_sendQ_item(wr);
+    }
+#endif
+    while ( (up= queue_dequeue(&UDP_Q)) != 0 )
+        process_udpentry(up);
     if ( millis > (lastclock + 1000) )
     {
         poll_pricedbs();
