@@ -6,11 +6,8 @@
 //
 //   follow minconfirms for NXT
 // marker/etc in .conf
-// return skipped in gotxfer
-// udp transmit serialize
 // support 'g'
 // debug bridge
-// debug start_xfer (mem problems)
 
 #ifndef mgw_h
 #define mgw_h
@@ -806,7 +803,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        //fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
@@ -977,7 +974,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
 int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *refNXTaddr,struct coin_info *cp)
 {
     char sender[1024],receiver[1024],assetid[1024],cmd[1024],*jsonstr;
-    int32_t createdflag,coinid,i,n = 0;
+    int32_t createdflag,numconfs,coinid,i,n = 0;
     uint32_t timestamp;
     struct NXT_acct *np;
     cJSON *item,*json,*array;
@@ -1008,12 +1005,16 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                     if ( Debuglevel > 2 )
                         fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
-                    process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
-                    timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp") - 3600;
-                    if ( timestamp > np->timestamps[coinid] )
+                    numconfs = (int32_t)get_API_int(cJSON_GetObjectItem(item,"confirmations"),0);
+                    if ( numconfs >= MIN_NXTCONFIRMS )
                     {
-                        printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp);
-                        np->timestamps[coinid] = timestamp;
+                        process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
+                        timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp") - 3600;
+                        if ( timestamp > np->timestamps[coinid] )
+                        {
+                            printf("numconfs.%d new timestamp.%d %d -> %d\n",numconfs,coinid,np->timestamps[coinid],timestamp);
+                            np->timestamps[coinid] = timestamp;
+                        }
                     }
                 }
             }
@@ -1574,6 +1575,7 @@ int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MA
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
         fprintf(stderr,"].%d ",n);
+        *alreadysentp = 1;
         for (j=0; j<n; j++)
         {
             entry = &entries[j];
@@ -1618,6 +1620,7 @@ int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MA
             if ( j == n )*/
             if ( is_limbo_redeem(cp,tp->redeemtxid) == 0 )
             {
+                *alreadysentp = 0;
                 up = &cp->unspent;
                 printf("numredeems.%d (%p %p) PENDING REDEEM %s %s %llu %llu %.8f %.8f | %llu\n",numredeems,up->maxvp,up->minvp,cp->name,destaddr,(long long)nxt64bits,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
                 item = cJSON_CreateObject();
