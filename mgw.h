@@ -1569,8 +1569,10 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
     int32_t i,j,n,createdflag;
     char numstr[128];
     cJSON *item;
+    fprintf(stderr,"[");
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
+        fprintf(stderr,"]");
         for (j=0; j<n; j++)
         {
             entry = &entries[j];
@@ -1841,7 +1843,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             if ( tp->AMtxidbits == 0 && (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 )
             {
                 stripwhite(destaddr,strlen(destaddr));
-                printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(ap->mult * tp->U.assetoshis));
+                printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
                 numredeems = process_destaddr(&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems);
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
