@@ -1572,15 +1572,16 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
     fprintf(stderr,"[");
     if ( (entries= get_address_entries(&n,cp->name,destaddr)) != 0 )
     {
-        fprintf(stderr,"]");
         for (j=0; j<n; j++)
         {
             entry = &entries[j];
             if ( entry->vinflag == 0 )
             {
+                fprintf(stderr,"o");
                 for (i=0; i<n; i++)
                     if ( entries[i].vinflag != 0 && entries[i].blocknum == entry->blocknum && entries[i].txind == entry->txind && entries[i].v == entry->v )
                         break;
+                fprintf(stderr,"%d",i==n);
                 if ( i == n )
                 {
                     cointp = _get_cointp(&createdflag,cp->name,entry->blocknum,entry->txind,entry->v);
@@ -1588,7 +1589,9 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
                         break;
                 }
             }
+            fprintf(stderr,".");
         }
+        fprintf(stderr,"]");
         if ( j == n )
         {
             /*for (j=0; j<n; j++)
