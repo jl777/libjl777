@@ -850,9 +850,9 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     if ( count < args->numblocks && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
-        for (i=1; i<numfrags; i++)
+        for (i=0; i<numfrags; i++)
         {
-            j = (fragi + i) % numfrags;
+            j = (fragi + i + 1) % numfrags;
             //printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
             if ( args->crcs[j] != args->gotcrcs[j] && (now - args->timestamps[i]) > 3 )
             {
