@@ -1127,6 +1127,8 @@ void *Coinloop(void *ptr)
     struct coin_info *cp;
     int64_t height;
     init_Contacts();
+    printf("Coinloop numcoins.%d\n",Numcoins);
+    scan_address_entries();
     if ( (cp= get_coin_info("BTCD")) != 0 )
     {
         printf("COINLOOP\n");
@@ -1138,8 +1140,6 @@ void *Coinloop(void *ptr)
         printf("add mypublic\n");
         addcontact("mypublic",cp->srvNXTADDR);
     }
-    printf("Coinloop numcoins.%d\n",Numcoins);
-    scan_address_entries();
     for (i=0; i<Numcoins; i++)
     {
         if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
