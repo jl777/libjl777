@@ -836,7 +836,7 @@ break;
 
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
-    uint32_t now = (uint32_t)time(NULL);
+    //uint32_t now = (uint32_t)time(NULL);
     int32_t i,j,checkcount = 0;
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2];
@@ -848,6 +848,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     //fprintf(stderr,"GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
+    j = -1;
     if ( count < args->numblocks && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
         for (i=0; i<numfrags; i++)
@@ -859,6 +860,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
                 send_fragi(NXTaddr,NXTACCTSECRET,args,j);
                 break;
             }
+            j = -1;
         }
     }
     {
@@ -869,7 +871,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             if ( args->crcs[i] == args->gotcrcs[i] )
                 checkcount++;
         }
-        sprintf(pstr+strlen(pstr)," count.%d vs %d\n",count,checkcount);
+        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d\n",count,checkcount,j);
         fprintf(stderr,"%s",pstr);
     }
     return(clonestr(cmdstr));
