@@ -1591,7 +1591,7 @@ int32_t process_destaddr(cJSON **arrayp,char *destaddrs[MAX_MULTISIG_OUTPUTS],ui
             }
             fprintf(stderr,".");
         }
-        fprintf(stderr,"]");
+        fprintf(stderr,"].%d",n);
         if ( j == n )
         {
             /*for (j=0; j<n; j++)
