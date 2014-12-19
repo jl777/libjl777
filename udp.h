@@ -844,12 +844,11 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         blocksize = 512;
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
-    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
     //fprintf(stderr,"GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler);
     update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
     j = -1;
-    if ( args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
+    if ( args->completed == 0 && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
         for (i=0; i<numfrags; i++)
         {
@@ -871,9 +870,14 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             if ( args->crcs[i] == args->gotcrcs[i] )
                 checkcount++;
         }
-        sprintf(pstr+strlen(pstr)," count.%d vs %d | sent.%d\n",count,checkcount,j);
+        if ( checkcount == args->numblocks )
+        {
+            args->completed = 1;
+        }
+        sprintf(pstr+strlen(pstr)," count.%d vs %d | recv.%d sent.%d\n",count,checkcount,fragi,j);
         fprintf(stderr,"%s",pstr);
     }
+    sprintf(cmdstr,"{\"requestType\":\"gotfrag\",\"sender\":\"%s\",\"ipaddr\":\"%s\",\"fragi\":%u,\"numfrags\":%u,\"totallen\":%u,\"blocksize\":%u,\"totalcrc\":%u,\"datacrc\":%u,\"count\":%d,\"handler\":\"%s\"}",sender,src,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
     return(clonestr(cmdstr));
 }
 
@@ -906,7 +910,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        for (fragi=0; fragi<args->numblocks; fragi+=(args->numblocks>>4))
+        for (fragi=0; fragi<args->numblocks; fragi+=(args->numblocks>>5))
             send_fragi(verifiedNXTaddr,NXTACCTSECRET,args,fragi);
         //start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
