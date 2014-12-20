@@ -492,6 +492,10 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             {
                 portable_mutex_init(&cp->consensus_mutex);
                 extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
+                extract_cJSON_str(cp->MGWissuer,sizeof(cp->MGWissuer),json,"issuer");
+                if ( cp->MGWissuer[0] == 'N' && cp->MGWissuer[1] == 'X' && cp->MGWissuer[2] == 'T' )
+                    expand_nxt64bits(cp->MGWissuer,conv_rsacctstr(cp->MGWissuer,0));
+                printf("MGW issuer.(%s)\n",cp->MGWissuer);
                 cp->coinid = conv_coinstr(coinstr);
                 cp->limboarray = limboarray;
                 if ( cp->coinid >= 0 && cp->coinid < 256 )

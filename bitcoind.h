@@ -1123,6 +1123,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
 
 void *Coinloop(void *ptr)
 {
+    uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr);
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
@@ -1146,6 +1147,7 @@ void *Coinloop(void *ptr)
         if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
         {
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
+            update_NXTblockchain_info(cp,MGW_whitelist,3,cp->MGWissuer);
             //load_telepods(cp,maxnofile);
         }
     }

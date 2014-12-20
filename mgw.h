@@ -2025,7 +2025,16 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs)); // small memleak for now
         numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
         if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,numgateways,specialNXT)) != 0 )
-            return(wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid));
+        {
+            retstr = wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid);
+            for (i=0; specialNXTaddrs[i]!=0; i++)
+                free(specialNXTaddrs[i]);
+            free(specialNXTaddrs);
+            return(retstr);
+        }
+        //ready_to_xferassets(&pendingtxid);
+        //if ( pendingtxid != 0 )
+        //   return(wait_for_pendingtxid(cp,MGW_whitelist,cp->MGWissuer,pendingtxid));
         circulation = calc_circulation(0,ap,specialNXTaddrs);
         retstr = 0;
         fprintf(stderr,"circulation %.8f\n",dstr(circulation));
