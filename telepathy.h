@@ -329,7 +329,7 @@ void process_telepathic(char *key,char *datastr,uint64_t senderbits,char *sender
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
     if ( (tel= find_telepathy_entry(locationstr)) != 0 )
     {
-        contact = find_contact_nxt64bits(tel->contactbits);
+        contact = find_contact_nxt64bits(1,tel->contactbits);
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
@@ -470,7 +470,7 @@ char *getdb(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sender,int3
     }
     else
     {
-        if ( (contact= find_contact(contactstr)) != 0 )
+        if ( (contact= find_contact(0,contactstr)) != 0 )
         {
             if ( dir > 0 )
                 location = calc_sendAESkeys(&AESpassword,AESpasswordstr,contact,sequenceid);
@@ -512,7 +512,7 @@ char *addcontact(char *handle,char *acct)
         return(0);
     }
     nxt64bits = conv_acctstr(acct);
-    contact = find_contact_nxt64bits(nxt64bits);
+    contact = find_contact_nxt64bits(0,nxt64bits);
     if ( contact != 0 && strcmp(contact->handle,handle) != 0 )
     {
         sprintf(retstr,"{\"error\":\"(%s) already has %llu\"}",contact->handle,(long long)nxt64bits);
@@ -522,7 +522,7 @@ char *addcontact(char *handle,char *acct)
     }
     if ( Debuglevel > 1 )
         printf("addcontact: new (%s) (%s)\n",handle,acct);
-    if ( (contact= find_contact(handle)) == 0 )
+    if ( (contact= find_contact(0,handle)) == 0 )
     {
         memset(&C,0,sizeof(C));
         safecopy(C.handle,handle,sizeof(C.handle));
@@ -579,7 +579,7 @@ char *telepathy_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     copy_cJSON(contactstr,objs[0]);
-    contact = find_contact(contactstr);
+    contact = find_contact(0,contactstr);
     sequenceid = get_API_int(objs[1],-1);
     copy_cJSON(typestr,objs[2]);
     copy_cJSON(attachmentstr,objs[3]);

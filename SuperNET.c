@@ -360,8 +360,8 @@ int main(int argc,const char *argv[])
     char ipaddr[64],*oldport,*newport,portstr[64];
     extern int32_t ENABLE_GUIPOLL;
     int32_t bitweight(uint64_t x);
-    char hexstr[256],hexstr2[256];
-    unsigned char hash[32];
+    //char hexstr[256],hexstr2[256];
+    //unsigned char hash[32];
     void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
     //printf("%llu ^ %llu = %llx wt.%d\n",(unsigned long long)0xef9b64b1eb75d7e6LL,(unsigned long long)0x4b37c5ffc7efba39LL,(unsigned long long)0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL,bitweight(0xef9b64b1eb75d7e6LL^0x4b37c5ffc7efba39LL)); getchar();
     IS_LIBTEST = 1;

@@ -24,7 +24,7 @@ void update_contact_info(struct contact_info *contact)
     update_storage(&SuperNET_dbs[CONTACT_DATA],contact->handle,&contact->H);
 }
 
-struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
+struct contact_info *find_contact_nxt64bits(int32_t autocreate,uint64_t nxt64bits)
 {
     struct contact_info **contacts,*contact,*retcontact = 0;
     int32_t i,numcontacts;
@@ -43,7 +43,7 @@ struct contact_info *find_contact_nxt64bits(uint64_t nxt64bits)
         else free(contacts[i]);
     }
     free(contacts);
-    if ( retcontact == 0 )
+    if ( retcontact == 0 && autocreate != 0 )
     {
         retcontact = calloc(1,sizeof(*contact));
         retcontact->nxt64bits = nxt64bits;
@@ -76,7 +76,7 @@ void free_contacts(struct contact_info **contacts,int32_t n)
     }
 }
 
-struct contact_info *find_contact(char *contactstr)
+struct contact_info *find_contact(int32_t autocreate,char *contactstr)
 {
     uint64_t nxt64bits = 0;
     struct contact_info *contact = 0;
@@ -86,7 +86,7 @@ struct contact_info *find_contact(char *contactstr)
     if ( (contact= find_handle(contactstr)) == 0 )
     {
         if ( (nxt64bits= conv_acctstr(contactstr)) != 0 )
-            contact = find_contact_nxt64bits(nxt64bits);
+            contact = find_contact_nxt64bits(autocreate,nxt64bits);
     }
     return(contact);
 }
@@ -107,7 +107,7 @@ struct contact_info **conv_contacts_json(int32_t *nump,cJSON *array)
         copy_cJSON(contactstr,item);
         if ( contactstr[0] > 0 )
         {
-            if ( (contact= find_contact(contactstr)) != 0 )
+            if ( (contact= find_contact(0,contactstr)) != 0 )
             {
                 if ( contact->nxt64bits != 0 )
                     contacts[j++] = contact;
@@ -173,7 +173,7 @@ char *dispcontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sende
     }
     else
     {
-        if ( (contact= find_contact(handle)) != 0 )
+        if ( (contact= find_contact(0,handle)) != 0 )
         {
             set_contactstr(retbuf,contact);
             free(contact);
@@ -185,11 +185,33 @@ char *dispcontact(char *previpaddr,char *NXTaddr,char *NXTACCTSECRET,char *sende
     return(retstr);
 }
 
+int32_t get_MGW_contacts(struct contact_info *contacts[],int32_t max)
+{
+    int32_t i,n = 0;
+    char srvname[64];
+    for (i=0; i<max; i++)
+    {
+        sprintf(srvname,"mgw%d",i);
+        if ( (contacts[n]= find_contact(0,srvname)) != 0 )
+            n++;
+    }
+    return(n);
+}
+
 void init_Contacts()
 {
-    char *retstr,NXTaddr[64];
+    char *retstr,NXTaddr[64],srvname[64];
     struct contact_info **contacts,*contact;
     int32_t i,j,n,numcontacts;
+    for (i=0; (MGW_whitelist[i]!=0 && MGW_whitelist[i][0]!=0); i++)
+    {
+        sprintf(srvname,"mgw%d",i);
+        if ( (retstr= addcontact(srvname,MGW_whitelist[i])) != 0 )
+        {
+            printf("(%s) <- server.%d %s\n",srvname,i,retstr);
+            free(retstr);
+        }
+    }
     contacts = (struct contact_info **)copy_all_DBentries(&numcontacts,CONTACT_DATA);
     if ( contacts == 0 )
         return;
@@ -203,7 +225,7 @@ void init_Contacts()
         {
             printf("%s\n",retstr);
             free(retstr);
-            if ( (contact= find_contact(contacts[i]->handle)) != 0 )
+            if ( (contact= find_contact(0,contacts[i]->handle)) != 0 )
             {
                 *contact = *contacts[i];
                 printf("lastrecv.%d lastentry.%d\n",contact->lastrecv,contact->lastentry);

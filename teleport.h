@@ -941,7 +941,7 @@ char *teleport(char *contactstr,char *coinstr,uint64_t satoshis,int32_t minage,c
     if ( minage == 0 )
         minage = 3600;
     pods = available_telepods(&n,&avail,&maturing,&inbound,&outbound,&doublespent,&cancelled,coinstr,minage);
-    contact = find_contact(contactstr);
+    contact = find_contact(0,contactstr);
     if ( (withdrawaddr[0] == 0 && contact == 0) || (uint64_t)(SATOSHIDEN * avail) < satoshis || (satoshis % cp->min_telepod_satoshis) != 0 )
     {
         printf("%s\n",buf);
@@ -1142,7 +1142,7 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
         json = cJSON_CreateObject();
         cJSON_AddItemToObject(json,"coin",cJSON_CreateString(cp->name));
         array = cJSON_CreateArray();
-        contact = find_contact(contactstr);
+        contact = find_contact(0,contactstr);
         if ( contact != 0 )
         {
             cJSON_AddItemToObject(json,"contact",cJSON_CreateString(contact->handle));

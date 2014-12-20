@@ -571,7 +571,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     int32_t i,iter,flag,valid = 0;
     printf("GENMULTISIG from (%s)\n",previpaddr);
     refNXTaddr[0] = 0;
-    if ( (refcontact= find_contact(refacct)) != 0 )
+    if ( (refcontact= find_contact(1,refacct)) != 0 )
     {
         if ( refcontact->nxt64bits != 0 )
             expand_nxt64bits(refNXTaddr,refcontact->nxt64bits);
@@ -637,6 +637,51 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         retstr = clonestr(buf);
     }
     return(retstr);
+}
+
+void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
+{
+    struct coin_info *cp,*refcp = get_coin_info("BTCD");
+    int32_t i,n,M,N=3;
+    struct multisig_addr *msig;
+    char coinaddr[512],NXTaddr[64],*retstr;
+    cJSON *coinjson;
+    struct contact_info *contacts[4];
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    memset(contacts,0,sizeof(contacts));
+    M = (N - 1);
+    if ( Global_mp->gatewayid < 0 || refcp == 0 )
+        return;
+    if ( (n= get_MGW_contacts(contacts,N)) != N )
+    {
+        printf("get_MGW_contacts(%d) only returned %d\n",N,n);
+        for (i=0; i<n; i++)
+            if ( contacts[i] != 0 )
+                free(contacts[i]);
+        return;
+    }
+    printf("update_coinacct_addresses\n");
+    for (i=0; i<Numcoins; i++)
+    {
+        cp = Daemons[i];
+        if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
+        {
+            coinjson = cJSON_GetObjectItem(json,cp->name);
+            if ( coinjson == 0 )
+                continue;
+            copy_cJSON(coinaddr,coinjson);
+            if ( (msig= find_NXT_msig(cp->name,NXTaddr,contacts,N)) == 0 )
+            {
+                retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N);
+                if ( retstr != 0 )
+                {
+                    printf("UPDATE_COINACCT_ADDRESSES (%s) -> (%s)\n",cp->name,retstr);
+                    free(retstr);
+                }
+            }
+            else free(msig);
+         }
+    }
 }
 
 int32_t process_directnet_syncwithdraw(struct batch_info *wp)
@@ -820,8 +865,8 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
         {
             case GET_COINDEPOSIT_ADDRESS:
                 // start address gen
-                fprintf(stderr,"GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
-                //update_coinacct_addresses(ap->H.nxt64bits,argjson,txid,-1);
+                //fprintf(stderr,"GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                update_coinacct_addresses(ap->H.nxt64bits,argjson,txid);
                 break;
             case BIND_DEPOSIT_ADDRESS:
                 if ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
