@@ -1439,26 +1439,28 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
-char *bridge_test(int32_t actionflag,char *NXTACCTSECRET,char *destip,char *origargstr)
+char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     uint16_t bridgeport = 0;
+    char retbuf[1024],*str = "";
+    sprintf(retbuf,"{\"error\":\"no bridge\"}");
     if ( strcmp(cp->myipaddr,destip) == 0 )
     {
-        if ( (bridgeport= cp->bridgeport) == 0 || cp->bridgeipaddr[0] == 0 )
-            destip[0] = 0;
-        else strcpy(destip,cp->bridgeipaddr);
+        if ( (bridgeport= cp->bridgeport) != 0 && cp->bridgeipaddr[0] != 0 )
+            strcpy(destip,cp->bridgeipaddr);
     }
     if ( destip[0] != 0 )
     {
         if ( is_illegal_ipaddr(destip) == 0 )
         {
-            if ( actionflag != 0 )
+            if ( sendflag != 0 )
                 send_to_ipaddr(bridgeport,0,destip,origargstr,NXTACCTSECRET);
+            else str = "would have ";
             if ( bridgeport != 0 )
-                return(clonestr("{\"result\":\"bridged\"}"));
-            else return(clonestr("{\"result\":\"forwarded\"}"));
-        } else return(clonestr("{\"error\":\"illegal destip\"}"));
+                sprintf(retbuf,"{\"result\":\"%sbridged\"}",str);
+            else sprintf(retbuf,"{\"result\":\"%sforwarded\"}",str);
+        } else sprintf(retbuf,"{\"error\":\"%sillegal destip\"}",str);
     }
     return(0);
 }
