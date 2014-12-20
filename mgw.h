@@ -606,6 +606,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     {
                         if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                             add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
+                        printf("(%s) pubkey.(%s)\n",acctcoinaddr,pubkey);
                     }
                     else
                     {
