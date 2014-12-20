@@ -1983,9 +1983,10 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     sprintf(numstr,"%.8f",dstr(balance)), cJSON_AddItemToObject(*jsonp,"balance",cJSON_CreateString(numstr));
 }
 
-cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer)
+cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer,double startmilli)
 {
     cJSON *json = cJSON_CreateObject();
+    char numstr[128];
     uint64_t circulation,unspent = 0;
     char *retstr;
     int32_t i,nummsigs;
@@ -2008,7 +2009,7 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
                 process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,issuer,ap,actionflag > 0,circulation);
             process_withdraws(&json,msigs,nummsigs,unspent,cp,ap,issuer,actionflag < 0,circulation);
         }
-        printf("json.%p\n",json);
+        sprintf(numstr,"%.3f",(milliseconds()-startmilli)/1000.), cJSON_AddItemToObject(json,"seconds",cJSON_CreateString(numstr));
         for (i=0; i<nummsigs; i++)
             free(msigs[i]);
         free(msigs);
@@ -2024,11 +2025,12 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     char retbuf[4096],*ipaddrs[3],*retstr = 0;
     struct coin_info *cp;
     uint64_t pendingtxid;
+    double startmilli = milliseconds();
     int32_t i,numgateways,createdflag;
     struct NXT_asset *ap;
     cJSON *json = 0;
     if ( MGW_initdone == 0 )
-        return(clonestr("{\"error\":\"MGW not initialized yet\"}"));
+        return(clonestr("{\"error\":\"MGW not initialized yet\"}\n"));
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
     if ( cp == 0 || ap == 0 )
@@ -2042,7 +2044,7 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
     if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,numgateways,specialNXT)) == 0 )
     {
-        json = process_MGW(actionflag,cp,ap,ipaddrs,numgateways,specialNXTaddrs,specialNXT);
+        json = process_MGW(actionflag,cp,ap,ipaddrs,numgateways,specialNXTaddrs,specialNXT,startmilli);
         if ( json != 0 )
         {
             retstr = cJSON_Print(json);
