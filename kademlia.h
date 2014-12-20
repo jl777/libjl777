@@ -78,6 +78,18 @@ void add_new_node(uint64_t nxt64bits)
     }
 }
 
+void bind_NXT_ipaddr(uint64_t nxt64bits,char *ip_port)
+{
+    char ipaddr[64];
+    struct nodestats *stats;
+    struct pserver_info *pserver;
+    stats = get_nodestats(nxt64bits);
+    stats->p2pport = parse_ipaddr(ipaddr,ip_port);
+    stats->ipbits = calc_ipbits(ipaddr);
+    pserver = get_pserver(0,ipaddr,0,0);
+    pserver->nxt64bits = nxt64bits;
+}
+
 struct nodestats *get_random_node()
 {
     uint32_t now = (uint32_t)time(NULL);

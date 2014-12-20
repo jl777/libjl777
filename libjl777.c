@@ -412,15 +412,10 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     sleep(3);
     {
         struct coin_info *cp;
-        struct nodestats *stats;
-        struct pserver_info *pserver;
         while ( (cp= get_coin_info("BTCD")) == 0 )
             sleep(1);
-        stats = get_nodestats(cp->srvpubnxtbits);
-        stats->p2pport = parse_ipaddr(cp->myipaddr,myipaddr);
-        stats->ipbits = calc_ipbits(cp->myipaddr);
-        pserver = get_pserver(0,myipaddr,0,0);
-        pserver->nxt64bits = cp->srvpubnxtbits;
+        parse_ipaddr(cp->myipaddr,myipaddr);
+        bind_NXT_ipaddr(cp->srvpubnxtbits,myipaddr);
     }
     return(myipaddr);
 }
