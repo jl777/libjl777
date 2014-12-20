@@ -607,7 +607,11 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     if ( stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits )
                     {
                         if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
+                        {
                             add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
+                            flag++;
+                            valid++;
+                        }
                         printf("(%s) pubkey.(%s)\n",acctcoinaddr,pubkey);
                     }
                     else
@@ -2023,6 +2027,8 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     int32_t i,numgateways,createdflag;
     struct NXT_asset *ap;
     cJSON *json = 0;
+    if ( MGW_initdone == 0 )
+        return(clonestr("{\"error\":\"MGW not initialized yet\"}"));
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
     if ( cp == 0 || ap == 0 )
