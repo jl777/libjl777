@@ -209,7 +209,7 @@ void init_Contacts()
         {
             bind_NXT_ipaddr(calc_nxt64bits(MGW_whitelist[i]),Server_names[i]);
             sprintf(srvname,"mgw%d",i);
-            if ( (retstr= addcontact(srvname,MGW_whitelist[i])) != 0 )
+            if ( 0 && (retstr= addcontact(srvname,MGW_whitelist[i])) != 0 )
             {
                 printf("(%s).(%s) <- server.%d %s\n",srvname,Server_names[i],i,retstr);
                 free(retstr);
