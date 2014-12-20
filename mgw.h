@@ -569,7 +569,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     int32_t i,iter,flag,valid = 0;
-    printf("GENMULTISIG from (%s)\n",previpaddr);
+    printf("GENMULTISIG from (%s) refacct.(%s)\n",previpaddr,refacct);
     refNXTaddr[0] = 0;
     if ( (refcontact= find_contact(1,refacct)) != 0 )
     {
@@ -650,8 +650,8 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
     expand_nxt64bits(NXTaddr,nxt64bits);
     memset(contacts,0,sizeof(contacts));
     M = (N - 1);
-    if ( Global_mp->gatewayid < 0 || refcp == 0 )
-        return;
+    //if ( Global_mp->gatewayid < 0 || refcp == 0 )
+    //    return;
     if ( (n= get_MGW_contacts(contacts,N)) != N )
     {
         printf("get_MGW_contacts(%d) only returned %d\n",N,n);
@@ -670,7 +670,7 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
             if ( coinjson == 0 )
                 continue;
             copy_cJSON(coinaddr,coinjson);
-            if ( (msig= find_NXT_msig(cp->name,NXTaddr,contacts,N)) == 0 )
+            if ( (msig= find_NXT_msig(NXTaddr,cp->name,contacts,N)) == 0 )
             {
                 retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N);
                 if ( retstr != 0 )
