@@ -4,7 +4,6 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-// marker/etc in .conf
 // support 'g'
 // debug bridge
 
@@ -22,9 +21,15 @@
 
 int32_t enough_confirms(double redeemed,double estNXT,int32_t numconfs,int32_t minconfirms)
 {
+    double metric;
     if ( numconfs < minconfirms )
         return(0);
-    return(1);
+    metric = log(estNXT + sqrt(redeemed));
+    if ( metric < 1 )
+        metric = 1.;
+    if ( metric <= ((double)numconfs/minconfirms) )
+        return(1);
+    return(0);
 }
 
 int32_t in_specialNXTaddrs(char *specialNXTaddrs[],char *NXTaddr)

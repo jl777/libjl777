@@ -342,15 +342,17 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
 {
     int32_t r=0;
     struct write_req_t *wr;
-    if ( IS_LIBTEST == 2 )
-        queueflag = 0;
+    //if ( IS_LIBTEST == 2 )
+    //    queueflag = 0;
     wr = alloc_wr(buf,len,allocflag);
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->isbridge = isbridge;
     if ( queueflag != 0 )
+    {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
-    //queue_enqueue(&sendQ,wr);
+        queue_enqueue(&sendQ,wr);
+    }
     else r = process_sendQ_item(wr);
     return(r);
 }

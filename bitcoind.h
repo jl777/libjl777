@@ -587,7 +587,7 @@ uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheigh
             for (txind=0; txind<n; txind++)
             {
                 copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
-                if ( Debuglevel > 2 )
+                if ( Debuglevel > 3 )
                     printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txidstr);
                 if ( reftxidstr != 0 )
                 {
@@ -630,7 +630,7 @@ uint64_t get_txoutstr(int32_t *numvoutsp,char *txidstr,char *coinaddr,char *scri
         if ( (txobj= _get_blocktxarray(&blockid,&n,cp,json)) != 0 && txind < n )
         {
             copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 3 )
                 printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txidstr);
             value = get_txvout(0,numvoutsp,coinaddr,script,cp,0,txidstr,vout);
         } else printf("txind.%d >= numtxinds.%d for block.%d\n",txind,n,blockheight);
@@ -679,7 +679,7 @@ int32_t get_txinstr(char *txidstr,struct coin_info *cp,uint32_t blockheight,int3
         if ( (txobj= _get_blocktxarray(&blockid,&n,cp,json)) != 0 && txind < n )
         {
             copy_cJSON(input_txid,cJSON_GetArrayItem(txobj,txind));
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 3 )
                 printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,input_txid);
             if ( input_txid[0] != 0 && (retstr= get_transaction(cp,input_txid)) != 0 )
             {
