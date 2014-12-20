@@ -1126,6 +1126,7 @@ void *Coinloop(void *ptr)
     int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
+    printf("Coinloop numcoins.%d\n",Numcoins);
     init_Contacts();
     printf("Coinloop numcoins.%d\n",Numcoins);
     scan_address_entries();
