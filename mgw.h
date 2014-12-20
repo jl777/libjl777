@@ -566,6 +566,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
 {
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
+    struct nodestats *stats;
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     int32_t i,iter,flag,valid = 0;
@@ -602,7 +603,8 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 acctcoinaddr[0] = pubkey[0] = 0;
                 if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
-                    if ( cp->srvpubnxtbits == contact->nxt64bits )
+                    stats = get_nodestats(contact->nxt64bits);
+                    if ( stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits )
                     {
                         if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                             add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
