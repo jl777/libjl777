@@ -1445,7 +1445,7 @@ char *bridge_test(int32_t actionflag,char *NXTACCTSECRET,char *destip,char *orig
     uint16_t bridgeport = 0;
     if ( strcmp(cp->myipaddr,destip) == 0 )
     {
-        if ( (bridgeport= cp->bridgeport) == 0 && cp->bridgeipaddr[0] != 0 )
+        if ( (bridgeport= cp->bridgeport) == 0 || cp->bridgeipaddr[0] == 0 )
             destip[0] = 0;
         else strcpy(destip,cp->bridgeipaddr);
     }
