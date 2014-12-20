@@ -837,7 +837,7 @@ break;
 char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,char *src,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t datacrc,int32_t count,char *handler)
 {
     //uint32_t now = (uint32_t)time(NULL);
-    int32_t i,j,checkcount = 0;
+    int32_t i,j,*slots,n,checkcount = 0;
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2];
     if ( blocksize == 0 )
@@ -850,9 +850,19 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     j = -1;
     if ( args->completed == 0 && args->blocksize == blocksize && args->totallen == totallen && args->numblocks == numfrags )
     {
+        slots = calloc(args->numblocks,sizeof(*slots));
+        for (i=n=0; i<numfrags; i++)
+            if ( args->crcs[i] != args->gotcrcs[i] )
+                slots[n++] = i;
+        if ( n > 0 )
+        {
+            j = (rand() >> 8) % n;
+            send_fragi(NXTaddr,NXTACCTSECRET,args,j);
+        }
+        /*polarity = 1 - 2 * ((rand() >> 8) & 1);
         for (i=0; i<numfrags; i++)
         {
-            j = (fragi + i + 1) % numfrags;
+            j = (numfrags + fragi + polarity*(i + 1)) % numfrags;
             //printf("i.%d fragi.%d crc.%u vs got.%u\n",i,j,args->crcs[j],args->gotcrcs[j]);
             if ( args->crcs[j] != args->gotcrcs[j] )//&& (now - args->timestamps[i]) > 3 )
             {
@@ -860,7 +870,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
                 break;
             }
             j = -1;
-        }
+        }*/
     }
     {
         char pstr[65536];

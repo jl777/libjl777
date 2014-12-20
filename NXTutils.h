@@ -631,6 +631,24 @@ char *issue_getTransaction(CURL *curl_handle,char *txidstr)
     return(issue_curl(curl_handle,cmd));
 }
 
+int32_t get_NXTconfirms(uint64_t txid)
+{
+    char txidstr[64],*jsonstr;
+    cJSON *json;
+    int32_t numconfs = -1;
+    expand_nxt64bits(txidstr,txid);
+    if ( (jsonstr= issue_getTransaction(0,txidstr)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            numconfs = (int32_t)get_API_int(cJSON_GetObjectItem(json,"confirmations"),-1);
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(numconfs);
+}
+
 uint64_t get_sender(uint64_t *amountp,char *txidstr)
 {
     cJSON *json,*attachobj;
