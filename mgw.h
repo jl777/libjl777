@@ -1148,7 +1148,7 @@ int32_t ready_to_xferassets(uint64_t *txidp)
 
 uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey)
 {
-    char txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096],NXTaddr[64],numstr[64],*errjsontxt;
+    char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096],NXTaddr[64],numstr[64],*errjsontxt;
     struct NXT_assettxid *tp;
     uint64_t depositid,value,total = 0;
     int32_t j,numvouts;
@@ -1212,21 +1212,21 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     else if ( errjsontxt != 0 )
                     {
                         printf("deposit failed.(%s)\n",errjsontxt);
-                        if ( 0 && (errjson= cJSON_Parse(errjsontxt)) != 0 )
+                        if ( 1 && (errjson= cJSON_Parse(errjsontxt)) != 0 )
                         {
                             if ( (item= cJSON_GetObjectItem(errjson,"error")) != 0 )
-                                cJSON_AddItemToObject(pair,"depositerror",item);
-                            fprintf(stderr,"got errjson item.%p\n",item);
+                            {
+                                copy_cJSON(buf,item);
+                                cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(buf));
+                            }
                             free_json(errjson);
                         }
                         else cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
                         free(errjsontxt);
                     }
-                    fprintf(stderr,"end of if\n");
                 }
                 if ( transferjsonp != 0 )
                     cJSON_AddItemToArray(*transferjsonp,pair);
-                fprintf(stderr,"after add\n");
             }
         }
     }
