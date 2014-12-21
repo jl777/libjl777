@@ -1152,7 +1152,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     struct NXT_assettxid *tp;
     uint64_t depositid,value,total = 0;
     int32_t j,numvouts;
-    cJSON *pair,*errjson;
+    cJSON *pair,*errjson,*item;
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
@@ -1191,7 +1191,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 //printf("UNPAID cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
                 sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\"}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value));
                 pair = cJSON_Parse(comment);
-                printf(">>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
+                printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
                 if ( forceflag > 0 )
                 {
@@ -1214,16 +1214,19 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                         printf("deposit failed.(%s)\n",errjsontxt);
                         if ( (errjson= cJSON_Parse(errjsontxt)) != 0 )
                         {
-                            printf("got errjson\n");
-                            cJSON_AddItemToObject(pair,"depositerror",cJSON_GetObjectItem(errjson,"error"));
+                            if ( (item= cJSON_GetObjectItem(errjson,"error")) != 0 )
+                                cJSON_AddItemToObject(pair,"depositerror",item);
+                            fprintf(stderr,"got errjson item.%p\n",item);
                             free_json(errjson);
                         }
                         else cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
                         free(errjsontxt);
                     }
+                    fprintf(stderr,"end of if\n");
                 }
                 if ( transferjsonp != 0 )
                     cJSON_AddItemToArray(*transferjsonp,pair);
+                fprintf(stderr,"after add\n");
             }
         }
     }
