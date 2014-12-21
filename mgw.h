@@ -580,12 +580,13 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct nodestats *stats;
     struct contact_info *contact,*refcontact = 0;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
+    uint64_t refbits = 0;
     int32_t i,iter,flag,valid = 0;
     printf("GENMULTISIG from (%s) refacct.(%s)\n",previpaddr,refacct);
     refNXTaddr[0] = 0;
     if ( (refcontact= find_contact(1,refacct)) != 0 )
     {
-        if ( refcontact->nxt64bits != 0 )
+        if ( (refbits= refcontact->nxt64bits) != 0 )
             expand_nxt64bits(refNXTaddr,refcontact->nxt64bits);
     }
     printf("GENMULTISIG.(%s) n.%d\n",refNXTaddr,n);
@@ -604,7 +605,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 if ( cp != 0 && get_acct_coinaddr(myacctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(mypubkey,cp,myacctcoinaddr) != 0 && myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                 {
                     flag++;
-                    add_NXT_coininfo(contact->nxt64bits,cp->name,myacctcoinaddr,mypubkey);
+                    add_NXT_coininfo(refbits,cp->name,myacctcoinaddr,mypubkey);
                     valid++;
                 }
                 else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,refNXTaddr,acctcoinaddr,pubkey);
@@ -612,14 +613,14 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             else if ( iter == 1 && ismynxtbits(contact->nxt64bits) == 0 )
             {
                 acctcoinaddr[0] = pubkey[0] = 0;
-                if ( get_NXT_coininfo(acctcoinaddr,pubkey,contact->nxt64bits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
+                if ( get_NXT_coininfo(acctcoinaddr,pubkey,refbits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
-                    stats = get_nodestats(contact->nxt64bits);
+                    stats = get_nodestats(refbits);
                     if ( stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits )
                     {
                         if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
                         {
-                            add_NXT_coininfo(contact->nxt64bits,cp->name,acctcoinaddr,pubkey);
+                            add_NXT_coininfo(refbits,cp->name,acctcoinaddr,pubkey);
                             flag++;
                             valid++;
                         }
@@ -627,7 +628,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     }
                     else
                     {
-                        expand_nxt64bits(destNXTaddr,contact->nxt64bits);
+                        expand_nxt64bits(destNXTaddr,refbits);
                         hopNXTaddr[0] = 0;
                         if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                             sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"myaddr\":\"%s\",\"mypubkey\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,myacctcoinaddr,mypubkey,coinstr,refNXTaddr);
