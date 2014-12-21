@@ -579,7 +579,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     {
         if ( (contact= contacts[i]) != 0 && contact->nxt64bits != 0 )
         {
-            if ( iter == 0 && (ismynxtbits(contact->nxt64bits) != 0 || (stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits)) )
+            if ( iter == 0 && ismynxtbits(contact->nxt64bits) != 0 )//|| (stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits)) )
             {
                 myacctcoinaddr[0] = mypubkey[0] = 0;
                 printf("Is me.%llu\n",(long long)contact->nxt64bits);
