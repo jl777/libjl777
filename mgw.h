@@ -193,11 +193,13 @@ int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,ch
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
 {
     DBT key,data,*datap;
-    int32_t ret,createdflag;
+    int32_t i,ret,createdflag;
     struct multisig_addr *msigram;
     struct SuperNET_db *sdb = &SuperNET_dbs[MULTISIG_DATA];
     if ( msig == 0 && syncflag != 0 )
         return(dbsync(sdb,0));
+    for (i=0; i<msig->n; i++)
+        add_NXT_coininfo(calc_nxt64bits(msig->NXTaddr),msig->coinstr,msig->pubkeys[i].coinaddr,msig->pubkeys[i].pubkey);
     if ( msig->H.size == 0 )
         msig->H.size = sizeof(*msig) + (msig->n * sizeof(msig->pubkeys[0]));
     msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msig->multisigaddr);
@@ -894,11 +896,11 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
                 update_coinacct_addresses(ap->H.nxt64bits,argjson,txid);
                 break;
             case BIND_DEPOSIT_ADDRESS:
-                if ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
+                if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 || strcmp(sender,receiver) == 0 || (msig= decode_msigjson(0,argjson,sender)) != 0 )
                 {
                     if ( strcmp(msig->coinstr,coinstr) == 0 )
                     {
-                        fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                        fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         if ( update_msig_info(msig,syncflag) == 0 )
                             fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                     }
