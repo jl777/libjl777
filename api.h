@@ -1477,13 +1477,13 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     int32_t M,N,noerror,n = 0;
     struct multisig_addr *msig;
     struct contact_info **contacts = 0;
-    copy_cJSON(coin,objs[0]);
-    copy_cJSON(refacct,objs[1]);
-    M = (int32_t)get_API_int(objs[2],1);
-    N = (int32_t)get_API_int(objs[3],1);
-    contacts = conv_contacts_json(&n,objs[4]);
-    copy_cJSON(destip,objs[5]);
-    bridgeport = (uint16_t)get_API_int(objs[6],0);
+    copy_cJSON(coin,objs[1]);
+    copy_cJSON(refacct,objs[2]);
+    M = (int32_t)get_API_int(objs[3],1);
+    N = (int32_t)get_API_int(objs[4],1);
+    contacts = conv_contacts_json(&n,objs[5]);
+    copy_cJSON(destip,objs[6]);
+    bridgeport = (uint16_t)get_API_int(objs[7],0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         if ( (retstr= bridge_test(0,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
@@ -1699,7 +1699,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", 0 };
+    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
