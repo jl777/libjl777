@@ -1609,7 +1609,7 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     copy_cJSON(exclude0,objs[11]);
     copy_cJSON(exclude1,objs[12]);
     copy_cJSON(exclude2,objs[13]);
-    copy_cJSON(pubkey,objs[14]);
+    copy_cJSON(pubkey,objs[16]);
     if ( ((NXT0[0] != 0 && NXT1[0] != 0 && NXT2[0] != 0) || (ip0[0] != 0 && ip1[0] != 0 && ip2[0] != 0)) && sender[0] != 0 )
         return(MGWdeposits(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,sender,pubkey));
     return(clonestr("{\"error\":\"bad MGWdeposits_func paramater\"}"));

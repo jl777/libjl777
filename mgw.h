@@ -1512,7 +1512,7 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
             }
         }
         if ( Debuglevel > 1 )
-            printf("got n.%d msigs readyflag.%d | max.%d pendingtxid.%llu\n",nummsigs,readyflag,max,(long long)pendingtxid);
+            printf("got n.%d msigs readyflag.%d | max.%d pendingtxid.%llu depositor.(%s)\n",nummsigs,readyflag,max,(long long)pendingtxid,depositor);
         unspent = nonz = numunspent = 0;
         up = &cp->unspent;
         update_unspent_funds(cp,0,max);
@@ -1520,7 +1520,7 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
         {
             if ( (msig= (struct multisig_addr *)msigs[i]) != 0 )
             {
-                if ( max > 0 && valid_msig(msig,cp->name,refNXTaddr,specialNXTaddrs,ipaddrs,2,3) != 0 && (depositor == 0 || strcmp(depositor,msig->NXTaddr) == 0) )
+                if ( max > 0 && valid_msig(msig,cp->name,refNXTaddr,specialNXTaddrs,ipaddrs,2,3) != 0 && (depositor == 0 || strcmp(depositor,refNXTaddr) == 0) )
                 {
                     if ( Debuglevel > 2 )
                         printf("MULTISIG: %s: %d of %d %s %s\n",cp->name,i,nummsigs,msig->coinstr,msig->multisigaddr);
