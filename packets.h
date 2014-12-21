@@ -586,10 +586,13 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
             {
                 static uint8_t zerokey[256>>3];
                 struct nodestats *stats;
+                char NXTpubkey[128];
                 stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
+                if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
+                    set_NXTpubkey(NXTpubkey,destNXTaddr);
                 if ( Debuglevel > 1 )
-                    fprintf(stderr,"Route to {%s} %p\n",destNXTaddr,stats);
+                    fprintf(stderr,"Route to {%s} %llx\n",destNXTaddr,*(long long *)stats->pubkey);
                 if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
                 {
                     outbuf = decoded;
