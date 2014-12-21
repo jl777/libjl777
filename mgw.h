@@ -1502,7 +1502,7 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
     if ( msigs != 0 )
     {
         readyflag = ready_to_xferassets(&pendingtxid);
-        printf("readyflag.%d\n",readyflag);
+        printf("readyflag.%d depositor.(%s) (%s)\n",readyflag,depositor,depositors_pubkey);
         for (i=max=0; i<nummsigs; i++)
         {
             if ( (msig= (struct multisig_addr *)msigs[i]) != 0 && (entries= get_address_entries(&m,cp->name,msig->multisigaddr)) != 0 )
