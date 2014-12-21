@@ -606,9 +606,14 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     hopNXTaddr[0] = 0;
                     expand_nxt64bits(destNXTaddr,contact->nxt64bits);
                     retstr = send_tokenized_cmd(!prevent_queueing("getmsigpubkey"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destNXTaddr);
-                } else valid++;
-                printf("check with get_NXT_coininfo i.%d valid.%d\n",i,valid);
-            }
+                }
+                else
+                {
+                    printf("already have %llu:%llu (%s %s)\n",(long long)contact->nxt64bits,(long long)refbits,acctcoinaddr,pubkey);
+                    valid++;
+                }
+                printf("check %llu with get_NXT_coininfo i.%d valid.%d\n",(long long)contact->nxt64bits,i,valid);
+            } else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
         }
     }
     if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,refpubkey,contacts)) != 0 )
