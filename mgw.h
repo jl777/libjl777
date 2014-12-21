@@ -454,7 +454,7 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
     msig = alloc_multisig_addr(cp->name,M,N,refNXTaddr,sender);
     for (i=0; i<N; i++)
         srvbits[i] = contacts[i]->nxt64bits;
-    if ( finalize_msig(msig,srvbits,refbits) != 0 )
+    if ( (msig= finalize_msig(msig,srvbits,refbits)) != 0 )
         flag = issue_createmultisig(cp,msig);
     if ( flag == 0 )
     {
