@@ -1123,7 +1123,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
 
 void *Coinloop(void *ptr)
 {
-    cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer,double startmilli);
+    cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey);
     uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr);
     int32_t i,j,processed,createdflag;
     struct coin_info *cp;
@@ -1157,7 +1157,7 @@ void *Coinloop(void *ptr)
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
             update_NXTblockchain_info(cp,MGW_whitelist,3,cp->MGWissuer);
             ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
-            if ( (json= process_MGW(0,cp,ap,ipaddrs,3,MGW_whitelist,cp->MGWissuer,milliseconds())) != 0 )
+            if ( (json= process_MGW(0,cp,ap,ipaddrs,3,MGW_whitelist,cp->MGWissuer,milliseconds(),0,0)) != 0 )
                 free_json(json);
             //load_telepods(cp,maxnofile);
         }
