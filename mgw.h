@@ -2041,7 +2041,7 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
         {
             process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,issuer,ap,actionflag > 0,circulation);
             retstr = cJSON_Print(json);
-            printf("actionflag.%d retstr.(%s)\n",actionflag,retstr);
+            fprintf(stderr,"actionflag.%d retstr.(%s)\n",actionflag,retstr);
             free(retstr), retstr = 0;
         }
         if ( actionflag <= 0 )
@@ -2052,13 +2052,15 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
         }
         sprintf(numstr,"%.3f",(milliseconds()-startmilli)/1000.), cJSON_AddItemToObject(json,"seconds",cJSON_CreateString(numstr));
         for (i=0; i<nummsigs; i++)
+        {
+            fprintf(stderr,"%d ",i);
             free(msigs[i]);
+        }
         free(msigs);
     }
     return(json);
 }
 
-// need to queue
 char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
 {
     static int32_t firsttimestamp;
