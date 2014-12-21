@@ -628,7 +628,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         if ( valid == N )
         {
             retstr = create_multisig_json(msig,0);
-            printf("retstr.(%s)\n",retstr);
+            printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
                 send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
             if ( msig != 0 )

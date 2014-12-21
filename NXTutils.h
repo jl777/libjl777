@@ -1532,6 +1532,7 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
                     free(acp->acctcoinaddrs[i]);
                     acp->acctcoinaddrs[i] = 0;
                 }
+                break;
             }
         }
     } else i = acp->numsrvbits;
