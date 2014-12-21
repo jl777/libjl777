@@ -1589,12 +1589,8 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     uint16_t bridgeport;
     copy_cJSON(destip,objs[14]);
     bridgeport = (uint16_t)get_API_int(objs[15],0);
-    if ( is_remote_access(previpaddr) != 0 )
-    {
-        if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
-            return(retstr);
-       else return(0);
-    }
+    if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
+        return(retstr);
     copy_cJSON(NXT0,objs[0]);
     copy_cJSON(NXT1,objs[1]);
     copy_cJSON(NXT2,objs[2]);
