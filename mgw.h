@@ -1136,7 +1136,7 @@ int32_t ready_to_xferassets(uint64_t *txidp)
 
 uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey)
 {
-    char txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096],NXTaddr[64],numstr[64];
+    char txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096],NXTaddr[64],numstr[64],*errjsontxt;
     struct NXT_assettxid *tp;
     uint64_t depositid,value,total = 0;
     int32_t j,numvouts;
@@ -1184,14 +1184,22 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 if ( forceflag > 0 )
                 {
                     expand_nxt64bits(NXTaddr,nxt64bits);
-                    depositid = issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
-                    add_pendingxfer(0,depositid);
-                    if ( transferjsonp != 0 )
+                    depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
+                    if ( depositid != 0 && errjsontxt == 0 )
                     {
-                        if ( *transferjsonp == 0 )
-                            *transferjsonp = cJSON_CreateArray();
-                        sprintf(numstr,"\"%llu\"",(long long)depositid);
-                        cJSON_AddItemToObject(pair,"depositid",cJSON_CreateString(numstr));
+                        add_pendingxfer(0,depositid);
+                        if ( transferjsonp != 0 )
+                        {
+                            if ( *transferjsonp == 0 )
+                                *transferjsonp = cJSON_CreateArray();
+                            sprintf(numstr,"%llu",(long long)depositid);
+                            cJSON_AddItemToObject(pair,"depositid",cJSON_CreateString(numstr));
+                        }
+                    }
+                    else
+                    {
+                        cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
+                        free(errjsontxt);
                     }
                 }
                 cJSON_AddItemToArray(*transferjsonp,pair);

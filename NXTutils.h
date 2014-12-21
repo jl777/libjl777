@@ -332,14 +332,13 @@ char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
 
 uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *pubkey)
 {
-    char cmd[4096],numstr[128],*str,*jsontxt;
+    char cmd[4096],numstr[128],*jsontxt;
     uint64_t txid = 0;
     cJSON *json,*errjson,*txidobj;
-    if ( retstrp != 0 )
-        *retstrp = 0;
+    *retstrp = 0;
     sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
     if ( pubkey != 0 )
-        sprintf(cmd+strlen(cmd),"&publicKey=%s",pubkey);
+        sprintf(cmd+strlen(cmd),"&publicK=%s",pubkey);
     if ( comment != 0 )
     {
         //if ( Global_mp->NXTheight >= DGSBLOCK )
@@ -356,35 +355,30 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
         json = cJSON_Parse(jsontxt);
         if ( json != 0 )
         {
-            errjson = cJSON_GetObjectItem(json,"errorCode");
+            errjson = cJSON_GetObjectItem(json,"error");
             if ( errjson != 0 )
             {
                 printf("ERROR submitting assetxfer.(%s)\n",jsontxt);
-#ifdef BTC_COINID
-                int32_t _get_gatewayid();
-                if ( _get_gatewayid() >= 0 )
-                {
-                    sleep(60);
-                    fprintf(stderr,"ERROR submitting assetxfer.(%s)\n",jsontxt);
-                    exit(-1);
-                }
-#endif
+                if ( retstrp != 0 )
+                    *retstrp = jsontxt;
             }
-            txidobj = cJSON_GetObjectItem(json,"transaction");
-            copy_cJSON(numstr,txidobj);
-            txid = calc_nxt64bits(numstr);
-            if ( txid == 0 )
+            else
             {
-                str = cJSON_Print(json);
-                printf("ERROR WITH ASSET TRANSFER.(%s) -> \n%s\n",cmd,str);
-                free(str);
+                txidobj = cJSON_GetObjectItem(json,"transaction");
+                copy_cJSON(numstr,txidobj);
+                txid = calc_nxt64bits(numstr);
+                if ( txid == 0 )
+                {
+                    printf("ERROR WITH ASSET TRANSFER.(%s) -> \n%s\n",cmd,jsontxt);
+                    if ( retstrp != 0 )
+                        *retstrp = jsontxt;
+                }
             }
             free_json(json);
         } else printf("error issuing asset.(%s) -> %s\n",cmd,jsontxt);
-        if ( retstrp == 0 )
-            free(jsontxt);
-        else *retstrp = jsontxt;
     }
+    if ( *retstrp == 0 && jsontxt != 0 )
+        free(jsontxt);
     return(txid);
 }
 
