@@ -1471,12 +1471,13 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bri
 
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
+    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],userpubkey[MAX_JSON_FIELD],*retstr = 0;
     cJSON *json;
     uint16_t bridgeport;
     int32_t M,N,noerror,n = 0;
     struct multisig_addr *msig;
     struct contact_info **contacts = 0;
+    copy_cJSON(userpubkey,objs[0]);
     copy_cJSON(coin,objs[1]);
     copy_cJSON(refacct,objs[2]);
     M = (int32_t)get_API_int(objs[3],1);
@@ -1508,7 +1509,7 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
             }
             return(bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr));
         }
-        retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n);
+        retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n,userpubkey);
     }
     free_contacts(contacts,n);
     if ( retstr != 0 )

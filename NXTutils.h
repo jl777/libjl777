@@ -1707,6 +1707,28 @@ struct nodestats *get_nodestats(uint64_t nxt64bits)
     return(stats);
 }
 
+void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
+{
+    static uint8_t zerokey[256>>3];
+    struct nodestats *stats;
+    bits256 pubkey;
+    if ( NXTpubkey != 0 )
+        NXTpubkey[0] = 0;
+    if ( NXTacct == 0 || NXTacct[0] == 0 )
+        return;
+    stats = get_nodestats(calc_nxt64bits(NXTacct));
+    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
+    {
+        pubkey = issue_getpubkey(NXTacct);
+        if ( memcmp(&pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+        {
+            memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
+            if ( NXTpubkey != 0 )
+                init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
+        }
+    }
+}
+
 struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t supernet_port,uint16_t p2pport)
 {
     int32_t createdflag = 0;

@@ -211,6 +211,8 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
     }
     else if ( msig->created == 0 )
         msig->created = msigram->created;
+    if ( msigram->NXTpubkey[0] != 0 && msig->NXTpubkey[0] == 0 )
+        safecopy(msig->NXTpubkey,msigram->NXTpubkey,sizeof(msig->NXTpubkey));
     //if ( msigram->sender == 0 && msig->sender != 0 )
     //    createdflag = 1;
     if ( createdflag != 0 || memcmp(msigram,msig,msig->H.size) != 0 )
@@ -231,7 +233,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
             data.data = msig;
             datap = &data;
         }
-        printf("add (%s)\n",msig->multisigaddr);
+        printf("add (%s) NXTpubkey.(%s)\n",msig->multisigaddr,msig->NXTpubkey);
         if ( (ret= dbput(sdb,0,&key,datap,0)) != 0 )
             sdb->storage->err(sdb->storage,ret,"Database put for quote failed.");
         else if ( syncflag != 0 ) ret = dbsync(sdb,0);
@@ -239,7 +241,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
     return(ret);
 }
 
-struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char *NXTaddr,char *sender)
+struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char *NXTaddr,char *refpubkey,char *sender)
 {
     struct multisig_addr *msig;
     int32_t size = (int32_t)(sizeof(*msig) + n*sizeof(struct pubkey_info));
@@ -250,6 +252,7 @@ struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char
     msig->sender = calc_nxt64bits(sender);
     safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
     safecopy(msig->NXTaddr,NXTaddr,sizeof(msig->NXTaddr));
+    safecopy(msig->NXTpubkey,refpubkey,sizeof(msig->NXTpubkey));
     msig->m = m;
     return(msig);
 }
@@ -277,7 +280,7 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
 {
     int32_t j,M,n,coinid;
-    char nxtstr[512],coinstr[64],ipaddr[64];
+    char nxtstr[512],coinstr[64],ipaddr[64],NXTpubkey[128];
     struct multisig_addr *msig = 0;
     cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj;
     if ( obj == 0 )
@@ -302,7 +305,8 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
         {
             n = cJSON_GetArraySize(pubkeysobj);
             M = (int32_t)get_API_int(cJSON_GetObjectItem(obj,"M"),n-1);
-            msig = alloc_multisig_addr(coinstr,M,n,nxtstr,sender);
+            set_NXTpubkey(NXTpubkey,nxtstr);
+            msig = alloc_multisig_addr(coinstr,M,n,nxtstr,NXTpubkey,sender);
             safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
             copy_cJSON(msig->redeemScript,redeemobj);
             copy_cJSON(msig->multisigaddr,addrobj);
@@ -443,7 +447,7 @@ struct multisig_addr *finalize_msig(struct multisig_addr *msig,uint64_t *srvbits
     return(msig);
 }
 
-struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct coin_info *cp,char *refNXTaddr,struct contact_info **contacts)
+struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct coin_info *cp,char *refNXTaddr,char *refpubkey,struct contact_info **contacts)
 {
     uint64_t refbits,srvbits[16];
     int32_t i,flag = 0;
@@ -451,7 +455,7 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
     if ( cp == 0 )
         return(0);
     refbits = calc_nxt64bits(refNXTaddr);
-    msig = alloc_multisig_addr(cp->name,M,N,refNXTaddr,sender);
+    msig = alloc_multisig_addr(cp->name,M,N,refNXTaddr,refpubkey,sender);
     for (i=0; i<N; i++)
         srvbits[i] = contacts[i]->nxt64bits;
     if ( (msig= finalize_msig(msig,srvbits,refbits)) != 0 )
@@ -557,7 +561,7 @@ int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
     return(0);
 }
 
-char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n)
+char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n,char *refpubkey)
 {
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
@@ -607,7 +611,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             }
         }
     }
-    if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,contacts)) != 0 )
+    if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,refpubkey,contacts)) != 0 )
     {
         msig->valid = valid;
         update_msig_info(msig,1);
@@ -677,7 +681,7 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
     struct coin_info *cp,*refcp = get_coin_info("BTCD");
     int32_t i,n,M,N=3;
     struct multisig_addr *msig;
-    char coinaddr[512],NXTaddr[64],*retstr;
+    char coinaddr[512],NXTaddr[64],NXTpubkey[128],*retstr;
     cJSON *coinjson;
     struct contact_info *contacts[4];
     expand_nxt64bits(NXTaddr,nxt64bits);
@@ -705,7 +709,8 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
             copy_cJSON(coinaddr,coinjson);
             if ( (msig= find_NXT_msig(0,NXTaddr,cp->name,contacts,N)) == 0 )
             {
-                retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N);
+                set_NXTpubkey(NXTpubkey,NXTaddr);
+                retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N,NXTpubkey);
                 if ( retstr != 0 )
                 {
                     printf("UPDATE_COINACCT_ADDRESSES (%s) -> (%s)\n",cp->name,retstr);
