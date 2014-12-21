@@ -80,7 +80,7 @@ struct contact_info *find_contact(int32_t autocreate,char *contactstr)
 {
     uint64_t nxt64bits = 0;
     struct contact_info *contact = 0;
-    //printf("_find_contact.(%s)\n",contactstr);
+    printf("auto.%d find_contact.(%s)\n",autocreate,contactstr);
     if ( contactstr == 0 || contactstr[0] == 0 )
         return(0);
     if ( (contact= find_handle(contactstr)) == 0 )
@@ -227,7 +227,7 @@ void init_Contacts()
         expand_nxt64bits(NXTaddr,contacts[i]->nxt64bits);
         if ( (retstr= addcontact(contacts[i]->handle,NXTaddr)) != 0 )
         {
-            printf("%s\n",retstr);
+            printf("(i.%d of numcontacts.%d): %s\n",i,numcontacts,retstr);
             free(retstr);
             if ( (contact= find_contact(0,contacts[i]->handle)) != 0 )
             {

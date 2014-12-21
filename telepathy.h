@@ -505,7 +505,7 @@ char *addcontact(char *handle,char *acct)
     bits256 mysecret,mypublic;
     struct coin_info *cp = get_coin_info("BTCD");
     struct contact_info *contact;
-    char retstr[1024],pubkeystr[128],RSaddr[64],*ret;
+    char retstr[1024],pubkeystr[128],RSaddr[64];//,*ret;
     if ( cp == 0 )
     {
         printf("addcontact: no BTCD cp?\n");
