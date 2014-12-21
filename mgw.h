@@ -1337,7 +1337,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
         return(0);
     }
     nxt64bits = calc_nxt64bits(NXTaddr);
-    if ( depositors_pubkey[0] == 0 )
+    if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
         set_NXTpubkey(depositors_pubkey,NXTaddr);
     if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
     {
