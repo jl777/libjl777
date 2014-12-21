@@ -1500,9 +1500,17 @@ void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *
     }
     printf("ADDCOININFO.(%s %s) for %llu\n",acctcoinaddr,pubkey,(long long)nxt64bits);
     if ( acp->pubkey != 0 )
+    {
+        if ( strcmp(pubkey,acp->pubkey) != 0 )
+            printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->pubkey,pubkey,(long long)nxt64bits);
         free(acp->pubkey);
+    }
     if ( acp->acctcoinaddr != 0 )
+    {
+        if ( strcmp(acctcoinaddr,acp->acctcoinaddr) != 0 )
+            printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->acctcoinaddr,acctcoinaddr,(long long)nxt64bits);
         free(acp->acctcoinaddr);
+    }
     acp->pubkey = clonestr(pubkey);
     acp->acctcoinaddr = clonestr(acctcoinaddr);
 }
