@@ -329,7 +329,7 @@ void process_telepathic(char *key,char *datastr,uint64_t senderbits,char *sender
     expand_nxt64bits(locationstr,senderbits); // overloading sender with locationbits!
     if ( (tel= find_telepathy_entry(locationstr)) != 0 )
     {
-        contact = find_contact_nxt64bits(1,tel->contactbits);
+        contact = find_contact_nxt64bits(0,tel->contactbits);
         if ( contact != 0 )
         {
             init_hexbytes_noT(AESpasswordstr,tel->AESpassword.bytes,sizeof(tel->AESpassword));
