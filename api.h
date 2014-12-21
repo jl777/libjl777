@@ -1543,8 +1543,9 @@ char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
 char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
-    struct contact_info *contact;
+    //struct contact_info *contact;
     struct coin_info *cp;
+    uint64_t nxt64bits;
     printf("setmsigpubkey(%s)\n",previpaddr);
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
@@ -1556,12 +1557,12 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     printf("coin.(%s) %p ref.(%s) acc.(%s) pub.(%s)\n",coin,cp,refNXTaddr,acctcoinaddr,pubkey);
     if ( cp != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        if ( (contact= find_contact(1,sender)) != 0 && contact->nxt64bits != 0 )
+        if ( (nxt64bits= conv_acctstr(refNXTaddr)) != 0 )
         {
-            add_NXT_coininfo(contact->nxt64bits,coin,acctcoinaddr,pubkey);
+            add_NXT_coininfo(nxt64bits,coin,acctcoinaddr,pubkey);
             //replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
             //update_contact_info(contact);
-            free(contact);
+            //free(contact);
         }
     }
     return(clonestr("{\"error\":\"bad setmsigpubkey_func paramater\"}"));

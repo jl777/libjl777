@@ -43,7 +43,7 @@ struct contact_info *find_contact_nxt64bits(int32_t autocreate,uint64_t nxt64bit
         else free(contacts[i]);
     }
     free(contacts);
-    if ( retcontact == 0 && autocreate != 0 )
+    if ( 0 && retcontact == 0 && autocreate != 0 )
     {
         retcontact = calloc(1,sizeof(*contact));
         retcontact->nxt64bits = nxt64bits;
@@ -86,7 +86,7 @@ struct contact_info *find_contact(int32_t autocreate,char *contactstr)
     if ( (contact= find_handle(contactstr)) == 0 )
     {
         if ( (nxt64bits= conv_acctstr(contactstr)) != 0 )
-            contact = find_contact_nxt64bits(autocreate,nxt64bits);
+            contact = find_contact_nxt64bits(0*autocreate,nxt64bits);
     }
     return(contact);
 }
