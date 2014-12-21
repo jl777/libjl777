@@ -1498,19 +1498,21 @@ void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *
         np->coins[np->numcoins++] = acp = calloc(1,sizeof(*acp));
         safecopy(acp->name,coinstr,sizeof(acp->name));
     }
-    printf("ADDCOININFO.(%s %s) for %llu\n",acctcoinaddr,pubkey,(long long)nxt64bits);
     if ( acp->pubkey != 0 )
     {
         if ( strcmp(pubkey,acp->pubkey) != 0 )
             printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->pubkey,pubkey,(long long)nxt64bits);
+        else printf("MATCHED pubkey ");
         free(acp->pubkey);
     }
     if ( acp->acctcoinaddr != 0 )
     {
         if ( strcmp(acctcoinaddr,acp->acctcoinaddr) != 0 )
             printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->acctcoinaddr,acctcoinaddr,(long long)nxt64bits);
+        else printf("MATCHED acctcoinaddr ");
         free(acp->acctcoinaddr);
     }
+    printf("ADDCOININFO.(%s %s) for %llu\n",acctcoinaddr,pubkey,(long long)nxt64bits);
     acp->pubkey = clonestr(pubkey);
     acp->acctcoinaddr = clonestr(acctcoinaddr);
 }
