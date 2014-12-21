@@ -1439,12 +1439,11 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
-char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,char *origargstr)
+char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bridgeport,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
-    uint16_t bridgeport = 0;
     char retbuf[1024],*str = "";
-    sprintf(retbuf,"{\"error\":\"no bridge\"}");
+    retbuf[0] = 0;
     if ( strcmp(cp->myipaddr,destip) == 0 )
     {
         if ( (bridgeport= cp->bridgeport) != 0 && cp->bridgeipaddr[0] != 0 )
@@ -1465,13 +1464,16 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,char *origar
             else sprintf(retbuf,"{\"result\":\"%sforwarded\"}",str);
         } else sprintf(retbuf,"{\"error\":\"%sillegal destip\"}",str);
     }
-    return(clonestr(retbuf));
+    if ( retbuf[0] != 0 )
+        return(clonestr(retbuf));
+    else return(0);
 }
 
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
     cJSON *json;
+    uint16_t bridgeport;
     int32_t M,N,noerror,n = 0;
     struct multisig_addr *msig;
     struct contact_info **contacts = 0;
@@ -1481,9 +1483,10 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     N = (int32_t)get_API_int(objs[3],1);
     contacts = conv_contacts_json(&n,objs[4]);
     copy_cJSON(destip,objs[5]);
+    bridgeport = (uint16_t)get_API_int(objs[6],0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        if ( (retstr= bridge_test(0,NXTACCTSECRET,destip,origargstr)) != 0 )
+        if ( (retstr= bridge_test(0,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
         {
             printf("sender.(%s) bridgetest returns.(%s)\n",sender,retstr);
             free(retstr);
@@ -1503,7 +1506,7 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
                     return(retstr);
                 else free(retstr);
             }
-            return(bridge_test(1,NXTACCTSECRET,destip,origargstr));
+            return(bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr));
         }
         retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n);
     }
@@ -1583,10 +1586,12 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD],destip[MAX_JSON_FIELD];
     int32_t rescan,actionflag;
     char *retstr;
+    uint16_t bridgeport;
     copy_cJSON(destip,objs[14]);
+    bridgeport = (uint16_t)get_API_int(objs[15],0);
     if ( is_remote_access(previpaddr) != 0 )
     {
-        if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,origargstr)) != 0 )
+        if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
             return(retstr);
        else return(0);
     }
@@ -1694,11 +1699,11 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
 
     // MGW
-    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", "destip", 0 };
+    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", "destip", "destport", 0 };
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", 0 };
+    static char *MGWdeposits[] = { (char *)MGWdeposits_func, "MGWdeposits", "V", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
