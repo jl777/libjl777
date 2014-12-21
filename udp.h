@@ -110,7 +110,8 @@ void update_nodestats_data(struct nodestats *stats)
         stats->H.size = sizeof(*stats);
     expand_ipbits(ipaddr,stats->ipbits);
     expand_nxt64bits(NXTaddr,stats->nxt64bits);
-    printf("Update nodestats.%s (%s) lastcontact %u\n",NXTaddr,ipaddr,stats->lastcontact);
+    if ( Debuglevel > 2 )
+        printf("Update nodestats.%s (%s) lastcontact %u\n",NXTaddr,ipaddr,stats->lastcontact);
     update_storage(&SuperNET_dbs[NODESTATS_DATA],NXTaddr,&stats->H);
 }
 

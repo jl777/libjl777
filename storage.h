@@ -541,7 +541,7 @@ void add_pricedb(char *exchange,char *base,char *rel)
     data.size = sizeof(P);
     if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
         sdb->storage->err(sdb->storage,ret,"Database put failed.");
-    else if ( complete_dbput(sdb,dbname,&P,sizeof(P),0) == 0 && Debuglevel > 1 )
+    else if ( complete_dbput(sdb,dbname,&P,sizeof(P),0) == 0 && Debuglevel > 2 )
         fprintf(stderr,"updated.(%s)\n",dbname);
 }
 
@@ -610,7 +610,7 @@ void update_storage(struct SuperNET_db *sdb,char *keystr,struct storage_header *
         //fprintf(stderr,"updateDB.%d entry.(%s) datalen.%d -> %d | hp %p, data.data %p\n",selector,keystr,hp->size,data.size,hp,data.data);
         if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
             sdb->storage->err(sdb->storage,ret,"Database put failed.");
-        else if ( complete_dbput(sdb,keystr,hp,hp->size,0) == 0 && Debuglevel > 1 )
+        else if ( complete_dbput(sdb,keystr,hp,hp->size,0) == 0 && Debuglevel > 2 )
             fprintf(stderr,"updated.%s (%s) hp.%p data.data %p\n",sdb->name,keystr,hp,data.data);
         if ( data.data != hp && data.data != 0 )
             free(data.data);

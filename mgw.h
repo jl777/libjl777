@@ -480,7 +480,7 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
     return(msig);
 }
 
-void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
+void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     char *jsontxt,*AMtxid,AM[4096];
@@ -488,7 +488,7 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     if ( cp != 0 && (jsontxt= create_multisig_json(msig,0)) != 0 )
     {
         printf(">>>>>>>>>>>>>>>>>>>>>>>>>> send bind address AM\n");
-        set_json_AM(ap,GATEWAY_SIG,BIND_DEPOSIT_ADDRESS,refNXTaddr,0,jsontxt,1);
+        set_json_AM(ap,GATEWAY_SIG,BIND_DEPOSIT_ADDRESS,refNXTaddr,0,origargstr!=0?origargstr:jsontxt,1);
         AMtxid = submit_AM(0,cp->srvNXTADDR,&ap->H,0,cp->srvNXTACCTSECRET);
         if ( AMtxid != 0 )
             free(AMtxid);
@@ -496,22 +496,32 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig)
     }
 }
 
-void add_MGWaddr(char *previpaddr,char *sender,char *origargstr)
+void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
 {
     cJSON *origargjson,*argjson;
     struct multisig_addr *msig;
+    uint64_t senderbits;
+    int32_t i;
     char *retstr;
-    if ( (origargjson= cJSON_Parse(origargstr)) != 0 )
+    if ( valid > 0 && (origargjson= cJSON_Parse(origargstr)) != 0 )
     {
         if ( is_cJSON_Array(origargjson) != 0 )
             argjson = cJSON_GetArrayItem(origargjson,0);
         else argjson = origargjson;
         if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
         {
-            update_msig_info(msig,1);
-            retstr = create_multisig_json(msig,1);
-            printf("add_MGWaddr(%s)\n",retstr);
-            broadcast_bindAM(msig->NXTaddr,msig);
+            senderbits = calc_nxt64bits(sender);
+            for (i=0; i<msig->n; i++)
+            {
+                if ( msig->pubkeys[i].nxt64bits == senderbits )
+                {
+                    update_msig_info(msig,1);
+                    retstr = create_multisig_json(msig,1);
+                    printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
+                    broadcast_bindAM(msig->NXTaddr,msig,origargstr);
+                    break;
+                }
+            }
             free(msig);
         }
     }
@@ -642,7 +652,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             if ( msig != 0 )
             {
                 if ( 0 && flag != 0 ) // let the client do this
-                    broadcast_bindAM(refNXTaddr,msig);
+                    broadcast_bindAM(refNXTaddr,msig,0);
                 free(msig);
             }
         }
@@ -1124,7 +1134,7 @@ int32_t ready_to_xferassets(uint64_t *txidp)
     return(1);
 }
 
-uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr)
+uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey)
 {
     char txidstr[1024],coinaddr[1024],script[4096],coinaddr_v0[1024],script_v0[4096],comment[4096],NXTaddr[64],numstr[64];
     struct NXT_assettxid *tp;
@@ -1174,7 +1184,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 if ( forceflag > 0 )
                 {
                     expand_nxt64bits(NXTaddr,nxt64bits);
-                    depositid = issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment);
+                    depositid = issue_transferAsset(0,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
                     add_pendingxfer(0,depositid);
                     if ( transferjsonp != 0 )
                     {
@@ -1285,6 +1295,8 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
 {
     struct address_entry *entries,*entry;
     int32_t i,n;
+    struct nodestats *stats;
+    char depositors_pubkey[1024];
     //uint32_t createtime = 0;
     struct coin_txidind *cointp;
     uint64_t nxt64bits,unspent,pendingdeposits = 0;
@@ -1294,6 +1306,9 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
         return(0);
     }
     nxt64bits = calc_nxt64bits(NXTaddr);
+    stats = get_nodestats(nxt64bits);
+    memset(depositors_pubkey,0,sizeof(depositors_pubkey));
+    init_hexbytes_noT(depositors_pubkey,stats->pubkey,sizeof(stats->pubkey));
     if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
     {
         if ( Debuglevel > 2 )
@@ -1302,7 +1317,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
         {
             entry = &entries[i];
             if ( entry->vinflag == 0 )
-                pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr);
+                pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr,depositors_pubkey);
             if ( Debuglevel > 2 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);

@@ -1573,7 +1573,7 @@ char *MGWaddr_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     if ( sender[0] != 0 && valid > 0 )
-        add_MGWaddr(previpaddr,sender,origargstr);
+        add_MGWaddr(previpaddr,sender,valid,origargstr);
     return(clonestr(origargstr));
 }
 

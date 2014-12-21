@@ -330,7 +330,7 @@ char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
     return(issue_NXTPOST(curl_handle,cmd));
 }
 
-uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment)
+uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *pubkey)
 {
     char cmd[4096],numstr[128],*str,*jsontxt;
     uint64_t txid = 0;
@@ -338,6 +338,8 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     if ( retstrp != 0 )
         *retstrp = 0;
     sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
+    if ( pubkey != 0 )
+        sprintf(cmd+strlen(cmd),"&publicKey=%s",pubkey);
     if ( comment != 0 )
     {
         //if ( Global_mp->NXTheight >= DGSBLOCK )
@@ -1028,7 +1030,7 @@ int32_t set_json_AM(struct json_AM *ap,int32_t sig,int32_t funcid,char *nxtaddr,
     long len = 0;
     char *teststr;
     struct compressed_json *jsn = 0;
-    compressjson = 0; // some cases dont decompress on the other side, even though decode tests fine :(
+   /* compressjson = 3;
     if ( jsonstr == 0 )
         jsonflag = 0;
     else jsonflag = 1 + (compressjson != 0);
@@ -1050,6 +1052,10 @@ int32_t set_json_AM(struct json_AM *ap,int32_t sig,int32_t funcid,char *nxtaddr,
             jsonflag = 1;
         }
     } else len = sizeof(*ap);
+    */
+    
+    len = sizeof(*ap) + strlen(jsonstr) + 1;
+    jsonflag = 1;
     memset(ap,0,len);
     ap->H.sig = sig;
     if ( nxtaddr != 0 )
