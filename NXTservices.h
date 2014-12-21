@@ -56,7 +56,7 @@ struct other_addr
     char addr[128];
 };
 
-struct acct_coin { char name[16],*acctcoinaddr,*pubkey; };
+struct acct_coin { uint64_t *srvbits; char name[16],**acctcoinaddrs,**pubkeys; int32_t numsrvbits; };
 
 struct NXT_acct
 {

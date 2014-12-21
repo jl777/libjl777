@@ -95,7 +95,7 @@ struct multisig_addr
     struct storage_header H;
     char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],redeemScript[2048],coinstr[16];
     uint64_t sender,modified;
-    uint32_t m,n,created,tbd;
+    uint32_t m,n,created,valid;
     struct pubkey_info pubkeys[];
 };
 

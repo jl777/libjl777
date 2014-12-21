@@ -1475,22 +1475,34 @@ struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,cha
     return(0);
 }
 
-struct acct_coin *get_NXT_coininfo(char *acctcoinaddr,char *pubkey,uint64_t nxt64bits,char *coinstr)
+struct acct_coin *get_NXT_coininfo(uint64_t srvbits,char *acctcoinaddr,char *pubkey,uint64_t nxt64bits,char *coinstr)
 {
     struct acct_coin *acp = 0;
+    int32_t i;
     acctcoinaddr[0] = pubkey[0] = 0;
     if ( (acp= find_NXT_coininfo(0,nxt64bits,coinstr)) != 0 )
     {
-        if ( acp->pubkey != 0 )
-            strcpy(pubkey,acp->pubkey);
-        if ( acp->acctcoinaddr != 0 )
-            strcpy(acctcoinaddr,acp->acctcoinaddr);
+        if ( acp->numsrvbits > 0 )
+        {
+            for (i=0; i<acp->numsrvbits; i++)
+            {
+                if ( acp->srvbits[i] == srvbits )
+                {
+                    if ( acp->pubkeys[i] != 0 )
+                        strcpy(pubkey,acp->pubkeys[i]);
+                    if ( acp->acctcoinaddrs[i] != 0 )
+                        strcpy(acctcoinaddr,acp->acctcoinaddrs[i]);
+                    return(acp);
+                }
+            }
+        }
     }
-    return(acp);
+    return(0);
 }
 
-void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey)
+void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey)
 {
+    int32_t i;
     struct NXT_acct *np;
     struct acct_coin *acp;
     if ( (acp= find_NXT_coininfo(&np,nxt64bits,coinstr)) == 0 )
@@ -1498,23 +1510,42 @@ void add_NXT_coininfo(uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *
         np->coins[np->numcoins++] = acp = calloc(1,sizeof(*acp));
         safecopy(acp->name,coinstr,sizeof(acp->name));
     }
-    if ( acp->pubkey != 0 )
+    if ( acp->numsrvbits > 0 )
     {
-        if ( strcmp(pubkey,acp->pubkey) != 0 )
-            printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->pubkey,pubkey,(long long)nxt64bits);
-        else printf("MATCHED pubkey ");
-        free(acp->pubkey);
-    }
-    if ( acp->acctcoinaddr != 0 )
+        for (i=0; i<acp->numsrvbits; i++)
+        {
+            if ( acp->srvbits[i] == srvbits )
+            {
+                if ( acp->pubkeys[i] != 0 )
+                {
+                    if ( strcmp(pubkey,acp->pubkeys[i]) != 0 )
+                        printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu;%llu\n",acp->pubkeys[i],pubkey,(long long)srvbits,(long long)nxt64bits);
+                    else printf("MATCHED pubkey ");
+                    free(acp->pubkeys[i]);
+                    acp->pubkeys[i] = 0;
+                }
+                if ( acp->acctcoinaddrs[i] != 0 )
+                {
+                    if ( strcmp(acctcoinaddr,acp->acctcoinaddrs[i]) != 0 )
+                        printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu;%llu\n",acp->acctcoinaddrs[i],acctcoinaddr,(long long)srvbits,(long long)nxt64bits);
+                    else printf("MATCHED acctcoinaddr ");
+                    free(acp->acctcoinaddrs[i]);
+                    acp->acctcoinaddrs[i] = 0;
+                }
+            }
+        }
+    } else i = acp->numsrvbits;
+    if ( i == acp->numsrvbits )
     {
-        if ( strcmp(acctcoinaddr,acp->acctcoinaddr) != 0 )
-            printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu\n",acp->acctcoinaddr,acctcoinaddr,(long long)nxt64bits);
-        else printf("MATCHED acctcoinaddr ");
-        free(acp->acctcoinaddr);
+        acp->numsrvbits++;
+        acp->srvbits = realloc(acp->srvbits,sizeof(*acp->srvbits) * acp->numsrvbits);
+        acp->acctcoinaddrs = realloc(acp->acctcoinaddrs,sizeof(*acp->acctcoinaddrs) * acp->numsrvbits);
+        acp->pubkeys = realloc(acp->pubkeys,sizeof(*acp->pubkeys) * acp->numsrvbits);
     }
-    printf("ADDCOININFO.(%s %s) for %llu\n",acctcoinaddr,pubkey,(long long)nxt64bits);
-    acp->pubkey = clonestr(pubkey);
-    acp->acctcoinaddr = clonestr(acctcoinaddr);
+    printf("ADDCOININFO.(%s %s) for %llu:%llu\n",acctcoinaddr,pubkey,(long long)srvbits,(long long)nxt64bits);
+    acp->srvbits[i] = srvbits;
+    acp->pubkeys[i] = clonestr(pubkey);
+    acp->acctcoinaddrs[i] = clonestr(acctcoinaddr);
 }
 
 void calc_NXTcointxid(char *NXTcointxid,char *cointxid,int32_t vout)
