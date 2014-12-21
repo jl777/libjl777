@@ -80,7 +80,7 @@ struct contact_info *find_contact(int32_t autocreate,char *contactstr)
 {
     uint64_t nxt64bits = 0;
     struct contact_info *contact = 0;
-    printf("auto.%d find_contact.(%s)\n",autocreate,contactstr);
+    //printf("auto.%d find_contact.(%s)\n",autocreate,contactstr);
     if ( contactstr == 0 || contactstr[0] == 0 )
         return(0);
     if ( (contact= find_handle(contactstr)) == 0 )
