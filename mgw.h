@@ -896,7 +896,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
                 update_coinacct_addresses(ap->H.nxt64bits,argjson,txid);
                 break;
             case BIND_DEPOSIT_ADDRESS:
-                if ( in_specialNXTaddrs(specialNXTaddrs,sender) != 0 || strcmp(sender,receiver) == 0 || (msig= decode_msigjson(0,argjson,sender)) != 0 )
+                if ( (in_specialNXTaddrs(specialNXTaddrs,sender) != 0 || strcmp(sender,receiver) == 0) && (msig= decode_msigjson(0,argjson,sender)) != 0 )
                 {
                     if ( strcmp(msig->coinstr,coinstr) == 0 )
                     {
