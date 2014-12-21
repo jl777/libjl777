@@ -647,7 +647,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     return(retstr);
 }
 
-struct multisig_addr *find_NXT_msig(char *NXTaddr,char *coinstr,struct contact_info **contacts,int32_t n)
+struct multisig_addr *find_NXT_msig(int32_t fixflag,char *NXTaddr,char *coinstr,struct contact_info **contacts,int32_t n)
 {
     struct multisig_addr **msigs,*retmsig = 0;
     int32_t i,j,nummsigs;
@@ -656,12 +656,17 @@ struct multisig_addr *find_NXT_msig(char *NXTaddr,char *coinstr,struct contact_i
         srvbits[i] = contacts[i]->nxt64bits;
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
     {
-        nxt64bits = calc_nxt64bits(NXTaddr);
+        nxt64bits = (NXTaddr != 0) ? calc_nxt64bits(NXTaddr) : 0;
         for (i=0; i<nummsigs; i++)
         {
-            if ( msigs[i]->valid != msigs[i]->n && finalize_msig(msigs[i],srvbits,nxt64bits) == 0 )
-                continue;
-            if ( strcmp(coinstr,msigs[i]->coinstr) == 0 && strcmp(NXTaddr,msigs[i]->NXTaddr) == 0 )
+            if ( fixflag != 0 && msigs[i]->valid != msigs[i]->n )
+            {
+                if ( finalize_msig(msigs[i],srvbits,nxt64bits) == 0 )
+                    continue;
+                printf("FIXED %llu -> %s\n",(long long)nxt64bits,msigs[i]->multisigaddr);
+                update_msig_info(msigs[i],1);
+            }
+            if ( nxt64bits != 0 && strcmp(coinstr,msigs[i]->coinstr) == 0 && strcmp(NXTaddr,msigs[i]->NXTaddr) == 0 )
             {
                 for (j=0; j<n; j++)
                     if ( srvbits[j] != msigs[i]->pubkeys[j].nxt64bits )
@@ -712,7 +717,7 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
             if ( coinjson == 0 )
                 continue;
             copy_cJSON(coinaddr,coinjson);
-            if ( (msig= find_NXT_msig(NXTaddr,cp->name,contacts,N)) == 0 )
+            if ( (msig= find_NXT_msig(0,NXTaddr,cp->name,contacts,N)) == 0 )
             {
                 retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N);
                 if ( retstr != 0 )

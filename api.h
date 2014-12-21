@@ -1449,7 +1449,7 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,char *origar
     {
         if ( (bridgeport= cp->bridgeport) != 0 && cp->bridgeipaddr[0] != 0 )
             strcpy(destip,cp->bridgeipaddr);
-        else bridgeport = 0;
+        else bridgeport = destip[0] = 0;
         printf("my bridgetest (%s:%d)\n",destip,bridgeport);
     }
     if ( destip[0] != 0 )
@@ -1488,7 +1488,7 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
             printf("sender.(%s) bridgetest returns.(%s)\n",sender,retstr);
             free(retstr);
             noerror = 0;
-            if ( (msig= find_NXT_msig(sender,coin,contacts,n)) != 0 )
+            if ( (msig= find_NXT_msig(1,sender,coin,contacts,n)) != 0 )
             {
                 retstr = create_multisig_json(msig,0);
                 printf("MSIGreturns.(%s)\n",retstr);
