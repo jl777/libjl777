@@ -1695,7 +1695,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
 
     // MGW
-    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "coin", "refcontact", "M", "N", "contacts", "destip", "destport", 0 };
+    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "V", "pubkey", "coin", "refcontact", "M", "N", "contacts", "destip", "destport", 0 };
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };

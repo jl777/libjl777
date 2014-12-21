@@ -1147,7 +1147,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     struct NXT_assettxid *tp;
     uint64_t depositid,value,total = 0;
     int32_t j,numvouts;
-    cJSON *pair;
+    cJSON *pair,*errjson;
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
@@ -1205,7 +1205,12 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     }
                     else
                     {
-                        cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
+                        if ( (errjson= cJSON_Parse(errjsontxt)) != 0 )
+                        {
+                            cJSON_AddItemToObject(pair,"depositerror",cJSON_GetObjectItem(errjson,"error"));
+                            free_json(errjson);
+                        }
+                        else cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
                         free(errjsontxt);
                     }
                 }

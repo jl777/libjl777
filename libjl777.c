@@ -436,6 +436,7 @@ char *call_SuperNET_JSON(char *JSONstr)
     {
         expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+        cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(Global_mp->pubkeystr));
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
