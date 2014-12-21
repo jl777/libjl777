@@ -1199,6 +1199,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
                     if ( depositid != 0 && errjsontxt == 0 )
                     {
+                        printf("deposit worked.%llu\n",(long long)depositid);
                         add_pendingxfer(0,depositid);
                         if ( transferjsonp != 0 )
                         {
@@ -1208,10 +1209,12 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                             cJSON_AddItemToObject(pair,"depositid",cJSON_CreateString(numstr));
                         }
                     }
-                    else
+                    else if ( errjsontxt != 0 )
                     {
+                        printf("deposit failed.(%s)\n",errjsontxt);
                         if ( (errjson= cJSON_Parse(errjsontxt)) != 0 )
                         {
+                            printf("got errjson\n");
                             cJSON_AddItemToObject(pair,"depositerror",cJSON_GetObjectItem(errjson,"error"));
                             free_json(errjson);
                         }
@@ -1219,7 +1222,8 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                         free(errjsontxt);
                     }
                 }
-                cJSON_AddItemToArray(*transferjsonp,pair);
+                if ( transferjsonp != 0 )
+                    cJSON_AddItemToArray(*transferjsonp,pair);
             }
         }
     }
@@ -1535,14 +1539,17 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
             fprintf(stderr,"call sort_vps with %p num.%d\n",up,up->num);
             sort_vps(up->vps,up->num);
             for (i=0; i<10&&i<up->num; i++)
-                fprintf(stderr,"(%s) (%s).%d %.8f\n",up->vps[i]->txid,up->vps[i]->coinaddr,up->vps[i]->entry.v,dstr(up->vps[i]->value));
+                fprintf(stderr,"%d (%s) (%s).%d %.8f\n",i,up->vps[i]->txid,up->vps[i]->coinaddr,up->vps[i]->entry.v,dstr(up->vps[i]->value));
         }
         fprintf(stderr,"max %.8f min %.8f median %.8f |unspent %.8f numunspent.%d in nonz.%d accts\n",dstr(up->maxavail),dstr(up->minavail),dstr((up->maxavail+up->minavail)/2),dstr(up->unspent),numunspent,nonz);
     }
-    fprintf(stderr,"jsonp.%p\n",jsonp);
+    fprintf(stderr,"jsonp.%p unspentp.%p\n",jsonp,unspentp);
     sprintf(numstr,"%.8f",dstr(circulation)), cJSON_AddItemToObject(*jsonp,"circulation",cJSON_CreateString(numstr));
+    fprintf(stderr,"jsonp.%p unspentp.%p\n",jsonp,unspentp);
     sprintf(numstr,"%.8f",dstr(unspent)), cJSON_AddItemToObject(*jsonp,"unspent",cJSON_CreateString(numstr));
+    fprintf(stderr,"jsonp.%p unspentp.%p\n",jsonp,unspentp);
     sprintf(numstr,"%.8f",dstr(total)), cJSON_AddItemToObject(*jsonp,"pendingdeposits",cJSON_CreateString(numstr));
+    fprintf(stderr,"jsonp.%p unspentp.%p\n",jsonp,unspentp);
     cJSON_AddItemToObject(*jsonp,"deposits",array);
     *unspentp = unspent;
 }
