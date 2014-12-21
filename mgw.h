@@ -508,7 +508,8 @@ void add_MGWaddr(char *previpaddr,char *sender,char *origargstr)
         else argjson = origargjson;
         if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
         {
-            retstr = create_multisig_json(msig,0);
+            update_msig_info(msig,1);
+            retstr = create_multisig_json(msig,1);
             printf("add_MGWaddr(%s)\n",retstr);
             broadcast_bindAM(msig->NXTaddr,msig);
             free(msig);
