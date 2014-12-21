@@ -2077,6 +2077,10 @@ char *MGWdeposits(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,
     cJSON *json = 0;
     if ( MGW_initdone == 0 )
         return(clonestr("{\"error\":\"MGW not initialized yet\"}\n"));
+    if ( NXTaddr != 0 && NXTaddr[0] == 0 )
+        NXTaddr = 0;
+    if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
+        depositors_pubkey = 0;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
     cp = conv_assetid(assetstr);
     if ( cp == 0 || ap == 0 )
