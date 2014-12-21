@@ -430,7 +430,7 @@ char *call_SuperNET_JSON(char *JSONstr)
         printf("Finished_init still 0\n");
         return(clonestr("{\"result\":null}"));
     }
-printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
+//printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
@@ -449,7 +449,7 @@ printf("got call_SuperNET_JSON.(%s)\n",JSONstr);
             if ( array != 0 )
             {
                 cmdstr = verify_tokenized_json(0,NXTaddr,&valid,array);
-                printf("cmdstr.%s valid.%d\n",cmdstr,valid);
+                //printf("cmdstr.%s valid.%d\n",cmdstr,valid);
                 retstr = SuperNET_json_commands(Global_mp,0,array,NXTaddr,valid,_tokbuf);
                 //printf("json command return.(%s)\n",retstr);
                 if ( cmdstr != 0 )
