@@ -1325,7 +1325,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
 
 uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transferjsonp,int32_t forceflag,struct NXT_asset *ap,char *NXTaddr,struct coin_info *cp,char *msigaddr,char *depositors_pubkey)
 {
-    void set_NXTpubley(char *,char *);
+    void set_NXTpubkey(char *,char *);
     struct address_entry *entries,*entry;
     int32_t i,n;
     //uint32_t createtime = 0;
@@ -1338,7 +1338,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
     }
     nxt64bits = calc_nxt64bits(NXTaddr);
     if ( depositors_pubkey[0] == 0 )
-        set_NXTpubley(depositors_pubkey,NXTaddr);
+        set_NXTpubkey(depositors_pubkey,NXTaddr);
     if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
     {
         if ( Debuglevel > 2 )
