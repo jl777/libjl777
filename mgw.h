@@ -581,18 +581,13 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
     struct nodestats *stats;
-    struct contact_info *contact,*refcontact = 0;
+    struct contact_info *contact;
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     uint64_t refbits = 0;
     int32_t i,iter,flag,valid = 0;
-    printf("GENMULTISIG from (%s) refacct.(%s)\n",previpaddr,refacct);
-    refNXTaddr[0] = 0;
-    if ( (refcontact= find_contact(1,refacct)) != 0 )
-    {
-        if ( (refbits= refcontact->nxt64bits) != 0 )
-            expand_nxt64bits(refNXTaddr,refcontact->nxt64bits);
-    }
-    printf("GENMULTISIG.(%s) n.%d\n",refNXTaddr,n);
+    refbits = conv_acctstr(refacct);
+    expand_nxt64bits(refNXTaddr,refbits);
+    printf("GENMULTISIG.%d from (%s) refacct.(%s) %llu %s\n",N,previpaddr,refacct,(long long)refbits,refNXTaddr);
     if ( refNXTaddr[0] == 0 )
         return(clonestr("\"error\":\"genmultisig couldnt find refcontact\"}"));
     flag = 0;
@@ -690,7 +685,7 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
                 free(contacts[i]);
         return;
     }
-    printf("update_coinacct_addresses\n");
+    printf("update_coinacct_addresses.(%s)\n",NXTaddr);
     for (i=0; i<Numcoins; i++)
     {
         cp = Daemons[i];
