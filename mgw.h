@@ -1212,7 +1212,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     else if ( errjsontxt != 0 )
                     {
                         printf("deposit failed.(%s)\n",errjsontxt);
-                        if ( (errjson= cJSON_Parse(errjsontxt)) != 0 )
+                        if ( 0 && (errjson= cJSON_Parse(errjsontxt)) != 0 )
                         {
                             if ( (item= cJSON_GetObjectItem(errjson,"error")) != 0 )
                                 cJSON_AddItemToObject(pair,"depositerror",item);
