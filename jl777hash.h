@@ -417,9 +417,9 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     //    usleep(1);
     Global_mp->hashprocessing++;
     queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
-    usleep(1);
+    usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
-        usleep(1);
+        usleep(APISLEEP * 10);
     result = ptr->U.result;
     free(ptr);
     Global_mp->hashprocessing--;
@@ -438,9 +438,9 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
     //    usleep(1);
     Global_mp->hashprocessing++;
     queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
-    usleep(1);
+    usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
-        usleep(1);
+        usleep(APISLEEP * 10);
     hashval = ptr->U.hashval;
     free(ptr);
     Global_mp->hashprocessing--;
@@ -454,7 +454,7 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
     while ( 1 )//Historical_done == 0 )
     {
         if ( Global_mp->hashprocessing == 0 && n == 0 )
-            usleep(1000);
+            usleep(100 * APISLEEP);
         for (iter=n=0; iter<2; iter++)
         {
             while ( (ptr= queue_dequeue(&Global_mp->hashtable_queue[iter])) != 0 )

@@ -620,7 +620,7 @@ int32_t SUPERNET_PORT = 7777;
 int32_t SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
-int32_t NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
+int32_t DBSLEEP,NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
 char NXTSERVER[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
 
 struct hashtable *orderbook_txids;

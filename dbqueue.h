@@ -219,7 +219,7 @@ int32_t close_SuperNET_db(struct SuperNET_db *sdb,int32_t selector)
         while ( sdb->active == 0 )
         {
             fprintf(stderr,".");
-            usleep(100000);
+            usleep(DBSLEEP * 1000);
             fprintf(stderr," %s selector.%d shutdown\n",sdb->name,selector);
             sdb->active = -1;
         }
@@ -307,7 +307,7 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
             for (i=0; i<Num_pricedbs; i++)
                 n += _process_dbiter(&Price_dbs[i]);
             if ( n == 0 )
-                usleep(100);
+                usleep(10 * DBSLEEP);
         }
     }
     for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
@@ -335,7 +335,7 @@ int32_t _block_on_dbreq(struct dbreq *req)
     if ( sdb->overlap_write == 0 )
     {
         while ( req->doneflag == 0 )
-            usleep(100); // if not done after the first context switch, likely to take a while
+            usleep(10 * DBSLEEP); // if not done after the first context switch, likely to take a while
         retval = req->retval;
         free(req);
         sdb->busy--;
@@ -371,7 +371,7 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
         req->cursor = cursor;
         sdb->busy++;
         queue_enqueue(&sdb->queue,req);
-        usleep(10); // allow context switch so request has a chance of completing
+        usleep(DBSLEEP); // allow context switch so request has a chance of completing
     }
     return(req);
 }
