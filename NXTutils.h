@@ -338,7 +338,7 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     *retstrp = 0;
     sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
     if ( pubkey != 0 )
-        sprintf(cmd+strlen(cmd),"&publicK=%s",pubkey);
+        sprintf(cmd+strlen(cmd),"&publicKey=%s",pubkey);
     if ( comment != 0 )
     {
         //if ( Global_mp->NXTheight >= DGSBLOCK )
