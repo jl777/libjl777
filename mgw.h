@@ -193,13 +193,14 @@ int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,ch
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
 {
     DBT key,data,*datap;
-    int32_t ret,createdflag;
+    int32_t i,ret,createdflag;
     struct multisig_addr *msigram;
     struct SuperNET_db *sdb = &SuperNET_dbs[MULTISIG_DATA];
     if ( msig == 0 && syncflag != 0 )
         return(dbsync(sdb,0));
-    //for (i=0; i<msig->n; i++)
-    //    add_NXT_coininfo(calc_nxt64bits(msig->NXTaddr),msig->coinstr,msig->pubkeys[i].coinaddr,msig->pubkeys[i].pubkey);
+    for (i=0; i<msig->n; i++)
+        if ( msig->pubkeys[i].nxt64bits != 0 && msig->pubkeys[i].coinaddr[0] != 0 && msig->pubkeys[i].pubkey[0] != 0 )
+            add_NXT_coininfo(msig->pubkeys[i].nxt64bits,calc_nxt64bits(msig->NXTaddr),msig->coinstr,msig->pubkeys[i].coinaddr,msig->pubkeys[i].pubkey);
     if ( msig->H.size == 0 )
         msig->H.size = sizeof(*msig) + (msig->n * sizeof(msig->pubkeys[0]));
     msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msig->multisigaddr);
