@@ -1532,7 +1532,7 @@ char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
         if ( cp != 0 )
         {
             if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
-                add_NXT_coininfo(calc_nxt64bits(sender),calc_nxt64bits(NXTaddr),cp->name,myacctcoinaddr,mypubkey);
+                add_NXT_coininfo(calc_nxt64bits(sender),conv_acctstr(refNXTaddr),cp->name,myacctcoinaddr,mypubkey);
             if ( get_acct_coinaddr(acctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(pubkey,cp,acctcoinaddr) != 0 )
             {
                 sprintf(cmdstr,"{\"requestType\":\"setmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"addr\":\"%s\",\"pubkey\":\"%s\"}",NXTaddr,coin,refNXTaddr,acctcoinaddr,pubkey);

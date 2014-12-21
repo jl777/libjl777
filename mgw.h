@@ -596,12 +596,12 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 acctcoinaddr[0] = pubkey[0] = 0;
                 if ( get_NXT_coininfo(contact->nxt64bits,acctcoinaddr,pubkey,refbits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
-                    expand_nxt64bits(destNXTaddr,contact->nxt64bits);
                     if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                         sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"myaddr\":\"%s\",\"mypubkey\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,myacctcoinaddr,mypubkey,coinstr,refNXTaddr);
                     else sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,coinstr,refNXTaddr);
                     printf("SENDREQ.(%s)\n",buf);
                     hopNXTaddr[0] = 0;
+                    expand_nxt64bits(destNXTaddr,contact->nxt64bits);
                     retstr = send_tokenized_cmd(!prevent_queueing("getmsigpubkey"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,destNXTaddr);
                 } else valid++;
                 printf("check with get_NXT_coininfo i.%d valid.%d\n",i,valid);
