@@ -1665,7 +1665,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
 {
     char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],email[MAX_JSON_FIELD],hopNXTaddr[64];
     int32_t rescan,actionflag,datalen;
-    char *retstr,*str;
+    char *retstr,*str = 0;
     uint16_t bridgeport;
     uint8_t *data;
     if ( Global_mp->gatewayid < 0 && previpaddr != 0 )
