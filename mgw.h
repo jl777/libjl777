@@ -1193,13 +1193,13 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                     //if ( numconfs >= MIN_NXTCONFIRMS )
                     {
                         process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
-                        timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp") - 3600;
-                        if ( timestamp > 0 && timestamp > np->timestamps[coinid] )
+                        timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
+                        if ( timestamp > 0 && (timestamp - 3600) > np->timestamps[coinid] )
                         {
-                            printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp);
-                            np->timestamps[coinid] = timestamp;
-                        } else if ( timestamp < 0 )
-                            printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
+                            printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp-3600);
+                            np->timestamps[coinid] = (timestamp - 3600); // assumes no hour long block
+                        } //else if ( timestamp < 0 ) older blocks dont have any timestamps!
+                          //  printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
                     }
                 }
             }
