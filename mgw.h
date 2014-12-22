@@ -855,7 +855,7 @@ uint64_t get_deposittxid(struct NXT_asset *ap,char *txidstr,int32_t vout)
     return(0);
 }
 
-uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,char *withdrawaddr,uint64_t redeemtxid,uint64_t AMtxidbits)
+uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,cJSON *autojson,char *withdrawaddr,uint64_t redeemtxid,uint64_t AMtxidbits)
 {
     char AMtxidstr[64],coinstr[512],redeemstr[MAX_JSON_FIELD],comment[MAX_JSON_FIELD*4],*retstr;
     char checkcointxid[512],checkcoinaddr[512];
@@ -873,35 +873,38 @@ uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,char *withdrawad
             copy_cJSON(comment,cJSON_GetObjectItem(json,"comment"));
             if ( comment[0] != 0 && (comment[0] == '{' || comment[0] == '[') && (commentjson= cJSON_Parse(comment)) != 0 )
             {
-                copy_cJSON(txidstr,cJSON_GetObjectItem(commentjson,"cointxid"));
-                if ( extract_cJSON_str(coinstr,sizeof(coinstr),commentjson,"coin") > 0 && strcmp(coinstr,cp->name) == 0 )
+                if ( extract_cJSON_str(redeemstr,sizeof(redeemstr),commentjson,"redeemtxid") > 0 && calc_nxt64bits(redeemstr) != redeemtxid )
                 {
-                    //sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\"}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value));
-                    extract_cJSON_str(checkcoinaddr,sizeof(checkcoinaddr),commentjson,"coinaddr");
-                    extract_cJSON_str(checkcointxid,sizeof(checkcointxid),commentjson,"cointxid");
-                    if ( strcmp(checkcoinaddr,withdrawaddr) == 0 )
-                        matched++;
-                    if ( strcmp(checkcointxid,txidstr) == 0 )
-                        matched++;
-                    blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"coinblocknum"),0);
-                    txind = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"cointxind"),0);
-                    vout = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"coinv"),0);
-                    if ( extract_cJSON_str(redeemstr,sizeof(redeemstr),commentjson,"redeemtxid") > 0 && calc_nxt64bits(redeemstr) != redeemtxid )
+                    array = cJSON_GetObjectItem(commentjson,"redeems");
+                    if ( array != 0 && is_cJSON_Array(array) != 0 )
                     {
-                        array = cJSON_GetObjectItem(commentjson,"redeems");
-                        if ( array != 0 && is_cJSON_Array(array) != 0 )
+                        n = cJSON_GetArraySize(array);
+                        for (i=0; i<n; i++)
                         {
-                            n = cJSON_GetArraySize(array);
-                            for (i=0; i<n; i++)
+                            copy_cJSON(redeemstr,cJSON_GetArrayItem(array,i));
+                            if ( redeemstr[0] != 0 && calc_nxt64bits(redeemstr) == redeemtxid )
                             {
-                                copy_cJSON(redeemstr,cJSON_GetArrayItem(array,i));
-                                if ( redeemstr[0] != 0 && calc_nxt64bits(redeemstr) == redeemtxid )
-                                {
-                                    matched++;
-                                    break;
-                                }
+                                matched++;
+                                break;
                             }
                         }
+                    }
+                }
+                if ( autojson == 0 )
+                {
+                    copy_cJSON(txidstr,cJSON_GetObjectItem(commentjson,"cointxid"));
+                    if ( extract_cJSON_str(coinstr,sizeof(coinstr),commentjson,"coin") > 0 && strcmp(coinstr,cp->name) == 0 )
+                    {
+                        //sprintf(comment,"{\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\"}",coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value));
+                        extract_cJSON_str(checkcoinaddr,sizeof(checkcoinaddr),commentjson,"coinaddr");
+                        extract_cJSON_str(checkcointxid,sizeof(checkcointxid),commentjson,"cointxid");
+                        if ( strcmp(checkcoinaddr,withdrawaddr) == 0 )
+                            matched++;
+                        if ( strcmp(checkcointxid,txidstr) == 0 )
+                            matched++;
+                        blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"coinblocknum"),0);
+                        txind = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"cointxind"),0);
+                        vout = (uint32_t)get_API_int(cJSON_GetObjectItem(commentjson,"coinv"),0);
                     } else matched++;
                 }
                 free_json(commentjson);
@@ -910,7 +913,12 @@ uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,char *withdrawad
         }
         free(retstr);
     }
-    if ( matched == 3 && txidstr[0] != 0 )
+    if ( autojson != 0 )
+    {
+        if ( matched == 0 )
+            value = 0;
+    }
+    else if ( matched == 3 && txidstr[0] != 0 )
     {
         int32_t numvouts;
         value = get_txoutstr(&numvouts,checkcointxid,checkcoinaddr,0,cp,blocknum,txind,vout);
@@ -920,7 +928,7 @@ uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,char *withdrawad
             matched++;
         if ( matched != 5 )
             value = 0;
-    }
+    } else value = 0;
     return(value);
 }
 
@@ -1726,36 +1734,117 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
     return(circulation * ap->mult);
 }
 
-char *calc_withdraw_addr(char *destaddr,char *NXTaddr,struct coin_info *cp,struct NXT_assettxid *tp,struct NXT_asset *ap)
+cJSON *gen_autoconvert_json(struct NXT_assettxid *tp)
 {
-    char pubkey[1024],withdrawaddr[1024],*retstr = destaddr;
-    int64_t amount,minwithdraw;
-    cJSON *obj,*argjson = 0;
-    destaddr[0] = withdrawaddr[0] = 0;
-    if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (argjson= cJSON_Parse(tp->comment)) != 0 )
+    cJSON *json;
+    int32_t delta;
+    char typestr[64],numstr[64];
+    if ( tp->convname[0] == 0 )
+        return(0);
+    json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"name",cJSON_CreateString(tp->convname));
+    if ( tp->convwithdrawaddr != 0 )
+        cJSON_AddItemToObject(json,"coinaddr",cJSON_CreateString(tp->convwithdrawaddr));
+    if ( tp->teleport[0] != 0 )
     {
-        obj = cJSON_GetObjectItem(argjson,"withdrawaddr");
-        copy_cJSON(withdrawaddr,obj);
+        if ( strcmp(tp->teleport,"send") == 0 )
+            strcpy(typestr,"telepod");
+        else strcpy(typestr,"emailpod");
+    } else strcpy(typestr,"convert");
+    cJSON_AddItemToObject(json,"type",cJSON_CreateString(typestr));
+    if ( tp->minconvrate != 0 )
+        sprintf(numstr,"%.8f",tp->minconvrate), cJSON_AddItemToObject(json,"convrate",cJSON_CreateString(numstr));
+    if ( tp->convexpiration != 0 )
+    {
+        delta = (int32_t)(tp->convexpiration - time(NULL));
+        cJSON_AddItemToObject(json,"expires",cJSON_CreateNumber(delta));
+    }
+    return(json);
+}
+
+int32_t calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_assettxid *tp,cJSON *argjson)
+{
+    cJSON *json;
+    int32_t convert = 0;
+    struct coin_info *newcp;
+    char buf[MAX_JSON_FIELD],autoconvert[MAX_JSON_FIELD],issuer[MAX_JSON_FIELD],*retstr;
+    if ( tp->convname[0] != 0 )
+    {
+        withdrawaddr[0] = 0;
+        return(-1);
+    }
+    copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
+    copy_cJSON(autoconvert,cJSON_GetObjectItem(argjson,"autoconvert"));
+    copy_cJSON(buf,cJSON_GetObjectItem(argjson,"teleport")); // "send" or <emailaddr>
+    safecopy(tp->teleport,buf,sizeof(tp->teleport));
+    tp->convassetid = tp->assetbits;
+    if ( autoconvert[0] != 0 )
+    {
+        if ( (newcp= get_coin_info(autoconvert)) == 0 )
+        {
+            if ( (retstr= issue_getAsset(0,autoconvert)) != 0 )
+            {
+                if ( (json= cJSON_Parse(retstr)) != 0 )
+                {
+                    copy_cJSON(issuer,cJSON_GetObjectItem(json,"account"));
+                    if ( is_trusted_issuer(issuer) > 0 )
+                    {
+                        copy_cJSON(tp->convname,cJSON_GetObjectItem(json,"name"));
+                        convert = 1;
+                    }
+                    free_json(json);
+                }
+            }
+        }
+        else
+        {
+            strcpy(tp->convname,newcp->name);
+            convert = 1;
+        }
+        if ( convert != 0 )
+        {
+            tp->minconvrate = get_API_float(cJSON_GetObjectItem(argjson,"rate"));
+            tp->convexpiration = (int32_t)get_API_int(cJSON_GetObjectItem(argjson,"expiration"),0);
+            if ( withdrawaddr[0] != 0 ) // no address means to create user credit
+                tp->convwithdrawaddr = clonestr(withdrawaddr);
+        }
+        else withdrawaddr[0] = autoconvert[0] = 0;
+    }
+    if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
+        return(-1);
+    return(0);
+}
+
+char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info *cp,struct NXT_assettxid *tp,struct NXT_asset *ap)
+{
+    char pubkey[1024],withdrawaddr[1024],*retstr = 0;
+    int64_t amount,minwithdraw;
+    cJSON *argjson = 0;
+    destaddr[0] = withdrawaddr[0] = 0;
+    if ( tp->redeemtxid == 0 )
+    {
+        printf("no redeem txid %s %s\n",cp->name,cJSON_Print(argjson));
+        retstr = 0;
     }
     amount = tp->quantity * ap->mult;
+    if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (argjson= cJSON_Parse(tp->comment)) != 0 )
+    {
+        if ( calc_withdrawaddr(withdrawaddr,cp,tp,argjson) < 0 )
+            return(0);
+    }
     minwithdraw = cp->txfee * MIN_DEPOSIT_FACTOR;
     if ( amount <= minwithdraw )
     {
         printf("minimum withdrawal must be more than %.8f %s\n",dstr(minwithdraw),cp->name);
         retstr = 0;
     }
-    else if ( tp->redeemtxid == 0 )
-    {
-        printf("no redeem txid %s %s\n",cp->name,cJSON_Print(argjson));
-        retstr = 0;
-    }
-    if ( withdrawaddr[0] == 0 )
+    else if ( withdrawaddr[0] == 0 )
     {
         printf("no withdraw address for %.8f | ",dstr(amount));
         retstr = 0;
     }
     //printf("withdraw addr.(%s) lp.%p\n",withdrawaddr,lp);
-    if ( cp != 0 && validate_coinaddr(pubkey,cp,withdrawaddr) < 0 )
+    else if ( cp != 0 && validate_coinaddr(pubkey,cp,withdrawaddr) < 0 )
     {
         printf("invalid address.(%s) for NXT.%s %.8f validate.%d\n",withdrawaddr,NXTaddr,dstr(amount),validate_coinaddr(pubkey,cp,withdrawaddr));
         retstr = 0;
@@ -2124,7 +2213,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         {
             str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
             expand_nxt64bits(sender,tp->senderbits);
-            if ( tp->AMtxidbits == 0 && (destaddr= calc_withdraw_addr(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 )
+            if ( tp->AMtxidbits == 0 && (destaddr= parse_withdraw_instructions(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 )
             {
                 stripwhite(destaddr,strlen(destaddr));
                 printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
@@ -2254,9 +2343,12 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
         struct multisig_addr **msigs,*msig;
         struct address_entry *entries;
         struct NXT_assettxid *tp;
+        cJSON *autojson;
         int32_t j,n,nummsigs;
         uint64_t value,deposittxid,nxt64bits,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
+        printf("scan for (%s)\n",NXTaddr);
         update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
+        printf("BACK\n");
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
         nxt64bits = calc_nxt64bits(NXTaddr);
@@ -2321,12 +2413,20 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
                         cJSON_AddItemToObject(item,"status",cJSON_CreateString("too small"));
                     else
                     {
+                        autojson = gen_autoconvert_json(tp);
+                        if ( autojson != 0 )
+                        {
+                            cJSON_AddItemToObject(item,"autoconv",autojson);
+                            if ( actionflag > 0 && (tp->convexpiration == 0 || time(NULL) < tp->convexpiration) )
+                                if ( (pendingtxid= autoconvert(tp)) != 0 )
+                                    add_pendingxfer(0,pendingtxid);
+                        }
                         if ( tp->AMtxidbits == 0 )
                             cJSON_AddItemToObject(item,"status",cJSON_CreateString("queued"));
                         else if ( tp->AMtxidbits > 1 || is_limbo_redeem(cp,tp->AMtxidbits) != 0 )
                         {
                             expand_nxt64bits(redeemstr,tp->AMtxidbits), cJSON_AddItemToObject(item,"sentAM",cJSON_CreateString(redeemstr));
-                            if ( (withdrew= get_sentAM_cointxid(txidstr,cp,withdrawaddr,tp->redeemtxid,tp->AMtxidbits)) <= 0 )
+                            if ( (withdrew= get_sentAM_cointxid(txidstr,cp,autojson,withdrawaddr,tp->redeemtxid,tp->AMtxidbits)) <= 0 )
                                 cJSON_AddItemToObject(item,"status",cJSON_CreateString("error"));
                             else
                             {

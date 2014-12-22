@@ -496,6 +496,32 @@ double calc_convamount(char *base,char *rel,uint64_t satoshis)
     return(0.);
 }
 
+uint64_t autoconvert(struct NXT_assettxid *tp)
+{
+    uint64_t converttxid = 0;
+    if ( tp->convname[0] == 0 )
+        return(0);
+    /*json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"name",cJSON_CreateString(tp->convname));
+    if ( tp->convwithdrawaddr != 0 )
+        cJSON_AddItemToObject(json,"coinaddr",cJSON_CreateString(tp->convwithdrawaddr));
+    if ( tp->teleport[0] != 0 )
+    {
+        if ( strcmp(tp->teleport,"send") == 0 )
+            strcpy(typestr,"telepod");
+        else strcpy(typestr,"emailpod");
+    } else strcpy(typestr,"convert");
+    cJSON_AddItemToObject(json,"type",cJSON_CreateString(typestr));
+    if ( tp->minconvrate != 0 )
+        sprintf(numstr,"%.8f",tp->minconvrate), cJSON_AddItemToObject(json,"convrate",cJSON_CreateString(numstr));
+    if ( tp->convexpiration != 0 )
+    {
+        delta = (int32_t)(tp->convexpiration - time(NULL));
+        cJSON_AddItemToObject(json,"expires",cJSON_CreateNumber(delta));
+    }*/
+    return(converttxid);
+}
+
 #define ADD_TELEPOD \
     { pod = calloc(1,data.size);\
     memcpy(pod,data.data,data.size);\

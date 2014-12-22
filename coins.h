@@ -629,6 +629,27 @@ int32_t is_active_coin(char *coinstr)
     return(0);
 }
 
+int32_t is_trusted_issuer(char *issuer)
+{
+    int32_t i,n;
+    cJSON *array;
+    char str[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"issuers");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( strcmp(str,issuer) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
 char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
 {
     static int didinit,exchangeflag;

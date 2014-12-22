@@ -399,4 +399,6 @@ int32_t teleport_telepod(char *mypubaddr,char *NXTaddr,char *NXTACCTSECRET,char 
     return(sendandfree_jsoncmd(Global_mp->Lfactor,NXTaddr,NXTACCTSECRET,json,destNXTaddr));
 }
 
+
+
 #endif
