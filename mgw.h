@@ -2243,8 +2243,11 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
     }
     if ( firsttimestamp == 0 )
         get_NXTblock(&firsttimestamp);
-    specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
-    init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
+    if ( NXT0 != 0 && NXT0[0] != 0 )
+    {
+        specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
+        init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
+    } else specialNXTaddrs = MGW_whitelist;
     if ( rescan != 0 )
     {
         char coinaddr[1024],txidstr[1024],withdrawaddr[512],depositstr[64],numstr[128],redeemstr[128];
@@ -2359,9 +2362,12 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
             free_json(json);
         }
     }  else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,specialNXT,pendingtxid);
-    for (i=0; specialNXTaddrs[i]!=0; i++)
-        free(specialNXTaddrs[i]);
-    free(specialNXTaddrs);
+    if ( specialNXTaddrs != MGW_whitelist )
+    {
+        for (i=0; specialNXTaddrs[i]!=0; i++)
+            free(specialNXTaddrs[i]);
+        free(specialNXTaddrs);
+    }
     if ( retstr == 0 )
         retstr = clonestr("{}");
     printf("MGW.(%s)\n",retstr);
