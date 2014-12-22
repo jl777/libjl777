@@ -452,7 +452,9 @@ uint64_t get_txvout(char *blockhash,int32_t *numvoutsp,char *coinaddr,char *scri
     cJSON *vouts,*obj;
     if ( numvoutsp != 0 )
         *numvoutsp = 0;
-    coinaddr[0] = script[0] = 0;
+    coinaddr[0] = 0;
+    if ( script != 0 )
+        script[0] = 0;
     if ( txjson == 0 && txidstr != 0 && txidstr[0] != 0 )
     {
         retstr = get_transaction(cp,txidstr);
@@ -477,7 +479,7 @@ uint64_t get_txvout(char *blockhash,int32_t *numvoutsp,char *coinaddr,char *scri
                 extract_txvals(coinaddr,script,cp->nohexout,obj);
                 if ( coinaddr[0] == 0 )
                     printf("(%s) obj.%p vouts.%p num.%d vs %d %s\n",coinaddr,obj,vouts,vout,numvouts,cJSON_Print(txjson));
-                if ( script[0] == 0 && value > 0 )
+                if ( script != 0 && script[0] == 0 && value > 0 )
                     printf("process_vouts WARNING coinaddr,(%s) %s\n",coinaddr,script);
             }
         } else printf("vout.%d >= numvouts.%d\n",vout,numvouts);
@@ -1124,7 +1126,7 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
 void *Coinloop(void *ptr)
 {
     cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey);
-    uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr);
+    uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr);
     int32_t i,j,processed,createdflag;
     struct coin_info *cp;
     struct NXT_asset *ap;
@@ -1155,7 +1157,7 @@ void *Coinloop(void *ptr)
             for (j=0; j<3; j++)
                 ipaddrs[j] = Server_names[j];
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
-            update_NXTblockchain_info(cp,MGW_whitelist,3,cp->MGWissuer);
+            update_NXTblockchain_info(cp,MGW_whitelist,cp->MGWissuer);
             ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
             if ( (json= process_MGW(0,cp,ap,ipaddrs,3,MGW_whitelist,cp->MGWissuer,milliseconds(),0,0)) != 0 )
                 free_json(json);
