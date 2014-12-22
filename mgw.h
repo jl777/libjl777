@@ -2304,24 +2304,24 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
     return(json);
 }
 
-char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2,char *NXTaddr,char *depositors_pubkey)
+char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2,char *refNXTaddr,char *depositors_pubkey)
 {
     static int32_t firsttimestamp;
     static char **specialNXTaddrs;
-    char retbuf[4096],*ipaddrs[3],*retstr = 0;
+    char retbuf[4096],NXTaddr[64],*ipaddrs[3],*retstr = 0;
     struct coin_info *cp;
-    uint64_t pendingtxid;
+    uint64_t pendingtxid,nxt64bits;
     double startmilli = milliseconds();
     int32_t i,createdflag;
     struct NXT_asset *ap;
     cJSON *item,*array,*json = 0;
     if ( MGW_initdone == 0 )
         return(clonestr("{\"error\":\"MGW not initialized yet\"}\n"));
-    if ( NXTaddr != 0 && NXTaddr[0] == 0 )
+    if ( refNXTaddr != 0 && refNXTaddr[0] == 0 )
     {
         if ( rescan != 0 )
             return(clonestr("{\"error\":\"need NXT address to rescan\"}\n"));
-        NXTaddr = 0;
+        refNXTaddr = 0;
     }
     if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
         depositors_pubkey = 0;
@@ -2339,7 +2339,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
         init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
     } else specialNXTaddrs = MGW_whitelist;
-    if ( NXTaddr != 0 && NXTaddr[0] != 0 && rescan != 0 )
+    if ( refNXTaddr != 0 && refNXTaddr[0] != 0 && rescan != 0 )
     {
         char coinaddr[1024],txidstr[1024],withdrawaddr[512],depositstr[64],numstr[128],redeemstr[128];
         struct multisig_addr **msigs,*msig;
@@ -2347,11 +2347,12 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
         struct NXT_assettxid *tp;
         cJSON *autojson;
         int32_t j,n,nummsigs;
-        uint64_t value,deposittxid,nxt64bits,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
+        uint64_t value,deposittxid,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
+        nxt64bits = conv_rsacctstr(refNXTaddr,0);
+        expand_nxt64bits(NXTaddr,nxt64bits);
         update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
-        nxt64bits = calc_nxt64bits(NXTaddr);
         issuerbits = calc_nxt64bits(specialNXT);
         pending_withdraws = pending_deposits = 0;
         if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
