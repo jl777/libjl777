@@ -849,7 +849,7 @@ uint64_t get_deposittxid(struct NXT_asset *ap,char *txidstr,int32_t vout)
     if ( ap->num > 0 )
     {
         for (i=0; i<ap->num; i++)
-            if ( strcmp(ap->txids[i]->cointxid,txidstr) == 0 && ap->txids[i]->coinv == vout )
+            if ( ap->txids[i]->cointxid != 0 && strcmp(ap->txids[i]->cointxid,txidstr) == 0 && ap->txids[i]->coinv == vout )
                 return(ap->txids[i]->txidbits);
     }
     return(0);
@@ -2380,11 +2380,13 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
                                     cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
                                     cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
                                     cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
+                                    fprintf(stderr,"call get_deposittxid\n");
                                     if ( (deposittxid= get_deposittxid(ap,txidstr,entries[j].v)) != 0 )
                                     {
                                         expand_nxt64bits(depositstr,deposittxid);
                                         cJSON_AddItemToObject(item,"deposit",cJSON_CreateString(depositstr));
                                     } else pending_deposits += value;
+                                    fprintf(stderr,"pending %.8f\n",dstr(pending_deposits));
                                     sprintf(numstr,"%.8f",dstr(value)), cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
                                     cJSON_AddItemToArray(array,item);
                                 }
