@@ -1242,11 +1242,13 @@ int32_t ready_to_xferassets(uint64_t *txidp)
 
 uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coin_info *cp,struct address_entry *entry)
 {
-    char coinaddr_v0[1024],script_v0[4096];
+    char coinaddr_v0[1024],script_v0[4096],_script[4096];
     int32_t numvouts;
     uint64_t value = 0;
     if ( entry->vinflag == 0 )
     {
+        if ( script == 0 )
+            script = _script;
         value = get_txoutstr(&numvouts,txidstr,coinaddr,script,cp,entry->blocknum,entry->txind,entry->v);
         if ( strcmp("31dcbc5b7cfd7fc8f2c1cedf65f38ec166b657cc9eb15e7d1292986eada35ea9",txidstr) == 0 ) // due to uncommented tx
             return(0);
