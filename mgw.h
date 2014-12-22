@@ -1193,7 +1193,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                     {
                         process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
                         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp") - 3600;
-                        if ( timestamp > np->timestamps[coinid] )
+                        if ( timestamp > 0 && timestamp > np->timestamps[coinid] )
                         {
                             printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp);
                             np->timestamps[coinid] = timestamp;
@@ -1531,9 +1531,9 @@ char *get_default_MGWstr(char *str,int32_t ind)
     return(str);
 }
 
-int32_t init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialNXT,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
+void init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialNXT,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
 {
-    int32_t i,numgateways = NUM_GATEWAYS;
+    int32_t i,numgateways = 0;
     NXT0 = get_default_MGWstr(NXT0,0);
     NXT1 = get_default_MGWstr(NXT1,1);
     NXT2 = get_default_MGWstr(NXT2,2);
@@ -1541,7 +1541,7 @@ int32_t init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *speci
     exclude1 = get_default_MGWstr(exclude1,4);
     exclude2 = get_default_MGWstr(exclude2,5);
     
-    specialNXTaddrs[0] = clonestr(NXT0), specialNXTaddrs[1] = clonestr(NXT1), specialNXTaddrs[2] = clonestr(NXT2);
+    specialNXTaddrs[numgateways++] = clonestr(NXT0), specialNXTaddrs[numgateways++] = clonestr(NXT1), specialNXTaddrs[numgateways++] = clonestr(NXT2);
     ipaddrs[0] = ip0, ipaddrs[1] = ip1, ipaddrs[2] = ip2;
     for (i=0; i<numgateways; i++)
     {
@@ -1558,8 +1558,7 @@ int32_t init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *speci
         specialNXTaddrs[numgateways++] = clonestr(exclude1);
     if ( exclude2 != 0 && exclude2[0] != 0 )
         specialNXTaddrs[numgateways++] = clonestr(exclude2);
-    specialNXTaddrs[numgateways+1] = 0;
-    return(numgateways);
+    specialNXTaddrs[numgateways] = 0;
 }
 
 uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr)
@@ -1575,7 +1574,7 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
     }
     //update_NXT_transactions(specialNXTaddrs,-1,refNXTaddr,cp);
     //update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
-        for (i=0; i<specialNXTaddrs[i][0]!=0; i++)
+    for (i=0; i<specialNXTaddrs[i][0]!=0; i++)
         update_NXT_transactions(specialNXTaddrs,-1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
     update_msig_info(0,1); // sync MULTISIG_DATA
     return(pendingtxid);
@@ -1601,7 +1600,7 @@ char *wait_for_pendingtxid(struct coin_info *cp,char *specialNXTaddrs[],char *re
     return(clonestr(retbuf));
 }
 
-void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,char *ipaddrs[],char *specialNXTaddrs[],int32_t numgateways,char *refNXTaddr,struct NXT_asset *ap,int32_t transferassets,uint64_t circulation,char *depositor,char *depositors_pubkey)
+void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **msigs,int32_t nummsigs,struct coin_info *cp,char *ipaddrs[],char *specialNXTaddrs[],char *refNXTaddr,struct NXT_asset *ap,int32_t transferassets,uint64_t circulation,char *depositor,char *depositors_pubkey)
 {
     uint64_t pendingtxid,unspent = 0,total = 0;
     int32_t i,m,max,readyflag,tmp,nonz,numunspent;
@@ -2175,7 +2174,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     sprintf(numstr,"%.8f",dstr(balance)), cJSON_AddItemToObject(*jsonp,"balance",cJSON_CreateString(numstr));
 }
 
-cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],int32_t numgateways,char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey)
+cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey)
 {
     cJSON *json = cJSON_CreateObject();
     char numstr[128];
@@ -2190,7 +2189,7 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
         printf("nummsigs.%d\n",nummsigs);
         if ( actionflag >= 0 )
         {
-            process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,issuer,ap,actionflag > 0,circulation,NXTaddr,depositors_pubkey);
+            process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,issuer,ap,actionflag > 0,circulation,NXTaddr,depositors_pubkey);
             retstr = cJSON_Print(json);
             fprintf(stderr,"actionflag.%d retstr.(%s)\n",actionflag,retstr);
             free(retstr), retstr = 0;
@@ -2198,7 +2197,7 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
         if ( actionflag <= 0 )
         {
             if ( actionflag < 0 )
-                process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,numgateways,issuer,ap,actionflag > 0,circulation,NXTaddr,depositors_pubkey);
+                process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,issuer,ap,actionflag > 0,circulation,NXTaddr,depositors_pubkey);
             process_withdraws(&json,msigs,nummsigs,unspent,cp,ap,issuer,actionflag < 0,circulation,NXTaddr);
         }
         sprintf(numstr,"%.3f",(milliseconds()-startmilli)/1000.), cJSON_AddItemToObject(json,"seconds",cJSON_CreateString(numstr));
@@ -2217,7 +2216,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
     struct coin_info *cp;
     uint64_t pendingtxid;
     double startmilli = milliseconds();
-    int32_t i,numgateways,createdflag;
+    int32_t i,createdflag;
     struct NXT_asset *ap;
     cJSON *item,*array,*json = 0;
     if ( MGW_initdone == 0 )
@@ -2240,7 +2239,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
     if ( firsttimestamp == 0 )
         get_NXTblock(&firsttimestamp);
     specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
-    numgateways = init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
+    init_specialNXTaddrs(specialNXTaddrs,ipaddrs,specialNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
     if ( rescan != 0 )
     {
         char coinaddr[1024],txidstr[1024],withdrawaddr[512],depositstr[64],numstr[128],redeemstr[128];
@@ -2346,7 +2345,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
     }
     else if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,specialNXT)) == 0 )
     {
-        json = process_MGW(actionflag,cp,ap,ipaddrs,numgateways,specialNXTaddrs,specialNXT,startmilli,NXTaddr,depositors_pubkey);
+        json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,specialNXT,startmilli,NXTaddr,depositors_pubkey);
         if ( json != 0 )
         {
             retstr = cJSON_Print(json);
