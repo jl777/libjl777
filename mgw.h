@@ -1560,8 +1560,8 @@ void init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialN
     specialNXTaddrs[n++] = clonestr(specialNXT);
     specialNXTaddrs[n++] = 0;
     for (i=0; i<n; i++)
-        fprintf("%p ",specialNXTaddrs[i]);
-    fprintf("numspecialNXT.%d\n",n);
+        fprintf(stderr,"%p ",specialNXTaddrs[i]);
+    fprintf(stderr,"numspecialNXT.%d\n",n);
 }
 
 uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr)
