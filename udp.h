@@ -343,8 +343,6 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
 {
     int32_t r=0;
     struct write_req_t *wr;
-    //if ( IS_LIBTEST == 2 )
-    //    queueflag = 0;
     wr = alloc_wr(buf,len,allocflag);
     ASSERT(wr != NULL);
     wr->addr = *addr;
@@ -915,6 +913,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             args->timeout = (uint32_t)time(NULL) + timeout;
         fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
         memcpy(args->data,data,totallen);
+        free(data);
         data = args->data;
         remains = totallen;
         for (fragi=0; fragi<args->numblocks; fragi++)

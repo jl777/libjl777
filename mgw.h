@@ -2360,7 +2360,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
     free(specialNXTaddrs);
     if ( retstr == 0 )
         retstr = clonestr("{}");
-    printf("MGWDEPOSITS.(%s)\n",retstr);
+    printf("MGW.(%s)\n",retstr);
     return(retstr);
 }
 #endif

@@ -1449,6 +1449,75 @@ char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
+char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char name[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
+    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize;
+    //printf("sendfrag_func(%s)\n",origargstr);
+    copy_cJSON(name,objs[1]);
+    fragi = (uint32_t)get_API_int(objs[2],0);
+    numfrags = (uint32_t)get_API_int(objs[3],0);
+    copy_cJSON(dest,objs[4]);
+    totalcrc = (uint32_t)get_API_int(objs[5],0);
+    datacrc = (uint32_t)get_API_int(objs[6],0);
+    copy_cJSON(datastr,objs[7]);
+    totallen = (uint32_t)get_API_int(objs[8],0);
+    blocksize = (uint32_t)get_API_int(objs[9],0);
+    copy_cJSON(handler,objs[10]);
+    if ( name[0] != 0 && dest[0] != 0 && sender[0] != 0 && valid > 0 )
+        return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,datastr,handler));
+    else printf("error sendfrag: name.(%s) dest.(%s) valid.%d sender.(%s) fragi.%d num.%d crc %u %u\n",name,dest,valid,sender,fragi,numfrags,totalcrc,datacrc);
+    return(clonestr("{\"error\":\"bad sendfrag_func paramater\"}"));
+}
+
+char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
+    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize,count;
+    //printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
+    if ( is_remote_access(previpaddr) == 0 )
+        return(0);
+    copy_cJSON(name,objs[1]);
+    fragi = (uint32_t)get_API_int(objs[2],0);
+    numfrags = (uint32_t)get_API_int(objs[3],0);
+    copy_cJSON(src,objs[4]);
+    totalcrc = (uint32_t)get_API_int(objs[5],0);
+    datacrc = (uint32_t)get_API_int(objs[6],0);
+    totallen = (uint32_t)get_API_int(objs[7],0);
+    blocksize = (uint32_t)get_API_int(objs[8],0);
+    count = (uint32_t)get_API_int(objs[9],0);
+    copy_cJSON(handler,objs[10]);
+    if ( name[0] != 0 && src[0] != 0 && sender[0] != 0 && valid > 0 )
+        gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
+    return(clonestr(origargstr));
+}
+
+char *startxfer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
+    int32_t timeout,datalen = 0;
+    uint8_t *data = 0;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    copy_cJSON(fname,objs[0]);
+    copy_cJSON(dest,objs[1]);
+    copy_cJSON(datastr,objs[2]);
+    timeout = (int32_t)get_API_int(objs[3],0);
+    copy_cJSON(handler,objs[4]);
+    printf("startxfer_func(%s) is remote.%d fname(%s) timeout.%d\n",origargstr,is_remote_access(previpaddr),fname,timeout);
+    if ( (fname[0] != 0 || datastr[0] != 0) && dest[0] != 0 && sender[0] != 0 && valid > 0 )
+    {
+        if ( datastr[0] != 0 )
+        {
+            datalen = (int32_t)strlen(datastr) / 2;
+            data = malloc(datalen);
+            datalen = decode_hex(data,datalen,datastr);
+        }
+        return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,fname,data,datalen,timeout,handler));
+    }
+    return(clonestr(origargstr));
+}
+
 char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bridgeport,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
@@ -1592,17 +1661,20 @@ char *MGWaddr_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     return(clonestr(origargstr));
 }
 
-char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
-    int32_t rescan,actionflag;
-    char *retstr;
+    char coin[MAX_JSON_FIELD],asset[MAX_JSON_FIELD],NXT0[MAX_JSON_FIELD],NXT1[MAX_JSON_FIELD],NXT2[MAX_JSON_FIELD],ip0[MAX_JSON_FIELD],ip1[MAX_JSON_FIELD],ip2[MAX_JSON_FIELD],specialNXT[MAX_JSON_FIELD],exclude0[MAX_JSON_FIELD],exclude1[MAX_JSON_FIELD],exclude2[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],email[MAX_JSON_FIELD],hopNXTaddr[64];
+    int32_t rescan,actionflag,datalen;
+    char *retstr,*str;
     uint16_t bridgeport;
+    uint8_t *data;
+    if ( Global_mp->gatewayid < 0 && previpaddr != 0 )
+        return(clonestr(origargstr));
     copy_cJSON(destip,objs[14]);
     bridgeport = (uint16_t)get_API_int(objs[15],0);
     if ( (retstr= bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
     {
-        printf("MGWdeposits bridge.(%s)\n",retstr);
+        printf("MGW bridge.(%s)\n",retstr);
         return(retstr);
     }
     copy_cJSON(NXT0,objs[0]);
@@ -1620,78 +1692,48 @@ char *MGWdeposits_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     copy_cJSON(exclude1,objs[12]);
     copy_cJSON(exclude2,objs[13]);
     copy_cJSON(pubkey,objs[16]);
-    if ( ((NXT0[0] != 0 && NXT1[0] != 0 && NXT2[0] != 0) || (ip0[0] != 0 && ip1[0] != 0 && ip2[0] != 0)) && sender[0] != 0 )
-        return(MGW(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,sender,pubkey));
-    return(clonestr("{\"error\":\"bad MGWdeposits_func paramater\"}"));
-}
-
-char *sendfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    char name[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
-    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize;
-    //printf("sendfrag_func(%s)\n",origargstr);
-    copy_cJSON(name,objs[1]);
-    fragi = (uint32_t)get_API_int(objs[2],0);
-    numfrags = (uint32_t)get_API_int(objs[3],0);
-    copy_cJSON(dest,objs[4]);
-    totalcrc = (uint32_t)get_API_int(objs[5],0);
-    datacrc = (uint32_t)get_API_int(objs[6],0);
-    copy_cJSON(datastr,objs[7]);
-    totallen = (uint32_t)get_API_int(objs[8],0);
-    blocksize = (uint32_t)get_API_int(objs[9],0);
-    copy_cJSON(handler,objs[10]);
-    if ( name[0] != 0 && dest[0] != 0 && sender[0] != 0 && valid > 0 )
-        return(sendfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,datastr,handler));
-    else printf("error sendfrag: name.(%s) dest.(%s) valid.%d sender.(%s) fragi.%d num.%d crc %u %u\n",name,dest,valid,sender,fragi,numfrags,totalcrc,datacrc);
-    return(clonestr("{\"error\":\"bad sendfrag_func paramater\"}"));
-}
-
-char *gotfrag_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    char name[MAX_JSON_FIELD],src[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
-    uint32_t fragi,numfrags,totalcrc,datacrc,totallen,blocksize,count;
-    //printf("gotfrag_func(%s) is remote.%d\n",origargstr,is_remote_access(previpaddr));
-    if ( is_remote_access(previpaddr) == 0 )
-        return(0);
-    copy_cJSON(name,objs[1]);
-    fragi = (uint32_t)get_API_int(objs[2],0);
-    numfrags = (uint32_t)get_API_int(objs[3],0);
-    copy_cJSON(src,objs[4]);
-    totalcrc = (uint32_t)get_API_int(objs[5],0);
-    datacrc = (uint32_t)get_API_int(objs[6],0);
-    totallen = (uint32_t)get_API_int(objs[7],0);
-    blocksize = (uint32_t)get_API_int(objs[8],0);
-    count = (uint32_t)get_API_int(objs[9],0);
-    copy_cJSON(handler,objs[10]);
-    if ( name[0] != 0 && src[0] != 0 && sender[0] != 0 && valid > 0 )
-        gotfrag(previpaddr,sender,NXTaddr,NXTACCTSECRET,src,name,fragi,numfrags,totallen,blocksize,totalcrc,datacrc,count,handler);
-    return(clonestr(origargstr));
-}
-
-char *startxfer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    char fname[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
-    int32_t timeout,datalen = 0;
-    uint8_t *data = 0;
-    if ( is_remote_access(previpaddr) != 0 )
-        return(0);
-    copy_cJSON(fname,objs[0]);
-    copy_cJSON(dest,objs[1]);
-    copy_cJSON(datastr,objs[2]);
-    timeout = (int32_t)get_API_int(objs[3],0);
-    copy_cJSON(handler,objs[4]);
-    printf("startxfer_func(%s) is remote.%d fname(%s) timeout.%d\n",origargstr,is_remote_access(previpaddr),fname,timeout);
-    if ( (fname[0] != 0 || datastr[0] != 0) && dest[0] != 0 && sender[0] != 0 && valid > 0 )
+    copy_cJSON(email,objs[17]);
+    if ( sender[0] != 0 )
     {
-        if ( datastr[0] != 0 )
+        retstr = MGW(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,sender,pubkey);
+        if ( previpaddr != 0 )
         {
-            datalen = (int32_t)strlen(datastr) / 2;
-            data = malloc(datalen);
-            decode_hex(data,datalen,datastr);
+            if ( email[0] != 0 )
+            {
+                FILE *fp;
+                char cmd[1024];
+                if ( (fp= fopen(sender,"wb")) != 0 )
+                {
+                    fprintf(fp,"To: %s\n",email);
+                    fprintf(fp,"From: MGWstatus@gmail.com\n");
+                    fprintf(fp,"Subject: MGWstatus %s\n\n",sender);
+                    fprintf(fp,"%s",retstr);
+                    fprintf(fp,"\n");
+                    fclose(fp);
+                    sprintf(cmd,"ssmtp %s < %s",email,sender);
+                    system(cmd);
+                    printf("(%s)\n",cmd);
+                }
+            }
+            else if ( strlen(retstr) < 1024 )
+            {
+                hopNXTaddr[0] = 0;
+                str = send_tokenized_cmd(!prevent_queueing("MGW"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,sender);
+            }
+            else
+            {
+                int32_t timeout = 300;
+                datalen = (int32_t)strlen(retstr) / 2;
+                data = malloc(datalen);
+                datalen = decode_hex(data,datalen,retstr);
+                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,"MGWstatus",data,datalen,timeout,"mgw"); // start_transfer frees data
+            }
+            if ( str != 0 )
+                free(str);
         }
-        return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,dest,fname,data,datalen,timeout,handler));
+        return(retstr);
     }
-    return(clonestr(origargstr));
+    return(clonestr("{\"error\":\"bad MGW_func paramater\"}"));
 }
 
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
@@ -1714,7 +1756,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
     static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGW[] = { (char *)MGWdeposits_func, "MGW", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", "pubkey", 0 };
+    static char *MGW[] = { (char *)MGW_func, "MGW", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", "pubkey", "email", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     
