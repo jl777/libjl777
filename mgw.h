@@ -9,7 +9,7 @@
 #ifndef mgw_h
 #define mgw_h
 
-#define DEPOSIT_XFER_DURATION 1
+#define DEPOSIT_XFER_DURATION 5
 #define MIN_DEPOSIT_FACTOR 5
 
 #define GET_COINDEPOSIT_ADDRESS 'g'
