@@ -1527,13 +1527,13 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
             {
                 if ( max > 0 && valid_msig(msig,cp->name,refNXTaddr,specialNXTaddrs,ipaddrs,2,3) != 0 )//&& (depositor == 0 || strcmp(depositor,refNXTaddr) == 0) )
                 {
-                    if ( Debuglevel > 2 )
-                        printf("MULTISIG: %s: %d of %d %s %s\n",cp->name,i,nummsigs,msig->coinstr,msig->multisigaddr);
+                    if ( Debuglevel > 1 )
+                        printf("MULTISIG: %s: %d of %d %s %s (%s)\n",cp->name,i,nummsigs,msig->coinstr,msig->multisigaddr,msig->NXTpubkey);
                     update_NXT_transactions(specialNXTaddrs,2,msig->NXTaddr,cp);
                     if ( transferassets == 0 || (readyflag > 0 && pendingtxid == 0) )
                     {
                         tmp = numunspent;
-                        total += process_msigaddr(&numunspent,&unspent,&array,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr,depositors_pubkey);
+                        total += process_msigaddr(&numunspent,&unspent,&array,transferassets,ap,msig->NXTaddr,cp,msig->multisigaddr,msig->NXTpubkey);
                         if ( numunspent > tmp )
                             nonz++;
                     }
