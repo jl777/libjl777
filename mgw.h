@@ -1115,7 +1115,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                         assetoshis *= ap->mult;
                                     else printf("ERROR asset.(%s) has no mult??\n",ap->name);
                                     //printf("case1 sender.(%s) receiver.(%s) comment.%p cmp.%d\n",sender,receiver,tp->comment,strcmp(receiver,refNXTaddr)==0);
-                                    if ( tp->comment != 0 && (commentobj= cJSON_Parse(tp->comment)) != 0 )
+                                    if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (commentobj= cJSON_Parse(tp->comment)) != 0 )
                                     {
                                         cointxidobj = cJSON_GetObjectItem(commentobj,"cointxid");
                                         if ( cointxidobj != 0 )
@@ -1126,7 +1126,8 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                                 tp->cointxid = clonestr(cointxid);
                                         } else cointxid[0] = 0;
                                         free_json(commentobj);
-                                    }
+                                    } else if ( tp->comment != 0 )
+                                        free(tp->comment), tp->comment = 0;
                                     if ( cp != 0 )//&& is_limbo_redeem(ap->name,txid) == 0 )
                                     {
                                         if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
@@ -1158,7 +1159,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
 {
     char sender[1024],receiver[1024],assetid[1024],cmd[1024],*jsonstr;
     int32_t createdflag,coinid,i,n = 0;
-    uint32_t timestamp;
+    int32_t timestamp;
     struct NXT_acct *np;
     cJSON *item,*json,*array;
     if ( refNXTaddr == 0 )
@@ -1197,7 +1198,8 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                         {
                             printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp);
                             np->timestamps[coinid] = timestamp;
-                        }
+                        } else if ( timestamp < 0 )
+                            printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
                     }
                 }
             }
@@ -1730,7 +1732,7 @@ char *calc_withdraw_addr(char *destaddr,char *NXTaddr,struct coin_info *cp,struc
     int64_t amount,minwithdraw;
     cJSON *obj,*argjson = 0;
     destaddr[0] = withdrawaddr[0] = 0;
-    if ( tp->comment != 0 && tp->comment[0] != 0 && (argjson= cJSON_Parse(tp->comment)) != 0 )
+    if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (argjson= cJSON_Parse(tp->comment)) != 0 )
     {
         obj = cJSON_GetObjectItem(argjson,"withdrawaddr");
         copy_cJSON(withdrawaddr,obj);
@@ -2302,7 +2304,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
                 if ( tp->redeemtxid != 0 && tp->senderbits == nxt64bits && tp->receiverbits == issuerbits && tp->assetbits == ap->assetbits )
                 {
                     withdrawaddr[0] = 0;
-                    if ( tp->comment != 0 && tp->comment[0] != 0 )
+                    if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') )
                     {
                         item = cJSON_Parse(tp->comment);
                         copy_cJSON(withdrawaddr,cJSON_GetObjectItem(item,"withdrawaddr"));
