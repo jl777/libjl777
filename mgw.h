@@ -1194,7 +1194,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
             {
                 for (i=0; i<n; i++)
                 {
-                    if ( Debuglevel > 2 )
+                    if ( Debuglevel > 1 )
                         fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     //numconfs = (int32_t)get_API_int(cJSON_GetObjectItem(item,"confirmations"),0);
