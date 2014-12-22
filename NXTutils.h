@@ -1898,7 +1898,8 @@ cJSON *parse_json_AM(struct json_AM *ap)
         {
             if ( jsontxt[0] == '"' && jsontxt[strlen(jsontxt)-1] == '"' )
                 unstringify(jsontxt);
-            return(cJSON_Parse(jsontxt));
+            if ( jsontxt[0] == '{' || jsontxt[0] == '[' )
+                return(cJSON_Parse(jsontxt));
         }
     }
     return(0);

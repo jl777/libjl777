@@ -871,7 +871,7 @@ uint64_t get_sentAM_cointxid(char *txidstr,struct coin_info *cp,char *withdrawad
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             copy_cJSON(comment,cJSON_GetObjectItem(json,"comment"));
-            if ( comment[0] != 0 && (commentjson= cJSON_Parse(comment)) != 0 )
+            if ( comment[0] != 0 && (comment[0] == '{' || comment[0] == '[') && (commentjson= cJSON_Parse(comment)) != 0 )
             {
                 copy_cJSON(txidstr,cJSON_GetObjectItem(commentjson,"cointxid"));
                 if ( extract_cJSON_str(coinstr,sizeof(coinstr),commentjson,"coin") > 0 && strcmp(coinstr,cp->name) == 0 )
@@ -1133,7 +1133,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                         if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
                                             tp->estNXT = (((double)cp->NXTfee_equiv / cp->txfee) * assetoshis / SATOSHIDEN);
                                         if ( Debuglevel > 1 )
-                                            printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f\n",ap->name,txid,tp->comment,cointxid,dstr(tp->quantity * ap->mult),dstr(assetoshis),tp->estNXT);
+                                            printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f\n",ap->name,txid,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(assetoshis),tp->estNXT);
                                         tp->redeemtxid = calc_nxt64bits(txid);
                                     }
                                 }
@@ -1198,7 +1198,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                         {
                             printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp-3600);
                             np->timestamps[coinid] = (timestamp - 3600); // assumes no hour long block
-                        } //else if ( timestamp < 0 ) older blocks dont have any timestamps!
+                        } //else if ( timestamp < 0 ) genesis tx dont have any timestamps!
                           //  printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
                     }
                 }
@@ -1560,7 +1560,7 @@ void init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialN
         specialNXTaddrs[n++] = clonestr(exclude2);
     specialNXTaddrs[n++] = clonestr(GENESISACCT);
     specialNXTaddrs[n++] = clonestr(specialNXT);
-    specialNXTaddrs[n++] = 0;
+    specialNXTaddrs[n] = 0;
     for (i=0; i<n; i++)
         fprintf(stderr,"%p ",specialNXTaddrs[i]);
     fprintf(stderr,"numspecialNXT.%d\n",n);
