@@ -1533,7 +1533,7 @@ char *get_default_MGWstr(char *str,int32_t ind)
 
 void init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialNXT,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2)
 {
-    int32_t i,numgateways = 0;
+    int32_t i,n = 0;
     NXT0 = get_default_MGWstr(NXT0,0);
     NXT1 = get_default_MGWstr(NXT1,1);
     NXT2 = get_default_MGWstr(NXT2,2);
@@ -1541,24 +1541,27 @@ void init_specialNXTaddrs(char *specialNXTaddrs[],char *ipaddrs[],char *specialN
     exclude1 = get_default_MGWstr(exclude1,4);
     exclude2 = get_default_MGWstr(exclude2,5);
     
-    specialNXTaddrs[numgateways++] = clonestr(NXT0), specialNXTaddrs[numgateways++] = clonestr(NXT1), specialNXTaddrs[numgateways++] = clonestr(NXT2);
+    specialNXTaddrs[n++] = clonestr(NXT0), specialNXTaddrs[n++] = clonestr(NXT1), specialNXTaddrs[n++] = clonestr(NXT2);
     ipaddrs[0] = ip0, ipaddrs[1] = ip1, ipaddrs[2] = ip2;
-    for (i=0; i<numgateways; i++)
+    for (i=0; i<n; i++)
     {
         if ( specialNXTaddrs[i] == 0 )
             specialNXTaddrs[i] = "";
         if ( ipaddrs[i] == 0 )
             strcpy(ipaddrs[i],Server_names[i]);
     }
-    specialNXTaddrs[numgateways++] = clonestr(GENESISACCT);
-    specialNXTaddrs[numgateways++] = clonestr(specialNXT);
     if ( exclude0 != 0 && exclude0[0] != 0 )
-        specialNXTaddrs[numgateways++] = clonestr(exclude0);
+        specialNXTaddrs[n++] = clonestr(exclude0);
     if ( exclude1 != 0 && exclude1[0] != 0 )
-        specialNXTaddrs[numgateways++] = clonestr(exclude1);
+        specialNXTaddrs[n++] = clonestr(exclude1);
     if ( exclude2 != 0 && exclude2[0] != 0 )
-        specialNXTaddrs[numgateways++] = clonestr(exclude2);
-    specialNXTaddrs[numgateways] = 0;
+        specialNXTaddrs[n++] = clonestr(exclude2);
+    specialNXTaddrs[n++] = clonestr(GENESISACCT);
+    specialNXTaddrs[n++] = clonestr(specialNXT);
+    specialNXTaddrs[n++] = 0;
+    for (i=0; i<n; i++)
+        fprintf("%p ",specialNXTaddrs[i]);
+    fprintf("numspecialNXT.%d\n",n);
 }
 
 uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr)
