@@ -2374,6 +2374,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
                                 fprintf(stderr,"j.%d\n",j);
                                 if ( (value= conv_address_entry(coinaddr,txidstr,0,cp,&entries[j])) != 0 )
                                 {
+                                    fprintf(stderr,"got value %.8f\n",dstr(value));
                                     item = cJSON_CreateObject();
                                     cJSON_AddItemToObject(item,"addr",cJSON_CreateString(coinaddr));
                                     cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
