@@ -1194,7 +1194,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
             {
                 for (i=0; i<n; i++)
                 {
-                    if ( Debuglevel > 1 )
+                    if ( Debuglevel > 2 )
                         fprintf(stderr,"%d/%d ",i,n);
                     item = cJSON_GetArrayItem(array,i);
                     //numconfs = (int32_t)get_API_int(cJSON_GetObjectItem(item,"confirmations"),0);
@@ -1587,7 +1587,7 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
         update_NXT_transactions(specialNXTaddrs,-1,btcdcp->srvNXTADDR,cp);
         update_NXT_transactions(specialNXTaddrs,-1,btcdcp->privateNXTADDR,cp);
     }
-    //update_NXT_transactions(specialNXTaddrs,-1,refNXTaddr,cp);
+    update_NXT_transactions(specialNXTaddrs,-1,refNXTaddr,cp);
     //update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
     for (i=0; i<specialNXTaddrs[i][0]!=0; i++)
         update_NXT_transactions(specialNXTaddrs,-1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
@@ -2348,9 +2348,7 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
         cJSON *autojson;
         int32_t j,n,nummsigs;
         uint64_t value,deposittxid,nxt64bits,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
-        printf("scan for (%s)\n",NXTaddr);
         update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
-        printf("BACK issuer.%s\n",specialNXT);
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
         nxt64bits = calc_nxt64bits(NXTaddr);
@@ -2358,35 +2356,28 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
         pending_withdraws = pending_deposits = 0;
         if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
         {
-            fprintf(stderr,"msigs.%p nummsigs.%d\n",msigs,nummsigs);
             for (i=0; i<nummsigs; i++)
             {
                 if ( (msig= msigs[i]) != 0 )
                 {
                     if ( strcmp(msig->NXTaddr,NXTaddr) == 0 )
                     {
-                        fprintf(stderr,"%d matched\n",i);
                         if ( (entries= get_address_entries(&n,cp->name,msig->multisigaddr)) != 0 )
                         {
-                            fprintf(stderr,"%d entries\n",n);
                             for (j=0; j<n; j++)
                             {
-                                fprintf(stderr,"j.%d\n",j);
                                 if ( (value= conv_address_entry(coinaddr,txidstr,0,cp,&entries[j])) != 0 )
                                 {
-                                    fprintf(stderr,"got value %.8f\n",dstr(value));
                                     item = cJSON_CreateObject();
                                     cJSON_AddItemToObject(item,"addr",cJSON_CreateString(coinaddr));
                                     cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
                                     cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
                                     cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
-                                    fprintf(stderr,"call get_deposittxid\n");
                                     if ( (deposittxid= get_deposittxid(ap,txidstr,entries[j].v)) != 0 )
                                     {
                                         expand_nxt64bits(depositstr,deposittxid);
                                         cJSON_AddItemToObject(item,"deposit",cJSON_CreateString(depositstr));
                                     } else pending_deposits += value;
-                                    fprintf(stderr,"pending %.8f\n",dstr(pending_deposits));
                                     sprintf(numstr,"%.8f",dstr(value)), cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
                                     cJSON_AddItemToArray(array,item);
                                 }
@@ -2399,7 +2390,6 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
             free(msigs);
             cJSON_AddItemToObject(json,"deposits",array);
         }
-        fprintf(stderr,"withdraws from num.%d\n",ap->num);
         if ( ap->num > 0 )
         {
             array = cJSON_CreateArray();
@@ -2452,7 +2442,6 @@ char *MGW(char *specialNXT,int32_t rescan,int32_t actionflag,char *coin,char *as
             }
             cJSON_AddItemToObject(json,"withdraws",array);
         }
-        fprintf(stderr,"summary\n");
         assetoshis = get_accountassets(0,ap,NXTaddr);
         balance = assetoshis + pending_deposits + pending_withdraws;
         sprintf(numstr,"%.8f",dstr(assetoshis)), cJSON_AddItemToObject(json,"assetexchange",cJSON_CreateString(numstr));
