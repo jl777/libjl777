@@ -1697,6 +1697,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
     if ( sender[0] != 0 )
     {
         retstr = MGW(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,destNXT,pubkey);
+        printf("got retstr.(%s)\n",retstr);
         if ( previpaddr != 0 )
         {
             if ( email[0] != 0 )
@@ -1714,6 +1715,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
                 datalen = (int32_t)strlen(retstr) / 2;
                 data = malloc(datalen);
                 datalen = decode_hex(data,datalen,retstr);
+                printf("start_transfer\n");
                 str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,"MGWstatus",data,datalen,timeout,"mgw"); // start_transfer frees data
             }
             if ( str != 0 )
