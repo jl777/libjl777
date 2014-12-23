@@ -103,7 +103,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
                     if ( args[0] != 0 )
                     {
                         unstringify(args);
-                        // if ( Debuglevel > 2 )
+                        if ( Debuglevel > 2 )
                             printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
                         free(retstr);
                         retstr = clonestr(args);
@@ -112,7 +112,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"result"));
                             if ( strcmp(buf2,"nothing pending") == 0 )
                                 free(retstr), retstr = 0;
-                            else printf("RESULT.(%s)\n",buf2);
+                            //else printf("RESULT.(%s)\n",buf2);
                             free_json(argjson);
                         }
                     }
@@ -170,7 +170,7 @@ char *process_commandline_json(cJSON *json)
         {
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
-                fprintf(stderr,"%s\n",retstr);
+                //fprintf(stderr,"%s\n",retstr);
                 if ( retstr[0] == '[' || retstr[0] == '{' )
                 {
                     if ( (retjson= cJSON_Parse(retstr)) != 0 )
