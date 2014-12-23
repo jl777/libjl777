@@ -2448,7 +2448,8 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         if ( rescan != 0 )
             return(clonestr("{\"error\":\"need NXT address to rescan\"}\n"));
         refNXTaddr = 0;
-    }
+        nxt64bits = 0;
+    } else nxt64bits = calc_nxt64bits(refNXTaddr);
     if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
         depositors_pubkey = 0;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
