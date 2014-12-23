@@ -1701,10 +1701,8 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
         if ( previpaddr != 0 )
         {
             if ( email[0] != 0 )
-            {
                 send_email(email,sender,0,retstr);
-            }
-            else if ( strlen(retstr) < 1024 )
+            if ( strlen(retstr) < 1024 )
             {
                 hopNXTaddr[0] = 0;
                 str = send_tokenized_cmd(!prevent_queueing("MGW"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,sender);

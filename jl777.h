@@ -257,14 +257,6 @@ struct NXT_str
     union _NXT_str_buf U;
 };
 
-struct pserver_info
-{
-    uint64_t modified,nxt64bits;//,hasnxt[64];
-    char ipaddr[64];
-    uv_udp_t *udps[2];
-    uint32_t decrypterrs,port,lastcontact;
-};
-
 struct NXT_protocol_parms
 {
     cJSON *argjson;

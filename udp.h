@@ -68,6 +68,57 @@ struct udp_queuecmd
     uint32_t previpbits,valid;
 };
 
+struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t supernet_port,uint16_t p2pport)
+{
+    int32_t createdflag = 0;
+    struct pserver_info *pserver;
+    if ( createdp == 0 )
+        createdp = &createdflag;
+    pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
+    if ( supernet_port != 0 )
+    {
+        pserver->lastcontact = (uint32_t)time(NULL);
+        pserver->numrecv++;
+        pserver->recvmilli = milliseconds();
+        if ( pserver->firstport == 0 )
+            pserver->firstport = supernet_port;
+        pserver->lastport = supernet_port;
+        if ( *createdp != 0 || (supernet_port != 0 && supernet_port != BTCD_PORT && supernet_port != pserver->supernet_port) )
+        {
+            pserver->supernet_altport = 0;
+            pserver->supernet_port = supernet_port;
+        }
+    }
+    if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != pserver->p2pport) )
+        pserver->p2pport = p2pport;
+    return(pserver);
+}
+
+uint16_t get_SuperNET_port(char *ipaddr)
+{
+    uint16_t port;
+    int32_t gap;
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct pserver_info *pserver;
+    pserver = get_pserver(0,ipaddr,0,0);
+    gap = (int32_t)(time(NULL) - pserver->lastcontact);
+    if ( (port= cp->bridgeport) == 0 || strcmp(ipaddr,cp->bridgeipaddr) != 0 )
+    {
+        port = pserver->supernet_port != 0 ? pserver->supernet_port : (pserver->supernet_altport != 0 ? pserver->supernet_altport : SUPERNET_PORT);
+    }
+    if ( gap < 60 )
+    {
+        if ( pserver->lastport != 0 )
+            port = pserver->lastport;
+    }
+    else
+    {
+        if ( pserver->firstport != 0 )
+            port = pserver->firstport;
+    }
+    return(port);
+}
+
 int32_t prevent_queueing(char *cmd)
 {
     if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 ||
@@ -179,23 +230,17 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
 {
     uint16_t supernet_port;
     int32_t createdflag;
-    struct nodestats *stats;
     struct pserver_info *pserver;
     struct udp_entry *up;
     struct coin_info *cp = get_coin_info("BTCD");
     char ipaddr[256],retjsonstr[4096];
+    supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+    if ( notlocalip(ipaddr) == 0 )
+        strcpy(ipaddr,cp->myipaddr);
+    pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
     if ( cp != 0 && nread > 0 )
     {
-        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
-        if ( notlocalip(ipaddr) == 0 )
-            strcpy(ipaddr,cp->myipaddr);
-        pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-        pserver->lastcontact = (uint32_t)time(NULL);
-        if ( pserver->nxt64bits != 0 && (stats= get_nodestats(pserver->nxt64bits)) != 0 )
-        {
-            stats->numrecv++;
-            stats->recvmilli = milliseconds();
-        }
+        
         if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
             printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
@@ -305,34 +350,28 @@ int32_t process_sendQ_item(struct write_req_t *wr)
 {
     char ipaddr[64];
     struct coin_info *cp = get_coin_info("BTCD");
-    struct nodestats *stats;
     struct pserver_info *pserver;
     int32_t r,supernet_port,createdflag;
+    supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&wr->addr);
+    pserver = get_pserver(&createdflag,ipaddr,0,0);
+    if ( pserver->udps[wr->isbridge] == 0 )
     {
-        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)&wr->addr);
-        pserver = get_pserver(&createdflag,ipaddr,0,0);
-        if ( pserver->udps[wr->isbridge] == 0 )
-        {
-            if ( (pserver->udps[wr->isbridge]= open_udp(0,on_udprecv)) == 0 )
-                return(-1);
-        }
-        if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
-        {
-            //printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
-            //return(0);
-            strcpy(ipaddr,"127.0.0.1");
-            uv_ip4_addr(ipaddr,supernet_port,(struct sockaddr_in *)&wr->addr);
-        }
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
-        {
-            stats->numsent++;
-            stats->sentmilli = milliseconds();
-        }
-        //for (i=0; i<16; i++)
-        //    printf("%02x ",((unsigned char *)buf)[i]);
-        if ( Debuglevel > 1 )
-            printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
+        if ( (pserver->udps[wr->isbridge]= open_udp(0,on_udprecv)) == 0 )
+            return(-1);
     }
+    if ( 1 && (pserver->nxt64bits == cp->privatebits || pserver->nxt64bits == cp->srvpubnxtbits) )
+    {
+        //printf("(%s/%d) no point to send yourself dest.%llu pub.%llu srvpub.%llu\n",ipaddr,supernet_port,(long long)pserver->nxt64bits,(long long)cp->pubnxtbits,(long long)cp->srvpubnxtbits);
+        //return(0);
+        strcpy(ipaddr,"127.0.0.1");
+        uv_ip4_addr(ipaddr,supernet_port,(struct sockaddr_in *)&wr->addr);
+    }
+    pserver->numsent++;
+    pserver->sentmilli = milliseconds();
+    //for (i=0; i<16; i++)
+    //    printf("%02x ",((unsigned char *)buf)[i]);
+    if ( Debuglevel > 1 )
+        printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     r = uv_udp_send(&wr->U.ureq,pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
     if ( r != 0 )
         printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->U.ureq,wr->buf.base,wr->buf.len);
@@ -347,7 +386,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->isbridge = isbridge;
-    if ( queueflag != 0 )
+    if ( queueflag != 0 ) // support oversized packets?
     {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
         queue_enqueue(&sendQ,wr);
@@ -420,61 +459,33 @@ int32_t is_encrypted_packet(unsigned char *tx,int32_t len)
     return(packet_crc == crc);
 }
 
-void send_packet(int32_t queueflag,struct nodestats *peerstats,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
+void send_packet(int32_t queueflag,uint32_t ipbits,struct sockaddr *destaddr,unsigned char *finalbuf,int32_t len)
 {
     char ipaddr[64];
-    int32_t port,p2pflag = 0;
-    struct nodestats *stats;
+    struct sockaddr dest;
+    int32_t port = 0;
     struct pserver_info *pserver = 0;
-    if ( destaddr != 0 )
+    if ( destaddr == 0 )
     {
-        port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
+        expand_ipbits(ipaddr,ipbits);
         pserver = get_pserver(0,ipaddr,0,0);
-        if ( peerstats != 0 && len <= MAX_UDPLEN )//&& Global_mp->udp != 0 )
-        {
-            if ( port == 0 || port == BTCD_PORT )
-            {
-                printf("send_packet WARNING: send_packet port.%d <- %d\n",port,SUPERNET_PORT);
-                port = SUPERNET_PORT;
-                uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
-            }
-            if ( Debuglevel > 2 )
-                printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
-            portable_udpwrite(queueflag,destaddr,0,finalbuf,len,ALLOCWR_ALLOCFREE);
-        }
-        else p2pflag = 1;
-        if ( peerstats != 0 && peerstats->lastcontact < (time(NULL) - 600) )
-            p2pflag = 1;
-        if ( p2pflag != 0 )
-            call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
+        port = get_SuperNET_port(ipaddr);
+        memset(&dest,0,sizeof(dest));
+        destaddr = &dest;
+        uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
     }
-    else if ( peerstats != 0 && peerstats->ipbits != 0 )
+    port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
+    pserver = get_pserver(0,ipaddr,0,0);
+    if ( port == 0 || port == BTCD_PORT )
     {
-        expand_ipbits(ipaddr,peerstats->ipbits);
-        pserver = get_pserver(0,ipaddr,0,0);
-        if ( Debuglevel > 1 )
-            printf("send packet to (%s) %llu len.%d\n",ipaddr,(long long)peerstats->nxt64bits,len);
-        call_SuperNET_broadcast(pserver,(char *)finalbuf,len,0);
+        port = get_SuperNET_port(ipaddr);
+        uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
     }
-    else
+    //if ( len <= MAX_UDPLEN )//&& Global_mp->udp != 0 )
     {
-        printf("send_packet: cant resolve path for %p %p\n",peerstats,destaddr);
-        return;
-    }
-    if ( peerstats != 0 )
-    {
-        if ( pserver != 0 && pserver->nxt64bits == 0 )
-            pserver->nxt64bits = peerstats->nxt64bits;
-        peerstats->numsent++;
-        peerstats->sentmilli = milliseconds();
-    }
-    else if ( pserver != 0 )
-    {
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
-        {
-            stats->sentmilli++;
-            stats->sentmilli = milliseconds();
-        }
+        if ( Debuglevel > 2 )
+            printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
+        portable_udpwrite(queueflag,destaddr,0,finalbuf,len,ALLOCWR_ALLOCFREE);
     }
 }
 
@@ -507,7 +518,7 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
         if ( Debuglevel > 0 )
             printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
-        send_packet(queueflag,stats,destaddr,outbuf,len);
+        send_packet(queueflag,stats->ipbits,destaddr,outbuf,len);
     }
     else if ( stats != 0 )
     {
@@ -515,10 +526,10 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
         if ( stats->ipbits != 0 )
         {
             if ( Debuglevel > 0 )
-                printf("DIRECT udpsend {%s} to %s/%d finalbuf.%d\n",hopNXTaddr,destip,stats->supernet_port,len);
-            port = (stats->supernet_port != 0) ? stats->supernet_port : ((stats->supernet_altport != 0) ? stats->supernet_altport : SUPERNET_PORT);
+                printf("DIRECT udpsend {%s} to %s finalbuf.%d\n",hopNXTaddr,destip,len);
+            port = get_SuperNET_port(destip);
             uv_ip4_addr(destip,port,&addr);
-            send_packet(queueflag,stats,(struct sockaddr *)&addr,finalbuf,len);
+            send_packet(queueflag,stats->ipbits,(struct sockaddr *)&addr,finalbuf,len);
         }
         else { printf("cant route packet.%d without IP address to %llu\n",len,(long long)stats->nxt64bits); return; }
     } else { printf("cant route packet.%d without nodestats\n",len); return; }
@@ -533,16 +544,14 @@ uint64_t directsend_packet(int32_t queueflag,int32_t encrypted,struct pserver_in
     struct nodestats *stats = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     unsigned char *outbuf;
-    if ( pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0 )
+    if ( 0 && (pserver->nxt64bits == 0 || (stats= get_nodestats(pserver->nxt64bits)) == 0 || stats->ipbits == 0) )
     {
         printf("no nxtaddr.%llu or null stats.%p ipbits.%x\n",(long long)pserver->nxt64bits,stats,stats!=0?stats->ipbits:0);
         return(0);
     }
     if ( pserver->nxt64bits != 0 )
         stats = get_nodestats(pserver->nxt64bits);
-    if ( stats != 0 )
-        port = stats->supernet_port != 0 ? stats->supernet_port : (stats->supernet_altport != 0 ? stats->supernet_altport : SUPERNET_PORT);
-    else port = SUPERNET_PORT;
+    port = get_SuperNET_port(pserver->ipaddr);
     uv_ip4_addr(pserver->ipaddr,port,(struct sockaddr_in *)&destaddr);
     stripwhite_ns(origargstr,len);
     len = (int32_t)strlen(origargstr)+1;
@@ -946,7 +955,6 @@ int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int3
         stats->lastcontact = now;
         stats->BTCD_p2p = 1;
     }
-    stats->numrecv++;
     if ( stats->nxt64bits == 0 )
         stats->nxt64bits = nxt64bits;
     else if ( stats->nxt64bits != nxt64bits )
@@ -960,7 +968,6 @@ int32_t update_nodestats(char *NXTaddr,uint32_t now,struct nodestats *stats,int3
         {
             char ipaddr[64];
             expand_ipbits(ipaddr,stats->ipbits);
-            printf("pubkey.%llu updated from pserver %s/%d:%d | recv.%d send.%d\n",(long long)stats->nxt64bits,ipaddr,stats->supernet_port,stats->p2pport,stats->numrecv,stats->numsent);
             memcpy(stats->pubkey,pubkey,sizeof(stats->pubkey));
             modified = (1 << p2pflag);
             stats->modified |= modified;

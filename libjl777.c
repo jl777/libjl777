@@ -119,7 +119,7 @@ int32_t expire_nodestats(struct nodestats *stats,uint32_t now)
         expand_ipbits(ipaddr,stats->ipbits);
         printf("expire_nodestats %s | %u %u %d\n",ipaddr,now,stats->lastcontact,now - stats->lastcontact);
         stats->gotencrypted = stats->modified = 0;
-        stats->sentmilli = 0;
+        //stats->sentmilli = 0;
         stats->expired = 1;
         return(1);
     }
@@ -159,7 +159,7 @@ void every_minute(int32_t counter)
                 if ( gen_pingstr(_cmd,1) > 0 )
                 {
                     len = construct_tokenized_req((char *)finalbuf,_cmd,cp->srvNXTACCTSECRET);
-                    send_packet(!prevent_queueing("ping"),nodes[i],0,finalbuf,len);
+                    send_packet(!prevent_queueing("ping"),nodes[i]->ipbits,0,finalbuf,len);
                     pserver = get_pserver(0,ipaddr,0,0);
                     send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
                     p2p_publishpacket(pserver,0);
@@ -526,7 +526,6 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     int32_t SuperNET_broadcast(char *msg,int32_t duration);
     int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len);
     char ip_port[64],*ptr;
-    struct nodestats *stats;
     uint64_t txid = 0;
     int32_t port;
     if ( 1 || SUPERNET_PORT != _SUPERNET_PORT )
@@ -536,9 +535,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
     {
-        if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
-            port = (stats->p2pport == 0) ? BTCD_PORT : stats->p2pport;
-        else port = BTCD_PORT;
+        port = (pserver->p2pport == 0) ? BTCD_PORT : pserver->p2pport;
         //fprintf(stderr,"port.%d\n",port);
         sprintf(ip_port,"%s:%d",pserver->ipaddr,port);
         txid ^= calc_ipbits(pserver->ipaddr);

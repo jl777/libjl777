@@ -418,7 +418,7 @@ void init_telepathy_contact(struct contact_info *contact)
 {
     struct coin_info *cp = get_coin_info("BTCD");
     int32_t i;
-    //char retbuf[MAX_JSON_FIELD];//,*retstr;
+    char retbuf[MAX_JSON_FIELD];//,*retstr;
     uint64_t randbits;
     for (i=0; i<=MAX_DROPPED_PACKETS*3; i++)
         create_telepathy_entry(contact,i);
@@ -429,7 +429,7 @@ void init_telepathy_contact(struct contact_info *contact)
             randbits ^= (1L << ((rand()>>8) & 63));
         contact->mydrop = randbits;
     }
-    //telepathic_transmit(retbuf,contact,0,0,0);
+    telepathic_transmit(retbuf,contact,0,0,0);
     //if ( (retstr= check_privategenesis(contact)) != 0 )
     //    free(retstr);
 }
@@ -561,7 +561,7 @@ char *addcontact(char *handle,char *acct)
     else
     {
         //fprintf(stderr,"publish deaddrop\n");
-        //telepathic_transmit(retstr,contact,0,0,0);
+        telepathic_transmit(retstr,contact,0,0,0);
         //if ( (ret= check_privategenesis(contact)) != 0 )
         //    free(ret);
         sprintf(retstr,"{\"result\":\"(%s) acct.(%s) (%llu) unchanged\"}",handle,acct,(long long)contact->nxt64bits);

@@ -1729,29 +1729,6 @@ void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
     }
 }
 
-struct pserver_info *get_pserver(int32_t *createdp,char *ipaddr,uint16_t supernet_port,uint16_t p2pport)
-{
-    int32_t createdflag = 0;
-    struct nodestats *stats;
-    struct pserver_info *pserver;
-    if ( createdp == 0 )
-        createdp = &createdflag;
-    pserver = MTadd_hashtable(createdp,Global_mp->Pservers_tablep,ipaddr);
-    if ( supernet_port != 0 )
-        pserver->port = supernet_port;
-    if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
-    {
-        if ( *createdp != 0 || (supernet_port != 0 && supernet_port != BTCD_PORT && supernet_port != stats->supernet_port) )
-        {
-            stats->supernet_altport = 0;
-            stats->supernet_port = supernet_port;
-        }
-        if ( *createdp != 0 || (p2pport != 0 && p2pport != SUPERNET_PORT && p2pport != stats->p2pport) )
-            stats->p2pport = p2pport;
-    }
-    return(pserver);
-}
-
 
 //#ifndef WIN32
 

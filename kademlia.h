@@ -80,15 +80,18 @@ void add_new_node(uint64_t nxt64bits)
 
 void bind_NXT_ipaddr(uint64_t nxt64bits,char *ip_port)
 {
+    uint16_t port;
     char ipaddr[64];
     struct nodestats *stats;
     struct pserver_info *pserver;
-    stats = get_nodestats(nxt64bits);
-    stats->p2pport = parse_ipaddr(ipaddr,ip_port);
-    stats->ipbits = calc_ipbits(ipaddr);
     pserver = get_pserver(0,ipaddr,0,0);
     pserver->nxt64bits = nxt64bits;
-}
+    port = parse_ipaddr(ipaddr,ip_port);
+    if ( port != 0 )
+        pserver->p2pport = port;
+    stats = get_nodestats(nxt64bits);
+    stats->ipbits = calc_ipbits(ipaddr);
+ }
 
 struct nodestats *get_random_node()
 {
@@ -265,20 +268,12 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
 void send_to_ipaddr(uint16_t bridgeport,int32_t tokenizeflag,char *ipaddr,char *jsonstr,char *NXTACCTSECRET)
 {
     char _tokbuf[MAX_JSON_FIELD];
-    struct pserver_info *pserver;
     struct sockaddr destaddr;
-    struct nodestats *stats;
     //struct coin_info *cp = get_coin_info("BTCD");
     int32_t port,isbridge;
     if ( bridgeport == 0 )
     {
-        pserver = get_pserver(0,ipaddr,0,0);
-        stats = get_nodestats(pserver->nxt64bits);
-        if ( stats != 0 )
-            port = (stats->supernet_port != 0) ? stats->supernet_port : stats->supernet_altport;
-        else port = 0;
-        if ( port == 0 )
-            port = SUPERNET_PORT;
+        port = get_SuperNET_port(ipaddr);
         isbridge = 0;
     }
     else
@@ -390,7 +385,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),Global_mp->isMM,pserver->ipaddr,pserver->port,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),Global_mp->isMM,pserver->ipaddr,pserver->lastport,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
             //send_to_ipaddr(1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
             //return(0);
             //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
@@ -439,6 +434,40 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
             pserver->nxt64bits = nxt64bits;
             changed++;
         }
+        if ( port != 0 )
+        {
+            if ( p2pflag != 0 )
+            {
+                if ( pserver->p2pport == 0 || pserver->p2pport != port )
+                {
+                    printf("kademlia_update_info: p2pport %u -> %u\n",pserver->p2pport,port);
+                    pserver->p2pport = port;
+                    changed++;
+                }
+                else if ( pserver->p2pport != 0 && pserver->p2pport != port )
+                {
+                    printf("kademlia_update_info: p2pport %u -> %u | RESET\n",pserver->p2pport,port);
+                    pserver->p2pport = 0;
+                    changed++;
+                }
+            }
+            else
+            {
+                if ( pserver->supernet_port == 0 )//|| pserver->supernet_port != port )
+                {
+                    printf("kademlia_update_info: supernet_port %u -> %u\n",pserver->supernet_port,port);
+                    pserver->supernet_port = port;
+                    changed++;
+                }
+                if ( pserver->supernet_port != 0 && pserver->supernet_port != port )
+                {
+                    printf("kademlia_update_info: supernet_port %u -> %u | RESET\n",pserver->supernet_port,port);
+                    pserver->supernet_altport = port;
+                    //stats->supernet_port = 0;
+                    changed++;
+                }
+            }
+        }
     }
     if ( nxt64bits != 0 )
     {
@@ -455,40 +484,6 @@ void kademlia_update_info(char *destNXTaddr,char *ipaddr,int32_t port,char *pubk
             stats->ipbits = ipbits;
             changed++;
         }
-        if ( port != 0 )
-        {
-            if ( p2pflag != 0 )
-            {
-                if ( stats->p2pport == 0 || stats->p2pport != port )
-                {
-                    printf("kademlia_update_info: p2pport %u -> %u\n",stats->p2pport,port);
-                    stats->p2pport = port;
-                    changed++;
-                }
-                else if ( stats->p2pport != 0 && stats->p2pport != port )
-                {
-                    printf("kademlia_update_info: p2pport %u -> %u | RESET\n",stats->p2pport,port);
-                    stats->p2pport = 0;
-                    changed++;
-                }
-            }
-            else
-            {
-                if ( stats->supernet_port == 0 )//|| stats->supernet_port != port )
-                {
-                    printf("kademlia_update_info: supernet_port %u -> %u\n",stats->supernet_port,port);
-                    stats->supernet_port = port;
-                    changed++;
-                }
-                if ( stats->supernet_port != 0 && stats->supernet_port != port )
-                {
-                    printf("kademlia_update_info: supernet_port %u -> %u | RESET\n",stats->supernet_port,port);
-                    stats->supernet_altport = port;
-                    //stats->supernet_port = 0;
-                    changed++;
-                }
-            }
-        }
         if ( pubkeystr != 0 && pubkeystr[0] != 0 && update_pubkey(stats->pubkey,pubkeystr) != 0 && lastcontact != 0 )
             stats->lastcontact = lastcontact, changed++;
         if ( changed != 0 )
@@ -503,14 +498,14 @@ void change_nodeinfo(char *ipaddr,uint16_t port,uint64_t nxt64bits,int32_t isMM)
     stats = get_nodestats(nxt64bits);
     stats->ipbits = calc_ipbits(ipaddr);
     stats->isMM = isMM;
-    if ( port != 0 )//(stats->supernet_port == 0 || stats->supernet_port == SUPERNET_PORT) )
-    {
-        printf("OVERRIDE supernet_port.%d altport.%d -> %d\n",stats->supernet_port,stats->supernet_altport,port);
-        stats->supernet_altport = 0;
-        stats->supernet_port = port;
-    }
     pserver = get_pserver(0,ipaddr,port,0);
     pserver->nxt64bits = nxt64bits;
+    if ( port != 0 )//(stats->supernet_port == 0 || stats->supernet_port == SUPERNET_PORT) )
+    {
+        printf("OVERRIDE supernet_port.%d altport.%d -> %d\n",pserver->supernet_port,pserver->supernet_altport,port);
+        //pserver->supernet_altport = 0;
+        pserver->supernet_port = port;
+    }
     add_new_node(nxt64bits);
 }
 
@@ -849,7 +844,7 @@ cJSON *gen_find_nodejson(char *NXTaddr)
         {
             expand_ipbits(ipaddr,stats->ipbits);
             cJSON_AddItemToArray(item,cJSON_CreateString(ipaddr));
-            sprintf(numstr,"%d",stats->supernet_port==0?SUPERNET_PORT:stats->supernet_port);
+            sprintf(numstr,"%d",get_SuperNET_port(ipaddr));
             cJSON_AddItemToArray(item,cJSON_CreateString(numstr));
             sprintf(numstr,"%u",stats->lastcontact);
             cJSON_AddItemToArray(item,cJSON_CreateString(numstr));

@@ -486,7 +486,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         }
         else
         {
-            if ( (++pserver->decrypterrs % 10) == 0 && pserver->decrypterrs < 100 )
+            if ( (++pserver->decrypterrs % 10) == 0 && pserver->decrypterrs < 10 )
                 send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
             if ( Debuglevel > 0 )
                 printf("couldnt decrypt packet len.%d from (%s)\n",recvlen,sender);
@@ -673,20 +673,19 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
             cJSON_AddItemToObject(json,"hasnxt",array);
             cJSON_AddItemToObject(json,"numnxt",cJSON_CreateNumber(pserver->numnxt));
         }*/
+        cJSON_AddItemToObject(json,"port",cJSON_CreateNumber(get_SuperNET_port(pserver->ipaddr)));
+        if ( pserver->p2pport != 0 && pserver->p2pport != BTCD_PORT )
+            cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(pserver->p2pport));
+        if ( pserver->numsent != 0 )
+            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(pserver->numsent));
+        if ( pserver->sentmilli != 0 )
+            cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber((millis - pserver->sentmilli)/60000.));
+        if ( pserver->numrecv != 0 )
+            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(pserver->numrecv));
+        if ( pserver->recvmilli != 0 )
+            cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - pserver->recvmilli)/60000.));
         if ( (stats= get_nodestats(pserver->nxt64bits)) != 0 )
         {
-            if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
-                cJSON_AddItemToObject(json,"p2p",cJSON_CreateNumber(stats->p2pport));
-            if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
-                cJSON_AddItemToObject(json,"port",cJSON_CreateNumber(stats->supernet_port));
-            if ( stats->numsent != 0 )
-                cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(stats->numsent));
-            if ( stats->sentmilli != 0 )
-                cJSON_AddItemToObject(json,"lastsent",cJSON_CreateNumber((millis - stats->sentmilli)/60000.));
-            if ( stats->numrecv != 0 )
-                cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
-            if ( stats->recvmilli != 0 )
-                cJSON_AddItemToObject(json,"lastrecv",cJSON_CreateNumber((millis - stats->recvmilli)/60000.));
             if ( stats->numpings != 0 )
                 cJSON_AddItemToObject(json,"pings",cJSON_CreateNumber(stats->numpings));
             if ( stats->numpongs != 0 )
@@ -730,6 +729,12 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
     cJSON *coins,*json = cJSON_CreateObject();
     struct pserver_info *pserver;
     expand_ipbits(srvipaddr,stats->ipbits);
+    pserver = get_pserver(0,srvipaddr,0,0);
+    if ( pserver != 0 )
+    {
+        //printf("%s pserver.%p\n",srvipaddr,pserver);
+        cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
+    }
     expand_nxt64bits(srvnxtaddr,stats->nxt64bits);
     if ( stats->ipbits != 0 )
     {
@@ -738,21 +743,16 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
         cJSON_AddItemToObject(json,"srvipaddr",cJSON_CreateString(srvipaddr));
         if ( stats->isMM != 0 )
             cJSON_AddItemToObject(json,"MMatrix",cJSON_CreateNumber(stats->isMM));
-        sprintf(numstr,"%d",stats->supernet_port);
-        if ( stats->supernet_port != 0 && stats->supernet_port != SUPERNET_PORT )
+        sprintf(numstr,"%d",pserver->supernet_port);
+        if ( pserver->supernet_port != 0 && pserver->supernet_port != SUPERNET_PORT )
             cJSON_AddItemToObject(json,"srvport",cJSON_CreateString(numstr));
-        sprintf(numstr,"%d",stats->p2pport);
-        if ( stats->p2pport != 0 && stats->p2pport != BTCD_PORT )
+        sprintf(numstr,"%d",pserver->p2pport);
+        if ( pserver->p2pport != 0 && pserver->p2pport != BTCD_PORT )
             cJSON_AddItemToObject(json,"p2pport",cJSON_CreateString(numstr));
-        if ( stats->numsent != 0 )
-            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(stats->numsent));
-        if ( stats->numrecv != 0 )
-            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(stats->numrecv));
-        if ( (pserver= get_pserver(0,srvipaddr,0,0)) != 0 )
-        {
-            //printf("%s pserver.%p\n",srvipaddr,pserver);
-            cJSON_AddItemToObject(json,"pserver",gen_pserver_json(pserver));
-        }
+        if ( pserver->numsent != 0 )
+            cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(pserver->numsent));
+        if ( pserver->numrecv != 0 )
+            cJSON_AddItemToObject(json,"recv",cJSON_CreateNumber(pserver->numrecv));
     }
     else cJSON_AddItemToObject(json,"privateNXT",cJSON_CreateString(srvnxtaddr));
     RSaddr[0] = 0;

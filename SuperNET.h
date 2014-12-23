@@ -59,16 +59,26 @@ struct telepod
 union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
 typedef union _bits256 bits256;
 
+
+struct pserver_info
+{
+    char ipaddr[64];
+    uint64_t modified,nxt64bits;
+    float recvmilli,sentmilli;
+    void *udps[2];
+    uint32_t decrypterrs,lastcontact,numsent,numrecv;
+    uint16_t p2pport,firstport,lastport,supernet_port,supernet_altport;
+};
+
 struct nodestats
 {
     struct storage_header H;
     uint8_t pubkey[256>>3];
     struct nodestats *eviction;
     uint64_t nxt64bits,coins[4];
-    uint32_t ipbits,numsent,numrecv,lastcontact,numpings,numpongs;
-    float recvmilli,sentmilli,pingmilli,pongmilli;
     double pingpongsum;
-    uint16_t p2pport,supernet_port,supernet_altport;
+    float pingmilli,pongmilli;
+    uint32_t ipbits,lastcontact,numpings,numpongs;
     uint8_t BTCD_p2p,gotencrypted,modified,expired,isMM;
 };
 
