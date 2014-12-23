@@ -319,7 +319,7 @@ int main(int argc,const char *argv[])
         {
             if ( (json= cJSON_Parse(argv[1])) != 0 )
             {
-                IS_LIBTEST = 0;
+                IS_LIBTEST = -1;
                 Debuglevel = 0;
                 init_MGWconf("SuperNET.conf",0);
                 if ( (retstr= process_commandline_json(json)) != 0 )
