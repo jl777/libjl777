@@ -55,7 +55,8 @@ int32_t valid_SuperNET_db(char *debugstr,int32_t selector)
 {
     if ( IS_LIBTEST == 0 || selector < 0 || selector > NUM_SUPERNET_DBS )
     {
-        fprintf(stderr,"%s: invalid SuperNET_db selector.%d or DB disabled vi LIBTEST.%d\n",debugstr,selector,IS_LIBTEST);
+        if ( IS_LIBTEST > 0 )
+            fprintf(stderr,"%s: invalid SuperNET_db selector.%d or DB disabled vi LIBTEST.%d\n",debugstr,selector,IS_LIBTEST);
         return(0);
     }
     return(1);
@@ -379,6 +380,8 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
 int32_t dbcmd(char *debugstr,int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags,void *cursor)
 {
     struct dbreq *req;
+    if ( IS_LIBTEST <= 0 )
+        return(-1);
     if ( sdb->dbp != 0 && sdb->active > 0 )
     {
         if ( (req= _queue_dbreq(funcid,sdb,txn,key,data,flags,cursor)) != 0 )
@@ -394,8 +397,8 @@ int32_t dbget(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t fla
 
 int32_t dbput(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 {
-    return(sdb->dbp->put(sdb->dbp,txn,key,data,flags));
-    //return(dbcmd("dbput",'P',sdb,txn,key,data,flags,0));
+    //return(sdb->dbp->put(sdb->dbp,txn,key,data,flags));
+    return(dbcmd("dbput",'P',sdb,txn,key,data,flags,0));
 }
 
 int32_t dbdel(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)

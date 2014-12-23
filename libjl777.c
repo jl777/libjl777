@@ -717,9 +717,11 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     }
     Global_mp = init_SuperNET_globals();
     
-    printf("call init_NXTservices (%s)\n",myipaddr);
+    if ( Debuglevel > 0 )
+        printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
-    printf("back from init_NXTservices (%s)\n",myipaddr);
+    if ( Debuglevel > 0 )
+        printf("back from init_NXTservices (%s)\n",myipaddr);
     uint64_t pendingtxid; ready_to_xferassets(&pendingtxid);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )

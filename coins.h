@@ -342,7 +342,8 @@ char *parse_conf_line(char *line,char *field)
     if ( *line == '=' )
         line++;
     stripstr(line,strlen(line));
-    printf("[%s]\n",line);
+    if ( Debuglevel > 0 )
+        printf("[%s]\n",line);
     return(clonestr(line));
 }
 
@@ -860,11 +861,13 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
                         exit(1);
                     }
-                    printf("%s ",NXTADDR);
+                    if ( Debuglevel > 0 )
+                        printf("%s ",NXTADDR);
                     strcpy(Server_NXTaddrs[i],NXTADDR);
                     MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
                 }
-                printf("special_addrs.%d\n",n);
+                if ( Debuglevel > 0 )
+                    printf("special_addrs.%d\n",n);
                 MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;
                 MGW_whitelist[n] = "";
                 MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer

@@ -591,6 +591,8 @@ void update_storage(struct SuperNET_db *sdb,char *keystr,struct storage_header *
 {
     DBT key,data;
     int ret;
+    if ( IS_LIBTEST <= 0 )
+        return;
     if ( hp->size == 0 )
     {
         printf("update_storage.%s zero datalen for (%s)\n",sdb->name,keystr);
