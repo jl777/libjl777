@@ -70,13 +70,60 @@ cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
     return(json);
 }
 
+char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
+{
+    void unstringify(char *);
+    char params[4096],txidstr[64],buf[1024],ipaddr[64],args[8192],*retstr;
+    int32_t port;
+    cJSON *json;
+    txidstr[0] = 0;
+    sprintf(params,"{\"requestType\":\"GUIpoll\"}");
+    retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
+    //fprintf(stderr,"<<<<<<<<<<< SuperNET poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
+    if ( retstr != 0 )
+    {
+        //sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"from\":\"%s\",\"port\":%d,\"args\":%s}",str,ipaddr,port,args);
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            copy_cJSON(buf,cJSON_GetObjectItem(json,"result"));
+            if ( buf[0] != 0 )
+            {
+                unstringify(buf);
+                copy_cJSON(txidstr,cJSON_GetObjectItem(json,"txid"));
+                if ( txidstr[0] != 0 )
+                {
+                    if ( Debuglevel > 0 )
+                        fprintf(stderr,"<<<<<<<<<<< GUIpoll: (%s) for [%s]\n",buf,txidstr);
+                }
+                else
+                {
+                    copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"from"));
+                    copy_cJSON(args,cJSON_GetObjectItem(json,"args"));
+                    unstringify(args);
+                    free(retstr);
+                    retstr = clonestr(args);
+                    port = (int32_t)get_API_int(cJSON_GetObjectItem(json,"port"),0);
+                    //if ( args[0] != 0 && Debuglevel > 2 )
+                    //    printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
+                }
+            }
+            free_json(json);
+        } else fprintf(stderr,"<<<<<<<<<<< GUI poll_for_broadcasts: PARSE_ERROR.(%s)\n",retstr);
+        // free(retstr);
+    } //else fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: bitcoind_RPC returns null\n");
+    return(retstr);
+}
+
 char *process_commandline_json(cJSON *json)
 {
+    double milliseconds();
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],coinstr[1024],*retstr = 0;
+    char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],coinstr[1024],*retstr = 0;
     unsigned char hash[256>>3],mypublic[256>>3];
+    uint16_t port;
     uint64_t nxt64bits,checkbits;
     int32_t i,n;
+    double startmilli;
     uint32_t buyNXT = 0;
     cJSON *array;
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
@@ -107,49 +154,29 @@ char *process_commandline_json(cJSON *json)
             if ( coinstr[0] != 0 )
                 issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
         }
+        startmilli = milliseconds();
+        while ( milliseconds() < startmilli+10000 )
+        {
+            sleep(1);
+            if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+            {
+                printf("%s\n",retstr);
+                free(retstr);
+            }
+        }
     }
     return(retstr);
 }
 
 void *GUIpoll_loop(void *arg)
 {
-    void unstringify(char *);
-    char params[4096],txidstr[64],buf[1024],ipaddr[64],args[8192],*retstr;
-    int32_t port;
-    cJSON *json;
+    uint16_t port;
+    char txidstr[1024],senderipaddr[1024];
     while ( 1 )
     {
         sleep(1);
-        //continue;
-        sprintf(params,"{\"requestType\":\"GUIpoll\"}");
-        retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
-        //fprintf(stderr,"<<<<<<<<<<< SuperNET poll_for_broadcasts: issued bitcoind_RPC params.(%s) -> retstr.(%s)\n",params,retstr);
-        if ( retstr != 0 )
-        {
-            //sprintf(retbuf+sizeof(ptrs),"{\"result\":%s,\"from\":\"%s\",\"port\":%d,\"args\":%s}",str,ipaddr,port,args);
-            if ( (json= cJSON_Parse(retstr)) != 0 )
-            {
-                copy_cJSON(buf,cJSON_GetObjectItem(json,"result"));
-                if ( buf[0] != 0 )
-                {
-                    unstringify(buf);
-                    copy_cJSON(txidstr,cJSON_GetObjectItem(json,"txid"));
-                    if ( txidstr[0] != 0 )
-                        fprintf(stderr,"<<<<<<<<<<< GUIpoll: (%s) for [%s]\n",buf,txidstr);
-                    else
-                    {
-                        copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"from"));
-                        copy_cJSON(args,cJSON_GetObjectItem(json,"args"));
-                        unstringify(args);
-                        port = (int32_t)get_API_int(cJSON_GetObjectItem(json,"port"),0);
-                        //if ( args[0] != 0 && Debuglevel > 2 )
-                        //    printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
-                    }
-                }
-                free_json(json);
-            } else fprintf(stderr,"<<<<<<<<<<< GUI poll_for_broadcasts: PARSE_ERROR.(%s)\n",retstr);
+        if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             free(retstr);
-        } //else fprintf(stderr,"<<<<<<<<<<< BTCD poll_for_broadcasts: bitcoind_RPC returns null\n");
     }
     return(0);
 }
