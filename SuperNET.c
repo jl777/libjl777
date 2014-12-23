@@ -112,6 +112,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"result"));
                             if ( strcmp(buf2,"nothing pending") == 0 )
                                 free(retstr), retstr = 0;
+                            else printf("RESULT.(%s)\n",buf2);
                             free_json(argjson);
                         }
                     }
@@ -165,7 +166,7 @@ char *process_commandline_json(cJSON *json)
                 issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
         }
         startmilli = milliseconds();
-        while ( milliseconds() < startmilli+10000 )
+        while ( milliseconds() < startmilli+3000 )
         {
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
@@ -179,16 +180,20 @@ char *process_commandline_json(cJSON *json)
                             argjson = cJSON_GetArrayItem(retjson,0);
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
                             if ( strcmp(buf2,"MGWaddr") == 0 )
+                            {
                                 printf("%s\n",retstr);
+                                return(retstr);
+                            }
                         }
                     }
                 }
                 free(retstr);
+                retstr = 0;
             }
             usleep(5000);
         }
     }
-    return(retstr);
+    return(clonestr("{\"error\":\"timeout\"}"));
 }
 
 void *GUIpoll_loop(void *arg)
