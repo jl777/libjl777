@@ -559,7 +559,7 @@ int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
     return(0);
 }
 
-char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n,char *refpubkey)
+char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n,char *userpubkey,char *email,int32_t buyNXT)
 {
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
@@ -570,7 +570,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     int32_t i,iter,flag,valid = 0;
     refbits = conv_acctstr(refacct);
     expand_nxt64bits(refNXTaddr,refbits);
-    printf("GENMULTISIG.%d from (%s) refacct.(%s) %llu %s\n",N,previpaddr,refacct,(long long)refbits,refNXTaddr);
+    printf("GENMULTISIG.%d from (%s) refacct.(%s) %llu %s email.(%s) buyNXT.%d\n",N,previpaddr,refacct,(long long)refbits,refNXTaddr,email,buyNXT);
     if ( refNXTaddr[0] == 0 )
         return(clonestr("\"error\":\"genmultisig couldnt find refcontact\"}"));
     flag = 0;
@@ -598,8 +598,8 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 if ( get_NXT_coininfo(contact->nxt64bits,acctcoinaddr,pubkey,refbits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
                 {
                     if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
-                        sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"myaddr\":\"%s\",\"mypubkey\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,myacctcoinaddr,mypubkey,coinstr,refNXTaddr);
-                    else sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\"}",NXTaddr,coinstr,refNXTaddr);
+                        sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"myaddr\":\"%s\",\"mypubkey\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"userpubkey\":\"%s\"}",NXTaddr,myacctcoinaddr,mypubkey,coinstr,refNXTaddr,userpubkey);
+                    else sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"userpubkey\":\"%s\"}",NXTaddr,coinstr,refNXTaddr,userpubkey);
                     printf("SENDREQ.(%s)\n",buf);
                     hopNXTaddr[0] = 0;
                     expand_nxt64bits(destNXTaddr,contact->nxt64bits);
@@ -614,9 +614,11 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             } else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
         }
     }
-    if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,refpubkey,contacts)) != 0 )
+    if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,userpubkey,contacts)) != 0 )
     {
         msig->valid = valid;
+        safecopy(msig->email,email,sizeof(msig->email));
+        msig->buyNXT = buyNXT;
         update_msig_info(msig,1);
         if ( valid == N )
         {
@@ -713,7 +715,7 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
             if ( (msig= find_NXT_msig(0,NXTaddr,cp->name,contacts,N)) == 0 )
             {
                 set_NXTpubkey(NXTpubkey,NXTaddr);
-                retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N,NXTpubkey);
+                retstr = genmultisig(refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,0,cp->name,NXTaddr,M,N,contacts,N,NXTpubkey,0,0);
                 if ( retstr != 0 )
                 {
                     printf("UPDATE_COINACCT_ADDRESSES (%s) -> (%s)\n",cp->name,retstr);
@@ -2482,7 +2484,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     if ( json != 0 )
     {
         retstr = cJSON_Print(json);
-        stripwhite_ns(retstr,strlen(retstr));
+        //stripwhite_ns(retstr,strlen(retstr));
         strcat(retstr,"\n");
         free_json(json);
     }

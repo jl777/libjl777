@@ -1550,10 +1550,10 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bri
 
 char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],userpubkey[MAX_JSON_FIELD],*retstr = 0;
+    char refacct[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],userpubkey[MAX_JSON_FIELD],email[MAX_JSON_FIELD],*retstr = 0;
     cJSON *json;
     uint16_t bridgeport;
-    int32_t M,N,noerror,n = 0;
+    int32_t M,N,buyNXT,noerror,n = 0;
     struct multisig_addr *msig;
     struct contact_info **contacts = 0;
     copy_cJSON(userpubkey,objs[0]);
@@ -1564,6 +1564,8 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     contacts = conv_contacts_json(&n,objs[5]);
     copy_cJSON(destip,objs[6]);
     bridgeport = (uint16_t)get_API_int(objs[7],0);
+    copy_cJSON(email,objs[8]);
+    buyNXT = (int32_t)get_API_int(objs[9],0);
     if ( coin[0] != 0 && refacct[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         if ( (retstr= bridge_test(0,NXTACCTSECRET,destip,bridgeport,origargstr)) != 0 )
@@ -1588,12 +1590,24 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
             }
             return(bridge_test(1,NXTACCTSECRET,destip,bridgeport,origargstr));
         }
-        retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n,userpubkey);
+        retstr = genmultisig(NXTaddr,NXTACCTSECRET,previpaddr,coin,refacct,M,N,contacts,n,userpubkey,email,buyNXT);
     }
     free_contacts(contacts,n);
     if ( retstr != 0 )
         return(retstr);
     return(clonestr("{\"error\":\"bad genmultisig_func paramater\"}"));
+}
+
+void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT)
+{
+    struct coin_info *refcp = get_coin_info("BTCD");
+    char params[4096];
+    int32_t gatewayid;
+    for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+    {
+        sprintf(params,"{\"requestType\":\"genmultisig\",\"email\":\"%s\",\"buyNXT\":%d,\"destip\":\"%s\",\"destport\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"contacts\":[\"%s\", \"%s\", \"%s\"],\"M\":%d,\"N\":%d}",email,buyNXT,Server_names[gatewayid],refcp->bridgeport,userNXTaddr,userpubkey,coinstr,Server_NXTaddrs[0],Server_NXTaddrs[1],Server_NXTaddrs[2],NUM_GATEWAYS-1,NUM_GATEWAYS);
+        printf("issue.(%s)\n",params);
+    }
 }
 
 char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1625,7 +1639,7 @@ char *getmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
 
 char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD];
+    char refNXTaddr[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],acctcoinaddr[MAX_JSON_FIELD],userpubkey[MAX_JSON_FIELD];
     //struct contact_info *contact;
     struct coin_info *cp;
     uint64_t nxt64bits;
@@ -1635,14 +1649,14 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     copy_cJSON(coin,objs[0]);
     copy_cJSON(refNXTaddr,objs[1]);
     copy_cJSON(acctcoinaddr,objs[2]);
-    copy_cJSON(pubkey,objs[3]);
+    copy_cJSON(userpubkey,objs[3]);
     cp = get_coin_info(coin);
-    printf("coin.(%s) %p ref.(%s) acc.(%s) pub.(%s)\n",coin,cp,refNXTaddr,acctcoinaddr,pubkey);
-    if ( cp != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && pubkey[0] != 0 && sender[0] != 0 && valid > 0 )
+    printf("coin.(%s) %p ref.(%s) acc.(%s) pub.(%s)\n",coin,cp,refNXTaddr,acctcoinaddr,userpubkey);
+    if ( cp != 0 && refNXTaddr[0] != 0 && acctcoinaddr[0] != 0 && userpubkey[0] != 0 && sender[0] != 0 && valid > 0 )
     {
         if ( (nxt64bits= conv_acctstr(refNXTaddr)) != 0 )
         {
-            add_NXT_coininfo(calc_nxt64bits(sender),nxt64bits,coin,acctcoinaddr,pubkey);
+            add_NXT_coininfo(calc_nxt64bits(sender),nxt64bits,coin,acctcoinaddr,userpubkey);
             //replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
             //update_contact_info(contact);
             //free(contact);
@@ -1705,7 +1719,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
             if ( strlen(retstr) < 1024 )
             {
                 hopNXTaddr[0] = 0;
-                str = send_tokenized_cmd(!prevent_queueing("MGW"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,sender);
+                str = send_tokenized_cmd(!prevent_queueing("MGWstatus"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,sender);
             }
             else
             {
@@ -1714,7 +1728,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
                 data = malloc(datalen);
                 datalen = decode_hex(data,datalen,retstr);
                 printf("start_transfer\n");
-                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,"MGWstatus",data,datalen,timeout,"mgw"); // start_transfer frees data
+                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,"MGWstatus",data,datalen,timeout,"bridge"); // start_transfer frees data
             }
             if ( str != 0 )
                 free(str);
@@ -1740,11 +1754,11 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
 
     // MGW
-    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "", "pubkey", "coin", "refcontact", "M", "N", "contacts", "destip", "destport", 0 };
+    static char *genmultisig[] = { (char *)genmultisig_func, "genmultisig", "", "userpubkey", "coin", "refcontact", "M", "N", "contacts", "destip", "destport", "email", "buyNXT", 0 };
     static char *getmsigpubkey[] = { (char *)getmsigpubkey_func, "getmsigpubkey", "V", "coin", "refNXTaddr", "myaddr", "mypubkey", 0 };
     static char *MGWaddr[] = { (char *)MGWaddr_func, "MGWaddr", "V", 0 };
-    static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "pubkey", 0 };
-    static char *MGW[] = { (char *)MGW_func, "MGW", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", "pubkey", "email", "destNXT", 0 };
+    static char *setmsigpubkey[] = { (char *)setmsigpubkey_func, "setmsigpubkey", "V", "coin", "refNXTaddr", "addr", "userpubkey", 0 };
+    static char *MGW[] = { (char *)MGW_func, "MGW", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", "userpubkey", "email", "destNXT", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
     

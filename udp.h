@@ -522,7 +522,7 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
         if ( Debuglevel > 0 )
             printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
-        send_packet(queueflag,stats->ipbits,destaddr,outbuf,len);
+        send_packet(queueflag,0,destaddr,outbuf,len);
     }
     else if ( stats != 0 )
     {

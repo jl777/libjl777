@@ -557,7 +557,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     }
                     printf("end check srvpubaddr\n");
                 }
-                else if ( strcmp(cp->name,"BTCD") == 0 )
+                else if ( IS_LIBTEST > 0 && strcmp(cp->name,"BTCD") == 0 )
                 {
                     char args[1024],*addr,*pubaddr,*srvpubaddr;
                     sprintf(args,"[\"funding\"]");
@@ -595,7 +595,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 free_cipherptrs(0,privkeys,cipherids);
                 privkeys = 0;
                 cipherids = 0;
-                if ( strcmp(cp->name,"BTCD") == 0 && (privkeys= validate_ciphers(&cipherids,cp,cp->ciphersobj)) == 0 )
+                if ( IS_LIBTEST > 0 && strcmp(cp->name,"BTCD") == 0 && (privkeys= validate_ciphers(&cipherids,cp,cp->ciphersobj)) == 0 )
                 {
                     fprintf(stderr,"FATAL error: cant validate ciphers sequence for %s\n",cp->name);
                     exit(-1);
@@ -663,16 +663,19 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
     void close_SuperNET_dbs();
-    close_SuperNET_dbs();
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
     printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
-    //init_filtered_bufs(); crashed ubunty
-    ensure_directory("backups");
-    ensure_directory("backups/telepods");
-    ensure_directory("archive");
-    ensure_directory("archive/telepods");
+    if ( IS_LIBTEST > 0 )
+    {
+        close_SuperNET_dbs();
+        //init_filtered_bufs(); crashed ubunty
+        ensure_directory("backups");
+        ensure_directory("backups/telepods");
+        ensure_directory("archive");
+        ensure_directory("archive/telepods");
+    }
     //printf("load MGW.conf (%s)\n",JSON_or_fname);
     if ( JSON_or_fname[0] == '{' )
         jsonstr = clonestr(JSON_or_fname);
@@ -814,7 +817,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                      }
                 }
             } else printf("no coins array.%p ?\n",array);
-            if ( IS_LIBTEST != 0 )
+            if ( IS_LIBTEST > 0 )
                 init_SuperNET_storage();
             //if ( NXTACCTSECRET[0] == 0 )
             //    gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");

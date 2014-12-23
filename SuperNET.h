@@ -103,9 +103,9 @@ struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coina
 struct multisig_addr
 {
     struct storage_header H;
-    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16];
+    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
     uint64_t sender,modified;
-    uint32_t m,n,created,valid;
+    uint32_t m,n,created,valid,buyNXT;
     struct pubkey_info pubkeys[];
 };
 
