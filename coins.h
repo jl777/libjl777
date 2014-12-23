@@ -408,14 +408,16 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
     {
         cp->serverport = clonestr(serverport);
         cp->userpass = clonestr(userpass);
-        printf("%s userpass.(%s) -> (%s)\n",cp->name,cp->userpass,cp->serverport);
+        if ( Debuglevel > 0 )
+            printf("%s userpass.(%s) -> (%s)\n",cp->name,cp->userpass,cp->serverport);
         cp->nohexout = nohexout;
         cp->use_addmultisig = useaddmultisig;
         cp->minconfirms = minconfirms;
         cp->estblocktime = estblocktime;
         cp->txfee = txfee;
         cp->forkheight = forkblock;
-        printf("%s minconfirms.%d txfee %.8f | marker %.8f NXTfee %.8f | firstblock.%ld fork.%d %d seconds\n",cp->name,cp->minconfirms,dstr(cp->txfee),dstr(cp->markeramount),dstr(cp->NXTfee_equiv),(long)cp->blockheight,cp->forkheight,cp->estblocktime);
+        if ( Debuglevel > 0 )
+            printf("%s minconfirms.%d txfee %.8f | marker %.8f NXTfee %.8f | firstblock.%ld fork.%d %d seconds\n",cp->name,cp->minconfirms,dstr(cp->txfee),dstr(cp->markeramount),dstr(cp->NXTfee_equiv),(long)cp->blockheight,cp->forkheight,cp->estblocktime);
     }
     else
     {
@@ -453,11 +455,13 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                     copy_cJSON(numstr,cJSON_GetArrayItem(limbo,i));
                     if ( (redeemtxid= calc_nxt64bits(numstr)) != 0 )
                     {
-                        printf("%llu ",(long long)redeemtxid);
+                        if ( Debuglevel > 0 )
+                            printf("%llu ",(long long)redeemtxid);
                         limboarray[j++] = redeemtxid;
                     }
                 }
-                printf("LIMBO ARRAY of %d of %d redeemtxids\n",j,n);
+                if ( Debuglevel > 0 )
+                    printf("LIMBO ARRAY of %d of %d redeemtxids\n",j,n);
             }
         }
         nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),0);
@@ -498,7 +502,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 extract_cJSON_str(cp->MGWissuer,sizeof(cp->MGWissuer),json,"issuer");
                 if ( cp->MGWissuer[0] == 'N' && cp->MGWissuer[1] == 'X' && cp->MGWissuer[2] == 'T' )
                     expand_nxt64bits(cp->MGWissuer,conv_rsacctstr(cp->MGWissuer,0));
-                printf("MGW issuer.(%s)\n",cp->MGWissuer);
+                if ( Debuglevel > 0 )
+                    printf("MGW issuer.(%s)\n",cp->MGWissuer);
                 cp->coinid = conv_coinstr(coinstr);
                 cp->limboarray = limboarray;
                 if ( cp->coinid >= 0 && cp->coinid < 256 )
