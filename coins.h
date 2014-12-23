@@ -437,7 +437,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     struct nodestats *stats;
     uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust,redeemtxid,*limboarray = 0;
     struct coin_info *cp = 0;
-    printf("init_coin.(%s)\n",cJSON_Print(json));
+    if ( Debuglevel > 0 )
+        printf("init_coin.(%s)\n",cJSON_Print(json));
     if ( json != 0 )
     {
         limbo = cJSON_GetObjectItem(json,"limbo");
@@ -804,12 +805,14 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
                     if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
                     {
-                        printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
+                        if ( Debuglevel > 0 )
+                            printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
                         Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
                         Daemons[Numcoins] = cp;
-                        printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
+                        if ( Debuglevel > 0 )
+                            printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
                         Numcoins++;
                         cp->json = item;
                         parse_ipaddr(cp->myipaddr,myipaddr);
@@ -817,7 +820,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         {
                             BTCDaddr = cp->privateaddr;
                             strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
-                            printf("BTCDaddr.(%s)\n",BTCDaddr);
+                            if ( Debuglevel > 0 )
+                                printf("BTCDaddr.(%s)\n",BTCDaddr);
                             if ( cp->privatebits != 0 )
                                 expand_nxt64bits(NXTADDR,cp->privatebits);
                             //addcontact(Global_mp->myhandle,cp->privateNXTADDR);

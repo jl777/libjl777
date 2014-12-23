@@ -368,7 +368,6 @@ void *init_SuperNET_globals()
         orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
         Global_pNXT->orderbook_txidsp = &orderbook_txids;
         Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
-        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
     }
     portable_mutex_init(&Global_mp->hash_mutex);
     portable_mutex_init(&Global_mp->hashtable_queue[0].mutex);
@@ -387,7 +386,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     static int32_t zero,one = 1;
     struct coin_info *cp;
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
-    printf("init_NXTservices.(%s)\n",myipaddr);
+    if ( Debuglevel > 0 )
+       printf("init_NXTservices.(%s)\n",myipaddr);
     UV_loop = uv_default_loop();
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,on_udprecv);
@@ -412,7 +412,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("ERROR hist Coinloop SSL\n");
 //#endif
     Finished_loading = 1;
-    printf("run_UVloop\n");
+    if ( Debuglevel > 0 )
+        printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
     if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )

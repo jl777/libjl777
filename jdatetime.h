@@ -386,6 +386,7 @@ char *jdatetime_str3(int32_t jdatetime)
 	return(buf);
 }
 
+extern int Debuglevel;
 int32_t timezone_init(int32_t timezone)
 {
 	int32_t y;
@@ -394,7 +395,7 @@ int32_t timezone_init(int32_t timezone)
 	{
 		calc_daylight_savings(&START_DST[y],&END_DST[y],FIRST_YEAR + y);
 		static unsigned long long debugmsg;
-		if ( debugmsg++ < 3 )
+		if ( Debuglevel > 0 && debugmsg++ < 3 )
 		{
 			printf("For %d DST starts %s, ends ",FIRST_YEAR+y,jdate_fname(START_DST[y]));
 			printf("%s\n",jdate_fname(END_DST[y]));
@@ -413,6 +414,7 @@ void init_jdatetime(int32_t firstunixtime,int32_t timezone)
 {
 	timezone_init(timezone);
 	FIRSTJDATETIME = conv_unixtime(firstunixtime);
-    printf("FIRSTJDATETIME %s timezone.%d\n",jdatetime_str(FIRSTJDATETIME),timezone);
+    if ( Debuglevel > 0 )
+        printf("FIRSTJDATETIME %s timezone.%d\n",jdatetime_str(FIRSTJDATETIME),timezone);
 }
 #endif

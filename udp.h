@@ -1019,7 +1019,8 @@ int32_t add_SuperNET_whitelist(char *ipaddr)
     {
         SuperNET_whitelist = realloc(SuperNET_whitelist,sizeof(*SuperNET_whitelist) * (Num_in_whitelist + 1));
         SuperNET_whitelist[Num_in_whitelist] = calc_ipbits(ipaddr);
-        printf(">>>>>>>>>>>>>>>>>> add to SuperNET_whitelist[%d] (%s)\n",Num_in_whitelist,ipaddr);
+        if ( Debuglevel > 0 )
+            printf(">>>>>>>>>>>>>>>>>> add to SuperNET_whitelist[%d] (%s)\n",Num_in_whitelist,ipaddr);
         Num_in_whitelist++;
         return(1);
     }
