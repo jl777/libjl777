@@ -181,6 +181,8 @@ char *process_commandline_json(cJSON *json)
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
                             if ( strcmp(buf2,"MGWaddr") == 0 )
                             {
+                                if ( email[0] != 0 )
+                                    send_email(email,userNXTaddr,0,retstr);
                                 printf("[%s]\n",retstr);
                                 return(retstr);
                             }
