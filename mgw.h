@@ -2449,7 +2449,12 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             return(clonestr("{\"error\":\"need NXT address to rescan\"}\n"));
         refNXTaddr = 0;
         nxt64bits = 0;
-    } else nxt64bits = calc_nxt64bits(refNXTaddr);
+    }
+    else
+    {
+        nxt64bits = conv_rsacctstr(refNXTaddr,0);
+        expand_nxt64bits(NXTaddr,nxt64bits);
+    }
     if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
         depositors_pubkey = 0;
     ap = get_NXTasset(&createdflag,Global_mp,assetstr);
@@ -2466,7 +2471,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
         init_specialNXTaddrs(specialNXTaddrs,ipaddrs,issuerNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
     } else specialNXTaddrs = MGW_whitelist;
-    if ( refNXTaddr != 0 && refNXTaddr[0] != 0 && rescan != 0 )
+    if ( nxt64bits != 0 && rescan != 0 )
     {
         json = process_MGW(0,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
         MGW_useracct_str(&json,actionflag,cp,ap,nxt64bits,issuerNXT,specialNXTaddrs);
