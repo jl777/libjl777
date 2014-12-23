@@ -1600,13 +1600,18 @@ char *genmultisig_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 
 void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT)
 {
+    char *SuperNET_url();
     struct coin_info *refcp = get_coin_info("BTCD");
-    char params[4096];
+    char params[4096],*retstr;
     int32_t gatewayid;
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
         sprintf(params,"{\"requestType\":\"genmultisig\",\"email\":\"%s\",\"buyNXT\":%d,\"destip\":\"%s\",\"destport\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"contacts\":[\"%s\", \"%s\", \"%s\"],\"M\":%d,\"N\":%d}",email,buyNXT,Server_names[gatewayid],refcp->bridgeport,userNXTaddr,userpubkey,coinstr,Server_NXTaddrs[0],Server_NXTaddrs[1],Server_NXTaddrs[2],NUM_GATEWAYS-1,NUM_GATEWAYS);
-        printf("issue.(%s)\n",params);
+        retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
+
+        printf("issue.(%s) -> (%s)\n",params,retstr);
+        if ( retstr != 0 )
+            free(retstr);
     }
 }
 
