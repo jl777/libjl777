@@ -479,6 +479,8 @@ void send_packet(int32_t queueflag,uint32_t ipbits,struct sockaddr *destaddr,uns
         uv_ip4_addr(ipaddr,port,(struct sockaddr_in *)destaddr);
     }
     port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)destaddr);
+    if ( strcmp(ipaddr,Global_mp->ipaddr) == 0 || strcmp(ipaddr,"127.0.0.1") == 0 )
+        return;
     pserver = get_pserver(0,ipaddr,0,0);
     if ( port == 0 || port == BTCD_PORT )
     {

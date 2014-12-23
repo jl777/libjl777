@@ -311,6 +311,8 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     int32_t retval;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
+    system("git log | head -n 1");
+
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 )
     {
