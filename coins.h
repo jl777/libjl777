@@ -652,6 +652,7 @@ int32_t is_trusted_issuer(char *issuer)
 
 char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
 {
+    void *init_SuperNET_globals();
     static int didinit,exchangeflag;
     static char ipbuf[64],*buf=0;
     static int64_t len=0,allocsize=0;
@@ -663,6 +664,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
     void close_SuperNET_dbs();
+    if ( Global_mp == 0 )
+        Global_mp = init_SuperNET_globals();
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");

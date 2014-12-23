@@ -360,6 +360,31 @@ void init_NXThashtables(struct NXThandler_info *mp)
     }
 }
 
+void *init_SuperNET_globals()
+{
+    struct NXT_str *tp = 0;
+    Global_mp = calloc(1,sizeof(*Global_mp));
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    if ( Global_pNXT == 0 )
+    {
+        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
+        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
+        Global_pNXT->orderbook_txidsp = &orderbook_txids;
+        Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
+        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
+    }
+    portable_mutex_init(&Global_mp->hash_mutex);
+    portable_mutex_init(&Global_mp->hashtable_queue[0].mutex);
+    portable_mutex_init(&Global_mp->hashtable_queue[1].mutex);
+    
+    init_NXThashtables(Global_mp);
+    Global_mp->upollseconds = 333333 * 0;
+    Global_mp->pollseconds = POLL_SECONDS;
+    if ( portable_thread_create((void *)process_hashtablequeues,Global_mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    return(Global_mp);
+}
+
 char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
     static int32_t zero,one = 1;
@@ -367,15 +392,6 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
     printf("init_NXTservices.(%s)\n",myipaddr);
     UV_loop = uv_default_loop();
-    portable_mutex_init(&mp->hash_mutex);
-    portable_mutex_init(&mp->hashtable_queue[0].mutex);
-    portable_mutex_init(&mp->hashtable_queue[1].mutex);
-    
-    init_NXThashtables(mp);
-    mp->upollseconds = 333333 * 0;
-    mp->pollseconds = POLL_SECONDS;
-    if ( portable_thread_create((void *)process_hashtablequeues,mp) == 0 )
-        printf("ERROR hist process_hashtablequeues\n");
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,on_udprecv);
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->bridgeport != 0 )
@@ -687,7 +703,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 {
     FILE *fp = 0;
     struct coin_info *cp;
-    struct NXT_str *tp = 0;
     //myipaddr = clonestr("[2607:5300:100:200::b1d]:14631");
     //myipaddr = clonestr("[2001:16d8:dd24:0:86c9:681e:f931:256]");
     if ( myipaddr[0] == '[' )
@@ -702,16 +717,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             return(-1);
         fclose(fp);
     }
-    Global_mp = calloc(1,sizeof(*Global_mp));
-    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
-    if ( Global_pNXT == 0 )
-    {
-        Global_pNXT = calloc(1,sizeof(*Global_pNXT));
-        orderbook_txids = hashtable_create("orderbook_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
-        Global_pNXT->orderbook_txidsp = &orderbook_txids;
-        Global_pNXT->msg_txids = hashtable_create("msg_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_str),((long)&tp->U.txid[0] - (long)tp),sizeof(tp->U.txid),((long)&tp->modified - (long)tp));
-        printf("SET ORDERBOOK HASHTABLE %p\n",orderbook_txids);
-    }
+    Global_mp = init_SuperNET_globals();
+    
     printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     printf("back from init_NXTservices (%s)\n",myipaddr);
