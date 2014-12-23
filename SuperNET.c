@@ -99,12 +99,15 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
                 {
                     copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"from"));
                     copy_cJSON(args,cJSON_GetObjectItem(json,"args"));
-                    unstringify(args);
-                    free(retstr);
-                    retstr = clonestr(args);
                     port = (int32_t)get_API_int(cJSON_GetObjectItem(json,"port"),0);
-                    //if ( args[0] != 0 && Debuglevel > 2 )
-                    //    printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
+                    if ( args[0] != 0 )
+                    {
+                        unstringify(args);
+                        // if ( Debuglevel > 2 )
+                            printf("(%s) from (%s:%d) -> (%s) Qtxid.(%s)\n",args,ipaddr,port,buf,txidstr);
+                        free(retstr);
+                        retstr = clonestr(args);
+                    }
                 }
             }
             free_json(json);
@@ -157,12 +160,12 @@ char *process_commandline_json(cJSON *json)
         startmilli = milliseconds();
         while ( milliseconds() < startmilli+10000 )
         {
-            sleep(1);
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
                 printf("%s\n",retstr);
                 free(retstr);
             }
+            usleep(5000);
         }
     }
     return(retstr);
