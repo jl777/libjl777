@@ -503,8 +503,9 @@ void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
                 {
                     update_msig_info(msig,1);
                     retstr = create_multisig_json(msig,1);
-                    printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
-                    broadcast_bindAM(msig->NXTaddr,msig,origargstr);
+                    if ( Debuglevel > 0 )
+                        printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
+                    //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
                     break;
                 }
             }
