@@ -1608,8 +1608,8 @@ void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *em
     {
         sprintf(params,"{\"requestType\":\"genmultisig\",\"email\":\"%s\",\"buyNXT\":%d,\"destip\":\"%s\",\"destport\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"contacts\":[\"%s\", \"%s\", \"%s\"],\"M\":%d,\"N\":%d}",email,buyNXT,Server_names[gatewayid],refcp->bridgeport,userNXTaddr,userpubkey,coinstr,Server_NXTaddrs[0],Server_NXTaddrs[1],Server_NXTaddrs[2],NUM_GATEWAYS-1,NUM_GATEWAYS);
         retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
-
-        printf("issue.(%s) -> (%s)\n",params,retstr);
+        if ( Debuglevel > 0 )
+            printf("issue.(%s) -> (%s)\n",params,retstr);
         if ( retstr != 0 )
             free(retstr);
     }

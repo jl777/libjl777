@@ -181,7 +181,7 @@ char *process_commandline_json(cJSON *json)
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
                             if ( strcmp(buf2,"MGWaddr") == 0 )
                             {
-                                printf("%s\n",retstr);
+                                printf("[%s]\n",retstr);
                                 return(retstr);
                             }
                         }
@@ -366,7 +366,8 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     int32_t retval;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
-    system("git log | head -n 1");
+    if ( Debuglevel > 0 )
+        system("git log | head -n 1");
 
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 )
