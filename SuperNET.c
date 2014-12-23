@@ -127,6 +127,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 
 char *process_commandline_json(cJSON *json)
 {
+    int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     double milliseconds();
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
     char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],*retstr = 0;
@@ -183,7 +184,7 @@ char *process_commandline_json(cJSON *json)
                             {
                                 if ( email[0] != 0 )
                                     send_email(email,userNXTaddr,0,retstr);
-                                printf("[%s]\n",retstr);
+                                //printf("[%s]\n",retstr);
                                 return(retstr);
                             }
                         }
