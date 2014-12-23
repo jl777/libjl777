@@ -230,19 +230,22 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
 {
     uint16_t supernet_port;
     int32_t createdflag;
-    struct pserver_info *pserver;
+    struct pserver_info *pserver = 0;
     struct udp_entry *up;
     struct coin_info *cp = get_coin_info("BTCD");
     char ipaddr[256],retjsonstr[4096];
-    supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
-    if ( notlocalip(ipaddr) == 0 )
-        strcpy(ipaddr,cp->myipaddr);
-    pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
+    if ( addr != 0 )
+    {
+        supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        if ( notlocalip(ipaddr) == 0 )
+            strcpy(ipaddr,cp->myipaddr);
+        pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
+    }
     if ( cp != 0 && nread > 0 )
     {
         
         if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
-            printf("UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
+            fprintf(stderr,"UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
         if ( queueflag != 0 )
@@ -252,7 +255,8 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
             up->internalflag = internalflag;
             up->buf = rcvbuf->base;
             up->len = (int32_t)nread;
-            up->addr = *addr;
+            if ( addr != 0 )
+                up->addr = *addr;
             queue_enqueue(&UDP_Q,up);
         }
         else process_packet(internalflag,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
