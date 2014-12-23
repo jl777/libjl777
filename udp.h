@@ -228,7 +228,7 @@ void process_udpentry(struct udp_entry *up)
 
 void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const struct sockaddr *addr,unsigned flags)
 {
-    uint16_t supernet_port;
+    uint16_t supernet_port = 0;
     int32_t createdflag;
     struct pserver_info *pserver = 0;
     struct udp_entry *up;
@@ -935,7 +935,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        for (fragi=0; fragi<args->numblocks; fragi+=(args->numblocks>>5))
+        for (fragi=0; fragi<args->numblocks; fragi+=(args->numblocks>>4)+1)
             send_fragi(verifiedNXTaddr,NXTACCTSECRET,args,fragi);
         //start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));
