@@ -358,7 +358,8 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
     userpass[0] = 0;
     if ( (fp= fopen(fname,"r")) != 0 )
     {
-        printf("extract_userpass from (%s)\n",fname);
+        if ( Debuglevel > 0 )
+            printf("extract_userpass from (%s)\n",fname);
         rpcuser = rpcpassword = 0;
         while ( fgets(line,sizeof(line),fp) != 0 )
         {
@@ -373,7 +374,8 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
         if ( rpcuser != 0 && rpcpassword != 0 )
             sprintf(userpass,"%s:%s",rpcuser,rpcpassword);
         else userpass[0] = 0;
-        printf("-> (%s):(%s) userpass.(%s)\n",rpcuser,rpcpassword,userpass);
+        if ( Debuglevel > 0 )
+            printf("-> (%s):(%s) userpass.(%s)\n",rpcuser,rpcpassword,userpass);
         if ( rpcuser != 0 )
             free(rpcuser);
         if ( rpcpassword != 0 )
@@ -512,25 +514,27 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                 if ( extract_cJSON_str(tradebotfname,sizeof(tradebotfname),json,"tradebotfname") > 0 )
                     cp->tradebotfname = clonestr(tradebotfname);
                 if ( extract_cJSON_str(cp->privacyserver,sizeof(cp->privacyserver),json,"privacyServer") > 0 )
-                    printf("set default privacyServer to (%s)\n",cp->privacyserver);
+                    if ( Debuglevel > 0 )
+                        printf("set default privacyServer to (%s)\n",cp->privacyserver);
                 if ( extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"privateaddr") > 0 || extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"pubaddr") > 0 )
                 {
                     coinaddr = cp->privateaddr;
                     if ( (privkey= get_telepod_privkey(&coinaddr,cp->coinpubkey,cp)) != 0 )
                     {
-                        printf("copy key <- (%s)\n",privkey);
+                        if ( Debuglevel > 0 )
+                            printf("copy key <- (%s)\n",privkey);
                         safecopy(cp->privateNXTACCTSECRET,privkey,sizeof(cp->privateNXTACCTSECRET));
                         cp->privatebits = issue_getAccountId(0,privkey);
                         expand_nxt64bits(cp->privateNXTADDR,cp->privatebits);
                         conv_NXTpassword(Global_mp->myprivkey.bytes,Global_mp->mypubkey.bytes,cp->privateNXTACCTSECRET);
-                        printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->privateaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
+                        if ( Debuglevel > 0 )
+                            printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->privateaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
                         stats = get_nodestats(cp->privatebits);
                         add_new_node(cp->privatebits);
                         memcpy(stats->pubkey,Global_mp->mypubkey.bytes,sizeof(stats->pubkey));
                         //conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
                     }
-                    printf("check srvpubaddr\n");
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
                     {
                         coinaddr = cp->srvpubaddr;
@@ -539,7 +543,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                             safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
                             cp->srvpubnxtbits = issue_getAccountId(0,privkey);
                             expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
-                            printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
+                            if ( Debuglevel > 0 )
+                                printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                             free(privkey);
                         }
                         else
@@ -555,7 +560,6 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
                         add_new_node(cp->srvpubnxtbits);
                         memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
                     }
-                    printf("end check srvpubaddr\n");
                 }
                 else if ( IS_LIBTEST > 0 && strcmp(cp->name,"BTCD") == 0 )
                 {
@@ -669,7 +673,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     NXTACCTSECRET[0] = 0;
     NXTADDR[0] = 0;
     exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
-    printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
+    if ( Debuglevel > 0 )
+        printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
     if ( IS_LIBTEST > 0 )
     {
         close_SuperNET_dbs();
@@ -685,7 +690,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     else jsonstr = load_file(JSON_or_fname,&buf,&len,&allocsize);
     if ( jsonstr != 0 )
     {
-        printf("loaded.(%s)\n",jsonstr);
+        if ( Debuglevel > 0 )
+            printf("loaded.(%s)\n",jsonstr);
         if ( MGWconf != 0 )
             free_json(MGWconf);
         MGWconf = cJSON_Parse(jsonstr);
@@ -719,7 +725,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
-            printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
+            if ( Debuglevel > 0 )
+                printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
             ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
             Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
@@ -760,13 +767,15 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 Global_mp->gensocks[i] = -1;
                 if ( strcmp(myipaddr,Server_names[i]) == 0 )
                     Global_mp->gatewayid = i;
-                printf("%s | ",Server_names[i]);
+                if ( Debuglevel > 0 )
+                    printf("%s | ",Server_names[i]);
             }
             if ( Global_mp->gatewayid < 0 )
                 Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
             Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
 
-            printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s gatewayid.%d 1st.%d\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK,Global_mp->gatewayid,FIRST_NXTBLOCK);
+            if ( Debuglevel > 0 )
+                printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s gatewayid.%d 1st.%d\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK,Global_mp->gatewayid,FIRST_NXTBLOCK);
             array = cJSON_GetObjectItem(MGWconf,"whitelist");
             if ( array != 0 && is_cJSON_Array(array) != 0 )
             {
@@ -852,7 +861,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
                 MGW_blacklist[n++] = "";
             }
-            array = (IS_LIBTEST != 0) ? cJSON_GetObjectItem(MGWconf,"contacts") : 0;
+            array = (IS_LIBTEST > 0) ? cJSON_GetObjectItem(MGWconf,"contacts") : 0;
             if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
             {
                 char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD];//,*retstr;

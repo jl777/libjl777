@@ -291,7 +291,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
         {
             printf("store.(%s) len.%ld -> %llu DDisat %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
             retstr = kademlia_storedata(0,seqacct,AESpasswordstr,seqacct,key,privatedatastr);
-            if ( IS_LIBTEST != 0 )
+            if ( IS_LIBTEST > 0 )
             {
                 add_storage(PRIVATE_DATA,key,privatedatastr);
                 add_storage(PUBLIC_DATA,key,privatedatastr);
@@ -300,7 +300,7 @@ char *private_publish(uint64_t *locationp,struct contact_info *contact,int32_t s
         else
         {
             printf("telepathic.(%s) len.%ld -> %llu %llu\n",privatedatastr,strlen(privatedatastr)/2,(long long)seqacct,(long long)location);
-            if ( IS_LIBTEST != 0 )
+            if ( IS_LIBTEST > 0 )
                 add_storage(PRIVATE_DATA,key,privatedatastr);
             if ( contact->deaddrop != 0 )
             {

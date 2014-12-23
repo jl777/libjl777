@@ -316,7 +316,6 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct NXT_acct *np = 0;
     struct NXT_asset *ap = 0;
     struct NXT_assettxid *tp = 0;
-    //struct NXT_guid *gp = 0;
     struct coin_txidind *ctp = 0;
     struct coin_txidmap *map = 0;
     struct withdraw_info *wp = 0;
@@ -324,9 +323,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
     struct telepathy_entry *tel = 0;
     struct transfer_args *args = 0;
     //struct kademlia_storage *sp = 0;
-    static struct hashtable *Pendings,*NXTasset_txids,*NXTaddrs,*NXTassets,*NXTguids,*Pserver,*Telepathy_hash,*Redeems,*Coin_txidinds,*Coin_txidmap;
-    //if ( NXTguids == 0 )
-    //    NXTguids = hashtable_create("NXTguids",HASHTABLES_STARTSIZE,sizeof(struct NXT_guid),((long)&gp->guid[0] - (long)gp),sizeof(gp->guid),((long)&gp->H.modified - (long)gp));
+    static struct hashtable *Pendings,*NXTasset_txids,*NXTaddrs,*NXTassets,*Pserver,*Telepathy_hash,*Redeems,*Coin_txidinds,*Coin_txidmap;
     if ( NXTasset_txids == 0 )
         NXTasset_txids = hashtable_create("NXTasset_txids",HASHTABLES_STARTSIZE,sizeof(struct NXT_assettxid),((long)&tp->H.U.txid[0] - (long)tp),sizeof(tp->H.U.txid),((long)&tp->H.modified - (long)tp));
     if ( NXTassets == 0 )
@@ -356,7 +353,7 @@ void init_NXThashtables(struct NXThandler_info *mp)
         mp->NXTasset_txids_tablep = &NXTasset_txids;
         mp->coin_txidinds = &Coin_txidinds;
         mp->coin_txidmap = &Coin_txidmap;
-        printf("init_NXThashtables: %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids);
+        //printf("init_NXThashtables: %p %p %p %p\n",NXTguids,NXTaddrs,NXTassets,NXTasset_txids);
     }
 }
 
