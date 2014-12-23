@@ -109,8 +109,8 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
                         retstr = clonestr(args);
                         if ( (argjson= cJSON_Parse(retstr)) != 0 )
                         {
-                            copy_cJSON(buf,cJSON_GetObjectItem(argjson,"result"));
-                            if ( strcmpy(buf,"nothing pending") == 0 )
+                            copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"result"));
+                            if ( strcmp(buf2,"nothing pending") == 0 )
                                 free(retstr), retstr = 0;
                             free_json(argjson);
                         }
@@ -128,14 +128,14 @@ char *process_commandline_json(cJSON *json)
 {
     double milliseconds();
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],coinstr[1024],*retstr = 0;
+    char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],*retstr = 0;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
     int32_t i,n;
     double startmilli;
     uint32_t buyNXT = 0;
-    cJSON *array,*json,*retjson;
+    cJSON *array,*argjson,*retjson;
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
     copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));
@@ -172,14 +172,14 @@ char *process_commandline_json(cJSON *json)
                 fprintf(stderr,"%s\n",retstr);
                 if ( retstr[0] == '[' || retstr[0] == '{' )
                 {
-                    if ( (json= cJSON_Parse(retstr)) != 0 )
+                    if ( (retjson= cJSON_Parse(retstr)) != 0 )
                     {
-                        if ( json != 0 && is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) == 2 )
+                        if ( is_cJSON_Array(retjson) != 0 && (n= cJSON_GetArraySize(retjson)) == 2 )
                         {
-                            retjson = cJSON_GetArrayItem(json,0);
-                            copy_cJSON(request,cJSON_GetObjectItem(retjson,"requestType"));
-                            if ( strcmp(request,"MGWaddr") == 0 )
-                                printf("%s\",retstr);
+                            argjson = cJSON_GetArrayItem(retjson,0);
+                            copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
+                            if ( strcmp(buf2,"MGWaddr") == 0 )
+                                printf("%s\n",retstr);
                         }
                     }
                 }
