@@ -558,7 +558,7 @@ void update_MGW_msig(struct multisig_addr *msig,char *sender)
     if ( retstr != 0 )
     {
         if ( Debuglevel > 2 )
-            printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
+            printf("add_MGWaddr(%s) from (%s)\n",retstr,sender);
         //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
         set_MGW_msigfname(fname,0);
         update_MGW_files(fname,msig,msig->NXTaddr,retstr);
