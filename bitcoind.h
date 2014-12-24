@@ -1123,17 +1123,28 @@ void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
     }
 }
 
-void *Coinloop(void *ptr)
+void update_MGW(struct coin_info *cp)
 {
     cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey);
     uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr);
-    int32_t i,j,processed,createdflag;
-    struct coin_info *cp;
-    struct NXT_asset *ap;
-    int64_t height;
     cJSON *json;
-    double startmilli;
     char *ipaddrs[3];
+    struct NXT_asset *ap;
+    int32_t j,createdflag;
+    for (j=0; j<3; j++)
+        ipaddrs[j] = Server_names[j];
+    update_NXTblockchain_info(cp,MGW_whitelist,cp->MGWissuer);
+    ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
+    if ( (json= process_MGW(0,cp,ap,ipaddrs,MGW_whitelist,cp->MGWissuer,milliseconds(),0,0)) != 0 )
+        free_json(json);
+}
+
+void *Coinloop(void *ptr)
+{
+    int32_t i,processed,createdflag;
+    struct coin_info *cp;
+    int64_t height;
+    double startmilli;
     printf("Coinloop numcoins.%d\n",Numcoins);
     init_Contacts();
     printf("Coinloop numcoins.%d\n",Numcoins);
@@ -1154,13 +1165,8 @@ void *Coinloop(void *ptr)
     {
         if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
         {
-            for (j=0; j<3; j++)
-                ipaddrs[j] = Server_names[j];
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
-            update_NXTblockchain_info(cp,MGW_whitelist,cp->MGWissuer);
-            ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
-            if ( (json= process_MGW(0,cp,ap,ipaddrs,MGW_whitelist,cp->MGWissuer,milliseconds(),0,0)) != 0 )
-                free_json(json);
+            update_MGW(cp);
             //load_telepods(cp,maxnofile);
         }
     }
@@ -1193,6 +1199,15 @@ void *Coinloop(void *ptr)
             if ( Debuglevel > 2 )
                 printf("Coinloop: no work, sleep\n");
             sleep(10);
+        }
+        else
+        {
+            for (i=0; i<Numcoins; i++)
+            {
+                cp = Daemons[i];
+                if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
+                    update_MGW(cp);
+            }
         }
     }
     return(0);

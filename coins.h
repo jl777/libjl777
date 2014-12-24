@@ -871,6 +871,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 if ( Debuglevel > 0 )
                     printf("special_addrs.%d\n",n);
                 MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;
+                MGW_blacklist[n] = MGW_whitelist[n] = GENESISACCT, n++;
                 MGW_whitelist[n] = "";
                 MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
                 MGW_blacklist[n++] = "";
