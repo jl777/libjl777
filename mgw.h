@@ -44,11 +44,14 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
     if ( (fp= fopen(fname,"rb+")) == 0 )
     {
         fp = fopen(fname,"wb");
-        json = cJSON_CreateArray();
-        cJSON_AddItemToArray(json,newjson);
-        str = cJSON_Print(json);
-        fprintf(fp,"%s",str);
-        free(str);
+        if ( fp != 0 )
+        {
+            json = cJSON_CreateArray();
+            cJSON_AddItemToArray(json,newjson);
+            str = cJSON_Print(json);
+            fprintf(fp,"%s",str);
+            free(str);
+        } else printf("couldnt open (%s)\n",fname);
     }
     else
     {
