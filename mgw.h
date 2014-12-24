@@ -34,7 +34,7 @@ void update_MGW_files(struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
         printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
         return;
     }
-    sprintf(fname,"/var/www/MGW/msig/%s",NXTaddr);
+    sprintf(fname,"MGW/msig/%s",NXTaddr);
     if ( (fp= fopen(fname,"rb+")) == 0 )
         fp = fopen(fname,"wb");
     else
@@ -262,6 +262,8 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag)
     int32_t i,ret,createdflag;
     struct multisig_addr *msigram;
     struct SuperNET_db *sdb = &SuperNET_dbs[MULTISIG_DATA];
+    if ( IS_LIBTEST <= 0 )
+        return(-1);
     if ( msig == 0 && syncflag != 0 )
         return(dbsync(sdb,0));
     for (i=0; i<msig->n; i++)
