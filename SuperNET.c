@@ -128,14 +128,12 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 char *process_commandline_json(cJSON *json)
 {
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
-    double milliseconds();
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
     char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],*retstr = 0;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
     int32_t i,n;
-    double startmilli;
     uint32_t buyNXT = 0;
     cJSON *array,*argjson,*retjson;
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
@@ -167,7 +165,7 @@ char *process_commandline_json(cJSON *json)
                 issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
         }
         startmilli = milliseconds();
-        while ( milliseconds() < startmilli+3000 )
+        for (i=0; i<10; i++)
         {
             while ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
@@ -193,7 +191,7 @@ char *process_commandline_json(cJSON *json)
                 free(retstr);
                 retstr = 0;
             }
-            usleep(50000);
+            sleep(1);
         }
     }
     return(clonestr("{\"error\":\"timeout\"}"));

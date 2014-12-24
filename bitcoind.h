@@ -1141,7 +1141,7 @@ void update_MGW(struct coin_info *cp)
 
 void *Coinloop(void *ptr)
 {
-    int32_t i,processed,createdflag;
+    int32_t i,processed;
     struct coin_info *cp;
     int64_t height;
     double startmilli;
@@ -1200,7 +1200,7 @@ void *Coinloop(void *ptr)
                 printf("Coinloop: no work, sleep\n");
             sleep(10);
         }
-        else
+        else if ( 0 )
         {
             for (i=0; i<Numcoins; i++)
             {

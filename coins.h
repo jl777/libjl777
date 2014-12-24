@@ -686,6 +686,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     {
         close_SuperNET_dbs();
         //init_filtered_bufs(); crashed ubunty
+        ensure_directory("MGW");
+        ensure_directory("MGW/msig");
         ensure_directory("backups");
         ensure_directory("backups/telepods");
         ensure_directory("archive");
