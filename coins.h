@@ -690,7 +690,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         {
             printf("create MGW dirs\n");
             ensure_directory("MGW");
-            ensure_directory("msig");
+            ensure_directory("MGW/msig");
         }
         ensure_directory("backups");
         ensure_directory("backups/telepods");
