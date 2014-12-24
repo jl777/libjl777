@@ -127,6 +127,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 
 char *process_commandline_json(cJSON *json)
 {
+    struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
     char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],*retstr = 0;
@@ -135,7 +136,8 @@ char *process_commandline_json(cJSON *json)
     uint64_t nxt64bits,checkbits;
     int32_t i,n;
     uint32_t buyNXT = 0;
-    cJSON *array,*argjson,*retjson;
+    struct multisig_addr *msig;
+    cJSON *array,*argjson,*retjson,*msigjson;
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
     copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));
@@ -166,6 +168,24 @@ char *process_commandline_json(cJSON *json)
         }
         for (i=0; i<3; i++)
         {
+            sprintf(buf,"http://%s/MGW/%s",Server_NXTaddrs[i],userNXTaddr);
+            if ( (retstr= issue_curl(0,buf)) != 0 )
+            {
+                if ( (msigobj= cJSON_Parse(retstr)) != 0 )
+                {
+                    if ( (msig= decode_msigjson(0,msigobj,Server_NXTaddrs[i])) != 0 )
+                    {
+                        free(msig);
+                        free_json(msigobj);
+                        if ( email[0] != 0 )
+                            send_email(email,userNXTaddr,0,retstr);
+                        //printf("[%s]\n",retstr);
+                        return(retstr);
+                    }
+                }
+                free_json(msigobj);
+                free(retstr);
+            }
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
                 //fprintf(stderr,"%s\n",retstr);
