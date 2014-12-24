@@ -1728,8 +1728,12 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
                     if ( acct[0] != 0 && in_specialNXTaddrs(specialNXTaddrs,acct) == 0 )
                     {
                         if ( (quantity= get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"))) != 0 )
+                        {
                             circulation += quantity;
+                            if ( quantity*ap->mult > 1000*SATOSHIDEN )
+                                printf("BIGACCT.%d %s %.8f\n",i,acct,dstr(quantity*ap->mult));
                         //printf("%llu, ",(long long)quantity);
+                        }
                     }
                 }
             }
