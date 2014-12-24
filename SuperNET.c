@@ -166,7 +166,7 @@ char *process_commandline_json(cJSON *json)
         }
         for (i=0; i<10; i++)
         {
-            while ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+            if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
                 //fprintf(stderr,"%s\n",retstr);
                 if ( retstr[0] == '[' || retstr[0] == '{' )

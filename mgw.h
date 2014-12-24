@@ -17,6 +17,75 @@
 #define DEPOSIT_CONFIRMED 'd'
 #define MONEY_SENT 'm'
 
+int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig);
+struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
+
+
+void update_MGW_files(struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
+{
+    FILE *fp;
+    long fsize;
+    cJSON *json,*newjson = 0;
+    int32_t i,n;
+    struct multisig_addr *msig;
+    char fname[1024],sender[MAX_JSON_FIELD],*buf,*str;
+    if ( (newjson= cJSON_Parse(jsonstr)) == 0 )
+    {
+        printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
+        return;
+    }
+    sprintf(fname,"/var/www/MGW/msig/%s",NXTaddr);
+    if ( (fp= fopen(fname,"rb+")) == 0 )
+        fp = fopen(fname,"wb");
+    else
+    {
+        fseek(fp,0,SEEK_END);
+        fsize = ftell(fp);
+        rewind(fp);
+        buf = calloc(1,fsize);
+        fread(buf,1,fsize,fp);
+        json = cJSON_Parse(buf);
+        if ( json != 0 )
+        {
+            copy_cJSON(sender,cJSON_GetObjectItem(json,"sender"));
+            if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+            {
+                msig = 0;
+                for (i=0; i<n; i++)
+                {
+                    if  ( (msig= decode_msigjson(0,cJSON_GetArrayItem(json,i),sender)) != 0 )
+                    {
+                        if ( msigcmp(refmsig,msig) == 0 )
+                            break;
+                    }
+                }
+                if ( msig != 0 )
+                    free(msig);
+                if ( i == n )
+                {
+                    cJSON_AddItemToArray(json,newjson);
+                    str = cJSON_Print(json);
+                    rewind(fp);
+                    fprintf(fp,"%s",str);
+                    free(str);
+                    fclose(fp);
+                }
+            }
+            free_json(json);
+        }
+        else
+        {
+            printf("file.(%s) doesnt parse (%s)\n",fname,buf);
+            rewind(fp);
+            fprintf(fp,"[");
+            fprintf(fp,"%s\n",jsonstr);
+            fprintf(fp,"]\n%s",buf);
+            fclose(fp);
+        }
+        free(buf);
+    }
+    free_json(newjson);
+}
 
 double enough_confirms(double redeemed,double estNXT,int32_t numconfs,int32_t minconfirms)
 {
@@ -502,10 +571,15 @@ void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
                 if ( msig->pubkeys[i].nxt64bits == senderbits )
                 {
                     update_msig_info(msig,1);
-                    retstr = create_multisig_json(msig,1);
-                    if ( Debuglevel > 0 )
+                    retstr = create_multisig_json(msig,0);
+                    if ( Debuglevel > 2 )
                         printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
                     //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
+                    if ( retstr != 0 )
+                    {
+                        update_MGW_files(msig,msig->NXTaddr,retstr);
+                        free(retstr);
+                    }
                     break;
                 }
             }
