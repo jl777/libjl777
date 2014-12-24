@@ -551,6 +551,23 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,struct 
     return(msig);
 }
 
+void update_MGW_msig(struct multisig_addr *msig,char *sender)
+{
+    char fname[1024],*retstr;
+    retstr = create_multisig_json(msig,0);
+    if ( retstr != 0 )
+    {
+        if ( Debuglevel > 2 )
+            printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
+        //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
+        set_MGW_msigfname(fname,0);
+        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
+        set_MGW_msigfname(fname,msig->NXTaddr);
+        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
+        free(retstr);
+    }
+}
+
 void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig,char *origargstr)
 {
     struct coin_info *cp = get_coin_info("BTCD");
@@ -573,7 +590,6 @@ void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
     struct multisig_addr *msig;
     uint64_t senderbits;
     int32_t i;
-    char *retstr;
     if ( valid > 0 && (origargjson= cJSON_Parse(origargstr)) != 0 )
     {
         if ( is_cJSON_Array(origargjson) != 0 )
@@ -587,19 +603,7 @@ void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
                 if ( msig->pubkeys[i].nxt64bits == senderbits )
                 {
                     update_msig_info(msig,1);
-                    retstr = create_multisig_json(msig,0);
-                    if ( Debuglevel > 2 )
-                        printf("add_MGWaddr(%s) from (%s).valid%d\n",retstr,sender,valid);
-                    //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
-                    if ( retstr != 0 )
-                    {
-                        char fname[1024];
-                        set_MGW_msigfname(fname,0);
-                        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
-                        set_MGW_msigfname(fname,msig->NXTaddr);
-                        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
-                        free(retstr);
-                    }
+                    update_MGW_msig(msig,sender);
                     break;
                 }
             }
@@ -723,6 +727,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
             if ( msig != 0 )
             {
+                update_MGW_msig(msig,NXTaddr);
                 if ( 0 && flag != 0 ) // let the client do this
                     broadcast_bindAM(refNXTaddr,msig,0);
                 free(msig);
