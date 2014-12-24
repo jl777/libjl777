@@ -1109,6 +1109,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
                         fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         if ( update_msig_info(msig,syncflag,sender) == 0 )
                             fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                        fprintf(stderr,"done BINDFUNC\n");
                     }
                     free(msig);
                 } //else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
