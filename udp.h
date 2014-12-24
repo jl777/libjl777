@@ -390,7 +390,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->isbridge = isbridge;
-    if ( FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
+    if ( Global_mp->isMM == 0 && FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
     {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
         queue_enqueue(&sendQ,wr);
