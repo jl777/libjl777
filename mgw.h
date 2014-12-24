@@ -24,8 +24,8 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated);
 void set_MGW_msigfname(char *fname,char *NXTaddr)
 {
     if ( NXTaddr == 0 )
-        sprintf(fname,"MGW/msig/ALL");
-    else sprintf(fname,"MGW/msig/%s",NXTaddr);
+        sprintf(fname,"/var/www/MGW/msig/ALL");
+    else sprintf(fname,"/var/www/MGW/msig/%s",NXTaddr);
 }
 
 void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
