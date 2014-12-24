@@ -1145,6 +1145,8 @@ void *Coinloop(void *ptr)
     struct coin_info *cp;
     int64_t height;
     double startmilli;
+    while ( Finished_init == 0 )
+        sleep(1);
     printf("Coinloop numcoins.%d\n",Numcoins);
     init_Contacts();
     printf("Coinloop numcoins.%d\n",Numcoins);
