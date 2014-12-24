@@ -20,23 +20,33 @@
 int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig);
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
 
+void set_MGW_msigfname(char *fname,char *NXTaddr)
+{
+    if ( NXTaddr == 0 )
+        sprintf(fname,"MGW/msig/ALL");
+    else sprintf(fname,"MGW/msig/%s",NXTaddr);
+}
 
-void update_MGW_files(struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
+void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
 {
     FILE *fp;
     long fsize;
-    cJSON *json,*newjson = 0;
+    cJSON *json = 0,*newjson = 0;
     int32_t i,n;
     struct multisig_addr *msig;
-    char fname[1024],sender[MAX_JSON_FIELD],*buf,*str;
+    char sender[MAX_JSON_FIELD],*buf,*str;
     if ( (newjson= cJSON_Parse(jsonstr)) == 0 )
     {
         printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
         return;
     }
-    sprintf(fname,"MGW/msig/%s",NXTaddr);
     if ( (fp= fopen(fname,"rb+")) == 0 )
+    {
         fp = fopen(fname,"wb");
+        fprintf(fp,"[");
+        fprintf(fp,"%s\n",jsonstr);
+        fprintf(fp,"]\n");
+    }
     else
     {
         fseek(fp,0,SEEK_END);
@@ -64,14 +74,13 @@ void update_MGW_files(struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
                 if ( i == n )
                 {
                     cJSON_AddItemToArray(json,newjson);
+                    newjson = 0;
                     str = cJSON_Print(json);
                     rewind(fp);
                     fprintf(fp,"%s",str);
                     free(str);
-                    fclose(fp);
                 }
             }
-            free_json(json);
         }
         else
         {
@@ -80,11 +89,16 @@ void update_MGW_files(struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
             fprintf(fp,"[");
             fprintf(fp,"%s\n",jsonstr);
             fprintf(fp,"]\n%s",buf);
-            fclose(fp);
         }
         free(buf);
     }
-    free_json(newjson);
+    if ( fp != 0 )
+        fclose(fp);
+    if ( json != 0 )
+        free_json(json);
+    if ( newjson != 0 )
+        free_json(newjson);
+    printf("updated (%s)\n",fname);
 }
 
 double enough_confirms(double redeemed,double estNXT,int32_t numconfs,int32_t minconfirms)
@@ -579,7 +593,11 @@ void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
                     //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
                     if ( retstr != 0 )
                     {
-                        update_MGW_files(msig,msig->NXTaddr,retstr);
+                        char fname[1024];
+                        set_MGW_msigfname(fname,0);
+                        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
+                        set_MGW_msigfname(fname,msig->NXTaddr);
+                        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
                         free(retstr);
                     }
                     break;
