@@ -28,7 +28,7 @@ void set_MGW_msigfname(char *fname,char *NXTaddr)
     else sprintf(fname,"MGW/msig/%s",NXTaddr);
 }
 
-void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *NXTaddr,char *jsonstr)
+void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
 {
     FILE *fp;
     long fsize;
@@ -80,6 +80,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *NXTaddr,ch
                     rewind(fp);
                     fprintf(fp,"%s",str);
                     free(str);
+                    printf("updated (%s)\n",fname);
                 }
             }
         }
@@ -99,7 +100,6 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *NXTaddr,ch
         free_json(json);
     if ( newjson != 0 )
         free_json(newjson);
-    printf("updated (%s)\n",fname);
 }
 
 void update_MGW_msig(struct multisig_addr *msig,char *sender)
@@ -112,9 +112,9 @@ void update_MGW_msig(struct multisig_addr *msig,char *sender)
             printf("add_MGWaddr(%s) from (%s)\n",retstr,sender!=0?sender:"");
         //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
         set_MGW_msigfname(fname,0);
-        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
+        update_MGW_files(fname,msig,retstr);
         set_MGW_msigfname(fname,msig->NXTaddr);
-        update_MGW_files(fname,msig,msig->NXTaddr,retstr);
+        update_MGW_files(fname,msig,retstr);
         free(retstr);
     }
 }
@@ -1093,7 +1093,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        //fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
