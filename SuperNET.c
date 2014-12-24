@@ -169,7 +169,7 @@ char *process_commandline_json(cJSON *json)
         startmilli = milliseconds();
         while ( milliseconds() < startmilli+3000 )
         {
-            if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+            while ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
                 //fprintf(stderr,"%s\n",retstr);
                 if ( retstr[0] == '[' || retstr[0] == '{' )
@@ -193,7 +193,7 @@ char *process_commandline_json(cJSON *json)
                 free(retstr);
                 retstr = 0;
             }
-            usleep(5000);
+            usleep(50000);
         }
     }
     return(clonestr("{\"error\":\"timeout\"}"));
