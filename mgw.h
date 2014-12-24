@@ -105,17 +105,20 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
 void update_MGW_msig(struct multisig_addr *msig,char *sender)
 {
     char fname[1024],*retstr;
-    retstr = create_multisig_json(msig,0);
-    if ( retstr != 0 )
+    if ( msig != 0 )
     {
-        if ( Debuglevel > 1 )
-            printf("add_MGWaddr(%s) from (%s)\n",retstr,sender!=0?sender:"");
-        //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
-        set_MGW_msigfname(fname,0);
-        update_MGW_files(fname,msig,retstr);
-        set_MGW_msigfname(fname,msig->NXTaddr);
-        update_MGW_files(fname,msig,retstr);
-        free(retstr);
+        retstr = create_multisig_json(msig,0);
+        if ( retstr != 0 )
+        {
+            if ( Debuglevel > 1 )
+                printf("add_MGWaddr(%s) from (%s)\n",retstr,sender!=0?sender:"");
+            //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
+            set_MGW_msigfname(fname,0);
+            update_MGW_files(fname,msig,retstr);
+            set_MGW_msigfname(fname,msig->NXTaddr);
+            update_MGW_files(fname,msig,retstr);
+            free(retstr);
+        }
     }
 }
 
@@ -371,12 +374,16 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
 {
     long i,len = 0;
     char jsontxt[65536],pubkeyjsontxt[65536];
-    pubkeyjsontxt[0] = 0;
-    for (i=0; i<msig->n; i++)
-        len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
-    sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
-    printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
-    return(clonestr(jsontxt));
+    if ( msig != 0 )
+    {
+        pubkeyjsontxt[0] = 0;
+        for (i=0; i<msig->n; i++)
+            len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
+        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
+        printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
+        return(clonestr(jsontxt));
+    }
+    else return(0);
 }
 
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
@@ -723,15 +730,18 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         if ( valid == N )
         {
             retstr = create_multisig_json(msig,0);
-            printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
-            if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
-                send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
-            if ( msig != 0 )
+            if ( retstr != 0 )
             {
-                update_MGW_msig(msig,NXTaddr);
-                if ( 0 && flag != 0 ) // let the client do this
-                    broadcast_bindAM(refNXTaddr,msig,0);
-                free(msig);
+                printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
+                if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
+                    send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
+                if ( msig != 0 )
+                {
+                    update_MGW_msig(msig,NXTaddr);
+                    if ( 0 && flag != 0 ) // let the client do this
+                        broadcast_bindAM(refNXTaddr,msig,0);
+                    free(msig);
+                }
             }
         }
     }
