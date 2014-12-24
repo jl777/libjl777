@@ -32,8 +32,10 @@
 #include "SuperNET.h"
 #include "cJSON.h"
 
+extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
 extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel;
 extern cJSON *MGWconf;
+#define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
 void expand_ipbits(char *ipaddr,uint32_t ipbits);
 uint64_t conv_acctstr(char *acctstr);
@@ -130,7 +132,7 @@ char *process_commandline_json(cJSON *json)
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],*retstr = 0;
+    char txidstr[1024],senderipaddr[1024],cmd[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
@@ -168,22 +170,22 @@ char *process_commandline_json(cJSON *json)
         }
         for (i=0; i<3; i++)
         {
-            sprintf(buf,"http://%s/MGW/%s",Server_NXTaddrs[i],userNXTaddr);
-            if ( (retstr= issue_curl(0,buf)) != 0 )
+            sprintf(cmdstr,"http://%s/MGW/%s",Server_NXTaddrs[i],userNXTaddr);
+            if ( (retstr= issue_curl(0,cmdstr)) != 0 )
             {
-                if ( (msigobj= cJSON_Parse(retstr)) != 0 )
+                if ( (msigjson= cJSON_Parse(retstr)) != 0 )
                 {
-                    if ( (msig= decode_msigjson(0,msigobj,Server_NXTaddrs[i])) != 0 )
+                    if ( (msig= decode_msigjson(0,msigjson,Server_NXTaddrs[i])) != 0 )
                     {
                         free(msig);
-                        free_json(msigobj);
+                        free_json(msigjson);
                         if ( email[0] != 0 )
                             send_email(email,userNXTaddr,0,retstr);
                         //printf("[%s]\n",retstr);
                         return(retstr);
                     }
                 }
-                free_json(msigobj);
+                free_json(msigjson);
                 free(retstr);
             }
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
