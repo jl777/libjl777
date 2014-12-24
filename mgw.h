@@ -47,7 +47,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
         if ( fp != 0 )
         {
             json = cJSON_CreateArray();
-            cJSON_AddItemToArray(json,newjson);
+            cJSON_AddItemToArray(json,newjson), newjson = 0;
             str = cJSON_Print(json);
             fprintf(fp,"%s",str);
             free(str);
@@ -79,8 +79,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
                     free(msig);
                 if ( i == n )
                 {
-                    cJSON_AddItemToArray(json,newjson);
-                    newjson = 0;
+                    cJSON_AddItemToArray(json,newjson), newjson = 0;
                     str = cJSON_Print(json);
                     rewind(fp);
                     fprintf(fp,"%s",str);
