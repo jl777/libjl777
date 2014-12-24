@@ -32,6 +32,7 @@
 #include "SuperNET.h"
 #include "cJSON.h"
 
+extern char Server_names[256][MAX_JSON_FIELD];
 extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
 extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel;
 extern cJSON *MGWconf;
@@ -170,9 +171,10 @@ char *process_commandline_json(cJSON *json)
         }
         for (i=0; i<3; i++)
         {
-            sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_NXTaddrs[i],userNXTaddr);
+            sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_names[i],userNXTaddr);
             if ( (retstr= issue_curl(0,cmdstr)) != 0 )
             {
+                printf("(%s) -> (%s)\n",cmdstr,retstr);
                 if ( (msigjson= cJSON_Parse(retstr)) != 0 )
                 {
                     if ( (msig= decode_msigjson(0,msigjson,Server_NXTaddrs[i])) != 0 )
@@ -184,7 +186,7 @@ char *process_commandline_json(cJSON *json)
                         //printf("[%s]\n",retstr);
                         return(retstr);
                     }
-                }
+                } else printf("error parsing.(%s)\n",retstr);
                 free_json(msigjson);
                 free(retstr);
             } else printf("cant find (%s)\n",cmdstr);
