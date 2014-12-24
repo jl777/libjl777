@@ -451,6 +451,8 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
                 int32_t conv_coinstr(char *);
                 if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' && conv_coinstr(buf+3) >= 0 )
                     ap->name = clonestr(buf+3);
+                else if ( tolower(buf[0]) == 's' && tolower(buf[1]) == 'u' && tolower(buf[2]) == 'p' && tolower(buf[3]) == 'e' && tolower(buf[4]) == 'r' && conv_coinstr(buf+5) >= 0 )
+                    ap->name = clonestr(buf+5);
                 else ap->name = clonestr(buf);
             }
             free_json(json);

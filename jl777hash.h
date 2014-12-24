@@ -402,7 +402,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     struct hashpacket *ptr;
     if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || strlen(key) >= (*hp_ptr)->keysize )
     {
-        printf("MTadd_hashtable. illegal key?? (%s)\n",key);
+        printf("MTadd_hashtable.(%s) illegal key?? (%s)\n",*hp_ptr!=0?(*hp_ptr)->name:"",key);
 #ifdef __APPLE__
         //while ( 1 )
        //     sleep(1);

@@ -688,6 +688,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         //init_filtered_bufs(); crashed ubunty
         if ( IS_LIBTEST >= 2 )
         {
+            printf("create MGW dirs\n");
             ensure_directory("/var/www/MGW");
             ensure_directory("/var/www/MGW/msig");
         }

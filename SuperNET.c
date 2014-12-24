@@ -164,7 +164,7 @@ char *process_commandline_json(cJSON *json)
             if ( coinstr[0] != 0 )
                 issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
         }
-        for (i=0; i<10; i++)
+        for (i=0; i<3; i++)
         {
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
