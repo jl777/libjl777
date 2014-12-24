@@ -32,7 +32,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
 {
     FILE *fp;
     long fsize;
-    cJSON *json = 0,*newjson = 0;
+    cJSON *json = 0,*newjson;
     int32_t i,n;
     struct multisig_addr *msig;
     char sender[MAX_JSON_FIELD],*buf,*str;
@@ -46,12 +46,19 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
         fp = fopen(fname,"wb");
         if ( fp != 0 )
         {
-            json = cJSON_CreateArray();
-            cJSON_AddItemToArray(json,newjson), newjson = 0;
-            str = cJSON_Print(json);
-            fprintf(fp,"%s",str);
-            free(str);
+            if ( (json = cJSON_CreateArray()) != 0 )
+            {
+                cJSON_AddItemToArray(json,newjson), newjson = 0;
+                str = cJSON_Print(json);
+                fprintf(fp,"%s",str);
+                free(str);
+                free_json(json);
+            }
+            fclose(fp);
         } else printf("couldnt open (%s)\n",fname);
+        if ( newjson != 0 )
+            free_json(newjson);
+        return;
     }
     else
     {
@@ -73,6 +80,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
                     {
                         if ( msigcmp(refmsig,msig) == 0 )
                             break;
+                        free(msig), msig = 0;
                     }
                 }
                 if ( msig != 0 )
@@ -87,21 +95,18 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
                     printf("updated (%s)\n",fname);
                 }
             }
+            free_json(json);
         }
         else
         {
             printf("file.(%s) doesnt parse (%s)\n",fname,buf);
             rewind(fp);
-            fprintf(fp,"[");
-            fprintf(fp,"%s\n",jsonstr);
-            fprintf(fp,"]\n%s",buf);
+            fprintf(fp,"[%s]\n%s",jsonstr,buf);
         }
         free(buf);
     }
     if ( fp != 0 )
         fclose(fp);
-    if ( json != 0 )
-        free_json(json);
     if ( newjson != 0 )
         free_json(newjson);
 }

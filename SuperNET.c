@@ -171,25 +171,6 @@ char *process_commandline_json(cJSON *json)
         }
         for (i=0; i<3; i++)
         {
-            sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_names[i],userNXTaddr);
-            if ( (retstr= issue_curl(0,cmdstr)) != 0 )
-            {
-                printf("(%s) -> (%s)\n",cmdstr,retstr);
-                if ( (msigjson= cJSON_Parse(retstr)) != 0 )
-                {
-                    if ( (msig= decode_msigjson(0,msigjson,Server_NXTaddrs[i])) != 0 )
-                    {
-                        free(msig);
-                        free_json(msigjson);
-                        if ( email[0] != 0 )
-                            send_email(email,userNXTaddr,0,retstr);
-                        //printf("[%s]\n",retstr);
-                        return(retstr);
-                    }
-                } else printf("error parsing.(%s)\n",retstr);
-                free_json(msigjson);
-                free(retstr);
-            } else printf("cant find (%s)\n",cmdstr);
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
                 //fprintf(stderr,"%s\n",retstr);
@@ -217,6 +198,26 @@ char *process_commandline_json(cJSON *json)
             sleep(1);
         }
     }
+    i = 0;
+    sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_names[i],userNXTaddr);
+    if ( (retstr= issue_curl(0,cmdstr)) != 0 )
+    {
+        printf("(%s) -> (%s)\n",cmdstr,retstr);
+        if ( (msigjson= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( (msig= decode_msigjson(0,msigjson,Server_NXTaddrs[i])) != 0 )
+            {
+                free(msig);
+                free_json(msigjson);
+                if ( email[0] != 0 )
+                    send_email(email,userNXTaddr,0,retstr);
+                //printf("[%s]\n",retstr);
+                return(retstr);
+            }
+        } else printf("error parsing.(%s)\n",retstr);
+        free_json(msigjson);
+        free(retstr);
+    } else printf("cant find (%s)\n",cmdstr);
     return(clonestr("{\"error\":\"timeout\"}"));
 }
 
