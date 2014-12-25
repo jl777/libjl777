@@ -2648,6 +2648,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             conv_rsacctstr(rsacct,nxt64bits);
             sprintf(retbuf+strlen(retbuf),",\"userNXT\":\"%llu\",\"RS\":\"%s\"",(long long)nxt64bits,rsacct);
         }
+        sprintf(retbuf+strlen(retbuf),",\"gatewayid\":\"%d\"",Global_mp->gatewayid);
         if ( (cp= get_coin_info("BTCD")) != 0 )
             sprintf(retbuf+strlen(retbuf),",\"requestType\":\"MGWresponse\",\"NXT\":\"%s\"}",cp->srvNXTADDR);
         return(clonestr(retbuf));
