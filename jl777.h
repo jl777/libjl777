@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.299"
+#define HARDCODED_VERSION "0.399"
 #define TIMESCRAMBLE
 
 #define NXT_GENESISTIME 1385294400

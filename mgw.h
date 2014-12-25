@@ -2648,7 +2648,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             conv_rsacctstr(rsacct,nxt64bits);
             sprintf(retbuf+strlen(retbuf),",\"userNXT\":\"%llu\",\"RS\":\"%s\"",(long long)nxt64bits,rsacct);
         }
-        sprintf(retbuf+strlen(retbuf),",\"gatewayid\":\"%d\"",Global_mp->gatewayid);
+        sprintf(retbuf+strlen(retbuf),",\"gatewayid\":%d",Global_mp->gatewayid);
         if ( (cp= get_coin_info("BTCD")) != 0 )
             sprintf(retbuf+strlen(retbuf),",\"requestType\":\"MGWresponse\",\"NXT\":\"%s\"}",cp->srvNXTADDR);
         return(clonestr(retbuf));
@@ -2676,6 +2676,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         else if ( (cp= get_coin_info("BTCD")) != 0 )
             cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
         cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
+        cJSON_AddItemToObject(json,"gatewayid",cJSON_CreateNumber(Global_mp->gatewayid));
         retstr = cJSON_Print(json);
         save_MGW_status(NXTaddr,retstr);
         //stripwhite_ns(retstr,strlen(retstr));
