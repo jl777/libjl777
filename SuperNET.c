@@ -138,7 +138,7 @@ char *process_commandline_json(cJSON *json)
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
-    int32_t i,n,iter,gatewayid;
+    int32_t i,n,iter,gatewayid,len;
     uint32_t buyNXT = 0;
     cJSON *array,*argjson,*retjson;
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
