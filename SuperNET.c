@@ -134,7 +134,7 @@ char *process_commandline_json(cJSON *json)
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0;
+    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
@@ -159,12 +159,18 @@ char *process_commandline_json(cJSON *json)
         sprintf(retbuf,"{\"error\":\"invalid pubkey\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"checkNXT\":\"%llu\"}",userpubkey,userNXTaddr,(long long)checkbits);
         return(clonestr(retbuf));
     }
+    cmdstr[0] = 0;
+    printf("got cmd.(%s)\n",cmd);
     if ( strcmp(cmd,"newbie") == 0 )
     {
+        waitfor = "MGWaddr";
+        sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_names[i],userNXTaddr);
         array = cJSON_GetObjectItem(MGWconf,"active");
         if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
         {
-            for (iter=0; iter<3; iter++)
+            for (i=0; i<100; i++) // flush queue
+                GUIpoll(txidstr,senderipaddr,&port);
+            for (iter=0; iter<3; iter++) // give chance for servers to consensus
             {
                 for (i=0; i<n; i++)
                 {
@@ -174,79 +180,94 @@ char *process_commandline_json(cJSON *json)
                 }
                 sleep(1);
             }
-            for (i=0; i<13; i++)
+        }
+    }
+    else if ( strcmp(cmd,"status") == 0 )
+    {
+        int32_t actionflag = 0,rescan = 1;
+        waitfor = "MGWstatus";
+        sprintf(cmdstr,"http://%s/MGW/status/%s",Server_names[i],userNXTaddr);
+        printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
+        retstr = MGWstatus(coin,userNXTaddr,userpubkey,0,rescan,actionflag);
+        if ( retstr != 0 )
+            free(retstr), retstr = 0;
+    }
+    else return(clonestr("{\"error\":\"only newbie command is supported now\"}"));
+    if ( waitfor != 0 )
+    {
+        for (i=0; i<3000; i++)
+        {
+            if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
-                if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+                //fprintf(stderr,"%s\n",retstr);
+                if ( retstr[0] == '[' || retstr[0] == '{' )
                 {
-                    //fprintf(stderr,"%s\n",retstr);
-                    if ( retstr[0] == '[' || retstr[0] == '{' )
+                    if ( (retjson= cJSON_Parse(retstr)) != 0 )
                     {
-                        if ( (retjson= cJSON_Parse(retstr)) != 0 )
+                        if ( is_cJSON_Array(retjson) != 0 && (n= cJSON_GetArraySize(retjson)) == 2 )
                         {
-                            if ( is_cJSON_Array(retjson) != 0 && (n= cJSON_GetArraySize(retjson)) == 2 )
+                            argjson = cJSON_GetArrayItem(retjson,0);
+                            copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
+                            if ( strcmp(buf2,waitfor) == 0 )
                             {
-                                argjson = cJSON_GetArrayItem(retjson,0);
-                                copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
-                                if ( strcmp(buf2,"MGWaddr") == 0 )
-                                {
-                                    if ( email[0] != 0 )
-                                        send_email(email,userNXTaddr,0,retstr);
-                                    //printf("[%s]\n",retstr);
-                                    return(retstr);
-                                }
+                                if ( email[0] != 0 )
+                                    send_email(email,userNXTaddr,0,retstr);
+                                //printf("[%s]\n",retstr);
+                                return(retstr);
                             }
                         }
                     }
-                    free(retstr);
-                    retstr = 0;
                 }
-                else sleep(1);
-            }
+                free(retstr),retstr = 0;
+            } else usleep(1000);
         }
-        i = 0;
-        sprintf(cmdstr,"http://%s/MGW/msig/%s",Server_names[i],userNXTaddr);
-        if ( (retstr= issue_curl(0,cmdstr)) != 0 )
+    }
+    if ( cmdstr[0] != 0 )
+    {
+        for (i=0; i<3; i++)
         {
-            /*printf("(%s) -> (%s)\n",cmdstr,retstr);
-            if ( (msigjson= cJSON_Parse(retstr)) != 0 )
+            if ( (retstr= issue_curl(0,cmdstr)) != 0 )
             {
-                if ( is_cJSON_Array(msigjson) != 0 && (n= cJSON_GetArraySize(msigjson)) > 0 )
+                /*printf("(%s) -> (%s)\n",cmdstr,retstr);
+                 if ( (msigjson= cJSON_Parse(retstr)) != 0 )
+                 {
+                 if ( is_cJSON_Array(msigjson) != 0 && (n= cJSON_GetArraySize(msigjson)) > 0 )
+                 {
+                 for (j=0; j<n; j++)
+                 {
+                 item = cJSON_GetArrayItem(msigjson,j);
+                 copy_cJSON(coinstr,cJSON_GetObjectItem(item,"coin"));
+                 if ( strcmp(coinstr,xxx) == 0 )
+                 {
+                 msig = decode_msigjson(0,item,Server_NXTaddrs[i]);
+                 break;
+                 }
+                 }
+                 }
+                 else msig = decode_msigjson(0,msigjson,Server_NXTaddrs[i]);
+                 if ( msig != 0 )
+                 {
+                 free(msig);
+                 free_json(msigjson);
+                 if ( email[0] != 0 )
+                 send_email(email,userNXTaddr,0,retstr);
+                 //printf("[%s]\n",retstr);
+                 return(retstr);
+                 }
+                 } else printf("error parsing.(%s)\n",retstr);
+                 free_json(msigjson);
+                 free(retstr);*/
+                if ( retstr[0] == '{' || retstr[0] == '[' )
                 {
-                    for (j=0; j<n; j++)
-                    {
-                        item = cJSON_GetArrayItem(msigjson,j);
-                        copy_cJSON(coinstr,cJSON_GetObjectItem(item,"coin"));
-                        if ( strcmp(coinstr,xxx) == 0 )
-                        {
-                            msig = decode_msigjson(0,item,Server_NXTaddrs[i]);
-                            break;
-                        }
-                    }
-                }
-                else msig = decode_msigjson(0,msigjson,Server_NXTaddrs[i]);
-                if ( msig != 0 )
-                {
-                    free(msig);
-                    free_json(msigjson);
                     if ( email[0] != 0 )
                         send_email(email,userNXTaddr,0,retstr);
-                    //printf("[%s]\n",retstr);
                     return(retstr);
                 }
-            } else printf("error parsing.(%s)\n",retstr);
-            free_json(msigjson);
-            free(retstr);*/
-            return(retstr);
-        } else printf("cant find (%s)\n",cmdstr);
-        return(clonestr("{\"error\":\"timeout\"}"));
+                else free(retstr);
+            } else printf("cant find (%s)\n",cmdstr);
+        }
     }
-    else
-    {
-        int32_t actionflag = 0,rescan = 1;
-        if ( strcmp(cmd,"status") == 0 )
-            return(MGWstatus(coin,userNXTaddr,userpubkey,email,rescan,actionflag));
-        return(clonestr("{\"error\":\"only newbie command is supported now\"}"));
-    }
+    return(clonestr("{\"error\":\"timeout\"}"));
 }
 
 void *GUIpoll_loop(void *arg)
@@ -426,6 +447,7 @@ int main(int argc,const char *argv[])
     if ( argc > 1 && argv[1] != 0 )
     {
         char *init_MGWconf(char *JSON_or_fname,char *myipaddr);
+        printf("ARGV1.(%s)\n",argv[1]);
         if ( (argv[1][0] == '{' || argv[1][0] == '[') )
         {
             if ( (json= cJSON_Parse(argv[1])) != 0 )

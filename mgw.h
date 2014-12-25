@@ -28,6 +28,18 @@ void set_MGW_msigfname(char *fname,char *NXTaddr)
     else sprintf(fname,"/var/www/MGW/msig/%s",NXTaddr);
 }
 
+void save_MGW_status(char *NXTaddr,char *jsonstr)
+{
+    FILE *fp;
+    char fname[1024];
+    sprintf(fname,"/var/www/MGW/status/%s",NXTaddr);
+    if ( (fp= fopen(fname,"wb")) != 0 )
+    {
+        fwrite(jsonstr,1,strlen(jsonstr),fp);
+        fclose(fp);
+    }
+}
+
 void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
 {
     FILE *fp;
@@ -2608,12 +2620,21 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     }
     if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
         depositors_pubkey = 0;
-    ap = get_NXTasset(&createdflag,Global_mp,assetstr);
-    cp = conv_assetid(assetstr);
-    if ( cp == 0 || ap == 0 )
+    if ( (cp= get_coin_info(coin)) == 0 )
     {
-        sprintf(retbuf,"{\"error\":\"dont have coin_info for (%s) ap.%p\"}",assetstr,ap);
-        return(clonestr(retbuf));
+        ap = get_NXTasset(&createdflag,Global_mp,assetstr);
+        cp = conv_assetid(assetstr);
+        if ( cp == 0 || ap == 0 )
+        {
+            sprintf(retbuf,"{\"error\":\"dont have coin_info for asset (%s) ap.%p\"}",assetstr,ap);
+            return(clonestr(retbuf));
+        }
+    }
+    else
+    {
+        if ( assetstr != 0 && strcmp(cp->assetid,assetstr) != 0 )
+            return(clonestr("{\"error\":\"mismatched assetid\"}"));
+        ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
     }
     if ( firsttimestamp == 0 )
         get_NXTblock(&firsttimestamp);
@@ -2635,6 +2656,8 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         retstr = cJSON_Print(json);
         //stripwhite_ns(retstr,strlen(retstr));
         strcat(retstr,"\n");
+        if ( NXTaddr != 0 && NXTaddr[0] != 0 )
+            save_MGW_status(NXTaddr,retstr);
         free_json(json);
     }
     if ( specialNXTaddrs != MGW_whitelist )

@@ -1750,18 +1750,23 @@ char *MGWstatus(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int
     struct coin_info *cp,*refcp = get_coin_info("BTCD");
     char params[4096],*retstr;
     int32_t gatewayid;
+    printf("MGWstatus(%s %s %s (%s) %d %d)\n",coinstr,userNXTaddr,userpubkey,email,rescan,actionflag);
     if ( (cp= get_coin_info(coinstr)) == 0 )
         return(clonestr("{\"error\":\"unsupported coin\"}"));
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
         //curl -k --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"MGW\",\"rescan\":\"1\",\"actionflag\":\"0\",\"handler\":\"mgw\",\"destip\":\"209.126.70.159\",\"destport\":\"4000\",\"specialNXT\":\"7117166754336896747\",\"coin\":\"BTCD\",\"asset\":\"11060861818140490423\",\"exclude0\":\"7581814105672729429\",\"destNXT\":\"NXT-BAD7-238Z-2SEX-2TJ2S\"}"]  }' -H 'content-type: text/plain;' https://127.0.0.1:7777/
 
-        sprintf(params,"{\"requestType\":\"MGW\",\"specialNXT\":\"%s\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",cp->MGWissuer,Server_names[gatewayid],refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
+        //sprintf(params,"{\"requestType\":\"MGW\",\"specialNXT\":\"%s\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",cp->MGWissuer,Server_names[gatewayid],refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
+        sprintf(params,"{\"requestType\":\"MGW\",\"handler\":\"mgw\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"destNXT\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",Server_names[gatewayid],refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
+        printf("issue (%s)\n",params);
         retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
-        if ( Debuglevel > 0 )
-            printf("issue.(%s) -> (%s)\n",params,retstr);
         if ( retstr != 0 )
-            free(retstr);
+        {
+           // if ( Debuglevel > 0 )
+                printf("issue.(%s) -> (%s)\n",params,retstr);
+           free(retstr);
+        }
     }
     return(0);
 }

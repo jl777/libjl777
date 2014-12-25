@@ -691,6 +691,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             printf("create MGW dirs\n");
             ensure_directory("MGW");
             ensure_directory("MGW/msig");
+            ensure_directory("MGW/status");
         }
         ensure_directory("backups");
         ensure_directory("backups/telepods");
@@ -739,8 +740,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
-            UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),0);
-            MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),1);
+            UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
+            MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),0);
             if ( Debuglevel > 0 )
                 printf("(%s) USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",ipaddr,USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
