@@ -84,9 +84,9 @@ void bind_NXT_ipaddr(uint64_t nxt64bits,char *ip_port)
     char ipaddr[64];
     struct nodestats *stats;
     struct pserver_info *pserver;
+    port = parse_ipaddr(ipaddr,ip_port);
     pserver = get_pserver(0,ipaddr,0,0);
     pserver->nxt64bits = nxt64bits;
-    port = parse_ipaddr(ipaddr,ip_port);
     if ( port != 0 )
         pserver->p2pport = port;
     stats = get_nodestats(nxt64bits);

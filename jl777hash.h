@@ -404,8 +404,8 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     {
         printf("MTadd_hashtable.(%s) illegal key?? (%s)\n",*hp_ptr!=0?(*hp_ptr)->name:"",key);
 #ifdef __APPLE__
-        //while ( 1 )
-       //     sleep(1);
+        while ( 1 )
+            sleep(1);
 #endif
     }
     ptr = calloc(1,sizeof(*ptr));
