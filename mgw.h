@@ -2599,47 +2599,59 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
 {
     static int32_t firsttimestamp;
     static char **specialNXTaddrs;
-    char retbuf[4096],NXTaddr[64],*ipaddrs[3],*retstr = 0;
-    struct coin_info *cp;
-    uint64_t pendingtxid,nxt64bits;
+    char retbuf[4096],NXTaddr[64],rsacct[64],*ipaddrs[3],*retstr = 0;
+    struct coin_info *cp = 0;
+    uint64_t pendingtxid,nxt64bits = 0;
     double startmilli = milliseconds();
     int32_t i,createdflag;
-    struct NXT_asset *ap;
+    struct NXT_asset *ap = 0;
     cJSON *json = 0;
+    retbuf[0] = 0;
     if ( MGW_initdone == 0 )
-        return(clonestr("{\"error\":\"MGW not initialized yet\"}\n"));
-    if ( refNXTaddr != 0 && refNXTaddr[0] == 0 )
-    {
-        if ( rescan != 0 )
-            return(clonestr("{\"error\":\"need NXT address to rescan\"}\n"));
-        refNXTaddr = 0;
-        nxt64bits = 0;
-    }
+        sprintf(retbuf,"{\"error\":\"MGW not initialized yet\"");
     else
     {
-        nxt64bits = conv_rsacctstr(refNXTaddr,0);
-        expand_nxt64bits(NXTaddr,nxt64bits);
-    }
-    if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
-        depositors_pubkey = 0;
-    if ( (cp= get_coin_info(coin)) == 0 )
-    {
-        ap = get_NXTasset(&createdflag,Global_mp,assetstr);
-        cp = conv_assetid(assetstr);
-        if ( cp == 0 || ap == 0 )
+        if ( refNXTaddr != 0 && refNXTaddr[0] == 0 )
         {
-            sprintf(retbuf,"{\"error\":\"dont have coin_info for asset (%s) ap.%p\"}",assetstr,ap);
-            return(clonestr(retbuf));
+            if ( rescan != 0 )
+                sprintf(retbuf,"{\"error\":\"need NXT address to rescan\"");
+            refNXTaddr = 0;
+            nxt64bits = 0;
         }
+        else
+        {
+            nxt64bits = conv_rsacctstr(refNXTaddr,0);
+            expand_nxt64bits(NXTaddr,nxt64bits);
+        }
+        if ( depositors_pubkey != 0 && depositors_pubkey[0] == 0 )
+            depositors_pubkey = 0;
+        if ( (cp= get_coin_info(coin)) == 0 )
+        {
+            ap = get_NXTasset(&createdflag,Global_mp,assetstr);
+            cp = conv_assetid(assetstr);
+            if ( cp == 0 || ap == 0 )
+                sprintf(retbuf,"{\"error\":\"dont have coin_info for asset (%s) ap.%p\"",assetstr,ap);
+        }
+        else
+        {
+            if ( assetstr != 0 && strcmp(cp->assetid,assetstr) != 0 )
+                sprintf(retbuf,"{\"error\":\"mismatched assetid\"");
+            ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
+        }
+        if ( firsttimestamp == 0 )
+            get_NXTblock(&firsttimestamp);
     }
-    else
+    if ( retbuf[0] != 0 )
     {
-        if ( assetstr != 0 && strcmp(cp->assetid,assetstr) != 0 )
-            return(clonestr("{\"error\":\"mismatched assetid\"}"));
-        ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
+        if ( refNXTaddr != 0 && nxt64bits != 0 )
+        {
+            conv_rsacctstr(rsacct,nxt64bits);
+            sprintf(retbuf+strlen(retbuf),",\"userNXT\":\"%llu\",\"RS\":\"%s\"",(long long)nxt64bits,rsacct);
+        }
+        if ( (cp= get_coin_info("BTCD")) != 0 )
+            sprintf(retbuf+strlen(retbuf),",\"requestType\":\"MGWresponse\",\"NXT\":\"%s\"}",cp->srvNXTADDR);
+        return(clonestr(retbuf));
     }
-    if ( firsttimestamp == 0 )
-        get_NXTblock(&firsttimestamp);
     if ( NXT0 != 0 && NXT0[0] != 0 )
     {
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
