@@ -1729,12 +1729,16 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
             }
             else
             {
+                char fname[512];
                 int32_t timeout = 300;
                 datalen = (int32_t)strlen(retstr) / 2;
                 data = malloc(datalen);
                 datalen = decode_hex(data,datalen,retstr);
                 printf("start_transfer\n");
-                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,"MGWstatus",data,datalen,timeout,"bridge"); // start_transfer frees data
+                sprintf(fname,"g%d.MGWresponse",Global_mp->gatewayid);
+                if ( destNXT[0] != 0 )
+                    sprintf(fname+strlen(fname),".%s",destNXT);
+                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,data,datalen,timeout,"bridge"); // start_transfer frees data
             }
             if ( str != 0 )
                 free(str);

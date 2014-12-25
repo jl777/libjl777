@@ -134,13 +134,13 @@ char *process_commandline_json(cJSON *json)
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,*retstrs[3],errstr[2048];
+    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048];
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
-    int32_t i,n,iter,gatewayid,len;
+    int32_t i,n,iter,gatewayid;
     uint32_t buyNXT = 0;
-    cJSON *array,*argjson,*retjson;
+    cJSON *array,*argjson,*retjson,*item,*retjsons[3];
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
@@ -159,7 +159,7 @@ char *process_commandline_json(cJSON *json)
         sprintf(retbuf,"{\"error\":\"invalid pubkey\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"checkNXT\":\"%llu\"}",userpubkey,userNXTaddr,(long long)checkbits);
         return(clonestr(retbuf));
     }
-    memset(retstrs,0,sizeof(retstrs));
+    memset(retjsons,0,sizeof(retjsons));
     cmdstr[0] = 0;
     //printf("got cmd.(%s)\n",cmd);
     if ( strcmp(cmd,"newbie") == 0 )
@@ -200,7 +200,6 @@ char *process_commandline_json(cJSON *json)
         {
             if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
             {
-                //fprintf(stderr,"%s\n",retstr);
                 if ( retstr[0] == '[' || retstr[0] == '{' )
                 {
                     if ( (retjson= cJSON_Parse(retstr)) != 0 )
@@ -210,27 +209,34 @@ char *process_commandline_json(cJSON *json)
                             argjson = cJSON_GetArrayItem(retjson,0);
                             copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"requestType"));
                             gatewayid = (int32_t)get_API_int(cJSON_GetObjectItem(argjson,"gatewayid"),-1);
-                            if ( gatewayid >= 0 && gatewayid < 3 && retstrs[gatewayid] == 0 )
+                            if ( gatewayid >= 0 && gatewayid < 3 && retjsons[gatewayid] == 0 )
                             {
                                 copy_cJSON(errstr,cJSON_GetObjectItem(argjson,"error"));
                                 if ( strlen(errstr) > 0 || strcmp(buf2,waitfor) == 0 )
-                                    retstrs[gatewayid] = retstr, retstr = 0;
+                                {
+                                    retjsons[gatewayid] = retjson, retjson = 0;
+                                    if ( retjsons[0] != 0 && retjsons[1] != 0 && retjsons[2] != 0 )
+                                        break;
+                                }
                             }
                         }
+                        if ( retjson != 0 )
+                            free_json(retjson);
                     }
                 }
+                //fprintf(stderr,"(%p) %s\n",retjson,retstr);
                 free(retstr),retstr = 0;
             } else usleep(1000);
         }
     }
     for (i=0; i<3; i++)
-        if ( retstrs[i] == 0 )
+        if ( retjsons[i] == 0 )
             break;
     if ( i < 3 && cmdstr[0] != 0 )
     {
         for (i=0; i<3; i++)
         {
-            if ( retstrs[i] == 0 && (retstr= issue_curl(0,cmdstr)) != 0 )
+            if ( retjsons[i] == 0 && (retstr= issue_curl(0,cmdstr)) != 0 )
             {
                 /*printf("(%s) -> (%s)\n",cmdstr,retstr);
                  if ( (msigjson= cJSON_Parse(retstr)) != 0 )
@@ -266,26 +272,24 @@ char *process_commandline_json(cJSON *json)
                     //if ( email[0] != 0 )
                     //    send_email(email,userNXTaddr,0,retstr);
                     //return(retstr);
-                    retstrs[i] = retstr, retstr = 0;
+                    retjsons[i] = cJSON_Parse(retstr);
                 }
-                else free(retstr);
+                free(retstr);
             } //else printf("cant find (%s)\n",cmdstr);
         }
     }
-    len = 0;
+    json = cJSON_CreateArray();
     for (i=0; i<3; i++)
     {
-        if ( retstrs[i] == 0 )
-            retstrs[i] = clonestr("[{\"error\":\"timeout\"}]");
-        len += strlen(retstrs[i]) + 128;
+        if ( retjsons[i] != 0 )
+            cJSON_AddItemToArray(json,retjsons[i]);
     }
-    retstr = calloc(1,len);
-    sprintf(retstr,"{\"gateway0\":%s,\"gateway1\":%s,\"gateway2\":%s}",retstrs[0],retstrs[1],retstrs[2]);
+    retstr = cJSON_Print(json);
+    free_json(json);
     if ( email[0] != 0 )
         send_email(email,userNXTaddr,0,retstr);
-    //printf("[%s]\n",retstr);
     return(retstr);
-}
+ }
 
 void *GUIpoll_loop(void *arg)
 {
