@@ -437,13 +437,15 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
                     msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
                     copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
-                    fprintf(stderr,"{(%s) (%s) %llu ip.(%s)}.%d ",msig->pubkeys[j].coinaddr,msig->pubkeys[j].pubkey,(long long)msig->pubkeys[j].nxt64bits,ipaddr,j);
+                    if ( Debuglevel > 3 )
+                        fprintf(stderr,"{(%s) (%s) %llu ip.(%s)}.%d ",msig->pubkeys[j].coinaddr,msig->pubkeys[j].pubkey,(long long)msig->pubkeys[j].nxt64bits,ipaddr,j);
                     if ( ipaddr[0] == 0 && j < 3 )
                         strcpy(ipaddr,Server_names[j]);
                     msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
                 } else { free(msig); msig = 0; }
             }
-            fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
+            if ( Debuglevel > 3 )
+                fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
         return(msig);
     } else fprintf(stderr,"decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
@@ -2440,17 +2442,19 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
 void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,uint64_t nxt64bits,char *issuerNXT,char **specialNXTaddrs)
 {
     
-    char coinaddr[1024],txidstr[1024],withdrawaddr[512],rsacct[64],depositstr[64],numstr[128],redeemstr[128],NXTaddr[64];
+    char coinaddr[1024],txidstr[1024],depositaddr[128],withdrawaddr[512],rsacct[64],depositstr[64],numstr[128],redeemstr[128],NXTaddr[64];
     struct multisig_addr **msigs,*msig;
     struct address_entry *entries;
     struct NXT_assettxid *tp;
     cJSON *autojson,*array,*item;
-    int32_t i,j,n,nummsigs;
+    int32_t i,j,n,nummsigs,lastbuyNXT,buyNXT = 0;
     uint64_t pendingtxid,value,deposittxid,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
     expand_nxt64bits(NXTaddr,nxt64bits);
     update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
     if ( *jsonp == 0 )
         *jsonp = cJSON_CreateObject();
+    depositaddr[0] = 0;
+    lastbuyNXT = 0;
     array = cJSON_CreateArray();
     issuerbits = calc_nxt64bits(issuerNXT);
     pending_withdraws = pending_deposits = 0;
@@ -2462,6 +2466,12 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
             {
                 if ( strcmp(msig->NXTaddr,NXTaddr) == 0 )
                 {
+                    buyNXT += msig->buyNXT;
+                    if ( msig->multisigaddr[0] != 0 )
+                    {
+                        lastbuyNXT = msig->buyNXT;
+                        strcpy(depositaddr,msig->multisigaddr);
+                    }
                     if ( (entries= get_address_entries(&n,cp->name,msig->multisigaddr)) != 0 )
                     {
                         for (j=0; j<n; j++)
@@ -2561,6 +2571,14 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
     cJSON_AddItemToObject(*jsonp,"NXT",cJSON_CreateString(NXTaddr));
     conv_rsacctstr(rsacct,nxt64bits);
     cJSON_AddItemToObject(*jsonp,"RS",cJSON_CreateString(rsacct));
+    if ( depositaddr[0] != 0 )
+        cJSON_AddItemToObject(*jsonp,"depositaddr",cJSON_CreateString(depositaddr));
+    if ( lastbuyNXT != 0 )
+    {
+        if ( buyNXT != lastbuyNXT )
+            cJSON_AddItemToObject(*jsonp,"totalbuyNXT",cJSON_CreateNumber(buyNXT));
+        else cJSON_AddItemToObject(*jsonp,"buyNXT",cJSON_CreateNumber(lastbuyNXT));
+    }
 }
 
 char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2,char *refNXTaddr,char *depositors_pubkey)

@@ -281,10 +281,8 @@ uv_udp_t *open_udp(uint16_t port,void (*handler)(uv_udp_t *,ssize_t,const uv_buf
     int32_t r;
     uv_udp_t *udp;
     struct sockaddr_in addr;
-#ifdef __APPLE__
-    if ( fixed_udp != 0 )
+    if (  MULTIPORT == 0 && fixed_udp != 0 )
         return(fixed_udp);
-#endif
     udp = malloc(sizeof(uv_udp_t));
     r = uv_udp_init(UV_loop,udp);
     if ( r != 0 )

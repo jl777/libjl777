@@ -739,8 +739,10 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
+            UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),0);
+            MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),1);
             if ( Debuglevel > 0 )
-                printf("USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",USESSL,IS_LIBTEST,APIPORT,APISLEEP);
+                printf("(%s) USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",ipaddr,USESSL,IS_LIBTEST,APIPORT,APISLEEP);
             ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
             ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
             if ( Debuglevel >= 0 )
@@ -787,6 +789,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             }
             if ( Global_mp->gatewayid < 0 )
                 Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
+            if ( Global_mp->gatewayid >= 0 )
+                strcpy(myipaddr,Server_names[Global_mp->gatewayid]);
             Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
 
             if ( Debuglevel > 0 )
