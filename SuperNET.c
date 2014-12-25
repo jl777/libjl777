@@ -188,7 +188,7 @@ char *process_commandline_json(cJSON *json)
         waitfor = "MGWresponse";
         sprintf(cmdstr,"http://%s/MGW/status/%s",Server_names[i],userNXTaddr);
         printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
-        retstr = MGWstatus(coin,userNXTaddr,userpubkey,0,rescan,actionflag);
+        retstr = issue_MGWstatus(coin,userNXTaddr,userpubkey,0,rescan,actionflag);
         if ( retstr != 0 )
             free(retstr), retstr = 0;
     }
