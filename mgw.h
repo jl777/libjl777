@@ -2673,7 +2673,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             retstr = cJSON_Print(json);
             strcpy(NXTaddr,cp->name);
         }
-        else if ( (cp= get_coin_info("BTCD")) != 0 )
+        if ( (cp= get_coin_info("BTCD")) != 0 )
             cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
         cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
         cJSON_AddItemToObject(json,"gatewayid",cJSON_CreateNumber(Global_mp->gatewayid));
