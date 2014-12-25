@@ -2655,12 +2655,14 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
     if ( json != 0 )
     {
-        cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
         if ( NXTaddr != 0 && NXTaddr[0] != 0 )
         {
             retstr = cJSON_Print(json);
             strcpy(NXTaddr,cp->name);
         }
+        else if ( (cp= get_coin_info("BTCD")) != 0 )
+            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
+        cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
         retstr = cJSON_Print(json);
         save_MGW_status(NXTaddr,retstr);
         //stripwhite_ns(retstr,strlen(retstr));
