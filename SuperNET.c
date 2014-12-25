@@ -160,7 +160,7 @@ char *process_commandline_json(cJSON *json)
         return(clonestr(retbuf));
     }
     cmdstr[0] = 0;
-    printf("got cmd.(%s)\n",cmd);
+    //printf("got cmd.(%s)\n",cmd);
     if ( strcmp(cmd,"newbie") == 0 )
     {
         waitfor = "MGWaddr";
@@ -187,7 +187,7 @@ char *process_commandline_json(cJSON *json)
         int32_t actionflag = 0,rescan = 1;
         waitfor = "MGWresponse";
         sprintf(cmdstr,"http://%s/MGW/status/%s",Server_names[i],userNXTaddr);
-        printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
+        //printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
         retstr = issue_MGWstatus(coin,userNXTaddr,userpubkey,0,rescan,actionflag);
         if ( retstr != 0 )
             free(retstr), retstr = 0;
@@ -215,6 +215,9 @@ char *process_commandline_json(cJSON *json)
                                 //printf("[%s]\n",retstr);
                                 return(retstr);
                             }
+                            copy_cJSON(buf2,cJSON_GetObjectItem(argjson,"error"));
+                            if ( strlen(buf2) > 0 )
+                                return(retstr);
                         }
                     }
                 }
@@ -447,7 +450,7 @@ int main(int argc,const char *argv[])
     if ( argc > 1 && argv[1] != 0 )
     {
         char *init_MGWconf(char *JSON_or_fname,char *myipaddr);
-        printf("ARGV1.(%s)\n",argv[1]);
+        //printf("ARGV1.(%s)\n",argv[1]);
         if ( (argv[1][0] == '{' || argv[1][0] == '[') )
         {
             if ( (json= cJSON_Parse(argv[1])) != 0 )

@@ -2582,7 +2582,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
     sprintf(numstr,"%.8f",dstr(pending_deposits)), cJSON_AddItemToObject(*jsonp,"pending_deposits",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(pending_withdraws)), cJSON_AddItemToObject(*jsonp,"pending_withdraws",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(balance)), cJSON_AddItemToObject(*jsonp,"balance",cJSON_CreateString(numstr));
-    cJSON_AddItemToObject(*jsonp,"NXT",cJSON_CreateString(NXTaddr));
+    cJSON_AddItemToObject(*jsonp,"userNXT",cJSON_CreateString(NXTaddr));
     conv_rsacctstr(rsacct,nxt64bits);
     cJSON_AddItemToObject(*jsonp,"RS",cJSON_CreateString(rsacct));
     if ( depositaddr[0] != 0 )
@@ -2662,7 +2662,6 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             strcpy(NXTaddr,cp->name);
         }
         retstr = cJSON_Print(json);
-        strcat(retstr,"\n");
         save_MGW_status(NXTaddr,retstr);
         //stripwhite_ns(retstr,strlen(retstr));
         free_json(json);
