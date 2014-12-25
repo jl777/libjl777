@@ -394,13 +394,15 @@ long calc_pubkey_jsontxt(int32_t truncated,char *jsontxt,struct pubkey_info *ptr
 char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
 {
     long i,len = 0;
-    char jsontxt[65536],pubkeyjsontxt[65536];
+    char jsontxt[65536],pubkeyjsontxt[65536],rsacct[64];
     if ( msig != 0 )
     {
+        rsacct[0] = 0;
+        conv_rsacctstr(rsacct,calc_nxt64bits(msig->NXTaddr));
         pubkeyjsontxt[0] = 0;
         for (i=0; i<msig->n; i++)
             len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
-        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
+        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
         printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
         return(clonestr(jsontxt));
     }
@@ -2653,11 +2655,16 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
     if ( json != 0 )
     {
-        retstr = cJSON_Print(json);
-        //stripwhite_ns(retstr,strlen(retstr));
-        strcat(retstr,"\n");
+        cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
         if ( NXTaddr != 0 && NXTaddr[0] != 0 )
-            save_MGW_status(NXTaddr,retstr);
+        {
+            retstr = cJSON_Print(json);
+            strcpy(NXTaddr,cp->name);
+        }
+        retstr = cJSON_Print(json);
+        strcat(retstr,"\n");
+        save_MGW_status(NXTaddr,retstr);
+        //stripwhite_ns(retstr,strlen(retstr));
         free_json(json);
     }
     if ( specialNXTaddrs != MGW_whitelist )

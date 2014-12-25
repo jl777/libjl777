@@ -130,7 +130,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 
 char *process_commandline_json(cJSON *json)
 {
-    char *MGWstatus(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag);
+    char *issue_MGWstatus(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag);
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
@@ -185,7 +185,7 @@ char *process_commandline_json(cJSON *json)
     else if ( strcmp(cmd,"status") == 0 )
     {
         int32_t actionflag = 0,rescan = 1;
-        waitfor = "MGWstatus";
+        waitfor = "MGWresponse";
         sprintf(cmdstr,"http://%s/MGW/status/%s",Server_names[i],userNXTaddr);
         printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
         retstr = MGWstatus(coin,userNXTaddr,userpubkey,0,rescan,actionflag);
