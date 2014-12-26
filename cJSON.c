@@ -291,10 +291,23 @@ cJSON *cJSON_Parse(const char *value)
     int i;
     cJSON *retval;
     for (i=0; value[i]!=0; i++)
+        if ( value[i] != ' ' && value[i] != '\n' && value[i] != '\r' && value[i] != '\t' )
+        {
+            if ( value[i] != '[' && value[i] != '{' )
+            {
+                printf("CJSON REJECT.(%s)\n",value);
+                return(0);
+            }
+            break;
+        }
+    for (i=0; value[i]!=0; i++)
         if ( (int)value[i] >= 128 )
             break;
     if ( value[i] != 0 )
+    {
+        printf("CJSON REJECT2.(%s)\n",value);
         return(0);
+    }
     if ( depth > 0 )
     {
         while ( depth > 0 )

@@ -236,7 +236,13 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     char ipaddr[256],retjsonstr[4096];
     if ( addr != 0 )
     {
+        int32_t is_whitelisted(char *ipaddr);
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        if ( SOFTWALL != 0 && is_whitelisted(ipaddr) <= 0 )
+        {
+            printf("SOFTWALL: blocks %s:%d %ld bytes\n",ipaddr,supernet_port,nread);
+            return;
+        }
         if ( notlocalip(ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
