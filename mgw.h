@@ -4,7 +4,7 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-// tighten security
+// tighten security, debug xfer of large status, consensus triggers for deposit/withdraw, autoconvert!
 
 #ifndef mgw_h
 #define mgw_h
@@ -31,12 +31,14 @@ void set_MGW_msigfname(char *fname,char *NXTaddr)
 void save_MGW_status(char *NXTaddr,char *jsonstr)
 {
     FILE *fp;
-    char fname[1024];
+    char fname[1024],cmd[1024];
     sprintf(fname,"/var/www/MGW/status/%s",NXTaddr);
     if ( (fp= fopen(fname,"wb")) != 0 )
     {
         fwrite(jsonstr,1,strlen(jsonstr),fp);
         fclose(fp);
+        sprintf(cmd,"chmod +r %s",fname);
+        system(cmd);
     }
 }
 
@@ -47,7 +49,7 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
     cJSON *json = 0,*newjson;
     int32_t i,n;
     struct multisig_addr *msig;
-    char sender[MAX_JSON_FIELD],*buf,*str;
+    char cmd[1024],sender[MAX_JSON_FIELD],*buf,*str;
     if ( (newjson= cJSON_Parse(jsonstr)) == 0 )
     {
         printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
@@ -66,6 +68,8 @@ void update_MGW_files(char *fname,struct multisig_addr *refmsig,char *jsonstr)
                 free(str);
                 free_json(json);
             }
+            sprintf(cmd,"chmod +r %s",fname);
+            system(cmd);
             fclose(fp);
         } else printf("couldnt open (%s)\n",fname);
         if ( newjson != 0 )
