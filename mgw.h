@@ -2725,6 +2725,8 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             sprintf(retbuf+strlen(retbuf),",\"requestType\":\"MGWresponse\",\"NXT\":\"%s\"}",cp->srvNXTADDR);
         return(clonestr(retbuf));
     }
+    if ( issuerNXT == 0 || issuerNXT[0] == 0 )
+        issuerNXT = cp->MGWissuer;
     if ( NXT0 != 0 && NXT0[0] != 0 )
     {
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
