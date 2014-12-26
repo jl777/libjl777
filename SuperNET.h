@@ -32,6 +32,15 @@
 #define MAX_NXTTXID_LEN MAX_NXT_STRLEN
 #define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 
+struct transfer_args
+{
+    uint64_t modified;
+    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64];
+    uint8_t *data;
+    uint32_t totallen,blocksize,numblocks,completed,timeout;
+    uint32_t *timestamps,*crcs,*gotcrcs,totalcrc;
+};
+
 struct storage_header
 {
     uint32_t size,createtime;

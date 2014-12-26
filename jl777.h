@@ -319,15 +319,6 @@ struct NXT_protocol *NXThandlers[1000]; int Num_NXThandlers;
 
 //union _coin_value_ptr { char *script; char *coinbase; };
 
-struct transfer_args
-{
-    uint64_t modified;
-    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64];
-    uint8_t *data;
-    uint32_t totallen,blocksize,numblocks,completed,timeout;
-    uint32_t *timestamps,*crcs,*gotcrcs,totalcrc;
-};
-
 struct coin_txidind
 {
     int64_t modified;
