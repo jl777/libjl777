@@ -2477,7 +2477,8 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            publish_withdraw_info(cp,&cp->BATCH);
+            if ( sendmoney != 0 )
+                publish_withdraw_info(cp,&cp->BATCH);
             process_consensus(jsonp,cp,sendmoney);
             free(batchsigned);
         }

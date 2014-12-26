@@ -709,6 +709,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             checkcrc = _crc32(0,args->data,args->totallen);
             if ( checkcrc != args->totalcrc )
                 printf("totalcrc ERROR %u != %u\n",checkcrc,args->totalcrc);
+            fprintf(stderr,"update_transer_args return count.%d (%s)\n",count,args->totallen<4096?(char *)args->data:"");
         }
         //fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
@@ -936,7 +937,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         args = create_transfer_args(previpaddr,verifiedNXTaddr,dest,name,totallen,blocksize,totalcrc,handler);
         if ( timeout != 0 )
             args->timeout = (uint32_t)time(NULL) + timeout;
-        fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
+        fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u (%s)\n",args,verifiedNXTaddr,args->timeout,totallen<4096?(char *)data:"");
         memcpy(args->data,data,totallen);
         if ( didalloc != 0 )
             free(data);
