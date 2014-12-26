@@ -134,7 +134,7 @@ char *process_commandline_json(cJSON *json)
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048];
+    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048],*str;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits;
