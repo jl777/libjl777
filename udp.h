@@ -131,7 +131,7 @@ int32_t prevent_queueing(char *cmd)
 
 void set_handler_fname(char *fname,char *handler,char *name)
 {
-    sprintf(fname,"archive/%s_%s",name,handler);
+    sprintf(fname,"%s/%s_%s",DATADIR,name,handler);
 }
 
 int32_t load_handler_fname(void *dest,int32_t len,char *handler,char *name)

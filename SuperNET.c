@@ -140,7 +140,7 @@ char *process_commandline_json(cJSON *json)
     uint64_t nxt64bits,checkbits;
     int32_t i,n,iter,gatewayid;
     uint32_t buyNXT = 0;
-    cJSON *array,*argjson,*retjson,*item,*retjsons[3];
+    cJSON *array,*argjson,*retjson,*retjsons[3];
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));

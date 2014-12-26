@@ -1274,7 +1274,8 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                         if ( cointxidobj != 0 )
                                         {
                                             copy_cJSON(cointxid,cointxidobj);
-                                            printf("got.(%s) comment.(%s) cointxidstr.(%s)\n",txid,tp->comment,cointxid);
+                                            if ( Debuglevel > 2 )
+                                                printf("got.(%s) comment.(%s) cointxidstr.(%s)\n",txid,tp->comment,cointxid);
                                             if ( cointxid[0] != 0 )
                                                 tp->cointxid = clonestr(cointxid);
                                         } else cointxid[0] = 0;
@@ -1327,7 +1328,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
     if ( coinid > 0 && np->timestamps[coinid] != 0 && coinid < 64 )
         sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("minconfirms.%d update_NXT_transactions.(%s) for (%s) cmd.(%s) type.%d\n",MIN_NXTCONFIRMS,refNXTaddr,cp->name,cmd,txtype);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
@@ -1550,7 +1551,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
         txind = tp->txind;
         if ( v != tp->v )
             fprintf(stderr,"error (%d != %d)\n",v,tp->v);
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("get_cointpspent.(%016llx) (%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
@@ -1783,7 +1784,7 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
                 free(entries);
             }
         }
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("got n.%d msigs readyflag.%d | max.%d pendingtxid.%llu depositor.(%s)\n",nummsigs,readyflag,max,(long long)pendingtxid,depositor);
         unspent = nonz = numunspent = 0;
         up = &cp->unspent;

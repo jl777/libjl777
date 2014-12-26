@@ -731,6 +731,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                 FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
             extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
             extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
+            extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
             if ( IS_LIBTEST >= 0 )
                 IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);
             FASTMODE = get_API_int(cJSON_GetObjectItem(MGWconf,"FASTMODE"),1);
@@ -924,6 +925,10 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         else printf("PARSE ERROR\n");
         free(jsonstr);
     }
+    if ( DATADIR[0] == 0 )
+        strcpy(DATADIR,"archive");
+    ensure_directory(DATADIR);
+
     /*if ( didinit == 0 )
     {
         init_tradebots(languagesobj);
