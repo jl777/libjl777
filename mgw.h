@@ -2438,7 +2438,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                 stripwhite(destaddr,strlen(destaddr));
                 printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
                 numredeems = process_destaddr(&alreadyspent,&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems,sender);
-                tp->AMtxidbits = alreadyspent;
+                //tp->AMtxidbits = alreadyspent;
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
             }
