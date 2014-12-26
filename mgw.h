@@ -2038,7 +2038,7 @@ char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info 
     amount = tp->quantity * ap->mult;
     if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (argjson= cJSON_Parse(tp->comment)) != 0 )
     {
-        if ( calc_withdrawaddr(withdrawaddr,cp,tp,argjson) < 0 )
+        if ( calc_withdrawaddr(withdrawaddr,cp,tp,argjson) == 0 )
             return(0);
     }
     minwithdraw = cp->txfee * MIN_DEPOSIT_FACTOR;
@@ -2052,12 +2052,12 @@ char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info 
         printf("no withdraw address for %.8f | ",dstr(amount));
         retstr = 0;
     }
-    //printf("withdraw addr.(%s) lp.%p\n",withdrawaddr,lp);
     else if ( cp != 0 && validate_coinaddr(pubkey,cp,withdrawaddr) < 0 )
     {
         printf("invalid address.(%s) for NXT.%s %.8f validate.%d\n",withdrawaddr,NXTaddr,dstr(amount),validate_coinaddr(pubkey,cp,withdrawaddr));
         retstr = 0;
     }
+    printf("withdraw addr.(%s) for (%s)\n",withdrawaddr,NXTaddr);
     if ( retstr != 0 )
         strcpy(retstr,withdrawaddr);
     if ( argjson != 0 )
