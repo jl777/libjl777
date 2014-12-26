@@ -34,7 +34,7 @@
 #define NUM_GATEWAYS 3
 extern char Server_names[256][MAX_JSON_FIELD];
 extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
-extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP;
+extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT;
 extern cJSON *MGWconf;
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
