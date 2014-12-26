@@ -2057,7 +2057,7 @@ char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info 
         printf("invalid address.(%s) for NXT.%s %.8f validate.%d\n",withdrawaddr,NXTaddr,dstr(amount),validate_coinaddr(pubkey,cp,withdrawaddr));
         retstr = 0;
     }
-    printf("withdraw addr.(%s) for (%s)\n",withdrawaddr,NXTaddr);
+    //printf("withdraw addr.(%s) for (%s)\n",withdrawaddr,NXTaddr);
     if ( retstr != 0 )
         strcpy(retstr,withdrawaddr);
     if ( argjson != 0 )
@@ -2416,7 +2416,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     for (i=sum=0; i<ap->num; i++)
     {
         tp = ap->txids[i];
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             printf("%d of %d: redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
         if ( tp->redeemtxid != 0 && tp->receiverbits == nxt64bits && tp->assetbits == ap->assetbits && tp->U.assetoshis >= MIN_DEPOSIT_FACTOR*(cp->txfee + cp->NXTfee_equiv) )
         {
@@ -2431,7 +2431,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
             }
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 1 )
                 printf("%s %s %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
         }
     }
