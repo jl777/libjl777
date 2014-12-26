@@ -937,7 +937,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             args->timeout = (uint32_t)time(NULL) + timeout;
         fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
         memcpy(args->data,data,totallen);
-        free(data);
+        //free(data);
         data = args->data;
         remains = totallen;
         for (fragi=0; fragi<args->numblocks; fragi++)
