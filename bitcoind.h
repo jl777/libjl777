@@ -240,7 +240,8 @@ int32_t origconvert_to_bitcoinhex(char *scriptasm)
         hex[offset+middlelen] = hexbyte((OP_EQUAL_OPCODE >> 4) & 0xf);
         hex[offset+middlelen+1] = hexbyte(OP_EQUAL_OPCODE & 0xf);
         hex[offset+middlelen+2] = 0;
-        printf("(%s) -> (%s)\n",scriptasm,hex);
+        if ( Debuglevel > 2 )
+            printf("(%s) -> (%s)\n",scriptasm,hex);
         strcpy(scriptasm,hex);
         free(hex);
         return((int32_t)(2+middlelen+2));
