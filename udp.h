@@ -922,12 +922,13 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize=0;
     struct transfer_args *args;
     int64_t len;
-    int32_t remains,fragi,totalcrc,blocksize = 512;
+    int32_t didalloc,remains,fragi,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
     {
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);
         totallen = (int32_t)len;
-    }
+        didalloc = 1;
+    } else didalloc = 0;
     printf("start transfer %p len.%d\n",data,totallen);
     if ( data != 0 && totallen != 0 )
     {
@@ -937,7 +938,8 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             args->timeout = (uint32_t)time(NULL) + timeout;
         fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u\n",args,verifiedNXTaddr,args->timeout);
         memcpy(args->data,data,totallen);
-        //free(data);
+        if ( didalloc != 0 )
+            free(data);
         data = args->data;
         remains = totallen;
         for (fragi=0; fragi<args->numblocks; fragi++)
