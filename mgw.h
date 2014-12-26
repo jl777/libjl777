@@ -1341,10 +1341,10 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                     {
                                         if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
                                             tp->estNXT = (((double)cp->NXTfee_equiv / cp->txfee) * assetoshis / SATOSHIDEN);
-                                        if ( Debuglevel > 1 )
-                                            printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f\n",ap->name,txid,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(assetoshis),tp->estNXT);
                                         if ( tp->comment != 0 && tp->comment[0] != 0 )
                                             tp->redeemtxid = calc_nxt64bits(txid);
+                                        if ( Debuglevel > 1 )
+                                            printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,txid,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(assetoshis),tp->estNXT,(long long)tp->redeemtxid);
                                     }
                                 }
                                 break;
@@ -2019,6 +2019,7 @@ int32_t calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_ass
         }
         else withdrawaddr[0] = autoconvert[0] = 0;
     }
+    printf("withdraw.(%s) autoconvert.(%s)\n",withdrawaddr,autoconvert);
     if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
         return(-1);
     return(0);
