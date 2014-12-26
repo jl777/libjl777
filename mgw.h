@@ -2431,7 +2431,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     {
         tp = ap->txids[i];
         if ( Debuglevel > 1 )
-            printf("%d of %d: redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
+            printf("%d of %d: (%s) redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,tp->comment,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
         str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
         if ( tp->redeemtxid != 0 && tp->receiverbits == nxt64bits && tp->assetbits == ap->assetbits && tp->U.assetoshis >= MIN_DEPOSIT_FACTOR*(cp->txfee + cp->NXTfee_equiv) )
         {
