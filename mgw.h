@@ -1978,9 +1978,9 @@ char *calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_asset
     struct coin_info *newcp;
     char buf[MAX_JSON_FIELD],autoconvert[MAX_JSON_FIELD],issuer[MAX_JSON_FIELD],*retstr;
     copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
-if ( withdrawaddr[0] != 0 )
-    return(withdrawaddr);
-else return(0);
+//if ( withdrawaddr[0] != 0 )
+//    return(withdrawaddr);
+//else return(0);
     if ( tp->convname[0] != 0 )
     {
         withdrawaddr[0] = 0;
@@ -2198,7 +2198,7 @@ int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MA
             if ( j == n )*/
             if ( is_limbo_redeem(cp,tp->redeemtxid) == 0 )
             {
-                //*alreadysentp = 0;
+                *alreadysentp = 0;
                 up = &cp->unspent;
                 tp->numconfs = get_NXTconfirms(tp->redeemtxid);
                 printf("numredeems.%d (%p %p) PENDING REDEEM numconfs.%d %s %s %llu %llu %.8f %.8f | %llu\n",numredeems,up->maxvp,up->minvp,tp->numconfs,cp->name,destaddr,(long long)nxt64bits,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
@@ -2441,7 +2441,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                 stripwhite(destaddr,strlen(destaddr));
                 printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
                 numredeems = process_destaddr(&alreadyspent,&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems,sender);
-                //tp->AMtxidbits = alreadyspent;
+                tp->AMtxidbits = alreadyspent;
                 if ( numredeems >= MAX_MULTISIG_OUTPUTS-1 )
                     break;
             }
