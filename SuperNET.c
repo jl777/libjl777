@@ -288,6 +288,12 @@ char *process_commandline_json(cJSON *json)
     free_json(json);
     if ( email[0] != 0 )
         send_email(email,userNXTaddr,0,retstr);
+    for (i=0; i<1000; i++)
+    {
+        if ( (str= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+            free(str);
+        else break;
+    }
     return(retstr);
  }
 
