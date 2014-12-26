@@ -1971,7 +1971,7 @@ cJSON *gen_autoconvert_json(struct NXT_assettxid *tp)
     return(json);
 }
 
-int32_t calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_assettxid *tp,cJSON *argjson)
+char *calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_assettxid *tp,cJSON *argjson)
 {
     cJSON *json;
     int32_t convert = 0;
@@ -1980,7 +1980,7 @@ int32_t calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_ass
     if ( tp->convname[0] != 0 )
     {
         withdrawaddr[0] = 0;
-        return(-1);
+        return(0);
     }
     copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
     copy_cJSON(autoconvert,cJSON_GetObjectItem(argjson,"autoconvert"));
@@ -2019,10 +2019,9 @@ int32_t calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_ass
         }
         else withdrawaddr[0] = autoconvert[0] = 0;
     }
-    printf("withdraw.(%s) autoconvert.(%s)\n",withdrawaddr,autoconvert);
     if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
-        return(-1);
-    return(0);
+        return(0);
+    return(withdrawaddr);
 }
 
 char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info *cp,struct NXT_assettxid *tp,struct NXT_asset *ap)
