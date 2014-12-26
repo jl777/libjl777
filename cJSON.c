@@ -300,14 +300,14 @@ cJSON *cJSON_Parse(const char *value)
             }
             break;
         }
-    for (i=0; value[i]!=0; i++)
+    /*for (i=0; value[i]!=0; i++)
         if ( (unsigned int)value[i] >= 128 )
             break;
     if ( value[i] != 0 )
     {
         printf("CJSON REJECT2.(%s)\n",value);
         return(0);
-    }
+    }*/
     if ( depth > 0 )
     {
         while ( depth > 0 )
