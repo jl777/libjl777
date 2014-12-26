@@ -882,7 +882,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         if ( n > 0 )
         {
             j = (rand() >> 8) % n;
-            send_fragi(NXTaddr,NXTACCTSECRET,args,j);
+            send_fragi(NXTaddr,NXTACCTSECRET,args,slots[j]);
         }
         /*polarity = 1 - 2 * ((rand() >> 8) & 1);
         for (i=0; i<numfrags; i++)
