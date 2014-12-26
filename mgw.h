@@ -2195,7 +2195,7 @@ int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MA
             if ( j == n )*/
             if ( is_limbo_redeem(cp,tp->redeemtxid) == 0 )
             {
-                *alreadysentp = 0;
+                //*alreadysentp = 0;
                 up = &cp->unspent;
                 tp->numconfs = get_NXTconfirms(tp->redeemtxid);
                 printf("numredeems.%d (%p %p) PENDING REDEEM numconfs.%d %s %s %llu %llu %.8f %.8f | %llu\n",numredeems,up->maxvp,up->minvp,tp->numconfs,cp->name,destaddr,(long long)nxt64bits,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);

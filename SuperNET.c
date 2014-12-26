@@ -509,7 +509,7 @@ int main(int argc,const char *argv[])
     //oldport = newport = portstr;
     //if ( upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
     //    printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
-    printf("saving retval.%x (%d usessl.%d)\n",retval,retval>>1,retval&1);
+    printf("saving retval.%x (%d usessl.%d) UPNP.%d MULTIPORT.%d\n",retval,retval>>1,retval&1,UPNP,MULTIPORT);
     if ( (fp= fopen("horrible.hack","wb")) != 0 )
     {
         fwrite(&retval,1,sizeof(retval),fp);
