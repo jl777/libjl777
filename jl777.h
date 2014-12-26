@@ -282,9 +282,9 @@ struct NXThandler_info
     //FILE *storage_fps[2];
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
-    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64];
+    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64],myNXTADDR[64];
     bits256 mypubkey,myprivkey;
-    uint64_t coins[4];
+    uint64_t nxt64bits,coins[4];
     int32_t initassets,Lfactor,gatewayid,gensocks[256];
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers,isMM;

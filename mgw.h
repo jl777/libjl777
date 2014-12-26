@@ -375,7 +375,8 @@ struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char
     msig->H.size = size;
     msig->n = n;
     msig->created = (uint32_t)time(NULL);
-    msig->sender = calc_nxt64bits(sender);
+    if ( sender != 0 && sender[0] != 0 )
+        msig->sender = calc_nxt64bits(sender);
     safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
     safecopy(msig->NXTaddr,NXTaddr,sizeof(msig->NXTaddr));
     safecopy(msig->NXTpubkey,refpubkey,sizeof(msig->NXTpubkey));
@@ -618,31 +619,71 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig,char *origargs
     }
 }
 
-void add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
+int32_t update_MGWaddr(cJSON *argjson,char *sender)
+{
+    int32_t i,retval = 0;
+    uint64_t senderbits;
+    struct multisig_addr *msig;
+    if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
+    {
+        senderbits = calc_nxt64bits(sender);
+        for (i=0; i<msig->n; i++)
+        {
+            if ( msig->pubkeys[i].nxt64bits == senderbits )
+            {
+                update_msig_info(msig,1,sender);
+                retval = 1;
+                break;
+            }
+        }
+        free(msig);
+    }
+    return(retval);
+}
+
+int32_t add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr)
 {
     cJSON *origargjson,*argjson;
-    struct multisig_addr *msig;
-    uint64_t senderbits;
-    int32_t i;
     if ( valid > 0 && (origargjson= cJSON_Parse(origargstr)) != 0 )
     {
         if ( is_cJSON_Array(origargjson) != 0 )
             argjson = cJSON_GetArrayItem(origargjson,0);
         else argjson = origargjson;
-        if  ( (msig= decode_msigjson(0,argjson,sender)) != 0 )
-        {
-            senderbits = calc_nxt64bits(sender);
-            for (i=0; i<msig->n; i++)
-            {
-                if ( msig->pubkeys[i].nxt64bits == senderbits )
-                {
-                    update_msig_info(msig,1,sender);
-                    break;
-                }
-            }
-            free(msig);
-        }
+        return(update_MGWaddr(argjson,sender));
     }
+    return(0);
+}
+
+int32_t init_multisig(struct coin_info *cp)
+{
+    FILE *fp;
+    long len,n;
+    int32_t i,num = 0;
+    cJSON *json,*item;
+    char fname[512],*buf;
+    set_MGW_msigfname(fname,0);
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        len = ftell(fp);
+        rewind(fp);
+        buf = calloc(1,len);
+        if ( (n= fread(buf,1,len,fp)) == len )
+        {
+            if ( (json= cJSON_Parse(buf)) != 0 )
+            {
+                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                {
+                    for (i=0; i<n; i++)
+                        num += update_MGWaddr(cJSON_GetArrayItem(json,i),Global_mp->myNXTADDR);
+
+                } else printf("(%s) (%s) is not array or n.%ld is too small\n",fname,buf,n);
+            } else printf("error parsing (%s) (%s)\n",fname,buf);
+        } else printf("error reading in (%s) len %ld != size %ld\n",fname,n,len);
+        fclose(fp);
+        free(buf);
+    }
+    printf("loaded %d multisig addrs locally\n",num);
 }
 
 int32_t pubkeycmp(struct pubkey_info *ref,struct pubkey_info *cmp)
