@@ -659,7 +659,7 @@ int32_t init_multisig(struct coin_info *cp)
     FILE *fp;
     long len,n;
     int32_t i,num = 0;
-    cJSON *json,*item;
+    cJSON *json;
     char fname[512],*buf;
     set_MGW_msigfname(fname,0);
     if ( (fp= fopen(fname,"rb")) != 0 )
@@ -684,6 +684,7 @@ int32_t init_multisig(struct coin_info *cp)
         free(buf);
     }
     printf("loaded %d multisig addrs locally\n",num);
+    return(num);
 }
 
 int32_t pubkeycmp(struct pubkey_info *ref,struct pubkey_info *cmp)
