@@ -288,7 +288,13 @@ cJSON *cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int32
 cJSON *cJSON_Parse(const char *value)
 {
     static int depth;
+    int i;
     cJSON *retval;
+    for (i=0; value[i]!=0; i++)
+        if ( (int)value[i] >= 128 )
+            break;
+    if ( value[i] != 0 )
+        return(0);
     if ( depth > 0 )
     {
         while ( depth > 0 )

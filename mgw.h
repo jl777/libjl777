@@ -798,7 +798,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 }
                 if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
                     printf("check %llu with get_NXT_coininfo i.%d valid.%d\n",(long long)contact->nxt64bits,i,valid);
-            } else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
+            } //else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
         }
     }
     if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,userpubkey,contacts)) != 0 )

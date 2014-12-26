@@ -1523,7 +1523,7 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
                 {
                     if ( strcmp(pubkey,acp->pubkeys[i]) != 0 )
                         printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu;%llu\n",acp->pubkeys[i],pubkey,(long long)srvbits,(long long)nxt64bits);
-                    else printf("MATCHED pubkey ");
+                    //else printf("MATCHED pubkey ");
                     free(acp->pubkeys[i]);
                     acp->pubkeys[i] = 0;
                 }
@@ -1531,7 +1531,7 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
                 {
                     if ( strcmp(acctcoinaddr,acp->acctcoinaddrs[i]) != 0 )
                         printf(">>>>>>>>>> WARNING ADDCOININFO.(%s -> %s) for %llu;%llu\n",acp->acctcoinaddrs[i],acctcoinaddr,(long long)srvbits,(long long)nxt64bits);
-                    else printf("MATCHED acctcoinaddr ");
+                    //else printf("MATCHED acctcoinaddr ");
                     free(acp->acctcoinaddrs[i]);
                     acp->acctcoinaddrs[i] = 0;
                 }
@@ -1546,7 +1546,8 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
         acp->acctcoinaddrs = realloc(acp->acctcoinaddrs,sizeof(*acp->acctcoinaddrs) * acp->numsrvbits);
         acp->pubkeys = realloc(acp->pubkeys,sizeof(*acp->pubkeys) * acp->numsrvbits);
     }
-    printf("ADDCOININFO.(%s %s) for %llu:%llu\n",acctcoinaddr,pubkey,(long long)srvbits,(long long)nxt64bits);
+    if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        printf("ADDCOININFO.(%s %s) for %llu:%llu\n",acctcoinaddr,pubkey,(long long)srvbits,(long long)nxt64bits);
     acp->srvbits[i] = srvbits;
     acp->pubkeys[i] = clonestr(pubkey);
     acp->acctcoinaddrs[i] = clonestr(acctcoinaddr);
