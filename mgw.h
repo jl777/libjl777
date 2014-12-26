@@ -1977,12 +1977,15 @@ char *calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_asset
     int32_t convert = 0;
     struct coin_info *newcp;
     char buf[MAX_JSON_FIELD],autoconvert[MAX_JSON_FIELD],issuer[MAX_JSON_FIELD],*retstr;
+    copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
+if ( withdrawaddr[0] != 0 )
+    return(withdrawaddr);
+else return(0);
     if ( tp->convname[0] != 0 )
     {
         withdrawaddr[0] = 0;
         return(0);
     }
-    copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
     copy_cJSON(autoconvert,cJSON_GetObjectItem(argjson,"autoconvert"));
     copy_cJSON(buf,cJSON_GetObjectItem(argjson,"teleport")); // "send" or <emailaddr>
     safecopy(tp->teleport,buf,sizeof(tp->teleport));
@@ -2068,7 +2071,7 @@ char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info 
             }
         }
     }
-    //printf("withdraw addr.(%s) for (%s)\n",withdrawaddr,NXTaddr);
+    printf("withdraw addr.(%s) for (%s)\n",withdrawaddr,NXTaddr);
     if ( retstr != 0 )
         strcpy(retstr,withdrawaddr);
     if ( argjson != 0 )
