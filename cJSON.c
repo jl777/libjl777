@@ -301,7 +301,7 @@ cJSON *cJSON_Parse(const char *value)
             break;
         }
     for (i=0; value[i]!=0; i++)
-        if ( (int)value[i] >= 128 )
+        if ( (unsigned int)value[i] >= 128 )
             break;
     if ( value[i] != 0 )
     {
