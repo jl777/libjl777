@@ -91,6 +91,7 @@ void send_async_message(char *msg)
 
 void handler_gotfile(struct transfer_args *args)
 {
+    void bridge_handler(struct transfer_args *args);
     FILE *fp;
     char buf[512];
     set_handler_fname(buf,args->handler,args->name);
@@ -101,6 +102,8 @@ void handler_gotfile(struct transfer_args *args)
     }
     if ( strcmp(args->handler,"mgw") == 0 )
         MGW_handler(args);
+    else if ( strcmp(args->handler,"bridge") == 0 )
+        bridge_handler(args);
 }
 
 char *get_public_srvacctsecret()

@@ -302,7 +302,12 @@ char *process_commandline_json(cJSON *json)
         else break;
     }
     return(retstr);
- }
+}
+
+void bridge_handler(struct transfer_args *args)
+{
+    printf("bridge_handler(%s %d bytes) (%s)\n",args->name,args->totallen,args->data);
+}
 
 void *GUIpoll_loop(void *arg)
 {
