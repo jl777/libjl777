@@ -2019,8 +2019,10 @@ char *calc_withdrawaddr(char *withdrawaddr,struct coin_info *cp,struct NXT_asset
         }
         else withdrawaddr[0] = autoconvert[0] = 0;
     }
+    printf("withdrawaddr.(%s) autoconvert.(%s)\n",withdrawaddr,autoconvert);
     if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
         return(0);
+    printf("return.(%s)\n",withdrawaddr);
     return(withdrawaddr);
 }
 
@@ -2039,7 +2041,10 @@ char *parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct coin_info 
     if ( tp->comment != 0 && (tp->comment[0] == '{' || tp->comment[0] == '[') && (argjson= cJSON_Parse(tp->comment)) != 0 )
     {
         if ( calc_withdrawaddr(withdrawaddr,cp,tp,argjson) == 0 )
+        {
+            printf("no withdraw.(%s) or autoconvert.(%s)\n",withdrawaddr,tp->comment);
             return(0);
+        }
     }
     minwithdraw = cp->txfee * MIN_DEPOSIT_FACTOR;
     if ( amount <= minwithdraw )
@@ -2432,7 +2437,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                     break;
             }
             if ( Debuglevel > 1 )
-                printf("%s %s %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
+                printf("%s (%s, %s) %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,withdrawaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
         }
     }
     cJSON_AddItemToObject(*jsonp,"redeems",array);
