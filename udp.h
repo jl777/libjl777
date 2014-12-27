@@ -949,7 +949,10 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             //printf("CRC[%d] <- %u offset %d len.%d\n",i,args->crcs[i],i*blocksize,(remains < blocksize) ? remains : blocksize);
             remains -= blocksize;
         }
-        for (fragi=0; fragi<args->numblocks; fragi+=(args->numblocks>>4)+1)
+        if ( args->numblocks < 8 )
+            incr = 1;
+        else incr = (args->numblocks >> 3);
+        for (fragi=0; fragi<args->numblocks; fragi+=incr)
             send_fragi(verifiedNXTaddr,NXTACCTSECRET,args,fragi);
         //start_task(Do_transfers,"transfer",10000000,(void *)&args,sizeof(args));
         return(clonestr("{\"result\":\"start_transfer pending\"}"));

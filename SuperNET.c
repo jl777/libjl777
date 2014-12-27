@@ -362,7 +362,7 @@ void bridge_handler(struct transfer_args *args)
             system(cmd);
         }
     }
-    printf("bridge_handler.gateway%d/(%s).%d (%s)\n",gatewayid,name,args->totallen,args->data);
+    printf("bridge_handler.gateway%d/(%s).%d\n",gatewayid,name,args->totallen);
 }
 
 void *GUIpoll_loop(void *arg)
