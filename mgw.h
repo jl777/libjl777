@@ -2896,28 +2896,28 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,issuerNXT)) == 0 )
             {
                 json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-                if (  actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
-                {
-                    portable_mutex_lock(&mutex);
-                    if ( cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
-                    {
-                        printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc);
-                        if ( json != 0 )
-                            free_json(json);
-                        json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-                    }
-                    else if ( cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[1]) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[2]) == 0 )
-                    {
-                        printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].pendingdeposits));
-                        if ( json != 0 )
-                            free_json(json);
-                        json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-                    }
-                    portable_mutex_unlock(&mutex);
-                }
             }
             else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
         }
+    }
+    if ( actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
+    {
+        portable_mutex_lock(&mutex);
+        if ( cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+        {
+            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc);
+            if ( json != 0 )
+                free_json(json);
+            json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+        }
+        else if ( cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[1]) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[2]) == 0 )
+        {
+            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].pendingdeposits));
+            if ( json != 0 )
+                free_json(json);
+            json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+        }
+        portable_mutex_unlock(&mutex);
     }
     if ( json != 0 )
     {
