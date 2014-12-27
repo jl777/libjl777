@@ -635,7 +635,7 @@ uint64_t get_txoutstr(int32_t *numvoutsp,char *txidstr,char *coinaddr,char *scri
             copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
             value = get_txvout(0,numvoutsp,coinaddr,script,cp,0,txidstr,vout);
             if ( Debuglevel > 3 || strcmp("bbGihDgrR8kNrDspfSvb2wrPgeha5tcYgn",coinaddr) == 0 )
-                printf("%-5s (%s) blocktxt.%ld i.%d of n.%d %s\n",cp->name,coinaddr,(long)blockheight,txind,n,txidstr);
+                printf("%-5s (%s) blocktxt.%ld txind.%d of n.%d %s vout.%d\n",cp->name,coinaddr,(long)blockheight,txind,n,txidstr,vout);
         } else printf("txind.%d >= numtxinds.%d for block.%d\n",txind,n,blockheight);
         free_json(json);
     }
