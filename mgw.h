@@ -2578,11 +2578,11 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                         for (j=0; j<n; j++)
                         {
                             item = cJSON_CreateObject();
-                            cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
                             cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
                             cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
                             if ( (value= conv_address_entry(coinaddr,txidstr,0,cp,&entries[j])) != 0 )
                             {
+                                cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
                                 cJSON_AddItemToObject(item,"addr",cJSON_CreateString(coinaddr));
                                 sprintf(numstr,"%.8f",dstr(value)), cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
                                 if ( (deposittxid= get_deposittxid(ap,txidstr,entries[j].v)) != 0 )
