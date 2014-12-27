@@ -2811,6 +2811,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         sprintf(retbuf+strlen(retbuf),",\"gatewayid\":%d",Global_mp->gatewayid);
         if ( (cp= get_coin_info("BTCD")) != 0 )
             sprintf(retbuf+strlen(retbuf),",\"requestType\":\"MGWresponse\",\"NXT\":\"%s\"}",cp->srvNXTADDR);
+        printf("MGWERROR.(%s)\n",retbuf);
         return(clonestr(retbuf));
     }
     if ( issuerNXT == 0 || issuerNXT[0] == 0 )
