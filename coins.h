@@ -305,7 +305,7 @@ uint64_t get_orderbook_assetid(char *coinstr)
     int32_t i;
     uint64_t virtassetid;
     if ( strcmp(coinstr,"NXT") == 0 )
-        return(ORDERBOOK_NXTID);
+        return(NXT_ASSETID);
     if ( (cp= get_coin_info(coinstr)) != 0 )
         return(calc_nxt64bits(cp->assetid));
     virtassetid = 0;

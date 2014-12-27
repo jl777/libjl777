@@ -29,7 +29,7 @@ int32_t NXTutxcmp(struct NXT_tx *ref,struct NXT_tx *tx,double myshare)
     {
         if ( ref->feeNQT != tx->feeNQT || ref->deadline != tx->deadline )
             return(-1);
-        if ( ref->assetidbits != ORDERBOOK_NXTID )
+        if ( ref->assetidbits != NXT_ASSETID )
         {
             if ( ref->assetidbits == tx->assetidbits && fabs((ref->U.quantityQNT*myshare) - tx->U.quantityQNT) < 0.5 && strcmp(ref->comment,tx->comment) == 0 )
                 return(0);
@@ -89,7 +89,7 @@ void set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int64_t
     U.senderbits = nxt64bits;
     U.recipientbits = other64bits;
     U.assetidbits = assetidbits;
-    if ( assetidbits != ORDERBOOK_NXTID )
+    if ( assetidbits != NXT_ASSETID )
     {
         U.type = 2;
         U.subtype = 1;
@@ -157,7 +157,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     if ( extract_cJSON_str(sighash,sizeof(sighash),json,"signatureHash") > 0 ) n++;
     if ( extract_cJSON_str(fullhash,sizeof(fullhash),json,"fullHash") > 0 ) n++;
     comment[0] = 0;
-    assetidbits = ORDERBOOK_NXTID;
+    assetidbits = NXT_ASSETID;
     quantity = 0;
     size = sizeof(*utx);
     if ( strcmp(type,"2") == 0 && strcmp(subtype,"1") == 0 )

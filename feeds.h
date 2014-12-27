@@ -160,7 +160,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     if ( strcmp(name,"nxtae") == 0 )
     {
         ep->basemult = get_asset_mult(ep->baseid);
-        if ( ep->relid != ORDERBOOK_NXTID || ep->basemult == 0 )
+        if ( ep->relid != NXT_ASSETID || ep->basemult == 0 )
         {
             printf("NXT AE only supports trading against NXT not %s || basemult.%llu is zero\n",ep->rel,(long long)ep->basemult);
             free(ep);
@@ -543,7 +543,7 @@ int32_t parse_NXT(struct exchange_state *ep,int32_t maxdepth)
 {
     cJSON *json,*bidobj,*askobj;
     char *buystr,*sellstr;
-    if ( ep->relid != ORDERBOOK_NXTID )
+    if ( ep->relid != NXT_ASSETID )
     {
         printf("NXT only supports trading against NXT not %s\n",ep->rel);
         return(0);

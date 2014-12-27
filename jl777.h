@@ -22,7 +22,7 @@
 #define MULTIGATEWAY_VARIANT 3
 #define MULTIGATEWAY_SYNCWITHDRAW 0
 
-#define ORDERBOOK_NXTID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
+#define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
 #define rand16() ((uint16_t)((rand() >> 8) & 0xffff))
 #define rand32() (((uint32_t)rand16()<<16) | rand16())
@@ -605,7 +605,7 @@ int32_t FASTMODE,SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP,UPNP,MULTIPORT;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
 int32_t DBSLEEP,NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
-char NXTSERVER[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
+char NXTSERVER[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD],NXT_ASSETIDSTR[64];
 
 struct hashtable *orderbook_txids;
 uv_loop_t *UV_loop;

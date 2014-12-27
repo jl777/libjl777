@@ -336,14 +336,15 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     uint64_t txid = 0;
     cJSON *json,*errjson,*txidobj;
     *retstrp = 0;
-    sprintf(cmd,"%s=transferAsset&secretPhrase=%s&recipient=%s&asset=%s&quantityQNT=%lld&feeNQT=%lld&deadline=%d",_NXTSERVER,secret,recipient,asset,(long long)quantity,(long long)feeNQT,deadline);
+    if ( strcmp(asset,NXT_ASSETIDSTR) == 0 )
+        sprintf(cmd,"%s=sendMoney&amountNQT=%lld",_NXTSERVER,(long long)quantity);
+    else sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,asset,(long long)quantity);
+    sprintf(cmd+strlen(cmd),"&secretPhrase=%s&recipient=%s&feeNQT=%lld&deadline=%d",secret,recipient,(long long)feeNQT,deadline);
     if ( destpubkey != 0 )
         sprintf(cmd+strlen(cmd),"&recipientPublicKey=%s",destpubkey);
     if ( comment != 0 )
     {
-        //if ( Global_mp->NXTheight >= DGSBLOCK )
-            strcat(cmd,"&message=");
-        //else strcat(cmd,"&comment=");
+        strcat(cmd,"&message=");
         strcat(cmd,comment);
     }
     jsontxt = issue_NXTPOST(curl_handle,cmd);
@@ -786,7 +787,7 @@ uint64_t get_asset_mult(uint64_t assetidbits)
     int32_t i,decimals,errcode;
     uint64_t mult = 0;
     char assetidstr[64],*jsonstr;
-    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+    if ( assetidbits == 0 || assetidbits == NXT_ASSETID )
         return(1);
     expand_nxt64bits(assetidstr,assetidbits);
     jsonstr = issue_getAsset(0,assetidstr);
@@ -817,7 +818,7 @@ uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
     int32_t i,decimals,errcode;
     uint64_t mult,assetoshis = 0;
     char assetidstr[64],*jsonstr;
-    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+    if ( assetidbits == 0 || assetidbits == NXT_ASSETID )
         return(amount * SATOSHIDEN);
     expand_nxt64bits(assetidstr,assetidbits);
     jsonstr = issue_getAsset(0,assetidstr);
@@ -850,7 +851,7 @@ double conv_assetoshis(uint64_t assetidbits,uint64_t assetoshis)
     uint64_t mult;
     double amount = 0;
     char assetidstr[64],*jsonstr;
-    if ( assetidbits == 0 || assetidbits == ORDERBOOK_NXTID )
+    if ( assetidbits == 0 || assetidbits == NXT_ASSETID )
         return((double)assetoshis / SATOSHIDEN);
     expand_nxt64bits(assetidstr,assetidbits);
     jsonstr = issue_getAsset(0,assetidstr);

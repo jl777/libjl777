@@ -1484,10 +1484,10 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
 uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey,int32_t buyNXT)
 {
     double get_current_rate(char *base,char *rel);
-    char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],comment[4096],NXTaddr[64],numstr[64],rsacct[64],*errjsontxt,*str;
+    char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],comment[4096],NXTaddr[64],numstr[64],rsacct[64],*errjsontxt;
     struct NXT_assettxid *tp;
-    uint64_t depositid,value,convtxid,convamount,total = 0;
-    int32_t j,haspubkey;
+    uint64_t depositid,value,convamount,total = 0;
+    int32_t j,haspubkey,iter;
     double rate;
     cJSON *pair,*errjson,*item;
     for (j=0; j<ap->num; j++)
@@ -1540,37 +1540,44 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     cJSON_AddItemToObject(pair,"conv",cJSON_CreateNumber(dstr(convamount)));
                     cJSON_AddItemToObject(pair,"buyNXT",cJSON_CreateNumber(buyNXT));
                     value -= convamount;
-                }
+                } else convamount = 0;
                 if ( forceflag > 0 && value > 0 )
                 {
                     expand_nxt64bits(NXTaddr,nxt64bits);
-                    depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,cp->assetid,value/ap->mult,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
-                    if ( depositid != 0 && errjsontxt == 0 )
+                    for (iter=0; iter<2; iter++)
                     {
-                        printf("deposit worked.%llu\n",(long long)depositid);
-                        add_pendingxfer(0,depositid);
-                        if ( transferjsonp != 0 )
+                        if ( value == 0 )
+                            continue;
+                        errjsontxt = 0;
+                        depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,(iter == 0) ? cp->assetid : NXT_ASSETIDSTR,(iter == 0) ? (value/ap->mult) : value,MIN_NQTFEE,DEPOSIT_XFER_DURATION,comment,depositors_pubkey);
+                        if ( depositid != 0 && errjsontxt == 0 )
                         {
-                            if ( *transferjsonp == 0 )
-                                *transferjsonp = cJSON_CreateArray();
-                            sprintf(numstr,"%llu",(long long)depositid);
-                            cJSON_AddItemToObject(pair,"depositid",cJSON_CreateString(numstr));
-                        }
-                    }
-                    else if ( errjsontxt != 0 )
-                    {
-                        printf("deposit failed.(%s)\n",errjsontxt);
-                        if ( 1 && (errjson= cJSON_Parse(errjsontxt)) != 0 )
-                        {
-                            if ( (item= cJSON_GetObjectItem(errjson,"error")) != 0 )
+                            printf("%s worked.%llu\n",(iter == 0) ? "deposit" : "convert",(long long)depositid);
+                            add_pendingxfer(0,depositid);
+                            if ( transferjsonp != 0 )
                             {
-                                copy_cJSON(buf,item);
-                                cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(buf));
+                                if ( *transferjsonp == 0 )
+                                    *transferjsonp = cJSON_CreateArray();
+                                sprintf(numstr,"%llu",(long long)depositid);
+                                cJSON_AddItemToObject(pair,(iter == 0) ? "depositid" : "convertid",cJSON_CreateString(numstr));
                             }
-                            free_json(errjson);
                         }
-                        else cJSON_AddItemToObject(pair,"depositerror",cJSON_CreateString(errjsontxt));
-                        free(errjsontxt);
+                        else if ( errjsontxt != 0 )
+                        {
+                            printf("%s failed.(%s)\n",(iter == 0) ? "deposit" : "convert",errjsontxt);
+                            if ( 1 && (errjson= cJSON_Parse(errjsontxt)) != 0 )
+                            {
+                                if ( (item= cJSON_GetObjectItem(errjson,"error")) != 0 )
+                                {
+                                    copy_cJSON(buf,item);
+                                    cJSON_AddItemToObject(pair,(iter == 0) ? "depositerror" : "converterror",cJSON_CreateString(buf));
+                                }
+                                free_json(errjson);
+                            }
+                            else cJSON_AddItemToObject(pair,(iter == 0) ? "depositerror" : "converterror",cJSON_CreateString(errjsontxt));
+                            free(errjsontxt);
+                        }
+                        value = convamount;
                     }
                 }
                 if ( transferjsonp != 0 )
