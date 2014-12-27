@@ -2582,9 +2582,9 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 
 int32_t cmp_batch_depositinfo(struct batch_info *refbatch,struct batch_info *batch)
 {
+    printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),batch->boughtNXT);
     if ( refbatch->pendingdeposits == 0 )
         return(-1);
-    printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),batch->boughtNXT);
     if ( refbatch->balance != batch->balance || refbatch->circulation != batch->circulation || refbatch->unspent != batch->unspent || refbatch->pendingdeposits != batch->pendingdeposits || refbatch->boughtNXT != batch->boughtNXT )
         return(-1);
     return(0);
@@ -2920,6 +2920,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     }
     if ( json != 0 )
     {
+        cJSON *array;
         if ( NXTaddr == 0 || NXTaddr[0] == 0 )
             strcpy(NXTaddr,cp->name);
         if ( (cp= get_coin_info("BTCD")) != 0 )
@@ -2928,6 +2929,15 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         cJSON_AddItemToObject(json,"gatewayid",cJSON_CreateNumber(Global_mp->gatewayid));
         cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
         cJSON_AddItemToObject(json,"NXTheight",cJSON_CreateNumber(get_NXTheight()));
+        array = cJSON_CreateArray();
+        for (i=0; i<NUM_GATEWAYS; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].balance)));
+        for (i=0; i<NUM_GATEWAYS; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].unspent)));
+        for (i=0; i<NUM_GATEWAYS; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].pendingdeposits)));
+        
+        cJSON_AddItemToObject(json,"depinfo",array);
         retstr = cJSON_Print(json);
         save_MGW_status(NXTaddr,retstr);
         //stripwhite_ns(retstr,strlen(retstr));
