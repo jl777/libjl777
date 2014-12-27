@@ -2424,7 +2424,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     else free_json(array);
     if ( sendmoney != 0 && matches == NUM_GATEWAYS )
     {
-        fprintf(stderr,"all gateways match ready.%d\n",readyflag);
+        fprintf(stderr,"all gateways match\n");
         if ( readyflag != 0 )//Global_mp->gatewayid == 0 )
         {
             if ( rp->batchsigned != 0 && (cointxid= sign_and_sendmoney(&AMtxid,cp,(uint32_t)cp->RTblockheight)) != 0 )
@@ -2835,7 +2835,18 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         //if ( actionflag != 0 || (retstr= check_MGW_cache(cp,0)) == 0 )
         {
             if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,issuerNXT)) == 0 )
+            {
                 json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+                if ( cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+                {
+                    if ( Global_mp->gatewayid == NUM_GATEWAYS-1 )
+                    {
+                        free_json(json);
+                        printf(">>>>>>>>>>>>>> STARTING WITHDRAW <<<<<<<<<<<<<<<<<<<\n");
+                        json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+                    }
+                }
+            }
             else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
         }
     }
