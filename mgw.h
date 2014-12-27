@@ -2841,8 +2841,9 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
                 {
                     if ( Global_mp->gatewayid == NUM_GATEWAYS-1 )
                     {
-                        free_json(json);
-                        printf(">>>>>>>>>>>>>> STARTING WITHDRAW <<<<<<<<<<<<<<<<<<<\n");
+                        printf(">>>>>>>>>>>>>> STARTING WITHDRAW %u <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc);
+                        if ( json != 0 )
+                            free_json(json);
                         json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
                     }
                 }
