@@ -733,7 +733,8 @@ bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
             free_json(json);
             if ( strlen(pubkeystr) == sizeof(pubkey)*2 )
             {
-                *haspubkeyp = 1;
+                if ( haspubkeyp != 0 )
+                    *haspubkeyp = 1;
                 decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr);
             }
         }
