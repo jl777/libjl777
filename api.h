@@ -1738,9 +1738,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
                 //data = malloc(datalen);
                 //datalen = decode_hex(data,datalen,retstr);
                 printf("start_transfer\n");
-                sprintf(fname,"%s.%d",(destNXT[0] == 0) ? "ALL" : destNXT,Global_mp->gatewayid);
-                if ( destNXT[0] != 0 )
-                    sprintf(fname+strlen(fname),".%s",destNXT);
+                sprintf(fname,"MGW%d.%s",Global_mp->gatewayid,(destNXT[0] == 0) ? "ALL" : destNXT);
                 str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,(uint8_t *)retstr,(int32_t)strlen(retstr),timeout,"bridge"); // start_transfer frees data
             }
             if ( str != 0 )

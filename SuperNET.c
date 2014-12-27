@@ -289,6 +289,12 @@ char *process_commandline_json(cJSON *json)
     json = cJSON_CreateArray();
     for (i=0; i<3; i++)
     {
+        char *load_filestr(char *userNXTaddr,int32_t gatewayid);
+        if ( retjsons[i] == 0 && userNXTaddr[0] != 0 && (filestr= load_filestr(userNXTaddr,i)) != 0 )
+        {
+            retjsons[i] = cJSON_Parse(filestr);
+            printf(">>>>>>>>>>>>>>> load_filestr!!! %s.%d json.%p\n",userNXTaddr,i,json);
+        }
         if ( retjsons[i] != 0 )
             cJSON_AddItemToArray(json,retjsons[i]);
     }
@@ -313,9 +319,46 @@ char *process_commandline_json(cJSON *json)
     return(retstr);
 }
 
+char *load_filestr(char *userNXTaddr,int32_t gatewayid)
+{
+    long fpos;
+    char fname[1024],*buf,*retstr = 0;
+    sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,userNXTaddr);
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        fpos = ftell(fp);
+        if ( fpos > 0 )
+        {
+            rewind(fp);
+            buf = calloc(1,fpos);
+            if ( fread(buf,1,fpos,fp) == fpos )
+                retstr = buf, buf = 0;
+        }
+        fclose(fp);
+        if ( buf != 0 )
+            free(buf);
+    }
+    return(retstr);
+}
+
 void bridge_handler(struct transfer_args *args)
 {
-    printf("bridge_handler(%s %d bytes) (%s)\n",args->name,args->totallen,args->data);
+    char fname[1024],cmd[1024],*name = args->name;
+    if ( strncmp(name,"MGW",3) == 0 && name[3] >= '0' && name[3] <= '2' )
+    {
+        gatewayid = (name[3] - '0');
+        name += 4;
+        sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,name);
+        if ( (fp= fopen(fname,"wb")) != 0 )
+        {
+            fwrite(args->data,1,args->datalen,fp);
+            fclose(fp);
+            sprintf(cmd,"chmod +r %s",name);
+            system(cmd);
+        }
+    }
+    printf("bridge_handler.gateway%d/(%s).%d (%s)\n",gatewayid,name,args->totallen,args->data);
 }
 
 void *GUIpoll_loop(void *arg)

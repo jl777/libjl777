@@ -693,7 +693,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
+    char ipaddr[64],coinstr[MAX_JSON_FIELD],dirname[1024],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
     void close_SuperNET_dbs();
     if ( Global_mp == 0 )
@@ -713,6 +713,8 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             ensure_directory("MGW");
             ensure_directory("MGW/msig");
             ensure_directory("MGW/status");
+            sprintf(dirname,"%s/%s",DATADIR,"mgw"), ensure_directory(dirname);
+            sprintf(dirname,"%s/%s",DATADIR,"bridge"), ensure_directory(dirname);
         }
         ensure_directory("backups");
         ensure_directory("backups/telepods");

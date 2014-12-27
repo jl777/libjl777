@@ -94,14 +94,16 @@ void handler_gotfile(struct transfer_args *args)
     void bridge_handler(struct transfer_args *args);
     FILE *fp;
     char buf[512];
-    set_handler_fname(buf,args->handler,args->name);
-    if ( (fp= fopen(buf,"wb")) != 0 )
-    {
-        fwrite(args->data,1,args->totallen,fp);
-        fclose(fp);
-    }
     if ( strcmp(args->handler,"mgw") == 0 )
+    {
+        set_handler_fname(buf,args->handler,args->name);
+        if ( (fp= fopen(buf,"wb")) != 0 )
+        {
+            fwrite(args->data,1,args->totallen,fp);
+            fclose(fp);
+        }
         MGW_handler(args);
+    }
     else if ( strcmp(args->handler,"bridge") == 0 )
         bridge_handler(args);
 }
