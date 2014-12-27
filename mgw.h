@@ -47,6 +47,7 @@ void save_MGW_status(char *NXTaddr,char *jsonstr)
         fclose(fp);
         sprintf(cmd,"chmod +r %s",fname);
         system(cmd);
+        printf("fname.(%s) cmd.(%s)\n",fname,cmd);
     }
 }
 
@@ -1534,7 +1535,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     if ( convamount >= value )
                     {
                         convamount = value;
-                        buyNXT = convamount * rate;
+                        buyNXT = (convamount * rate) / SATOSHIDEN;
                     }
                     cJSON_AddItemToObject(pair,"rate",cJSON_CreateNumber(rate));
                     cJSON_AddItemToObject(pair,"conv",cJSON_CreateNumber(dstr(convamount)));
