@@ -352,13 +352,13 @@ void bridge_handler(struct transfer_args *args)
     if ( strncmp(name,"MGW",3) == 0 && name[3] >= '0' && name[3] <= '2' )
     {
         gatewayid = (name[3] - '0');
-        name += 4;
+        name += 5;
         sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,name);
         if ( (fp= fopen(fname,"wb")) != 0 )
         {
             fwrite(args->data,1,args->totallen,fp);
             fclose(fp);
-            sprintf(cmd,"chmod +r %s",name);
+            sprintf(cmd,"chmod +r %s",fname);
             system(cmd);
         }
     }

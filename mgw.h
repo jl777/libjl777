@@ -417,7 +417,7 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
         pubkeyjsontxt[0] = 0;
         for (i=0; i<msig->n; i++)
             len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
-        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->created,msig->m,msig->n,msig->NXTaddr,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
+        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"buyNXT\":%u,\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->buyNXT,msig->created,msig->m,msig->n,msig->NXTaddr,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
         if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
             printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
         return(clonestr(jsontxt));
@@ -458,6 +458,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
             safecopy(msig->coinstr,coinstr,sizeof(msig->coinstr));
             copy_cJSON(msig->redeemScript,redeemobj);
             copy_cJSON(msig->multisigaddr,addrobj);
+            msig->buyNXT = (int32_t)get_API_int(cJSON_GetObjectItem(obj,"buyNXT"),10);
             for (j=0; j<n; j++)
             {
                 pobj = cJSON_GetArrayItem(pubkeysobj,j);

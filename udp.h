@@ -709,7 +709,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             checkcrc = _crc32(0,args->data,args->totallen);
             if ( checkcrc != args->totalcrc )
                 printf("totalcrc ERROR %u != %u\n",checkcrc,args->totalcrc);
-            fprintf(stderr,"update_transer_args return count.%d (%s)\n",count,args->totallen<4096?(char *)args->data:"");
+            //fprintf(stderr,"update_transer_args return count.%d\n",count,args->totallen<4096?(char *)args->data:"");
         }
         //fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
@@ -766,7 +766,8 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler);
             if ( fragi < args->numblocks )
                 args->crcs[fragi] = checkcrc;
-            fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
+            if ( Debuglevel > 2 )
+                fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
             if ( datacrc != args->gotcrcs[fragi] )
             {
                 //fprintf(stderr,"copy %p <- %p datalen.%d\n",args->data + fragi*blocksize,data,datalen);
@@ -923,7 +924,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize=0;
     struct transfer_args *args;
     int64_t len;
-    int32_t didalloc,remains,fragi,totalcrc,blocksize = 512;
+    int32_t incr,didalloc,remains,fragi,totalcrc,blocksize = 512;
     if ( data == 0 || totallen == 0 )
     {
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);
