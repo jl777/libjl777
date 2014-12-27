@@ -250,7 +250,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( cp != 0 && nread > 0 )
     {
         
-        if ( Debuglevel > 0 || (nread > 400 && nread != MAX_UDPLEN) )
+        if ( Debuglevel > 2 || (nread > 400 && nread != MAX_UDPLEN) )
             fprintf(stderr,"UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
@@ -498,7 +498,7 @@ void send_packet(int32_t queueflag,uint32_t ipbits,struct sockaddr *destaddr,uns
     }
     //if ( len <= MAX_UDPLEN )//&& Global_mp->udp != 0 )
     {
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 3 )
             printf("portable_udpwrite Q.%d %d to (%s:%d)\n",queueflag,len,ipaddr,port);
         portable_udpwrite(queueflag,destaddr,0,finalbuf,len,ALLOCWR_ALLOCFREE);
     }
@@ -531,7 +531,7 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
     if ( destaddr != 0 )
     {
         port = extract_nameport(destip,sizeof(destip),(struct sockaddr_in *)destaddr);
-        if ( Debuglevel > 0 )
+        if ( Debuglevel > 2 )
             printf("DIRECT send encrypted.%d to (%s/%d) finalbuf.%d\n",encrypted,destip,port,len);
         send_packet(queueflag,0,destaddr,outbuf,len);
     }
@@ -540,7 +540,7 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
         expand_ipbits(destip,stats->ipbits);
         if ( stats->ipbits != 0 )
         {
-            if ( Debuglevel > 0 )
+            if ( Debuglevel > 2 )
                 printf("DIRECT udpsend {%s} to %s finalbuf.%d\n",hopNXTaddr,destip,len);
             port = get_SuperNET_port(destip);
             uv_ip4_addr(destip,port,&addr);
