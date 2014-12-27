@@ -953,7 +953,7 @@ int32_t process_directnet_syncwithdraw(struct batch_info *wp)
         gatewayid = (wp->W.srcgateway % NUM_GATEWAYS);
         cp->withdrawinfos[gatewayid] = *wp;
         *wp = cp->withdrawinfos[Global_mp->gatewayid];
-        printf("GOT <<<<<<<<<<<< publish_withdraw_info.%d coinid.%d %.8f crc %08x\n",gatewayid,wp->W.coinid,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc);
+        printf("GOT <<<<<<<<<<<< publish_withdraw_info.%d coinid.%d %.8f crc %08x balance %.8f unspent %.8f pendingwithdraws %.8f\n",gatewayid,wp->W.coinid,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc,dstr(cp->withdrawinfos[gatewayid].balance),dstr(cp->withdrawinfos[gatewayid].unspent),dstr(cp->withdrawinfos[gatewayid].pendingdeposits));
     }
     return(sizeof(*wp));
 }
@@ -1000,12 +1000,13 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         fprintf(stderr,"publish_withdraw_info.%d -> %d coinid.%d %.8f crc %08x\n",Global_mp->gatewayid,gatewayid,wp->W.coinid,dstr(wp->W.amount),W.rawtx.batchcrc);
         if ( gatewayid == Global_mp->gatewayid )
         {
-            process_directnet_syncwithdraw(wp);
-            cp->withdrawinfos[gatewayid] = *wp;
+            process_directnet_syncwithdraw(&W);
+            cp->withdrawinfos[gatewayid] = W;
         }
         else
         {
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&cp->BATCH,(int32_t)sizeof(cp->BATCH),300,"mgw");
+            printf("send balance %.8f, unspent %.8f pendingdeposits %.8f\n",dstr(W.balance),dstr(W.unspent),dstr(W.pendingdeposits));
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&W,(int32_t)sizeof(W),300,"mgw");
             if ( retstr != 0 )
                 free(retstr);
         }
