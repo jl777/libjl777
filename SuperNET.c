@@ -290,6 +290,7 @@ char *process_commandline_json(cJSON *json)
     for (i=0; i<3; i++)
     {
         char *load_filestr(char *userNXTaddr,int32_t gatewayid);
+        char *filestr;
         if ( retjsons[i] == 0 && userNXTaddr[0] != 0 && (filestr= load_filestr(userNXTaddr,i)) != 0 )
         {
             retjsons[i] = cJSON_Parse(filestr);
@@ -322,6 +323,7 @@ char *process_commandline_json(cJSON *json)
 char *load_filestr(char *userNXTaddr,int32_t gatewayid)
 {
     long fpos;
+    FILE *fp;
     char fname[1024],*buf,*retstr = 0;
     sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,userNXTaddr);
     if ( (fp= fopen(fname,"rb")) != 0 )
