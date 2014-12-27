@@ -2716,14 +2716,14 @@ char *check_MGW_cache(struct coin_info *cp,char *userNXTaddr)
             {
                 cacheheight = (int32_t)get_cJSON_int(json,"NXTheight");
                 cachetimestamp = (int32_t)get_cJSON_int(json,"timestamp");
-                if ( cacheheight >= height ) // > can happen on blockchain rescans
+                printf("uptodate.%u vs %u | cache.(%d t%d) vs (%d t%d)\n",cp->uptodate,(coinheight - cp->minconfirms),cacheheight,cachetimestamp,height,timestamp);
+                if ( cacheheight > 0 && cacheheight >= height ) // > can happen on blockchain rescans
                     retstr = buf, buf = 0;
                 free_json(json);
             }
             if ( buf != 0 )
                 free(buf);
         }
-
     }
     return(retstr);
 }
