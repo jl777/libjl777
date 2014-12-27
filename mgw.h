@@ -466,6 +466,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
                 } else { free(msig); msig = 0; }
             }
+            printf("NXT.%s -> (%s)\n",nxtstr,msig->multisigaddr);
             if ( Debuglevel > 3 )
                 fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
@@ -2435,7 +2436,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     for (i=sum=0; i<ap->num; i++)
     {
         tp = ap->txids[i];
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("%d of %d: (%s) redeem.%llu (%llu vs %llu) (%llu vs %llu)\n",i,ap->num,tp->comment,(long long)tp->redeemtxid,(long long)tp->receiverbits,(long long)nxt64bits,(long long)tp->assetbits,(long long)ap->assetbits);
         str = (tp->AMtxidbits != 0) ? ": REDEEMED" : " <- redeem";
         if ( tp->redeemtxid != 0 && tp->receiverbits == nxt64bits && tp->assetbits == ap->assetbits && tp->U.assetoshis >= MIN_DEPOSIT_FACTOR*(cp->txfee + cp->NXTfee_equiv) )
@@ -2451,7 +2452,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
                     break;
             }
         }
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("%s (%s, %s) %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,withdrawaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
     }
     cJSON_AddItemToObject(*jsonp,"redeems",array);
@@ -2601,7 +2602,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
             }
         }
         free(msigs);
-        cJSON_AddItemToObject(*jsonp,"deposits",array);
+        cJSON_AddItemToObject(*jsonp,"userdeposits",array);
     }
     if ( ap->num > 0 )
     {
@@ -2655,7 +2656,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                 cJSON_AddItemToArray(array,item);
             }
         }
-        cJSON_AddItemToObject(*jsonp,"withdraws",array);
+        cJSON_AddItemToObject(*jsonp,"userwithdraws",array);
     }
     assetoshis = get_accountassets(0,ap,NXTaddr);
     balance = assetoshis + pending_deposits + pending_withdraws;
