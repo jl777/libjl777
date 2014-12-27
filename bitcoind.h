@@ -970,14 +970,15 @@ char *get_bitcoind_pubkey(char *pubkey,struct coin_info *cp,char *coinaddr)
     retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"validateaddress",addr);
     if ( retstr != 0 )
     {
-        if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        if ( (MGW_initdone == 0 && Debuglevel > 3) || (MGW_initdone != 0 && Debuglevel > 2) )
             printf("got retstr.(%s)\n",retstr);
         json = cJSON_Parse(retstr);
         if ( json != 0 )
         {
             pubobj = cJSON_GetObjectItem(json,"pubkey");
             copy_cJSON(pubkey,pubobj);
-            printf("got.%s get_coinaddr_pubkey (%s)\n",cp->name,pubkey);
+            if ( Debuglevel > 2 )
+                printf("got.%s get_coinaddr_pubkey (%s)\n",cp->name,pubkey);
             free_json(json);
         } else printf("get_coinaddr_pubkey.%s: parse error.(%s)\n",cp->name,retstr);
         free(retstr);

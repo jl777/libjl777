@@ -2566,6 +2566,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                     }
                     if ( (entries= get_address_entries(&n,cp->name,msig->multisigaddr)) != 0 )
                     {
+                        printf("got %d entries for (%s)\n",n,msig->multisgaddr);
                         for (j=0; j<n; j++)
                         {
                             item = cJSON_CreateObject();
@@ -2579,7 +2580,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                                 if ( (deposittxid= get_deposittxid(ap,txidstr,entries[j].v)) != 0 )
                                 {
                                     expand_nxt64bits(depositstr,deposittxid);
-                                    cJSON_AddItemToObject(item,"deposit",cJSON_CreateString(depositstr));
+                                    cJSON_AddItemToObject(item,"depositid",cJSON_CreateString(depositstr));
                                     cJSON_AddItemToObject(item,"status",cJSON_CreateString("complete"));
                                 }
                                 else

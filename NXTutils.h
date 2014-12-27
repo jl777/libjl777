@@ -1546,7 +1546,7 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
         acp->acctcoinaddrs = realloc(acp->acctcoinaddrs,sizeof(*acp->acctcoinaddrs) * acp->numsrvbits);
         acp->pubkeys = realloc(acp->pubkeys,sizeof(*acp->pubkeys) * acp->numsrvbits);
     }
-    if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+    if ( (MGW_initdone == 0 && Debuglevel > 3) || (MGW_initdone != 0 && Debuglevel > 2) )
         printf("ADDCOININFO.(%s %s) for %llu:%llu\n",acctcoinaddr,pubkey,(long long)srvbits,(long long)nxt64bits);
     acp->srvbits[i] = srvbits;
     acp->pubkeys[i] = clonestr(pubkey);
