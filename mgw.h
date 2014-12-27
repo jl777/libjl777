@@ -1464,7 +1464,7 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
         value = get_txoutstr(&numvouts,txidstr,coinaddr,script,cp,entry->blocknum,entry->txind,entry->v);
         if ( strcmp("31dcbc5b7cfd7fc8f2c1cedf65f38ec166b657cc9eb15e7d1292986eada35ea9",txidstr) == 0 ) // due to uncommented tx
             return(0);
-        if ( entry->v == numvouts-1 ) // the last output when there is a marker is internal change
+        if ( entry->v == numvouts-1 ) // the last output when there is a marker is internal change, need to get numvouts first
         {
             get_txoutstr(0,txidstr_v0,coinaddr_v0,script_v0,cp,entry->blocknum,entry->txind,0);
             if ( strcmp(coinaddr_v0,cp->marker) == 0 )

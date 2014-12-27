@@ -550,7 +550,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
         pod = pods[i];
         if ( coinstr != 0 && coinstr[0] != '*' && strcmp(coinstr,pod->coinstr) != 0 )
             continue;
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             fprintf(stderr,"%5s.%-4d minage.%-4d %s size.%d lag.%-8d %.8f | %s clone.%d\n",pod->coinstr,i,minage,pod->txid,pod->H.size,now - pod->H.createtime,dstr(pod->satoshis),_podstate(pod->podstate),pod->clonetime==0?0:pod->clonetime-now);
         podstate = pod->podstate;
         createtime = pod->H.createtime;
@@ -604,7 +604,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
     }
     if ( m > max_in_db(TELEPOD_DATA) )
         set_max_in_db(TELEPOD_DATA,m);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf(" %s avail %.8f, maturing %.8f, inbound %.8f, outbound %.8f, doublespent %.8f, cancelled %.8f | set nump.%d\n",coinstr,*availp,*maturingp,*inboundp,*outboundp,*doublespentp,*cancelledp,n);
     *nump = n;
     return(pods);
