@@ -4,11 +4,14 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-// tighten security, consensus triggers for deposit  +withdraw
-// +autoconvert!
+// tighten security
 // save redeems in HTML (moneysent AM) and share multisigs
 // BTC, BTCD, DOGE, VRC, OPAL, BITS, VPN
-
+// wrong status on withdrawn: 		http://jnxt.org/init/?requestType=status&NXT=NXT-HTB8-GGJG-ZDRK-6N3LC&coin=BTCD&convertNXT=10
+// "redeemtxid":	"9666141869701832622",
+//"value":	"5.00000000",
+//"timestamp":	25943545,
+//"status":	"pending"
 
 #ifndef mgw_h
 #define mgw_h
@@ -420,7 +423,7 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
         pubkeyjsontxt[0] = 0;
         for (i=0; i<msig->n; i++)
             len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
-        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"buyNXT\":%u,\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->buyNXT,msig->created,msig->m,msig->n,msig->NXTaddr,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),pubkeyjsontxt);
+        sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"buyNXT\":%u,\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"coinid\":\"%d\",\"gatewayid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->buyNXT,msig->created,msig->m,msig->n,msig->NXTaddr,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,conv_coinstr(msig->coinstr),Global_mp->gatewayid,pubkeyjsontxt);
         if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
             printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
         return(clonestr(jsontxt));
@@ -2523,7 +2526,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             printf("%s (%s, %s) %llu %s %llu %.8f %.8f | %llu\n",cp->name,destaddr,withdrawaddr,(long long)nxt64bits,str,(long long)tp->redeemtxid,dstr(tp->quantity),dstr(tp->U.assetoshis),(long long)tp->AMtxidbits);
     }
     cJSON_AddItemToObject(*jsonp,"redeems",array);
-    balance = unspent - pending_withdraw - circulation;
+    balance = unspent - pending_withdraw - circulation - pendingdeposits;
     sprintf(numstr,"%.8f",dstr(balance)), cJSON_AddItemToObject(*jsonp,"revenues",cJSON_CreateString(numstr));
     if ( cp->boughtNXT > 0 && balance != 0. )
     {
@@ -2657,10 +2660,10 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                         for (j=0; j<n; j++)
                         {
                             item = cJSON_CreateObject();
-                            cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
-                            cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
                             if ( (value= conv_address_entry(coinaddr,txidstr,0,cp,&entries[j])) != 0 )
                             {
+                                cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
+                                cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
                                 cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
                                 cJSON_AddItemToObject(item,"addr",cJSON_CreateString(coinaddr));
                                 sprintf(numstr,"%.8f",dstr(value)), cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
@@ -2679,8 +2682,8 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                                     }
                                     else cJSON_AddItemToObject(item,"status",cJSON_CreateString("too small"));
                                 }
+                                cJSON_AddItemToArray(array,item);
                             }
-                            cJSON_AddItemToArray(array,item);
                         }
                     }
                 }
@@ -2723,7 +2726,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                     }
                     if ( tp->AMtxidbits == 0 && is_limbo_redeem(cp,tp->AMtxidbits) == 0 )
                         cJSON_AddItemToObject(item,"status",cJSON_CreateString("queued"));
-                    else if ( tp->AMtxidbits == 1 ) cJSON_AddItemToObject(item,"status",cJSON_CreateString("pending"));
+                    else if ( tp->AMtxidbits == 1 ) cJSON_AddItemToObject(item,"status",cJSON_CreateString("finished"));
                     else if ( is_limbo_redeem(cp,tp->AMtxidbits) != 0 ) cJSON_AddItemToObject(item,"status",cJSON_CreateString("completed"));
                     else if ( tp->AMtxidbits > 1 )
                     {
