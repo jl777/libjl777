@@ -1719,7 +1719,7 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
     if ( sender[0] != 0 )
     {
         retstr = MGW(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,destNXT,pubkey);
-        if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        if ( (MGW_initdone == 0 && Debuglevel > 3) || (MGW_initdone != 0 && Debuglevel > 2) )
             printf("got retstr.(%s)\n",retstr);
         if ( previpaddr != 0 )
         {
