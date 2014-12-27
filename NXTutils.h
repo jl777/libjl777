@@ -1184,7 +1184,7 @@ uint32_t get_NXTheight()
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            height = (int32_t)get_cJSON_int(json,"height");
+            height = (int32_t)get_cJSON_int(json,"numberOfBlocks");
             free_json(json);
         }
         free(jsonstr);
