@@ -466,7 +466,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     msig->pubkeys[j].ipbits = calc_ipbits(ipaddr);
                 } else { free(msig); msig = 0; }
             }
-            printf("NXT.%s -> (%s)\n",nxtstr,msig->multisigaddr);
+            //printf("NXT.%s -> (%s)\n",nxtstr,msig->multisigaddr);
             if ( Debuglevel > 3 )
                 fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
@@ -1454,6 +1454,9 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
     char txidstr_v0[1024],coinaddr_v0[1024],script_v0[4096],_script[4096];
     int32_t numvouts;
     uint64_t value = 0;
+    coinaddr[0] = txidstr[0] = 0;
+    if ( script != 0 )
+        script[0] = 0;
     if ( entry->vinflag == 0 )
     {
         if ( script == 0 )
@@ -1883,7 +1886,9 @@ void process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr **ms
     sprintf(numstr,"%.8f",dstr(circulation)), cJSON_AddItemToObject(*jsonp,"circulation",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(unspent)), cJSON_AddItemToObject(*jsonp,"unspent",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(total)), cJSON_AddItemToObject(*jsonp,"pendingdeposits",cJSON_CreateString(numstr));
-    cJSON_AddItemToObject(*jsonp,"deposits",array);
+    if ( cJSON_GetArraySize(array) > 0 )
+        cJSON_AddItemToObject(*jsonp,"alldeposits",array);
+    else free_json(array);
     *unspentp = unspent;
 }
 
@@ -2380,7 +2385,9 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
             cJSON_AddItemToArray(array,item);
         }
     }
-    cJSON_AddItemToObject(*jsonp,"withdraws",array);
+    if ( cJSON_GetArraySize(array) > 0 )
+        cJSON_AddItemToObject(*jsonp,"allredeems",array);
+    else free_json(array);
     if ( sendmoney != 0 && matches == NUM_GATEWAYS )
     {
         fprintf(stderr,"all gateways match\n");
@@ -2409,7 +2416,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
         cJSON_AddItemToArray(array,cJSON_CreateNumber(cp->withdrawinfos[gatewayid].rawtx.batchcrc));
     cJSON_AddItemToObject(*jsonp,"crcs",array);
-    cJSON_AddItemToObject(*jsonp,"numredeems",cJSON_CreateNumber(rp->numredeems));
+    cJSON_AddItemToObject(*jsonp,"allwithdraws",cJSON_CreateNumber(rp->numredeems));
     sprintf(numstr,"%.8f",dstr(rp->amount)), cJSON_AddItemToObject(*jsonp,"pending_withdraw",cJSON_CreateString(numstr));
     return(AMtxid);
 }
