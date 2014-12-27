@@ -2566,7 +2566,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                     }
                     if ( (entries= get_address_entries(&n,cp->name,msig->multisigaddr)) != 0 )
                     {
-                        printf("got %d entries for (%s)\n",n,msig->multisgaddr);
+                        printf("got %d entries for (%s)\n",n,msig->multisigaddr);
                         for (j=0; j<n; j++)
                         {
                             item = cJSON_CreateObject();
