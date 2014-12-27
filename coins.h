@@ -763,6 +763,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
             APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
             DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
+            MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
             UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);

@@ -186,7 +186,10 @@ char *process_commandline_json(cJSON *json)
                 {
                     copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
                     if ( coinstr[0] != 0 )
+                    {
                         issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
+                        sleep(1);
+                    }
                 }
                 sleep(1);
             }
@@ -234,7 +237,7 @@ char *process_commandline_json(cJSON *json)
                 }
                 //fprintf(stderr,"(%p) %s\n",retjson,retstr);
                 free(retstr),retstr = 0;
-            } else usleep(1000);
+            } else usleep(3000);
         }
     }
     for (i=0; i<3; i++)

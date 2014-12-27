@@ -1294,11 +1294,12 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 
 char *lotto_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char refNXTaddr[MAX_JSON_FIELD],assetidstr[MAX_JSON_FIELD];
+    char refNXTaddr[MAX_JSON_FIELD],assetidstr[MAX_JSON_FIELD],lottoseed[MAX_JSON_FIELD];
     copy_cJSON(refNXTaddr,objs[0]);
     copy_cJSON(assetidstr,objs[1]);
+    copy_cJSON(lottoseed,objs[2]);
     if ( refNXTaddr[0] != 0 && assetidstr[0] != 0 )
-        return(update_lotto_transactions(refNXTaddr,assetidstr));
+        return(update_lotto_transactions(refNXTaddr,assetidstr,lottoseed));
     return(clonestr("{\"error\":\"illegal lotto parms\"}"));
 }
 
@@ -1864,7 +1865,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
     // Privatbet
-    static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", 0 };
+    static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", 0 };
 
      static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGW, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto };
     int32_t i,j;

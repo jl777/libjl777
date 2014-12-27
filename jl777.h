@@ -371,6 +371,8 @@ struct withdraw_info
 
 struct batch_info
 {
+    uint64_t balance,circulation,unspent,pendingdeposits;
+    uint32_t boughtNXT,pad0,pad1,pad2;
     struct withdraw_info W;
     struct rawtransaction rawtx;
 };
@@ -391,7 +393,7 @@ struct coin_info
     char name[64],backupdir[512],privacyserver[64],myipaddr[64],transporteraddr[128],bridgeipaddr[64],MGWissuer[64];
     char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
     uint64_t *limboarray,srvpubnxtbits,privatebits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,blockheight,RTblockheight,nxtaccts[512];
-    uint32_t uptodate;
+    uint32_t uptodate,boughtNXT;
     int32_t coinid,maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;
     uint16_t bridgeport;
 };
@@ -604,7 +606,7 @@ int32_t SOFTWALL,SUPERNET_PORT = 7777;
 int32_t FASTMODE,SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP,UPNP,MULTIPORT;   // 3134975738 = 0xbadbeefa;
 int32_t DGSBLOCK = 213000;
-int32_t DBSLEEP,NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
+int32_t MAX_BUYNXT,DBSLEEP,NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
 char NXTSERVER[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD],NXT_ASSETIDSTR[64];
 
 struct hashtable *orderbook_txids;
