@@ -2831,7 +2831,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     }
     else
     {
-        if ( actionflag != 0 || (retstr= check_MGW_cache(cp,0)) == 0 )
+        //if ( actionflag != 0 || (retstr= check_MGW_cache(cp,0)) == 0 )
         {
             if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,issuerNXT)) == 0 )
                 json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
