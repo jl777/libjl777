@@ -5,6 +5,7 @@
 //  Copyright (c) 2014 jl777. MIT License.
 //
 // tighten security, debug xfer of large status, consensus triggers for deposit/withdraw, autoconvert!
+// BTC, BTCD, DOGE, VRC, OPAL, BITS, VPN
 
 #ifndef mgw_h
 #define mgw_h
@@ -1230,7 +1231,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
         }
         if ( argjson != 0 )
             free_json(argjson);
-    } else printf("can't JSON parse (%s)\n",ap->U.jsonstr);
+    } else if ( Debuglevel > 2 ) printf("can't JSON parse (%s)\n",ap->U.jsonstr);
 }
 
 uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *receiver,cJSON *item,char *refNXTaddr,char *assetid,int32_t syncflag,struct coin_info *refcp)
@@ -1449,7 +1450,7 @@ int32_t ready_to_xferassets(uint64_t *txidp)
 
 uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coin_info *cp,struct address_entry *entry)
 {
-    char coinaddr_v0[1024],script_v0[4096],_script[4096];
+    char txidstr_v0[1024],coinaddr_v0[1024],script_v0[4096],_script[4096];
     int32_t numvouts;
     uint64_t value = 0;
     if ( entry->vinflag == 0 )
@@ -1459,9 +1460,9 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
         value = get_txoutstr(&numvouts,txidstr,coinaddr,script,cp,entry->blocknum,entry->txind,entry->v);
         if ( strcmp("31dcbc5b7cfd7fc8f2c1cedf65f38ec166b657cc9eb15e7d1292986eada35ea9",txidstr) == 0 ) // due to uncommented tx
             return(0);
-        if ( entry->v == numvouts-1 )
+        if ( entry->v == numvouts-1 ) // the last output when there is a marker is internal change
         {
-            get_txoutstr(0,txidstr,coinaddr_v0,script_v0,cp,entry->blocknum,entry->txind,0);
+            get_txoutstr(0,txidstr_v0,coinaddr_v0,script_v0,cp,entry->blocknum,entry->txind,0);
             if ( strcmp(coinaddr_v0,cp->marker) == 0 )
                 return(0);
         }
@@ -2567,13 +2568,13 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                     {
                         for (j=0; j<n; j++)
                         {
+                            item = cJSON_CreateObject();
+                            cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
+                            cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
+                            cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
                             if ( (value= conv_address_entry(coinaddr,txidstr,0,cp,&entries[j])) != 0 )
                             {
-                                item = cJSON_CreateObject();
                                 cJSON_AddItemToObject(item,"addr",cJSON_CreateString(coinaddr));
-                                cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
-                                cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(entries[j].v));
-                                cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(entries[j].blocknum));
                                 sprintf(numstr,"%.8f",dstr(value)), cJSON_AddItemToObject(item,"value",cJSON_CreateString(numstr));
                                 if ( (deposittxid= get_deposittxid(ap,txidstr,entries[j].v)) != 0 )
                                 {
@@ -2590,8 +2591,8 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                                     }
                                     else cJSON_AddItemToObject(item,"status",cJSON_CreateString("too small"));
                                 }
-                                cJSON_AddItemToArray(array,item);
                             }
+                            cJSON_AddItemToArray(array,item);
                         }
                     }
                 }
@@ -2634,7 +2635,9 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                     }
                     if ( tp->AMtxidbits == 0 && is_limbo_redeem(cp,tp->AMtxidbits) == 0 )
                         cJSON_AddItemToObject(item,"status",cJSON_CreateString("queued"));
-                    else if ( tp->AMtxidbits >= 1 || is_limbo_redeem(cp,tp->AMtxidbits) != 0 )
+                    else if ( tp->AMtxidbits == 1 ) cJSON_AddItemToObject(item,"status",cJSON_CreateString("pending"));
+                    else if ( is_limbo_redeem(cp,tp->AMtxidbits) != 0 ) cJSON_AddItemToObject(item,"status",cJSON_CreateString("completed"));
+                    else if ( tp->AMtxidbits > 1 )
                     {
                         expand_nxt64bits(redeemstr,tp->AMtxidbits), cJSON_AddItemToObject(item,"sentAM",cJSON_CreateString(redeemstr));
                         if ( (withdrew= get_sentAM_cointxid(txidstr,cp,autojson,withdrawaddr,tp->redeemtxid,tp->AMtxidbits)) <= 0 )
@@ -2646,7 +2649,7 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
                             cJSON_AddItemToObject(item,"status",cJSON_CreateString("completed"));
                         }
                     }
-                    else cJSON_AddItemToObject(item,"status",cJSON_CreateString("pending"));
+                    else cJSON_AddItemToObject(item,"status",cJSON_CreateString("unexpected"));
                 }
                 cJSON_AddItemToArray(array,item);
             }
