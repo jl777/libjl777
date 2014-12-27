@@ -747,7 +747,7 @@ int64_t calc_batchinputs(struct multisig_addr **msigs,int32_t nummsigs,struct co
         rp->inputs[rp->numinputs++] = vp;
         if ( sum >= (amount + cp->txfee) )
         {
-            if ( (vp= up->vps[up->num - 1]) != 0 )
+            if ( 0 && (vp= up->vps[up->num - 1]) != 0 )
             {
                 sum += vp->value;
                 rp->inputs[rp->numinputs++] = vp;

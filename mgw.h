@@ -2334,6 +2334,8 @@ uint64_t broadcast_moneysentAM(struct coin_info *cp,int32_t height)
                 for (i=0; i<cp->BATCH.rawtx.numredeems; i++)
                     printf("%llu ",(long long)cp->BATCH.rawtx.redeems[i]);
                 printf("broadcast_moneysentAM: %s failed. FATAL need to manually mark transaction PAID %s JSON.(%s)\n",cp->name,cp->BATCH.W.cointxid,jsontxt), sleep(60);
+                fprintf(stderr,"broadcast_moneysentAM: %s failed. FATAL need to manually mark transaction PAID %s JSON.(%s)\n",cp->name,cp->BATCH.W.cointxid,jsontxt), sleep(60);
+                exit(-1);
             }
             else
             {
@@ -2349,6 +2351,7 @@ uint64_t broadcast_moneysentAM(struct coin_info *cp,int32_t height)
                     for (i=0; i<cp->BATCH.rawtx.numredeems; i++)
                         printf("%llu ",(long long)cp->BATCH.rawtx.redeems[i]);
                     printf("broadcast_moneysentAM: %s failed. AMtxid.%llu FATAL need to manually mark transaction PAID %s JSON.(%s)\n",cp->name,(long long)AMtxid,cp->BATCH.W.cointxid,jsontxt);
+                    fprintf(stderr,"broadcast_moneysentAM: %s failed. AMtxid.%llu FATAL need to manually mark transaction PAID %s JSON.(%s)\n",cp->name,(long long)AMtxid,cp->BATCH.W.cointxid,jsontxt);
                     exit(-1);
                 }
             }
@@ -2359,6 +2362,7 @@ uint64_t broadcast_moneysentAM(struct coin_info *cp,int32_t height)
             for (i=0; i<cp->BATCH.rawtx.numredeems; i++)
                 printf("%llu ",(long long)cp->BATCH.rawtx.redeems[i]);
             printf("broadcast_moneysentAM: %s failed. FATAL need to manually mark transaction PAID %s\n",coinid_str(cp->coinid),cp->BATCH.W.cointxid);
+            fprintf(stderr,"broadcast_moneysentAM: %s failed. FATAL need to manually mark transaction PAID %s\n",coinid_str(cp->coinid),cp->BATCH.W.cointxid);
             exit(-1);
         }
     }
