@@ -1532,7 +1532,8 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bri
     }
     if ( destip[0] != 0 )
     {
-        printf("bridgetest.(%s) illegal.%d\n",destip,is_illegal_ipaddr(destip));
+        if ( Debuglevel > 2 )
+            printf("bridgetest.(%s) illegal.%d\n",destip,is_illegal_ipaddr(destip));
         if ( is_illegal_ipaddr(destip) == 0 )
         {
             if ( sendflag != 0 )
