@@ -1735,14 +1735,14 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
             {
                 char fname[512];
                 int32_t timeout = 300;
-                datalen = (int32_t)strlen(retstr) / 2;
-                data = malloc(datalen);
-                datalen = decode_hex(data,datalen,retstr);
+                //datalen = (int32_t)strlen(retstr) / 2;
+                //data = malloc(datalen);
+                //datalen = decode_hex(data,datalen,retstr);
                 printf("start_transfer\n");
-                sprintf(fname,"g%d.MGWresponse",Global_mp->gatewayid);
+                sprintf(fname,"%s.%d",(destNXT[0] == 0) ? "ALL" : destNXT,Global_mp->gatewayid);
                 if ( destNXT[0] != 0 )
                     sprintf(fname+strlen(fname),".%s",destNXT);
-                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,data,datalen,timeout,"bridge"); // start_transfer frees data
+                str = start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,(uint8_t *)retstr,(int32_t)strlen(retstr),timeout,"bridge"); // start_transfer frees data
             }
             if ( str != 0 )
                 free(str);

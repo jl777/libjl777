@@ -130,15 +130,18 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 
 char *process_commandline_json(cJSON *json)
 {
+    int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+    bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct);
     char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag);
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
     char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048],*str;
+    bits256 pubkeybits;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
     uint64_t nxt64bits,checkbits,deposit_pending = 0;
-    int32_t i,n,iter,gatewayid,actionflag = 0,rescan = 1;
+    int32_t i,n,haspubkey,iter,gatewayid,actionflag = 0,rescan = 1;
     uint32_t buyNXT = 0;
     cJSON *array,*argjson,*retjson,*retjsons[3];
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
@@ -146,6 +149,12 @@ char *process_commandline_json(cJSON *json)
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
     copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));
     copy_cJSON(userpubkey,cJSON_GetObjectItem(json,"pubkey"));
+    if ( userpubkey[0] == 0 )
+    {
+        pubkeybits = issue_getpubkey(&haspubkey,NXTacct);
+        if ( haspubkey != 0 )
+            init_hexbytes_noT(userpubkey,pubkeybits.bytes,sizeof(pubkeybits.bytes));
+    }
     copy_cJSON(convertNXT,cJSON_GetObjectItem(json,"convertNXT"));
     if ( convertNXT[0] != 0 )
         buyNXT = (uint32_t)atol(convertNXT);
