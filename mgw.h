@@ -29,11 +29,18 @@ void set_MGW_msigfname(char *fname,char *NXTaddr)
     else sprintf(fname,"/var/www/MGW/msig/%s",NXTaddr);
 }
 
+void set_MGW_statusfname(char *fname,char *NXTaddr)
+{
+    if ( NXTaddr == 0 )
+        sprintf(fname,"/var/www/MGW/status/ALL");
+    else sprintf(fname,"/var/www/MGW/status/%s",NXTaddr);
+}
+
 void save_MGW_status(char *NXTaddr,char *jsonstr)
 {
     FILE *fp;
     char fname[1024],cmd[1024];
-    sprintf(fname,"/var/www/MGW/status/%s",NXTaddr);
+    set_MGW_statusfname(fname,NXTaddr);
     if ( (fp= fopen(fname,"wb")) != 0 )
     {
         fwrite(jsonstr,1,strlen(jsonstr),fp);
@@ -2550,7 +2557,6 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
     int32_t i,j,n,nummsigs,lastbuyNXT,buyNXT = 0;
     uint64_t pendingtxid,value,deposittxid,withdrew,issuerbits,balance,assetoshis,pending_withdraws,pending_deposits;
     expand_nxt64bits(NXTaddr,nxt64bits);
-    update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
     if ( *jsonp == 0 )
         *jsonp = cJSON_CreateObject();
     depositaddr[0] = 0;
@@ -2684,6 +2690,44 @@ void MGW_useracct_str(cJSON **jsonp,int32_t actionflag,struct coin_info *cp,stru
     }
 }
 
+char *check_MGW_cache(struct coin_info *cp,char *userNXTaddr)
+{
+    char *retstr = 0;
+    FILE *fp;
+    long fsize;
+    cJSON *json;
+    char fname[512],*buf;
+    uint32_t coinheight,height,timestamp,cacheheight,cachetimestamp;
+    coinheight = get_blockheight(cp);
+    if ( cp->uptodate >= (coinheight - cp->minconfirms) )
+    {
+        height = get_NXTheight();
+        timestamp = (uint32_t)time(NULL);
+        set_MGW_statusfname(fname,userNXTaddr);
+        if ( (fp= fopen(fname,"rb")) != 0 )
+        {
+            fseek(fp,0,SEEK_END);
+            fsize = ftell(fp);
+            rewind(fp);
+            buf = calloc(1,fsize);
+            fread(buf,1,fsize,fp);
+            fclose(fp);
+            if ( (json= cJSON_Parse(buf)) != 0 )
+            {
+                cacheheight = (int32_t)get_cJSON_int(json,"NXTheight");
+                cachetimestamp = (int32_t)get_cJSON_int(json,"timestamp");
+                if ( cacheheight >= height ) // > can happen on blockchain rescans
+                    retstr = buf, buf = 0;
+                free_json(json);
+            }
+            if ( buf != 0 )
+                free(buf);
+        }
+
+    }
+    return(retstr);
+}
+
 char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2,char *refNXTaddr,char *depositors_pubkey)
 {
     static int32_t firsttimestamp;
@@ -2751,12 +2795,22 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     } else specialNXTaddrs = MGW_whitelist;
     if ( nxt64bits != 0 && rescan != 0 )
     {
-        json = process_MGW(0,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-        MGW_useracct_str(&json,actionflag,cp,ap,nxt64bits,issuerNXT,specialNXTaddrs);
+        if ( (retstr= check_MGW_cache(cp,NXTaddr)) == 0 )
+        {
+            update_NXTblockchain_info(cp,specialNXTaddrs,NXTaddr);
+            json = process_MGW(0,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+            MGW_useracct_str(&json,actionflag,cp,ap,nxt64bits,issuerNXT,specialNXTaddrs);
+        }
     }
-    else if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,issuerNXT)) == 0 )
-        json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-    else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
+    else
+    {
+        if ( actionflag != 0 || (retstr= check_MGW_cache(cp,0)) == 0 )
+        {
+            if ( (pendingtxid= update_NXTblockchain_info(cp,specialNXTaddrs,issuerNXT)) == 0 )
+                json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+            else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
+        }
+    }
     if ( json != 0 )
     {
         if ( NXTaddr == 0 || NXTaddr[0] == 0 )
@@ -2765,6 +2819,8 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(cp->srvNXTADDR));
         cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("MGWresponse"));
         cJSON_AddItemToObject(json,"gatewayid",cJSON_CreateNumber(Global_mp->gatewayid));
+        cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
+        cJSON_AddItemToObject(json,"NXTheight",cJSON_CreateNumber(get_NXTheight()));
         retstr = cJSON_Print(json);
         save_MGW_status(NXTaddr,retstr);
         //stripwhite_ns(retstr,strlen(retstr));

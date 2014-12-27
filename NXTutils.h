@@ -1174,6 +1174,24 @@ void set_prev_NXTblock(CURL *curl_handle,int32_t *height,int32_t *timestamp,char
     }
 }
 
+uint32_t get_NXTheight()
+{
+    cJSON *json;
+    uint32_t height = 0;
+    char cmd[256],*jsonstr;
+    sprintf(cmd,"%s=getState",_NXTSERVER);
+    if ( (jsonstr= issue_curl(0,cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            height = (int32_t)get_cJSON_int(json,"height");
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(height);
+}
+
 int32_t set_current_NXTblock(int32_t *isrescanp,CURL *curl_handle,char *blockidstr)
 {
     int32_t numblocks = 0;//,numunlocked = 0;

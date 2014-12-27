@@ -1191,12 +1191,14 @@ void *Coinloop(void *ptr)
                 cp->RTblockheight = (int32_t)height;
                 if ( cp->blockheight < (height - cp->min_confirms) )
                 {
-                    //if ( Debuglevel > 2 )
-                    printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
+                    if ( Debuglevel > 1 )
+                        printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
                     if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
                     {
                         processed++;
                         cp->blockheight++;
+                        if ( cp->blockheight == (height - cp->min_confirms) )
+                            cp->uptodate = (uint32_t)cp->blockheight;
                     }
                 }
             }
@@ -1206,15 +1208,6 @@ void *Coinloop(void *ptr)
             if ( Debuglevel > 2 )
                 printf("Coinloop: no work, sleep\n");
             sleep(10);
-        }
-        else if ( 0 )
-        {
-            for (i=0; i<Numcoins; i++)
-            {
-                cp = Daemons[i];
-                if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) != 0 )
-                    update_MGW(cp);
-            }
         }
     }
     return(0);
