@@ -2582,7 +2582,9 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 
 int32_t cmp_batch_depositinfo(struct batch_info *refbatch,struct batch_info *batch)
 {
-    printf("(%.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),batch->boughtNXT);
+    if ( refbatch->pendingdeposits == 0 )
+        return(-1);
+    printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),batch->boughtNXT);
     if ( refbatch->balance != batch->balance || refbatch->circulation != batch->circulation || refbatch->unspent != batch->unspent || refbatch->pendingdeposits != batch->pendingdeposits || refbatch->boughtNXT != batch->boughtNXT )
         return(-1);
     return(0);
@@ -2896,7 +2898,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
                 if (  actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
                 {
                     portable_mutex_lock(&mutex);
-                    if ( cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+                    if ( cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
                     {
                         printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc);
                         if ( json != 0 )
