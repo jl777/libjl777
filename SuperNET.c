@@ -346,6 +346,8 @@ char *load_filestr(char *userNXTaddr,int32_t gatewayid)
 
 void bridge_handler(struct transfer_args *args)
 {
+    FILE *fp;
+    int32_t gatewayid;
     char fname[1024],cmd[1024],*name = args->name;
     if ( strncmp(name,"MGW",3) == 0 && name[3] >= '0' && name[3] <= '2' )
     {
@@ -354,7 +356,7 @@ void bridge_handler(struct transfer_args *args)
         sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,name);
         if ( (fp= fopen(fname,"wb")) != 0 )
         {
-            fwrite(args->data,1,args->datalen,fp);
+            fwrite(args->data,1,args->totallen,fp);
             fclose(fp);
             sprintf(cmd,"chmod +r %s",name);
             system(cmd);
