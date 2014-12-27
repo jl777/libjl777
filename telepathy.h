@@ -538,7 +538,7 @@ char *addcontact(char *handle,char *acct)
     if ( nxt64bits != contact->nxt64bits || memcmp(&zerokey,&contact->pubkey,sizeof(zerokey)) == 0 )
     {
         contact->nxt64bits = nxt64bits;
-        contact->pubkey = issue_getpubkey(acct);
+        contact->pubkey = issue_getpubkey(0,acct);
         init_hexbytes_noT(pubkeystr,contact->pubkey.bytes,sizeof(contact->pubkey));
         if ( contact->pubkey.txid == 0 )
         {

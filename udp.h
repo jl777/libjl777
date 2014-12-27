@@ -939,7 +939,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
             args->timeout = (uint32_t)time(NULL) + timeout;
         fprintf(stderr,"start_transfer.args.%p (%s) timeout.%u (%s)\n",args,verifiedNXTaddr,args->timeout,totallen<4096?(char *)data:"");
         memcpy(args->data,data,totallen);
-        if ( didalloc != 0 )
+        if ( 0 && didalloc != 0 )
             free(data);
         data = args->data;
         remains = totallen;
