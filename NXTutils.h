@@ -1179,7 +1179,7 @@ uint32_t get_NXTheight()
     cJSON *json;
     uint32_t height = 0;
     char cmd[256],*jsonstr;
-    sprintf(cmd,"%s=getState",_NXTSERVER);
+    sprintf(cmd,"%s=getState",NXTSERVER);
     if ( (jsonstr= issue_curl(0,cmd)) != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
