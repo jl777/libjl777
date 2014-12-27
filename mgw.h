@@ -1483,6 +1483,7 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
 
 uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey,int32_t buyNXT)
 {
+    double get_current_rate(char *base,char *rel);
     char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],comment[4096],NXTaddr[64],numstr[64],rsacct[64],*errjsontxt,*str;
     struct NXT_assettxid *tp;
     uint64_t depositid,value,convtxid,convamount,total = 0;
@@ -1525,11 +1526,10 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 cJSON_AddItemToObject(pair,"NXT",cJSON_CreateString(rsacct));
                 printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
-                if ( 0 && haspubkey == 0 && buyNXT > 0 )
+                if ( haspubkey == 0 && buyNXT > 0 && (rate = get_current_rate(cp->name,"NXT")) != 0. )
                 {
                     if ( buyNXT > 10 )
                         buyNXT = 10;
-                    rate = 0;//get_current_rate(cp->name,"NXT");
                     convamount = ((double)(buyNXT+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
                     if ( convamount >= value )
                     {
