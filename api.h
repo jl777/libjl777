@@ -1716,7 +1716,6 @@ char *MGW_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
     copy_cJSON(pubkey,objs[16]);
     copy_cJSON(email,objs[17]);
     copy_cJSON(destNXT,objs[18]);
-    printf("calling MGW from sender.(%s)\n",sender);
     if ( sender[0] != 0 )
     {
         retstr = MGW(specialNXT,rescan,actionflag,coin,asset,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2,destNXT,pubkey);

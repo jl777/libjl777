@@ -2424,7 +2424,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
     else free_json(array);
     if ( sendmoney != 0 && matches == NUM_GATEWAYS )
     {
-        fprintf(stderr,"all gateways match\n");
+        fprintf(stderr,"all gateways match ready.%d\n",readyflag);
         if ( readyflag != 0 )//Global_mp->gatewayid == 0 )
         {
             if ( rp->batchsigned != 0 && (cointxid= sign_and_sendmoney(&AMtxid,cp,(uint32_t)cp->RTblockheight)) != 0 )
@@ -2433,7 +2433,7 @@ uint64_t process_consensus(cJSON **jsonp,struct coin_info *cp,int32_t sendmoney)
                 cJSON_AddItemToObject(*jsonp,"cointxid",cJSON_CreateString(cointxid));
                 sprintf(numstr,"%llu",(long long)AMtxid), cJSON_AddItemToObject(*jsonp,"AMtxid",cJSON_CreateString(numstr));
                 fprintf(stderr,"done and publish coin.(%s) AM.%llu\n",cointxid,(long long)AMtxid);
-                publish_withdraw_info(cp,&cp->BATCH);
+                //publish_withdraw_info(cp,&cp->BATCH);
                 free(cointxid);
             }
             else
@@ -2524,7 +2524,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            //if ( sendmoney != 0 )
+            if ( sendmoney == 0 )
                 publish_withdraw_info(cp,&cp->BATCH);
             process_consensus(jsonp,cp,sendmoney);
             free(batchsigned);
