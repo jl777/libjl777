@@ -2486,7 +2486,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     struct NXT_assettxid *tp;
     struct rawtransaction *rp;
     cJSON *array;
-    int32_t i,j,numredeems,alreadyspent;
+    int32_t i,j,numredeems,alreadyspent,published = 0;
     uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,balance,sum,pending_withdraw = 0;
     char withdrawaddr[64],sender[64],redeemtxid[64],numstr[64],*destaddrs[MAX_MULTISIG_OUTPUTS],*destaddr="",*batchsigned,*str;
     if ( ap->num <= 0 )
@@ -2530,6 +2530,11 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         cJSON_AddItemToObject(*jsonp,"boughtNXT",cJSON_CreateNumber(cp->boughtNXT));
         sprintf(numstr,"%.8f",dstr(cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
     }
+    cp->BATCH.balance = balance;
+    cp->BATCH.circulation = circulation;
+    cp->BATCH.unspent = unspent;
+    cp->BATCH.pendingdeposits = pendingdeposits;
+    cp->BATCH.boughtNXT = cp->boughtNXT;
     array = cJSON_CreateArray();
     if ( (int64_t)pending_withdraw >= ((5 * cp->NXTfee_equiv) - (numredeems * (cp->txfee + cp->NXTfee_equiv))) )
     {
@@ -2556,13 +2561,8 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            cp->BATCH.balance = balance;
-            cp->BATCH.circulation = circulation;
-            cp->BATCH.unspent = unspent;
-            cp->BATCH.pendingdeposits = pendingdeposits;
-            cp->BATCH.boughtNXT = cp->boughtNXT;
             if ( sendmoney == 0 )
-                publish_withdraw_info(cp,&cp->BATCH);
+                publish_withdraw_info(cp,&cp->BATCH), published++;
             process_consensus(jsonp,cp,sendmoney);
             free(batchsigned);
         }
@@ -2573,6 +2573,8 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             printf("%.8f is not enough to pay for MGWfees.%s %.8f for %d redeems\n",dstr(pending_withdraw),cp->name,dstr(cp->NXTfee_equiv),numredeems);
         pending_withdraw = 0;
     }
+    if ( pendingdeposits != 0 && published == 0 )
+        publish_withdraw_info(cp,&cp->BATCH);
 }
 
 int32_t cmp_batch_depositinfo(struct batch_info *refbatch,struct batch_info *batch)
