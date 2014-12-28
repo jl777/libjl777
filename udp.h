@@ -699,7 +699,9 @@ void calc_crcs(uint32_t *crcs,uint8_t *data,int32_t len,int32_t num,int32_t bloc
     int32_t fragi,offset = 0;
     for (fragi=0; fragi<num-1; fragi++,offset+=blocksize)
         crcs[fragi] = _crc32(0,data + offset,blocksize);
-    crcs[fragi] = _crc32(0,data + offset,len - offset);
+    if ( offset < len )
+        crcs[fragi] = _crc32(0,data + offset,len - offset);
+    printf("crcs.%u: %u %u %u | %d\n",_crc32(0,data,len),crcs[0],crcs[1],crcs[2],len-offset);
 }
 
 int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t datacrc,uint8_t *data,int32_t datalen)
@@ -726,7 +728,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     }
     else if ( args->totalcrc == totalcrc ) // recipient
     {
-        fprintf(stderr,"update_transfer_args %d of %d\n",fragi,args->numfrags);
+        fprintf(stderr,"update_transfer_args %d of %d <- %u\n",fragi,args->numfrags,datacrc);
         if ( fragi < args->numfrags && fragi*args->blocksize+datalen <= args->totallen )
         {
             memcpy(args->data + fragi*args->blocksize,data,datalen);
@@ -736,6 +738,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
         {
             if ( args->gotcrcs[i] == args->crcs[i] )
                 count++;
+            else printf("(%d of %d) %u vs %u\n",i,args->numfrags,args->gotcrcs[i],args->crcs[i]);
         }
         if ( count == args->numfrags )
         {
@@ -766,7 +769,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                 }
             }
         }
-        fprintf(stderr,"update_transer_args return count.%d\n",count);
+        fprintf(stderr,"update_transfer_args return count.%d\n",count);
     }
     return(count);
 }
@@ -838,15 +841,12 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         free(data);
         data = 0;
         datalen = 0;
-        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
+        sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u}",cmd,count,checkcrc);
     }
-    fprintf(stderr,"finish sendfrag.(%s)\n",cmdstr);
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
-    fprintf(stderr,"about to free data.%p\n",data);
     if ( data != 0 )
         free(data);
-    fprintf(stderr,"freed data\n");
     return(clonestr(_tokbuf));
 }
 
