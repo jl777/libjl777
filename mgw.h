@@ -2754,7 +2754,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
         set_NXTpubkey(depositors_pubkey,NXTaddr);
     if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
     {
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             printf(">>>>>>>>>>>>>>>> %d address entries for (%s)\n",n,msigaddr);
         for (i=0; i<n; i++)
         {
