@@ -31,14 +31,17 @@
 #define MAX_NXT_STRLEN 24
 #define MAX_NXTTXID_LEN MAX_NXT_STRLEN
 #define MAX_NXTADDR_LEN MAX_NXT_STRLEN
+#define MAX_TRANSFER_SIZE (65536 * 16)
+#define TRANSFER_BLOCKSIZE 512
+#define MAX_TRANSFER_BLOCKS (MAX_TRANSFER_SIZE / TRANSFER_BLOCKSIZE)
 
 struct transfer_args
 {
     uint64_t modified;
-    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64],*pstr;
-    uint8_t *data,*snapshot;
-    uint32_t totallen,blocksize,numfrags,completed,timeout,handlertime;
-    uint32_t *timestamps,*crcs,*gotcrcs,*slots,totalcrc,currentcrc,snapshotcrc,handlercrc,syncmem;
+    uint32_t timestamps[MAX_TRANSFER_BLOCKS],crcs[MAX_TRANSFER_BLOCKS],gotcrcs[MAX_TRANSFER_BLOCKS],slots[MAX_TRANSFER_BLOCKS];
+    char previpaddr[64],sender[64],dest[64],name[512],hashstr[65],handler[64],pstr[MAX_TRANSFER_BLOCKS];
+    uint8_t data[MAX_TRANSFER_SIZE],snapshot[MAX_TRANSFER_SIZE];
+    uint32_t totalcrc,currentcrc,snapshotcrc,handlercrc,syncmem,totallen,blocksize,numfrags,completed,timeout,handlertime;
 };
 
 struct storage_header

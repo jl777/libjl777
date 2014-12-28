@@ -675,7 +675,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     }
     args->totalcrc = totalcrc;
     args->syncmem = syncmem;
-    if ( args->pstr == 0 )
+    /*if ( args->pstr == 0 )
         args->pstr = calloc(1,args->numfrags);
     if ( args->timestamps == 0 )
         args->timestamps = calloc(args->numfrags,sizeof(*args->timestamps));
@@ -688,7 +688,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     if ( args->slots == 0 )
         args->slots = calloc(args->numfrags,sizeof(*args->slots));
     if ( args->snapshot == 0 )
-        args->snapshot = calloc(1,totallen);
+        args->snapshot = calloc(1,totallen);*/
     portable_mutex_unlock(&mutex);
     fprintf(stderr,"return args.%p\n",args);
     return(args);
@@ -772,7 +772,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     return(count);
 }
 
-void purge_transfer_args(struct transfer_args *args)
+/*void purge_transfer_args(struct transfer_args *args)
 {
     if ( args->pstr != 0 )
         free(args->pstr);
@@ -788,7 +788,7 @@ void purge_transfer_args(struct transfer_args *args)
         free(args->gotcrcs), args->gotcrcs = 0;
     if ( args->timestamps != 0 )
         free(args->timestamps), args->timestamps = 0;
-}
+}*/
 
 char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint32_t fragi,uint32_t numfrags,uint32_t totallen,uint32_t blocksize,uint32_t totalcrc,uint32_t checkcrc,char *datastr,char *handler,int32_t syncmem)
 {
@@ -844,8 +844,10 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
     fprintf(stderr,"finish sendfrag.(%s)\n",cmdstr);
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
+    fprintf(stderr,"about to free data.%p\n",data);
     if ( data != 0 )
         free(data);
+    fprintf(stderr,"freed data\n");
     return(clonestr(_tokbuf));
 }
 
@@ -879,7 +881,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
     struct transfer_args *args;
     char cmdstr[MAX_JSON_FIELD*2];
     if ( blocksize == 0 )
-        blocksize = 512;
+        blocksize = TRANSFER_BLOCKSIZE;
     if ( totallen == 0 )
         totallen = numfrags * blocksize;
     //fprintf(stderr,"GOTFRAG.(%s)\n",cmdstr);
@@ -911,7 +913,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
     static int64_t allocsize;
     struct transfer_args *args;
     int64_t len;
-    int32_t n,incr,fragi,totalcrc,blocksize = 512;
+    int32_t n,incr,fragi,totalcrc,blocksize = TRANSFER_BLOCKSIZE;
     if ( data == 0 || totallen == 0 )
     {
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);
