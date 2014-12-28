@@ -3465,7 +3465,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     {
         cJSON_AddItemToObject(*jsonp,"boughtNXT",cJSON_CreateNumber(cp->boughtNXT));
         if ( balance > 0. )
-            sprintf(numstr,"%.8f",dstr(cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
+            sprintf(numstr,"%.8f",dstr((double)cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
     }
     cp->BATCH.balance = balance;
     cp->BATCH.circulation = circulation;
@@ -3498,7 +3498,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( batchsigned != 0 )
         {
             printf("BATCHSIGNED.(%s)\n",batchsigned);
-            if ( sendmoney == 0 )
+            //if ( sendmoney == 0 )
                 publish_withdraw_info(cp,&cp->BATCH), published++;
             process_consensus(jsonp,cp,sendmoney);
             free(batchsigned);
@@ -3510,7 +3510,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             printf("%.8f is not enough to pay for MGWfees.%s %.8f for %d redeems\n",dstr(pending_withdraw),cp->name,dstr(cp->NXTfee_equiv),numredeems);
         pending_withdraw = 0;
     }
-    if ( pendingdeposits != 0 && published == 0 )
+    //if ( pendingdeposits != 0 && published == 0 )
         publish_withdraw_info(cp,&cp->BATCH);
 }
 

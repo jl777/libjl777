@@ -723,6 +723,8 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             memcpy(args->snapshot,args->data,args->totallen);
             args->snapshotcrc = _crc32(0,args->snapshot,args->totallen);
             args->completed++;
+            if ( Debuglevel > 1 )
+                printf("completed send of %s\n",args->name);
         }
         if ( Debuglevel > 2 )
             printf(">>>>>>>>> set ack[%d] <- %u | count.%d of %d | %p\n",fragi,datacrc,count,args->numfrags,args);
@@ -745,9 +747,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
         {
             count = -1;
             checkcrc = _crc32(0,args->data,args->totallen);
-            if ( checkcrc != args->totalcrc )
-                printf("totalcrc ERROR %u != %u\n",checkcrc,args->totalcrc);
-            else
+            if ( checkcrc == args->totalcrc )
             {
                 memcpy(args->snapshot,args->data,args->totallen);
                 args->snapshotcrc = _crc32(0,args->snapshot,args->totallen);
@@ -834,7 +834,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler,syncmem);
             if ( fragi < args->numfrags )
                 args->crcs[fragi] = checkcrc;
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p (%u %u %u)\n",cmdstr,datalen,args->data,args->gotcrcs,args->crcs[0],args->crcs[1],args->crcs[2]);
             if ( datacrc == checkcrc )
                 count = update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen);
@@ -898,7 +898,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             send_fragi(NXTaddr,NXTACCTSECRET,args,args->slots[j]);
         }
     }
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
     {
         for (i=0; i<args->numfrags; i++)
             sprintf(&args->pstr[i],"%c",args->gotcrcs[i]==0?' ': ((args->crcs[i] != args->gotcrcs[i]) ? '?' : '='));
