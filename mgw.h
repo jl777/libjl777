@@ -63,8 +63,8 @@ int32_t is_limbo_redeem(struct coin_info *cp,uint64_t redeemtxidbits)
 void set_MGW_fname(char *fname,char *dirname,char *NXTaddr)
 {
     if ( NXTaddr == 0 )
-        sprintf(fname,"%s/%s/ALL",MGWROOT,dirname);
-    else sprintf(fname,"%s/%s/%s",MGWROOT,dirname,NXTaddr);
+        sprintf(fname,"%s/MGW/%s/ALL",MGWROOT,dirname);
+    else sprintf(fname,"%s/MGW/%s/%s",MGWROOT,dirname,NXTaddr);
 }
 
 void set_MGW_msigfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"msig",NXTaddr); }
@@ -465,6 +465,8 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
     if ( commentstr != 0 && (tp->comment == 0 || strcmp(tp->comment,commentstr) != 0) && (json= cJSON_Parse(commentstr)) != 0 )
     {
         copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
+        if ( coinstr[0] == 0 )
+            strcpy(coinstr,cp->name);
         if ( strcmp(coinstr,cp->name) == 0 )
         {
             if ( tp->comment != 0 )
@@ -496,10 +498,13 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
                         tp->sentNXT = tp->buyNXT;
                         if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
                             tp->estNXT = (((double)cp->NXTfee_equiv / cp->txfee) * tp->U.assetoshis / SATOSHIDEN);
-                        if ( Debuglevel > 1 )
-                            printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,redeemtxidstr,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(tp->U.assetoshis),tp->estNXT,(long long)tp->redeemtxid);
-                    }
+                     }
                 }
+            }
+            else
+            {
+                if ( Debuglevel > 1 )
+                    printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,redeemtxidstr,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(tp->U.assetoshis),tp->estNXT,(long long)tp->redeemtxid);
             }
         } else printf("mismatched coin.%s vs (%s) for transfer.%llu (%s)\n",coinstr,cp->name,(long long)redeemtxid,commentstr);
         free_json(json);
