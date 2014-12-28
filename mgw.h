@@ -2534,7 +2534,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
         {
             if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
                 printf("%d of %d: process.(%s) isinternal.%d %llu\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("skip %s\n",txidstr);
             return(0);
         }
@@ -2549,7 +2549,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 tp = ap->txids[j];
                 if ( tp->receiverbits == nxt64bits && tp->cointxid != 0 && strcmp(tp->cointxid,txidstr) == 0 )
                 {
-                    if ( Debuglevel > 0 )
+                    if ( Debuglevel > 1 )
                         printf("%llu set cointxid.(%s) <-> (%u %d %d)\n",(long long)nxt64bits,txidstr,entry->blocknum,entry->txind,entry->v);
                     tp->cointxind = entry->txind;
                     tp->coinv = entry->v;
@@ -2641,9 +2641,9 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     {
                         str = cJSON_Print(pair);
                         stripwhite_ns(str,strlen(str));
-                        fprintf(stderr,"updatedeposit.ALL (%s)\n",str);
+                        //fprintf(stderr,"updatedeposit.ALL (%s)\n",str);
                         update_MGW_jsonfile(set_MGW_depositfname,extract_jsonints,jsonstrcmp,0,str,"coinv","cointxind");
-                        fprintf(stderr,"updatedeposit.%s (%s)\n",NXTaddr,str);
+                        //fprintf(stderr,"updatedeposit.%s (%s)\n",NXTaddr,str);
                         update_MGW_jsonfile(set_MGW_depositfname,extract_jsonints,jsonstrcmp,NXTaddr,str,"coinv","cointxind");
                         free(str);
                     }
@@ -2772,7 +2772,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             entry = &entries[i];
             if ( entry->vinflag == 0 )
                 pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr,depositors_pubkey,buyNXTp);
-            if ( Debuglevel+forceflag > 2 )
+            if ( Debuglevel > 2 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
         }
@@ -2786,7 +2786,8 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
                 cointp->unspent = unspent;
                 (*numunspentp)++;
                 (*unspentp) += unspent;
-                printf("%s | %16.8f unspenttotal %.8f\n",cointp->txid,dstr(cointp->unspent),dstr((*unspentp)));
+                if ( Debuglevel > 2 )
+                    printf("%s | %16.8f unspenttotal %.8f\n",cointp->txid,dstr(cointp->unspent),dstr((*unspentp)));
                 update_unspent_funds(cp,cointp,0);
             }
         }
@@ -3026,7 +3027,7 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
         sprintf(cmd+strlen(cmd),"&height=%d",height);
     if ( (retstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        fprintf(stderr,"circ.(%s) <- (%s)\n",retstr,cmd);
+        //fprintf(stderr,"circ.(%s) <- (%s)\n",retstr,cmd);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"accountAssets")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -3549,12 +3550,12 @@ cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,
     fprintf(stderr,"circulation %.8f\n",dstr(circulation));
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&nummsigs,MULTISIG_DATA)) != 0 )
     {
-        printf("nummsigs.%d\n",nummsigs);
+        //printf("nummsigs.%d\n",nummsigs);
         if ( actionflag >= 0 )
         {
             pendingdeposits = process_deposits(&json,&unspent,msigs,nummsigs,cp,ipaddrs,specialNXTaddrs,issuer,ap,actionflag > 0,circulation,NXTaddr,depositors_pubkey);
             retstr = cJSON_Print(json);
-            fprintf(stderr,"actionflag.%d retstr.(%s)\n",actionflag,retstr);
+            //fprintf(stderr,"actionflag.%d retstr.(%s)\n",actionflag,retstr);
             free(retstr), retstr = 0;
         }
         if ( actionflag <= 0 )
@@ -3911,7 +3912,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
             json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
         else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
     }
-    if ( retstr == 0 && pendingtxid == 0 && actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
+    if ( pendingtxid == 0 && actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
         json = auto_process_MGW(specialNXTaddrs,cp,json,NXTaddr,depositors_pubkey);
     if ( json != 0 )
     {
