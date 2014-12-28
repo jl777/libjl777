@@ -428,6 +428,7 @@ char *issue_getAsset(CURL *curl_handle,char *assetidstr)
 
 struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
 {
+    int32_t is_active_coin(char *str);
     cJSON *json;
     uint64_t mult = 1;
     char *jsonstr,buf[4096];
@@ -449,10 +450,9 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
                 ap->description = clonestr(buf);
             if ( extract_cJSON_str(buf,sizeof(buf),json,"name") > 0 )
             {
-                int32_t conv_coinstr(char *);
-                if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' && conv_coinstr(buf+3) >= 0 )
+                if ( tolower(buf[0]) == 'm' && tolower(buf[1]) == 'g' && tolower(buf[2]) == 'w' && is_active_coin(buf+3) >= 0 )
                     ap->name = clonestr(buf+3);
-                else if ( tolower(buf[0]) == 's' && tolower(buf[1]) == 'u' && tolower(buf[2]) == 'p' && tolower(buf[3]) == 'e' && tolower(buf[4]) == 'r' && conv_coinstr(buf+5) >= 0 )
+                else if ( tolower(buf[0]) == 's' && tolower(buf[1]) == 'u' && tolower(buf[2]) == 'p' && tolower(buf[3]) == 'e' && tolower(buf[4]) == 'r' && is_active_coin(buf+5) >= 0 )
                     ap->name = clonestr(buf+5);
                 else ap->name = clonestr(buf);
             }
