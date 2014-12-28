@@ -690,7 +690,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     if ( args->snapshot == 0 )
         args->snapshot = calloc(1,totallen);*/
     portable_mutex_unlock(&mutex);
-    fprintf(stderr,"return args.%p\n",args);
+   // fprintf(stderr,"return args.%p\n",args);
     return(args);
 }
 
@@ -701,12 +701,12 @@ void calc_crcs(uint32_t *crcs,uint8_t *data,int32_t len,int32_t num,int32_t bloc
         crcs[fragi] = _crc32(0,data + offset,blocksize);
     if ( offset < len )
         crcs[fragi] = _crc32(0,data + offset,len - offset);
-    printf("crcs.%u: %u %u %u | %d\n",_crc32(0,data,len),crcs[0],crcs[1],crcs[2],len-offset);
+    //printf("crcs.%u: %u %u %u | %d\n",_crc32(0,data,len),crcs[0],crcs[1],crcs[2],len-offset);
 }
 
 int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t datacrc,uint8_t *data,int32_t datalen)
 {
-    int i,count = -1;
+    int i,count = 0;
     uint32_t checkcrc;
     if ( data == 0 ) // sender
     {
@@ -733,7 +733,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             memcpy(args->data + fragi*args->blocksize,data,datalen);
             args->gotcrcs[fragi] = datacrc;
         }
-        fprintf(stderr,"update_transfer_args %d of %d <- %u datalen.%d | %u %u %u (%u)\n",fragi,args->numfrags,datacrc,datalen,args->gotcrcs[0],args->gotcrcs[1],args->gotcrcs[2],_crc32(0,args->data,args->totallen));
+        //fprintf(stderr,"update_transfer_args %d of %d <- %u datalen.%d | %u %u %u (%u)\n",fragi,args->numfrags,datacrc,datalen,args->gotcrcs[0],args->gotcrcs[1],args->gotcrcs[2],_crc32(0,args->data,args->totallen));
         for (i=0; i<args->numfrags; i++)
         {
             if ( args->gotcrcs[i] == args->crcs[i] )
