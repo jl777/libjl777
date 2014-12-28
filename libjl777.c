@@ -713,7 +713,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     if ( myipaddr != 0 )
         myipaddr = clonestr(myipaddr);
     expand_nxt64bits(NXT_ASSETIDSTR,NXT_ASSETID);
-    printf("SuperNET_start(%s) %p ipaddr.(%s) NXTheight.%d\n",JSON_or_fname,myipaddr,myipaddr,get_NXTheight());
+    printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
     {
         fp = fopen(JSON_or_fname,"rb");
@@ -727,7 +727,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     if ( Debuglevel > 0 )
-        printf("back from init_NXTservices (%s)\n",myipaddr);
+        printf("back from init_NXTservices (%s) NXTheight.%d\n",myipaddr,get_NXTheight());
     uint64_t pendingtxid; ready_to_xferassets(&pendingtxid);
     p2p_publishpacket(0,0);
     if ( (cp= get_coin_info("BTCD")) == 0 || cp->srvNXTACCTSECRET[0] == 0 || cp->srvNXTADDR[0] == 0 )
