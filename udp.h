@@ -726,8 +726,8 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     }
     else if ( args->totalcrc == totalcrc ) // recipient
     {
-        fprintf(stderr,"update_transer_args %d of %d\n",fragi,args->numfrags);
-        if ( fragi < args->numfrags && fragi*args->blocksize+datalen < args->totallen )
+        fprintf(stderr,"update_transfer_args %d of %d\n",fragi,args->numfrags);
+        if ( fragi < args->numfrags && fragi*args->blocksize+datalen <= args->totallen )
         {
             memcpy(args->data + fragi*args->blocksize,data,datalen);
             args->gotcrcs[fragi] = datacrc;
@@ -765,9 +765,8 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     }
                 }
             }
- fprintf(stderr,"update_transer_args return count.%d\n",count);
         }
-        //fprintf(stderr,"update_transer_args return count.%d\n",count);
+        fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
     return(count);
 }
