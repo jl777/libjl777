@@ -32,7 +32,7 @@
 #include "SuperNET.h"
 #include "cJSON.h"
 #define NUM_GATEWAYS 3
-extern char Server_names[256][MAX_JSON_FIELD];
+extern char Server_names[256][MAX_JSON_FIELD],MGWROOT[];
 extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
 extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT;
 extern cJSON *MGWconf;
