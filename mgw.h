@@ -1930,6 +1930,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
         return(clonestr("\"error\":\"genmultisig couldnt find refcontact\"}"));
     flag = 0;
     stats = get_nodestats(refbits);
+    myacctcoinaddr[0] = mypubkey[0] = 0;
     for (iter=0; iter<2; iter++)
     for (i=0; i<n; i++)
     {
@@ -2304,7 +2305,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
 
 uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *receiver,cJSON *item,char *refNXTaddr,char *assetidstr,int32_t syncflag,struct coin_info *refcp)
 {
-    int32_t conv_coinstr(char *);
+    //int32_t conv_coinstr(char *);
     char AMstr[4096],txid[4096],comment[4096],*commentstr = 0;
     cJSON *senderobj,*attachment,*message,*assetjson,*commentobj;
     char cointxid[128];

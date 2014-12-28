@@ -672,6 +672,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 void ensure_SuperNET_dirs(char *backupdir)
 {
     char dirname[1024];
+    printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
