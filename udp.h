@@ -761,7 +761,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     }
                     if ( count == args->numfrags )
                     {
-                        if ( Debuglevel > 0 )
+                        if ( Debuglevel > 2 )
                             printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,args->dest,checkcrc,totalcrc);
                         handler_gotfile(args,args->snapshot,args->totallen,args->snapshotcrc);
                         args->completed++;

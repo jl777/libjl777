@@ -2124,7 +2124,7 @@ int32_t process_directnet_syncwithdraw(struct batch_info *wp)
         gatewayid = (wp->W.srcgateway % NUM_GATEWAYS);
         cp->withdrawinfos[gatewayid] = *wp;
         *wp = cp->withdrawinfos[Global_mp->gatewayid];
-        printf("GOT <<<<<<<<<<<< publish_withdraw_info.%d coin.(%s) %.8f crc %08x balance %.8f unspent %.8f pendingwithdraws %.8f\n",gatewayid,wp->W.coinstr,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc,dstr(cp->withdrawinfos[gatewayid].balance),dstr(cp->withdrawinfos[gatewayid].unspent),dstr(cp->withdrawinfos[gatewayid].pendingdeposits));
+        printf("GOT <<<<<<<<<<<< publish_withdraw_info.%d coin.(%s) %.8f crc %08x balance %.8f unspent %.8f pendingwithdraws %.8f\n",gatewayid,wp->W.coinstr,dstr(wp->W.amount),cp->withdrawinfos[gatewayid].rawtx.batchcrc,dstr(cp->withdrawinfos[gatewayid].C.balance),dstr(cp->withdrawinfos[gatewayid].C.unspent),dstr(cp->withdrawinfos[gatewayid].C.pendingdeposits));
     }
     return(sizeof(*wp));
 }
@@ -2176,7 +2176,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         }
         else
         {
-            printf("send balance %.8f, unspent %.8f pendingdeposits %.8f\n",dstr(W.balance),dstr(W.unspent),dstr(W.pendingdeposits));
+            printf("send balance %.8f, unspent %.8f pendingdeposits %.8f\n",dstr(W.C.balance),dstr(W.C.unspent),dstr(W.C.pendingdeposits));
             retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&W,(int32_t)sizeof(W),300,"mgw",1);
             if ( retstr != 0 )
                 free(retstr);
@@ -3467,12 +3467,12 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         if ( balance > 0. )
             sprintf(numstr,"%.8f",dstr((double)cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
     }
-    cp->BATCH.balance = balance;
-    cp->BATCH.circulation = circulation;
-    cp->BATCH.unspent = unspent;
-    cp->BATCH.pendingdeposits = pendingdeposits;
-    cp->BATCH.pendingwithdraws = pending_withdraw;
-    cp->BATCH.boughtNXT = cp->boughtNXT;
+    cp->BATCH.C.balance = balance;
+    cp->BATCH.C.circulation = circulation;
+    cp->BATCH.C.unspent = unspent;
+    cp->BATCH.C.pendingdeposits = pendingdeposits;
+    cp->BATCH.C.pendingwithdraws = pending_withdraw;
+    cp->BATCH.C.boughtNXT = cp->boughtNXT;
     array = cJSON_CreateArray();
     if ( (int64_t)pending_withdraw >= ((5 * cp->NXTfee_equiv) - (numredeems * (cp->txfee + cp->NXTfee_equiv))) )
     {
@@ -3515,7 +3515,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
         publish_withdraw_info(cp,&cp->BATCH);
 }
 
-int32_t cmp_batch_depositinfo(struct batch_info *refbatch,struct batch_info *batch)
+int32_t cmp_batch_depositinfo(struct consensus_info *refbatch,struct consensus_info *batch)
 {
     printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),dstr(refbatch->pendingwithdraws),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),dstr(batch->pendingwithdraws),batch->boughtNXT);
     if ( refbatch->pendingdeposits == 0 )
@@ -3762,22 +3762,22 @@ cJSON *auto_process_MGW(char **specialNXTaddrs,struct coin_info *cp,cJSON *origj
     for (i=0; i<=NUM_GATEWAYS; i++)
     {
         bp = (i < NUM_GATEWAYS) ? &cp->withdrawinfos[i] : &cp->BATCH;
-        printf("gateway.%d: crc.%u %x balance %.8f pendingdeposits %.8f unspent %.8f\n",i,bp->rawtx.batchcrc,bp->rawtx.batchcrc,dstr(bp->balance),dstr(bp->pendingdeposits),dstr(bp->unspent));
+        printf("gateway.%d: crc.%u %x balance %.8f pendingdeposits %.8f unspent %.8f\n",i,bp->rawtx.batchcrc,bp->rawtx.batchcrc,dstr(bp->C.balance),dstr(bp->C.pendingdeposits),dstr(bp->C.unspent));
     }
     ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
     for (i=0; i<3; i++)
         ipaddrs[i] = Server_names[i];
     portable_mutex_lock(&mutex);
-    if ( cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[1]) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[2]) == 0 )
+    if ( cmp_batch_depositinfo(&cp->withdrawinfos[0].C,&cp->withdrawinfos[1].C) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0].C,&cp->withdrawinfos[2].C) == 0 )
     {
-        if ( cp->withdrawinfos[0].pendingwithdraws > 0 && cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+        if ( cp->withdrawinfos[0].C.pendingwithdraws > 0 && cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
         {
-            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u %.8f <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc,dstr(cp->withdrawinfos[0].pendingwithdraws));
+            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u %.8f <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc,dstr(cp->withdrawinfos[0].C.pendingwithdraws));
             json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
         }
-        else if ( cp->withdrawinfos[0].pendingdeposits > 0 )
+        else if ( cp->withdrawinfos[0].C.pendingdeposits > 0 )
         {
-            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].pendingdeposits));
+            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].C.pendingdeposits));
             //json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
         }
     }
@@ -3917,11 +3917,15 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         cJSON_AddItemToObject(json,"NXTheight",cJSON_CreateNumber(get_NXTheight()));
         array = cJSON_CreateArray();
         for (i=0; i<NUM_GATEWAYS; i++)
-            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].balance)));
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].C.balance)));
         for (i=0; i<NUM_GATEWAYS; i++)
-            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].unspent)));
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].C.unspent)));
         for (i=0; i<NUM_GATEWAYS; i++)
-            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].pendingdeposits)));
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].C.pendingdeposits)));
+        for (i=0; i<NUM_GATEWAYS; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].C.pendingwithdraws)));
+        for (i=0; i<NUM_GATEWAYS; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].rawtx.batchcrc)));
         
         cJSON_AddItemToObject(json,"depinfo",array);
         retstr = cJSON_Print(json);

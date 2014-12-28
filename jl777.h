@@ -369,11 +369,16 @@ struct withdraw_info
     char cointxid[MAX_COINTXID_LEN],coinstr[16];
 };
 
-struct batch_info
+struct consensus_info
 {
     int64_t balance;
     uint64_t circulation,unspent,pendingdeposits,pendingwithdraws;
-    uint32_t boughtNXT,pad0,pad1,pad2;
+    uint32_t boughtNXT,pad0;
+};
+
+struct batch_info
+{
+    struct consensus_info C;
     struct withdraw_info W;
     struct rawtransaction rawtx;
 };
