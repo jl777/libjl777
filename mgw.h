@@ -3523,7 +3523,7 @@ int32_t cmp_batch_depositinfo(struct consensus_info *refbatch,struct consensus_i
         printf("no deposits or withdraws\n");
         return(-1);
     }
-    if ( fabs(refbatch->balance - batch->balance) > 1. || fabs(refbatch->circulation - batch->circulation) > 1 || fabs(refbatch->unspent - batch->unspent) > 1 || fabs(refbatch->pendingdeposits - batch->pendingdeposits) > 1 || fabs(refbatch->pendingwithdraws - batch->pendingwithdraws) > 1 )// || refbatch->boughtNXT != batch->boughtNXT )
+    if ( fabs(refbatch->balance - batch->balance) > SATOSHIDEN || fabs(refbatch->circulation - batch->circulation) > SATOSHIDEN || fabs(refbatch->unspent - batch->unspent) > SATOSHIDEN || fabs(refbatch->pendingdeposits - batch->pendingdeposits) > SATOSHIDEN || fabs(refbatch->pendingwithdraws - batch->pendingwithdraws) > SATOSHIDEN )// || refbatch->boughtNXT != batch->boughtNXT )
     {
         printf("disagreement >1\n");
         return(-1);
