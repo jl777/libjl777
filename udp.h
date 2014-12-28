@@ -671,7 +671,7 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->numfrags = (totallen / blocksize);
         if ( (totallen % blocksize) != 0 )
             args->numfrags++;
-        printf("NEW XFERARGS numfrags.%d blocksize.%d totallen.%d (%p %p %p %p)\n",args->numfrags,blocksize,totallen,args->timestamps,args->crcs,args->gotcrcs,args->data);
+        fprintf(stderr,"NEW XFERARGS.(%s) numfrags.%d blocksize.%d totallen.%d (%p %p %p %p)\n",args->name,args->numfrags,blocksize,totallen,args->timestamps,args->crcs,args->gotcrcs,args->data);
     }
     args->totalcrc = totalcrc;
     args->syncmem = syncmem;
@@ -687,8 +687,8 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->slots = calloc(args->numfrags,sizeof(*args->slots));
     if ( args->snapshot == 0 )
         args->snapshot = calloc(1,totallen);
-    //printf("return args.%p\n",args);
     portable_mutex_unlock(&mutex);
+    fprintf(stderr,"return args.%p\n",args);
     return(args);
 }
 
@@ -724,7 +724,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
     }
     else if ( args->totalcrc == totalcrc ) // recipient
     {
-        //fprintf(stderr,"update_transer_args\n");
+        fprintf(stderr,"update_transer_args %d of %d\n",fragi,args->numfrags);
         if ( fragi < args->numfrags && fragi*args->blocksize+datalen < args->totallen )
         {
             memcpy(args->data + fragi*args->blocksize,data,datalen);
@@ -763,7 +763,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     }
                 }
             }
- //fprintf(stderr,"update_transer_args return count.%d\n",count,args->totallen<4096?(char *)args->data:"");
+ fprintf(stderr,"update_transer_args return count.%d\n",count);
         }
         //fprintf(stderr,"update_transer_args return count.%d\n",count);
     }
@@ -826,7 +826,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             args = create_transfer_args(previpaddr,sender,dest,name,totallen,blocksize,totalcrc,handler,syncmem);
             if ( fragi < args->numfrags )
                 args->crcs[fragi] = checkcrc;
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 1 )
                 fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p %u\n",cmdstr,datalen,args->data,args->gotcrcs,args->gotcrcs[fragi]);
             if ( datacrc == checkcrc )
                 count = update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen);
@@ -838,7 +838,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         datalen = 0;
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"count\":\"%d\",\"checkcrc\":%u,\"ptr\":\"%p\"}",cmd,count,checkcrc,args);
     }
-    //fprintf(stderr,"finish sendfrag\n");
+    fprintf(stderr,"finish sendfrag.(%s)\n",cmdstr);
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
     txid = directsend_packet(!prevent_queueing(cmd),1,pserver,_tokbuf,len,data,datalen);
     if ( data != 0 )

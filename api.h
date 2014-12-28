@@ -170,7 +170,7 @@ void return_http_str(struct libwebsocket *wsi,uint8_t *retstr,int32_t retlen,cha
         strcat((char *)buffer,insertstr);
     libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
     libwebsocket_write(wsi,(unsigned char *)retstr,retlen,LWS_WRITE_HTTP);
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 3 )
         printf("SuperNET >>>>>>>>>>>>>> sends back (%s) retlen.%d\n",mediatype,retlen);
 }
 
@@ -301,7 +301,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             memcpy(str,(void *)((long)in + 1),len-1);
             str[len-1] = 0;
             convert_percent22(str);
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 3 )
                 printf("RPC GOT.(%s)\n",str);
             if ( str[0] == 0 || (str[0] != '[' && str[0] != '{') )
             {
@@ -357,7 +357,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             str[len] = 0;
             //if ( wsi != 0 )
             //dump_handshake_info(wsi);
-            if ( Debuglevel > 2 && strcmp("{\"requestType\":\"BTCDpoll\"}",str) != 0 )
+            if ( Debuglevel > 3 && strcmp("{\"requestType\":\"BTCDpoll\"}",str) != 0 )
                 fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
             //>>>>>>>>>>>>>> SuperNET received RPC.({"requestType":"BTCDjson","json":{\"requestType\":\"getpeers\"}})
             //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }

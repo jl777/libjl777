@@ -630,16 +630,19 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 char NXTpubkey[128];
                 stats = find_nodestats(destbits);
                 expand_nxt64bits(destNXTaddr,destbits);
-                if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
-                    set_NXTpubkey(NXTpubkey,destNXTaddr);
-                if ( Debuglevel > 1 )
-                    fprintf(stderr,"Route to {%s} %llx\n",destNXTaddr,*(long long *)stats->pubkey);
-                if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+                if ( stats != 0 )
                 {
-                    outbuf = decoded;
-                    len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
-                    route_packet(1,1,0,hopNXTaddr,outbuf,len);
-                } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no nodestats.%p %x %llx\n",stats,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
+                    if ( stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
+                        set_NXTpubkey(NXTpubkey,destNXTaddr);
+                    if ( Debuglevel > 1 )
+                        fprintf(stderr,"Route to {%s} %llx\n",destNXTaddr,*(long long *)stats->pubkey);
+                    if ( stats != 0 && stats->ipbits != 0 && memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+                    {
+                        outbuf = decoded;
+                        len = onionize(hopNXTaddr,maxbuf,0,destNXTaddr,&outbuf,len);
+                        route_packet(1,1,0,hopNXTaddr,outbuf,len);
+                    }
+                } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no nodestats.%s %x %llx\n",destNXTaddr,stats==0?0:stats->ipbits,stats==0?0:*(long long *)stats->pubkey);
                 return(0);
             } else if ( Debuglevel > 0 ) fprintf(stderr,"JSON didnt parse and no destination to forward to\n");
         }

@@ -512,7 +512,7 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
             else
             {
                 if ( Debuglevel > 1 )
-                    printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%s) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,redeemtxidstr,tp->comment!=0?tp->comment:"",cointxid,dstr(tp->quantity * ap->mult),dstr(tp->U.assetoshis),tp->estNXT,(long long)tp->redeemtxid);
+                    printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%d.%d.%d) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,redeemtxidstr,tp->comment!=0?tp->comment:"",tp->coinblocknum,tp->cointxind,tp->coinv,dstr(tp->quantity * ap->mult),dstr(tp->U.assetoshis),tp->estNXT,(long long)tp->redeemtxid);
             }
         } else printf("mismatched coin.%s vs (%s) for transfer.%llu (%s)\n",coinstr,cp->name,(long long)redeemtxid,commentstr);
         free_json(json);
@@ -3785,6 +3785,31 @@ cJSON *auto_process_MGW(struct coin_info *cp,cJSON *origjson)
     return(origjson);
 }
 
+cJSON *verbose_msigstats(char **specialNXTaddrs,struct coin_info *cp,struct NXT_asset *ap)
+{
+    cJSON *json = cJSON_CreateArray();
+    
+    return(json);
+}
+
+cJSON *verbose_unspentstats(char **specialNXTaddrs,struct coin_info *cp,struct NXT_asset *ap)
+{
+    cJSON *json = cJSON_CreateArray();
+    
+    return(json);
+}
+
+char *verbose_MGWstats(char **specialNXTaddrs,struct coin_info *cp,struct NXT_asset *ap)
+{
+    cJSON *json = cJSON_CreateObject();
+    char *retstr;
+    cJSON_AddItemToObject(json,"msig",verbose_msigstats(specialNXTaddrs,cp,ap));
+    cJSON_AddItemToObject(json,"unspents",verbose_unspentstats(specialNXTaddrs,cp,ap));
+    retstr = cJSON_Print(json);
+    free_json(json);
+    return(retstr);
+}
+
 char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *assetstr,char *NXT0,char *NXT1,char *NXT2,char *ip0,char *ip1,char *ip2,char *exclude0,char *exclude1,char *exclude2,char *refNXTaddr,char *depositors_pubkey)
 {
     static int32_t firsttimestamp;
@@ -3851,6 +3876,8 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         specialNXTaddrs = calloc(16,sizeof(*specialNXTaddrs));
         init_specialNXTaddrs(specialNXTaddrs,ipaddrs,issuerNXT,NXT0,NXT1,NXT2,ip0,ip1,ip2,exclude0,exclude1,exclude2);
     } else specialNXTaddrs = MGW_whitelist;
+    if ( actionflag == 100 )
+        return(verbose_MGWstats(specialNXTaddrs,cp,ap));
     pendingtxid = 0;
     if ( nxt64bits != 0 && rescan != 0 )
     {
@@ -3908,7 +3935,6 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     printf("MGW.(%s)\n",retstr);
     return(retstr);
 }
-
 
 void update_MGW(char **specialNXTaddrs,struct coin_info *cp)
 {
