@@ -483,7 +483,7 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
                 if ( cointxid[0] != 0 )
                 {
                     if ( Debuglevel > 1 )
-                        printf("got.(%llu) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",(long long)redeemtxid,tp->comment,cointxid,tp->buyNXT);
+                        printf("sender.%llu receiver.%llu got.(%llu) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",(long long)senderbits,(long long)receiverbits,(long long)redeemtxid,tp->comment,cointxid,tp->buyNXT);
                     if ( tp->cointxid != 0 && strcmp(tp->cointxid,cointxid) != 0 )
                     {
                         printf("cointxid conflict for redeemtxid.%llu: (%s) != (%s)\n",(long long)redeemtxid,tp->cointxid,cointxid);
