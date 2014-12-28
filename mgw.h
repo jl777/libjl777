@@ -3523,12 +3523,12 @@ int32_t cmp_batch_depositinfo(struct consensus_info *refbatch,struct consensus_i
         printf("no deposits or withdraws\n");
         return(-1);
     }
-    if ( fabs(refbatch->balance - batch->balance) > SATOSHIDEN || fabs(refbatch->circulation - batch->circulation) > SATOSHIDEN || fabs(refbatch->unspent - batch->unspent) > SATOSHIDEN || fabs(refbatch->pendingdeposits - batch->pendingdeposits) > SATOSHIDEN || fabs(refbatch->pendingwithdraws - batch->pendingwithdraws) > SATOSHIDEN )// || refbatch->boughtNXT != batch->boughtNXT )
+    if ( fabs(dstr(refbatch->balance) - dstr(batch->balance)) > 1 || fabs(dstr(refbatch->circulation) - dstr(batch->circulation)) > 1 || fabs(dstr(refbatch->unspent) - dstr(batch->unspent)) > 1 || fabs(dstr(refbatch->pendingdeposits) - dstr(batch->pendingdeposits)) > 1 || fabs(dstr(refbatch->pendingwithdraws) - dstr(batch->pendingwithdraws)) > 1 )// || refbatch->boughtNXT != batch->boughtNXT )
     {
-        printf("disagreement >1\n");
+        printf("disagreement >1 %.8f %.8f %.8f %.8f %.8f\n",fabs(dstr(refbatch->balance) - dstr(batch->balance)),fabs(dstr(refbatch->circulation) - dstr(batch->circulation)),fabs(dstr(refbatch->unspent) - dstr(batch->unspent)),fabs(dstr(refbatch->pendingdeposits) - dstr(batch->pendingdeposits)),fabs(dstr(refbatch->pendingwithdraws) - dstr(batch->pendingwithdraws)));
         return(-1);
     }
-    if ( refbatch->balance < -1 )
+    if ( dstr(refbatch->balance) < -1 )
     {
         printf("too low balance\n");
         return(-1);
