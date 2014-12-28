@@ -2507,10 +2507,10 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
 uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coin_info *cp,struct address_entry *entry,uint64_t nxt64bits,struct NXT_asset *ap,char *msigaddr,char *depositors_pubkey,uint32_t *buyNXTp)
 {
     double get_current_rate(char *base,char *rel);
-    char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],comment[4096],NXTaddr[64],numstr[64],rsacct[64],*errjsontxt,*str,*str2;
+    char buf[MAX_JSON_FIELD],txidstr[1024],coinaddr[1024],script[4096],comment[4096],NXTaddr[64],numstr[64],rsacct[64],*errjsontxt,*str;
     struct NXT_assettxid *tp;
     uint64_t depositid,value,convamount,total = 0;
-    int32_t j,haspubkey,iter,flag;
+    int32_t j,haspubkey,iter,flag,buyNXT = *buyNXTp;
     double rate;
     cJSON *pair,*errjson,*item;
     for (j=0; j<ap->num; j++)
@@ -2567,26 +2567,24 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
                 convamount = 0;
-                if ( haspubkey == 0 && *buyNXTp > 0 )
+                if ( haspubkey == 0 && buyNXT > 0 )
                 {
                     if ( (rate = get_current_rate(cp->name,"NXT")) != 0. )
                     {
-                        if ( *buyNXTp > MAX_BUYNXT )
-                            *buyNXTp = MAX_BUYNXT;
-                        convamount = ((double)(*buyNXTp+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
+                        if ( buyNXT > MAX_BUYNXT )
+                            buyNXT = MAX_BUYNXT;
+                        convamount = ((double)(buyNXT+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
                         if ( convamount >= value )
                         {
                             convamount = value;
-                            *buyNXTp = ((convamount * rate) / SATOSHIDEN);
+                            buyNXT = ((convamount * rate) / SATOSHIDEN);
                         }
                         cJSON_AddItemToObject(pair,"rate",cJSON_CreateNumber(rate));
                         cJSON_AddItemToObject(pair,"conv",cJSON_CreateNumber(dstr(convamount)));
-                        cJSON_AddItemToObject(pair,"buyNXT",cJSON_CreateNumber(*buyNXTp));
+                        cJSON_AddItemToObject(pair,"buyNXT",cJSON_CreateNumber(buyNXT));
                         value -= convamount;
                     }
-                } else *buyNXTp = 0;
-                str = cJSON_Print(pair);
-                stripwhite_ns(str,strlen(str));
+                } else buyNXT = 0;
                 if ( forceflag > 0 && (value > 0 || convamount > 0) )
                 {
                     flag = 0;
@@ -2594,12 +2592,15 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     for (iter=(value==0); iter<2; iter++)
                     {
                         errjsontxt = 0;
-                        depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,(iter == 0) ? cp->assetid : NXT_ASSETIDSTR,(iter == 0) ? (value/ap->mult) : *buyNXTp*SATOSHIDEN,MIN_NQTFEE,DEPOSIT_XFER_DURATION,str,depositors_pubkey);
+                        str = cJSON_Print(pair);
+                        stripwhite_ns(str,strlen(str));
+                        depositid = issue_transferAsset(&errjsontxt,0,cp->srvNXTACCTSECRET,NXTaddr,(iter == 0) ? cp->assetid : NXT_ASSETIDSTR,(iter == 0) ? (value/ap->mult) : buyNXT*SATOSHIDEN,MIN_NQTFEE,DEPOSIT_XFER_DURATION,str,depositors_pubkey);
+                        free(str);
                         if ( depositid != 0 && errjsontxt == 0 )
                         {
                             printf("%s worked.%llu\n",(iter == 0) ? "deposit" : "convert",(long long)depositid);
                             if ( iter == 1 )
-                                *buyNXTp = 0;
+                                *buyNXTp = buyNXT = 0;
                             flag++;
                             add_pendingxfer(0,depositid);
                             if ( transferjsonp != 0 )
@@ -2625,19 +2626,20 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                             else cJSON_AddItemToObject(pair,(iter == 0) ? "depositerror" : "converterror",cJSON_CreateString(errjsontxt));
                             free(errjsontxt);
                         }
-                        if ( *buyNXTp == 0 )
+                        if ( buyNXT == 0 )
                             break;
                     }
                     if ( flag != 0 )
                     {
-                        str2 = cJSON_Print(pair);
-                        stripwhite_ns(str2,strlen(str2));
-                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,0,str2,"coinv","cointxid");
-                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,NXTaddr,str2,"coinv","cointxid");
-                        free(str2);
+                        str = cJSON_Print(pair);
+                        stripwhite_ns(str,strlen(str));
+                        fprintf(stderr,"updatedeposit.ALL (%s)\n",str);
+                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,0,str,"coinv","cointxid");
+                        fprintf(stderr,"updatedeposit.%s (%s)\n",NXTaddr,str);
+                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,NXTaddr,str,"coinv","cointxid");
+                        free(str);
                     }
                 }
-                free(str);
                 if ( transferjsonp != 0 )
                     cJSON_AddItemToArray(*transferjsonp,pair);
             }
@@ -2707,7 +2709,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
         txind = tp->txind;
         if ( v != tp->v )
             fprintf(stderr,"error (%d != %d)\n",v,tp->v);
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             printf("get_cointpspent.(%016llx) (%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
@@ -2761,9 +2763,11 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             entry = &entries[i];
             if ( entry->vinflag == 0 )
                 pendingdeposits += process_msigdeposits(transferjsonp,forceflag,cp,entry,nxt64bits,ap,msigaddr,depositors_pubkey,buyNXTp);
-            if ( Debuglevel > 2 )
+            if ( Debuglevel+forceflag > 2 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
+            if ( Debuglevel+forceflag > 2 )
+                fprintf(stderr,"got cointp\n");
         }
         for (i=0; i<n; i++)
         {
@@ -2772,18 +2776,11 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             if ( cointp != 0 && cointp->entry.spent == 0 )
             {
                 unspent = cointp->value;
-                /*if ( (unspent= check_txout(&createtime,cp,cp->minconfirms,0,cointp->txid,cointp->entry.v,0)) == 0 )
-                    cointp->entry.spent = 1;
-                else if ( unspent != cointp->value )
-                    printf("ERROR: %.8f != %.8f | %s %s.%d\n",dstr(unspent),dstr(cointp->value),cp->name,cointp->txid,cointp->entry.v);
-                else*/
-                {
-                    cointp->unspent = unspent;
-                    (*numunspentp)++;
-                    (*unspentp) += unspent;
-                    printf("%s | %16.8f unspenttotal %.8f\n",cointp->txid,dstr(cointp->unspent),dstr((*unspentp)));
-                    update_unspent_funds(cp,cointp,0);
-                }
+                cointp->unspent = unspent;
+                (*numunspentp)++;
+                (*unspentp) += unspent;
+                printf("%s | %16.8f unspenttotal %.8f\n",cointp->txid,dstr(cointp->unspent),dstr((*unspentp)));
+                update_unspent_funds(cp,cointp,0);
             }
         }
         free(entries);
