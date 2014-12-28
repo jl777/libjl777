@@ -175,6 +175,19 @@ char *get_marker(char *coinstr)
     else return(0);
 }
 
+void set_legacy_coinid(char *coinstr,int32_t legacyid)
+{
+    switch ( legacyid )
+    {
+        case BTC_COINID: strcpy(coinstr,"BTC"); return;
+        case LTC_COINID: strcpy(coinstr,"LTC"); return;
+        case DOGE_COINID: strcpy(coinstr,"DOGE"); return;
+        case BC_COINID: strcpy(coinstr,"BC"); return;
+        case VIA_COINID: strcpy(coinstr,"VIA"); return;
+        case BTCD_COINID: strcpy(coinstr,"BTCD"); return;
+    }
+}
+
 /*char *coinid_str(int32_t coinid)
 {
     switch ( coinid )

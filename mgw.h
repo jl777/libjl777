@@ -1671,15 +1671,23 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
 
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
 {
-    int32_t j,M,n;//,coinid;
-    char nxtstr[512],coinstr[64],ipaddr[64],NXTpubkey[128];
+    int32_t j,M,n;
+    char nxtstr[512],coinstr[64],ipaddr[64],numstr[64],NXTpubkey[128];
     struct multisig_addr *msig = 0;
-    cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj;
+    cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj,*idobj;
     if ( obj == 0 )
         return(0);
-    //coinid = (int)get_cJSON_int(obj,"coinid");
     nameobj = cJSON_GetObjectItem(obj,"coin");
     copy_cJSON(coinstr,nameobj);
+    if ( coinstr[0] == 0 )
+    {
+        if ( (idobj = cJSON_GetObjectItem(obj,"coinid")) != 0 )
+        {
+            copy_cJSON(numstr,idobj);
+            if ( numstr[0] != 0 )
+                set_legacy_coinid(coinstr,atoi(numstr));
+        }
+    }
     if ( coinstr[0] != 0 )
     {
         addrobj = cJSON_GetObjectItem(obj,"address");
@@ -2508,7 +2516,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
-        printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
+        //printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
         if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
             break;
     }
@@ -2517,7 +2525,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
         if ( (value= conv_address_entry(coinaddr,txidstr,script,cp,entry)) == 0 )
         {
             if ( Debuglevel > 1 )
-                printf("skip %d\b",txidstr);
+                printf("skip %s\b",txidstr);
             return(0);
         }
         if ( strcmp(msigaddr,coinaddr) == 0 && txidstr[0] != 0 && value >= (cp->NXTfee_equiv * MIN_DEPOSIT_FACTOR) )
