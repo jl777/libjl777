@@ -675,6 +675,8 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
     }
     args->totalcrc = totalcrc;
     args->syncmem = syncmem;
+    if ( args->pstr == 0 )
+        args->pstr = calloc(1,args->numfrags);
     if ( args->timestamps == 0 )
         args->timestamps = calloc(args->numfrags,sizeof(*args->timestamps));
     if ( args->crcs == 0 )
@@ -772,7 +774,8 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
 
 void purge_transfer_args(struct transfer_args *args)
 {
-    args->completed = 1;
+    if ( args->pstr != 0 )
+        free(args->pstr);
     if ( args->slots != 0 )
         free(args->slots), args->slots = 0;
     if ( args->data != 0 )
@@ -891,14 +894,10 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
             send_fragi(NXTaddr,NXTACCTSECRET,args,args->slots[j]);
         }
     }
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
     {
         for (i=0; i<args->numfrags; i++)
-        {
-            if ( args->pstr == 0 )
-                args->pstr = calloc(1,args->numfrags);
             sprintf(&args->pstr[i],"%c",args->gotcrcs[i]==0?' ': ((args->crcs[i] != args->gotcrcs[i]) ? '?' : '='));
-        }
         sprintf(args->pstr+strlen(args->pstr)," count.%d vs %d | recv.%d sent.%d\n",count,match,fragi,j);
         fprintf(stderr,"%s",args->pstr);
     }
