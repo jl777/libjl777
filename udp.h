@@ -812,7 +812,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
         cmd = "sendfrag";
         pserver = get_pserver(0,dest,0,0);
         if ( syncmem != 0 )
-            sprintf(cmdstr+strlen(cmdstr),",\"syncmem\":%d}",syncmem);
+            sprintf(cmdstr+strlen(cmdstr),",\"syncmem\":%d",syncmem);
         sprintf(cmdstr+strlen(cmdstr),",\"requestType\":\"%s\",\"data\":%d}",cmd,datalen);
     }
     else

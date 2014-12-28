@@ -1673,7 +1673,9 @@ char *setmsigpubkey_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
             //replace_msig_json(1,refNXTaddr,acctcoinaddr,pubkey,coin,contact->jsonstr);
             //update_contact_info(contact);
             //free(contact);
+            return(clonestr("{\"result\":\"setmsigpubkey added coininfo\"}"));
         }
+        return(clonestr("{\"error\":\"setmsigpubkey_func couldnt convert refNXTaddr\"}"));
     }
     return(clonestr("{\"error\":\"bad setmsigpubkey_func paramater\"}"));
 }
