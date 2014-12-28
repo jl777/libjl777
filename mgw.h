@@ -161,19 +161,21 @@ void update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*ext
     void *refdata,*itemdata;
     cJSON *json,*newjson;
     char fname[1024];
-    (*setfname)(fname,NXTaddr);
+     (*setfname)(fname,NXTaddr);
     if ( (json= update_MGW_file(&fp,&newjson,fname,jsonstr)) != 0 && newjson != 0 && fp != 0 )
     {
         refdata = (*extract_jsondata)(newjson,arg,arg2);
-        if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+        if ( refdata != 0 && is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
         {
             for (i=0; i<n; i++)
             {
-                itemdata = (*extract_jsondata)(cJSON_GetArrayItem(json,i),arg,arg2);
-                cmpval = (*jsoncmp)(refdata,itemdata);
-                if ( itemdata != 0 ) free(itemdata);
-                if ( cmpval == 0 )
-                    break;
+                if ( (itemdata = (*extract_jsondata)(cJSON_GetArrayItem(json,i),arg,arg2)) != 0 )
+                {
+                    cmpval = (*jsoncmp)(refdata,itemdata);
+                    if ( itemdata != 0 ) free(itemdata);
+                    if ( cmpval == 0 )
+                        break;
+                }
             }
             if ( i == n )
                 newjson = append_MGW_file(fname,fp,json,newjson);
@@ -192,17 +194,21 @@ void *extract_jsonkey(cJSON *item,void *arg,void *arg2)
     return(redeemstr);
 }
 
-void *extract_jsonkey2(cJSON *item,void *arg,void *arg2)
+void *extract_jsonints(cJSON *item,void *arg,void *arg2)
 {
-    char argstr[MAX_JSON_FIELD],argstr2[MAX_JSON_FIELD],*keystr;
-    long len;
-    copy_cJSON(argstr,cJSON_GetObjectItem(item,arg));
-    len = strlen(argstr);
-    copy_cJSON(argstr2,cJSON_GetObjectItem(item,arg2));
-    keystr = calloc(1,len + strlen(arg2) + 2);
-    strcpy(keystr,argstr);
-    strcpy(keystr+len+1,argstr2);
-    return(keystr);
+    char argstr[MAX_JSON_FIELD],*keystr;
+    cJSON *obj0=0,*obj1=0;
+    if ( arg != 0 )
+        obj0 = cJSON_GetObjectItem(item,arg);
+    if ( arg2 != 0 )
+        obj1 = cJSON_GetObjectItem(item,arg2);
+    if ( obj0 != 0 && obj1 != 0 )
+    {
+        sprintf(argstr,"%llu.%llu",(long long)get_API_int(obj0,0),(long long)get_API_int(obj1,0));
+        keystr = calloc(1,strlen(argstr)+1);
+        strcpy(keystr,argstr);
+        return(keystr);
+    } else return(0);
 }
 
 void *extract_jsonmsig(cJSON *item,void *arg,void *arg2)
@@ -214,7 +220,9 @@ void *extract_jsonmsig(cJSON *item,void *arg,void *arg2)
 
 int32_t jsonmsigcmp(void *ref,void *item) { return(msigcmp(ref,item)); }
 int32_t jsonstrcmp(void *ref,void *item) { return(strcmp(ref,item)); }
-int32_t jsonstrcmp2(void *ref,void *item)
+
+
+/*int32_t jsonstrcmp2(void *ref,void *item)
 {
     long reflen,len;
     reflen = strlen(ref);
@@ -224,7 +232,7 @@ int32_t jsonstrcmp2(void *ref,void *item)
     return(-1);
 }
 
-/*void update_MGW_msigfile(char *NXTaddr,struct multisig_addr *refmsig,char *jsonstr)
+void update_MGW_msigfile(char *NXTaddr,struct multisig_addr *refmsig,char *jsonstr)
 {
     FILE *fp;
     cJSON *json = 0,*newjson,*item;
@@ -2169,7 +2177,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
         else
         {
             printf("send balance %.8f, unspent %.8f pendingdeposits %.8f\n",dstr(W.balance),dstr(W.unspent),dstr(W.pendingdeposits));
-            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&W,(int32_t)sizeof(W),300,"mgw");
+            retstr = start_transfer(0,refcp->srvNXTADDR,refcp->srvNXTADDR,refcp->srvNXTACCTSECRET,Server_names[gatewayid],batchname,(uint8_t *)&W,(int32_t)sizeof(W),300,"mgw",1);
             if ( retstr != 0 )
                 free(retstr);
         }
@@ -2553,18 +2561,19 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 printf("j is %d vs %d\n",j,ap->num);
             if ( j == ap->num )
             {
-                issue_getpubkey(&haspubkey,rsacct);
                 conv_rsacctstr(rsacct,nxt64bits);
+                issue_getpubkey(&haspubkey,rsacct);
                 //printf("UNPAID cointxid.(%s) <-> (%u %d %d)\n",txidstr,entry->blocknum,entry->txind,entry->v);
                 if ( ap->mult == 0 )
                 {
                     fprintf(stderr,"FATAL: ap->mult is 0 for %s\n",cp->name);
                     exit(-1);
                 }
+                expand_nxt64bits(NXTaddr,nxt64bits);
                 sprintf(comment,"{\"coin\":\"%s\",\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\",\"sender\":\"%s\",\"receiver\":\"%llu\",\"timestamp\":%u,\"quantity\":\"%llu\"}",cp->name,coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value),cp->srvNXTADDR,(long long)nxt64bits,(uint32_t)time(NULL),(long long)(value/ap->mult));
                 pair = cJSON_Parse(comment);
-                cJSON_AddItemToObject(pair,"NXT",cJSON_CreateString(rsacct));
-                printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
+                cJSON_AddItemToObject(pair,"NXT",cJSON_CreateString(NXTaddr));
+                printf("forceflag.%d haspubkey.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,haspubkey,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
                 convamount = 0;
                 if ( haspubkey == 0 && buyNXT > 0 )
@@ -2588,7 +2597,6 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 if ( forceflag > 0 && (value > 0 || convamount > 0) )
                 {
                     flag = 0;
-                    expand_nxt64bits(NXTaddr,nxt64bits);
                     for (iter=(value==0); iter<2; iter++)
                     {
                         errjsontxt = 0;
@@ -2634,14 +2642,15 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                         str = cJSON_Print(pair);
                         stripwhite_ns(str,strlen(str));
                         fprintf(stderr,"updatedeposit.ALL (%s)\n",str);
-                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,0,str,"coinv","cointxid");
+                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonints,jsonstrcmp,0,str,"coinv","cointxind");
                         fprintf(stderr,"updatedeposit.%s (%s)\n",NXTaddr,str);
-                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonkey2,jsonstrcmp2,NXTaddr,str,"coinv","cointxid");
+                        update_MGW_jsonfile(set_MGW_depositfname,extract_jsonints,jsonstrcmp,NXTaddr,str,"coinv","cointxind");
                         free(str);
                     }
                 }
                 if ( transferjsonp != 0 )
                     cJSON_AddItemToArray(*transferjsonp,pair);
+                else free_json(pair);
             }
         }
     }

@@ -615,7 +615,7 @@ uv_loop_t *UV_loop;
 static long server_xferred;
 int Servers_started;
 queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ,UDP_Q;
-int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL;
+int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL,LOG2_MAX_XFERPACKETS = 3;
 uint32_t *SuperNET_whitelist;
 int32_t Historical_done,MGW_initdone;
 struct NXThandler_info *Global_mp;
@@ -631,7 +631,7 @@ typedef int32_t (*tfunc)(void *,int32_t argsize);
 uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize);
 char *addcontact(char *handle,char *acct);
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
-void handler_gotfile(struct transfer_args *args);
+void handler_gotfile(struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {

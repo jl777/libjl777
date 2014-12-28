@@ -392,7 +392,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
                 case 2:  p2p_publishpacket(pserver,0); break;
                 case 0:  send_kademlia_cmd(0,pserver,"ping",NXTACCTSECRET,0,0); break;
                 case 1:
-                    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null");
+                    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null",1);
                     if ( retstr != 0 )
                         free(retstr);
                     break;
@@ -407,7 +407,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
     for (i=0; i<totallen; i++)
         buf[i] = rand() >> 8;
     //printf("START_TRANSFER\n");
-    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null");
+    retstr = start_transfer(0,NXTADDR,NXTADDR,NXTACCTSECRET,pserver->ipaddr,"ramtest",buf,totallen,timeout,"null",1);
     if ( retstr != 0 )
         free(retstr);
     free(buf);

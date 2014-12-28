@@ -790,6 +790,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
             UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
+            LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
             MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),0);
             if ( Debuglevel > 0 )
                 printf("(%s) USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",ipaddr,USESSL,IS_LIBTEST,APIPORT,APISLEEP);
