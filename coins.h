@@ -882,7 +882,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             if ( DATADIR[0] == 0 )
                                 strcpy(DATADIR,"archive");
                             if ( MGWROOT[0] == 0 )
-                                strcpy(MGWROOT,"/var/www/MGW");
+                                strcpy(MGWROOT,"/var/www");
                             if ( IS_LIBTEST > 0 )
                                 init_SuperNET_storage(cp->backupdir);
                             //addcontact(Global_mp->myhandle,cp->privateNXTADDR);

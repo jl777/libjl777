@@ -501,7 +501,7 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
                     }
                 }
             }
-        } else printf("mismatched coin.%s vs (%s) for redeem.%llu\n",coinstr,cp->name,(long long)redeemtxid);
+        } else printf("mismatched coin.%s vs (%s) for transfer.%llu (%s)\n",coinstr,cp->name,(long long)redeemtxid,commentstr);
         free_json(json);
     }
     return(tp);
