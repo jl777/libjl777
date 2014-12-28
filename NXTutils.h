@@ -574,7 +574,7 @@ struct NXT_acct *find_NXTacct(char *NXTaddr,char *NXTACCTSECRET)
     return(get_NXTacct(&createdflag,Global_mp,NXTaddr));
 }
 
-#ifdef BTC_COINID
+/*#ifdef BTC_COINID
 int64_t get_coin_quantity(CURL *curl_handle,int64_t *unconfirmedp,int32_t coinid,char *NXTaddr)
 {
     char *assetid_str(int32_t coinid);
@@ -619,7 +619,7 @@ int64_t get_coin_quantity(CURL *curl_handle,int64_t *unconfirmedp,int32_t coinid
     }
     return(quantity);
 }
-#endif
+#endif*/
 
 char *issue_getTransaction(CURL *curl_handle,char *txidstr)
 {
@@ -1373,33 +1373,48 @@ struct NXT_acct *add_NXT_acct(char *NXTaddr,struct NXThandler_info *mp,cJSON *ob
     return(0);
 }
 
-struct NXT_assettxid *add_NXT_assettxid(struct NXT_asset **app,char *assetidstr,cJSON *obj,char *txid,int32_t timestamp)
+struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset *ap,char *txid)
+{
+    int32_t createdflag;
+    struct NXT_assettxid *tp;
+    if ( createdflagp == 0 )
+        createdflagp = &createdflag;
+    tp = MTadd_hashtable(createdflagp,Global_mp->NXTasset_txids_tablep,txid);
+    if ( *createdflagp != 0 )
+    {
+        //tp->assetbits = ap->assetbits;
+       // tp->redeemtxid = calc_nxt64bits(txid);
+       // tp->timestamp = timestamp;
+        //printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
+        if ( ap != 0 )
+        {
+            if ( ap->num >= ap->max )
+            {
+                ap->max = ap->num + NXT_ASSETLIST_INCR;
+                ap->txids = realloc(ap->txids,sizeof(*ap->txids) * ap->max);
+            }
+            ap->txids[ap->num++] = tp;
+        }
+    }
+    return(tp);
+}
+
+/*struct NXT_assettxid *add_NXT_assettxid(struct NXT_asset **app,char *assetidstr,char *txid,int32_t timestamp)
 {
     int32_t createdflag;
     struct NXT_asset *ap;
     struct NXT_assettxid *tp;
-    if ( obj != 0 )
-        copy_cJSON(assetidstr,obj);
-    *app = ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-    tp = MTadd_hashtable(&createdflag,Global_mp->NXTasset_txids_tablep,txid);
-    if ( createdflag != 0 )
-    {
-        tp->assetbits = ap->assetbits;
-        tp->txidbits = calc_nxt64bits(txid);
-        tp->timestamp = timestamp;
-        //printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
-        if ( ap->num >= ap->max )
-        {
-            ap->max = ap->num + NXT_ASSETLIST_INCR;
-            ap->txids = realloc(ap->txids,sizeof(*ap->txids) * ap->max);
-        }
-        ap->txids[ap->num++] = tp;
-        return(tp);
-    }
-    return(0);
-}
+     *app = ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+    //tp = MTadd_hashtable(&createdflag,Global_mp->NXTasset_txids_tablep,txid);
+    tp = find_NXT_assettxid(&createdflag,ap,txid);
+    tp->assetbits = ap->assetbits;
+    tp->redeemtxid = calc_nxt64bits(txid);
+    tp->timestamp = timestamp;
+    //printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
+    return(tp);
+}*/
 
-int32_t addto_account_txlist(struct NXT_acct *acct,int32_t ind,struct NXT_assettxid *tp)
+/*int32_t addto_account_txlist(struct NXT_acct *acct,int32_t ind,struct NXT_assettxid *tp)
 {
     if ( acct->txlists[ind] == 0 || acct->txlists[ind]->num >= acct->txlists[ind]->max )
     {
@@ -1483,7 +1498,7 @@ struct NXT_assettxid *update_assettxid_list(char *sender,char *receiver,char *as
         }
     } else printf("duplicate asset txid.%s\n",txid);
     return(tp);
-}
+}*/
 
 struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,char *coinstr)
 {
@@ -2395,7 +2410,7 @@ struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimes
     return(accts);
 }
 
-#ifdef BTC_COINID
+/*#ifdef BTC_COINID
 struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxid,int32_t vout)
 {
     char *assetid_str();
@@ -2426,7 +2441,7 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
     }
     return(0);
 }
-#endif
+#endif*/
 #endif
 
 #endif

@@ -328,7 +328,7 @@ char *load_filestr(char *userNXTaddr,int32_t gatewayid)
     long fpos;
     FILE *fp;
     char fname[1024],*buf,*retstr = 0;
-    sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,userNXTaddr);
+    sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,userNXTaddr);
     if ( (fp= fopen(fname,"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
@@ -356,7 +356,7 @@ void bridge_handler(struct transfer_args *args)
     {
         gatewayid = (name[3] - '0');
         name += 5;
-        sprintf(fname,"/var/www/MGW/gateway%d/%s",gatewayid,name);
+        sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,name);
         if ( (fp= fopen(fname,"wb")) != 0 )
         {
             fwrite(args->data,1,args->totallen,fp);

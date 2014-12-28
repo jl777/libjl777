@@ -706,7 +706,7 @@ cJSON *gen_pserver_json(struct pserver_info *pserver)
     return(json);
 }
 
-char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
+/*char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
 {
     int32_t i,n = 0;
     char *str;
@@ -728,12 +728,12 @@ char *_coins_jsonstr(char *coinsjson,uint64_t coins[4])
         coinsjson[0] = coinsjson[1] = 0;
     else strcat(coinsjson,"]");
     return(coinsjson);
-}
+}*/
 
 cJSON *gen_peerinfo_json(struct nodestats *stats)
 {
-    char srvipaddr[64],srvnxtaddr[64],RSaddr[64],numstr[64],hexstr[512],coinsjsonstr[1024];
-    cJSON *coins,*json = cJSON_CreateObject();
+    char srvipaddr[64],srvnxtaddr[64],RSaddr[64],numstr[64],hexstr[512];//,coinsjsonstr[1024];
+    cJSON *json = cJSON_CreateObject();
     struct pserver_info *pserver;
     expand_ipbits(srvipaddr,stats->ipbits);
     pserver = get_pserver(0,srvipaddr,0,0);
@@ -767,13 +767,13 @@ cJSON *gen_peerinfo_json(struct nodestats *stats)
     cJSON_AddItemToObject(json,"RS",cJSON_CreateString(RSaddr));
     init_hexbytes_noT(hexstr,stats->pubkey,sizeof(stats->pubkey));
     cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(hexstr));
-    if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )
+    /*if ( _coins_jsonstr(coinsjsonstr,stats->coins) != 0 )
     {
         coins = cJSON_Parse(coinsjsonstr+9);
         if ( coins != 0 )
             cJSON_AddItemToObject(json,"coins",coins);
         //else printf("warning no coin networks.(%s) probably no peerinfo yet\n",coinsjsonstr);
-    }
+    }*/
     return(json);
 }
 

@@ -523,7 +523,9 @@ char *unstringify(char *str)
     else i = 0;
     for (j=0; str[i]!=0; i++)
     {
-        if ( str[i] == '\\' && str[i+1] == '"' )
+        if ( str[i] == '\\' && (str[i+1] == 't' || str[i+1] == 'n' || str[i+1] == 'b' || str[i+1] == 'r') )
+            i++;
+        else if ( str[i] == '\\' && str[i+1] == '"' )
             str[j++] = '"', i++;
         else str[j++] = str[i];
     }

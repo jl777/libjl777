@@ -669,18 +669,42 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
     } else fprintf(stderr,"(%s) <- (%s) already there\n",keystr,datastr);
 }
 
-int32_t init_SuperNET_storage()
+void ensure_SuperNET_dirs(char *backupdir)
+{
+    char dirname[1024];
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW/sent"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW/deposit"), ensure_directory(dirname);
+    
+    if ( DATADIR[0] != 0 && DATADIR[0] != '.' )
+        ensure_directory(DATADIR);
+    sprintf(dirname,"%s/%s",DATADIR,"mgw"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",DATADIR,"bridge"), ensure_directory(dirname);
+    
+    if ( backupdir == 0 || backupdir[0] == 0 )
+        backupdir = ".";
+    if ( backupdir[0] != '.' )
+        ensure_directory(backupdir);
+    sprintf(dirname,"%s/%s",backupdir,"backups"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",backupdir,"backups/telepods"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",backupdir,"archive"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",backupdir,"archive/telepods"), ensure_directory(dirname);
+}
+
+int32_t init_SuperNET_storage(char *backupdir)
 {
     static int didinit;
     int i,m,n,createdflag;
     struct multisig_addr *msig = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct SuperNET_db *sdb;
-    if ( IS_LIBTEST == 0 )
-        return(0);
     if ( didinit == 0 )
     {
+        ensure_SuperNET_dirs(backupdir);
         didinit = 1;
+        if ( IS_LIBTEST > 0 )
         {
             open_database(PUBLIC_DATA,&SuperNET_dbs[PUBLIC_DATA],"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
             open_database(PRIVATE_DATA,&SuperNET_dbs[PRIVATE_DATA],"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);

@@ -8,7 +8,7 @@
 
 typedef int32_t (*handler)();
 //struct server_request_header { int32_t retsize,argsize,variant,funcid; };
-struct handler_info { handler variant_handler; int32_t variant,funcid; long argsize,retsize; char **whitelist; };
+/*struct handler_info { handler variant_handler; int32_t variant,funcid; long argsize,retsize; char **whitelist; };
 struct server_request
 {
 	struct server_request_header H;
@@ -21,7 +21,7 @@ struct server_response
 	struct server_request_header H;
     int32_t retsize,numips,numnxtaccts,coinid;
     int64_t nodeshares,current_nodecoins,nodecoins,nodecoins_sent;
-};
+};*/
 
 static int32_t Numhandlers;
 static struct handler_info Handlers[100];

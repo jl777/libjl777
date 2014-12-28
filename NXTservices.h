@@ -22,14 +22,14 @@ union _asset_price { uint64_t assetoshis,price; };
 struct NXT_assettxid
 {
     struct NXT_str H;
-    uint64_t AMtxidbits,txidbits,assetbits,senderbits,receiverbits,quantity,redeemtxid,convassetid;
+    uint64_t AMtxidbits,redeemtxid,assetbits,senderbits,receiverbits,quantity,convassetid;
     double minconvrate;
     union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
     uint32_t coinblocknum,cointxind,coinv;
     char *cointxid;
     char *comment,*convwithdrawaddr,convname[16],teleport[64];
     float estNXT;
-    int32_t completed,timestamp,vout,numconfs,convexpiration;
+    int32_t completed,timestamp,vout,numconfs,convexpiration,buyNXT,sentNXT;
 };
 
 struct NXT_assettxid_list
