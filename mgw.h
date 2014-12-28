@@ -2590,7 +2590,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                         convamount = ((double)(buyNXT+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
                         if ( convamount >= value )
                         {
-                            convamount = value;
+                            convamount = value / 2;
                             buyNXT = ((convamount * rate) / SATOSHIDEN);
                         }
                         cJSON_AddItemToObject(pair,"rate",cJSON_CreateNumber(rate));
@@ -3909,7 +3909,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
                 json = process_MGW(0,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
                 MGW_useracct_str(&json,actionflag,cp,ap,nxt64bits,issuerNXT,specialNXTaddrs);
             } else retstr = clonestr("\"error\":\"action has to wait for pendingtxid to be seen\"}");
-        }
+        } else publish_withdraw_info(cp,&cp->BATCH);
     }
     else
     {
