@@ -288,9 +288,9 @@ cJSON *cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int32
 cJSON *cJSON_Parse(const char *value)
 {
     static int depth;
-    int i;
     cJSON *retval;
-    for (i=0; value[i]!=0; i++)
+    /*    int i;
+     for (i=0; value[i]!=0; i++)
         if ( value[i] != ' ' && value[i] != '\n' && value[i] != '\r' && value[i] != '\t' )
         {
             if ( value[i] != '[' && value[i] != '{' )
@@ -300,7 +300,7 @@ cJSON *cJSON_Parse(const char *value)
             }
             break;
         }
-    /*for (i=0; value[i]!=0; i++)
+    for (i=0; value[i]!=0; i++)
         if ( (unsigned int)value[i] >= 128 )
             break;
     if ( value[i] != 0 )
