@@ -3925,7 +3925,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         for (i=0; i<NUM_GATEWAYS; i++)
             cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].C.pendingwithdraws)));
         for (i=0; i<NUM_GATEWAYS; i++)
-            cJSON_AddItemToArray(array,cJSON_CreateNumber(dstr(cp->withdrawinfos[i].rawtx.batchcrc)));
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(cp->withdrawinfos[i].rawtx.batchcrc));
         
         cJSON_AddItemToObject(json,"depinfo",array);
         retstr = cJSON_Print(json);
