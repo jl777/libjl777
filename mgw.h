@@ -220,7 +220,7 @@ int32_t jsonstrcmp2(void *ref,void *item)
     reflen = strlen(ref);
     len = strlen(item);
     if ( reflen == len && strcmp(ref,item) == 0 )
-        return(strcmp(ref + len + 1,item + len + 1));
+        return(strcmp((char *)((long)ref + len + 1),(char *)((long)item + len + 1)));
     return(-1);
 }
 
@@ -2535,7 +2535,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     fprintf(stderr,"FATAL: ap->mult is 0 for %s\n",cp->name);
                     exit(-1);
                 }
-                sprintf(comment,"{\"coin\":\"%s\",\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\",\"sender\":\"%s\",\"receiver\":\"%llu\",\"timestamp\":%u,\"quantity\":\"%llu\"}",cp->name,coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value),cp->srvNXTADDR,(long long)nxt64bits,(uint32_t)time(NULL),value/ap->mult);
+                sprintf(comment,"{\"coin\":\"%s\",\"coinaddr\":\"%s\",\"cointxid\":\"%s\",\"coinblocknum\":%u,\"cointxind\":%u,\"coinv\":%u,\"amount\":\"%.8f\",\"sender\":\"%s\",\"receiver\":\"%llu\",\"timestamp\":%u,\"quantity\":\"%llu\"}",cp->name,coinaddr,txidstr,entry->blocknum,entry->txind,entry->v,dstr(value),cp->srvNXTADDR,(long long)nxt64bits,(uint32_t)time(NULL),(long long)(value/ap->mult));
                 pair = cJSON_Parse(comment);
                 cJSON_AddItemToObject(pair,"NXT",cJSON_CreateString(rsacct));
                 printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
