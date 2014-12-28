@@ -371,7 +371,8 @@ struct withdraw_info
 
 struct batch_info
 {
-    uint64_t balance,circulation,unspent,pendingdeposits;
+    int64_t balance;
+    uint64_t circulation,unspent,pendingdeposits;
     uint32_t boughtNXT,pad0,pad1,pad2;
     struct withdraw_info W;
     struct rawtransaction rawtx;

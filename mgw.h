@@ -3414,8 +3414,9 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     struct NXT_assettxid *tp;
     struct rawtransaction *rp;
     cJSON *array;
+    int64_t balance;
     int32_t i,j,numredeems,alreadyspent,published = 0;
-    uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,balance,sum,pending_withdraw = 0;
+    uint64_t destamounts[MAX_MULTISIG_OUTPUTS],redeems[MAX_MULTISIG_OUTPUTS],nxt64bits,sum,pending_withdraw = 0;
     char withdrawaddr[64],sender[64],redeemtxid[64],numstr[64],*destaddrs[MAX_MULTISIG_OUTPUTS],*destaddr="",*batchsigned,*str;
     if ( ap->num <= 0 )
         return;
@@ -3453,10 +3454,11 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     cJSON_AddItemToObject(*jsonp,"redeems",array);
     balance = unspent - pending_withdraw - circulation - pendingdeposits;
     sprintf(numstr,"%.8f",dstr(balance)), cJSON_AddItemToObject(*jsonp,"revenues",cJSON_CreateString(numstr));
-    if ( cp->boughtNXT > 0 && balance != 0. )
+    if ( cp->boughtNXT > 0 )
     {
         cJSON_AddItemToObject(*jsonp,"boughtNXT",cJSON_CreateNumber(cp->boughtNXT));
-        sprintf(numstr,"%.8f",dstr(cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
+        if ( balance > 0. )
+            sprintf(numstr,"%.8f",dstr(cp->boughtNXT / balance)), cJSON_AddItemToObject(*jsonp,"costbasis",cJSON_CreateString(numstr));
     }
     cp->BATCH.balance = balance;
     cp->BATCH.circulation = circulation;
