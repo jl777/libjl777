@@ -482,8 +482,6 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
                 copy_cJSON(cointxid,cointxidobj);
                 if ( cointxid[0] != 0 )
                 {
-                    if ( Debuglevel > 1 )
-                        printf("sender.%llu receiver.%llu got.(%llu) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",(long long)senderbits,(long long)receiverbits,(long long)redeemtxid,tp->comment,cointxid,tp->buyNXT);
                     if ( tp->cointxid != 0 && strcmp(tp->cointxid,cointxid) != 0 )
                     {
                         printf("cointxid conflict for redeemtxid.%llu: (%s) != (%s)\n",(long long)redeemtxid,tp->cointxid,cointxid);
@@ -500,6 +498,8 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
                             tp->estNXT = (((double)cp->NXTfee_equiv / cp->txfee) * tp->U.assetoshis / SATOSHIDEN);
                      }
                 }
+                if ( Debuglevel > 1 )
+                    printf("sender.%llu receiver.%llu got.(%llu) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",(long long)senderbits,(long long)receiverbits,(long long)redeemtxid,tp->comment,cointxid,tp->buyNXT);
             }
             else
             {
@@ -2524,12 +2524,18 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     {
         if ( (value= conv_address_entry(coinaddr,txidstr,script,cp,entry)) == 0 )
         {
+            if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
+                printf("%d of %d: process.(%s) isinternal.%d %llu\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits);
             if ( Debuglevel > 1 )
                 printf("skip %s\b",txidstr);
             return(0);
         }
+        if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
+            printf("almost there\n");
         if ( strcmp(msigaddr,coinaddr) == 0 && txidstr[0] != 0 && value >= (cp->NXTfee_equiv * MIN_DEPOSIT_FACTOR) )
         {
+            if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
+                printf("inside\n");
             for (j=0; j<ap->num; j++)
             {
                 tp = ap->txids[j];
@@ -2543,6 +2549,8 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     break;
                 }
             }
+            if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
+                printf("j is %d vs %d\n",j,ap->num);
             if ( j == ap->num )
             {
                 issue_getpubkey(&haspubkey,rsacct);
