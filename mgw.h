@@ -1353,8 +1353,8 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                                         if ( cointxidobj != 0 )
                                         {
                                             copy_cJSON(cointxid,cointxidobj);
-                                            if ( Debuglevel > 2 )
-                                                printf("got.(%s) comment.(%s) cointxidstr.(%s)\n",txid,tp->comment,cointxid);
+                                            if ( Debuglevel > 1 )
+                                                printf("got.(%s) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",txid,tp->comment,cointxid,buyNXT);
                                             if ( cointxid[0] != 0 )
                                             {
                                                 tp->cointxid = clonestr(cointxid);
@@ -1533,7 +1533,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                     break;
                 }
             }
-            if ( j == ap->num )
+            if ( j == ap->num && strcmp("6332970c4429247c507480ae7053cce2c736f040f1c83d6d5ab39af29f97c6a8",txidstr) != 0 ) // misformatted
             {
                 issue_getpubkey(&haspubkey,rsacct);
                 conv_rsacctstr(rsacct,nxt64bits);
@@ -1543,22 +1543,26 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
                 cJSON_AddItemToObject(pair,"NXT",cJSON_CreateString(rsacct));
                 printf("forceflag.%d >>>>>>>>>>>>>> Need to transfer %.8f %ld assetoshis | %s to %llu for (%s) %s\n",forceflag,dstr(value),(long)(value/ap->mult),cp->name,(long long)nxt64bits,txidstr,comment);
                 total += value;
-                if ( haspubkey == 0 && *buyNXTp > 0 && (rate = get_current_rate(cp->name,"NXT")) != 0. )
+                if ( haspubkey == 0 && *buyNXTp > 0 )
                 {
-                    if ( *buyNXTp > MAX_BUYNXT )
-                        *buyNXTp = MAX_BUYNXT;
-                    convamount = ((double)(*buyNXTp+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
-                    if ( convamount >= value )
+                    if ( (rate = get_current_rate(cp->name,"NXT")) != 0. )
                     {
-                        convamount = value;
-                        *buyNXTp = ((convamount * rate) / SATOSHIDEN);
+                        if ( *buyNXTp > MAX_BUYNXT )
+                            *buyNXTp = MAX_BUYNXT;
+                        convamount = ((double)(*buyNXTp+2) * SATOSHIDEN) / rate; // 2 NXT extra to cover the 2 NXT txfees
+                        if ( convamount >= value )
+                        {
+                            convamount = value;
+                            *buyNXTp = ((convamount * rate) / SATOSHIDEN);
+                        }
+                        cJSON_AddItemToObject(pair,"rate",cJSON_CreateNumber(rate));
+                        cJSON_AddItemToObject(pair,"conv",cJSON_CreateNumber(dstr(convamount)));
+                        cJSON_AddItemToObject(pair,"buyNXT",cJSON_CreateNumber(*buyNXTp));
+                        value -= convamount;
                     }
-                    cJSON_AddItemToObject(pair,"rate",cJSON_CreateNumber(rate));
-                    cJSON_AddItemToObject(pair,"conv",cJSON_CreateNumber(dstr(convamount)));
-                    cJSON_AddItemToObject(pair,"buyNXT",cJSON_CreateNumber(*buyNXTp));
-                    value -= convamount;
-                } else convamount = 0;
+                } else convamount = *buyNXTp = 0;
                 str = cJSON_Print(pair);
+                stripwhite_ns(str,strlen(str));
                 if ( forceflag > 0 && value > 0 )
                 {
                     expand_nxt64bits(NXTaddr,nxt64bits);
@@ -2515,7 +2519,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
             expand_nxt64bits(sender,tp->senderbits);
             if ( tp->AMtxidbits == 0 && (destaddr= parse_withdraw_instructions(withdrawaddr,sender,cp,tp,ap)) != 0 && destaddr[0] != 0 )
             {
-                stripwhite(destaddr,strlen(destaddr));
+                stripwhite_ns(destaddr,strlen(destaddr));
                 printf("i.%d of %d: process_destaddr.(%s) %.8f\n",i,ap->num,destaddr,dstr(tp->U.assetoshis));
                 numredeems = process_destaddr(&alreadyspent,&array,destaddrs,destamounts,redeems,&pending_withdraw,cp,nxt64bits,ap,destaddr,tp,numredeems,sender);
                 tp->AMtxidbits = alreadyspent;
