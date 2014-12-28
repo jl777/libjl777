@@ -3471,6 +3471,7 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
     cp->BATCH.circulation = circulation;
     cp->BATCH.unspent = unspent;
     cp->BATCH.pendingdeposits = pendingdeposits;
+    cp->BATCH.pendingwithdraws = pending_withdraw;
     cp->BATCH.boughtNXT = cp->boughtNXT;
     array = cJSON_CreateArray();
     if ( (int64_t)pending_withdraw >= ((5 * cp->NXTfee_equiv) - (numredeems * (cp->txfee + cp->NXTfee_equiv))) )
@@ -3516,10 +3517,12 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 
 int32_t cmp_batch_depositinfo(struct batch_info *refbatch,struct batch_info *batch)
 {
-    printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),batch->boughtNXT);
+    printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),dstr(refbatch->pendingwithdraws),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),dstr(batch->pendingwithdraws),batch->boughtNXT);
     if ( refbatch->pendingdeposits == 0 )
         return(-1);
-    if ( refbatch->balance != batch->balance || refbatch->circulation != batch->circulation || refbatch->unspent != batch->unspent || refbatch->pendingdeposits != batch->pendingdeposits || refbatch->boughtNXT != batch->boughtNXT )
+    if ( fabs(refbatch->balance - batch->balance) > 1. || fabs(refbatch->circulation - batch->circulation) > 1 || fabs(refbatch->unspent - batch->unspent) > 1 || fabs(refbatch->pendingdeposits - batch->pendingdeposits) > 1 || fabs(refbatch->pendingwithdraws - batch->pendingwithdraws) > 1 )// || refbatch->boughtNXT != batch->boughtNXT )
+        return(-1);
+    if ( (refbatch->balance - refbatch->pendingwithdraws) < -1 )
         return(-1);
     return(0);
 }
@@ -3742,13 +3745,15 @@ char *check_MGW_cache(struct coin_info *cp,char *userNXTaddr)
     return(retstr);
 }
 
-cJSON *auto_process_MGW(struct coin_info *cp,cJSON *origjson)
+cJSON *auto_process_MGW(char **specialNXTaddrs,struct coin_info *cp,cJSON *origjson,char *NXTaddr,char *depositors_pubkey)
 {
     static portable_mutex_t mutex;
     static int32_t didinit;
     struct batch_info *bp;
-    cJSON *json = cJSON_CreateObject();
-    int32_t i;
+    cJSON *json = 0;
+    struct NXT_asset *ap;
+    int32_t i,createdflag;
+    char *ipaddrs[3];
     if ( didinit == 0 )
     {
         portable_mutex_init(&mutex);
@@ -3759,20 +3764,22 @@ cJSON *auto_process_MGW(struct coin_info *cp,cJSON *origjson)
         bp = (i < NUM_GATEWAYS) ? &cp->withdrawinfos[i] : &cp->BATCH;
         printf("gateway.%d: crc.%u %x balance %.8f pendingdeposits %.8f unspent %.8f\n",i,bp->rawtx.batchcrc,bp->rawtx.batchcrc,dstr(bp->balance),dstr(bp->pendingdeposits),dstr(bp->unspent));
     }
+    ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
+    for (i=0; i<3; i++)
+        ipaddrs[i] = Server_names[i];
     portable_mutex_lock(&mutex);
-    if ( cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+    if ( cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[1]) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[2]) == 0 )
     {
-        printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc);
-        //if ( json != 0 )
-        //    free_json(json);
-        //json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
-    }
-    else if ( cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[1]) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0],&cp->withdrawinfos[2]) == 0 )
-    {
-        printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].pendingdeposits));
-        //if ( json != 0 )
-        //    free_json(json);
-        //json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,issuerNXT,startmilli,NXTaddr,depositors_pubkey);
+        if ( cp->withdrawinfos[0].pendingwithdraws > 0 && cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
+        {
+            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u %.8f <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc,dstr(cp->withdrawinfos[0].pendingwithdraws));
+            json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
+        }
+        else if ( cp->withdrawinfos[0].pendingdeposits > 0 )
+        {
+            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].pendingdeposits));
+            //json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
+        }
     }
     portable_mutex_unlock(&mutex);
     if ( origjson == 0 )
@@ -3896,7 +3903,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
         else retstr = wait_for_pendingtxid(cp,specialNXTaddrs,issuerNXT,pendingtxid);
     }
     if ( retstr == 0 && pendingtxid == 0 && actionflag == 0 && Global_mp->gatewayid == NUM_GATEWAYS-1 )
-        json = auto_process_MGW(cp,json);
+        json = auto_process_MGW(specialNXTaddrs,cp,json,NXTaddr,depositors_pubkey);
     if ( json != 0 )
     {
         cJSON *array;
@@ -3936,12 +3943,10 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
 
 void update_MGW(char **specialNXTaddrs,struct coin_info *cp)
 {
-    //cJSON *process_MGW(int32_t actionflag,struct coin_info *cp,struct NXT_asset *ap,char *ipaddrs[3],char **specialNXTaddrs,char *issuer,double startmilli,char *NXTaddr,char *depositors_pubkey);
-    //uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],char *refNXTaddr);
     cJSON *json;
-    char *ipaddrs[3];
     struct NXT_asset *ap;
     int32_t j,createdflag;
+    char *ipaddrs[3];
     for (j=0; j<3; j++)
         ipaddrs[j] = Server_names[j];
     update_NXTblockchain_info(cp,specialNXTaddrs,cp->MGWissuer);
