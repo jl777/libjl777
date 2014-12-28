@@ -3518,12 +3518,21 @@ void process_withdraws(cJSON **jsonp,struct multisig_addr **msigs,int32_t nummsi
 int32_t cmp_batch_depositinfo(struct consensus_info *refbatch,struct consensus_info *batch)
 {
     printf("cmp_batch_depositinfo (%.8f %.8f %.8f %.8f %.8f).%d vs (%.8f %.8f %.8f %.8f %.8f).%d\n",dstr(refbatch->balance),dstr(refbatch->circulation),dstr(refbatch->unspent),dstr(refbatch->pendingdeposits),dstr(refbatch->pendingwithdraws),refbatch->boughtNXT,dstr(batch->balance),dstr(batch->circulation),dstr(batch->unspent),dstr(batch->pendingdeposits),dstr(batch->pendingwithdraws),batch->boughtNXT);
-    if ( refbatch->pendingdeposits == 0 )
+    if ( refbatch->pendingdeposits == 0 && refbatch->pendingwithdraws == 0 )
+    {
+        printf("no deposits or withdraws\n");
         return(-1);
+    }
     if ( fabs(refbatch->balance - batch->balance) > 1. || fabs(refbatch->circulation - batch->circulation) > 1 || fabs(refbatch->unspent - batch->unspent) > 1 || fabs(refbatch->pendingdeposits - batch->pendingdeposits) > 1 || fabs(refbatch->pendingwithdraws - batch->pendingwithdraws) > 1 )// || refbatch->boughtNXT != batch->boughtNXT )
+    {
+        printf("disagreement >1\n");
         return(-1);
-    if ( (refbatch->balance - refbatch->pendingwithdraws) < -1 )
+    }
+    if ( refbatch->balance < -1 )
+    {
+        printf("too low balance\n");
         return(-1);
+    }
     return(0);
 }
 
@@ -3778,7 +3787,7 @@ cJSON *auto_process_MGW(char **specialNXTaddrs,struct coin_info *cp,cJSON *origj
         else if ( cp->withdrawinfos[0].C.pendingdeposits > 0 )
         {
             printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].C.pendingdeposits));
-            //json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
+            json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
         }
     }
     portable_mutex_unlock(&mutex);
