@@ -2508,14 +2508,18 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
     for (j=0; j<ap->num; j++)
     {
         tp = ap->txids[j];
-        //printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
+        printf("%d of %d: process.(%s) isinternal.%d %llu (%llu -> %llu)\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits,(long long)tp->senderbits,(long long)tp->receiverbits);
         if ( tp->receiverbits == nxt64bits && tp->coinblocknum == entry->blocknum && tp->cointxind == entry->txind && tp->coinv == entry->v )
             break;
     }
     if ( j == ap->num )
     {
         if ( (value= conv_address_entry(coinaddr,txidstr,script,cp,entry)) == 0 )
+        {
+            if ( Debuglevel > 1 )
+                printf("skip %d\b",txidstr);
             return(0);
+        }
         if ( strcmp(msigaddr,coinaddr) == 0 && txidstr[0] != 0 && value >= (cp->NXTfee_equiv * MIN_DEPOSIT_FACTOR) )
         {
             for (j=0; j<ap->num; j++)
