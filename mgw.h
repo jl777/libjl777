@@ -2527,7 +2527,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
             if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
                 printf("%d of %d: process.(%s) isinternal.%d %llu\n",j,ap->num,msigaddr,entry->isinternal,(long long)nxt64bits);
             if ( Debuglevel > 1 )
-                printf("skip %s\b",txidstr);
+                printf("skip %s\n",txidstr);
             return(0);
         }
         if ( strcmp("9e88f76196922f9d0651039b50fdaed4022f86ac2632985794ea21d33484f8fb",txidstr) == 0 )
