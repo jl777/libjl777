@@ -671,7 +671,8 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->numfrags = (totallen / blocksize);
         if ( (totallen % blocksize) != 0 )
             args->numfrags++;
-        fprintf(stderr,"NEW XFERARGS.(%s) numfrags.%d blocksize.%d totallen.%d (%p %p %p %p)\n",args->name,args->numfrags,blocksize,totallen,args->timestamps,args->crcs,args->gotcrcs,args->data);
+        if ( Debuglevel > 1 )
+            fprintf(stderr,"NEW XFERARGS.(%s) numfrags.%d blocksize.%d totallen.%d (%p %p %p %p)\n",args->name,args->numfrags,blocksize,totallen,args->timestamps,args->crcs,args->gotcrcs,args->data);
     }
     args->totalcrc = totalcrc;
     args->syncmem = syncmem;
@@ -738,7 +739,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
         {
             if ( args->gotcrcs[i] == args->crcs[i] )
                 count++;
-            else printf("(%d of %d) %u vs %u\n",i,args->numfrags,args->gotcrcs[i],args->crcs[i]);
+            //else printf("(%d of %d) %u vs %u\n",i,args->numfrags,args->gotcrcs[i],args->crcs[i]);
         }
         if ( count == args->numfrags )
         {
@@ -762,14 +763,16 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     }
                     if ( count == args->numfrags )
                     {
-                        printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,args->dest,checkcrc,totalcrc);
+                        if ( Debuglevel > 0 )
+                            printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,args->dest,checkcrc,totalcrc);
                         handler_gotfile(args,args->snapshot,args->totallen,args->snapshotcrc);
                         args->completed++;
                     }
                 }
             }
         }
-        fprintf(stderr,"update_transfer_args return count.%d\n",count);
+        if ( Debuglevel > 2 )
+            fprintf(stderr,"update_transfer_args return count.%d\n",count);
     }
     return(count);
 }

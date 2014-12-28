@@ -2718,7 +2718,7 @@ struct coin_txidind *get_cointp(struct coin_info *cp,struct address_entry *entry
         txind = tp->txind;
         if ( v != tp->v )
             fprintf(stderr,"error (%d != %d)\n",v,tp->v);
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("get_cointpspent.(%016llx) (%d %d %d) -> (%s).%d (%d %d %d)\n",*(long long *)entry,entry->blocknum,entry->txind,entry->v,origtxidstr,v,blocknum,txind,v);
         spentflag = 1;
     }
@@ -2765,7 +2765,7 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
         set_NXTpubkey(depositors_pubkey,NXTaddr);
     if ( (entries= get_address_entries(&n,cp->name,msigaddr)) != 0 )
     {
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf(">>>>>>>>>>>>>>>> %d address entries for (%s)\n",n,msigaddr);
         for (i=0; i<n; i++)
         {
@@ -2775,8 +2775,6 @@ uint64_t process_msigaddr(int32_t *numunspentp,uint64_t *unspentp,cJSON **transf
             if ( Debuglevel+forceflag > 2 )
                 printf("process_msigaddr.(%s) %d of %d: vin.%d internal.%d spent.%d (%d %d %d)\n",msigaddr,i,n,entry->vinflag,entry->isinternal,entry->spent,entry->blocknum,entry->txind,entry->v);
             get_cointp(cp,entry);
-            if ( Debuglevel+forceflag > 2 )
-                fprintf(stderr,"got cointp\n");
         }
         for (i=0; i<n; i++)
         {
@@ -3932,7 +3930,7 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     }
     if ( retstr == 0 )
         retstr = clonestr("{}");
-    printf("MGW.(%s)\n",retstr);
+    //printf("MGW.(%s)\n",retstr);
     return(retstr);
 }
 
