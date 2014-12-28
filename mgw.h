@@ -5,6 +5,7 @@
 //  Copyright (c) 2014 jl777. MIT License.
 //
 // tighten security
+// "ecBlockId":"10516864215908046020"
 // share key data
 // BTC, BTCD, DOGE, VRC, OPAL, BITS, VPN
 // wrong status on withdrawn: 		http://jnxt.org/init/?requestType=status&NXT=NXT-HTB8-GGJG-ZDRK-6N3LC&coin=BTCD&convertNXT=10
@@ -802,6 +803,10 @@ void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int
         // if ( strlen(addr) < 10 ) while ( 1 ) sleep(60);
         set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
         _add_address_entry(coin,addr,&B,syncflag);
+        if ( vin < 0 && MGW_initdone != 0 )
+        {
+            
+        }
     }
 }
 
@@ -3778,16 +3783,16 @@ cJSON *auto_process_MGW(char **specialNXTaddrs,struct coin_info *cp,cJSON *origj
     for (i=0; i<3; i++)
         ipaddrs[i] = Server_names[i];
     portable_mutex_lock(&mutex);
-    if ( cmp_batch_depositinfo(&cp->withdrawinfos[0].C,&cp->withdrawinfos[1].C) == 0 && cmp_batch_depositinfo(&cp->withdrawinfos[0].C,&cp->withdrawinfos[2].C) == 0 )
+    if ( cmp_batch_depositinfo(&cp->withdrawinfos[2].C,&cp->withdrawinfos[1].C) == 0 )//&& cmp_batch_depositinfo(&cp->withdrawinfos[0].C,&cp->withdrawinfos[2].C) == 0 )
     {
         if ( cp->withdrawinfos[0].C.pendingwithdraws > 0 && cp->withdrawinfos[0].rawtx.batchcrc != 0 && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[1].rawtx.batchcrc && cp->withdrawinfos[0].rawtx.batchcrc == cp->withdrawinfos[2].rawtx.batchcrc )
         {
-            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u %.8f <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[0].rawtx.batchcrc,dstr(cp->withdrawinfos[0].C.pendingwithdraws));
+            printf(">>>>>>>>>>>>>> STARTING AUTO WITHDRAW %u %.8f <<<<<<<<<<<<<<<<<<<\n",cp->withdrawinfos[2].rawtx.batchcrc,dstr(cp->withdrawinfos[2].C.pendingwithdraws));
             json = process_MGW(-1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
         }
-        else if ( cp->withdrawinfos[0].C.pendingdeposits > 0 )
+        else if ( cp->withdrawinfos[2].C.pendingdeposits > 0 )
         {
-            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[0].C.pendingdeposits));
+            printf(">>>>>>>>>>>>>> STARTING AUTO DEPOSIT %.8f <<<<<<<<<<<<<<<<<<<\n",dstr(cp->withdrawinfos[2].C.pendingdeposits));
             json = process_MGW(1,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),NXTaddr,depositors_pubkey);
         }
     }
