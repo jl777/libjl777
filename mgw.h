@@ -3993,7 +3993,7 @@ char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_add
     ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
     for (j=0; j<3; j++)
         ipaddrs[j] = Server_names[j];
-    if ( actionflag == 0 )
+    if ( actionflag == 0 || msig == 0 )
     {
         json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),0,0);
         init_multisig(specialNXTaddrs,cp);
@@ -4009,7 +4009,8 @@ char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_add
     {
         retstr = cJSON_Print(json);
         free_json(json);
-        printf("invoke_MGW for (%s) ->\n%s\n",msig->NXTaddr,retstr);
+        if ( msig != 0 )
+            fprintf(stderr,"invoke_MGW for (%s) ->\n%s\n",msig->NXTaddr,retstr);
     }
     return(retstr);
 }
