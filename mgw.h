@@ -5,8 +5,9 @@
 //  Copyright (c) 2014 jl777. MIT License.
 //
 // tighten security
+// missing some data? need to sync missing data between servers, maybe make generic API for this
 // "ecBlockId":"10516864215908046020"
-// share key data
+
 // BTC, BTCD, DOGE, VRC, OPAL, BITS, VPN
 // wrong status on withdrawn: 		http://jnxt.org/init/?requestType=status&NXT=NXT-HTB8-GGJG-ZDRK-6N3LC&coin=BTCD&convertNXT=10
 // "redeemtxid":	"9666141869701832622",
@@ -781,6 +782,15 @@ uint64_t broadcast_moneysentAM(struct coin_info *cp,int32_t height)
     return(AMtxidbits);
 }
 
+struct multisig_addr *find_msigaddr(char *msigaddr)
+{
+    int32_t createdflag;
+    if ( MTsearch_hashtable(&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr) == HASHSEARCH_ERROR )
+        return(0);
+    return(MTadd_hashtable(&createdflag,&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr));
+    //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
+}
+
 // ADDRESS_DATA DB
 void set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent)
 {
@@ -795,17 +805,22 @@ void set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,
         bp->v = vin, bp->vinflag = 1;
 }
 
-void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag)
+void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag,uint64_t value)
 {
     struct address_entry B;
+    struct coin_info *cp;
+    struct multisig_addr *msig;
     if ( IS_LIBTEST > 1 )
     {
-        // if ( strlen(addr) < 10 ) while ( 1 ) sleep(60);
         set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
-        _add_address_entry(coin,addr,&B,syncflag);
-        if ( vin < 0 && MGW_initdone != 0 )
+        _add_address_entry(coin,addr,&B,syncflag,value);
+        if ( isinternal == 0 && vin < 0 && MGW_initdone != 0 && (cp= get_coin_info(coin)) != 0 )
         {
-            
+            if ( (msig= find_msigaddr(addr)) != 0 )
+            {
+                printf("queue DepositQ for NXT.%s %s %.8f\n",msig->NXTaddr,addr,dstr(value));
+                queue_enqueue(&DepositQ,msig);
+            }
         }
     }
 }
@@ -975,6 +990,7 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
 {
     uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheight,char *blockhashstr,char *txidstr);
     cJSON *obj,*txidobj,*coinbaseobj;
+    uint64_t value;
     int32_t i,vout,numvins,numvouts,oldtxind,flag = 0;
     char txidstr[1024],coinbase[1024],blockhash[1024];
     uint32_t oldblockheight;
@@ -1001,14 +1017,14 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
             {
                 vout = (int)get_cJSON_int(obj,"vout");
                 copy_cJSON(txidstr,txidobj);
-                if ( txidstr[0] != 0 && get_txvout(blockhash,&numvouts,coinaddr,script,cp,0,txidstr,vout) != 0 && blockhash[0] != 0 )
+                if ( txidstr[0] != 0 && (value= get_txvout(blockhash,&numvouts,coinaddr,script,cp,0,txidstr,vout)) != 0 && blockhash[0] != 0 )
                 {
                     //printf("process input.(%s)\n",coinaddr);
                     if ( (oldblockheight= get_blocktxind(&oldtxind,cp,0,blockhash,txidstr)) > 0 )
                     {
                         flag++;
-                        add_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0);
-                        add_address_entry(cp->name,coinaddr,blockheight,txind,i,-1,-1,1,syncflag * (i == (numvins-1)));
+                        add_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0,value);
+                        add_address_entry(cp->name,coinaddr,blockheight,txind,i,-1,-1,1,syncflag * (i == (numvins-1)),value);
                     } else printf("error getting oldblockheight (%s %s)\n",blockhash,txidstr);
                 } else printf("unexpected error vout.%d %s\n",vout,txidstr);
             } else printf("illegal txid.(%s)\n",txidstr);
@@ -1021,20 +1037,21 @@ void update_txid_infos(struct coin_info *cp,uint32_t blockheight,int32_t txind,c
 {
     char coinaddr[1024],script[4096],coinaddr_v0[1024],*retstr = 0;
     int32_t v,tmp,numvouts,isinternal = 0;
+    uint64_t value;
     cJSON *txjson;
     if ( (retstr= get_transaction(cp,txidstr)) != 0 )
     {
         if ( (txjson= cJSON_Parse(retstr)) != 0 )
         {
             v = 0;
-            if ( get_txvout(0,&numvouts,coinaddr_v0,script,cp,txjson,0,v) > 0 )
-                add_address_entry(cp->name,coinaddr_v0,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)));
+            if ( (value= get_txvout(0,&numvouts,coinaddr_v0,script,cp,txjson,0,v)) > 0 )
+                add_address_entry(cp->name,coinaddr_v0,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value);
             for (v=1; v<numvouts; v++)
             {
-                if ( v < numvouts && get_txvout(0,&tmp,coinaddr,script,cp,txjson,0,v) > 0 )
+                if ( v < numvouts && (value= get_txvout(0,&tmp,coinaddr,script,cp,txjson,0,v)) > 0 )
                 {
                     isinternal = calc_isinternal(cp,coinaddr_v0,blockheight,v,numvouts);
-                    add_address_entry(cp->name,coinaddr,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)));
+                    add_address_entry(cp->name,coinaddr,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value);
                 }
             }
             update_vins(&isinternal,coinaddr,script,cp,blockheight,txind,cJSON_GetObjectItem(txjson,"vin"),-1,syncflag);
@@ -1557,15 +1574,6 @@ void update_unspent_funds(struct coin_info *cp,struct coin_txidind *cointp,int32
             }
         }
     }
-}
-
-struct multisig_addr *find_msigaddr(char *msigaddr)
-{
-    int32_t createdflag;
-    if ( MTsearch_hashtable(&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr) == HASHSEARCH_ERROR )
-        return(0);
-    return(MTadd_hashtable(&createdflag,&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr));
-    //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
 }
 
 int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,char *msigaddr)
@@ -3960,33 +3968,44 @@ char *MGW(char *issuerNXT,int32_t rescan,int32_t actionflag,char *coin,char *ass
     return(retstr);
 }
 
-void update_MGW(char **specialNXTaddrs,struct coin_info *cp)
+char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_addr *msig,int32_t actionflag)
 {
-    cJSON *json;
-    struct NXT_asset *ap;
+    char *ipaddrs[3],*retstr = 0;
     int32_t j,createdflag;
-    char *ipaddrs[3];
-    for (j=0; j<3; j++)
-        ipaddrs[j] = Server_names[j];
+    struct NXT_asset *ap;
+    cJSON *json;
     update_NXTblockchain_info(cp,specialNXTaddrs,cp->MGWissuer);
     ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
-    if ( (json= process_MGW(0,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),0,0)) != 0 )
+    for (j=0; j<3; j++)
+        ipaddrs[j] = Server_names[j];
+    if ( actionflag == 0 )
+    {
+        json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),0,0);
+        init_multisig(specialNXTaddrs,cp);
+        init_deposit(specialNXTaddrs,cp);
+        init_moneysent(specialNXTaddrs,cp);
+    }
+    else
+    {
+        printf("invoke_MGW.(%s %s) buyNXT.%d\n",msig->NXTaddr,msig->NXTpubkey,msig->buyNXT);
+        json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),msig->NXTaddr,msig->NXTpubkey);
+    }
+    if ( json != 0 )
+    {
+        retstr = cJSON_Print(json);
         free_json(json);
-}
-
-void init_MGW(char **specialNXTaddrs,struct coin_info *cp)
-{
-    update_MGW(specialNXTaddrs,cp);
-    init_multisig(specialNXTaddrs,cp);
-    init_deposit(specialNXTaddrs,cp);
-    init_moneysent(specialNXTaddrs,cp);
+        printf("invoke_MGW for (%s) ->\n%s\n",msig->NXTaddr,retstr);
+    }
+    return(retstr);
 }
 
 void *Coinloop(void *ptr)
 {
     int32_t i,processed;
     struct coin_info *cp;
+    struct multisig_addr *msig;
     int64_t height;
+    char *retstr;
     double startmilli;
     while ( Finished_init == 0 )
         sleep(1);
@@ -4011,7 +4030,8 @@ void *Coinloop(void *ptr)
         if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) >= 0 )
         {
             printf("coin.%d (%s) firstblock.%d\n",i,cp->name,(int32_t)cp->blockheight);
-            init_MGW(MGW_whitelist,cp);
+            if ( (retstr= invoke_MGW(MGW_whitelist,cp,0,0)) != 0 )
+                free(retstr);
             //load_telepods(cp,maxnofile);
         }
     }
@@ -4045,7 +4065,13 @@ void *Coinloop(void *ptr)
         {
             if ( Debuglevel > 2 )
                 printf("Coinloop: no work, sleep\n");
-            sleep(10);
+            if ( (msig= queue_dequeue(&DepositQ)) != 0 )
+            {
+                printf("%s has deposits pending\n",msig->NXTaddr);
+                if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
+                    free(retstr);
+            }
+            else sleep(10);
         }
     }
     return(0);

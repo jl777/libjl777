@@ -619,7 +619,7 @@ struct hashtable *orderbook_txids;
 uv_loop_t *UV_loop;
 static long server_xferred;
 int Servers_started;
-queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ,UDP_Q;
+queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ,UDP_Q,DepositQ,WithdrawQ;
 int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL,LOG2_MAX_XFERPACKETS = 3;
 uint32_t *SuperNET_whitelist;
 int32_t Historical_done,MGW_initdone;

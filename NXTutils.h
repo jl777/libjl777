@@ -1765,12 +1765,10 @@ void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
     {
         pubkey = issue_getpubkey(0,NXTacct);
         if ( memcmp(&pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-        {
             memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
-            if ( NXTpubkey != 0 )
-                init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
-        }
-    }
+    } else memcpy(&pubkey,stats->pubkey,sizeof(pubkey));
+    if ( NXTpubkey != 0 )
+        init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
 }
 
 
