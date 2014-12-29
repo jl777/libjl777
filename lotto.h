@@ -67,7 +67,7 @@ uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *as
                             //buyerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "recipient" : "buyer"));
                             if ( sellerbits == buyer )
                             {
-                                printf("%llu: 1st %u, blockid.%u\n",buyer,firstblock,blockid);
+                                //printf("%llu: 1st %u, blockid.%u\n",(long long)buyer,firstblock,blockid);
                                 qnt = get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"));
                                 sold += (soldfactor * qnt);
                                 xfer += (xferfactor * qnt);
@@ -108,7 +108,7 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
             {
                 seed = get_API_nxt64bits(cJSON_GetObjectItem(item,"seed"));
                 total = get_API_int(cJSON_GetObjectItem(item,"total"),0);
-                firstblock = (uint32_t)get_API_int(cJSON_GetObjectItem(item,"first"),0);
+                firstblock = (uint32_t)get_API_int(cJSON_GetObjectItem(item,"firstblock"),0);
                 if ( iter >= 0 )
                     break;
                 if ( total > 0 && total >= MIN_REQUIRED )
