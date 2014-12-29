@@ -158,10 +158,10 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
                 cJSON_AddItemToObject(item,"best",cJSON_CreateNumber(bitweight(bestticket ^ lotto)));
                 sprintf(numstr,"%llu",(long long)bestticket), cJSON_AddItemToObject(item,"winningticket",cJSON_CreateString(numstr));
                 conv_rsacctstr(rsaddr,bestplayer);
-                cJSON_AddItemToObject(*jsonp,"winner",cJSON_CreateString(rsaddr));
+                cJSON_AddItemToObject(item,"winner",cJSON_CreateString(rsaddr));
             }
         }
-        cJSON_AddItemToObject(item,"Lotto Results",item);
+        cJSON_AddItemToObject(*jsonp,"Lotto Results",item);
         return;
     }
     if ( i == n )
