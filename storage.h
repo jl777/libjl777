@@ -127,6 +127,8 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
         if ( fp != 0 )
         {
             fwrite(bp,1,sizeof(*bp),fp);
+            if ( bp->vinflag == 0 )
+                fwrite(&value,1,sizeof(value),fp);
             fclose(fp);
         }
     }

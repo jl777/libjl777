@@ -29,6 +29,7 @@ cJSON *gen_lottotickets_json(uint64_t *bestp,uint64_t seed,int32_t numtickets,ui
             bestdist = dist;
             *bestp = ticket;
         }
+        sprintf(numstr,"%d",dist), cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
         tmp = sha256_key(hash);
         ticket = tmp.txid;
         hash = tmp;
@@ -36,16 +37,65 @@ cJSON *gen_lottotickets_json(uint64_t *bestp,uint64_t seed,int32_t numtickets,ui
     return(array);
 }
 
-void process_lotto(uint64_t lotto,cJSON **jsonp,int32_t iter,uint64_t buyerbits,int64_t assetoshis,int32_t blockid,uint64_t txid)
+uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *assetidstr,uint32_t firstblock)
 {
-    int32_t i,n,num,bestdist = 64;
+    uint64_t sold,xfer,sellerbits,buyerbits,qnt,soldfactor,xferfactor;
+    char refNXTaddr[64],cmd[512],*jsonstr;
+    int32_t i,n,iter;
+    uint32_t blockid;
+    cJSON *json,*array,*item;
+    expand_nxt64bits(refNXTaddr,buyer);
+    sold = xfer = 0;
+    soldfactor = 1;
+    xferfactor = 0;
+    for (iter=0; iter<2; iter++)
+    {
+        sprintf(cmd,"%s=%s&account=%s&asset=%s",_NXTSERVER,(iter & 1) ? "getAssetTransfers" : "getTrades",refNXTaddr,assetidstr);
+        if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
+        {
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( (array= cJSON_GetObjectItem(json,(iter & 1) ? "transfers" : "trades")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (i=0; i<n; i++)
+                    {
+                        item = cJSON_GetArrayItem(array,i);
+                        blockid = (int32_t)get_API_int(cJSON_GetObjectItem(item,"height"),0);
+                        if ( blockid >= firstblock )
+                        {
+                            sellerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "sender" : "seller"));
+                            //buyerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "recipient" : "buyer"));
+                            if ( sellerbits == buyer )
+                            {
+                                qnt = get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"));
+                                sold += (soldfactor * qnt);
+                                xfer += (xferfactor * qnt);
+                            }
+                        }
+                    }
+                }
+                free_json(json);
+            }
+            free(jsonstr);
+        }
+        soldfactor = 0;
+        xferfactor = 1;
+    }
+    *soldp = sold;
+    *xferp = xfer;
+    return(sold + xfer);
+}
+
+void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,uint64_t buyerbits,int64_t assetoshis,int32_t blockid,uint64_t txid)
+{
+    int32_t i,n,num,netcount,netplayers,netnum,bestdist = 64;
     cJSON *item = 0;
     char numstr[64],rsaddr[64];
     uint32_t dist,numtickets,numplayers,firstblock = 0;
-    uint64_t bestticket,bestplayer,best,buyer = 0,seed = 0;
+    uint64_t bestticket,bestplayer,sold,xfer,best,buyer = 0,seed = 0;
     int64_t total = 0;
     bestticket = bestplayer = 0;
-    numtickets = numplayers = 0;
+    netplayers = numtickets = numplayers = 0;
     if ( (n= cJSON_GetArraySize(*jsonp)) > 0 )
     {
         for (i=0; i<n; i++)
@@ -65,26 +115,52 @@ void process_lotto(uint64_t lotto,cJSON **jsonp,int32_t iter,uint64_t buyerbits,
                     printf("num.%d numtickets.%d total.%lld\n",numtickets,num,(long long)total);
                     if ( total >= MIN_REQUIRED )
                     {
-                        cJSON_AddItemToObject(item,"tickets",gen_lottotickets_json(&best,seed,num,lotto));
-                        sprintf(numstr,"%llu",(long long)best), cJSON_AddItemToObject(item,"best",cJSON_CreateString(numstr));
-                        dist = bitweight(best ^ lotto);
-                        if ( dist < bestdist )
+                        if ( (netcount = (int32_t)(total - get_assets_sold(&sold,&xfer,buyer,assetidstr,firstblock))) >= MIN_REQUIRED )
                         {
-                            bestdist = dist;
-                            bestticket = best;
-                            bestplayer = buyer;
+                            netnum = (netcount / MIN_REQUIRED);
+                            cJSON_AddItemToObject(item,"tickets",gen_lottotickets_json(&best,seed,num,lotto));
+                            sprintf(numstr,"%llu",(long long)best), cJSON_AddItemToObject(item,"best",cJSON_CreateString(numstr));
+                            dist = bitweight(best ^ lotto);
+                            if ( dist < bestdist )
+                            {
+                                bestdist = dist;
+                                bestticket = best;
+                                bestplayer = buyer;
+                            }
+                            cJSON_AddItemToObject(item,"numtickets",cJSON_CreateNumber(netnum));
+                            cJSON_AddItemToObject(item,"dist",cJSON_CreateNumber(dist));
+                            netplayers++;
                         }
-                        cJSON_AddItemToObject(item,"dist",cJSON_CreateNumber(dist));
+                        if ( sold != 0 )
+                            sprintf(numstr,"%llu",(long long)sold), cJSON_AddItemToObject(item,"sold",cJSON_CreateString(numstr));
+                        if ( xfer != 0 )
+                            sprintf(numstr,"%llu",(long long)xfer), cJSON_AddItemToObject(item,"xfer",cJSON_CreateString(numstr));
+                        cJSON_AddItemToObject(item,"netcount",cJSON_CreateNumber(netcount));
+                        numplayers++;
                     }
                     numtickets += num;
-                    numplayers++;
                 }
             }
         }
     } else i = 0;
     if ( iter < 0 )
     {
-        printf("Total tickets %d players.%d ave %.1f | best.%d NXT.%llu ticket.%llu\n",numtickets,numplayers,(double)numtickets/numplayers,bitweight(bestticket ^ lotto),(long long)bestplayer,(long long)bestticket);
+        item = cJSON_CreateObject();
+        cJSON_AddItemToObject(item,"numtickets",cJSON_CreateNumber(numtickets));
+        cJSON_AddItemToObject(item,"numplayers",cJSON_CreateNumber(numplayers));
+        cJSON_AddItemToObject(item,"netplayers",cJSON_CreateNumber(netplayers));
+        if ( netplayers > 0 )
+        {
+            cJSON_AddItemToObject(item,"ave tickets",cJSON_CreateNumber((double)numtickets/netplayers));
+            if ( numtickets > 0 )
+            {
+                cJSON_AddItemToObject(item,"theoretical value",cJSON_CreateNumber(175000. / numtickets));
+                cJSON_AddItemToObject(item,"best",cJSON_CreateNumber(bitweight(bestticket ^ lotto)));
+                sprintf(numstr,"%llu",(long long)bestticket), cJSON_AddItemToObject(item,"winningticket",cJSON_CreateString(numstr));
+                conv_rsacctstr(rsaddr,bestplayer);
+                cJSON_AddItemToObject(item,"winner",cJSON_CreateString(rsaddr));
+            }
+        }
         return;
     }
     if ( i == n )
@@ -156,7 +232,7 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
                         sellerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "sender" : "seller"));
                         buyerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "recipient" : "buyer"));
                         if ( ((iter&2) == 0 && sellerbits == refbits) || ((iter&2) != 0 && buyerbits == refbits) )
-                            process_lotto(lotto,&jsonarg,iter,(iter&2) == 0 ? buyerbits : sellerbits,qnt * (1 - (iter&2)),blockid,txid);
+                            process_lotto(assetidstr,lotto,&jsonarg,iter,(iter&2) == 0 ? buyerbits : sellerbits,qnt * (1 - (iter&2)),blockid,txid);
                     }
                 }
                 free_json(json);
@@ -164,7 +240,7 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
             free(jsonstr);
         } else printf("iter.%d error with update_lotto_transactions.(%s)\n",iter,cmd);
     }
-    process_lotto(lotto,&jsonarg,-1,0,0,0,0);
+    process_lotto(assetidstr,lotto,&jsonarg,-1,0,0,0,0);
     return(cJSON_Print(jsonarg));
 }
 

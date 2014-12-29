@@ -792,7 +792,7 @@ struct multisig_addr *find_msigaddr(char *msigaddr)
 }
 
 // ADDRESS_DATA DB
-void set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent)
+int32_t set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent)
 {
     memset(bp,0,sizeof(*bp));
     bp->blocknum = blocknum;
@@ -800,29 +800,44 @@ void set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,
     bp->isinternal = isinternal;
     bp->spent = spent;
     if ( vout >= 0 && vin < 0 )
+    {
         bp->v = vout;
+        if ( bp->v != vout )
+            return(-1);
+    }
     else if ( vin >= 0 && vout < 0 )
+    {
         bp->v = vin, bp->vinflag = 1;
+        if ( bp->v != vin )
+            return(-1);
+    }
+    if ( bp->blocknum != blocknum || bp->txind != txind )
+        return(-1);
+    return(0);
 }
 
-void add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag,uint64_t value)
+int32_t add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag,uint64_t value)
 {
     struct address_entry B;
     struct coin_info *cp;
     struct multisig_addr *msig;
     if ( IS_LIBTEST > 1 )
     {
-        set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent);
-        _add_address_entry(coin,addr,&B,syncflag,value);
-        if ( isinternal == 0 && vin < 0 && MGW_initdone != 0 && (cp= get_coin_info(coin)) != 0 )
+        if ( set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent) == 0 )
         {
-            if ( (msig= find_msigaddr(addr)) != 0 )
+            _add_address_entry(coin,addr,&B,syncflag,value);
+            if ( Global_mp->gatewayid == (NUM_GATEWAYS-1) && isinternal == 0 && vin < 0 && MGW_initdone != 0 && (cp= get_coin_info(coin)) != 0 )
             {
-                printf("queue DepositQ for NXT.%s %s %.8f\n",msig->NXTaddr,addr,dstr(value));
-                queue_enqueue(&DepositQ,msig);
+                if ( (msig= find_msigaddr(addr)) != 0 )
+                {
+                    printf("queue DepositQ for NXT.%s %s %.8f\n",msig->NXTaddr,addr,dstr(value));
+                    queue_enqueue(&DepositQ,msig);
+                }
             }
-        }
+            return(0);
+        } else printf("Error creating address entry %s.%s (%u %u %d:%d) %.8f\n",coin,addr,blocknum,txind,vin,vout,dstr(value));
     }
+    return(-1);
 }
 
 void update_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag)
