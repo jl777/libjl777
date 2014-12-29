@@ -130,7 +130,7 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
                                 bestdist = dist;
                                 bestticket = best;
                                 bestplayer = buyer;
-                            } else if ( dist == bestdist )
+                            } else if ( dist == bestdist && (numwinners == 0 || winners[numwinners-1] != buyer) )
                                 winners[numwinners++] = buyer;
                             cJSON_AddItemToObject(item,"numtickets",cJSON_CreateNumber(netnum));
                             cJSON_AddItemToObject(item,"dist",cJSON_CreateNumber(dist));
