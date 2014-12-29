@@ -29,7 +29,7 @@ cJSON *gen_lottotickets_json(uint64_t *bestp,uint64_t seed,int32_t numtickets,ui
             bestdist = dist;
             *bestp = ticket;
         }
-        sprintf(numstr,"%d",dist), cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
+        cJSON_AddItemToArray(array,cJSON_CreateNumber(dist));
         tmp = sha256_key(hash);
         ticket = tmp.txid;
         hash = tmp;
