@@ -125,6 +125,7 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
                             dist = bitweight(best ^ lotto);
                             if ( dist < bestdist )
                             {
+                                numwinners = 0;
                                 memset(winners,0,sizeof(winners));
                                 winners[numwinners++] = buyer;
                                 bestdist = dist;
