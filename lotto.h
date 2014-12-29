@@ -86,16 +86,17 @@ uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *as
     return(sold + xfer);
 }
 
-void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,uint64_t buyerbits,int64_t assetoshis,int32_t blockid,uint64_t txid)
+void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,uint64_t buyerbits,int64_t assetoshis,int32_t blockid,uint64_t txid)
 {
-    int32_t i,n,num,netcount,netplayers,netnum,bestdist = 64;
-    cJSON *item = 0;
+    int32_t w,i,n,numwinners,num,netcount,nettickets,netplayers,netnum,bestdist = 64;
+    cJSON *array,*item = 0;
     char numstr[64],rsaddr[64];
     uint32_t dist,numtickets,numplayers,firstblock = 0;
-    uint64_t bestticket,bestplayer,sold,xfer,best,buyer = 0,seed = 0;
+    uint64_t winners[1000],bestticket,bestplayer,sold,xfer,best,buyer = 0,seed = 0;
     int64_t total = 0;
+    memset(winners,0,sizeof(winners));
     bestticket = bestplayer = 0;
-    netplayers = numtickets = numplayers = 0;
+    numwinners = nettickets = netplayers = numtickets = numplayers = 0;
     if ( (n= cJSON_GetArraySize(*jsonp)) > 0 )
     {
         for (i=0; i<n; i++)
@@ -112,6 +113,7 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
                 if ( total > 0 && total >= MIN_REQUIRED )
                 {
                     num = (int32_t)(total / MIN_REQUIRED);
+                    netnum = 0;
                     printf("num.%d numtickets.%d total.%lld\n",numtickets,num,(long long)total);
                     if ( total >= MIN_REQUIRED )
                     {
@@ -123,10 +125,13 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
                             dist = bitweight(best ^ lotto);
                             if ( dist < bestdist )
                             {
+                                memset(winners,0,sizeof(winners));
+                                winners[numwinners++] = buyer;
                                 bestdist = dist;
                                 bestticket = best;
                                 bestplayer = buyer;
-                            }
+                            } else if ( dist == bestdist )
+                                winners[numwinners++] = buyer;
                             cJSON_AddItemToObject(item,"numtickets",cJSON_CreateNumber(netnum));
                             cJSON_AddItemToObject(item,"dist",cJSON_CreateNumber(dist));
                             netplayers++;
@@ -139,6 +144,7 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
                         numplayers++;
                     }
                     numtickets += num;
+                    nettickets += netnum;
                 }
             }
         }
@@ -149,16 +155,27 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
         cJSON_AddItemToObject(item,"numtickets",cJSON_CreateNumber(numtickets));
         cJSON_AddItemToObject(item,"numplayers",cJSON_CreateNumber(numplayers));
         cJSON_AddItemToObject(item,"netplayers",cJSON_CreateNumber(netplayers));
+        cJSON_AddItemToObject(item,"nettickets",cJSON_CreateNumber(nettickets));
+        cJSON_AddItemToObject(item,"prizefund",cJSON_CreateNumber(prizefund));
         if ( netplayers > 0 )
         {
             cJSON_AddItemToObject(item,"ave tickets",cJSON_CreateNumber((double)numtickets/netplayers));
-            if ( numtickets > 0 )
+            if ( nettickets > 0 )
             {
-                cJSON_AddItemToObject(item,"theoretical value",cJSON_CreateNumber(175000. / numtickets));
+                sprintf(numstr,"%.2f",prizefund / nettickets), cJSON_AddItemToObject(item,"theoretical value",cJSON_CreateString(numstr));
                 cJSON_AddItemToObject(item,"best",cJSON_CreateNumber(bitweight(bestticket ^ lotto)));
                 sprintf(numstr,"%llu",(long long)bestticket), cJSON_AddItemToObject(item,"winningticket",cJSON_CreateString(numstr));
-                conv_rsacctstr(rsaddr,bestplayer);
-                cJSON_AddItemToObject(item,"winner",cJSON_CreateString(rsaddr));
+                if ( numwinners > 0 )
+                {
+                    array = cJSON_CreateArray();
+                    for (w=0; w<numwinners; w++)
+                    {
+                        conv_rsacctstr(rsaddr,winners[w]);
+                        cJSON_AddItemToArray(array,cJSON_CreateString(rsaddr));
+                    }
+                    cJSON_AddItemToObject(item,"winners",array);
+                    sprintf(numstr,"%.2f",prizefund / numwinners), cJSON_AddItemToObject(item,"prizes",cJSON_CreateString(numstr));
+                }
             }
         }
         cJSON_AddItemToObject(*jsonp,"Lotto Results",item);
@@ -191,7 +208,7 @@ void process_lotto(char *assetidstr,uint64_t lotto,cJSON **jsonp,int32_t iter,ui
     printf("iter.%d: %24llu block.%d %lld total %lld 1st.%u | numtickets.%d\n",iter,(long long)buyerbits,blockid,(long long)assetoshis,(long long)total,firstblock,numtickets);
 }
 
-char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottoseed)
+char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottoseed,double prizefund)
 {
     char cmd[1024],hexstr[128],*jsonstr;
     bits256 hash;
@@ -235,7 +252,7 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
                         sellerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "sender" : "seller"));
                         buyerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "recipient" : "buyer"));
                         if ( ((iter&2) == 0 && sellerbits == refbits) || ((iter&2) != 0 && buyerbits == refbits) )
-                            process_lotto(assetidstr,lotto,&jsonarg,iter,(iter&2) == 0 ? buyerbits : sellerbits,qnt * (1 - (iter&2)),blockid,txid);
+                            process_lotto(prizefund,assetidstr,lotto,&jsonarg,iter,(iter&2) == 0 ? buyerbits : sellerbits,qnt * (1 - (iter&2)),blockid,txid);
                     }
                 }
                 free_json(json);
@@ -243,7 +260,7 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
             free(jsonstr);
         } else printf("iter.%d error with update_lotto_transactions.(%s)\n",iter,cmd);
     }
-    process_lotto(assetidstr,lotto,&jsonarg,-1,0,0,0,0);
+    process_lotto(prizefund,assetidstr,lotto,&jsonarg,-1,0,0,0,0);
     return(cJSON_Print(jsonarg));
 }
 
