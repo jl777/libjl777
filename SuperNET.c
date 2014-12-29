@@ -34,7 +34,7 @@
 #define NUM_GATEWAYS 3
 extern char Server_names[256][MAX_JSON_FIELD],MGWROOT[];
 extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
-extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT;
+extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT,Finished_init;
 extern cJSON *MGWconf;
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
 char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
@@ -128,34 +128,9 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
     return(retstr);
 }
 
-char *inject_pushtx(char *coinstr,cJSON *json)
-{
-    cJSON *txobj;
-    char *params,retstr[1024],*txbytes;
-    uint64_t txid;
-    struct coin_info *cp;
-    if ( coinstr == 0 || coinstr[0] == 0 )
-        coinstr = "NXT";
-    if ( strcmp("NXT",coinstr) == 0 )
-    {
-        txid = issue_broadcastTransaction(&errcode,0,signedtx,np->NXTACCTSECRET);
-        if ( othertxid != 0 && errcode == 0 )
-            sprintf(retstr,"{\"result\":\"success\",\"coin\":\"%s\",\"txid\":\"%llu\"}",coinstr,(long long)txid);
-        else sprintf(retstr,"{\"error\":\"code %d\",\"coin\":\"%s\"}",errcode,coinstr);
-    }
-    else if ( (cp= get_coin_info(coinstr)) != 0 )
-    {
-        if ( (txobj= cJSON_GetObjectItem(json,"tx")) != 0 && is_cJSON_String(txobj) != 0 )
-        {
-            printf("got string.(%s)\n",txobj->valuestring);
-            return(bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"sendrawtransaction",txobj->valuestring));
-        } else sprintf(retstr,"{\"error\":\"inject_pushtx coin.(%s) cant find tx bytes\"}",coinstr);
-    } else sprintf(retstr,"{\"error\":\"inject_pushtx coin.(%s) not support\"}",coinstr);
-    return(clonestr(retstr));
-}
-
 char *process_commandline_json(cJSON *json)
 {
+    char *inject_pushtx(char *coinstr,cJSON *json);
     int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
     bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct);
     char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag);
@@ -170,6 +145,15 @@ char *process_commandline_json(cJSON *json)
     int32_t i,n,haspubkey,iter,gatewayid,actionflag = 0,rescan = 1;
     uint32_t buyNXT = 0;
     cJSON *array,*argjson,*retjson,*retjsons[3];
+    copy_cJSON(cmdstr,cJSON_GetObjectItem(json,"webcmd"));
+    if ( strcmp(cmdstr,"SuperNET") == 0 )
+    {
+        str = cJSON_Print(json);
+        //printf("GOT webcmd.(%s)\n",str);
+        retstr = bitcoind_RPC(0,"webcmd",SuperNET_url(),(char *)"",(char *)"SuperNET",str);
+        free(str);
+        return(retstr);
+    }
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     if ( strcmp(cmd,"pushtx") == 0 )

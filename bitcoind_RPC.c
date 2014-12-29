@@ -100,7 +100,7 @@ char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr,char *
  *
  ************************************************************************/
 
-char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params)
+char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params)
 {
     static int count,count2;
     static double elapsedsum,elapsedsum2;
@@ -119,6 +119,8 @@ char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char
     if ( specialcase != 0 && 0 )
         fprintf(stderr,"<<<<<<<<<<< bitcoind_RPC: debug.(%s) url.(%s) command.(%s) params.(%s)\n",debugstr,url,command,params);
 try_again:
+    if ( retstrp != 0 )
+        *retstrp = 0;
     starttime = milliseconds();
     curl_handle = curl_easy_init();
     init_string(&s);
@@ -197,6 +199,11 @@ try_again:
             elapsedsum += (milliseconds() - starttime);
             if ( (count % 10000) == 0)
                 fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
+            if ( retstrp != 0 )
+            {
+                *retstrp = s.ptr;
+                return(s.ptr);
+            }
             return(post_process_bitcoind_RPC(debugstr,command,s.ptr,params));
         }
         else

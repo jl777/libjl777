@@ -67,6 +67,7 @@ uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *as
                             //buyerbits = get_API_nxt64bits(cJSON_GetObjectItem(item,(iter & 1) ? "recipient" : "buyer"));
                             if ( sellerbits == buyer )
                             {
+                                printf("%llu: 1st %u, blockid.%u\n",buyer,firstblock,blockid);
                                 qnt = get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"));
                                 sold += (soldfactor * qnt);
                                 xfer += (xferfactor * qnt);
@@ -220,8 +221,8 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
     struct coin_info *cp;
     calc_sha256(hexstr,hash.bytes,(uint8_t *)lottoseed,(int32_t)strlen(lottoseed));
     lotto = hash.txid;
-    if ( MGW_initdone == 0 )
-        return(clonestr("{\"error\":\"not initialized yet\"}"));
+    //if ( MGW_initdone == 0 )
+    //    return(clonestr("{\"error\":\"not initialized yet\"}"));
     printf("lottoseed.(%s) -> %s %llu\n",lottoseed,hexstr,(long long)lotto);
     jsonarg = cJSON_CreateArray();
     ap = get_NXTasset(&createdflag,Global_mp,assetidstr);

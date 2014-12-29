@@ -293,23 +293,25 @@ int32_t issue_startForging(CURL *curl_handle,char *secret)
     return(ret.val);
 }
 
-uint64_t issue_broadcastTransaction(int32_t *errcodep,CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
+uint64_t issue_broadcastTransaction(int32_t *errcodep,char **retstrp,char *txbytes,char *NXTACCTSECRET)
 {
     cJSON *json,*errjson;
     uint64_t txid = 0;
     char cmd[4096],*retstr;
     sprintf(cmd,"%s=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",_NXTSERVER,NXTACCTSECRET,txbytes);
-    retstr = issue_NXTPOST(curl_handle,cmd);
+    retstr = issue_NXTPOST(0,cmd);
     *errcodep = -1;
+    if ( retstrp != 0 )
+        *retstrp = retstr;
     if ( retstr != 0 )
     {
-        printf("broadcast got.(%s)\n",retstr);
+        //printf("broadcast got.(%s)\n",retstr);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             errjson = cJSON_GetObjectItem(json,"errorCode");
             if ( errjson != 0 )
             {
-                printf("ERROR submitting assetxfer.(%s)\n",retstr);
+                //printf("ERROR broadcasting.(%s)\n",retstr);
                 *errcodep = (int32_t)get_cJSON_int(json,"errorCode");
             }
             else
@@ -318,7 +320,8 @@ uint64_t issue_broadcastTransaction(int32_t *errcodep,CURL *curl_handle,char *tx
                     *errcodep = 0;
             }
         }
-        free(retstr);
+        if ( retstrp == 0 )
+            free(retstr);
     }
     return(txid);
 }
@@ -359,7 +362,7 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
             errjson = cJSON_GetObjectItem(json,"error");
             if ( errjson != 0 )
             {
-                printf("ERROR submitting assetxfer.(%s)\n",jsontxt);
+                //printf("ERROR submitting assetxfer.(%s)\n",jsontxt);
                 if ( retstrp != 0 )
                     *retstrp = jsontxt;
             }
@@ -370,7 +373,7 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
                 txid = calc_nxt64bits(numstr);
                 if ( txid == 0 )
                 {
-                    printf("ERROR WITH ASSET TRANSFER.(%s) -> \n%s\n",cmd,jsontxt);
+                    //printf("ERROR WITH ASSET TRANSFER.(%s) -> \n%s\n",cmd,jsontxt);
                     if ( retstrp != 0 )
                         *retstrp = jsontxt;
                 }
