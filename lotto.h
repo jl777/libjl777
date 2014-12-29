@@ -104,6 +104,8 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
         {
             item = cJSON_GetArrayItem(*jsonp,i);
             buyer = get_API_nxt64bits(cJSON_GetObjectItem(item,"buyer"));
+            if ( calc_nxt64bits("4383817337783094122") == buyer )
+                continue;
             if ( iter < 0 || buyerbits == buyer )
             {
                 seed = get_API_nxt64bits(cJSON_GetObjectItem(item,"seed"));
