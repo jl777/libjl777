@@ -128,6 +128,11 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
     return(retstr);
 }
 
+char *inject_pushtx(cJSON *json)
+{
+    return(clonestr("{\"error\":\"woof!\"}"));
+}
+
 char *process_commandline_json(cJSON *json)
 {
     int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
@@ -145,6 +150,8 @@ char *process_commandline_json(cJSON *json)
     uint32_t buyNXT = 0;
     cJSON *array,*argjson,*retjson,*retjsons[3];
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
+    if ( strcmp(cmd,"pushtx") == 0 )
+        return(inject_pushtx(json));
     copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
     copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));

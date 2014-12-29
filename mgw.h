@@ -3988,7 +3988,7 @@ char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_add
     char *ipaddrs[3],*retstr = 0;
     int32_t j,createdflag;
     struct NXT_asset *ap;
-    cJSON *json;
+    cJSON *json = 0;
     update_NXTblockchain_info(cp,specialNXTaddrs,cp->MGWissuer);
     ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
     for (j=0; j<3; j++)
@@ -4082,7 +4082,7 @@ void *Coinloop(void *ptr)
                 printf("Coinloop: no work, sleep\n");
             if ( (msig= queue_dequeue(&DepositQ)) != 0 )
             {
-                printf("%s has deposits pending\n",msig->NXTaddr);
+                fprintf(stderr,"%s has deposits pending\n",msig->NXTaddr);
                 if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
                     free(retstr);
             }
