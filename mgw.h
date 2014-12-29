@@ -828,10 +828,10 @@ int32_t add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,
             _add_address_entry(coin,addr,&B,syncflag,value);
             if ( Global_mp->gatewayid == (NUM_GATEWAYS-1) && isinternal == 0 && vin < 0 && MGW_initdone != 0 && (cp= get_coin_info(coin)) != 0 )
             {
-                if ( (msig= find_msigaddr(addr)) != 0 )
+                if ( (msig= find_msigaddr(addr)) != 0 && msig->NXTaddr[0] != 0 )
                 {
-                    printf("queue DepositQ for NXT.%s %s %.8f\n",msig->NXTaddr,addr,dstr(value));
-                    queue_enqueue(&DepositQ,msig);
+                    printf("queue DepositQ for NXT.(%s) %s %.8f\n",msig->NXTaddr,addr,dstr(value));
+                    queue_enqueue(&DepositQ,addr);
                 }
             }
             return(0);
@@ -4002,7 +4002,7 @@ char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_add
     }
     else
     {
-        printf("invoke_MGW.(%s %s) buyNXT.%d\n",msig->NXTaddr,msig->NXTpubkey,msig->buyNXT);
+        printf("invoke_MGW.(%s) (%s) buyNXT.%d\n",msig->NXTaddr,msig->NXTpubkey,msig->buyNXT);
         json = process_MGW(actionflag,cp,ap,ipaddrs,specialNXTaddrs,cp->MGWissuer,milliseconds(),msig->NXTaddr,msig->NXTpubkey);
     }
     if ( json != 0 )
@@ -4021,7 +4021,7 @@ void *Coinloop(void *ptr)
     struct coin_info *cp;
     struct multisig_addr *msig;
     int64_t height;
-    char *retstr;
+    char *retstr,*msigaddr;
     double startmilli;
     while ( Finished_init == 0 )
         sleep(1);
@@ -4081,11 +4081,15 @@ void *Coinloop(void *ptr)
         {
             if ( Debuglevel > 2 )
                 printf("Coinloop: no work, sleep\n");
-            if ( (msig= queue_dequeue(&DepositQ)) != 0 )
+            if ( (msigaddr= queue_dequeue(&DepositQ)) != 0 )
             {
-                fprintf(stderr,"%s has deposits pending\n",msig->NXTaddr);
-                if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
-                    free(retstr);
+                if ( (msig= find_msigaddr(msigaddr)) != 0 )
+                {
+                    fprintf(stderr,"%s has deposits pending\n",msig->NXTaddr);
+                    if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
+                        free(retstr);
+                }
+                free(msigaddr);
             }
             else sleep(10);
         }
