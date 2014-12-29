@@ -831,7 +831,7 @@ int32_t add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,
                 if ( (msig= find_msigaddr(addr)) != 0 && msig->NXTaddr[0] != 0 )
                 {
                     printf("queue DepositQ for NXT.(%s) %s %.8f\n",msig->NXTaddr,addr,dstr(value));
-                    queue_enqueue(&DepositQ,addr);
+                    queue_enqueue(&DepositQ,clonestr(addr));
                 }
             }
             return(0);
@@ -4085,7 +4085,7 @@ void *Coinloop(void *ptr)
             {
                 if ( (msig= find_msigaddr(msigaddr)) != 0 )
                 {
-                    fprintf(stderr,"%s has deposits pending\n",msig->NXTaddr);
+                    fprintf(stderr,"(%s) -> %s has deposits pending\n",msigaddr,msig->NXTaddr);
                     if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
                         free(retstr);
                 }
