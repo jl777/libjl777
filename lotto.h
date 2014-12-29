@@ -37,7 +37,7 @@ cJSON *gen_lottotickets_json(uint64_t *bestp,uint64_t seed,int32_t numtickets,ui
     return(array);
 }
 
-uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *assetidstr,uint32_t firstblock)
+uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *assetidstr,uint32_t firstblock,uint64_t total)
 {
     uint64_t sold,xfer,sellerbits,qnt,soldfactor,xferfactor;
     char refNXTaddr[64],cmd[512],*jsonstr;
@@ -45,6 +45,12 @@ uint64_t get_assets_sold(uint64_t *soldp,uint64_t *xferp,uint64_t buyer,char *as
     uint32_t blockid;
     cJSON *json,*array,*item;
     expand_nxt64bits(refNXTaddr,buyer);
+    if ( strcmp("4383817337783094122",refNXTaddr) == 0 )
+    {
+        printf("hardcoded exclude.(%s)\n",refNXTaddr);
+        *xferp = total;
+        return(total);
+    }
     sold = xfer = 0;
     soldfactor = 1;
     xferfactor = 0;
@@ -104,8 +110,6 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
         {
             item = cJSON_GetArrayItem(*jsonp,i);
             buyer = get_API_nxt64bits(cJSON_GetObjectItem(item,"buyer"));
-            if ( calc_nxt64bits("4383817337783094122") == buyer )
-                continue;
             if ( iter < 0 || buyerbits == buyer )
             {
                 seed = get_API_nxt64bits(cJSON_GetObjectItem(item,"seed"));
@@ -120,7 +124,7 @@ void process_lotto(double prizefund,char *assetidstr,uint64_t lotto,cJSON **json
                     printf("num.%d numtickets.%d total.%lld\n",numtickets,num,(long long)total);
                     if ( total >= MIN_REQUIRED )
                     {
-                        if ( (netcount = (int32_t)(total - get_assets_sold(&sold,&xfer,buyer,assetidstr,firstblock))) >= MIN_REQUIRED )
+                        if ( (netcount = (int32_t)(total - get_assets_sold(&sold,&xfer,buyer,assetidstr,firstblock,total))) >= MIN_REQUIRED )
                         {
                             netnum = (netcount / MIN_REQUIRED);
                             cJSON_AddItemToObject(item,"tickets",gen_lottotickets_json(&best,seed,netnum,lotto));
