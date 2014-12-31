@@ -4147,7 +4147,7 @@ void process_coinblocks(char *argcoinstr)
         for (i=0; i<n; i++)
         {
             copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-            if ( (argcoinstr == 0 || strcmp(argcoinstr,coinstr) == 0) && (cp= get_coin_info(coinstr)) != 0 )
+            if ( (cp= get_coin_info(coinstr)) != 0 )//&& (argcoinstr == 0 || strcmp(argcoinstr,coinstr) == 0))
                 if ( portable_thread_create((void *)_process_coinblocks,cp) == 0 )
                     printf("ERROR hist findaddress_loop\n");
         }

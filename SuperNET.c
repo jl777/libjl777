@@ -774,7 +774,7 @@ void emit_compressed_block(struct compressionvars *V,char *coinstr,uint32_t bloc
 
      //emit_varbits(V->hp,V->numentries);
     
-    if ( numhuffinds > 0 && (huff= huff_create((const struct huffitem **)items,numhuffinds,frequi)) != 0 )
+    if ( 0 && numhuffinds > 0 && (huff= huff_create((const struct huffitem **)items,numhuffinds,frequi)) != 0 )
     {
         /*for (i=num=0; i<len; i++)
          {
@@ -790,7 +790,7 @@ void emit_compressed_block(struct compressionvars *V,char *coinstr,uint32_t bloc
         hclear(V->hp);
         huff_clearstats(huff);
         huff_free(huff);
-    } else printf("error from huff_create %s.%u\n",coinstr,blocknum);
+    } //else printf("error from huff_create %s.%u\n",coinstr,blocknum);
     free(blockitems); free(voutitems); free(txinditems); free(valueitems); free(items);
 }
 
@@ -1140,7 +1140,7 @@ uint32_t flush_compressionvars(struct compressionvars *V,char *coinstr,uint32_t 
         printf("%s",V->disp);
         V->disp[0] = 0;
     }
-    if ( (newblocknum % BITSTREAM_GROUPSIZE(coinstr)) == 0 )
+    if ( 0 && (newblocknum % BITSTREAM_GROUPSIZE(coinstr)) == 0 )
     {
         fclose(V->fp);
         set_commpressionvars_fname(fname,coinstr,"bitstream",newblocknum);
@@ -1314,13 +1314,13 @@ void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct a
                 update_huffitem(&tp->item,(tp->ind << 3) | 5,15);
                 update_huffitem(&sp->item,(sp->ind << 3) | 6,32);
                 update_huffitem(&addrp->item,(addrp->ind << 3) | 7,32);
-                if ( V->disp != 0 )
+                if ( 0 && V->disp != 0 )
                     sprintf(V->disp+strlen(V->disp),"{A%d T%d.%d S%d %.8f} ",V->addrind,V->txind,bp->v,V->scriptind,dstr(value));
                 compressionvars_add_txout(V->rawdata,coinstr,tp->ind,bp->v,addrp->ind,value,sp->ind);
             }
             else //if ( bp->vinflag == 0 ) // dereferenced (blocknum, txind, v)
             {
-                if ( V->disp != 0 )
+                if ( 0 && V->disp != 0 )
                     sprintf(V->disp+strlen(V->disp),"[%d %d %d] ",bp->blocknum,bp->txind,bp->v);
                 compressionvars_add_txin(V->rawdata,coinstr,bp);
                 // ????? add_entry_to_tx(tp,bp);
@@ -1346,12 +1346,12 @@ int main(int argc,const char *argv[])
     int32_t retval;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
    // if ( Debuglevel > 0 )
-    //if ( argc > 1 && strcmp(argv[1],"genfiles") == 0 )
+    if ( argc > 1 && strcmp(argv[1],"genfiles") == 0 )
     {
         uint32_t process_coinblocks(char *coinstr);
         retval = SuperNET_start("SuperNET.conf","127.0.0.1");
         printf("process coinblocks\n");
-        process_coinblocks("BTCD");//(char *)argv[2]);
+        process_coinblocks((char *)argv[2]);
         getchar();
     }
 #ifdef fortesting
