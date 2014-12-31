@@ -97,42 +97,37 @@ void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
     //printf("[%s] + [%s] = (%s)\n",coin,addr,coinaddr);
 }
 
-void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag,uint64_t value)
+void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag,uint64_t value,char *txidstr,char *script)
 {
+    void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct address_entry *bp,uint64_t value,char *txidstr,char *script);
     struct SuperNET_db *sdb = &SuperNET_dbs[ADDRESS_DATA];
-    char coinaddr[512],dirname[512],fname[512];
+    char coinaddr[512];
     DBT key,data;
     int32_t ret;
-    FILE *fp;
-    clear_pair(&key,&data);
-    memset(coinaddr,0,sizeof(coinaddr));
-    _set_address_key(&key,coinaddr,coin,addr);
-    data.data = bp;
-    data.size = (int32_t)sizeof(*bp);
-    if ( Debuglevel > 2 )
-        printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,(void *)((long)key.data+strlen(key.data)+1),key.size,coin,strlen(coin),addr);
-    if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
-    //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
-        sdb->storage->err(sdb->storage,ret,"add_address: Database put failed.");
-    else if ( syncflag != 0 )
-        dbsync(sdb,0);
-    if ( IS_LIBTEST > 2 )
+    struct coin_info *cp = get_coin_info(coin);
+    if ( IS_LIBTEST == 7 )
     {
-        sprintf(dirname,"address/%s",coin);
-        ensure_directory(dirname);
-        sprintf(fname,"%s/%s",dirname,addr);
-        if ( (fp= fopen(fname,"rb+")) == 0 )
-            fp = fopen(fname,"wb");
-        else fseek(fp,0,SEEK_END);
-        if ( fp != 0 )
-        {
-            fwrite(bp,1,sizeof(*bp),fp);
-            if ( bp->vinflag == 0 )
-                fwrite(&value,1,sizeof(value),fp);
-            fclose(fp);
-        }
+        if ( cp != 0 )
+            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script);
     }
-    //sdb->dbp->sync(sdb->dbp,0);
+    else
+    {
+        clear_pair(&key,&data);
+        memset(coinaddr,0,sizeof(coinaddr));
+        _set_address_key(&key,coinaddr,coin,addr);
+        data.data = bp;
+        data.size = (int32_t)sizeof(*bp);
+        if ( Debuglevel > 2 )
+            printf("_add_address_entry vin.%d spent.%d %d %d %d | (%s %s).%d [%s].%ld [%s]\n",bp->vinflag,bp->spent,bp->blocknum,bp->txind,bp->v,key.data,(void *)((long)key.data+strlen(key.data)+1),key.size,coin,strlen(coin),addr);
+        if ( (ret= dbput(sdb,0,&key,&data,0)) != 0 )
+            //if ( (ret= sdb->dbp->put(sdb->dbp,0,&key,&data,0)) != 0 )
+            sdb->storage->err(sdb->storage,ret,"add_address: Database put failed.");
+        else if ( syncflag != 0 )
+            dbsync(sdb,0);
+        if ( IS_LIBTEST > 2 && cp != 0 )
+            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script);
+        //sdb->dbp->sync(sdb->dbp,0);
+    }
 }
 
 struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *addr,struct address_entry *bp,int32_t syncflag)
@@ -145,6 +140,8 @@ struct address_entry *dbupdate_address_entries(int32_t *nump,char *coin,char *ad
     DBC *cursorp = 0;
     DBT key,data;
     *nump = 0;
+    if ( get_selected_database(ADDRESS_DATA) == 0 )
+        return(0);
     sdb = &SuperNET_dbs[ADDRESS_DATA];
     if ( (ret = sdb->storage->txn_begin(sdb->storage,NULL,&txn,0)) != 0 )
     {
@@ -326,6 +323,46 @@ void set_coin_blockheight(char *coin,uint32_t blocknum)
     }
 }
 
+/*void cross_validate_rawfiles(char *coin,char *addr,struct address_entry *bp)
+{
+    static uint32_t n,maxblock;
+    uint32_t ind,numinds;
+    struct huffcode *huff;
+    struct coin_info *cp;
+    cp = get_coin_info(coin);
+    numinds = 1000000;
+    if ( cp->items == 0 )
+    {
+        cp->items = calloc(numinds,sizeof(*cp->items));
+        for (ind=0; ind<numinds; ind++)
+            huff_iteminit(&cp->items[ind],&ind,sizeof(ind),0,0);
+        printf("items initialized\n");
+    }
+    if ( addr == 0  || (n % 100) == 99 )
+    {
+        if ( cp != 0 )
+        {
+            double endmilli,startmilli = milliseconds();
+            if ( (huff = testhuffcode(0,cp->items,numinds)) != 0 )
+            {
+                endmilli = milliseconds();
+                printf("%.3f millis to encode maxblock.%d BTCD.%d %d bytes -> %d bits %.3f ratio\n",endmilli-startmilli,maxblock,n,huff->totalbytes,huff->totalbits,(double)huff->totalbytes*8./huff->totalbits);
+                huff_free(huff);
+            }
+        }
+        return;
+    }
+    n++;
+    if ( bp->blocknum > maxblock )
+        maxblock = bp->blocknum;
+    cp->items[bp->blocknum].freq++;
+    cp->items[bp->txind].freq++;
+    cp->items[bp->v].freq++;
+    //update_block(&cp->blocks[bp->blocknum],bp);
+    //struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
+    printf("%d: max.%d %7u %-5u %-5u (%-5s %s) vin.%d spent.%d isinternal.%d\n",n,maxblock,bp->blocknum,bp->txind,bp->v,coin,addr,bp->vinflag,bp->spent,bp->isinternal);
+}*/
+
 int32_t scan_address_entries()
 {
     int32_t bulksize = 1024 * 1024;
@@ -338,6 +375,8 @@ int32_t scan_address_entries()
     void *retdata,*retkey,*p;
     size_t retdlen,retkeylen;
     struct address_entry B;
+    if ( get_selected_database(ADDRESS_DATA) == 0 )
+        return(0);
     sdb = &SuperNET_dbs[ADDRESS_DATA];
     if ( (ret= dbcursor(sdb,NULL,&cursorp,0)) != 0 )
    //if ( (ret= sdb->dbp->cursor(sdb->dbp,NULL,&cursorp,0)) != 0 )
@@ -373,6 +412,8 @@ int32_t scan_address_entries()
                 memcpy(&B,retdata,sizeof(B));
                 //add_hashtable(&createdflag,Global_mp->coin_txids,retkey+strlen(retkey)+1);
                 uniq += createdflag;
+                //if ( 0 && IS_LIBTEST == 7 )
+                //    cross_validate_rawfiles(retkey,(void *)((long)retkey+strlen(retkey)+1),&B);
                 if ( (n % 10000) == 0 )
                     printf("n.%-6d %7u %u %u | (%s %s).%ld | %d m.%d\n",n,B.blocknum,B.txind,B.v,retkey,(void *)((long)retkey+strlen(retkey)+1),retkeylen,uniq,m);
                 set_coin_blockheight(retkey,B.blocknum);
@@ -391,6 +432,8 @@ int32_t scan_address_entries()
         free(bigbuf);
     }
     //fprintf(stderr,"done copy all dB.%d\n",selector);
+    //if ( 0 && IS_LIBTEST == 7 )
+    //    cross_validate_rawfiles("BTCD",0,0);
     return(n);
 }
 
@@ -402,7 +445,7 @@ struct exchange_quote *get_exchange_quotes(int32_t *nump,char *dbname,int32_t ol
     DBT key,data;
     DBC *cursorp = 0;
     *nump = 0;
-    if ( (sdb= find_pricedb(dbname,0)) == 0 )
+    if ( (sdb= find_pricedb(dbname,0)) == 0 || sdb->dbp == 0 )
         return(0);
     max = 8192;
     m = 0;
@@ -475,7 +518,7 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
     DBT key,data,*retdata;
     int32_t ret,reqflags = 0;
     struct storage_header *hp;
-    if ( valid_SuperNET_db("find_storage",selector) == 0 )
+    if ( valid_SuperNET_db("find_storage",selector) == 0 || SuperNET_dbs[selector].dbp == 0 )
         return(0);
     //fprintf(stderr,"in find_storage.%d %s\n",selector,keystr);
     clear_pair(&key,&data);
@@ -593,7 +636,7 @@ void update_storage(struct SuperNET_db *sdb,char *keystr,struct storage_header *
 {
     DBT key,data;
     int ret;
-    if ( IS_LIBTEST <= 0 )
+    if ( IS_LIBTEST <= 0 || sdb->storage == 0 || sdb->dbp == 0 || IS_LIBTEST == 7 )
         return;
     if ( hp->size == 0 )
     {
@@ -673,7 +716,27 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 
 void ensure_SuperNET_dirs(char *backupdir)
 {
-    char dirname[1024];
+    char dirname[1024],coinstr[128];
+    int32_t i,n;
+    cJSON *array;
+    struct coin_info *cp;
+    ensure_directory("address");
+    array = cJSON_GetObjectItem(MGWconf,"active");
+    if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
+            if ( (cp= get_coin_info(coinstr)) != 0 )
+            {
+                sprintf(dirname,"address/%s",coinstr), ensure_directory(dirname);
+                //sprintf(dirname,"address/%s/addrs",coinstr), ensure_directory(dirname);
+                sprintf(dirname,"address/%s/bitstream",coinstr), ensure_directory(dirname);
+                //sprintf(dirname,"address/%s/scripts",coinstr), ensure_directory(dirname);
+                //sprintf(dirname,"address/%s/txids",coinstr), ensure_directory(dirname);
+            }
+        }
+    }
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
@@ -696,18 +759,24 @@ void ensure_SuperNET_dirs(char *backupdir)
     sprintf(dirname,"%s/%s",backupdir,"archive/telepods"), ensure_directory(dirname);
 }
 
+void init_rambases()
+{
+    struct multisig_addr *msig = 0;
+    SuperNET_dbs[MULTISIG_DATA].ramtable = hashtable_create("multisigs",HASHTABLES_STARTSIZE,sizeof(struct multisig_addr)+sizeof(struct pubkey_info)*16,((long)&msig->multisigaddr[0] - (long)msig),sizeof(msig->multisigaddr),((long)&msig->modified - (long)msig));
+}
+
 int32_t init_SuperNET_storage(char *backupdir)
 {
     static int didinit;
     int i,m,n,createdflag;
-    struct multisig_addr *msig = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     struct SuperNET_db *sdb;
     if ( didinit == 0 )
     {
         ensure_SuperNET_dirs(backupdir);
         didinit = 1;
-        if ( IS_LIBTEST > 0 )
+        init_rambases();
+        if ( IS_LIBTEST > 0 && IS_LIBTEST != 7 )
         {
             open_database(PUBLIC_DATA,&SuperNET_dbs[PUBLIC_DATA],"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
             open_database(PRIVATE_DATA,&SuperNET_dbs[PRIVATE_DATA],"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
@@ -720,7 +789,6 @@ int32_t init_SuperNET_storage(char *backupdir)
             open_database(MULTISIG_DATA,&SuperNET_dbs[MULTISIG_DATA],"multisig.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct multisig_addr),sizeof(struct multisig_addr) + sizeof(struct pubkey_info)*16,0);
             
             //SuperNET_dbs[MULTISIG_DATA].overlap_write = 1;
-            SuperNET_dbs[MULTISIG_DATA].ramtable = hashtable_create("multisigs",HASHTABLES_STARTSIZE,sizeof(struct multisig_addr)+sizeof(struct pubkey_info)*16,((long)&msig->multisigaddr[0] - (long)msig),sizeof(msig->multisigaddr),((long)&msig->modified - (long)msig));
             if ( cp != 0 ) // encrypted dbs
             {
                 sdb = &SuperNET_dbs[TELEPOD_DATA];
@@ -728,7 +796,7 @@ int32_t init_SuperNET_storage(char *backupdir)
                 sdb = &SuperNET_dbs[CONTACT_DATA];
                 sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
             }
-            if ( IS_LIBTEST > 1 )
+            if ( IS_LIBTEST > 1 && IS_LIBTEST != 7 )
             {
                 /*if ( (ret = db_env_create(&AStorage, 0)) != 0 )
                 {

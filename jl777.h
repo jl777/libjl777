@@ -165,8 +165,8 @@ void usleep(int32_t);
 
 
 
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 || allocsize > 1000000 ) { return(0); fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
-void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { return(0); fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
+void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
+void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
 long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NULL)??\n"); return(0); } return(strlen(str)); }
 #define malloc jl777malloc
 #define calloc jl777calloc
@@ -208,7 +208,7 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "bitcoind_RPC.c"
 #include "jsoncodec.h"
 #include "SuperNET.h"
-
+#include "ramchain.h"
 
 typedef struct queue
 {
@@ -390,8 +390,10 @@ struct coin_info
     struct unspent_info unspent;
     portable_mutex_t consensus_mutex;
     cJSON *json;
+    struct huffitem *items;
     uv_udp_t *bridgeudp;
-    struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
+    struct compressionvars V;
+    struct hashtable *telepods,*addrs; void *changepod; uint64_t min_telepod_satoshis;
     cJSON *ciphersobj;
     char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];
     char srvpubaddr[128],srvNXTACCTSECRET[2048],srvcoinpubkey[1024],srvNXTADDR[64];
@@ -585,9 +587,9 @@ struct madata
 
 #define TELEPORT_DEFAULT_SMEARTIME 3600
 
-#define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
-#define GETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
-#define CLEARBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] &= ~(1 << ((bitoffset) & 7)))
+//#define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
+//#define GETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
+//#define CLEARBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] &= ~(1 << ((bitoffset) & 7)))
 #ifndef MIN
 #define MIN(x,y) (((x)<=(y)) ? (x) : (y))
 #endif

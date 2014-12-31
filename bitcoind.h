@@ -252,7 +252,7 @@ int32_t origconvert_to_bitcoinhex(char *scriptasm)
 
 int32_t convert_to_bitcoinhex(char *scriptasm)
 {
-    char *hex,pubkey[512];
+    char *hex,pubkey[512],*endstr;
     int32_t middlelen,len,OP_HASH160_len,OP_EQUAL_len;
     len = (int32_t)strlen(scriptasm);
     OP_HASH160_len = (int32_t)strlen("OP_DUP OP_HASH160");
@@ -268,6 +268,16 @@ int32_t convert_to_bitcoinhex(char *scriptasm)
         strcpy(scriptasm,hex);
         free(hex);
         return((int32_t)(2+middlelen+2));
+    }
+    else
+    {
+        endstr = scriptasm + strlen(scriptasm) - strlen(" OP_CHECKSIG");
+        if ( strcmp(endstr," OP_CHECKSIG") == 0 )
+        {
+            strcpy(endstr,"ac");
+            //printf("NEWSCRIPT.[%s]\n",scriptasm);
+            return((int32_t)strlen(scriptasm));
+        }
     }
     return(origconvert_to_bitcoinhex(scriptasm));
 }

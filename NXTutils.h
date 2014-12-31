@@ -2445,4 +2445,6 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
 #endif*/
 #endif
 
+
+
 #endif

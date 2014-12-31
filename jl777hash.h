@@ -11,13 +11,7 @@
 #define HASHTABLE_RESIZEFACTOR 3
 #define HASHSEARCH_ERROR ((uint64_t)-1)
 #define HASHTABLE_FULL .666
-struct hashtable
-{
-    char *name;
-    void **hashtable;
-    uint64_t hashsize,numsearches,numiterations,numitems;
-    unsigned long keyoffset,keysize,modifiedoffset,structsize;
-};
+
 
 union _hashpacket_result { void *result; uint64_t hashval; };
 
@@ -220,6 +214,12 @@ uint64_t calc_decimalhash(char *key)
         c = key[i];
         if ( c >= '0' && c <= '9' )
             hashval = hashval*a + (c - '0');
+        else
+        {
+            hashval = hashval*a + (c&0xf);
+            c >>= 4;
+            hashval = hashval*a + (c&0xf);
+        }
     }
     return(hashval);
 }
@@ -233,6 +233,11 @@ struct hashtable *hashtable_create(char *name,int64_t hashsize,long structsize,l
     hp->structsize = structsize;
     hp->keyoffset = keyoffset;
     hp->keysize = keysize;
+    if ( keysize == 0 && keyoffset != structsize )
+    {
+        printf("illegal hashtable_create for dynamic sized keys keyoffset.%ld != structsize.%ld\n",keyoffset,structsize);
+        exit(-1);
+    }
     hp->modifiedoffset = modifiedoffset;
     hp->hashtable = calloc((long)hp->hashsize,sizeof(*hp->hashtable));
     return(hp);
@@ -258,6 +263,8 @@ void **hashtable_gather_modified(int64_t *changedp,struct hashtable *hp,int32_t 
     void *ptr,**list = 0;
     if ( hp == 0 )
         return(0);
+    if ( hp->modifiedoffset < 0 )
+        forceflag = 1;
     //while ( Global_mp->hashprocessing != 0 )
     //    usleep(100);
     Global_mp->hashprocessing++;
@@ -284,12 +291,14 @@ void **hashtable_gather_modified(int64_t *changedp,struct hashtable *hp,int32_t 
     return(list);
 }
 
-uint64_t search_hashtable(struct hashtable *hp,char *key)
+uint64_t search_hashtable(struct hashtable *hp,void *key)
 {
     void *ptr,**hashtable = hp->hashtable;
     uint64_t i,hashval,ind;
-    if ( hp == 0 || key == 0 || key[0] == 0 )
+    int32_t keysize;
+    if ( hp == 0 || key == 0 || ((char *)key)[0] == 0 || hp->hashsize == 0 )
         return(HASHSEARCH_ERROR);
+    keysize = (int32_t)hp->keysize;
     hashval = calc_decimalhash(key);
     //printf("hashval = %ld\n",(unsigned long)hashval);
     ind = (hashval % hp->hashsize);
@@ -304,7 +313,12 @@ uint64_t search_hashtable(struct hashtable *hp,char *key)
         ptr = hashtable[ind];
         if ( ptr == 0 )
             return(ind);
-        if ( strcmp((void *)((long)ptr + hp->keyoffset),key) == 0 )
+        if ( 1 || keysize == 0 ) // dead space maybe causes problems for now?
+        {
+            if ( strcmp((void *)((long)ptr + hp->keyoffset),key) == 0 )
+                return(ind);
+        }
+        else if ( memcmp((void *)((long)ptr + hp->keyoffset),key,keysize) == 0 )
             return(ind);
     }
     return(HASHSEARCH_ERROR);
@@ -360,9 +374,10 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
 {
     void *ptr;
     uint64_t ind;
+    int32_t allocsize;
     struct hashtable *hp = *hp_ptr;
     *createdflagp = 0;
-    if ( key == 0 || *key == 0 || hp == 0 || strlen(key) >= hp->keysize )
+    if ( key == 0 || *key == 0 || hp == 0 || (hp->keysize > 0 && strlen(key) >= hp->keysize) )
     {
         printf("%p key.(%s) len.%ld is too big for %s %ld, FATAL\n",key,key,strlen(key),hp!=0?hp->name:"",hp!=0?hp->keysize:0);
         key = "123456";
@@ -382,10 +397,13 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     //printf("ptr %p, ind.%ld\n",ptr,(long)ind);
     if ( ptr == 0 )
     {
-        ptr = calloc(1,hp->structsize);
+        if ( hp->keysize == 0 )
+            allocsize = (int32_t)(hp->structsize + strlen(key) + 1);
+        else allocsize = (int32_t)hp->structsize;
+        ptr = calloc(1,allocsize);
         hp->hashtable[ind] = ptr;
         strcpy((void *)((long)ptr + hp->keyoffset),key);
-        //*(int64_t *)((long)ptr + hp->modifiedoffset) = 1;
+        //if ( hp->modifiedoffset >= 0 ) *(int64_t *)((long)ptr + hp->modifiedoffset) = 1;
         hp->numitems++;
         *createdflagp = 1;
         ind = search_hashtable(hp,key);
@@ -400,7 +418,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     void *result;
     extern struct NXThandler_info *Global_mp;
     struct hashpacket *ptr;
-    if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || strlen(key) >= (*hp_ptr)->keysize )
+    if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || ((*hp_ptr)->keysize > 0 && strlen(key) >= (*hp_ptr)->keysize) )
     {
         printf("MTadd_hashtable.(%s) illegal key?? (%s)\n",*hp_ptr!=0?(*hp_ptr)->name:"",key);
 #ifdef __APPLE__

@@ -476,6 +476,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
     char numstr[64],rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*privkey,*coinaddr,**privkeys;
     cJSON *ciphersobj,*limbo;
+    //struct coinaddr *addrp = 0;
     struct nodestats *stats;
     uint64_t txfee,NXTfee_equiv,min_telepod_satoshis,dust,redeemtxid,*limboarray = 0;
     struct coin_info *cp = 0;
@@ -537,6 +538,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
+                //cp->addrs = hashtable_create("addrs",HASHTABLES_STARTSIZE,sizeof(*addrp),sizeof(*addrp),0,-1);
                 portable_mutex_init(&cp->consensus_mutex);
                 extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
                 extract_cJSON_str(cp->MGWissuer,sizeof(cp->MGWissuer),json,"issuer");
@@ -785,9 +787,9 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
             SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
             APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
-            DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
+            DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),1000);
             MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
-            APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),25);
+            APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),100);
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
             UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
             LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
@@ -897,8 +899,9 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                                 strcpy(DATADIR,"archive");
                             if ( MGWROOT[0] == 0 )
                                 strcpy(MGWROOT,"/var/www");
-                            if ( IS_LIBTEST > 0 )
+                            if ( IS_LIBTEST > 0 )//&& IS_LIBTEST < 7 )
                                 init_SuperNET_storage(cp->backupdir);
+                            void init_rambases(); init_rambases();
                             //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                             //addcontact("mypublic",cp->srvNXTADDR);
                         }
