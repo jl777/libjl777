@@ -671,7 +671,11 @@ struct orderbook_tx **get_latest_orders(uint32_t *jdatetimep,int32_t *nump,struc
     if ( ep->P.calctime != (jdatetime= ep->P.lastjdatetime) )
     {
         while ( (tmp= queue_dequeue(&ep->ordersQ)) != 0 )
+        {
+            if ( orders != 0 )
+                free(orders);
             orders = tmp;
+        }
         if ( orders != 0 )
         {
             for (i=0; orders[i]!=0; i++)
@@ -751,6 +755,7 @@ void *poll_exchanges(void *flagp)
                     recalc_bars(1,&ep->P.PTRS,orders,n,&ep->P,jdatetime);
                     ep->P.calctime = jdatetime;
                     tradebot_event_processor(actual_gmt_jdatetime(),0,ep,ep->baseid,ep->relid,0,1L << exchangeid);
+                    free(orders);
                 }
             }
             sleep(1);

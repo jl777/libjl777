@@ -198,7 +198,7 @@ int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg)
         fclose(fp);
         sprintf(cmd,"ssmtp %s < %s",email,fname);
         retval = system(cmd);
-        printf("(%s) -> retval.%d\n",cmd,retval);
+        //printf("(%s) -> retval.%d\n",cmd,retval);
     }
     return(retval);
 }

@@ -47,10 +47,11 @@ int64_t issue_bitcoind_command(char *extract,struct coin_info *cp,char *command,
 uint32_t get_blockheight(struct coin_info *cp)
 {
     uint32_t height = (uint32_t)cp->RTblockheight;
-    if ( cp->lastheighttime+1000000 < microseconds() )
+    //if ( cp->lastheighttime+100000 < microseconds() )
     {
         height = (uint32_t)issue_bitcoind_command(0,cp,"getinfo","blocks","");
         cp->lastheighttime = microseconds();
+       // printf("heoight.%d\n",height);
         /*if ( cp->CACHE.ignorelist == 0 && height > 0 )
         {
             cp->CACHE.ignoresize = (int32_t)(height + 1000000);

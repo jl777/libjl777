@@ -21,7 +21,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	ar rcu  libs/libjl777.a  $(OBJS) gzip/*.o libtom/*.o libs/randombytes.o;\
+	ar rcu  libs/libjl777.a  $(OBJS) gzip/*.o libtom/*.o #libs/randombytes.o;\
 
 test:	all
 	(cd tests; make test)
@@ -116,18 +116,6 @@ onetime: doesntexist; \
     cp .libs/libuv.a ../libs; \
     cp .libs/libuv.so ../libs; \
     cd ..; \
-    echo "expanding nacl"; \
-    bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -; \
-    cd nacl-20090405; \
-    echo "compiling nacl, this will take some time"; \
-    ./do; \
-    cd ..; \
-    echo "randombytes.o and libnacl.a are in the build directory of nacl-20090405"; \
-    echo `date`; \
-    echo `ls -l nacl-20090405/build/*/lib/*/randombytes.o`; \
-    cp nacl-20090405/build/*/lib/*/randombytes.o libs
-    #echo `ls -l nacl-20090405/build/*/lib/amd64/randombytes.o`; \
-    #cp nacl-20090405/build/*/lib/amd64/randombytes.o libs
 
 count:
 	@echo "Core:"
@@ -139,7 +127,7 @@ count:
 .PHONY: libjl777.c
 
 ../src/BitcoinDarkd: libjl777.a
-libs/randombytes.o:
+#libs/randombytes.o:
 libs/libuv.a:
 /usr/lib/libjl777.so: libs/libjl777.so
 doesntexist:

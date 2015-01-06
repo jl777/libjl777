@@ -468,12 +468,12 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
 }
 
 extern int32_t process_podQ(void *ptr);
-struct coin_info *init_coin_info(cJSON *json,char *coinstr)
+struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
 {
     void add_new_node(uint64_t nxt64bits);
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t i,j,n,useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
-    char numstr[64],rpcuserpass[512],asset[256],_marker[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
+    char numstr[64],rpcuserpass[512],asset[256],_marker[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*privkey,*coinaddr,**privkeys;
     cJSON *ciphersobj,*limbo;
     //struct coinaddr *addrp = 0;
@@ -530,11 +530,14 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr)
             marker = clonestr(_marker);
         }
         if ( //marker != 0 && txfee != 0. && NXTfee_equiv != 0. &&
-            extract_cJSON_str(conf_filename,sizeof(conf_filename),json,"conf") > 0 &&
+            extract_cJSON_str(confstr,sizeof(confstr),json,"conf") > 0 &&
             extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
             extract_cJSON_str(serverip_port,sizeof(serverip_port),json,"rpc") > 0 )
         {
             extract_cJSON_str(rpcuserpass,sizeof(rpcuserpass),json,"rpcuserpass");
+            if ( userdir[0] != 0 )
+                sprintf(conf_filename,"%s/%s",userdir,confstr);
+            else strcpy(conf_filename,confstr);
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
@@ -734,7 +737,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     uint64_t nxt64bits;
     struct coin_info *cp;
     cJSON *array,*item,*languagesobj = 0;
-    char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
+    char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],userdir[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
     int32_t i,n,ismainnet,timezone=0;
     void close_SuperNET_dbs();
     if ( Global_mp == 0 )
@@ -764,6 +767,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                     strcpy(ipbuf,"127.0.0.1");
             } else parse_ipaddr(ipbuf,myipaddr);
             myipaddr = ipbuf;
+            extract_cJSON_str(userdir,sizeof(userdir),MGWconf,"userdir");
             if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
                 strcpy(Global_mp->myhandle,"myhandle");
             timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
@@ -787,9 +791,13 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
             SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
             APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
-            DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),1000);
+            DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
             MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
-            APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),100);
+            APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
+#ifndef HUFF_GENMODE
+            DBSLEEP *= 10;
+            APISLEEP *= 10;
+#endif
             USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
             UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
             LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
@@ -874,7 +882,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         break;
                     item = cJSON_GetArrayItem(array,i);
                     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
-                    if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr)) != 0 )
+                    if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr,userdir)) != 0 )
                     {
                         if ( Debuglevel > 0 )
                             printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
@@ -882,8 +890,10 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
                         Daemons[Numcoins] = cp;
+                        uint32_t get_blockheight(struct coin_info *cp);
+                        cp->RTblockheight = get_blockheight(cp);
                         if ( Debuglevel > 0 )
-                            printf("i.%d coinid.%d %s asset.%s\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid);
+                            printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
                         Numcoins++;
                         cp->json = item;
                         parse_ipaddr(cp->myipaddr,myipaddr);
@@ -899,8 +909,6 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                                 strcpy(DATADIR,"archive");
                             if ( MGWROOT[0] == 0 )
                                 strcpy(MGWROOT,"/var/www");
-                            if ( IS_LIBTEST > 0 )//&& IS_LIBTEST < 7 )
-                                init_SuperNET_storage(cp->backupdir);
                             void init_rambases(); init_rambases();
                             //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                             //addcontact("mypublic",cp->srvNXTADDR);

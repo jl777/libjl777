@@ -97,9 +97,9 @@ void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
     //printf("[%s] + [%s] = (%s)\n",coin,addr,coinaddr);
 }
 
-void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t syncflag,uint64_t value,char *txidstr,char *script)
+void _add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder,char *coin,char *addr,struct address_entry *bp,int32_t syncflag,uint64_t value,char *txidstr,char *script)
 {
-    void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct address_entry *bp,uint64_t value,char *txidstr,char *script);
+    void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct address_entry *bp,uint64_t value,char *txidstr,char *script,int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder);
     struct SuperNET_db *sdb = &SuperNET_dbs[ADDRESS_DATA];
     char coinaddr[512];
     DBT key,data;
@@ -108,7 +108,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
     if ( IS_LIBTEST == 7 )
     {
         if ( cp != 0 )
-            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script);
+            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
     }
     else
     {
@@ -125,7 +125,7 @@ void _add_address_entry(char *coin,char *addr,struct address_entry *bp,int32_t s
         else if ( syncflag != 0 )
             dbsync(sdb,0);
         if ( IS_LIBTEST > 2 && cp != 0 )
-            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script);
+            update_ramchain(&cp->V,cp->name,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
         //sdb->dbp->sync(sdb->dbp,0);
     }
 }
@@ -716,22 +716,23 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 
 void ensure_SuperNET_dirs(char *backupdir)
 {
-    char dirname[1024],coinstr[128];
+    char dirname[1024],coinstr[128],*dirstr = "ramchains";
     int32_t i,n;
     cJSON *array;
-    struct coin_info *cp;
-    ensure_directory("address");
+    //struct coin_info *cp;
+    ensure_directory(dirstr);
     array = cJSON_GetObjectItem(MGWconf,"active");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
         for (i=0; i<n; i++)
         {
             copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-            if ( (cp= get_coin_info(coinstr)) != 0 )
+            //if ( (cp= get_coin_info(coinstr)) != 0 )
             {
-                sprintf(dirname,"address/%s",coinstr), ensure_directory(dirname);
+                printf("ensure.%s\n",coinstr);
+                sprintf(dirname,"%s/%s",dirstr,coinstr), ensure_directory(dirname);
                 //sprintf(dirname,"address/%s/addrs",coinstr), ensure_directory(dirname);
-                sprintf(dirname,"address/%s/bitstream",coinstr), ensure_directory(dirname);
+                sprintf(dirname,"%s/%s/bitstream",dirstr,coinstr), ensure_directory(dirname);
                 //sprintf(dirname,"address/%s/scripts",coinstr), ensure_directory(dirname);
                 //sprintf(dirname,"address/%s/txids",coinstr), ensure_directory(dirname);
             }

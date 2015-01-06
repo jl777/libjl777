@@ -2446,5 +2446,75 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
 #endif
 
 
+uint32_t write_blankspace(FILE *fp,long remaining)
+{
+    long n,fpos,incrsize = (1024*1024);
+    uint8_t *zeroes;
+    uint32_t incr,count = 0;
+    if ( remaining > 0 && fp != 0 )
+    {
+        incr = (uint32_t)((remaining < incrsize) ? remaining : incrsize);
+        zeroes = calloc(1,incr);
+        while ( remaining > 0 )
+        {
+            incr = (uint32_t)((remaining < incrsize) ? remaining : incrsize);
+            fpos = ftell(fp);
+            if ( (n= fwrite(zeroes,1,incr,fp)) != incr )
+            {
+                printf("write_blankspace: error writing %d at fpos.%ld, got %ld\n",incr,fpos,n);
+                if ( n < 0 )
+                    n = 0;
+                return(count + (uint32_t)n);
+            }
+            count += (uint32_t)n;
+            remaining -= incr;
+        }
+        free(zeroes);
+    }
+    return(count);
+}
+
+long force_fpos(char *fname,FILE **fpp,long setfpos)
+{
+    FILE *fp = (*fpp);
+    uint32_t count;
+    long fpos,startfpos;
+    if ( fp == 0 )
+    {
+        fp = fopen(fname,"wb");
+        if ( fp == 0 )
+        {
+            printf("couldnt create %s\n",fname);
+            return(-1);
+        }
+        (*fpp) = fp;
+    }
+    startfpos = ftell(fp);
+    if ( startfpos != setfpos )
+    {
+        printf("%s at %ld instead of %ld\n",fname,startfpos,setfpos);
+        fseek(fp,setfpos,SEEK_SET);
+        fpos = ftell(fp);
+        if ( fpos != setfpos )
+        {
+            printf("couldnt reposition.(%s) from %ld to %ld, ended up at %ld\n",fname,startfpos,setfpos,fpos);
+            if ( (count= (uint32_t)write_blankspace(fp,setfpos-fpos)) != (setfpos - fpos) )
+            {
+                printf("couldnt write.%s blankspace of %ld, only wrote %d\n",fname,setfpos - fpos,count);
+                exit(-1);
+            }
+        }
+        else
+        {
+            printf("FATAL error: couldnt reposition.(%s) from %ld to %ld, ended up beyond?? %ld\n",fname,startfpos,setfpos,fpos);
+            while ( 1 ) sleep(1);
+            exit(-1);
+        }
+        return(ftell(fp));
+    }
+    return(setfpos);
+}
+
+
 
 #endif

@@ -83,7 +83,7 @@ void save_MGW_file(char *fname,char *jsonstr)
 {
     FILE *fp;
     char cmd[1024];
-    if ( (fp= fopen(fname,"wb")) != 0 )
+    if ( (fp= fopen(fname,"wb+")) != 0 )
     {
         fwrite(jsonstr,1,strlen(jsonstr),fp);
         fclose(fp);
@@ -115,7 +115,7 @@ cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
     }
     if ( (fp= fopen(fname,"rb+")) == 0 )
     {
-        fp = fopen(fname,"wb");
+        fp = fopen(fname,"wb+");
         if ( fp != 0 )
         {
             if ( (json = cJSON_CreateArray()) != 0 )
@@ -829,7 +829,7 @@ int32_t set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txi
     return(0);
 }
 
-int32_t add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag,uint64_t value,char *txidstr,char *script)
+int32_t add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder,char *coin,char *addr,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent,int32_t syncflag,uint64_t value,char *txidstr,char *script)
 {
     struct address_entry B;
     struct coin_info *cp;
@@ -838,7 +838,7 @@ int32_t add_address_entry(char *coin,char *addr,uint32_t blocknum,int32_t txind,
     {
         if ( set_address_entry(&B,blocknum,txind,vin,vout,isinternal,spent) == 0 )
         {
-            _add_address_entry(coin,addr,&B,syncflag,value,txidstr,script);
+            _add_address_entry(numvins,inputsum,numvouts,remainder,coin,addr,&B,syncflag,value,txidstr,script);
             if ( Global_mp->gatewayid == (NUM_GATEWAYS-1) && isinternal == 0 && vin < 0 && MGW_initdone != 0 && (cp= get_coin_info(coin)) != 0 )
             {
                 if ( (msig= find_msigaddr(addr)) != 0 && msig->NXTaddr[0] != 0 )
@@ -1014,16 +1014,18 @@ int32_t calc_isinternal(struct coin_info *cp,char *coinaddr_v0,uint32_t height,i
     return(0);
 }
 
-uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coin_info *cp,uint32_t blockheight,int32_t txind,cJSON *vins,int32_t vind,int32_t syncflag)
+uint64_t update_vins(int32_t *numvinsp,int32_t *isinternalp,char *coinaddr,char *script,struct coin_info *cp,uint32_t blockheight,int32_t txind,cJSON *vins,int32_t vind,int32_t syncflag)
 {
     uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheight,char *blockhashstr,char *txidstr);
     cJSON *obj,*txidobj,*coinbaseobj;
-    uint64_t value;
+    uint64_t value,sum = 0;
     int32_t i,vout,numvins,numvouts,oldtxind,flag = 0;
     char txidstr[1024],coinbase[1024],blockhash[1024];
     uint32_t oldblockheight;
+    *numvinsp = 0;
     if ( vins != 0 && is_cJSON_Array(vins) != 0 && (numvins= cJSON_GetArraySize(vins)) > 0 )
     {
+        *numvinsp = numvins;
         for (i=0; i<numvins; i++)
         {
             if ( vind >= 0 && vind != i )
@@ -1033,13 +1035,14 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
             {
                 coinbaseobj = cJSON_GetObjectItem(obj,"coinbase");
                 copy_cJSON(coinbase,coinbaseobj);
-                if ( strlen(coinbase) > 1 )
+                if ( 1 && strlen(coinbase) > 1 )
                 {
                     if ( txind > 0 )
                         printf("txind.%d is coinbase.%s\n",txind,coinbase);
-                    return(flag);
+                    return(0);
                 }
-            }
+                //printf("process input.(%s) coinbase.(%s) sum.(%.8f)\n",coinaddr,coinbase,dstr(sum));
+            } else coinbase[0] = 0;
             txidobj = cJSON_GetObjectItem(obj,"txid");
             if ( txidobj != 0 && cJSON_GetObjectItem(obj,"vout") != 0 )
             {
@@ -1047,42 +1050,45 @@ uint64_t update_vins(int32_t *isinternalp,char *coinaddr,char *script,struct coi
                 copy_cJSON(txidstr,txidobj);
                 if ( txidstr[0] != 0 && (value= get_txvout(blockhash,&numvouts,coinaddr,script,cp,0,txidstr,vout)) != 0 && blockhash[0] != 0 )
                 {
-                    //printf("process input.(%s)\n",coinaddr);
+                    sum += value;
                     if ( (oldblockheight= get_blocktxind(&oldtxind,cp,0,blockhash,txidstr)) > 0 )
                     {
                         flag++;
-                        add_address_entry(cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,0,value,0,0);
-                        add_address_entry(cp->name,coinaddr,blockheight,txind,i,-1,-1,1,syncflag * (i == (numvins-1)),value,0,0);
+                        add_address_entry(0,0,0,0,cp->name,coinaddr,blockheight,txind,i,-1,-1,1,0,value,0,0);
+                        add_address_entry(0,0,0,0,cp->name,coinaddr,oldblockheight,oldtxind,-1,vout,-1,1,syncflag * (i == (numvins-1)),value,0,0);
                     } else printf("error getting oldblockheight (%s %s)\n",blockhash,txidstr);
                 } else printf("unexpected error vout.%d %s\n",vout,txidstr);
             } else printf("illegal txid.(%s)\n",txidstr);
         }
     }
-    return(flag);
+    return(sum);
 }
 
-void update_txid_infos(struct coin_info *cp,uint32_t blockheight,int32_t txind,char *txidstr,int32_t syncflag)
+void update_txid_infos(struct coin_info *cp,uint32_t blockheight,int32_t txind,char *txidstr,int32_t syncflag,uint64_t minted)
 {
     char coinaddr[1024],script[4096],coinaddr_v0[1024],*retstr = 0;
-    int32_t v,tmp,numvouts,isinternal = 0;
-    uint64_t value;
+    int32_t v,tmp,numvouts,numvins,isinternal = 0;
+    uint64_t value,remainder,inputsum = 0;
     cJSON *txjson;
     if ( (retstr= get_transaction(cp,txidstr)) != 0 )
     {
         if ( (txjson= cJSON_Parse(retstr)) != 0 )
         {
+            inputsum = update_vins(&numvins,&isinternal,coinaddr,script,cp,blockheight,txind,cJSON_GetObjectItem(txjson,"vin"),-1,syncflag);
+            if ( inputsum == 0 && txind == 0 )
+                inputsum = minted;
             v = 0;
+            remainder = inputsum;
             if ( (value= get_txvout(0,&numvouts,coinaddr_v0,script,cp,txjson,0,v)) > 0 )
-                add_address_entry(cp->name,coinaddr_v0,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value,txidstr,script);
+                add_address_entry(numvins,inputsum,numvouts,remainder,cp->name,coinaddr_v0,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value,txidstr,script), remainder -= value;
             for (v=1; v<numvouts; v++)
             {
                 if ( v < numvouts && (value= get_txvout(0,&tmp,coinaddr,script,cp,txjson,0,v)) > 0 )
                 {
                     isinternal = calc_isinternal(cp,coinaddr_v0,blockheight,v,numvouts);
-                    add_address_entry(cp->name,coinaddr,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value,txidstr,script);
+                    add_address_entry(numvins,inputsum,numvouts,remainder,cp->name,coinaddr,blockheight,txind,-1,v,isinternal,0,syncflag * (v == (numvouts-1)),value,txidstr,script), remainder -= value;
                 }
             }
-            update_vins(&isinternal,coinaddr,script,cp,blockheight,txind,cJSON_GetObjectItem(txjson,"vin"),-1,syncflag);
             free_json(txjson);
         } else printf("update_txid_infos parse error.(%s)\n",retstr);
         free(retstr);
@@ -1091,13 +1097,17 @@ void update_txid_infos(struct coin_info *cp,uint32_t blockheight,int32_t txind,c
 
 uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheight,char *blockhashstr,char *reftxidstr)
 {
-    char txidstr[1024];
+    char txidstr[1024],mintedstr[512];
     cJSON *json,*txobj;
     int32_t txind,n;
+    uint64_t minted = 0;
     uint32_t blockid = 0;
     *txindp = -1;
     if ( (json= get_blockjson(0,cp,blockhashstr,blockheight)) != 0 )
     {
+        copy_cJSON(mintedstr,cJSON_GetObjectItem(json,"mint"));
+        if ( mintedstr[0] != 0 )
+            minted = (uint64_t)(atof(mintedstr) * SATOSHIDEN);
         if ( (txobj= _get_blocktxarray(&blockid,&n,cp,json)) != 0 )
         {
             if ( blockheight == 0 )
@@ -1105,7 +1115,7 @@ uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheigh
             for (txind=0; txind<n; txind++)
             {
                 copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
-                if ( Debuglevel > 3 )
+                if ( blockheight == 0 || Debuglevel > 3 )
                     printf("%-5s blocktxt.%ld i.%d of n.%d %s\n",cp->name,(long)blockheight,txind,n,txidstr);
                 if ( reftxidstr != 0 )
                 {
@@ -1114,7 +1124,7 @@ uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheigh
                         *txindp = txind;
                         break;
                     }
-                }  else update_txid_infos(cp,blockheight,txind,txidstr,txind == n-1);
+                }  else update_txid_infos(cp,blockheight,txind,txidstr,txind == n-1,minted);
             }
         }
         free_json(json);
@@ -2193,7 +2203,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
     safecopy(wp->W.coinstr,cp->name,sizeof(wp->W.coinstr));
     set_batchname(batchname,cp->name,Global_mp->gatewayid);
     set_handler_fname(fname,"mgw",batchname);
-    if ( (fp= fopen(fname,"wb")) != 0 )
+    if ( (fp= fopen(fname,"wb+")) != 0 )
     {
         fwrite(wp,1,sizeof(*wp),fp);
         fclose(fp);
@@ -2457,7 +2467,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
     int32_t timestamp,numconfs;
     struct NXT_acct *np;
     cJSON *item,*json,*array;
-    if ( refNXTaddr == 0 )
+    if ( refNXTaddr == 0 || specialNXTaddrs == 0 || specialNXTaddrs[0] == 0 )
     {
         printf("illegal refNXT.(%s)\n",refNXTaddr);
         return(0);
@@ -2492,7 +2502,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
                         if ( coinid >= 0 && coinid < 64 && timestamp > 0 && (timestamp - 3600) > np->timestamps[coinid] )
                         {
-                            printf("new timestamp.%d %d -> %d\n",coinid,np->timestamps[coinid],timestamp-3600);
+                            printf("new.%s timestamp.%d %d -> %d\n",cp->name,coinid,np->timestamps[coinid],timestamp-3600);
                             np->timestamps[coinid] = (timestamp - 3600); // assumes no hour long block
                         } //else if ( timestamp < 0 ) genesis tx dont have any timestamps!
                           //  printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
@@ -2936,7 +2946,6 @@ uint64_t update_NXTblockchain_info(struct coin_info *cp,char *specialNXTaddrs[],
         update_NXT_transactions(specialNXTaddrs,-1,btcdcp->privateNXTADDR,cp);
     }
     update_NXT_transactions(specialNXTaddrs,-1,refNXTaddr,cp);
-    //update_NXT_transactions(specialNXTaddrs,2,refNXTaddr,cp);
     for (i=0; i<specialNXTaddrs[i][0]!=0; i++)
         update_NXT_transactions(specialNXTaddrs,-1,specialNXTaddrs[i],cp); // first numgateways of specialNXTaddrs[] are gateways
     update_msig_info(0,1,0); // sync MULTISIG_DATA
@@ -4135,21 +4144,65 @@ void *_process_coinblocks(void *_cp)
 
 void process_coinblocks(char *argcoinstr)
 {
-    int32_t i,n;
+    double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft);
+    int32_t init_compressionvars(int32_t readonly,struct compressionvars *V,char *coinstr,int32_t maxblocknum);
+    int32_t i,n,height,firstiter,processed = 0;
     cJSON *array;
     char coinstr[1024];
     struct coin_info *cp;
+    struct compressionvars *V;
     int32_t oldval = IS_LIBTEST;
     IS_LIBTEST = 7;
+    double startmilli,estimated;
     array = cJSON_GetObjectItem(MGWconf,"active");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
-        for (i=0; i<n; i++)
+        firstiter = 1;
+        while ( 1 )
         {
-            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-            if ( (cp= get_coin_info(coinstr)) != 0 )//&& (argcoinstr == 0 || strcmp(argcoinstr,coinstr) == 0))
-                if ( portable_thread_create((void *)_process_coinblocks,cp) == 0 )
-                    printf("ERROR hist findaddress_loop\n");
+            processed = 0;
+            for (i=0; i<n; i++)
+            {
+                copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
+                if ( (cp= get_coin_info(coinstr)) != 0 )//&& (argcoinstr == 0 || strcmp(argcoinstr,coinstr) == 0))
+                {
+                    V = &cp->V;
+                    if ( V->numbfps == 0 )
+                    {
+                        if ( IS_LIBTEST == 7 )
+                            V->numbfps = init_compressionvars(HUFF_READONLY,V,coinstr,(uint32_t)cp->RTblockheight);
+                    }
+                    if ( 1 && firstiter != 0 )
+                        cp->blockheight = (V->firstblock + 1);
+                    //if ( portable_thread_create((void *)_process_coinblocks,cp) == 0 )
+                    //    printf("ERROR hist findaddress_loop\n");
+                    height = get_blockheight(cp);
+                    startmilli = milliseconds();
+                    while ( cp->blockheight < (height - cp->min_confirms) && milliseconds() < (startmilli+1000) )
+                    {
+                        int32_t save_rawblock(FILE *fp,struct rawblock *raw);
+                        uint32_t _get_blockinfo(struct rawblock *raw,struct coin_info *cp,uint32_t blockheight);
+                        if ( Debuglevel > 2 )
+                           printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
+                        if ( (strcmp(cp->name,"BTC") == 0 && cp->blockheight == 71036) || _get_blockinfo(&V->raw,cp,(uint32_t)cp->blockheight) > 0 )
+                        //if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
+                        {
+                            save_rawblock(V->rawfp,&V->raw);
+                            V->processed++;
+                            processed++;
+                            estimated = estimate_completion(V->coinstr,V->startmilli,V->processed,(int32_t)height-V->blocknum)/60;
+                            printf("%-5s.%d %.1f min left [%.1f per block: est %s] numtx.%d vins.%d vouts.%d minted %.8f\n",cp->name,(int)cp->blockheight,estimated,(double)ftell(V->rawfp)/cp->blockheight,_mbstr(height * ((double)ftell(V->rawfp)/cp->blockheight)),V->raw.numtx,V->raw.numrawvins,V->raw.numrawvouts,dstr(V->raw.minted));
+                            cp->blockheight++;
+                        } //else break;
+                    }
+                }
+            }
+            if ( processed == 0 )
+            {
+                printf("coinblocks caught up\n");
+                sleep(60);
+            }
+            firstiter = 0;
         }
     }
     IS_LIBTEST = oldval;

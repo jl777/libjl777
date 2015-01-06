@@ -216,7 +216,7 @@ void SuperNET_idler(uv_idle_t *handle)
     struct write_req_t *wr,*firstwr = 0;
     int32_t flag;
     char *jsonstr,*retstr,**ptrs;
-    if ( Finished_init == 0 )
+    if ( Finished_init == 0 || IS_LIBTEST == 7 )
         return;
     millis = milliseconds();//((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + APISLEEP) )
@@ -412,6 +412,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     //if ( IS_LIBTEST == 7 )
     //    return(myipaddr);
+    if ( IS_LIBTEST != 7 )
     mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,on_udprecv);
     if ( (cp= get_coin_info("BTCD")) != 0 && cp->bridgeport != 0 )
         cp->bridgeudp = start_libuv_udpserver(4,cp->bridgeport,on_bridgerecv);
@@ -448,9 +449,14 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     {
         struct coin_info *cp;
         while ( (cp= get_coin_info("BTCD")) == 0 )
-            sleep(1);
+        {
+            printf("no BTCD coin info\n");
+            sleep(10);
+        }
         parse_ipaddr(cp->myipaddr,myipaddr);
         bind_NXT_ipaddr(cp->srvpubnxtbits,myipaddr);
+        if ( IS_LIBTEST > 0 )//&& IS_LIBTEST < 7 )
+            init_SuperNET_storage(cp->backupdir);
     }
     return(myipaddr);
 }
@@ -739,7 +745,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         fclose(fp);
     }
     Global_mp = init_SuperNET_globals();
-    
     if ( Debuglevel > 0 )
         printf("call init_NXTservices (%s)\n",myipaddr);
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);

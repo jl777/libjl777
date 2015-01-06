@@ -398,9 +398,12 @@ int32_t dbget(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t fla
 int32_t dbput(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
 {
     if ( sdb->dbp != 0 )
-        return(sdb->dbp->put(sdb->dbp,txn,key,data,flags));
+    {
+        if ( 1 || sdb->selector == ADDRESS_DATA )
+            return(sdb->dbp->put(sdb->dbp,txn,key,data,flags));
+        else return(dbcmd("dbput",'P',sdb,txn,key,data,flags,0));
+    }
     return(-1);
-    //return(dbcmd("dbput",'P',sdb,txn,key,data,flags,0));
 }
 
 int32_t dbdel(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t flags)
