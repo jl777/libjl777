@@ -483,6 +483,7 @@ uint32_t _get_blockinfo(struct rawblock *raw,struct coin_info *cp,uint32_t block
     cJSON *json,*txobj;
     uint32_t blockid;
     int32_t txind,n;
+    memset(raw,0,sizeof(*raw));
     raw->blocknum = blockheight;
     raw->minted = raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
     if ( (json= get_blockjson(0,cp,0,blockheight)) != 0 )

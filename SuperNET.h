@@ -50,6 +50,24 @@ union _bits64 { uint8_t bytes[8]; uint16_t ushorts[4]; uint32_t uints[2]; uint64
 typedef union _bits64 bits64;
 typedef union _bits256 bits256;
 
+#include "includes/uv.h"
+#define portable_mutex_t uv_mutex_t
+typedef struct queue
+{
+#ifdef oldqueue
+	void **buffer;
+#else
+	void *buffer[65536];
+#endif
+    int32_t capacity,size,in,out,initflag;
+	portable_mutex_t mutex;
+	//pthread_cond_t cond_full;
+	//pthread_cond_t cond_empty;
+} queue_t;
+//#define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
+void *queue_dequeue(queue_t *queue);
+void queue_enqueue(queue_t *queue,void *ptr);
+
 
 struct hashtable
 {

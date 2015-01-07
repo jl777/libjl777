@@ -210,20 +210,6 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "SuperNET.h"
 #include "ramchain.h"
 
-typedef struct queue
-{
-#ifdef oldqueue
-	void **buffer;
-#else
-	void *buffer[65536];
-#endif
-    int32_t capacity,size,in,out,initflag;
-	portable_mutex_t mutex;
-	//pthread_cond_t cond_full;
-	//pthread_cond_t cond_empty;
-} queue_t;
-//#define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
-
 struct pingpong_queue
 {
     char *name;
