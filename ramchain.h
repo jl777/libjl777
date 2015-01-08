@@ -921,7 +921,7 @@ int32_t save_rawvout(int32_t dispflag,FILE *fp,struct rawvout *vout)
             return(-5);
         else if ( len > 0 && fwrite(vout->coinaddr,1,len+1,fp) != len+1 )
             return(-6);
-        else if ( len <= 0 )
+        else if ( len < 0 )
         {
             printf("script.(%s).%d wrote (%s).%ld %.8f\n",vout->script,datalen,vout->coinaddr,len,dstr(vout->value));
             //while ( 1 ) sleep(1);
@@ -968,7 +968,7 @@ int32_t save_rawvin(int32_t dispflag,FILE *fp,struct rawvin *vin)
         decode_hex(data,(int32_t)len,vin->txidstr);
         if ( emit_varint(fp,len) <= 0 )
             return(-1);
-        else if ( fwrite(data,1,len,fp) != len )
+        else if ( len > 0 && fwrite(data,1,len,fp) != len )
             return(-1);
     }
     return(0);
@@ -1006,12 +1006,12 @@ int32_t save_rawtx(int32_t dispflag,FILE *fp,struct rawtx *tx)
     else
     {
         len = strlen(tx->txidstr) >> 1;
-        if ( len <= 0 )
+        if ( len < 0 )
             return(-1);
         decode_hex(data,(int32_t)len,tx->txidstr);
         if ( emit_varint(fp,len) <= 0 )
             return(-1);
-        else if ( fwrite(data,1,len,fp) != len )
+        else if ( len > 0 && fwrite(data,1,len,fp) != len )
             return(-1);
     }
     return(0);
@@ -1088,19 +1088,26 @@ long get_endofdata(long *eofposp,FILE *fp)
 
 uint32_t load_blockcheck(FILE *fp)
 {
-    long fpos;
+    long fpos,n,endpos;
     uint64_t blockcheck;
     uint32_t blocknum = 0;
     fseek(fp,0,SEEK_END);
-    fpos = ftell(fp);
+    fpos = endpos = ftell(fp);
+    
     if ( fpos >= sizeof(blockcheck) )
     {
         fpos -= sizeof(blockcheck);
         fseek(fp,fpos,SEEK_SET);
-    } else rewind(fp);
-    if ( fread(&blockcheck,1,sizeof(blockcheck),fp) != sizeof(blockcheck) || (uint32_t)(blockcheck >> 32) != ~(uint32_t)blockcheck )
+    }
+    else
     {
-        printf(">>>>>>>>>> ERROR marker blocknum %llx -> %u endpos.%ld fpos.%ld\n",(long long)blockcheck,blocknum,fpos,ftell(fp));
+        rewind(fp);
+        return(0);
+    }
+    if ( (n= fread(&blockcheck,1,sizeof(blockcheck),fp)) != sizeof(blockcheck) || (uint32_t)(blockcheck >> 32) != ~(uint32_t)blockcheck )
+    {
+        printf(">>>>>>>>>> ERROR.%ld marker blocknum %llx -> %u endpos.%ld readpos.%ld fpos.%ld\n",n,(long long)blockcheck,blocknum,endpos,fpos,ftell(fp));
+        while ( 1 ) sleep(1);
         blocknum = 0;
         fseek(fp,fpos,SEEK_SET);
     }
@@ -1126,7 +1133,7 @@ long emit_blockcheck(FILE *fp,uint64_t blocknum)
         fseek(fp,fpos,SEEK_SET);
         fflush(fp);
         //printf("emit_blockcheck %d -> %ld\n",(uint32_t)blocknum,ftell(fp));
-        load_blockcheck(fp);
+        //load_blockcheck(fp);
     }
     return(retval);
 }
@@ -1383,7 +1390,6 @@ void *huffhash_mapfile(struct huffhash *hash)
     huffhash_setfname(fname,hash,0);
     if ( init_mappedptr(0,&hash->M,0,rwflag,fname) == 0 )
         return(0);
-    printf("%s %p %llu\n",fname,hash->M.fileptr,hash->M.allocsize);
     while ( (offset= decode_varint(&datalen,hash->M.fileptr,offset,hash->M.allocsize)) > 0 )
     {
         printf("offset.%ld datalen.%d\n",offset,(int)datalen);
