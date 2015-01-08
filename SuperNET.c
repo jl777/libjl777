@@ -56,7 +56,7 @@ double estimate_completion(char *coinstr,double startmilli,int32_t processed,int
 
 void set_compressionvars_fname(int32_t readonly,char *fname,char *coinstr,char *typestr,int32_t subgroup)
 {
-    char *dirname = (1*readonly != 0) ? "/Users/jimbolaptop/ramchains" : "ramchains";
+    char *dirname = (0*readonly != 0) ? "/Users/jimbolaptop/ramchains" : "ramchains";
     if ( subgroup < 0 )
         sprintf(fname,"%s/%s/%s.%s",dirname,coinstr,coinstr,typestr);
     else sprintf(fname,"%s/%s/%s/%s.%d",dirname,coinstr,typestr,coinstr,subgroup);

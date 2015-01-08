@@ -51,7 +51,7 @@ struct huffpayload { struct address_entry B; uint64_t value; uint32_t rawind,vou
 struct huffitem
 {
     struct huffbits code;
-    uint32_t huffind,freq[HUFF_NUMFREQS];
+    uint32_t freq[HUFF_NUMFREQS];
 };
 
 struct huffcode
@@ -62,8 +62,8 @@ struct huffcode
 };
 
 union data_or_ptr { uint64_t data; void *ptr; };
-struct huffpair { struct huffitem *items; struct huffcode *code; int32_t maxind,nonz,count; char name[16]; };
-struct huffpair_hash { UT_hash_handle hh; void *ptr; void *payloads; uint32_t rawind,numpayloads; };
+struct huffpair { struct huffitem *items; struct huffcode *code; int32_t maxind,nonz,count,wt; char name[16]; };
+struct huffpair_hash { UT_hash_handle hh; void *payloads; uint32_t rawind,numpayloads; };
 struct huffhash { char coinstr[16]; struct huffpair_hash *table; struct mappedptr M; FILE *newfp; void **ptrs; uint32_t ind,numalloc; uint8_t type; };
 
 struct rawtx_huffs { struct huffpair numvins,numvouts,txid; char numvinsname[32],numvoutsname[32],txidname[32]; };
@@ -212,71 +212,81 @@ int32_t _calc_bitsize(uint32_t x)
     uint32_t mask = (1 << 31);
     int32_t i;
     if ( x == 0 )
-        return(0);
+        return(1);
     for (i=31; i>=0; i--,mask>>=1)
     {
         if ( (mask & x) != 0 )
-            return(i);
+            return(i+1);
     }
     return(-1);
 }
 
+int32_t emit_bits(HUFF *hp,uint32_t val,int32_t numbits)
+{
+    int32_t i;
+    for (i=0; i<numbits; i++)
+        hputbit(hp,(val & (1<<i)) != 0);
+    return(numbits);
+}
+
+int32_t decode_bits(uint32_t *valp,HUFF *hp,int32_t numbits)
+{
+    uint32_t i,val;
+    for (i=val=0; i<numbits; i++)
+        if ( hgetbit(hp) != 0 )
+            val |= (1 << i);
+    *valp = val;
+    return(numbits);
+}
+
 int32_t emit_varbits(HUFF *hp,uint32_t val)
 {
-    int32_t i,valsize = _calc_bitsize(val);
-    for (i=0; i<3; i++)
-        hputbit(hp,(valsize & (1<<i)) != 0);
-    for (i=0; i<valsize; i++)
-        hputbit(hp,(val & (1<<i)) != 0);
-    return(valsize + 3);
+    int32_t numbits = 0;
+    if ( val >= 6 )
+    {
+        if ( val < 0x100 )
+        {
+            numbits += emit_bits(hp,6,3);
+            numbits += emit_bits(hp,val,8);
+        }
+        else
+        {
+            numbits += emit_bits(hp,7,3);
+            numbits += emit_bits(hp,val,16);
+        }
+    } else numbits += emit_bits(hp,val,3);
+    return(numbits);
 }
 
 int32_t decode_varbits(uint32_t *valp,HUFF *hp)
 {
-    int32_t i,valsize,val;
-    valsize = ((hgetbit(hp) << 2) | (hgetbit(hp) << 1) | hgetbit(hp));
-    for (i=val=0; i<valsize; i++)
-        if ( hgetbit(hp) != 0 )
-            val |= (1 << i);
-    *valp = val;
-    return(valsize + 3);
+    int32_t val;
+    val = (hgetbit(hp) | (hgetbit(hp) << 1) | (hgetbit(hp) << 2));
+    if ( val < 6 )
+    {
+        *valp = val;
+        return(3);
+    }
+    else if ( val == 6 )
+        return(decode_bits(valp,hp,8));
+    else return(decode_bits(valp,hp,16));
 }
 
 int32_t emit_valuebits(HUFF *hp,uint64_t value)
 {
-    int32_t i,num,valsize,lsb = 0;
-    uint64_t mask;
-    mask = (1L << 63);
-    for (i=63; i>=0; i--,mask>>=1)
-        if ( (value & mask) != 0 )
-            break;
-    mask = 1;
-    for (lsb=0; lsb<i; lsb++,mask<<=1)
-        if ( (value & mask) != 0 )
-            break;
-    value >>= lsb;
-    valsize = (i - lsb);
-    num = emit_varbits(hp,lsb);
-    num += emit_varbits(hp,valsize);
-    mask = 1;
-    for (i=0; i<valsize; i++,mask<<=1)
-        hputbit(hp,(value & mask) != 0);
-    //printf("%d ",num+valsize);
-    return(num + valsize);
+    int32_t i,numbits = 0;
+    for (i=0; i<4; i++,value>>=16)
+        numbits += emit_varbits(hp,value & 0xffff);
+    return(numbits);
 }
 
 int32_t decode_valuebits(uint64_t *valuep,HUFF *hp)
 {
-    uint32_t i,num,valsize,lsb = 0;
-    uint64_t mask = 1,val = 0;
-    num = decode_varbits(&lsb,hp);
-    num += decode_varbits(&valsize,hp);
-    for (i=0; i<valsize; i++,mask<<=1)
-        if ( hgetbit(hp) != 0 )
-            val |= mask;
-    //printf("%d ",num+valsize);
-    *valuep = (val << lsb);
-    return(num + valsize);
+    uint32_t i,tmp[4],numbits = 0;
+    for (i=0; i<4; i++)
+        numbits += decode_varbits(&tmp[i],hp);
+    *valuep = (tmp[0] | (tmp[1] << 16) | ((uint64_t)tmp[2] << 32) | ((uint64_t)tmp[3] << 48));
+    return(numbits);
 }
 
 int32_t hwrite(uint64_t codebits,int32_t numbits,HUFF *hp)
@@ -518,7 +528,7 @@ int32_t huff_init(double *freqsump,int32_t **predsp,uint32_t **revtreep,struct h
     return(extf);
 }
 
-int32_t huff_calc(int32_t dispflag,int32_t *nonzp,double *totalbytesp,double *totalbitsp,int32_t *preds,struct huffitem **items,int32_t numitems,int32_t frequi)
+int32_t huff_calc(int32_t dispflag,int32_t *nonzp,double *totalbytesp,double *totalbitsp,int32_t *preds,struct huffitem **items,int32_t numitems,int32_t frequi,int32_t wt)
 {
     int32_t i,ix,pred,numbits,nonz,maxbits = 0;
     double totalbits,totalbytes;
@@ -556,7 +566,7 @@ int32_t huff_calc(int32_t dispflag,int32_t *nonzp,double *totalbytesp,double *to
                 if ( numbits > 32 || item->code.numbits != numbits || item->code.bits != _reversebits(codebits,numbits) || item->code.rawind != item->code.rawind )
                     printf("error setting code.bits: item->code.numbits %d != %d numbits || item->code.bits %u != %llu _reversebits(codebits,numbits) || item->code.rawind %d != %d item->rawind\n",item->code.numbits,numbits,item->code.bits,(long long)_reversebits(codebits,numbits),item->code.rawind,item->code.rawind);
                 totalbits += numbits * item->freq[frequi];
-                totalbytes += item->freq[frequi];
+                totalbytes += wt * item->freq[frequi];
                 if ( dispflag != 0 )
                 {
                     printf("Total %.0f -> %.0f: ratio %.3f ave %.1f bits/item |",totalbytes,totalbits,totalbytes*8/(totalbits+1),totalbits/nonz);
@@ -595,7 +605,7 @@ int32_t decodetest(uint32_t *indp,int32_t *tree,int32_t depth,int32_t val,int32_
 
 void huff_free(struct huffcode *huff) { free(huff); }
 
-struct huffcode *huff_create(int32_t dispflag,struct huffitem **items,int32_t numitems,int32_t frequi)
+struct huffcode *huff_create(int32_t dispflag,struct huffitem **items,int32_t numitems,int32_t frequi,int32_t wt)
 {
     int32_t ix2,i,n,extf,*preds,allocsize;
     uint32_t *revtree;
@@ -629,7 +639,7 @@ struct huffcode *huff_create(int32_t dispflag,struct huffitem **items,int32_t nu
         printf("i.%d %s -> %d bits itemi.%d\n",i,huff_str(i,n),n,itemi);
     }
 #endif
-    huff->maxbits = huff_calc(dispflag,&huff->numnodes,&huff->totalbytes,&huff->totalbits,preds,items,numitems,frequi);
+    huff->maxbits = huff_calc(dispflag,&huff->numnodes,&huff->totalbytes,&huff->totalbits,preds,items,numitems,frequi,wt);
     free(preds);
     return(huff);
 }
@@ -798,7 +808,10 @@ int32_t expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datalen)
     strcpy(scriptstr,prefix);
     init_hexbytes_noT(scriptstr+strlen(scriptstr),scriptdata+n,datalen-n);
     if ( suffix[0] != 0 )
+    {
+        //printf("mode.(%c) suffix.(%s) [%s]\n",mode,suffix,scriptstr);
         strcat(scriptstr,suffix);
+    }
     return(mode);
 }
 
@@ -866,6 +879,7 @@ int32_t load_rawvout(int32_t dispflag,FILE *fp,struct rawvout *vout)
         if ( (fpos= load_varfilestr(&datalen,(char *)data,fp,sizeof(vout->script)/2-1)) > 0 )
         {
             expand_scriptdata(vout->script,data,datalen);
+            //printf(">>>>>>>>>>> loadscript.(%s).(%c) <<<<<<<<<<<<<<\n",vout->script,data[0]);
             retval = (int32_t)load_varint(&vlen,fp);
             if ( dispflag != 0 )
                 printf("script.(%s) datalen.%d | retval.%d vlen.%llu | fpos.%ld\n",vout->script,datalen,retval,(long long)vlen,ftell(fp));
@@ -910,7 +924,7 @@ int32_t save_rawvout(int32_t dispflag,FILE *fp,struct rawvout *vout)
         else if ( len <= 0 )
         {
             printf("script.(%s).%d wrote (%s).%ld %.8f\n",vout->script,datalen,vout->coinaddr,len,dstr(vout->value));
-            while ( 1 ) sleep(1);
+            //while ( 1 ) sleep(1);
             return(-7);
         }
     }
@@ -1187,7 +1201,7 @@ FILE *_open_varsfile(int32_t readonly,uint32_t *blocknump,char *fname,char *coin
             if ( (fp = fopen(fname,"wb")) == 0 )
             {
                 printf("couldnt create (%s)\n",fname);
-                while ( 1 ) sleep (60);
+                exit(-1);
             }
             printf("created %s -> fp.%p\n",fname,fp);
             *blocknump = 0;
@@ -1204,27 +1218,62 @@ FILE *_open_varsfile(int32_t readonly,uint32_t *blocknump,char *fname,char *coin
 
 int32_t rawblockcmp(struct rawblock *ref,struct rawblock *raw)
 {
+    int32_t i;
     if ( ref->numtx != raw->numtx )
         return(-1);
-    else if ( ref->numrawvins != raw->numrawvins )
+    if ( ref->numrawvins != raw->numrawvins )
         return(-2);
-    else if ( ref->numrawvouts != raw->numrawvouts )
+    if ( ref->numrawvouts != raw->numrawvouts )
         return(-3);
-    else if ( ref->numtx != 0 && memcmp(ref->txspace,raw->txspace,ref->numtx*sizeof(*raw->txspace)) != 0 )
-        return(-4);
-    else if ( ref->numrawvins != 0 && memcmp(ref->vinspace,raw->vinspace,ref->numrawvins*sizeof(*raw->vinspace)) != 0 )
+    if ( ref->numtx != 0 && memcmp(ref->txspace,raw->txspace,ref->numtx*sizeof(*raw->txspace)) != 0 )
+    {
+        struct rawtx *reftx,*rawtx;
+        for (i=0; i<ref->numtx; i++)
+        {
+            reftx = &ref->txspace[i];
+            rawtx = &raw->txspace[i];
+            if ( reftx->firstvin != rawtx->firstvin || reftx->firstvout != reftx->firstvout || reftx->numvins != rawtx->numvins || reftx->numvouts != reftx->numvouts || strcmp(reftx->txidstr,rawtx->txidstr) != 0 )
+            {
+                printf("1st.%d %d, %d %d (%s) vs 1st %d %d, %d %d (%s)\n",reftx->firstvin,reftx->firstvout,reftx->numvins,reftx->numvouts,reftx->txidstr,reftx->firstvin,reftx->firstvout,rawtx->numvins,rawtx->numvouts,reftx->txidstr);
+                break;
+            }
+        }
+        if ( i != ref->numtx )
+            return(-4);
+    }
+    if ( ref->numrawvins != 0 && memcmp(ref->vinspace,raw->vinspace,ref->numrawvins*sizeof(*raw->vinspace)) != 0 )
+    {
         return(-5);
-    else if ( ref->numrawvouts != 0 && memcmp(ref->voutspace,raw->voutspace,ref->numrawvouts*sizeof(*raw->voutspace)) != 0 )
-        return(-6);
+    }
+    if ( ref->numrawvouts != 0 && memcmp(ref->voutspace,raw->voutspace,ref->numrawvouts*sizeof(*raw->voutspace)) != 0 )
+    {
+        struct rawvout *reftx,*rawtx;
+        for (i=0; i<ref->numrawvouts; i++)
+        {
+            reftx = &ref->voutspace[i];
+            rawtx = &raw->voutspace[i];
+            printf("%d of %d: (%s) (%s) %.8f vs (%s) (%s) %.8f\n",i,ref->numrawvouts,reftx->coinaddr,reftx->script,dstr(reftx->value),rawtx->coinaddr,rawtx->script,dstr(rawtx->value));
+            if ( reftx->value != rawtx->value || strcmp(reftx->coinaddr,rawtx->coinaddr) != 0 || strcmp(reftx->script,rawtx->script) != 0 )
+            {
+                break;
+            }
+        }
+        if ( i != ref->numrawvouts )
+            return(-6);
+    }
     return(0);
 }
 
-int32_t huffpair_decodeitemind(struct huffitem **itemp,struct huffpair *pair,HUFF *hp)
+int32_t huffpair_decodeitemind(int32_t bitflag,uint32_t *rawindp,struct huffpair *pair,HUFF *hp)
 {
     uint32_t ind;
     int32_t i,c,*tree,tmp,numitems,depth,num = 0;
-    *itemp = 0;
-    if ( pair == 0 || pair->code == 0 || pair->code->tree == 0 )
+    *rawindp = 0;
+    if ( pair == 0 )
+        return(-1);
+    if ( bitflag == 0 )
+        return(decode_varbits(rawindp,hp));
+    if ( pair->code == 0 || pair->code->tree == 0 )
         return(-1);
     numitems = pair->code->numitems;
     depth = pair->code->depth;
@@ -1248,7 +1297,7 @@ int32_t huffpair_decodeitemind(struct huffitem **itemp,struct huffpair *pair,HUF
                 printf("decode error: val.%x -> ind.%d >= numitems %d\n",c,ind,numitems);
                 return(-1);
             }
-            *itemp = &pair->items[ind];
+            *rawindp = pair->items[ind].code.rawind;
             return(num);
         }
         if ( c < 0 )
@@ -1301,15 +1350,22 @@ void huffhash_setfname(char fname[1024],struct huffhash *hash,int32_t newflag)
 int32_t huffhash_add(struct huffhash *hash,struct huffpair_hash *hp,void *ptr,int32_t datalen)
 {
     hp->rawind = ++hash->ind;
-    HASH_ADD(hh,hash->table,ptr,datalen,hp);
-    //printf("created.(%s) ind.%d\n",hp->str,hp->hashind);
+    HASH_ADD_KEYPTR(hh,hash->table,ptr,datalen,hp);
+    if ( 0 )
+    {
+        char hexbytes[8192];
+        struct huffpair_hash *checkhp;
+        init_hexbytes_noT(hexbytes,ptr,datalen);
+        HASH_FIND(hh,hash->table,ptr,datalen,checkhp);
+        printf("created.(%s) ind.%d | checkhp.%p\n",hexbytes,hp->rawind,checkhp);
+    }
     if ( (hash->ind + 1) >= hash->numalloc )
     {
         hash->numalloc += 512; // 4K page at a time
         hash->ptrs = realloc(hash->ptrs,sizeof(*hash->ptrs) * hash->numalloc);
         memset(&hash->ptrs[hash->ind],0,(hash->numalloc - hash->ind) * sizeof(*hash->ptrs));
     }
-    hash->ptrs[hp->rawind] = hp->ptr;
+    hash->ptrs[hp->rawind] = hp->hh.key;
     return(0);
 }
 
@@ -1327,8 +1383,10 @@ void *huffhash_mapfile(struct huffhash *hash)
     huffhash_setfname(fname,hash,0);
     if ( init_mappedptr(0,&hash->M,0,rwflag,fname) == 0 )
         return(0);
+    printf("%s %p %llu\n",fname,hash->M.fileptr,hash->M.allocsize);
     while ( (offset= decode_varint(&datalen,hash->M.fileptr,offset,hash->M.allocsize)) > 0 )
     {
+        printf("offset.%ld datalen.%d\n",offset,(int)datalen);
         if ( (offset+datalen) > hash->M.allocsize )
         {
             printf("offset.%ld + datalen.%ld > allocsize %ld for %s\n",offset,(long)datalen,(long)hash->M.allocsize,fname);
@@ -1386,8 +1444,9 @@ FILE *huffhash_combine_files(struct huffhash *hash)
     return(fopen(newfname,"wb"));
 }
 
-struct huffpair_hash *huffhash_get(int32_t *createdflagp,struct huffhash *hash,void *ptr,int32_t datalen)
+struct huffpair_hash *huffhash_get(int32_t *createdflagp,struct huffhash *hash,uint8_t *ptr,int32_t datalen)
 {
+    void *newptr;
     uint8_t buf[9],varlen;
     struct huffpair_hash *hp;
     if ( hash->newfp == 0 )
@@ -1397,29 +1456,41 @@ struct huffpair_hash *huffhash_get(int32_t *createdflagp,struct huffhash *hash,v
             printf("error mapping %s type.%d hashfile  or creating newfile.%p\n",hash->coinstr,hash->type,hash->newfp);
             exit(1);
         }
-        huffhash_mapfile(hash);
+        //huffhash_mapfile(hash);
     }
-    HASH_FIND(hh,hash->table,ptr,datalen,hp);
+    varlen = calc_varint(buf,datalen);
+    memcpy(&ptr[-varlen],buf,varlen);
+    HASH_FIND(hh,hash->table,&ptr[-varlen],datalen+varlen,hp);
+    if ( 0 )
+    {
+        char hexbytes[8192];
+        init_hexbytes_noT(hexbytes,&ptr[-varlen],datalen+varlen);
+        printf("search.(%s)| varlen.%d datalen.%d checkhp.%p\n",hexbytes,varlen,datalen,hp);
+    }
     *createdflagp = 0;
     if ( hp == 0 )
     {
         hp = calloc(1,sizeof(*hp));
-        varlen = calc_varint(buf,datalen);
-        hp->ptr = malloc(varlen + datalen);
-        memcpy(hp->ptr,buf,varlen);
-        memcpy(hp->ptr + varlen,ptr,datalen);
+        newptr = malloc(varlen + datalen);
+        memcpy(newptr,buf,varlen);
+        memcpy((void *)((long)newptr + varlen),ptr,datalen);
         *createdflagp = 1;
         if ( hash->newfp != 0 )
         {
-            //printf("save.(%s) at %ld\n",str,ftell(fp));
-            if ( fwrite(hp->ptr,1,datalen+varlen,hash->newfp) != (datalen+varlen) )
+            if ( 0 )
+            {
+                char hexstr[8192];
+                init_hexbytes_noT(hexstr,newptr,datalen+varlen);
+                printf("save.(%s) at %ld datalen.%d varlen.%d\n",hexstr,ftell(hash->newfp),datalen,varlen);
+            }
+            if ( fwrite(newptr,1,datalen+varlen,hash->newfp) != (datalen+varlen) )
             {
                 printf("error saving type.%d ind.%d datalen.%d varlen.%d\n",hash->type,hash->ind,datalen,varlen);
                 exit(-1);
             }
             fflush(hash->newfp);
         }
-        huffhash_add(hash,hp,ptr,datalen);
+        huffhash_add(hash,hp,newptr,datalen+varlen);
     }
     return(hp);
 }
@@ -1476,7 +1547,7 @@ int32_t huffpair_gencode(struct compressionvars *V,struct huffpair *pair,int32_t
             if ( pair->items[i].freq[frequi] != 0 )
                 items[n++] = &pair->items[i];
         fprintf(stderr,"%s n.%d: ",pair->name,n);
-        pair->code = huff_create(0,items,n,frequi);
+        pair->code = huff_create(0,items,n,frequi,pair->wt);
         set_compressionvars_fname(0,fname,V->coinstr,pair->name,-1);
         if ( pair->code != 0 && (fp= fopen(fname,"wb")) != 0 )
         {
@@ -1517,8 +1588,6 @@ int32_t huffpair_genvoutcode(struct compressionvars *V,struct rawvout_huffs *vou
         return(-1);
     else if ( huffpair_gencode(V,&vout->script,frequi) != 0 )
         return(-2);
-    //else if ( huffpair_gencode(V,&vout->value,frequi) != 0 )
-    //    return(-3);
     return(0);
 }
 
@@ -1596,15 +1665,6 @@ int32_t set_rawblock_preds(struct rawblock_preds *preds,struct rawblock_huffs *H
         if ( (preds->vout0_script= &H->voutall.script) == 0 )
             return(-7);
         else preds->vout1_script = preds->vout2_script = preds->vouti_script = preds->voutn_script = preds->vout0_script;
-        /*if ( 0 )
-        {
-            for (k=0; k<2; k++)
-            {
-                if ( (preds->vout0_value[k]= &H->voutall.value[k]) == 0 )
-                    return(-8 - k);
-                else preds->vout1_value[k] = preds->vout2_value[k] = preds->vouti_value[k] = preds->voutn_value[k] = preds->vout0_value[k];
-            }
-        }*/
     }
     else
     {
@@ -1615,8 +1675,8 @@ int32_t set_rawblock_preds(struct rawblock_preds *preds,struct rawblock_huffs *H
         else if ( (preds->numrawvins= &H->numrawvins) == 0 )
             return(-3);
         
-        //else if ( (preds->tx0_numvins= &H->tx0.numvins) == 0 )
-        //    return(-4);
+        else if ( (preds->tx0_numvins= &H->tx0.numvins) == 0 )
+            return(-4);
         else if ( (preds->tx1_numvins= &H->tx1.numvins) == 0 )
             return(-5);
         else if ( (preds->txi_numvins= &H->txi.numvins) == 0 )
@@ -1628,92 +1688,80 @@ int32_t set_rawblock_preds(struct rawblock_preds *preds,struct rawblock_huffs *H
         else if ( (preds->txi_numvouts= &H->txi.numvouts) == 0 )
             return(-9);
         else if ( (preds->tx0_txid= &H->tx0.txid) == 0 )
-            return(-7);
+            return(-10);
         else if ( (preds->tx1_txid= &H->tx1.txid) == 0 )
-            return(-8);
+            return(-11);
         else if ( (preds->txi_txid= &H->txi.txid) == 0 )
-            return(-9);
+            return(-12);
 
         else if ( (preds->vin0_txid= &H->vin0.txid) == 0 )
-            return(-10);
-        else if ( (preds->vin1_txid= &H->vin1.txid) == 0 )
-            return(-11);
-        else if ( (preds->vini_txid= &H->vini.txid) == 0 )
-            return(-12);
-        else if ( (preds->vin0_vout= &H->vin0.vout) == 0 )
             return(-13);
-        else if ( (preds->vin1_vout= &H->vin1.vout) == 0 )
+        else if ( (preds->vin1_txid= &H->vin1.txid) == 0 )
             return(-14);
-        else if ( (preds->vini_vout= &H->vini.vout) == 0 )
+        else if ( (preds->vini_txid= &H->vini.txid) == 0 )
             return(-15);
+        else if ( (preds->vin0_vout= &H->vin0.vout) == 0 )
+            return(-16);
+        else if ( (preds->vin1_vout= &H->vin1.vout) == 0 )
+            return(-17);
+        else if ( (preds->vini_vout= &H->vini.vout) == 0 )
+            return(-18);
 
         else if ( (preds->vout0_addr= &H->vout0.addr) == 0 )
-            return(-16);
-        else if ( (preds->vout1_addr= &H->vout1.addr) == 0 )
-            return(-17);
-        else if ( (preds->vouti_addr= &H->vouti.addr) == 0 )
-            return(-18);
-        else if ( (preds->voutn_addr= &H->voutn.addr) == 0 )
             return(-19);
-        else if ( (preds->vout0_script= &H->vout0.script) == 0 )
+        else if ( (preds->vout1_addr= &H->vout1.addr) == 0 )
             return(-20);
-        else if ( (preds->vout1_script= &H->vout1.script) == 0 )
+        else if ( (preds->vouti_addr= &H->vouti.addr) == 0 )
             return(-21);
-        else if ( (preds->vouti_script= &H->vouti.script) == 0 )
+        else if ( (preds->voutn_addr= &H->voutn.addr) == 0 )
             return(-22);
-        else if ( (preds->voutn_script= &H->voutn.script) == 0 )
+        else if ( (preds->vout0_script= &H->vout0.script) == 0 )
             return(-23);
-       /* else if ( 0 )
-        {
-            for (k=0; k<2; k++)
-            {
-                if ( (preds->vout0_value[k]= &H->vout0.value[k]) == 0 )
-                    return(-24 - k*4);
-                else if ( (preds->vout1_value[k]= &H->vout1.value[k]) == 0 )
-                    return(-24 - k*4 - 1);
-                else if ( (preds->vouti_value[k]= &H->vouti.value[k]) == 0 )
-                    return(-24 - k*4 - 2);
-                else if ( (preds->voutn_value[k]= &H->voutn.value[k]) == 0 )
-                    return(-24 - k*4 - 3);
-            }
-        }*/
+        else if ( (preds->vout1_script= &H->vout1.script) == 0 )
+            return(-24);
+        else if ( (preds->vouti_script= &H->vouti.script) == 0 )
+            return(-25);
+        else if ( (preds->voutn_script= &H->voutn.script) == 0 )
+            return(-26);
     }
     return(0);
 }
 
 int32_t huffpair_conv(char *strbuf,uint64_t *valp,struct compressionvars *V,char type,uint32_t rawind);
-int32_t expand_huffint(struct compressionvars *V,struct huffpair *pair,HUFF *hp)
+uint32_t expand_huffint(int32_t bitflag,struct compressionvars *V,struct huffpair *pair,HUFF *hp)
 {
-    char destbuf[8192];
-    uint64_t destval;
-    int32_t numbits;
-    struct huffitem *item;
-    if ( (numbits= huffpair_decodeitemind(&item,pair,hp)) < 0 )
+    uint32_t rawind; int32_t numbits;
+    if ( (numbits= huffpair_decodeitemind(bitflag,&rawind,pair,hp)) < 0 )
         return(-1);
-    huffpair_conv(destbuf,&destval,V,2,item->huffind);
+   // printf("%s.%d ",pair->name,rawind);
+    return(rawind);
+}
+
+int32_t expand_huffstr(int32_t bitflag,char *deststr,int32_t type,struct compressionvars *V,struct huffpair *pair,HUFF *hp)
+{
+    uint64_t destval;
+    uint32_t rawind;
+    int32_t numbits;
+    deststr[0] = 0;
+    if ( (numbits= huffpair_decodeitemind(bitflag,&rawind,pair,hp)) < 0 )
+        return(-1);
+    if ( rawind == 0 )
+        return(0);
+    //fprintf(stderr,"bitflag.%d type.%d %s rawind.%d\n",bitflag,type,pair->name,rawind);
+    huffpair_conv(deststr,&destval,V,type,rawind);
     return((uint16_t)destval);
 }
 
-int32_t expand_huffstr(char *deststr,int32_t type,struct compressionvars *V,struct huffpair *pair,HUFF *hp)
-{
-    uint64_t destval;
-    int32_t numbits;
-    struct huffitem *item;
-    if ( (numbits= huffpair_decodeitemind(&item,pair,hp)) < 0 )
-        return(-1);
-    huffpair_conv(deststr,&destval,V,type,item->huffind);
-    return((uint16_t)destval);
-}
-
-int32_t expand_rawbits(struct compressionvars *V,struct rawblock *raw,HUFF *hp,struct rawblock_preds *preds)
+int32_t expand_rawbits(int32_t bitflag,struct compressionvars *V,struct rawblock *raw,HUFF *hp,struct rawblock_preds *preds)
 {
     struct huffpair *pair,*pair2,*pair3;
     int32_t txind,numrawvins,numrawvouts,vin,vout;
     struct rawtx *tx; struct rawvin *vi; struct rawvout *vo;
     memset(raw,0,sizeof(*raw));
-    raw->numtx = expand_huffint(V,preds->numtx,hp);
-    raw->numrawvins = expand_huffint(V,preds->numrawvins,hp);
-    raw->numrawvouts = expand_huffint(V,preds->numrawvouts,hp);
+    hrewind(hp);
+    raw->numtx = expand_huffint(bitflag,V,preds->numtx,hp);
+    raw->numrawvins = expand_huffint(bitflag,V,preds->numrawvins,hp);
+    raw->numrawvouts = expand_huffint(bitflag,V,preds->numrawvouts,hp);
     if ( raw->numtx > 0 )
     {
         numrawvins = numrawvouts = 0;
@@ -1727,9 +1775,10 @@ int32_t expand_rawbits(struct compressionvars *V,struct rawblock *raw,HUFF *hp,s
             else if ( txind == 1 )
                 pair = preds->tx1_numvins, pair2 = preds->tx1_numvouts, pair3 = preds->tx1_txid;
             else pair = preds->txi_numvins, pair2 = preds->txi_numvouts, pair3 = preds->txi_txid;
-            tx->numvins = (txind == 0) ? 0 : expand_huffint(V,pair,hp), numrawvins += tx->numvins;
-            tx->numvouts = expand_huffint(V,pair2,hp), numrawvouts += tx->numvouts;
-            expand_huffstr(tx->txidstr,'t',V,pair3,hp);
+            tx->numvins = expand_huffint(bitflag,V,pair,hp), numrawvins += tx->numvins;
+            tx->numvouts = expand_huffint(bitflag,V,pair2,hp), numrawvouts += tx->numvouts;
+           // printf("tx->numvins %d, numvouts.%d raw (%d %d) numtx.%d\n",tx->numvins,tx->numvouts,raw->numrawvins,raw->numrawvouts,raw->numtx);
+            expand_huffstr(bitflag,tx->txidstr,'t',V,pair3,hp);
             if ( numrawvins <= raw->numrawvins && numrawvouts <= raw->numrawvouts )
             {
                 if ( tx->numvins > 0 )
@@ -1742,8 +1791,8 @@ int32_t expand_rawbits(struct compressionvars *V,struct rawblock *raw,HUFF *hp,s
                         else if ( vin == 1 )
                             pair = preds->vin1_txid, pair2 = preds->vin1_vout;
                         else pair = preds->vini_txid, pair2 = preds->vini_vout;
-                        expand_huffstr(vi->txidstr,'t',V,pair,hp);
-                        vi->vout = expand_huffint(V,pair2,hp);
+                        expand_huffstr(bitflag,vi->txidstr,'t',V,pair,hp);
+                        vi->vout = expand_huffint(bitflag,V,pair2,hp);
                     }
                 }
                 if ( tx->numvouts > 0 )
@@ -1760,8 +1809,9 @@ int32_t expand_rawbits(struct compressionvars *V,struct rawblock *raw,HUFF *hp,s
                         else if ( vout == tx->numvouts-1 )
                             pair = preds->voutn_addr, pair2 = preds->voutn_script;
                         else pair = preds->vouti_addr, pair2 = preds->vouti_script;
-                        expand_huffstr(vo->coinaddr,'a',V,pair,hp);
-                        expand_huffstr(vo->script,'s',V,pair2,hp);
+                        expand_huffstr(bitflag,vo->coinaddr,'a',V,pair,hp);
+                        expand_huffstr(bitflag,vo->script,'s',V,pair2,hp);
+                        decode_valuebits(&vo->value,hp);
                     }
                 }
             }
@@ -1803,22 +1853,33 @@ int32_t huffpair_conv(char *strbuf,uint64_t *valp,struct compressionvars *V,char
         *valp = _decode_rawind(type,rawind);
         return(0);
     }
+   // printf("V.%p type.%c rawind.%d ptrs.%p\n",V,type,rawind,V->hash[type].ptrs);
+    if ( rawind == 0xffffffff )
+        while ( 1 )
+            sleep(1);
     data = V->hash[type].ptrs[rawind];
     data += decode_varint(&datalen,data,0,9);
     *valp = rawind;
     if ( type == 's' )
     {
+        if ( rawind == 0 )
+        {
+            strbuf[0] = 0;
+            *valp = 0;
+            return(0);
+        }
         if ( (scriptmode= expand_scriptdata(strbuf,data,(uint32_t)datalen)) < 0 )
         {
             printf("huffpair_rawind: scriptmode.%d for (%s)\n",scriptmode,strbuf);
             exit(-1);
         }
+        //printf("EXPANDSCRIPT.(%c) -> [%s]\n",scriptmode,strbuf);
     }
     else if ( type == 't' )
     {
-        if ( datalen > sizeof(data) )
+        if ( datalen > 128 )
         {
-            printf("huffpair_rawind: type.%d datalen.%d > sizeof(data) %ld\n",type,(int)datalen,sizeof(data));
+            printf("huffpair_rawind: type.%d datalen.%d > sizeof(data) %d\n",type,(int)datalen,128);
             exit(-1);
         }
         init_hexbytes_noT(strbuf,data,datalen);
@@ -1906,15 +1967,21 @@ void *update_txid_payload(uint32_t *nump,struct address_entry *bps,struct huffpa
 uint32_t huffpair_rawind(struct compressionvars *V,char type,char *str,uint64_t val,struct huffpayload *payload)
 {
     uint8_t data[4096];
+    char buf[8192];
     struct huffpair_hash *hp;
     int32_t createdflag,datalen,scriptmode = 0;
     if ( type == 2 )
         return(conv_to_rawind(type,(uint32_t)val));
+    else if ( type == 8 )
+        return(0);
     else
     {
         if ( type == 's' )
         {
-            if ( (scriptmode = calc_scriptmode(&datalen,data,str,1)) < 0 )
+            if ( str[0] == 0 )
+                return(0);
+            strcpy(buf,str);
+            if ( (scriptmode = calc_scriptmode(&datalen,&data[9],buf,1)) < 0 )
             {
                 printf("huffpair_rawind: scriptmode.%d for (%s)\n",scriptmode,str);
                 exit(-1);
@@ -1928,19 +1995,19 @@ uint32_t huffpair_rawind(struct compressionvars *V,char type,char *str,uint64_t 
                 printf("huffpair_rawind: type.%d datalen.%d > sizeof(data) %ld\n",type,(int)datalen,sizeof(data));
                 exit(-1);
             }
-            decode_hex(data,datalen,str);
+            decode_hex(&data[9],datalen,str);
         }
         else if ( type == 'a' )
         {
             datalen = (int32_t)strlen(str) + 1;
-            memcpy(data,str,datalen);
+            memcpy(&data[9],str,datalen);
         }
         else
         {
             printf("huffpair_rawind: unsupported type.%d\n",type);
             exit(-1);
         }
-        hp = huffhash_get(&createdflag,&V->hash[type],data,datalen);
+        hp = huffhash_get(&createdflag,&V->hash[type],&data[9],datalen);
         if ( val != 0 )
         {
             if ( type == 's' )
@@ -1954,58 +2021,40 @@ uint32_t huffpair_rawind(struct compressionvars *V,char type,char *str,uint64_t 
     }
 }
 
+void update_pair_fields(int32_t iter,int32_t type,struct huffpair *pair,char *name,uint32_t rawind)
+{
+    if ( iter == 0 ) // just get max ranges, but hash tables are also being created
+    {
+        if ( pair->name[0] == 0 )
+            strcpy(pair->name,name);
+        if ( pair->wt == 0 )
+            pair->wt = (type == 0) ? 4 : type;
+        if ( rawind > pair->maxind )
+            pair->maxind = rawind;
+    }
+}
+
 int32_t update_huffpair(struct compressionvars *V,int32_t iter,char type,char *destbuf,uint64_t *destvalp,HUFF *hp,struct huffpair *pair,char *name,char *str,uint64_t val,struct huffpayload *payload)
 {
     int32_t calciters = 2;
     struct huffitem *item;
     uint32_t rawind = 0;
     int32_t numbits = 0;
-    if ( iter <= calciters )
-        *destvalp = rawind = huffpair_rawind(V,type,str,val,payload);
-    //printf("(%s[%d] %s) ",name,rawind,size==0?srcptr:"");
-    if ( iter >= calciters )
+    *destvalp = 0;
+    if ( type == 8 )
     {
-        if ( type == 8 )
-        {
-            if ( iter == calciters ) // emit bitstream
-            {
-                if ( (numbits= emit_valuebits(hp,val)) > 0 )
-                    decode_valuebits(destvalp,hp);
-            }
-            else numbits = decode_valuebits(destvalp,hp);
-            return(numbits);
-        }
-        if ( rawind <= pair->maxind )
-        {
-            if ( iter == calciters ) // emit bitstream
-            {
-                item = &pair->items[rawind];
-                if ( (numbits= hwrite(item->code.bits,item->code.numbits,hp)) > 0 )
-                {
-                    huffpair_conv(destbuf,destvalp,V,type,item->huffind);
-                    return(numbits);
-                }
-                printf("update_huffpair error hwrite.(%s) rawind.%d\n",name,rawind);
-            }
-            else // decode bitstream
-            {
-                if ( (numbits= huffpair_decodeitemind(&item,pair,hp)) < 0 )
-                    return(-1);
-                huffpair_conv(destbuf,destvalp,V,type,item->huffind);
-                return(numbits);
-            }
-        }
-        else printf("update_huffpair.(%s) rawind.%d > maxind.%d\n",name,rawind,pair->maxind);
-        return(0);
+        update_pair_fields(iter,type,pair,name,rawind);
+        if ( iter <= calciters )
+            return(emit_valuebits(hp,val));
+        else return(decode_valuebits(destvalp,hp));
     }
-    if ( iter == 0 ) // just get max ranges, but hash tables are also being created
-    {
-        if ( pair->name[0] == 0 )
-            strcpy(pair->name,name);
-        if ( rawind > pair->maxind )
-            pair->maxind = rawind;
-    }
-    else if ( iter == 1 ) // initialize and create huffitems
+    else if ( type == 2 )
+        rawind = (val & 0xffff);
+    else rawind = huffpair_rawind(V,type,str,val,payload);
+    update_pair_fields(iter,type,pair,name,rawind);
+    if ( iter < calciters )
+        numbits = emit_varbits(hp,rawind);
+    if ( iter == 1 ) // initialize and create huffitems
     {
         if ( pair->items == 0 )
             pair->items = calloc(pair->maxind+1,sizeof(*pair->items));
@@ -2017,12 +2066,34 @@ int32_t update_huffpair(struct compressionvars *V,int32_t iter,char type,char *d
         item = &pair->items[rawind];
         if ( item->freq[0]++ == 0 )
         {
-            item->huffind = rawind;
+            item->code.rawind = rawind;
             pair->nonz++;
         }
-        pair->count++;
     }
-    else printf("unsupported iter.%d\n",iter);
+    else if ( iter >= calciters )
+    {
+        if ( rawind <= pair->maxind )
+        {
+            if ( iter == calciters ) // emit bitstream
+            {
+                item = &pair->items[rawind];
+                if ( (numbits= hwrite(item->code.bits,item->code.numbits,hp)) > 0 )
+                {
+                    huffpair_conv(destbuf,destvalp,V,type,item->code.rawind);
+                    return(numbits);
+                }
+                printf("update_huffpair error hwrite.(%s) rawind.%d\n",name,rawind);
+            }
+            else // decode bitstream
+            {
+                if ( (numbits= huffpair_decodeitemind(1,&rawind,pair,hp)) < 0 )
+                    return(-1);
+                huffpair_conv(destbuf,destvalp,V,type,rawind);
+                return(numbits);
+            }
+        }
+        else printf("update_huffpair.(%s) rawind.%d > maxind.%d\n",name,rawind,pair->maxind);
+    }
     return(0);
 }
 
@@ -2034,16 +2105,16 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
     struct rawtx *tx,*tx2; struct rawvin *vi,*vi2; struct rawvout *vo,*vo2; struct rawblock *raw;
     char *str,destbuf[8192];
     struct huffpair *pair; struct rawtx_huffs *txpairs; struct rawvin_huffs *vinpairs; struct rawvout_huffs *voutpairs;
-    struct huffpayload payload; struct rawblock_huffs H; struct rawblock_preds P[HUFF_NUMGENS],*preds;
+    struct huffpayload payload; struct rawblock_huffs H; struct rawblock_preds P[HUFF_NUMGENS];
     memset(&H,0,sizeof(H));
     memset(P,0,sizeof(P));
     memset(&allbits,0,sizeof(allbits));
     if ( fp != 0 )
     {
         calciters = 2;
-        geniters = HUFF_NUMGENS;
+        geniters = 1;//HUFF_NUMGENS;
         endpos = get_endofdata(&eofpos,fp);
-        for (iter=0; iter<calciters+geniters; iter++)
+        for (iter=0; iter<calciters+1; iter++)//calciters+geniters; iter++)
         {
             //dispflag = iter>1;
             rewind(fp);
@@ -2052,19 +2123,19 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
             {
                 if ( (err= huffpair_gencodes(V,&H,frequi)) != 0 )
                     printf("error setting gencodes iter.%d err.%d\n",iter,err);
-                for (j=0; j<geniters; j++)
-                {
-                    if ( (err= set_rawblock_preds(&P[j],&H,j)) < 0 )
-                        printf("error setting preds iter.%d j.%d err.%d\n",iter,j,err);
-                }
                 //getchar();
+            }
+            for (j=0; j<geniters; j++)
+            {
+                if ( (err= set_rawblock_preds(&P[j],&H,j)) < 0 )
+                    printf("error setting preds iter.%d j.%d err.%d\n",iter,j,err);
             }
             for (j=0; j<geniters; j++)
             {
                 if ( V->bitfps[j] != 0 )
                     rewind(V->bitfps[j]);
             }
-            for (blocknum=1; blocknum<=V->blocknum/1; blocknum++)
+            for (blocknum=1; blocknum<=V->blocknum; blocknum++)
             {
                 if ( dispflag == 0 && (blocknum % 1000) == 0 )
                     fprintf(stderr,".");
@@ -2087,7 +2158,6 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
                         load_bitstream_block(V->hps[j],V->bitfps[j]);
                     }
                 }
-                preds = (iter >= calciters) ? &P[iter - calciters] : 0;
                 checkvins = checkvouts = 0;
                 for (j=0; j<geniters; j++)
                 {
@@ -2130,8 +2200,7 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
                                 sprintf(txpairs->numvoutsname,"%s.numvouts",str);
                                 sprintf(txpairs->txidname,"%s.txid",str);
                             }
-                            if ( txind > 0 )
-                                n[j]++, numbits[j] += update_huffpair(V,iter,2,destbuf,&destval,V->hps[j],&txpairs->numvins,txpairs->numvinsname,0,tx->numvins,0), tx2->numvins = (uint32_t)destval;
+                            n[j]++, numbits[j] += update_huffpair(V,iter,2,destbuf,&destval,V->hps[j],&txpairs->numvins,txpairs->numvinsname,0,tx->numvins,0), tx2->numvins = (uint32_t)destval;
                             n[j]++, numbits[j] += update_huffpair(V,iter,2,destbuf,&destval,V->hps[j],&txpairs->numvouts,txpairs->numvoutsname,0,tx->numvouts,0), tx2->numvouts = (uint32_t)destval;
                             memset(&payload,0,sizeof(payload)), payload.B.blocknum = blocknum, payload.B.txind = txind, payload.B.v = tx->numvouts;
                             payload.vout = tx->numvouts;
@@ -2214,7 +2283,7 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
                             printf("(vi.%d vo.%d) | ",tx->numvins,tx->numvouts);
                     }
                 }
-                if ( checkvins != raw->numrawvins || checkvouts != raw->numrawvouts )
+                if ( checkvins != raw->numrawvins || checkvouts < raw->numrawvouts )
                     printf("ERROR: checkvins %d != %d raw->numrawvins || checkvouts %d != %d raw->numrawvouts\n",checkvins,raw->numrawvins,checkvouts,raw->numrawvouts);
                 for (j=0; j<geniters; j++)
                 {
@@ -2227,9 +2296,20 @@ void init_bitstream(int32_t dispflag,struct compressionvars *V,FILE *fp,int32_t 
                             if ( (err= rawblockcmp(raw,&V->raws[j])) != 0 )
                                 printf("iter.%d rawblockcmp error block.%d gen.%d err.%d\n",iter,blocknum,j,err);
                         } else save_bitstream_block(V->bitfps[j],V->hps[j]);
-                        expand_rawbits(V,&V->raws[j],V->hps[j],preds);
+                        expand_rawbits(1,V,&V->raws[j],V->hps[j],&P[j]);
                         if ( rawblockcmp(raw,&V->raws[j]) != 0 )
                             printf("iter.%d rawblockcmp2 error block.%d gen.%d\n",iter,blocknum,j);
+                    }
+                    else if ( iter == 0 )
+                    {
+                        save_bitstream_block(V->bitfps[j],V->hps[j]);
+                        
+                        //printf("\n\n>>>>>>>>>>>>>>> start expansion\n");
+                        expand_rawbits(0,V,&V->raws[j],V->hps[j],&P[j]);
+                        if ( (err= rawblockcmp(raw,&V->raws[j])) != 0 )
+                            printf("iter.%d rawblockcmp2 error.%d block.%d gen.%d\n",iter,err,blocknum,j);
+                        else printf("block.%d compares\n",blocknum);
+                        //printf("<<<<<<<<<<<<<< finished expansion\n\n");
                     }
                 }
                 avesize = ((double)ftell(fp) / (blocknum+1));
@@ -2279,6 +2359,31 @@ int32_t init_compressionvars(int32_t readonly,struct compressionvars *V,char *co
         }
         //if ( V->blocknum == 0 )
         //    V->blocknum = get_blockheight(get_coin_info(coinstr));
+        uint32_t decodebits,numbits,tmp,errs = 0;
+        uint64_t checkx,x;
+        double sum,sum2;
+        sum = sum2 = 0;
+        for (j=0; j<0x1000; j++)
+        {
+            hclear(V->hps[0]);
+            numbits = emit_varbits(V->hps[0],j);
+            sum += numbits;
+            hrewind(V->hps[0]);
+            decodebits = decode_varbits(&tmp,V->hps[0]);
+            if ( tmp != j )
+                printf("x.%d numbits.%d -> %d numbits.%d\n",j,numbits,tmp,decodebits), errs++;
+      
+            x = rand();
+            x <<= 32; x ^= rand();
+            hclear(V->hps[0]);
+            numbits = emit_valuebits(V->hps[0],x);
+            sum2 += numbits;
+            hrewind(V->hps[0]);
+            decodebits = decode_valuebits(&checkx,V->hps[0]);
+            if ( checkx != x )
+                printf("x.%llx numbits.%d -> %llx numbits.%d\n",(long long)x,numbits,(long long)checkx,decodebits), errs++;
+        }
+        printf("\nemitbit stats errs.%d | ave %.1f %.1f\n",errs,sum/j,sum2/j);
 #ifndef HUFF_GENMODE
         init_bitstream(0,V,V->rawfp,0);
 #endif

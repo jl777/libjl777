@@ -278,7 +278,8 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
     if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
     {
         bytes[0] = unhex(hex[0]);
-        printf("n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
+        printf("decode_hex n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
+        //while ( 1 ) sleep(1);
         bytes++;
         hex++;
         adjust = 1;

@@ -782,21 +782,19 @@ int32_t _get_txvouts(struct rawblock *raw,struct rawtx *tx,struct coin_info *cp,
     tx->firstvout = raw->numrawvouts;
     if ( voutsobj != 0 && is_cJSON_Array(voutsobj) != 0 && (numvouts= cJSON_GetArraySize(voutsobj)) > 0 && tx->firstvout+numvouts < MAX_BLOCKTX )
     {
-        for (i=0; i<numvouts; i++)
+        for (i=0; i<numvouts; i++,raw->numrawvouts++)
         {
             item = cJSON_GetArrayItem(voutsobj,i);
-            if ( (value = conv_cJSON_float(item,"value")) > 0 )
-            {
-                v = &raw->voutspace[raw->numrawvouts++];
-                memset(v,0,sizeof(*v));
-                v->value = value;
-                extract_txvals(coinaddr,script,1,item); // default to nohexout
-                if ( strlen(coinaddr) < sizeof(v->coinaddr)-1 )
-                    strcpy(v->coinaddr,coinaddr);//,sizeof(raw->voutspace[numrawvouts].coinaddr));
-                if ( strlen(script) < sizeof(v->script)-1 )
-                    strcpy(v->script,script);
-                //printf("VOUT -> rawnum.%d vout.%d (%s) script.(%s) %.8f\n",raw->numrawvouts,i,v->coinaddr,v->script,dstr(v->value));
-            }
+            value = conv_cJSON_float(item,"value");
+            v = &raw->voutspace[raw->numrawvouts];
+            memset(v,0,sizeof(*v));
+            v->value = value;
+            extract_txvals(coinaddr,script,1,item); // default to nohexout
+            if ( strlen(coinaddr) < sizeof(v->coinaddr)-1 )
+                strcpy(v->coinaddr,coinaddr);//,sizeof(raw->voutspace[numrawvouts].coinaddr));
+            if ( strlen(script) < sizeof(v->script)-1 )
+                strcpy(v->script,script);
+            //printf("VOUT -> rawnum.%d vout.%d (%s) script.(%s) %.8f\n",raw->numrawvouts,i,v->coinaddr,v->script,dstr(v->value));
         }
     } else printf("error with vouts\n");
     tx->numvouts = numvouts;
