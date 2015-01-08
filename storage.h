@@ -99,16 +99,16 @@ void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
 
 void _add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder,char *coin,char *addr,struct address_entry *bp,int32_t syncflag,uint64_t value,char *txidstr,char *script)
 {
-    void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct address_entry *bp,uint64_t value,char *txidstr,char *script,int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder);
+    //void update_ramchain(struct compressionvars *V,char *coinstr,char *addr,struct address_entry *bp,uint64_t value,char *txidstr,char *script,int32_t numvins,uint64_t inputsum,int32_t numvouts,uint64_t remainder);
     struct SuperNET_db *sdb = &SuperNET_dbs[ADDRESS_DATA];
     char coinaddr[512];
     DBT key,data;
     int32_t ret;
-    struct coin_info *cp = get_coin_info(coin);
+    //struct coin_info *cp = get_coin_info(coin);
     if ( IS_LIBTEST == 7 )
     {
-        if ( cp != 0 )
-            update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
+        //if ( cp != 0 )
+        //    update_ramchain(&cp->V,coin,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
     }
     else
     {
@@ -124,8 +124,8 @@ void _add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uint6
             sdb->storage->err(sdb->storage,ret,"add_address: Database put failed.");
         else if ( syncflag != 0 )
             dbsync(sdb,0);
-        if ( IS_LIBTEST > 2 && cp != 0 )
-            update_ramchain(&cp->V,cp->name,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
+        //if ( IS_LIBTEST > 2 && cp != 0 )
+        //    update_ramchain(&cp->V,cp->name,addr,bp,value,txidstr,script,numvins,inputsum,numvouts,remainder);
         //sdb->dbp->sync(sdb->dbp,0);
     }
 }

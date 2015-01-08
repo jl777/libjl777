@@ -4037,6 +4037,11 @@ char *invoke_MGW(char **specialNXTaddrs,struct coin_info *cp,struct multisig_add
     return(retstr);
 }
 
+int32_t save_rawblock(int32_t dispflag,FILE *fp,struct rawblock *raw,uint32_t blocknum);
+uint32_t _get_blockinfo(struct rawblock *raw,struct coin_info *cp,uint32_t blockheight);
+//double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft);
+int32_t init_compressionvars(int32_t readonly,struct compressionvars *V,char *coinstr,uint32_t maxblocknum);
+
 void *Coinloop(void *ptr)
 {
     int32_t i,processed;
@@ -4044,7 +4049,8 @@ void *Coinloop(void *ptr)
     struct multisig_addr *msig;
     int64_t height;
     char *retstr,*msigaddr;
-    double startmilli;
+    double startmilli,estimated;
+    struct compressionvars *V;
     while ( Finished_init == 0 || IS_LIBTEST == 7 )
         sleep(1);
     printf("Coinloop numcoins.%d\n",Numcoins);
@@ -4087,10 +4093,20 @@ void *Coinloop(void *ptr)
                 cp->RTblockheight = (int32_t)height;
                 if ( cp->blockheight < (height - cp->min_confirms) )
                 {
+                    V = &cp->V;
+                    if ( IS_LIBTEST == 7 && V->rawfp == 0 )
+                        init_compressionvars(HUFF_READONLY,V,cp->name,(uint32_t)cp->RTblockheight);
                     if ( Debuglevel > 1 )
                         printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
-                    if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
+                    if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 && (IS_LIBTEST != 7 || _get_blockinfo(&V->raw,cp,(uint32_t)cp->blockheight) > 0) )
                     {
+                        if ( V->rawfp != 0 )
+                        {
+                            save_rawblock(1,V->rawfp,&V->raw,(uint32_t)cp->blockheight);
+                            V->processed++;
+                            estimated = estimate_completion(V->coinstr,V->startmilli,V->processed,(int32_t)height-V->blocknum)/60;
+                            printf("%-5s.%d %.1f min left [%.1f per block: est %s] numtx.%d vins.%d vouts.%d minted %.8f\n",cp->name,(int)cp->blockheight,estimated,(double)ftell(V->rawfp)/cp->blockheight,_mbstr(height * ((double)ftell(V->rawfp)/cp->blockheight)),V->raw.numtx,V->raw.numrawvins,V->raw.numrawvouts,dstr(V->raw.minted));
+                        }
                         processed++;
                         cp->blockheight++;
                         if ( cp->blockheight == (height - cp->min_confirms) )
@@ -4144,8 +4160,6 @@ void *_process_coinblocks(void *_cp)
 
 void process_coinblocks(char *argcoinstr)
 {
-    double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft);
-    int32_t init_compressionvars(int32_t readonly,struct compressionvars *V,char *coinstr,int32_t maxblocknum);
     int32_t i,n,height,firstiter,processed = 0;
     cJSON *array;
     char coinstr[1024];
@@ -4167,30 +4181,24 @@ void process_coinblocks(char *argcoinstr)
                 if ( (cp= get_coin_info(coinstr)) != 0 )//&& (argcoinstr == 0 || strcmp(argcoinstr,coinstr) == 0))
                 {
                     V = &cp->V;
-                    if ( V->numbfps == 0 )
-                    {
-                        if ( IS_LIBTEST == 7 )
-                        {
-                            printf("call init\n");
-                            V->numbfps = init_compressionvars(HUFF_READONLY,V,coinstr,(uint32_t)cp->RTblockheight);
-                        }
-                    }
+                    if ( IS_LIBTEST == 7 && V->rawfp == 0 )
+                        init_compressionvars(HUFF_READONLY,V,coinstr,(uint32_t)cp->RTblockheight);
                     if ( 1 && firstiter != 0 )
-                        cp->blockheight = (V->firstblock + 1);
+                    {
+                        cp->blockheight = (V->blocknum + 1);
+                        printf("set blockheight %d\n",V->blocknum);
+                    }
                     //if ( portable_thread_create((void *)_process_coinblocks,cp) == 0 )
                     //    printf("ERROR hist findaddress_loop\n");
                     height = get_blockheight(cp);
                     startmilli = milliseconds();
                     while ( cp->blockheight < (height - cp->min_confirms) && milliseconds() < (startmilli+1000) )
                     {
-                        int32_t save_rawblock(FILE *fp,struct rawblock *raw);
-                        uint32_t _get_blockinfo(struct rawblock *raw,struct coin_info *cp,uint32_t blockheight);
                         if ( Debuglevel > 2 )
-                           printf("%s: historical block.%ld when height.%ld\n",cp->name,(long)cp->blockheight,(long)height);
-                        if ( (strcmp(cp->name,"BTC") == 0 && cp->blockheight == 71036) || _get_blockinfo(&V->raw,cp,(uint32_t)cp->blockheight) > 0 )
-                        //if ( update_address_infos(cp,(uint32_t)cp->blockheight) != 0 )
+                           printf("%p %s: historical block.%ld when height.%ld\n",V->rawfp,cp->name,(long)cp->blockheight,(long)height);
+                        if ( _get_blockinfo(&V->raw,cp,(uint32_t)cp->blockheight) > 0 )
                         {
-                            save_rawblock(V->rawfp,&V->raw);
+                            save_rawblock(1,V->rawfp,&V->raw,(uint32_t)cp->blockheight);
                             V->processed++;
                             processed++;
                             estimated = estimate_completion(V->coinstr,V->startmilli,V->processed,(int32_t)height-V->blocknum)/60;

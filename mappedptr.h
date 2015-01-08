@@ -10,14 +10,6 @@
 #define xcode_mappedptr_h
 
 
-struct mappedptr
-{
-	char fname[512];
-	void *fileptr,*pending;
-	uint64_t allocsize,changedsize;
-	int32_t rwflag,actually_allocated;
-};
-
 
 int32_t portable_mutex_init(portable_mutex_t *mutex)
 {
@@ -259,7 +251,7 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 {
 	FILE *fp;
 	uint64_t i,n,filesize;
-    //printf("init_mappedptr %s.rwflag.%d\n",fname,rwflag);
+    printf("init_mappedptr %s.rwflag.%d\n",fname,rwflag);
     if ( fname != 0 )
 	{
 		if ( strcmp(mp->fname,fname) == 0 )
