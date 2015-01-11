@@ -235,5 +235,179 @@ int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size)
 	qsort(buf,num,size,_decreasing_uint64);
 	return(0);
 }
+/*
+int32_t _calc_bitsize(uint32_t x)
+{
+    uint32_t mask = (1 << 31);
+    int32_t i;
+    if ( x == 0 )
+        return(1);
+    for (i=31; i>=0; i--,mask>>=1)
+    {
+        if ( (mask & x) != 0 )
+            return(i+1);
+    }
+    return(-1);
+}
 
+int32_t emit_bits(HUFF *hp,uint32_t val,int32_t numbits)
+{
+    int32_t i;
+    for (i=0; i<numbits; i++)
+        hputbit(hp,(val & (1<<i)) != 0);
+    return(numbits);
+}
+
+int32_t decode_bits(uint32_t *valp,HUFF *hp,int32_t numbits)
+{
+    uint32_t i,val;
+    for (i=val=0; i<numbits; i++)
+        if ( hgetbit(hp) != 0 )
+            val |= (1 << i);
+    *valp = val;
+    // printf("{%d} ",val);
+    return(numbits);
+}
+
+int32_t emit_smallbits(HUFF *hp,uint16_t val)
+{
+    static long sum,count;
+    int32_t numbits = 0;
+    if ( val >= 4 )
+    {
+        if ( val < (1 << 5) )
+        {
+            numbits += emit_bits(hp,4,3);
+            numbits += emit_bits(hp,val,5);
+        }
+        else if ( val < (1 << 8) )
+        {
+            numbits += emit_bits(hp,5,3);
+            numbits += emit_bits(hp,val,8);
+        }
+        else if ( val < (1 << 12) )
+        {
+            numbits += emit_bits(hp,6,3);
+            numbits += emit_bits(hp,val,12);
+        }
+        else
+        {
+            numbits += emit_bits(hp,7,3);
+            numbits += emit_bits(hp,val,16);
+        }
+    } else numbits += emit_bits(hp,val,3);
+    count++, sum += numbits;
+    if ( (count % 100000) == 0 )
+        printf("ave smallbits %.1f after %ld samples\n",(double)sum/count,count);
+    return(numbits);
+}
+
+int32_t decode_smallbits(uint16_t *valp,HUFF *hp)
+{
+    uint32_t s;
+    int32_t val,numbits = 0;
+    val = (hgetbit(hp) | (hgetbit(hp) << 1) | (hgetbit(hp) << 2));
+    if ( val < 4 )
+    {
+        *valp = val;
+        return(3);
+    }
+    else if ( val == 4 )
+        numbits += decode_bits(&s,hp,5);
+    else if ( val == 5 )
+        numbits += decode_bits(&s,hp,8);
+    else if ( val == 6 )
+        numbits += decode_bits(&s,hp,12);
+    else numbits += decode_bits(&s,hp,16);
+    *valp = s;
+    return(numbits + 3);
+}
+
+int32_t emit_varbits(HUFF *hp,uint32_t val)
+{
+    static long sum,count;
+    int32_t numbits = 0;
+    if ( val >= 10 )
+    {
+        if ( val < (1 << 8) )
+        {
+            numbits += emit_bits(hp,10,4);
+            numbits += emit_bits(hp,val,8);
+        }
+        else if ( val < (1 << 10) )
+        {
+            numbits += emit_bits(hp,11,4);
+            numbits += emit_bits(hp,val,10);
+        }
+        else if ( val < (1 << 13) )
+        {
+            numbits += emit_bits(hp,12,4);
+            numbits += emit_bits(hp,val,13);
+        }
+        else if ( val < (1 << 16) )
+        {
+            numbits += emit_bits(hp,13,4);
+            numbits += emit_bits(hp,val,16);
+        }
+        else if ( val < (1 << 20) )
+        {
+            numbits += emit_bits(hp,14,4);
+            numbits += emit_bits(hp,val,20);
+        }
+        else
+        {
+            numbits += emit_bits(hp,15,4);
+            numbits += emit_bits(hp,val,32);
+        }
+    } else numbits += emit_bits(hp,val,4);
+    count++, sum += numbits;
+    if ( (count % 100000) == 0 )
+        printf("ave varbits %.1f after %ld samples\n",(double)sum/count,count);
+    return(numbits);
+}
+
+int32_t decode_varbits(uint32_t *valp,HUFF *hp)
+{
+    int32_t val;
+    val = (hgetbit(hp) | (hgetbit(hp) << 1) | (hgetbit(hp) << 2) | (hgetbit(hp) << 3));
+    if ( val < 10 )
+    {
+        *valp = val;
+        return(4);
+    }
+    else if ( val == 10 )
+        return(4 + decode_bits(valp,hp,8));
+    else if ( val == 11 )
+        return(4 + decode_bits(valp,hp,10));
+    else if ( val == 12 )
+        return(4 + decode_bits(valp,hp,13));
+    else if ( val == 13 )
+        return(4 + decode_bits(valp,hp,16));
+    else if ( val == 14 )
+        return(4 + decode_bits(valp,hp,20));
+    else return(4 + decode_bits(valp,hp,32));
+}
+
+int32_t emit_valuebits(HUFF *hp,uint64_t value)
+{
+    static long sum,count;
+    int32_t i,numbits = 0;
+    for (i=0; i<2; i++,value>>=32)
+        numbits += emit_varbits(hp,value & 0xffffffff);
+    count++, sum += numbits;
+    if ( (count % 100000) == 0 )
+        printf("ave valuebits %.1f after %ld samples\n",(double)sum/count,count);
+    return(numbits);
+}
+
+int32_t decode_valuebits(uint64_t *valuep,HUFF *hp)
+{
+    uint32_t i,tmp[2],numbits = 0;
+    for (i=0; i<2; i++)
+        numbits += decode_varbits(&tmp[i],hp);//, printf("($%x).%d ",tmp[i],i);
+    *valuep = (tmp[0] | ((uint64_t)tmp[1] << 32));
+    // printf("[%llx] ",(long long)(*valuep));
+    return(numbits);
+}
+*/
 #endif

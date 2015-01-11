@@ -684,6 +684,38 @@ int32_t is_active_coin(char *coinstr)
     return(-1);
 }
 
+struct ramchain_info *get_ramchain_info(char *coinstr)
+{
+    struct coin_info *cp = get_coin_info(coinstr);
+    if ( cp != 0 )
+        return(&cp->RAM);
+    else return(0);
+}
+
+uint32_t get_blockheight(struct coin_info *cp);
+void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
+{
+    strcpy(ram->name,cp->name);
+    strcpy(ram->myipaddr,cp->myipaddr);
+    strcpy(ram->srvNXTACCTSECRET,cp->srvNXTADDR);
+    strcpy(ram->srvNXTADDR,cp->srvNXTADDR);
+    ram->userpass = clonestr(cp->userpass);
+    ram->serverport = clonestr(cp->serverport);
+    ram->lastheighttime = (uint32_t)cp->lastheighttime;
+    ram->blockheight = (uint32_t)cp->blockheight;
+    ram->RTblockheight = (uint32_t)cp->RTblockheight;
+    ram->min_confirms = cp->min_confirms;
+    ram->estblocktime = cp->estblocktime;
+    ram->firstiter = 1;
+    printf("init_ramchain_info(%s) active.%d (%s %s)\n",cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass);
+    if ( is_active_coin(cp->name) != 0 )
+    {
+        if ( ram->RTblockheight == 0 )
+            ram->RTblockheight = (uint32_t)get_blockheight(cp);
+        //init_compressionvars(0,cp->name,ram->RTblockheight + ((60 * 60 * 24 * 7) / ram->estblocktime));
+    }
+}
+
 int32_t is_whitelisted(char *ipaddr)
 {
     int32_t i,n;
@@ -890,7 +922,6 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                         MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                         MGWcoins[Numcoins] = item;
                         Daemons[Numcoins] = cp;
-                        uint32_t get_blockheight(struct coin_info *cp);
                         cp->RTblockheight = get_blockheight(cp);
                         if ( Debuglevel > 0 )
                             printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
@@ -917,6 +948,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
                             BTCaddr = cp->privateaddr;
                         else if ( strcmp(coinstr,"NXT") == 0 )
                             pubNXT = cp->privateNXTADDR;
+                        init_ramchain_info(&cp->RAM,cp);
                      }
                 }
             } else printf("no coins array.%p ?\n",array);

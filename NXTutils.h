@@ -2516,17 +2516,4 @@ long force_fpos(char *fname,FILE **fpp,long setfpos)
 }
 
 
-double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft)
-{
-    double elapsed,rate;
-    if ( processed <= 0 )
-        return(0.);
-    elapsed = (milliseconds() - startmilli);
-    rate = (elapsed / processed);
-    if ( rate <= 0. )
-        return(0.);
-    //printf("numleft %d rate %f\n",numleft,rate);
-    return(numleft * rate / 1000.);
-}
-
 #endif

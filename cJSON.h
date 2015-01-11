@@ -157,6 +157,7 @@ extern "C"
     /* When assigning an integer value, it needs to be propagated to valuedouble too. */
 #define cJSON_SetIntValue(object,val)			((object)?(object)->valueint=(object)->valuedouble=(val):(val))
     
+    char *cJSON_str(cJSON *json);
 
 void copy_cJSON(char *dest,cJSON *obj);
     cJSON *gen_list_json(char **list);

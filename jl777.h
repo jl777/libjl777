@@ -389,6 +389,7 @@ struct batch_info
 
 struct coin_info
 {
+    struct ramchain_info RAM;
     int32_t timestamps[100];
     struct batch_info BATCH,withdrawinfos[16];
     struct unspent_info unspent;

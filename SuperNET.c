@@ -69,10 +69,10 @@ void set_compressionvars_fname(int32_t readonly,char *fname,char *coinstr,char *
 #undef INCLUDE_CODE
 
 
-cJSON *gen_blockjson(struct compressionvars *V,uint32_t blocknum)
+/*cJSON *gen_blockjson(struct compressionvars *V,uint32_t blocknum)
 {
     cJSON *array,*item,*json = cJSON_CreateObject();
-    /*char *txidstr,*addr,*script;
+    char *txidstr,*addr,*script;
     struct blockinfo *block,*next;
     struct address_entry *vin;
     struct voutinfo *vout;
@@ -120,9 +120,9 @@ cJSON *gen_blockjson(struct compressionvars *V,uint32_t blocknum)
                 cJSON_AddItemToObject(json,"vouts",array);
             }
         } else cJSON_AddItemToObject(json,"error",cJSON_CreateString("block firstvin or firstvout violation"));
-    }*/
+    }
     return(json);
-}
+}*/
 
 char *SuperNET_url()
 {

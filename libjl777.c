@@ -759,6 +759,17 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             fprintf(stderr,"need to have BTCD active and also srvpubaddr\n");
             exit(-1);
         }
+        if ( Global_mp->gatewayid >= 0 )
+        {
+            char cmd[256],*jsonstr;
+            issue_startForging(0,cp->srvNXTACCTSECRET);
+            sprintf(cmd,"%s=getState",NXTSERVER);
+            if ( (jsonstr= issue_curl(0,cmd)) != 0 )
+            {
+                printf("GETSTATE.(%s)\n",jsonstr);
+                free(jsonstr);
+            }
+        }
         strcpy(Global_mp->myNXTADDR,cp->srvNXTADDR);
         Global_mp->nxt64bits = calc_nxt64bits(Global_mp->myNXTADDR);
         Historical_done = 1;
