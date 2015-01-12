@@ -707,7 +707,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
     ram->min_confirms = cp->min_confirms;
     ram->estblocktime = cp->estblocktime;
     ram->firstiter = 1;
-    printf("init_ramchain_info(%s) active.%d (%s %s)\n",cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass);
+    printf("%p init_ramchain_info(%s) active.%d (%s %s)\n",ram,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass);
     if ( is_active_coin(cp->name) != 0 )
     {
         if ( ram->RTblockheight == 0 )

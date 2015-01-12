@@ -635,7 +635,6 @@ int main(int argc,const char *argv[])
         if ( argc > 2 )
             coinstr = (char *)argv[2];
         else coinstr = "BTCD";
-        //scan_ramchain(V);
         process_coinblocks(coinstr);
         printf("finished genfiles.%s\n",coinstr);
         getchar();
