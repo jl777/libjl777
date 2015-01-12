@@ -3287,7 +3287,7 @@ int32_t process_destaddr(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MA
         free(entries);
     }
     if ( processflag != 0 )
-        numredeems = process_destaddr(alreadysentp,arrayp,destaddrs,destamounts,redeems,pending_withdrawp,cp,nxt64bits,ap,destaddr,tp,numredeems,sender);
+        numredeems = process_redeem(alreadysentp,arrayp,destaddrs,destamounts,redeems,pending_withdrawp,cp,nxt64bits,ap,destaddr,tp,numredeems,sender);
     return(numredeems);
 }
 
