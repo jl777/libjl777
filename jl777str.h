@@ -334,6 +334,11 @@ int32_t init_hexbytes_truncate(char *hexbytes,unsigned char *message,long len)
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
 {
     int32_t i;
+    if ( len == 0 )
+    {
+        hexbytes[0] = 0;
+        return(1);
+    }
     for (i=0; i<len; i++)
     {
         hexbytes[i*2] = hexbyte((message[i]>>4) & 0xf);
