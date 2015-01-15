@@ -251,7 +251,6 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 {
 	FILE *fp;
 	uint64_t i,n,filesize;
-    printf("init_mappedptr %s.rwflag.%d\n",fname,rwflag);
     if ( fname != 0 )
 	{
 		if ( strcmp(mp->fname,fname) == 0 )
@@ -273,7 +272,8 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 	mp->allocsize = allocsize;
 	if ( open_mappedptr(mp) != 0 )
 	{
-		if ( allocsize != 0 )
+	    //printf("init_mappedptr %s.rwflag.%d\n",fname,rwflag);
+        if ( allocsize != 0 )
 			printf("error mapping(%s) rwflag.%d ptr %p mapped %llu vs allocsize %llu %s\n",fname,rwflag,mp->fileptr,(long long)mp->allocsize,(long long)allocsize,_mbstr(allocsize));
 		if ( rwflag != 0 )
 		{

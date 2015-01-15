@@ -629,7 +629,7 @@ char *publish_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
                         } else retstr = clonestr("{\"error\":\"write error saving big JSON returnstr\"}");
                         if ( savefp != 0 )
                             fclose(savefp);
-                        delete_file(savefname);
+                        delete_file(savefname,1);
                     } else retstr = clonestr("{\"error\":\"couldnt create tmpfile for big JSON returnstr\"}");
                 } else retstr = mofn_publish(NXTaddr,NXTACCTSECRET,fname,mediatype,savestr,0,&mapjson);
                 free(savestr);

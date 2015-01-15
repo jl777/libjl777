@@ -397,7 +397,7 @@ struct coin_info
     cJSON *json;
     struct huffitem *items;
     uv_udp_t *bridgeudp;
-    struct compressionvars V;
+    //struct compressionvars V;
     struct hashtable *telepods,*addrs; void *changepod; uint64_t min_telepod_satoshis;
     cJSON *ciphersobj;
     char privateaddr[128],privateNXTACCTSECRET[2048],coinpubkey[1024],privateNXTADDR[64];

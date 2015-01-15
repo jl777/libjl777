@@ -2178,23 +2178,34 @@ void copy_file(char *src,char *dest) // OS portable
     }
 }
 
-void delete_file(char *fname) // OS portable
+void delete_file(char *fname,int32_t scrubflag)
 {
-    int c = 0;
     FILE *fp;
+    char cmdstr[1024],*OS_rmstr;
     long i,fpos;
+#ifdef WIN32
+    OS_rmstr = "del";
+#else
+    OS_rmstr = "rm";
+#endif
     if ( (fp= fopen(fname,"rb+")) != 0 )
     {
-        fseek(fp,0,SEEK_END);
-        fpos = ftell(fp);
-        rewind(fp);
-        for (i=0; i<fpos; i++)
-            fputc(c,fp);
-        fflush(fp);
+        printf("delete(%s)\n",fname);
+        if ( scrubflag != 0 )
+        {
+            fseek(fp,0,SEEK_END);
+            fpos = ftell(fp);
+            rewind(fp);
+            for (i=0; i<fpos; i++)
+                fputc(rand()>>8,fp);
+            fflush(fp);
+        }
         fclose(fp);
+        sprintf(cmdstr,"%s %s",OS_rmstr,fname);
+        system(cmdstr);
     }
-    if ( (fp= fopen(fname,"wb")) != 0 )
-        fclose(fp);
+    //if ( (fp= fopen(fname,"wb")) != 0 )
+    //    fclose(fp);
 }
 
 #ifdef oldway

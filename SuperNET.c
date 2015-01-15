@@ -47,6 +47,7 @@ int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits);
 char *clonestr(char *);
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
 char *_mbstr(double n);
+char *_mbstr2(double n);
 double milliseconds();
 struct coin_info *get_coin_info(char *coinstr);
 uint32_t get_blockheight(struct coin_info *cp);
@@ -634,7 +635,7 @@ int main(int argc,const char *argv[])
         printf("process coinblocks\n");
         if ( argc > 2 )
             coinstr = (char *)argv[2];
-        else coinstr = "BTCD";
+        else coinstr = 0;
         process_coinblocks(coinstr);
         printf("finished genfiles.%s\n",coinstr);
         getchar();
