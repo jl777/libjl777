@@ -330,7 +330,7 @@ struct coin_txidind
     struct address_entry entry;
     int32_t numvouts,numinputs;
     uint32_t seq0,seq1;
-    char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[MAX_NXTADDR_LEN],*script;
+    char coinaddr[MAX_COINADDR_LEN],txid[MAX_COINTXID_LEN],indstr[32],*script;
 };
 
 struct coin_txidmap

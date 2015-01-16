@@ -216,7 +216,7 @@ void SuperNET_idler(uv_idle_t *handle)
     struct write_req_t *wr,*firstwr = 0;
     int32_t flag;
     char *jsonstr,*retstr,**ptrs;
-    if ( Finished_init == 0 || IS_LIBTEST == 7 )
+    if ( Finished_init == 0 )//|| IS_LIBTEST == 7 )
         return;
     millis = milliseconds();//((double)uv_hrtime() / 1000000);
     if ( millis > (lastattempt + APISLEEP) )
@@ -412,7 +412,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
     //if ( IS_LIBTEST == 7 )
     //    return(myipaddr);
-    if ( IS_LIBTEST != 7 )
+    //if ( IS_LIBTEST != 7 )
     {
         mp->udp = start_libuv_udpserver(4,SUPERNET_PORT,on_udprecv);
         if ( (cp= get_coin_info("BTCD")) != 0 && cp->bridgeport != 0 )
@@ -433,7 +433,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 //#ifndef __APPLE__
 //    Coinloop(0);
 //#else
-    if ( IS_LIBTEST > 1 && IS_LIBTEST != 7 && portable_thread_create((void *)Coinloop,0) == 0 )
+    if ( IS_LIBTEST > 1 && portable_thread_create((void *)Coinloop,0) == 0 ) //IS_LIBTEST != 7 &&
         printf("ERROR hist Coinloop SSL\n");
 //#endif
     Finished_loading = 1;
@@ -441,7 +441,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         printf("run_UVloop\n");
     if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    if ( IS_LIBTEST != 7 )
+    //if ( IS_LIBTEST != 7 )
     {
         if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
             printf("ERROR hist run_libwebsockets SSL\n");
@@ -460,8 +460,13 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         }
         parse_ipaddr(cp->myipaddr,myipaddr);
         bind_NXT_ipaddr(cp->srvpubnxtbits,myipaddr);
-        if ( IS_LIBTEST > 0 && IS_LIBTEST < 7 )
+        if ( IS_LIBTEST > 0 )//&& IS_LIBTEST < 7 )
+        {
+            void *process_coinblocks(void *_argcoinstr);
             init_SuperNET_storage(cp->backupdir);
+            if ( IS_LIBTEST > 1 && portable_thread_create((void *)process_coinblocks,0) == 0 )
+                printf("ERROR hist run_libwebsockets\n");
+        }
     }
     return(myipaddr);
 }

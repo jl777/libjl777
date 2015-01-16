@@ -727,15 +727,8 @@ void ensure_SuperNET_dirs(char *backupdir)
         for (i=0; i<n; i++)
         {
             copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-            //if ( (cp= get_coin_info(coinstr)) != 0 )
-            {
-                printf("ensure.%s\n",coinstr);
-                sprintf(dirname,"%s/%s",dirstr,coinstr), ensure_directory(dirname);
-                //sprintf(dirname,"address/%s/addrs",coinstr), ensure_directory(dirname);
-                sprintf(dirname,"%s/%s/bitstream",dirstr,coinstr), ensure_directory(dirname);
-                //sprintf(dirname,"address/%s/scripts",coinstr), ensure_directory(dirname);
-                //sprintf(dirname,"address/%s/txids",coinstr), ensure_directory(dirname);
-            }
+            sprintf(dirname,"%s/%s",dirstr,coinstr), ensure_directory(dirname);
+            sprintf(dirname,"%s/%s/bitstream",dirstr,coinstr), ensure_directory(dirname);
         }
     }
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);

@@ -624,12 +624,12 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     int32_t retval;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
-#ifdef __APPLE__
-#else
-    if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
-#endif
+//#ifdef __APPLE__
+//#else
+    if ( 0 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
+//#endif
     {
-        void process_coinblocks(char *argcoinstr);
+        void *process_coinblocks(void *argcoinstr);
         char *coinstr;
         retval = SuperNET_start("SuperNET.conf","127.0.0.1");
         printf("process coinblocks\n");
