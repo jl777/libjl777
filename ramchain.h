@@ -4266,7 +4266,7 @@ uint32_t process_ramchain(struct ramchain_info *ram,struct mappedblocks *blocks,
     double estimated,startmilli = ram_millis();
     int32_t processed = 0;
     ram_setformatstr(formatstr,blocks->format);
-    printf("%s shift.%d %-5s.%d %.1f min left | [%d < %d]?\n",formatstr,blocks->shift,ram->name,blocks->blocknum,estimated,(blocks->blocknum >> blocks->shift),(prev->blocknum >> blocks->shift));
+    //printf("%s shift.%d %-5s.%d %.1f min left | [%d < %d]?\n",formatstr,blocks->shift,ram->name,blocks->blocknum,estimated,(blocks->blocknum >> blocks->shift),(prev->blocknum >> blocks->shift));
     while ( (blocks->blocknum >> blocks->shift) < (prev->blocknum >> blocks->shift) && ram_millis() < (startmilli + timebudget) )
     {
         create_ramchain_block(1,ram,blocks,prev,blocks->blocknum), processed++;
@@ -4559,7 +4559,7 @@ void activate_ramchain(struct ramchain_info *ram,char *name)
 void process_coinblocks(char *argcoinstr)
 {
     void ensure_SuperNET_dirs(char *backupdir);
-    int32_t threaded = 0;
+    int32_t threaded = 1;
     double startmilli;
     int32_t i,pass,processed = 0;
     ensure_SuperNET_dirs("ramchains");
