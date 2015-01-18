@@ -548,7 +548,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                 if ( cp->MGWissuer[0] == 'N' && cp->MGWissuer[1] == 'X' && cp->MGWissuer[2] == 'T' )
                     expand_nxt64bits(cp->MGWissuer,conv_rsacctstr(cp->MGWissuer,0));
                 if ( Debuglevel > 0 )
-                    printf("MGW issuer.(%s)\n",cp->MGWissuer);
+                    printf("MGW issuer.(%s) marker.(%s)\n",cp->MGWissuer,cp->marker!=0?cp->marker:"no marker");
                 //cp->coinid = conv_coinstr(coinstr);
                 cp->limboarray = limboarray;
                 //if ( cp->coinid >= 0 && cp->coinid < 256 )
@@ -678,10 +678,10 @@ int32_t is_active_coin(char *coinstr)
                 break;
             copy_cJSON(str,cJSON_GetArrayItem(array,i));
             if ( strcmp(str,coinstr) == 0 )
-                return(i);
+                return(i+1);
         }
     }
-    return(-1);
+    return(0);
 }
 
 struct ramchain_info *get_ramchain_info(char *coinstr)
@@ -700,6 +700,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
     strcpy(ram->myipaddr,cp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,cp->srvNXTADDR);
     strcpy(ram->srvNXTADDR,cp->srvNXTADDR);
+    ram->marker = clonestr(cp->marker);
     ram->userpass = clonestr(cp->userpass);
     ram->serverport = clonestr(cp->serverport);
     ram->lastheighttime = (uint32_t)cp->lastheighttime;
@@ -708,9 +709,9 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
     ram->estblocktime = cp->estblocktime;
     ram->firstiter = 1;
     printf("%p init_ramchain_info(%s) (%s) active.%d (%s %s)\n",ram,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass);
-    //if ( is_active_coin(cp->name) != 0 )
+    if ( is_active_coin(cp->name) > 0 )
     {
-        if ( IS_LIBTEST > 1 )//== 7 )
+        if ( IS_LIBTEST > 0 )//== 7 )
             activate_ramchain(ram,cp->name);
         //init_compressionvars(0,cp->name,ram->RTblockheight + ((60 * 60 * 24 * 7) / ram->estblocktime));
     } //else printf("(%s) not active\n",cp->name);

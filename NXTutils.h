@@ -1771,7 +1771,10 @@ void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
             memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
     } else memcpy(&pubkey,stats->pubkey,sizeof(pubkey));
     if ( NXTpubkey != 0 )
+    {
+        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
         init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
+    }
 }
 
 
@@ -2145,6 +2148,57 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
     return(0);
 }
 
+/*int32_t save_varfilestr(FILE *fp,char *str)
+{
+    long n,savepos,len = strlen(str) + 1;
+    if ( fp == 0 )
+        return(-1);
+    savepos = ftell(fp);
+    //printf("save.(%s) at %ld\n",str,ftell(fp));
+    if ( (n= hemit_varint(fp,len)) > 0 )
+    {
+        if ( fwrite(str,1,len,fp) != len )
+            return(-1);
+        fflush(fp);
+        return((int32_t)(n + len));
+    }
+    else fseek(fp,savepos,SEEK_SET);
+    return(-1);
+}
+
+long load_varfilestr(int32_t *lenp,char *str,FILE *fp,int32_t maxlen)
+{
+    int32_t retval;
+    long savepos,fpos = 0;
+    uint64_t len;
+    *lenp = 0;
+    if ( fp == 0 )
+        return(-1);
+    savepos = ftell(fp);
+    if ( (retval= (int32_t)hload_varint(&len,fp)) > 0 && len < maxlen )
+    {
+        fpos = ftell(fp);
+        if ( len > 0 )
+        {
+            if ( fread(str,1,len,fp) != len )
+            {
+                printf("load_filestr: error reading len.%lld at %ld, truncate to %ld\n",(long long)len,ftell(fp),savepos);
+                fseek(fp,savepos,SEEK_SET);
+                return(-1);
+            }
+            else
+            {
+                //str[len] = 0;
+                *lenp = (int32_t)len;
+                //printf("fpos.%ld got string.(%s) len.%d\n",ftell(fp),str,(int)len);
+                return(fpos);
+            }
+        } else return(fpos);
+    } else printf("load_varint got %d at %ld: len.%lld maxlen.%d\n",retval,ftell(fp),(long long)len,maxlen);
+    fseek(fp,savepos,SEEK_SET);
+    return(-1);
+}*/
+
 void ensure_directory(char *dirname) // jl777: does this work in windows?
 {
     FILE *fp;
@@ -2162,51 +2216,6 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
     else fclose(fp);
 }
 
-void copy_file(char *src,char *dest) // OS portable
-{
-    int c;
-    FILE *srcfp,*destfp;
-    if ( (srcfp= fopen(src,"rb")) != 0 )
-    {
-        if ( (destfp= fopen(dest,"wb")) != 0 )
-        {
-            while ( (c= fgetc(srcfp)) != EOF )
-                fputc(c,destfp);
-            fclose(destfp);
-        }
-        fclose(srcfp);
-    }
-}
-
-void delete_file(char *fname,int32_t scrubflag)
-{
-    FILE *fp;
-    char cmdstr[1024],*OS_rmstr;
-    long i,fpos;
-#ifdef WIN32
-    OS_rmstr = "del";
-#else
-    OS_rmstr = "rm";
-#endif
-    if ( (fp= fopen(fname,"rb+")) != 0 )
-    {
-        printf("delete(%s)\n",fname);
-        if ( scrubflag != 0 )
-        {
-            fseek(fp,0,SEEK_END);
-            fpos = ftell(fp);
-            rewind(fp);
-            for (i=0; i<fpos; i++)
-                fputc(rand()>>8,fp);
-            fflush(fp);
-        }
-        fclose(fp);
-        sprintf(cmdstr,"%s %s",OS_rmstr,fname);
-        system(cmdstr);
-    }
-    //if ( (fp= fopen(fname,"wb")) != 0 )
-    //    fclose(fp);
-}
 
 #ifdef oldway
 

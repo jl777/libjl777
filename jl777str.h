@@ -189,41 +189,10 @@ char *clonestr(char *str)
     }
     return(i);
 }*/
-
-int32_t _unhex(char c)
-{
-    if ( c >= '0' && c <= '9' )
-        return(c - '0');
-    else if ( c >= 'a' && c <= 'f' )
-        return(c - 'a' + 10);
-    return(-1);
-}
-
-int32_t is_hexstr(char *str)
-{
-    int32_t i;
-    if ( str == 0 || str[0] == 0 )
-        return(0);
-    for (i=0; str[i]!=0; i++)
-        if ( _unhex(str[i]) < 0 )
-            return(0);
-    return(1);
-}
-
-int32_t unhex(char c)
-{
-    int32_t hex;
-    if ( (hex= _unhex(c)) < 0 )
-    {
-        //printf("unhex: illegal hexchar.(%c)\n",c);
-    }
-    return(hex);
-}
-
-unsigned char _decode_hex(char *hex)
-{
-    return((unhex(hex[0])<<4) | unhex(hex[1]));
-}
+int32_t _unhex(char c);
+unsigned char _decode_hex(char *hex);
+int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
+int32_t is_hexstr(char *str);
 
 uint16_t _decode_hexshort(int32_t *offsetp,char *hex)
 {
@@ -272,27 +241,6 @@ int64_t _decode_varint(int32_t *offsetp,char *hex)
     return(0);
 }
 
-int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
-{
-    int32_t adjust,i = 0;
-    if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
-    {
-        bytes[0] = unhex(hex[0]);
-        printf("decode_hex n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
-        //while ( 1 ) sleep(1);
-        bytes++;
-        hex++;
-        adjust = 1;
-    } else adjust = 0;
-    if ( n > 0 )
-    {
-        for (i=0; i<n; i++)
-            bytes[i] = _decode_hex(&hex[i*2]);
-    }
-    //bytes[i] = 0;
-    return(n + adjust);
-}
-
 int32_t hexstrlen(char *hexstr)
 {
     int32_t len;
@@ -302,7 +250,7 @@ int32_t hexstrlen(char *hexstr)
     else return(len >> 1);
 }
 
-char hexbyte(int32_t c)
+/*char hexbyte(int32_t c)
 {
     c &= 0xf;
     if ( c < 10 )
@@ -310,8 +258,8 @@ char hexbyte(int32_t c)
     else if ( c < 16 )
         return('a'+c-10);
     else return(0);
-}
-
+}*/
+char hexbyte(int32_t c);
 int32_t init_hexbytes_truncate(char *hexbytes,unsigned char *message,long len)
 {
     int32_t i,lastnonz = -1;
@@ -329,25 +277,6 @@ int32_t init_hexbytes_truncate(char *hexbytes,unsigned char *message,long len)
     lastnonz++;
     hexbytes[lastnonz*2] = 0;
     return(lastnonz*2+1);
-}
-
-int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
-{
-    int32_t i;
-    if ( len == 0 )
-    {
-        hexbytes[0] = 0;
-        return(1);
-    }
-    for (i=0; i<len; i++)
-    {
-        hexbytes[i*2] = hexbyte((message[i]>>4) & 0xf);
-        hexbytes[i*2 + 1] = hexbyte(message[i] & 0xf);
-        //printf("i.%d (%02x) [%c%c]\n",i,message[i],hexbytes[i*2],hexbytes[i*2+1]);
-    }
-    hexbytes[len*2] = 0;
-    //printf("len.%ld\n",len*2+1);
-    return((int32_t)len*2+1);
 }
 
 void zero_last128(char *dest,char *src)

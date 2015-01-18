@@ -1661,11 +1661,13 @@ char *ramrichlist_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     char coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD];
     char *retstr = 0,*_retstr = "{\"error\":\"invalid ramrichlist parameters\"}";
     uint32_t num;
+    int32_t recalcflag;
     copy_cJSON(destip,objs[0]);
     copy_cJSON(coin,objs[1]);
     num = (uint32_t)get_API_int(objs[2],0);
+    recalcflag = (uint32_t)get_API_int(objs[3],1);
     if ( coin[0] != 0 && num != 0 && sender[0] != 0 && valid > 0 )
-        retstr = ramrichlist(origargstr,sender,previpaddr,destip,coin,num);
+        retstr = ramrichlist(origargstr,sender,previpaddr,destip,coin,num,recalcflag);
     if ( retstr == 0 )
         retstr = clonestr(_retstr);
     return(retstr);
@@ -2038,7 +2040,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *ramexpand[] = { (char *)ramexpand_func, "ramexpand", "V", "destip", "coin", "data", 0 };
     static char *ramscript[] = { (char *)ramscript_func, "ramscript", "V", "destip", "coin", "txid", "vout", "blocknum", "txind", "v", 0 };
     static char *ramtxlist[] = { (char *)ramtxlist_func, "ramtxlist", "V", "destip", "coin", "address", "unspent", 0 };
-    static char *ramrichlist[] = { (char *)ramrichlist_func, "ramrichlist", "V", "destip", "coin", "numwhales", 0 };
+    static char *ramrichlist[] = { (char *)ramrichlist_func, "ramrichlist", "V", "destip", "coin", "numwhales", "recalc", 0 };
     static char *rambalances[] = { (char *)rambalances_func, "rambalances", "V", "destip", "coin", "coins", "rates", 0 };
 
     // MGW

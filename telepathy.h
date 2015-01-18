@@ -253,7 +253,7 @@ char *check_privategenesis(struct contact_info *contact)
         if ( sp != 0 ) // no need to query if we already have it
         {
             printf("check.%llu  private sp.%p data.%p size %ld\n",(long long)location,sp,sp->data,sp->H.size-sizeof(*sp));
-            if ( sp->data != 0 && (json= parse_encrypted_data(0,&sequenceid,contact,key,sp->data,sp->H.size-sizeof(*sp),AESpasswordstr)) != 0 )
+            if ( (json= parse_encrypted_data(0,&sequenceid,contact,key,sp->data,sp->H.size-sizeof(*sp),AESpasswordstr)) != 0 )
                 free_json(json);
             free(sp);
         }

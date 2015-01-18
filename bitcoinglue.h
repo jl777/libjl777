@@ -418,7 +418,7 @@ uint64_t check_txout(uint32_t *createtimep,struct coin_info *cp,int32_t minconfi
             {
                 *createtimep = (uint32_t)(time(NULL) - confirmations*cp->estblocktime);
                 if ( refscript != 0 )
-                    extract_txvals(coinaddr,refscript,cp->nohexout,json);
+                    _extract_txvals(coinaddr,refscript,cp->nohexout,json);
             }
             free_json(json);
         }

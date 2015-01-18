@@ -163,7 +163,7 @@ double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int3
         }
         if ( n == 1 )
             flag = 0;
-        balance = fabs(numabove - numbelow);
+        balance = abs(numabove - numbelow);
         balance *= balance * 10;
         sum = sqrt(sum / (n - flag));
         diff = sqrt(diff / (n - flag));

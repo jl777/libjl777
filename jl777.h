@@ -7,7 +7,7 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.399"
+#define HARDCODED_VERSION "0.499"
 #define TIMESCRAMBLE
 
 #define NXT_GENESISTIME 1385294400
@@ -114,9 +114,7 @@
 //#include <sys/socket.h>
 #include <sys/wait.h>
 //#include <sys/time.h>
-#include <sys/mman.h>
 
-#include <fcntl.h>
 
 #define ENABLE_DIRENT
 #ifdef ENABLE_DIRENT

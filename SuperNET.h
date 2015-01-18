@@ -41,15 +41,6 @@ typedef union _bits64 bits64;
 typedef union _bits256 bits256;
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
-
-struct mappedptr
-{
-	char fname[512];
-	void *fileptr,*pending;
-	uint64_t allocsize,changedsize;
-	int32_t rwflag,actually_allocated;
-};
-
 struct hashtable
 {
     char *name;//[128];
