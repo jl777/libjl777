@@ -366,8 +366,8 @@ static int nospecials (const char *p, size_t l) {
 }
 
 
-static int str_find_aux (LuaMatchState *ms, int find, const char *s, size_t ls,
-                         const char *p, size_t lp, size_t init, int raw_find) {
+static int str_find_aux (LuaMatchState *ms, int find, const char *s, size_t ls,const char *p, size_t lp, long init, int raw_find)
+{
   int result = 0; /* not found */
   ms->error = NULL;
   init = posrelat(init, ls);
@@ -380,11 +380,11 @@ static int str_find_aux (LuaMatchState *ms, int find, const char *s, size_t ls,
     /* do a plain search */
     const char *s2 = lmemfind(s + init, ls - init + 1, p, lp);
     if (s2) {
-      int start_pos = ((int)(s2 - s));
+      long start_pos = ((long)(s2 - s));
       ms->level = 1;
       ms->capture[0].len = CAP_POSITION;
       ms->capture[0].init = (const char *)start_pos;
-      result = start_pos + lp;
+      result = (int)(start_pos + lp);
     }
   }
   else {
@@ -505,7 +505,7 @@ static int add_value (LuaMatchState *ms, char_buffer_st **b, const char *s,
             }
             if (cl == CAP_POSITION){
                 char buf[32];
-                snprintf(buf, sizeof(buf), "%d", ms->capture[il].init - ms->src_init + 1);
+                snprintf(buf, sizeof(buf), "%ld", ms->capture[il].init - ms->src_init + 1);
                 if(!add_str(ms, b, buf, strlen(buf))) return 0;
             }
             else

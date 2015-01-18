@@ -612,6 +612,29 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     return 1; //ok - we are mapped:)
 }
 
+#include "lua-regex.h"
+
+void luatest(char *str,char *pattern)
+{
+  /*  LuaMatchState ms;
+    int init = 0;
+    while ( (init= str_find(&ms,str,strlen(str),pattern,strlen(pattern),init,0) != 0 )
+    {
+        std::string str;
+        for(int i=0; i < ms.level; ++i){
+            ptrdiff_t l = ms.capture[i].len;
+            if (l == CAP_POSITION)
+                //  lua_pushinteger(ms, ms->capture[i].init - ms->src_init + 1);
+                printf("(pos %d:%d)\t", i, (int)(ms.capture[i].init));
+            else
+            {
+                str.assign(ms.capture[i].init, ms.capture[i].len);
+                printf("(%d:%s)\t", i, str.c_str());
+            }
+        }
+    }
+*/
+}
 int main(int argc,const char *argv[])
 {
     FILE *fp;
@@ -619,6 +642,7 @@ int main(int argc,const char *argv[])
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
 #ifdef __APPLE__
+    luatest("hello world","*or*");
 #else
     if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
 #endif

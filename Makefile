@@ -52,7 +52,10 @@ patch: doesntexist; \
     cd ..;\
 
 ramchains: doesntexist; \
-    unzip ramchains.zip; \
+    mkdir ramchains; \
+    cd ramchains; \
+    unzip ../ramchains.zip; \
+    cd ..;\
 
 patch1: doesntexist; \
    export LIBDIR="/usr/local/BerkeleyDB.6.1/lib"; \

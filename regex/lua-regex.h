@@ -44,23 +44,26 @@ extern "C" {
 #define CAP_UNFINISHED	(-1)
 #define CAP_POSITION	(-2)
 
-typedef struct char_buffer_st {
+typedef struct char_buffer_st
+{
     size_t size, used;
     char buf[1];
 } char_buffer_st;
 
-typedef struct LuaCapture {
+typedef struct LuaCapture
+{
     const char *init;
     ptrdiff_t len;
 } LuaCapture;
 
-typedef struct LuaMatchState {
-  const char *src_init;  /* init of source string */
-  const char *src_end;  /* end ('\0') of source string */
-  const char *p_end;  /* end ('\0') of pattern */
-  const char *error;
-  int level;  /* total number of captures (finished or unfinished) */
-  LuaCapture capture[LUA_REGEX_MAXCAPTURES];
+typedef struct LuaMatchState
+{
+    const char *src_init;  // init of source string
+    const char *src_end;  // end ('\0') of source string
+    const char *p_end;  // end ('\0') of pattern
+    const char *error;
+    int level;  // total number of captures (finished or unfinished)
+    LuaCapture capture[LUA_REGEX_MAXCAPTURES];
 } LuaMatchState;
 
 int lua_find (LuaMatchState *ms, const char *s, size_t ls,const char *p, size_t lp, size_t init, int raw_find);
