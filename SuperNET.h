@@ -131,6 +131,61 @@ struct multisig_addr
     struct pubkey_info pubkeys[];
 };
 
+union _NXT_str_buf { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
+
+struct NXT_str
+{
+    uint64_t modified,nxt64bits;
+    union _NXT_str_buf U;
+};
+
+union _asset_price { uint64_t assetoshis,price; };
+
+struct NXT_assettxid
+{
+    struct NXT_str H;
+    uint64_t AMtxidbits,redeemtxid,assetbits,senderbits,receiverbits,quantity,convassetid;
+    double minconvrate;
+    union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
+    uint32_t coinblocknum,cointxind,coinv,height;
+    char *cointxid;
+    char *comment,*convwithdrawaddr,convname[16],teleport[64];
+    float estNXT;
+    int32_t completed,timestamp,vout,numconfs,convexpiration,buyNXT,sentNXT;
+};
+
+struct NXT_AMhdr
+{
+    uint32_t sig;
+    int32_t size;
+    uint64_t nxt64bits;
+};
+
+struct compressed_json { uint32_t complen,sublen,origlen,jsonlen; unsigned char encoded[128]; };
+union _json_AM_data { unsigned char binarydata[sizeof(struct compressed_json)]; char jsonstr[sizeof(struct compressed_json)]; struct compressed_json jsn; };
+
+struct json_AM
+{
+    struct NXT_AMhdr H;
+	uint32_t funcid,gatewayid,timestamp,jsonflag;
+    union _json_AM_data U;
+};
+
+struct NXT_assettxid_list
+{
+    struct NXT_assettxid **txids;
+    int32_t num,max;
+};
+
+struct NXT_asset
+{
+    struct NXT_str H;
+    uint64_t issued,mult,assetbits,issuer;
+    char *description,*name;
+    struct NXT_assettxid **txids;   // all transactions for this asset
+    int32_t max,num,decimals,exdiv_height;
+};
+
 #define INCLUDE_DEFINES
 #include "ramchain.h"
 #undef INCLUDE_DEFINES

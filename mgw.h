@@ -571,6 +571,7 @@ int32_t init_deposit(char **specialNXTaddrs,struct coin_info *cp)
                         num++;
                     }
                 } else printf("(%s) (%s) is not array or n.%ld is too small\n",fname,buf,n);
+                free_json(json);
             } else printf("error parsing (%s) (%s)\n",fname,buf);
         } else printf("error reading in (%s) len %ld != size %ld\n",fname,n,len);
         fclose(fp);
@@ -611,6 +612,7 @@ int32_t init_moneysent(char **specialNXTaddrs,struct coin_info *cp)
                         num += update_redeembits(cp,item,AMtxidbits);
                     }
                 } else printf("(%s) (%s) is not array or n.%ld is too small\n",fname,buf,n);
+                free_json(json);
             } else printf("error parsing (%s) (%s)\n",fname,buf);
         } else printf("error reading in (%s) len %ld != size %ld\n",fname,n,len);
         fclose(fp);
@@ -644,6 +646,7 @@ int32_t init_multisig(char **specialNXTaddrs,struct coin_info *cp)
                         num += update_MGWaddr(cJSON_GetArrayItem(json,i),Global_mp->myNXTADDR);
                     
                 } else printf("(%s) (%s) is not array or n.%ld is too small\n",fname,buf,n);
+                free_json(json);
             } else printf("error parsing (%s) (%s)\n",fname,buf);
         } else printf("error reading in (%s) len %ld != size %ld\n",fname,n,len);
         fclose(fp);
@@ -3024,6 +3027,7 @@ uint64_t calc_circulation(int32_t height,struct NXT_asset *ap,char *specialNXTad
                     }
                 }
             }
+            free_json(json);
         }
         free(retstr);
     }

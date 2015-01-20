@@ -22,7 +22,7 @@
 #ifndef ramchain_h
 #define ramchain_h
 
-#define TMPALLOC_SPACE_INCR 3000000
+#define TMPALLOC_SPACE_INCR 10000000
 #define PERMALLOC_SPACE_INCR (1024 * 1024 * 128)
 
 extern struct ramchain_info *get_ramchain_info(char *coinstr);
@@ -41,6 +41,7 @@ char *ramscript(char *origargstr,char *sender,char *previpaddr,char *destip,char
 char *ramtxlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char *coinaddr,int32_t unspentflag);
 char *ramrichlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,int32_t numwhales,int32_t recalcflag);
 char *rambalances(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char **coins,double *rates,char ***coinaddrs,int32_t numcoins);
+char *ramaddrlist(char *origargstr,char *sender,char *previpaddr,char *coin);
 
 
 #include <stdio.h>
@@ -126,13 +127,13 @@ struct mappedptr
 };
 
 struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind,extra; };
-struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,numpayloads,maxpayloads; int32_t numunspent; };
+struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,numpayloads:29,maxpayloads:29,mine:1,multisig:1,verified:1,nonstandard:1,tbd:2; int32_t numunspent; };
 struct ramchain_hashtable { char coinstr[16]; struct ramchain_hashptr *table; struct mappedptr M; FILE *newfp; struct ramchain_hashptr **ptrs; uint32_t ind,numalloc; uint8_t type; };
 
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };
-struct rawvout { char coinaddr[64],script[128]; uint64_t value; };
+struct rawvout { char coinaddr[64],script[256]; uint64_t value; };
 struct rawtx { uint16_t firstvin,numvins,firstvout,numvouts; char txidstr[128]; };
 
 struct rawblock
@@ -151,7 +152,6 @@ struct mappedblocks
     struct mappedblocks *prevblocks;
     struct rawblock *R,*R2,*R3;
     HUFF **hps,*tmphp;
-    //uint64_t *flags;
     struct mappedptr *M;
     double sum;
     uint32_t blocknum,count,firstblock,numblocks,processed,format,shift,contiguous;
@@ -166,11 +166,16 @@ struct ramchain_info
     HUFF *tmphp,*tmphp2;
     char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker;
     uint32_t lastheighttime,RTblocknum,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind;
-    uint64_t totalspends,numspends,totaloutputs,numoutputs,totalbits,totalbytes;
+    uint64_t totalspends,numspends,totaloutputs,numoutputs,totalbits,totalbytes,txfee,NXTfee_equiv;
     struct rawblock *R,*R2,*R3;
     struct rawblock_huffs H;
     struct alloc_space Tmp,Perm;
     uint64_t minval,maxval,minval2,maxval2,minval4,maxval4,minval8,maxval8;
+    
+    struct NXT_asset *ap;
+    uint64_t boughtNXT,circulation,*pendingxfers,*limboarray;
+    uint32_t min_NXTconfirms,NXT_RTblocknum,NXTblocknum,numspecials,numpending,firstNXTblock,firsttime,DEPOSIT_XFER_DURATION;
+    char multisigchar,**special_NXTaddrs,*MGWredemption;
 };
 
 union ramtypes { double dval; uint64_t val64; float fval; uint32_t val32; uint16_t val16; uint8_t val8,hashdata[8]; };
@@ -210,6 +215,8 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
 char *_mbstr(double n);
 char *_mbstr2(double n);
+extern int32_t MAP_HUFF;
+struct ramchain_hashptr *ram_hashsearch(char *coinstr,struct alloc_space *mem,int32_t createflag,struct ramchain_hashtable *hash,char *hashstr,char type);
 
 #endif
 #endif
@@ -370,7 +377,7 @@ void close_mappedptr(struct mappedptr *mp)
 int32_t open_mappedptr(struct mappedptr *mp)
 {
 	uint64_t allocsize = mp->allocsize;
-	if ( mp->actually_allocated != 0 )
+    if ( mp->actually_allocated != 0 )
 	{
 		if ( mp->fileptr == 0 )
 			mp->fileptr = alloc_aligned_buffer(mp->allocsize);
@@ -445,7 +452,7 @@ void ensure_filesize(char *fname,long filesize)
         //printf("filesize.%ld is less than %ld\n",filesize,allocsize);
         if ( (fp=fopen(fname,"ab")) != 0 )
         {
-            zeroes = malloc(16*1024*1024);
+            zeroes = valloc(16*1024*1024);
             memset(zeroes,0,16*1024*1024);
             n = filesize - allocsize;
             while ( n > 16*1024*1024 )
@@ -467,6 +474,9 @@ void ensure_filesize(char *fname,long filesize)
 void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t rwflag,char *fname)
 {
 	uint64_t filesize;
+#ifdef WIN32
+	mp->actually_allocated = 1;
+#endif
     if ( fname != 0 )
 	{
 		if ( strcmp(mp->fname,fname) == 0 )
@@ -486,7 +496,7 @@ void *init_mappedptr(void **ptrp,struct mappedptr *mp,uint64_t allocsize,int32_t
 	else mp->actually_allocated = 1;
 	mp->rwflag = rwflag;
 	mp->allocsize = allocsize;
-    if ( rwflag != 0 )
+    if ( rwflag != 0 && mp->actually_allocated == 0 )
         ensure_filesize(fname,allocsize);
 	if ( open_mappedptr(mp) != 0 )
 	{
@@ -656,13 +666,6 @@ void ram_clear_alloc_space(struct alloc_space *mem)
     mem->used = 0;
 }
 
-void ram_init_alloc_space(struct alloc_space *mem,long size)
-{
-    mem->ptr = malloc(size);
-    mem->size = size;
-    ram_clear_alloc_space(mem);
-}
-
 void *memalloc(struct alloc_space *mem,long size)
 {
     void *ptr = 0;
@@ -701,7 +704,9 @@ void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector
         sprintf(fname,"ramchains/%s/bitstream/space.%ld",coinstr,n);
         fix_windows_insanity(fname);
        // delete_file(fname,0);
-        if ( init_mappedptr(0,&M,mem->size != 0 ? mem->size : size,1,fname) == 0 )
+        if ( size > mem->size )
+            mem->size = size;
+        if ( init_mappedptr(0,&M,mem->size,1,fname) == 0 )
         {
             printf("couldnt create mapped file.(%s)\n",fname);
             exit(-1);
@@ -716,6 +721,14 @@ void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector
         }
     }
     return(memalloc(mem,size));
+}
+
+void ram_init_tmpspace(struct ramchain_info *ram,long size)
+{
+    ram->Tmp.ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,size,8) : calloc(1,size);
+    // mem->ptr = malloc(size);
+    ram->Tmp.size = size;
+    ram_clear_alloc_space(&ram->Tmp);
 }
 
 // >>>>>>>>>>>>>>  start string functions
@@ -805,13 +818,6 @@ int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
 }
 
 // >>>>>>>>>>>>>>  start bitcoind_RPC interface functions
-#define OP_HASH160_OPCODE 0xa9
-#define OP_EQUAL_OPCODE 0x87
-#define OP_DUP_OPCODE 0x76
-#define OP_EQUALVERIFY_OPCODE 0x88
-#define OP_CHECKSIG_OPCODE 0xac
-#define OP_RETURN_OPCODE 0x6a
-
 int32_t _add_opcode(char *hex,int32_t offset,int32_t opcode)
 {
     hex[offset + 0] = hexbyte((opcode >> 4) & 0xf);
@@ -819,96 +825,357 @@ int32_t _add_opcode(char *hex,int32_t offset,int32_t opcode)
     return(offset+2);
 }
 
-void _calc_script(char *script,char *pubkey,int msigmode)
+enum opcodetype
 {
-    int32_t offset,len;
-    offset = 0;
-    len = (int32_t)strlen(pubkey);
-    offset = _add_opcode(script,offset,OP_DUP_OPCODE);
-    offset = _add_opcode(script,offset,OP_HASH160_OPCODE);
-    offset = _add_opcode(script,offset,len/2);
-    memcpy(script+offset,pubkey,len), offset += len;
-    offset = _add_opcode(script,offset,OP_EQUALVERIFY_OPCODE);
-    offset = _add_opcode(script,offset,OP_CHECKSIG_OPCODE);
-    script[offset] = 0;
+    // push value
+    OP_0 = 0x00,
+    OP_FALSE = OP_0,
+    OP_PUSHDATA1 = 0x4c,
+    OP_PUSHDATA2 = 0x4d,
+    OP_PUSHDATA4 = 0x4e,
+    OP_1NEGATE = 0x4f,
+    OP_RESERVED = 0x50,
+    OP_1 = 0x51,
+    OP_TRUE=OP_1,
+    OP_2 = 0x52,
+    OP_3 = 0x53,
+    OP_4 = 0x54,
+    OP_5 = 0x55,
+    OP_6 = 0x56,
+    OP_7 = 0x57,
+    OP_8 = 0x58,
+    OP_9 = 0x59,
+    OP_10 = 0x5a,
+    OP_11 = 0x5b,
+    OP_12 = 0x5c,
+    OP_13 = 0x5d,
+    OP_14 = 0x5e,
+    OP_15 = 0x5f,
+    OP_16 = 0x60,
+    
+    // control
+    OP_NOP = 0x61,
+    OP_VER = 0x62,
+    OP_IF = 0x63,
+    OP_NOTIF = 0x64,
+    OP_VERIF = 0x65,
+    OP_VERNOTIF = 0x66,
+    OP_ELSE = 0x67,
+    OP_ENDIF = 0x68,
+    OP_VERIFY = 0x69,
+    OP_RETURN = 0x6a,
+    
+    // stack ops
+    OP_TOALTSTACK = 0x6b,
+    OP_FROMALTSTACK = 0x6c,
+    OP_2DROP = 0x6d,
+    OP_2DUP = 0x6e,
+    OP_3DUP = 0x6f,
+    OP_2OVER = 0x70,
+    OP_2ROT = 0x71,
+    OP_2SWAP = 0x72,
+    OP_IFDUP = 0x73,
+    OP_DEPTH = 0x74,
+    OP_DROP = 0x75,
+    OP_DUP = 0x76,
+    OP_NIP = 0x77,
+    OP_OVER = 0x78,
+    OP_PICK = 0x79,
+    OP_ROLL = 0x7a,
+    OP_ROT = 0x7b,
+    OP_SWAP = 0x7c,
+    OP_TUCK = 0x7d,
+    
+    // splice ops
+    OP_CAT = 0x7e,
+    OP_SUBSTR = 0x7f,
+    OP_LEFT = 0x80,
+    OP_RIGHT = 0x81,
+    OP_SIZE = 0x82,
+    
+    // bit logic
+    OP_INVERT = 0x83,
+    OP_AND = 0x84,
+    OP_OR = 0x85,
+    OP_XOR = 0x86,
+    OP_EQUAL = 0x87,
+    OP_EQUALVERIFY = 0x88,
+    OP_RESERVED1 = 0x89,
+    OP_RESERVED2 = 0x8a,
+    
+    // numeric
+    OP_1ADD = 0x8b,
+    OP_1SUB = 0x8c,
+    OP_2MUL = 0x8d,
+    OP_2DIV = 0x8e,
+    OP_NEGATE = 0x8f,
+    OP_ABS = 0x90,
+    OP_NOT = 0x91,
+    OP_0NOTEQUAL = 0x92,
+    
+    OP_ADD = 0x93,
+    OP_SUB = 0x94,
+    OP_MUL = 0x95,
+    OP_DIV = 0x96,
+    OP_MOD = 0x97,
+    OP_LSHIFT = 0x98,
+    OP_RSHIFT = 0x99,
+    
+    OP_BOOLAND = 0x9a,
+    OP_BOOLOR = 0x9b,
+    OP_NUMEQUAL = 0x9c,
+    OP_NUMEQUALVERIFY = 0x9d,
+    OP_NUMNOTEQUAL = 0x9e,
+    OP_LESSTHAN = 0x9f,
+    OP_GREATERTHAN = 0xa0,
+    OP_LESSTHANOREQUAL = 0xa1,
+    OP_GREATERTHANOREQUAL = 0xa2,
+    OP_MIN = 0xa3,
+    OP_MAX = 0xa4,
+    
+    OP_WITHIN = 0xa5,
+    
+    // crypto
+    OP_RIPEMD160 = 0xa6,
+    OP_SHA1 = 0xa7,
+    OP_SHA256 = 0xa8,
+    OP_HASH160 = 0xa9,
+    OP_HASH256 = 0xaa,
+    OP_CODESEPARATOR = 0xab,
+    OP_CHECKSIG = 0xac,
+    OP_CHECKSIGVERIFY = 0xad,
+    OP_CHECKMULTISIG = 0xae,
+    OP_CHECKMULTISIGVERIFY = 0xaf,
+    
+    // expansion
+    OP_NOP1 = 0xb0,
+    OP_NOP2 = 0xb1,
+    OP_NOP3 = 0xb2,
+    OP_NOP4 = 0xb3,
+    OP_NOP5 = 0xb4,
+    OP_NOP6 = 0xb5,
+    OP_NOP7 = 0xb6,
+    OP_NOP8 = 0xb7,
+    OP_NOP9 = 0xb8,
+    OP_NOP10 = 0xb9,
+    
+    
+    
+    // template matching params
+    OP_SMALLINTEGER = 0xfa,
+    OP_PUBKEYS = 0xfb,
+    OP_PUBKEYHASH = 0xfd,
+    OP_PUBKEY = 0xfe,
+    
+    OP_INVALIDOPCODE = 0xff,
+};
+
+const char *get_opname(enum opcodetype opcode)
+{
+    switch (opcode)
+    {
+            // push value
+        case OP_0                      : return "0";
+        case OP_PUSHDATA1              : return "OP_PUSHDATA1";
+        case OP_PUSHDATA2              : return "OP_PUSHDATA2";
+        case OP_PUSHDATA4              : return "OP_PUSHDATA4";
+        case OP_1NEGATE                : return "-1";
+        case OP_RESERVED               : return "OP_RESERVED";
+        case OP_1                      : return "1";
+        case OP_2                      : return "2";
+        case OP_3                      : return "3";
+        case OP_4                      : return "4";
+        case OP_5                      : return "5";
+        case OP_6                      : return "6";
+        case OP_7                      : return "7";
+        case OP_8                      : return "8";
+        case OP_9                      : return "9";
+        case OP_10                     : return "10";
+        case OP_11                     : return "11";
+        case OP_12                     : return "12";
+        case OP_13                     : return "13";
+        case OP_14                     : return "14";
+        case OP_15                     : return "15";
+        case OP_16                     : return "16";
+            
+            // control
+        case OP_NOP                    : return "OP_NOP";
+        case OP_VER                    : return "OP_VER";
+        case OP_IF                     : return "OP_IF";
+        case OP_NOTIF                  : return "OP_NOTIF";
+        case OP_VERIF                  : return "OP_VERIF";
+        case OP_VERNOTIF               : return "OP_VERNOTIF";
+        case OP_ELSE                   : return "OP_ELSE";
+        case OP_ENDIF                  : return "OP_ENDIF";
+        case OP_VERIFY                 : return "OP_VERIFY";
+        case OP_RETURN                 : return "OP_RETURN";
+            
+            // stack ops
+        case OP_TOALTSTACK             : return "OP_TOALTSTACK";
+        case OP_FROMALTSTACK           : return "OP_FROMALTSTACK";
+        case OP_2DROP                  : return "OP_2DROP";
+        case OP_2DUP                   : return "OP_2DUP";
+        case OP_3DUP                   : return "OP_3DUP";
+        case OP_2OVER                  : return "OP_2OVER";
+        case OP_2ROT                   : return "OP_2ROT";
+        case OP_2SWAP                  : return "OP_2SWAP";
+        case OP_IFDUP                  : return "OP_IFDUP";
+        case OP_DEPTH                  : return "OP_DEPTH";
+        case OP_DROP                   : return "OP_DROP";
+        case OP_DUP                    : return "OP_DUP";
+        case OP_NIP                    : return "OP_NIP";
+        case OP_OVER                   : return "OP_OVER";
+        case OP_PICK                   : return "OP_PICK";
+        case OP_ROLL                   : return "OP_ROLL";
+        case OP_ROT                    : return "OP_ROT";
+        case OP_SWAP                   : return "OP_SWAP";
+        case OP_TUCK                   : return "OP_TUCK";
+            
+            // splice ops
+        case OP_CAT                    : return "OP_CAT";
+        case OP_SUBSTR                 : return "OP_SUBSTR";
+        case OP_LEFT                   : return "OP_LEFT";
+        case OP_RIGHT                  : return "OP_RIGHT";
+        case OP_SIZE                   : return "OP_SIZE";
+            
+            // bit logic
+        case OP_INVERT                 : return "OP_INVERT";
+        case OP_AND                    : return "OP_AND";
+        case OP_OR                     : return "OP_OR";
+        case OP_XOR                    : return "OP_XOR";
+        case OP_EQUAL                  : return "OP_EQUAL";
+        case OP_EQUALVERIFY            : return "OP_EQUALVERIFY";
+        case OP_RESERVED1              : return "OP_RESERVED1";
+        case OP_RESERVED2              : return "OP_RESERVED2";
+            
+            // numeric
+        case OP_1ADD                   : return "OP_1ADD";
+        case OP_1SUB                   : return "OP_1SUB";
+        case OP_2MUL                   : return "OP_2MUL";
+        case OP_2DIV                   : return "OP_2DIV";
+        case OP_NEGATE                 : return "OP_NEGATE";
+        case OP_ABS                    : return "OP_ABS";
+        case OP_NOT                    : return "OP_NOT";
+        case OP_0NOTEQUAL              : return "OP_0NOTEQUAL";
+        case OP_ADD                    : return "OP_ADD";
+        case OP_SUB                    : return "OP_SUB";
+        case OP_MUL                    : return "OP_MUL";
+        case OP_DIV                    : return "OP_DIV";
+        case OP_MOD                    : return "OP_MOD";
+        case OP_LSHIFT                 : return "OP_LSHIFT";
+        case OP_RSHIFT                 : return "OP_RSHIFT";
+        case OP_BOOLAND                : return "OP_BOOLAND";
+        case OP_BOOLOR                 : return "OP_BOOLOR";
+        case OP_NUMEQUAL               : return "OP_NUMEQUAL";
+        case OP_NUMEQUALVERIFY         : return "OP_NUMEQUALVERIFY";
+        case OP_NUMNOTEQUAL            : return "OP_NUMNOTEQUAL";
+        case OP_LESSTHAN               : return "OP_LESSTHAN";
+        case OP_GREATERTHAN            : return "OP_GREATERTHAN";
+        case OP_LESSTHANOREQUAL        : return "OP_LESSTHANOREQUAL";
+        case OP_GREATERTHANOREQUAL     : return "OP_GREATERTHANOREQUAL";
+        case OP_MIN                    : return "OP_MIN";
+        case OP_MAX                    : return "OP_MAX";
+        case OP_WITHIN                 : return "OP_WITHIN";
+            
+            // crypto
+        case OP_RIPEMD160              : return "OP_RIPEMD160";
+        case OP_SHA1                   : return "OP_SHA1";
+        case OP_SHA256                 : return "OP_SHA256";
+        case OP_HASH160                : return "OP_HASH160";
+        case OP_HASH256                : return "OP_HASH256";
+        case OP_CODESEPARATOR          : return "OP_CODESEPARATOR";
+        case OP_CHECKSIG               : return "OP_CHECKSIG";
+        case OP_CHECKSIGVERIFY         : return "OP_CHECKSIGVERIFY";
+        case OP_CHECKMULTISIG          : return "OP_CHECKMULTISIG";
+        case OP_CHECKMULTISIGVERIFY    : return "OP_CHECKMULTISIGVERIFY";
+            
+            // expanson
+        case OP_NOP1                   : return "OP_NOP1";
+        case OP_NOP2                   : return "OP_NOP2";
+        case OP_NOP3                   : return "OP_NOP3";
+        case OP_NOP4                   : return "OP_NOP4";
+        case OP_NOP5                   : return "OP_NOP5";
+        case OP_NOP6                   : return "OP_NOP6";
+        case OP_NOP7                   : return "OP_NOP7";
+        case OP_NOP8                   : return "OP_NOP8";
+        case OP_NOP9                   : return "OP_NOP9";
+        case OP_NOP10                  : return "OP_NOP10";
+            
+        case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
+            
+            // Note:
+            //  The template matching params OP_SMALLDATA/etc are defined in opcodetype enum
+            //  as kind of implementation hack, they are *NOT* real opcodes.  If found in real
+            //  Script, just let the default: case deal with them.
+            
+        default:
+            return "OP_UNKNOWN";
+    }
 }
 
-int32_t _origconvert_to_bitcoinhex(char *scriptasm)
+struct bitcoin_opcode { UT_hash_handle hh; uint8_t opcode; } *optable;
+int32_t bitcoin_assembler(char *script)
 {
-    //"asm" : "OP_HASH160 db7f9942da71fd7a28f4a4b2e8c51347240b9e2d OP_EQUAL",
-    char *hex,strbuf[8192];
-    int32_t middlelen,offset,len,OP_HASH160_len,OP_EQUAL_len;
-    len = (int32_t)strlen(scriptasm);
-    OP_HASH160_len = (int32_t)strlen("OP_HASH160");
-    OP_EQUAL_len = (int32_t)strlen("OP_EQUAL");
-    if ( strncmp(scriptasm,"OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUAL",OP_EQUAL_len) == 0 )
+    static struct bitcoin_opcode *optable;
+    char hexstr[8192],*hex,*str;
+    struct bitcoin_opcode *op;
+    char *opname,*invalid = "OP_UNKNOWN";
+    int32_t i,j;
+    long len,k;
+    if ( optable == 0 )
     {
-        hex = (len > sizeof(strbuf)-2) ? calloc(1,len+1) : strbuf;
-        offset = 0;
-        offset = _add_opcode(hex,offset,OP_HASH160_OPCODE);
-        middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
-        offset = _add_opcode(hex,offset,middlelen/2);
-        memcpy(hex+offset,scriptasm+OP_HASH160_len+1,middlelen);
-        hex[offset+middlelen] = hexbyte((OP_EQUAL_OPCODE >> 4) & 0xf);
-        hex[offset+middlelen+1] = hexbyte(OP_EQUAL_OPCODE & 0xf);
-        hex[offset+middlelen+2] = 0;
-        if ( Debuglevel > 2 )
-            printf("(%s) -> (%s)\n",scriptasm,hex);
-        strcpy(scriptasm,hex);
-        if ( hex != strbuf )
-            free(hex);
-        if ( is_hexstr(scriptasm) != 0 )
-            return((int32_t)(2+middlelen+2));
-    }
-    if ( scriptasm[0] != 0 )
-        printf("cant assembly anything but OP_HASH160 + <key> + OP_EQUAL (%s)\n",scriptasm);
-    strcpy(scriptasm,"nonstandard");
-    return(-1);
-}
-
-int32_t _convert_to_bitcoinhex(char *scriptasm)
-{
-    char *hex,pubkey[512],*endstr,strbuf[8192];
-    int32_t i,j,middlelen,len,OP_HASH160_len,OP_EQUAL_len;
-    len = (int32_t)strlen(scriptasm);
-    OP_HASH160_len = (int32_t)strlen("OP_DUP OP_HASH160");
-    OP_EQUAL_len = (int32_t)strlen("OP_EQUALVERIFY OP_CHECKSIG");
-    if ( strncmp(scriptasm,"OP_DUP OP_HASH160",OP_HASH160_len) == 0 && strncmp(scriptasm+len-OP_EQUAL_len,"OP_EQUALVERIFY OP_CHECKSIG",OP_EQUAL_len) == 0 )
-    {
-        middlelen = len - OP_HASH160_len - OP_EQUAL_len - 2;
-        memcpy(pubkey,scriptasm+OP_HASH160_len+1,middlelen);
-        pubkey[middlelen] = 0;
-        
-        hex = (len > sizeof(strbuf)-2) ? calloc(1,len+1) : strbuf;
-        _calc_script(hex,pubkey,0);
-        strcpy(scriptasm,hex);
-        if ( hex != strbuf )
-            free(hex);
-        if ( is_hexstr(scriptasm) != 0 )
-            return((int32_t)(2+middlelen+2));
-    }
-    else
-    {
-        endstr = scriptasm + strlen(scriptasm) - strlen(" OP_CHECKSIG");
-        if ( strcmp(endstr," OP_CHECKSIG") == 0 )
+        for (i=0; i<0x100; i++)
         {
-            strcpy(endstr,"ac");
-            //printf("NEWSCRIPT.[%s]\n",scriptasm);
-            if ( is_hexstr(scriptasm) != 0 )
-                return((int32_t)strlen(scriptasm));
+            opname = (char *)get_opname(i);
+            if ( strcmp(invalid,opname) != 0 )
+            {
+                op = calloc(1,sizeof(*op));
+                HASH_ADD_KEYPTR(hh,optable,opname,strlen(opname),op);
+                //printf("{%-16s %02x} ",opname,i);
+                op->opcode = i;
+            }
         }
-        else if ( strncmp(scriptasm,"OP_RETURN ",strlen("OP_RETURN ")) == 0 )
-        {
-            //printf("OP_RETURN.(%s) -> ",scriptasm);
-            _add_opcode(scriptasm,0,OP_RETURN_OPCODE);
-            for (i=2,j=strlen("OP_RETURN "); j<=len; j++,i++)
-                scriptasm[i] = scriptasm[j];
-            //printf("(%s)\n",scriptasm);
-            if ( is_hexstr(scriptasm) != 0 )
-                return((int32_t)strlen(scriptasm));
-        }
+        //printf("bitcoin opcodes\n");
     }
-    return(_origconvert_to_bitcoinhex(scriptasm));
+    if ( script[0] == 0 )
+    {
+        strcpy(script,"ffff");
+        return(-1);
+    }
+    len = strlen(script);
+    hex = (len < sizeof(hexstr)-2) ? hexstr : calloc(1,len+1);
+    strcpy(hex,"ffff");
+    str = script;
+    k = 0;
+    script[len + 1] = 0;
+    while ( *str != 0 )
+    {
+        //printf("k.%ld (%s)\n",k,str);
+        for (j=0; str[j]!=0&&str[j]!=' '; j++)
+            ;
+        str[j] = 0;
+        len = strlen(str);
+        if ( is_hexstr(str) != 0 && (len & 1) == 0 )
+        {
+            k = _add_opcode(hex,(int32_t)k,(int32_t)len>>1);
+            strcpy(hex+k,str);
+            k += len;//, printf("%s ",str);
+        }
+        else
+        {
+            HASH_FIND(hh,optable,str,len,op);
+            if ( op != 0 )
+                k = _add_opcode(hex,(int32_t)k,op->opcode);
+                //sprintf(hex+k,"%02x",op->opcode), k += 2, printf("{%s}.%02x ",str,op->opcode);
+        }
+        str += (j+1);
+    }
+    hex[k] = 0;
+    strcpy(script,hex);
+    if ( hex != hexstr )
+        free(hex);
+    //fprintf(stderr,"-> (%s).k%ld\n",script,k);
+    return((is_hexstr(script) != 0 && (strlen(script) & 1) == 0) ? 0 : -1);
 }
 
 cJSON *_script_has_address(int32_t *nump,cJSON *scriptobj)
@@ -953,7 +1220,10 @@ int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txob
         {
             copy_cJSON(script,hexobj);
             if ( nohexout != 0 )
-                _convert_to_bitcoinhex(script);
+            {
+                //fprintf(stderr,"{%s} ",script);
+                bitcoin_assembler(script);
+            }
         }
         return(0);
     }
@@ -1139,6 +1409,73 @@ uint32_t _get_blockinfo(struct rawblock *raw,struct ramchain_info *ram,uint32_t 
     return(raw->numtx);
 }
 
+cJSON *_get_localaddresses(struct ramchain_info *ram)
+{
+    char *retstr;
+    cJSON *json = 0;
+    retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"listaddressgroupings","");
+    if ( retstr != 0 )
+    {
+        json = cJSON_Parse(retstr);
+        free(retstr);
+    }
+    return(json);
+}
+
+int32_t _verify_coinaddress(char *account,int32_t *ismultisigp,int32_t *isminep,struct ramchain_info *ram,char *coinaddr)
+{
+    char arg[1024],str[MAX_JSON_FIELD],addr[MAX_JSON_FIELD],*retstr;
+    cJSON *json,*array;
+    struct ramchain_hashptr *addrptr;
+    int32_t i,n,verified = 0;
+    sprintf(arg,"\"%s\"",coinaddr);
+    *ismultisigp = *isminep = 0;
+   /* {
+        "isvalid" : true,
+        "address" : "bRmhenKFGwcHmv5pcegMGqqaKPMqshU58E",
+        "ismine" : true,
+        "isscript" : true,
+        "script" : "multisig",
+        "hex" : "5221029bf3b4fefa011740daed0f3815e83cce1381a629736bd960a21638fa729f3341210231235cb93cc25ffc7007b26b7f2fd36c4f56d1b8eac9c4de61cb879340da30be2103551df8201b37bb3c4eb203df3308ec825ccbb839ca8a929c88f348e8e0042de953ae",
+        "addresses" : [
+                       "RD1TCgFqe6YfHzctMzHsNMeqc2CR8Ah5q3",
+                       "RHLdUmazy1K1NCcrevxHdLEMQwLLxMobrp",
+                       "RBbYnYcC9arv4wivkix38u6c6uozu96coJ"
+                       ],
+        "sigsrequired" : 2,
+        "account" : "11634703838614499263"
+    }*/
+    retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"validateaddress",arg);
+    if ( retstr != 0 )
+    {
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            //if ( is_cJSON_True(cJSON_GetObjectItem(json,"ismine")) != 0 )
+            //    *isminep = 1;
+            copy_cJSON(str,cJSON_GetObjectItem(json,"script"));
+            copy_cJSON(account,cJSON_GetObjectItem(json,"account"));
+            if ( strcmp(str,"multisig") == 0 )
+                *ismultisigp = 1;
+            if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    copy_cJSON(addr,cJSON_GetArrayItem(array,i));
+                    if ( addr[0] != 0 && (addrptr= ram_hashsearch(ram->name,0,0,&ram->addrhash,coinaddr,'a')) != 0 && addrptr->mine != 0 )
+                    {
+                        *isminep = 1;
+                        break;
+                    }
+                }
+            }
+            verified = 1;
+            free_json(json);
+        }
+        free(retstr);
+    }
+    return(verified);
+}
+
 uint32_t _get_RTheight(struct ramchain_info *ram)
 {
     char *retstr;
@@ -1157,6 +1494,674 @@ uint32_t _get_RTheight(struct ramchain_info *ram)
     }
     return(height);
 }
+
+// >>>>>>>>>>>>>> NXT functions
+#define GET_COINDEPOSIT_ADDRESS 'g'
+#define BIND_DEPOSIT_ADDRESS 'b'
+#define DEPOSIT_CONFIRMED 'd'
+#define MONEY_SENT 'm'
+extern char NXTAPIURL[MAX_JSON_FIELD];
+#define _issue_NXTPOST(cmdstr) bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)
+struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset *ap,char *txid);
+
+uint64_t _calc_nxt64bits(const char *NXTaddr)
+{
+    int32_t c;
+    int64_t n,i;
+    uint64_t lastval,mult,nxt64bits = 0;
+    if ( NXTaddr == 0 )
+    {
+        printf("calling calc_nxt64bits with null ptr!\n");
+        return(0);
+    }
+    n = strlen(NXTaddr);
+    if ( n >= 22 )
+    {
+        printf("calc_nxt64bits: illegal NXTaddr.(%s) too long\n",NXTaddr);
+        return(0);
+    }
+    else if ( strcmp(NXTaddr,"0") == 0 || strcmp(NXTaddr,"false") == 0 )
+        return(0);
+    mult = 1;
+    lastval = 0;
+    for (i=n-1; i>=0; i--,mult*=10)
+    {
+        c = NXTaddr[i];
+        if ( c < '0' || c > '9' )
+        {
+            printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
+#ifdef __APPLE__
+            while ( 1 )
+            {
+                sleep(60);
+                printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
+            }
+#endif
+            return(0);
+        }
+        nxt64bits += mult * (c - '0');
+        if ( nxt64bits < lastval )
+            printf("calc_nxt64bits: warning: 64bit overflow %llx < %llx\n",(long long)nxt64bits,(long long)lastval);
+        lastval = nxt64bits;
+    }
+    return(nxt64bits);
+}
+
+int32_t _in_specialNXTaddrs(char **specialNXTaddrs,int32_t n,char *NXTaddr)
+{
+    int32_t i;
+    for (i=0; i<n; i++)
+        if ( strcmp(specialNXTaddrs[i],NXTaddr) == 0 )
+            return(1);
+    return(0);
+}
+
+uint32_t _get_NXTheight()
+{
+   cJSON *json;
+    uint32_t height = 0;
+    char cmd[256],*jsonstr;
+    sprintf(cmd,"requestType=getState");
+    if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            height = (int32_t)get_cJSON_int(json,"numberOfBlocks");
+            if ( height > 0 )
+                height--;
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(height);
+}
+
+uint64_t _add_pendingxfer(struct ramchain_info *ram,uint32_t height,int32_t removeflag,uint64_t txid)
+{
+    int32_t nonz,i = 0;
+    uint64_t pendingtxid = 0;
+    nonz = 0;
+    if ( ram->numpending > 0 )
+    {
+        for (i=0; i<ram->numpending; i++)
+        {
+            if ( removeflag == 0 )
+            {
+                if ( ram->pendingxfers[i] == 0 )
+                {
+                    ram->pendingxfers[i] = txid;
+                    break;
+                } else nonz++;
+            }
+            else if ( ram->pendingxfers[i] == txid )
+            {
+                printf("PENDING.(%llu) removed\n",(long long)txid);
+                ram->pendingxfers[i] = 0;
+                return(0);
+            }
+        }
+    }
+    if ( i == ram->numpending && txid != 0 && removeflag == 0 )
+    {
+        ram->pendingxfers = realloc(ram->pendingxfers,sizeof(*ram->pendingxfers) * (ram->numpending+1));
+        ram->pendingxfers[ram->numpending++] = txid;
+        printf("(%d) PENDING.(%llu) added\n",ram->numpending,(long long)txid);
+    }
+    if ( ram->numpending > 0 )
+    {
+        for (i=0; i<ram->numpending; i++)
+        {
+            if ( pendingtxid == 0 && ram->pendingxfers[i] != 0 )
+            {
+                pendingtxid = ram->pendingxfers[i];
+                break;
+            }
+        }
+    }
+    return(pendingtxid);
+}
+
+int32_t _ready_to_xferassets(struct ramchain_info *ram,uint64_t *txidp)
+{
+    // if fresh reboot, need to wait the xfer max duration + 1 block before running this
+    static int32_t firsttime,firstNXTblock;
+    *txidp = 0;
+    printf("(%d %d) lag.%ld %d\n",firsttime,firstNXTblock,time(NULL)-firsttime,_get_NXTheight()-firstNXTblock);
+    if ( ram->firsttime == 0 )
+        ram->firsttime = (uint32_t)time(NULL);
+    if ( ram->firstNXTblock <= 0 )
+        ram->firstNXTblock = _get_NXTheight();
+    if ( time(NULL) < (ram->firsttime + ram->DEPOSIT_XFER_DURATION*60) )
+        return(0);
+    if ( ram->firstNXTblock <= 0 || _get_NXTheight() < (ram->firstNXTblock + ram->DEPOSIT_XFER_DURATION) )
+        return(0);
+    if ( (*txidp= _add_pendingxfer(ram,0,0,0)) != 0 )
+    {
+        printf("waiting for pendingxfer\n");
+        return(0);
+    }
+    return(1);
+}
+
+uint64_t _calc_circulation(int32_t minconfirms,struct NXT_asset *ap,struct ramchain_info *ram)
+{
+    uint64_t quantity,circulation = 0;
+    char cmd[4096],acct[MAX_JSON_FIELD],*retstr = 0;
+    cJSON *json,*array,*item;
+    uint32_t i,n,height = 0;
+    if ( ap == 0 )
+        return(0);
+    if ( minconfirms != 0 )
+    {
+        ram->NXT_RTblocknum = _get_NXTheight();
+        height = ram->NXT_RTblocknum - ram->min_NXTconfirms;
+    }
+    sprintf(cmd,"requestType=getAssetAccounts&asset=%llu",(long long)ap->assetbits);
+    if ( height > 0 )
+        sprintf(cmd+strlen(cmd),"&height=%u",height);
+    if ( (retstr= _issue_NXTPOST(cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( (array= cJSON_GetObjectItem(json,"accountAssets")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    item = cJSON_GetArrayItem(array,i);
+                    copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
+                    if ( acct[0] == 0 )
+                        continue;
+                    if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,acct) == 0 && (quantity= get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"))) != 0 )
+                        circulation += quantity;
+                }
+            }
+            free_json(json);
+        }
+        free(retstr);
+    }
+    return(circulation * ap->mult);
+}
+
+char *_issue_getTransaction(char *txidstr)
+{
+    char cmd[4096];
+    sprintf(cmd,"requestType=getTransaction&transaction=%s",txidstr);
+    return(_issue_NXTPOST(cmd));
+}
+
+char *_unstringify(char *str)
+{
+    int32_t i,j,n;
+    if ( str == 0 )
+        return(0);
+    else if ( str[0] == 0 )
+        return(str);
+    n = (int32_t)strlen(str);
+    if ( str[0] == '"' && str[n-1] == '"' )
+        str[n-1] = 0, i = 1;
+    else i = 0;
+    for (j=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '\\' && (str[i+1] == 't' || str[i+1] == 'n' || str[i+1] == 'b' || str[i+1] == 'r') )
+            i++;
+        else if ( str[i] == '\\' && str[i+1] == '"' )
+            str[j++] = '"', i++;
+        else str[j++] = str[i];
+    }
+    str[j] = 0;
+    return(str);
+}
+
+int32_t _is_limbo_redeem(struct ramchain_info *ram,uint64_t redeemtxidbits)
+{
+    int32_t j;
+    if ( ram != 0 && ram->limboarray != 0 )
+    {
+        for (j=0; ram->limboarray[j]!=0; j++)
+            if ( redeemtxidbits == ram->limboarray[j] )
+                return(1);
+    }
+    return(0);
+}
+
+int32_t _ram_update_redeembits(struct ramchain_info *ram,uint64_t redeembits,uint64_t AMtxidbits)
+{
+    struct NXT_asset *ap = ram->ap;
+    int32_t i,n = 0,num = 0;
+    if ( ram == 0 )
+        return(0);
+    if ( ram->limboarray != 0 )
+        for (n=0; ram->limboarray[n]!=0; n++)
+            ;
+    ram->limboarray = realloc(ram->limboarray,sizeof(*ram->limboarray) * (n+2));
+    ram->limboarray[n++] = redeembits;
+    ram->limboarray[n] = 0;
+    num++;
+    //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+    printf("n.%d set AMtxidbits.%llu -> %s.(%llu)\n",n,(long long)AMtxidbits,ram->name,(long long)redeembits);
+    if ( ap->num > 0 )
+    {
+        for (i=0; i<ap->num; i++)
+            if ( ap->txids[i]->redeemtxid == redeembits )
+            {
+                ap->txids[i]->AMtxidbits = AMtxidbits;
+                num++;
+            }
+    }
+    return(num);
+}
+
+int32_t ram_update_redeembits(struct ramchain_info *ram,cJSON *argjson,uint64_t AMtxidbits)
+{
+    cJSON *array;
+    uint64_t redeembits;
+    int32_t i,n,num = 0;
+    char coinstr[1024],redeemtxid[1024];
+    if ( extract_cJSON_str(coinstr,sizeof(coinstr),argjson,"coin") <= 0 )
+        return(0);
+    if ( ram != 0 && strcmp(ram->name,coinstr) != 0 )
+        return(0);
+    array = cJSON_GetObjectItem(argjson,"redeems");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            copy_cJSON(redeemtxid,cJSON_GetArrayItem(array,i));
+            redeembits = _calc_nxt64bits(redeemtxid);
+            if ( redeemtxid[0] != 0 && _is_limbo_redeem(ram,redeembits) == 0 )
+                num += _ram_update_redeembits(ram,redeembits,AMtxidbits);
+        }
+    }
+    if ( extract_cJSON_str(redeemtxid,sizeof(redeemtxid),argjson,"redeemtxid") > 0 && _is_limbo_redeem(ram,_calc_nxt64bits(redeemtxid)) == 0 )
+        num += _ram_update_redeembits(ram,_calc_nxt64bits(redeemtxid),AMtxidbits);
+    return(num);
+}
+
+cJSON *_process_MGW_message(struct ramchain_info *ram,uint32_t height,int32_t funcid,cJSON *argjson,uint64_t itemid,uint64_t units,char *sender,char *receiver,char *txid)
+{
+    struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
+    void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid);
+    int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
+    uint64_t nxt64bits = _calc_nxt64bits(sender);
+    struct multisig_addr *msig;
+    // we can ignore height as the sender is validated or it is non-money get_coindeposit_address request
+    if ( argjson != 0 )
+    {
+        //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        //    fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        switch ( funcid )
+        {
+            case GET_COINDEPOSIT_ADDRESS:
+                // start address gen
+                //fprintf(stderr,"GENADDRESS: func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                update_coinacct_addresses(nxt64bits,argjson,txid);
+                break;
+            case BIND_DEPOSIT_ADDRESS:
+                if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,sender) != 0 || (msig= decode_msigjson(0,argjson,sender)) != 0 ) // strcmp(sender,receiver) == 0) &&
+                {
+                    if ( strcmp(msig->coinstr,ram->name) == 0 )
+                    {
+                        //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+                            fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s)\n",msig->coinstr,funcid,sender,receiver,txid);
+                        if ( update_msig_info(msig,1,sender) > 0 )
+                            fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s)\n",msig->coinstr,funcid,sender,receiver,txid);
+                    }
+                    free(msig);
+                } //else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
+                break;
+            //case DEPOSIT_CONFIRMED:
+                // need to mark cointxid with AMtxid to prevent confirmation process generating AM each time
+                /*if ( is_gateway_addr(sender) != 0 && (coinid= decode_depositconfirmed_json(argjson,txid)) >= 0 )
+                 {
+                 printf("deposit confirmed for coinid.%d %s\n",coinid,coinid_str(coinid));
+                 }*/
+                break;
+            case MONEY_SENT:
+                if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,sender) != 0 )
+                    ram_update_redeembits(ram,argjson,_calc_nxt64bits(txid));
+                break;
+            default: printf("funcid.(%c) not handled\n",funcid);
+        }
+    }
+    return(argjson);
+}
+
+cJSON *_parse_json_AM(struct json_AM *ap)
+{
+    char *jsontxt;
+    if ( ap->jsonflag != 0 )
+    {
+        jsontxt = (ap->jsonflag == 1) ? ap->U.jsonstr : 0;//decode_json(&ap->U.jsn,ap->jsonflag);
+        if ( jsontxt != 0 )
+        {
+            if ( jsontxt[0] == '"' && jsontxt[strlen(jsontxt)-1] == '"' )
+                _unstringify(jsontxt);
+            return(cJSON_Parse(jsontxt));
+        }
+    }
+    return(0);
+}
+
+void _process_AM_message(struct ramchain_info *ram,uint32_t height,struct json_AM *AM,char *sender,char *receiver,char *txid)
+{
+    cJSON *argjson;
+    if ( AM == 0 )
+        return;
+    if ( (argjson= _parse_json_AM(AM)) != 0 )
+    {
+        //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        //    fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+        if ( AM->funcid > 0 )
+            argjson = _process_MGW_message(ram,height,AM->funcid,argjson,0,0,sender,receiver,txid);
+        if ( argjson != 0 )
+            free_json(argjson);
+    }
+}
+struct NXT_assettxid *_set_assettxid(struct ramchain_info *ram,uint32_t height,char *redeemtxidstr,uint64_t senderbits,uint64_t receiverbits,uint32_t timestamp,char *commentstr,uint64_t quantity)
+{
+    uint64_t redeemtxid;
+    struct NXT_assettxid *tp;
+    int32_t createdflag;
+    struct NXT_asset *ap;
+    cJSON *json,*cointxidobj;
+    char sender[64],cointxid[512],coinstr[512];
+    if ( (ap= ram->ap) == 0 )
+        return(0);
+    redeemtxid = _calc_nxt64bits(redeemtxidstr);
+    tp = find_NXT_assettxid(&createdflag,ap,redeemtxidstr);
+    tp->assetbits = ap->assetbits;
+    if ( (tp->height= height) != 0 )
+        tp->numconfs = (ram->NXT_RTblocknum - height);
+    tp->redeemtxid = redeemtxid;
+    if ( timestamp > tp->timestamp )
+        tp->timestamp = timestamp;
+    tp->quantity = quantity;
+    tp->U.assetoshis = (quantity * ap->mult);
+    tp->receiverbits = receiverbits;
+    tp->senderbits = senderbits;
+    if ( commentstr != 0 && (tp->comment == 0 || strcmp(tp->comment,commentstr) != 0) && (json= cJSON_Parse(commentstr)) != 0 )
+    {
+        copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
+        if ( coinstr[0] == 0 )
+            strcpy(coinstr,ram->name);
+        if ( strcmp(coinstr,ram->name) == 0 )
+        {
+            if ( tp->comment != 0 )
+                free(tp->comment);
+            tp->comment = clonestr(commentstr);
+            stripwhite_ns(tp->comment,strlen(tp->comment));
+            tp->buyNXT = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"buyNXT"),0);
+            tp->coinblocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"coinblocknum"),0);
+            tp->cointxind = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"cointxind"),0);
+            tp->coinv = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"coinv"),0);
+            if ( (cointxidobj= cJSON_GetObjectItem(json,"cointxid")) != 0 )
+            {
+                copy_cJSON(cointxid,cointxidobj);
+                if ( cointxid[0] != 0 )
+                {
+                    if ( tp->cointxid != 0 && strcmp(tp->cointxid,cointxid) != 0 )
+                    {
+                        printf("cointxid conflict for redeemtxid.%llu: (%s) != (%s)\n",(long long)redeemtxid,tp->cointxid,cointxid);
+                        free(tp->cointxid);
+                    }
+                    tp->cointxid = clonestr(cointxid);
+                    expand_nxt64bits(sender,senderbits);
+                    if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,sender) != 0 && tp->sentNXT != tp->buyNXT )
+                    {
+                        //ram->boughtNXT -= tp->sentNXT;
+                        //ram->boughtNXT += tp->buyNXT;
+                        tp->sentNXT = tp->buyNXT;
+                        if ( ram->NXTfee_equiv != 0 && ram->txfee != 0 )
+                            tp->estNXT = (((double)ram->NXTfee_equiv / ram->txfee) * tp->U.assetoshis / SATOSHIDEN);
+                    }
+                }
+                if ( Debuglevel > 1 )
+                    printf("sender.%llu receiver.%llu got.(%llu) comment.(%s) cointxidstr.(%s) buyNXT.%d\n",(long long)senderbits,(long long)receiverbits,(long long)redeemtxid,tp->comment,cointxid,tp->buyNXT);
+            }
+            else
+            {
+                if ( Debuglevel > 1 )
+                    printf("%s txid.(%s) got comment.(%s) gotpossibleredeem.(%d.%d.%d) %.8f/%.8f NXTequiv %.8f -> redeemtxid.%llu\n",ap->name,redeemtxidstr,tp->comment!=0?tp->comment:"",tp->coinblocknum,tp->cointxind,tp->coinv,dstr(tp->quantity * ap->mult),dstr(tp->U.assetoshis),tp->estNXT,(long long)tp->redeemtxid);
+            }
+        } else printf("mismatched coin.%s vs (%s) for transfer.%llu (%s)\n",coinstr,ram->name,(long long)redeemtxid,commentstr);
+        free_json(json);
+    }
+    return(tp);
+}
+
+void _set_NXT_sender(char *sender,cJSON *txobj)
+{
+    cJSON *senderobj;
+    senderobj = cJSON_GetObjectItem(txobj,"sender");
+    if ( senderobj == 0 )
+        senderobj = cJSON_GetObjectItem(txobj,"accountId");
+    else if ( senderobj == 0 )
+        senderobj = cJSON_GetObjectItem(txobj,"account");
+    copy_cJSON(sender,senderobj);
+}
+
+uint32_t _process_NXTtransaction(int32_t confirmed,struct ramchain_info *ram,cJSON *txobj)
+{
+    char AMstr[4096],sender[128],receiver[128],assetidstr[128],txid[4096],comment[4096],*commentstr = 0;
+    cJSON *attachment,*message,*assetjson,*commentobj;
+    unsigned char buf[4096];
+    struct NXT_AMhdr *hdr;
+    struct NXT_asset *ap = ram->ap;
+    struct NXT_assettxid *tp;
+    uint64_t units;
+    uint32_t height = 0;
+    int32_t funcid,numconfs,timestamp=0;
+    int64_t type,subtype,n,assetoshis = 0;
+    if ( txobj != 0 )
+    {
+        hdr = 0;
+        sender[0] = receiver[0] = 0;
+        if ( confirmed != 0 )
+        {
+            height = (uint32_t)get_cJSON_int(txobj,"height");
+            if ( (numconfs= (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"confirmations"),0)) == 0 )
+                numconfs = (ram->NXT_RTblocknum - height);
+        } else numconfs = 0;
+        copy_cJSON(txid,cJSON_GetObjectItem(txobj,"transaction"));
+        type = get_cJSON_int(txobj,"type");
+        subtype = get_cJSON_int(txobj,"subtype");
+        timestamp = (int32_t)get_cJSON_int(txobj,"blockTimestamp");
+        _set_NXT_sender(sender,txobj);
+        copy_cJSON(receiver,cJSON_GetObjectItem(txobj,"recipient"));
+        attachment = cJSON_GetObjectItem(txobj,"attachment");
+        if ( attachment != 0 )
+        {
+            message = cJSON_GetObjectItem(attachment,"message");
+            assetjson = cJSON_GetObjectItem(attachment,"asset");
+            memset(comment,0,sizeof(comment));
+            if ( message != 0 && type == 1 )
+            {
+                copy_cJSON(AMstr,message);
+                //printf("txid.%s AM message.(%s).%ld\n",txid,AMstr,strlen(AMstr));
+                n = strlen(AMstr);
+                if ( is_hexstr(AMstr) != 0 )
+                {
+                    if ( (n&1) != 0 || n > 2000 )
+                        printf("warning: odd message len?? %ld\n",(long)n);
+                    decode_hex((void *)buf,(int32_t)(n>>1),AMstr);
+                    hdr = (struct NXT_AMhdr *)buf;
+                    _process_AM_message(ram,height,(void *)hdr,sender,receiver,txid);
+                }
+            }
+            else if ( assetjson != 0 && type == 2 && subtype == 1 )
+            {
+                commentobj = cJSON_GetObjectItem(attachment,"comment");
+                if ( commentobj == 0 )
+                    commentobj = message;
+                copy_cJSON(comment,commentobj);
+                if ( comment[0] != 0 )
+                    commentstr = clonestr(_unstringify(comment));
+                copy_cJSON(assetidstr,cJSON_GetObjectItem(attachment,"asset"));
+                if ( assetidstr[0] != 0 && ap->assetbits == _calc_nxt64bits(assetidstr) )
+                {
+                    assetoshis = get_cJSON_int(attachment,"quantityQNT");
+                    tp = _set_assettxid(ram,height,txid,_calc_nxt64bits(sender),_calc_nxt64bits(receiver),timestamp,commentstr,assetoshis);
+                    if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,sender) != 0  )
+                        _add_pendingxfer(ram,height,1,tp->redeemtxid);
+                }
+            }
+            else
+            {
+                /*"attachment": {
+                 "version.Message": 1,
+                 "currency": "5775213290661997199",
+                 "messageIsText": true,
+                 "version.CurrencyTransfer": 1,
+                 "units": "1",
+                 "message": "{\"test\":\"parameters\"}"
+                 },*/
+                copy_cJSON(comment,message);
+                _unstringify(comment);
+                commentobj = comment[0] != 0 ? cJSON_Parse(comment) : 0;
+                if ( type == 5 && subtype == 3 )
+                {
+                    copy_cJSON(assetidstr,cJSON_GetObjectItem(attachment,"currency"));
+                    units = get_API_int(cJSON_GetObjectItem(attachment,"units"),0);
+                    funcid = (int32_t)get_API_int(cJSON_GetObjectItem(commentobj,"funcid"),-1);
+                    if ( funcid >= 0 && (commentobj= _process_MGW_message(ram,height,funcid,commentobj,_calc_nxt64bits(assetidstr),units,sender,receiver,txid)) != 0 )
+                        free_json(commentobj);
+                }
+            }
+        }
+    }
+    else printf("unexpected error iterating timestamp.(%d) txid.(%s)\n",timestamp,txid);
+    //fprintf(stderr,"finish type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
+    return(height);
+}
+
+uint32_t _update_ramMGW(struct ramchain_info *ram,uint32_t mostrecent)
+{
+    cJSON *redemptions=0,*transfers,*array,*json,**txlist = 0;
+    char cmd[1024],txid[512],*jsonstr,*txidjsonstr;
+    struct NXT_asset *ap;
+    uint32_t i,n,maxredemptions=0,numtx=0,height;
+    while ( (ap= ram->ap) == 0 )
+        sleep(1);
+    i = _get_NXTheight();
+    if ( i != ram->NXT_RTblocknum )
+    {
+        ram->NXT_RTblocknum = i;
+        printf("NEW NXTblocknum.%d when mostrecent.%d\n",i,mostrecent);
+    }
+    if ( mostrecent > 0 )
+    {
+        while ( mostrecent <= ram->NXT_RTblocknum )
+        {
+            sprintf(cmd,"requestType=getBlock&height=%u&includeTransactions=true",mostrecent);
+            if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
+            {
+                printf("getBlock.%d (%s)\n",mostrecent,jsonstr);
+                if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                {
+                    if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                    {
+                        for (i=0; i<n; i++)
+                            _process_NXTtransaction(1,ram,cJSON_GetArrayItem(array,i));
+                    }
+                    free_json(json);
+                }
+                free(jsonstr);
+            }
+            mostrecent++;
+        }
+        sprintf(cmd,"requestType=getUnconfirmedTransactions");
+        if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
+        {
+            printf("getUnconfirmedTransactions.%d (%s)\n",mostrecent,jsonstr);
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( (array= cJSON_GetObjectItem(json,"unconfirmedTransactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (i=0; i<n; i++)
+                        _process_NXTtransaction(0,ram,cJSON_GetArrayItem(array,i));
+                }
+                free_json(json);
+            }
+            free(jsonstr);
+        }
+    }
+    else
+    {
+        sprintf(cmd,"requestType=getAccountTransactions&account=%s",ram->MGWredemption);
+        if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
+        {
+            redemptions = cJSON_Parse(jsonstr);
+            if ( redemptions != 0 && (array= cJSON_GetObjectItem(redemptions,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                maxredemptions = n;
+                txlist = calloc(n,sizeof(*txlist));
+                for (i=0; i<n; i++)
+                    txlist[i] = cJSON_GetArrayItem(array,i);
+            }
+            free(jsonstr);
+        }
+        sprintf(cmd,"requestType=getAssetTransfers&asset=%llu",(long long)ap->assetbits);
+        if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
+        {
+            if ( (transfers = cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( (array= cJSON_GetObjectItem(transfers,"transfers")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    numtx = n + maxredemptions;
+                    txlist = realloc(txlist,numtx * sizeof(*txlist));
+                    for (i=0; i<n; i++)
+                    {
+                        copy_cJSON(txid,cJSON_GetObjectItem(cJSON_GetArrayItem(array,i),"assetTransfer"));
+                        if ( txid[0] != 0 && (txidjsonstr= _issue_getTransaction(txid)) != 0 )
+                        {
+                            txlist[maxredemptions+i] = cJSON_Parse(txidjsonstr);
+                            free(txidjsonstr);
+                        }
+                    }
+                }
+                free_json(transfers);
+            }
+            free(jsonstr);
+        }
+        if ( txlist != 0 )
+        {
+            for (i=0; i<numtx; i++)
+            {
+                if ( txlist[i] != 0 && (height = _process_NXTtransaction(1,ram,txlist[i])) != 0 && height > mostrecent )
+                    mostrecent = height;
+                if ( i >= maxredemptions && txlist[i] != 0 )
+                    free_json(txlist[i]);
+            }
+            free(txlist);
+        }
+        if ( redemptions != 0 )
+            free_json(redemptions);
+    }
+    ram->circulation = _calc_circulation(0,ram->ap,ram);
+    printf("circulation %.8f mostrecent.%d numtx.%d maxredemptions.%d transfers.%d\n",dstr(ram->circulation),mostrecent,numtx,maxredemptions,(numtx - maxredemptions));
+    return(mostrecent);
+}
+
+/*char *_wait_for_pendingtxid(struct ramchain_info *ram,char *refNXTaddr,uint64_t pendingtxid)
+{
+    char txidstr[64],sender[64],retbuf[1024],*retstr;
+    cJSON *json;
+    uint64_t val;
+    expand_nxt64bits(txidstr,pendingtxid);
+    sprintf(retbuf,"{\"result\":\"pendingtxid\",\"waitingfor\":\"%llu\"}",(long long)pendingtxid);
+    if ( (retstr= _issue_getTransaction(txidstr)) != 0 )
+    {
+        if ( (json= cJSON_Parse(retstr)) != 0 )
+        {
+            if ( (val= _process_NXTtransaction(ram,json,sender)) != 0 )
+                sprintf(retbuf,"{\"result\":\"pendingtxid\",\"processed\":\"%llu\"}",(long long)val);
+            free_json(json);
+        }
+        free(retstr);
+    }
+    return(clonestr(retbuf));
+}*/
 
 // >>>>>>>>>>>>>>  start bitstream functions
 static uint8_t huffmasks[8] = { (1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1<<5), (1<<6), (1<<7) };
@@ -1513,7 +2518,7 @@ void hpurge(HUFF *hps[],int32_t num)
 
 HUFF *hopen(char *coinstr,struct alloc_space *mem,uint8_t *bits,int32_t num,int32_t allocated)
 {
-    HUFF *hp = permalloc(coinstr,mem,sizeof(*hp),1);
+    HUFF *hp = (MAP_HUFF != 0) ? permalloc(coinstr,mem,sizeof(*hp),1) : calloc(1,sizeof(*hp));
     hp->ptr = hp->buf = bits;
     hp->allocsize = num;
     hp->endpos = (num << 3);
@@ -1608,14 +2613,15 @@ HUFF *hload(struct ramchain_info *ram,long *offsetp,FILE *fp,char *fname)
     if ( hload_varint(&endbitpos,fp) > 0 )
     {
         len = hconv_bitlen(endbitpos);
-        buf = permalloc(ram->name,&ram->Perm,len,2);
         if ( offsetp != 0 )
+        {
             *offsetp = ftell(fp);
+            buf = ram->tmphp->buf;
+        }
+        else buf = permalloc(ram->name,&ram->Perm,len,2);
         if ( fread(buf,1,len,fp) != len )
-            free(buf);
+            fprintf(stderr,"HLOAD error (%s) endbitpos.%d len.%d | fpos.%ld\n",fname!=0?fname:ram->name,(int)endbitpos,len,ftell(fp));
         else hp = hopen(ram->name,&ram->Perm,buf,len,0), hp->endpos = (int32_t)endbitpos;
-        //fseek(fp,0,SEEK_END);
-        //printf("HLOAD endbitpos.%d len.%d | fpos.%ld\n",(int)endbitpos,len,ftell(fp));
     }
     if ( flag != 0 && fp != 0 )
         fclose(fp);
@@ -2771,6 +3777,25 @@ void *ram_gethashdata(struct ramchain_info *ram,char type,uint32_t rawind)
     return(0);
 }
 
+int32_t ram_script_multisig(struct ramchain_info *ram,uint32_t scriptind)
+{
+    char *hex;
+    if ( (hex= ram_gethashdata(ram,'s',scriptind)) != 0 && hex[1] == 'm' )
+    {
+        printf("(%02x %02x %02x (%c)) ",hex[0],hex[1],hex[2],hex[1]);
+        return(1);
+    }
+    return(0);
+}
+
+int32_t ram_script_nonstandard(struct ramchain_info *ram,uint32_t scriptind)
+{
+    char *hex;
+    if ( (hex= ram_gethashdata(ram,'s',scriptind)) != 0 && hex[2] != 'm' && hex[2] != 's' )
+        return(1);
+    return(0);
+}
+
 struct rampayload *ram_gethashpayloads(struct ramchain_info *ram,char type,uint32_t rawind)
 {
     struct ramchain_hashptr *ptr;
@@ -2800,8 +3825,8 @@ struct ramchain_hashptr *ram_hashdata_search(char *coinstr,struct alloc_space *m
                     exit(-1);
                 }
             }
-            ptr = permalloc(coinstr,mem,sizeof(*ptr),3);
-            newptr = permalloc(coinstr,mem,datalen,4);
+            ptr = (MAP_HUFF != 0) ? permalloc(coinstr,mem,sizeof(*ptr),3) : calloc(1,sizeof(*ptr));
+            newptr = (MAP_HUFF != 0) ? permalloc(coinstr,mem,datalen,4) : calloc(1,datalen);
             memcpy(newptr,hashdata,datalen);
             //*createdflagp = 1;
             if ( 0 )
@@ -2882,7 +3907,7 @@ struct address_entry *ram_address_entry(struct address_entry *destbp,struct ramc
     {
         if ( vout < payloads[0].B.v )
         {
-            *destbp = payloads[vout+1].B;
+            *destbp = payloads[vout].B;
             return(destbp);
         }
     }
@@ -3000,13 +4025,15 @@ cJSON *ram_rawblock_json(struct rawblock *raw,int32_t allocsize)
     return(json);
 }*/
 
+#define ram_rawtx(raw,txind) (((txind) < (raw)->numtx) ? &(raw)->txspace[txind] : 0)
+
 struct rawvout *ram_rawvout(struct rawblock *raw,int32_t txind,int32_t v)
 {
     struct rawtx *tx;
     if ( txind < raw->numtx )
     {
-        tx = &raw->txspace[txind];
-        return(&raw->voutspace[tx->firstvout + v]);
+        if ( (tx= ram_rawtx(raw,txind)) != 0 )
+            return(&raw->voutspace[tx->firstvout + v]);
     }
     return(0);
 }
@@ -3016,8 +4043,8 @@ struct rawvin *ram_rawvin(struct rawblock *raw,int32_t txind,int32_t v)
     struct rawtx *tx;
     if ( txind < raw->numtx )
     {
-        tx = &raw->txspace[txind];
-        return(&raw->vinspace[tx->firstvin + v]);
+        if ( (tx= ram_rawtx(raw,txind)) != 0 )
+            return(&raw->vinspace[tx->firstvin + v]);
     }
     return(0);
 }
@@ -4003,118 +5030,6 @@ HUFF *ram_getblock(struct ramchain_info *ram,uint32_t blocknum)
     return(0);
 }
 
-char *ram_script_json(struct ramchain_info *ram,uint32_t rawind)
-{
-    char hashstr[8193],retbuf[1024],*str;
-    if ( (str= ram_script(hashstr,ram,rawind)) != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"%u\",\"script\":\"%s\"}",rawind,str);
-        return(clonestr(retbuf));
-    }
-    return(clonestr("{\"error\":\"no script info\"}"));
-}
-
-char *ram_addr_json(struct ramchain_info *ram,uint32_t rawind)
-{
-    char hashstr[8193],retbuf[1024],*str;
-    if ( (str= ram_addr(hashstr,ram,rawind)) != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"%u\",\"addr\":\"%s\"}",rawind,str);
-        return(clonestr(retbuf));
-    }
-    return(clonestr("{\"error\":\"no addr info\"}"));
-}
-
-char *ram_txid_json(struct ramchain_info *ram,uint32_t rawind)
-{
-    cJSON *json = cJSON_CreateObject();
-    char hashstr[8193],*txidstr,*retstr;
-    if ( (txidstr= ram_txid(hashstr,ram,rawind)) != 0 )
-    {
-        cJSON_AddItemToObject(json,"result",cJSON_CreateNumber(rawind));
-        cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txidstr));
-        retstr = cJSON_Print(json);
-        free_json(json);
-        return(retstr);
-    }
-    return(clonestr("{\"error\":\"no txid info\"}"));
-}
-
-char *ram_addrind_json(struct ramchain_info *ram,char *str)
-{
-    char retbuf[1024];
-    uint32_t rawind;
-    if ( (rawind= ram_addrind_RO(ram,str)) != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"%s\",\"rawind\":\"%u\"}",str,rawind);
-        return(clonestr(retbuf));
-    }
-    return(clonestr("{\"error\":\"no addr info\"}"));
-}
-
-char *ram_txidind_json(struct ramchain_info *ram,char *str)
-{
-    char retbuf[1024];
-    uint32_t rawind;
-    if ( (rawind= ram_txidind_RO(ram,str)) != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"%s\",\"rawind\":\"%u\"}",str,rawind);
-        return(clonestr(retbuf));
-    }
-    return(clonestr("{\"error\":\"no txid info\"}"));
-}
-
-char *ram_scriptind_json(struct ramchain_info *ram,char *str)
-{
-    char retbuf[1024];
-    uint32_t rawind;
-    if ( (rawind= ram_scriptind_RO(ram,str)) != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"%s\",\"rawind\":\"%u\"}",str,rawind);
-        return(clonestr(retbuf));
-    }
-    return(clonestr("{\"error\":\"no script info\"}"));
-}
-
-void ram_setdispstr(char *buf,struct ramchain_info *ram,double startmilli)
-{
-    double estimatedV,estimatedB,estsizeV,estsizeB;
-    estimatedV = estimate_completion(ram->name,startmilli,ram->Vblocks.processed,(int32_t)ram->RTblocknum-ram->Vblocks.blocknum)/60000;
-    estimatedB = estimate_completion(ram->name,startmilli,ram->Bblocks.processed,(int32_t)ram->RTblocknum-ram->Bblocks.blocknum)/60000;
-    if ( ram->Vblocks.count != 0 )
-        estsizeV = (ram->Vblocks.sum / ram->Vblocks.count) * ram->RTblocknum;
-    if ( ram->Bblocks.count != 0 )
-        estsizeB = (ram->Bblocks.sum / ram->Bblocks.count) * ram->RTblocknum;
-    sprintf(buf,"%-5s: RT.%d nonz.%d V.%d B.%d B64.%d B4096.%d | %s %s R%.2f | minutes: V%.1f B%.1f | outputs.%llu %.8f spends.%llu %.8f -> balance: %llu %.8f ave %.8f",ram->name,ram->RTblocknum,ram->nonzblocks,ram->Vblocks.blocknum,ram->Bblocks.blocknum,ram->blocks64.blocknum,ram->blocks4096.blocknum,_mbstr(estsizeV),_mbstr2(estsizeB),estsizeV/(estsizeB+1),estimatedV,estimatedB,(long long)ram->numoutputs,dstr(ram->totaloutputs),(long long)ram->numspends,dstr(ram->totalspends),(long long)(ram->numoutputs - ram->numspends),dstr(ram->totaloutputs - ram->totalspends),dstr(ram->totaloutputs - ram->totalspends)/(ram->numoutputs - ram->numspends));
-}
-
-cJSON *ram_address_entry_json(struct address_entry *bp)
-{
-    cJSON *array = cJSON_CreateArray();
-    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->blocknum));
-    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->txind));
-    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->v));
-    return(array);
-}
-
-cJSON *ram_addrpayload_json(struct ramchain_info *ram,struct rampayload *payload)
-{
-    char txidstr[8192];
-    ram_txid(txidstr,ram,payload->otherind);
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txidstr));
-    cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(payload->B.v));
-    cJSON_AddItemToObject(json,"value",cJSON_CreateNumber(dstr(payload->value)));
-    cJSON_AddItemToObject(json,"txid_rawind",cJSON_CreateNumber(payload->otherind));
-    cJSON_AddItemToObject(json,"txout",ram_address_entry_json(&payload->B));
-    if ( payload->B.isinternal != 0 )
-        cJSON_AddItemToObject(json,"MGWinternal",cJSON_CreateNumber(1));
-    if ( payload->B.spent != 0 )
-        cJSON_AddItemToObject(json,"spent",ram_address_entry_json(&payload->spentB));
-    cJSON_AddItemToObject(json,"scriptind",cJSON_CreateNumber(payload->extra));
-    return(json);
-}
-
 HUFF *ram_verify_Vblock(struct ramchain_info *ram,uint32_t blocknum,HUFF *hp)
 {
     int32_t datalen,err;
@@ -4238,21 +5153,20 @@ long *ram_load_bitstreams(struct ramchain_info *ram,bits256 *sha,char *fname,HUF
     if ( (fp= fopen(fname,"rb")) != 0 )
     {
         memset(sha,0,sizeof(*sha));
-        //printf("loading %s\n",fname);
+        //fprintf(stderr,"loading %s\n",fname);
         if ( fread(&x,1,sizeof(x),fp) == sizeof(x) && ((*nump) == 0 || x == (*nump)) )
         {
             if ( (*nump) == 0 )
             {
                 (*nump) = x;
-                printf("set num to %d\n",x);
+                //printf("set num to %d\n",x);
             }
             offsets = calloc((*nump),sizeof(*offsets));
             if ( fread(&stored,1,sizeof(stored),fp) == sizeof(stored) )
             {
+                //fprintf(stderr,"reading %s num.%d stored.%llx\n",fname,*nump,(long long)stored.txid);
                 for (i=0; i<(*nump); i++)
                 {
-                    //if ( bitstreams[i] != 0 )
-                    //    hclose(bitstreams[i]);
                     if ( (bitstreams[i]= hload(ram,&offsets[i],fp,0)) != 0 && bitstreams[i]->buf != 0 )
                         calc_sha256cat(tmp.bytes,sha->bytes,sizeof(*sha),bitstreams[i]->buf,bitstreams[i]->allocsize), *sha = tmp;
                     else printf("unexpected null bitstream at %d %p offset.%ld\n",i,bitstreams[i],offsets[i]);
@@ -4262,8 +5176,10 @@ long *ram_load_bitstreams(struct ramchain_info *ram,bits256 *sha,char *fname,HUF
             } else printf("error loading sha\n");
         } else printf("num mismatch %d != num.%d\n",x,(*nump));
         len = (int32_t)ftell(fp);
+        //fprintf(stderr," len.%d ",len);
         fclose(fp);
     }
+    //fprintf(stderr," return offsets.%p \n",offsets);
     return(offsets);
 }
 
@@ -4276,57 +5192,59 @@ int32_t ram_map_bitstreams(int32_t verifyflag,struct ramchain_info *ram,int32_t 
     retval = n = 0;
     if ( (offsets= ram_load_bitstreams(ram,sha,fname,blocks,&num)) != 0 )
     {
+       // fprintf(stderr,"offset.%p num.%d refsha.%p sha.%p M.%p\n",offsets,num,refsha,sha,M);
         if ( refsha != 0 && memcmp(sha->bytes,refsha,sizeof(*sha)) != 0 )
         {
-            printf("refsha cmp error for %s %llx vs %llx\n",fname,(long long)sha->txid,(long long)refsha->txid);
+            fprintf(stderr,"refsha cmp error for %s %llx vs %llx\n",fname,(long long)sha->txid,(long long)refsha->txid);
             hpurge(blocks,num);
             free(offsets);
             return(0);
         }
-        //if ( M->fileptr != 0 )
-        //    close_mappedptr(M);
+        //fprintf(stderr,"about clear M\n");
+        if ( M->fileptr != 0 )
+            close_mappedptr(M);
         memset(M,0,sizeof(*M));
+        //fprintf(stderr,"about to init_mappedptr\n");
         if ( init_mappedptr(0,M,0,rwflag,fname) != 0 )
         {
+            //fprintf(stderr,"opened (%s) filesize.%lld\n",fname,(long long)M->allocsize);
             for (i=0; i<num; i++)
             {
-                if ( i > 0 && (i % 4096) == 4095 )
+                if ( i > 0 && (i % 4096) == 0 )
                     fprintf(stderr,"%.1f%% ",100.*(double)i/num);
                 if ( (hp= blocks[i]) != 0 )
                 {
-                    if ( (blocks[i]= hopen(ram->name,&ram->Perm,(void *)((long)M->fileptr + offsets[i]),hp->allocsize,0)) != 0 )
+                    hp->buf = (void *)((long)M->fileptr + offsets[i]);
+                    //if ( (blocks[i]= hopen(ram->name,&ram->Perm,(void *)((long)M->fileptr + offsets[i]),hp->allocsize,0)) != 0 )
                     {
-                        if ( verifyflag == 0 || (checkblock= ram_verify(ram,blocks[i],'B')) == blocknum+i )
-                        {
+                        if ( verifyflag == 0 || (checkblock= ram_verify(ram,hp,'B')) == blocknum+i )
                             verified++;
-                            hclose(hp);
-                        }
                         else
                         {
                             printf("checkblock.%d vs %d (blocknum.%d + i.%d)\n",checkblock,blocknum+i,blocknum,i);
                             break;
                         }
-                    } else blocks[i] = hp;
+                    }
                 } else printf("ram_map_bitstreams: ram_map_bitstreams unexpected null hp at slot.%d\n",i);
             }
             if ( i == num )
             {
                 retval = (int32_t)M->allocsize;
+                //printf("loaded.%d from %d\n",num,blocknum);
                 for (i=0; i<num; i++)
                     if ( (hp= blocks[i]) != 0 && ram->blocks.hps[blocknum+i] == 0 )
                         ram->blocks.hps[blocknum+i] = hp, n++;
             }
             else
             {
+                printf("%s: only %d of %d blocks verified\n",fname,verified,num);
                 for (i=0; i<num; i++)
                     if ( (hp= blocks[i]) != 0 )
                         hclose(hp), blocks[i] = 0;
                 close_mappedptr(M);
                 memset(M,0,sizeof(*M));
                 delete_file(fname,0);
-                printf("%s: only %d of %d blocks verified\n",fname,verified,num);
             }
-            //close_mappedptr(&M);
         } else printf("Error mapping.(%s)\n",fname);
         free(offsets);
     }
@@ -4351,13 +5269,18 @@ uint32_t ram_load_blocks(struct ramchain_info *ram,struct mappedblocks *blocks,u
 {
     HUFF **hps;
     bits256 sha;
+    struct mappedptr *M;
     char fname[1024],formatstr[16];
     uint32_t blocknum,i,flag,incr,n = 0;
+#ifdef RAM_GENMODE
+    printf("ram_load_blocks not supported in RAM_GENMODE\n");
+    exit(-1);
+#endif
     incr = (1 << blocks->shift);
+    M = &blocks->M[0];
     ram_setformatstr(formatstr,blocks->format);
     flag = blocks->format == 'B';
-    firstblock &= ~(incr - 1);
-    for (i=0; i<numblocks; i+=incr)
+    for (i=0; i<numblocks; i+=incr,M++)
     {
         blocknum = (firstblock + i);
         ram_setfname(fname,ram,blocknum,formatstr);
@@ -4366,26 +5289,15 @@ uint32_t ram_load_blocks(struct ramchain_info *ram,struct mappedblocks *blocks,u
         {
             if ( blocks->format == 64 || blocks->format == 4096 )
             {
-                if ( ram_map_bitstreams(flag,ram,blocknum,&blocks->M[blocknum >> blocks->shift],&sha,hps,incr,fname,0) <= 0 )
+                if ( ram_map_bitstreams(flag,ram,blocknum,M,&sha,hps,incr,fname,0) <= 0 )
                 {
                     //break;
                 }
             }
             else
             {
-//#ifdef RAM_GENMODE
-//              if ( (*hps= hload(&ram->Tmp,0,0,fname)) != 0 )
-//#else
                 if ( (*hps= hload(ram,0,0,fname)) != 0 )
-//#endif
                 {
-#ifdef RAM_GENMODE
-                    if ( (*hps)->allocsize < 12 )
-                        delete_file(fname,0);
-                    else n++;
-                    hclose(*hps);
-                    ram_clear_alloc_space(&ram->Tmp);
-#else
                     if ( flag == 0 || ram_verify(ram,*hps,blocks->format) == blocknum )
                     {
                         //if ( flag != 0 )
@@ -4395,7 +5307,6 @@ uint32_t ram_load_blocks(struct ramchain_info *ram,struct mappedblocks *blocks,u
                             ram->blocks.hps[blocknum] = *hps;
                     }
                     else hclose(*hps), *hps = 0;
-#endif
                     if ( (n % 100) == 0 )
                         fprintf(stderr," total.%d loaded.(%s)\n",n,fname);
                 } //else break;
@@ -4477,7 +5388,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                     {
                         datalen = (1 + hp->allocsize);
                         //if ( blocks->format == 'V' )
-                            fprintf(stderr," %s CREATED.%c block.%d datalen.%d\n",ram->name,blocks->format,blocknum,datalen+1);
+                            fprintf(stderr," %s CREATED.%c block.%d datalen.%d | RT.%u lag.%d\n",ram->name,blocks->format,blocknum,datalen+1,ram->RTblocknum,ram->RTblocknum-blocknum);
                         //else fprintf(stderr,"%s.B.%d ",ram->name,blocknum);
                         if ( *hpptr != 0 )
                         {
@@ -4508,7 +5419,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
             ram_setfname(fname,ram,blocknum,formatstr);
             hps = ram_get_hpptr(blocks,blocknum);
             if ( ram_save_bitstreams(&refsha,fname,prevhps,n) > 0 )
-                numblocks = ram_map_bitstreams(verifyflag,ram,blocknum,&blocks->M[blocknum >> blocks->shift],&sha,hps,n,fname,&refsha);
+                numblocks = ram_map_bitstreams(verifyflag,ram,blocknum,&blocks->M[(blocknum-blocks->firstblock) >> blocks->shift],&sha,hps,n,fname,&refsha);
         } else printf("%s prev.%d missing blockptr at %d\n",ram->name,prevblocks->format,blocknum+i);
     }
     else
@@ -4556,7 +5467,7 @@ uint32_t ram_load_blockcheck(FILE *fp)
     return(blocknum);
 }
 
-int32_t ram_init_hashtable(uint32_t *blocknump,struct ramchain_info *ram,char type)
+int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchain_info *ram,char type)
 {
     long offset,len,fileptr;
     uint64_t datalen;
@@ -4566,12 +5477,14 @@ int32_t ram_init_hashtable(uint32_t *blocknump,struct ramchain_info *ram,char ty
     struct ramchain_hashtable *hash;
     struct ramchain_hashptr *hp;
     hash = ram_gethash(ram,type);
+    if ( deletefile != 0 )
+        memset(hash,0,sizeof(*hash));
     strcpy(hash->coinstr,ram->name);
     hash->type = type;
     ram_sethashname(fname,hash,0);
     num = 0;
     printf("inithashtable.(%s.%d) -> [%s]\n",ram->name,type,fname);
-    if ( (hash->newfp= fopen(fname,"rb+")) != 0 )
+    if ( deletefile == 0 && (hash->newfp= fopen(fname,"rb+")) != 0 )
     {
         if ( init_mappedptr(0,&hash->M,0,rwflag,fname) == 0 )
             return(1);
@@ -4596,7 +5509,7 @@ int32_t ram_init_hashtable(uint32_t *blocknump,struct ramchain_info *ram,char ty
                 printf("corrupted hashtable %s: offset.%ld\n",fname,offset);
                 exit(-1);
             }
-            hp = permalloc(ram->name,&ram->Perm,sizeof(*hp),6);
+            hp = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,sizeof(*hp),6) : calloc(1,sizeof(*hp));
             ram_addhash(hash,hp,hashdata,(int32_t)(varsize+datalen));
             offset += (varsize + datalen);
             fseek(hash->newfp,offset,SEEK_SET);
@@ -4632,6 +5545,18 @@ void ram_init_directories(struct ramchain_info *ram)
         for (j=0; j<64&&blocknum+64<=ram->maxblock; j++,blocknum+=64)
              ram_setdirC(1,dirC,ram,blocknum);
     }
+}
+
+void ram_setdispstr(char *buf,struct ramchain_info *ram,double startmilli)
+{
+    double estimatedV,estimatedB,estsizeV,estsizeB;
+    estimatedV = estimate_completion(ram->name,startmilli,ram->Vblocks.processed,(int32_t)ram->RTblocknum-ram->Vblocks.blocknum)/60000;
+    estimatedB = estimate_completion(ram->name,startmilli,ram->Bblocks.processed,(int32_t)ram->RTblocknum-ram->Bblocks.blocknum)/60000;
+    if ( ram->Vblocks.count != 0 )
+        estsizeV = (ram->Vblocks.sum / ram->Vblocks.count) * ram->RTblocknum;
+    if ( ram->Bblocks.count != 0 )
+        estsizeB = (ram->Bblocks.sum / ram->Bblocks.count) * ram->RTblocknum;
+    sprintf(buf,"%-5s: RT.%d nonz.%d V.%d B.%d B64.%d B4096.%d | %s %s R%.2f | minutes: V%.1f B%.1f | outputs.%llu %.8f spends.%llu %.8f -> balance: %llu %.8f ave %.8f",ram->name,ram->RTblocknum,ram->nonzblocks,ram->Vblocks.blocknum,ram->Bblocks.blocknum,ram->blocks64.blocknum,ram->blocks4096.blocknum,_mbstr(estsizeV),_mbstr2(estsizeB),estsizeV/(estsizeB+1),estimatedV,estimatedB,(long long)ram->numoutputs,dstr(ram->totaloutputs),(long long)ram->numspends,dstr(ram->totalspends),(long long)(ram->numoutputs - ram->numspends),dstr(ram->totaloutputs - ram->totalspends),dstr(ram->totaloutputs - ram->totalspends)/(ram->numoutputs - ram->numspends));
 }
 
 void ram_disp_status(struct ramchain_info *ram)
@@ -4702,7 +5627,7 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *addr_rawindp,struct rampayload
     struct ramchain_hashptr *addrptr;
     struct rawvout_huffs *pair;
     uint32_t scriptind,addrind;
-    char *str;
+    char *str,coinaddr[1024];
     uint64_t value;
     int32_t numbits = 0;
     *addr_rawindp = 0;
@@ -4752,6 +5677,12 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *addr_rawindp,struct rampayload
                     memset(&payload,0,sizeof(payload));
                     payload.B.blocknum = blocknum, payload.B.txind = txind, payload.B.v = vout, payload.B.isinternal = isinternal;
                     payload.otherind = txid_rawind, payload.extra = scriptind, payload.value = value;
+                    //if ( ram_script_nonstandard(ram,scriptind) != 0 )
+                    //    addrptr->nonstandard = 1;
+                    //if ( ram_script_multisig(ram,scriptind) != 0 )
+                    //    addrptr->multisig = 1;
+                    if ( ram_addr(coinaddr,ram,addrind) != 0 && coinaddr[0] == ram->multisigchar )
+                        addrptr->multisig = 1;
                     ram_addunspent(ram,txpayload,addrptr,&payload,addrind,addrptr->numpayloads);
                     addrptr->payloads[addrptr->numpayloads++] = payload;
                 }
@@ -4793,16 +5724,23 @@ int32_t ram_rawvin_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32
         if ( (txptr= table->ptrs[txid_rawind]) != 0 && txptr->payloads != 0 )
         {
             memset(&B,0,sizeof(B)), B.blocknum = blocknum, B.txind = txind, B.v = vin, B.spent = 1;
-            if ( (vout+1) < txptr->numpayloads )
+            if ( vout < txptr->numpayloads )
             {
                 if ( iter <= 2 )
                 {
-                    bp = &txptr->payloads[vout + 1].spentB;
+                    bp = &txptr->payloads[vout].spentB;
                     if ( memcmp(bp,&zeroB,sizeof(zeroB)) == 0 )
-                        ram_markspent(ram,&txptr->payloads[vout + 1],&B,txid_rawind);
+                        ram_markspent(ram,&txptr->payloads[vout],&B,txid_rawind);
                     else if ( memcmp(bp,&B,sizeof(B)) == 0 )
                         printf("duplicate spentB (%d %d %d)\n",B.blocknum,B.txind,B.v);
-                    else printf("interloper! (%d %d %d).%d vs (%d %d %d).%d\n",bp->blocknum,bp->txind,bp->v,bp->spent,B.blocknum,B.txind,B.v,B.spent);
+                    else
+                    {
+                        printf("interloper at (blocknum.%d txind.%d vin.%d)! (%d %d %d).%d vs (%d %d %d).%d >>>>>>> delete? <<<<<<<<\n",blocknum,txind,vin,bp->blocknum,bp->txind,bp->v,bp->spent,B.blocknum,B.txind,B.v,B.spent);
+                        //if ( getchar() == 'y' )
+                        ram_purge_badblock(ram,bp->blocknum);
+                        ram_purge_badblock(ram,blocknum);
+                        exit(-1);
+                    }
                 }
                 return(numbits);
             } else printf("(%d %d %d) vout.%d overflows bp->v.%d\n",blocknum,txind,vin,vout,B.v);
@@ -4850,11 +5788,12 @@ int32_t ram_rawtx_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_
                 }
                 else
                 {
-                    payload.B.blocknum = blocknum, payload.B.txind = txind, payload.B.v = numvouts;
-                    txptr->numpayloads = (numvouts + 1);
+                    payload.B.blocknum = blocknum, payload.B.txind = txind;
+                    txptr->numpayloads = numvouts;
                     //printf("%p txid_rawind.%d maxpayloads.%d numpayloads.%d (%d %d %d)\n",txptr,txid_rawind,txptr->maxpayloads,txptr->numpayloads,blocknum,txind,numvouts);
-                    txptr->payloads = (struct rampayload *)permalloc(ram->name,&ram->Perm,txptr->numpayloads * sizeof(*txptr->payloads),7);
-                    txptr->payloads[0] = payload;
+                    txptr->payloads = (MAP_HUFF != 0) ? (struct rampayload *)permalloc(ram->name,&ram->Perm,txptr->numpayloads * sizeof(*txptr->payloads),7) : calloc(1,txptr->numpayloads * sizeof(*txptr->payloads));
+                    for (payload.B.v=0; payload.B.v<numvouts; payload.B.v++)
+                        txptr->payloads[payload.B.v] = payload;
                 }
             }
             if ( numvins > 0 ) // alloc and update payloads in iter 0, no payload operations in iter 1
@@ -4867,7 +5806,7 @@ int32_t ram_rawtx_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_
             {
                 for (i=isinternal=0; i<numvouts; i++,numbits+=retval)
                 {
-                    if ( (retval= ram_rawvout_update(iter,&addr_rawind,iter==0?0:&txptr->payloads[i+1],ram,hp,blocknum,txind,i,numvouts,txid_rawind,isinternal*(i==(numvouts-1)))) < 0 )
+                    if ( (retval= ram_rawvout_update(iter,&addr_rawind,iter==0?0:&txptr->payloads[i],ram,hp,blocknum,txind,i,numvouts,txid_rawind,isinternal*(i==(numvouts-1)))) < 0 )
                         return(-2);
                     if ( i == 0 && addr_rawind == ram->marker_rawind )
                         isinternal = 1;
@@ -5007,7 +5946,7 @@ static int _decreasing_double_cmp(const void *a,const void *b)
 #undef double_b
 }
 
-static int _decreasing_uint64_cmp(const void *a,const void *b)
+/*static int _decreasing_uint64_cmp(const void *a,const void *b)
 {
 #define uint64_a (*(uint64_t *)a)
 #define uint64_b (*(uint64_t *)b)
@@ -5018,7 +5957,7 @@ static int _decreasing_uint64_cmp(const void *a,const void *b)
 	return(0);
 #undef uint64_a
 #undef uint64_b
-}
+}*/
 
 char **ram_getallstrs(int32_t *numstrsp,struct ramchain_info *ram)
 {
@@ -5045,12 +5984,306 @@ struct ramchain_hashptr **ram_getallstrptrs(int32_t *numstrsp,struct ramchain_in
     *numstrsp = hash->ind;
     strs = calloc(*numstrsp+1,sizeof(*strs));
     memcpy(strs,hash->ptrs+1,(*numstrsp) * sizeof(*strs));
-    //*numaddrsp = HASH_COUNT(hash->table);
-    //HASH_ITER(hh,hash->table,hp,tmp)
-    //    addrs[i++] = hp;
-    //if ( i != *numaddrsp )
-    //    printf("ram_getallstrs HASH_COUNT.%d vs i.%d\n",*numstrsp,i);
     return(strs);
+}
+
+char *ramaddrlist(char *origargstr,char *sender,char *previpaddr,char *coin)
+{
+    cJSON *json,*array,*item;
+    char retbuf[1024],coinaddr[MAX_JSON_FIELD],account[MAX_JSON_FIELD],*retstr = 0;
+    uint64_t value;
+    uint32_t rawind;
+    struct ramchain_hashtable *addrhash;
+    struct ramchain_hashptr *addrptr;
+    struct rampayload *payloads;
+    int32_t i,j,k,z,n,m,num,numpayloads,errs,ismine,ismultisig,count = 0;
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    errs = 0;
+    addrhash = ram_gethash(ram,'a');
+    if ( (json= _get_localaddresses(ram)) != 0 )
+    {
+        if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+        {
+            for (i=0; i<n; i++)
+            {
+                if ( (array= cJSON_GetArrayItem(json,i)) != 0 && is_cJSON_Array(array) != 0 && (m= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (j=0; j<m; j++)
+                    {
+                        item = cJSON_GetArrayItem(array,j);
+                        if ( (item= cJSON_GetArrayItem(array,j)) != 0 && is_cJSON_Array(item) != 0 && (num= cJSON_GetArraySize(item)) > 0 )
+                        {
+                            value = coinaddr[0] = account[0] = 0;
+                            for (k=0; k<num; k++)
+                            {
+                                if ( k == 0 )
+                                    copy_cJSON(coinaddr,cJSON_GetArrayItem(item,0));
+                                else if ( k == 1 )
+                                    value = (SATOSHIDEN * get_API_float(cJSON_GetArrayItem(item,1)));
+                                else if ( k == 2 )
+                                    copy_cJSON(account,cJSON_GetArrayItem(item,2));
+                                else printf("ramaddrlist unexpected item array size: %d\n",num);
+                            }
+                            rawind = 0;
+                            if ( coinaddr[0] != 0 && (rawind= ram_addrind(ram,coinaddr)) != 0 )
+                            {
+                                if ( (payloads= ram_addrpayloads(&addrptr,&numpayloads,ram,coinaddr)) != 0 && addrptr != 0 && numpayloads > 0 )
+                                {
+                                    addrptr->mine = 1;
+                                    printf("%d: (%s).%-6d %.8f %.8f (%s) %s\n",count,coinaddr,rawind,dstr(addrptr->unspent),dstr(value),account,(addrptr->unspent != value) ? "STAKING": "");
+                                    errs += (addrptr->unspent != value);
+                                    count++;
+                                } else printf("ramaddrlist error finding rawind.%d\n",rawind);
+                            } else printf("ramaddrlist no coinaddr for item or null rawind.%d\n",rawind);
+                        } else printf("ramaddrlist unexpected item not array\n");
+                    }
+                } else printf("ramaddrlist unexpected array not array\n");
+            }
+        } else printf("ramaddrlist unexpected json not array\n");
+        free_json(json);
+        n = m = 0;
+        for (z=1; z<=addrhash->ind; z++)
+        {
+            if ( (addrptr= addrhash->ptrs[z]) != 0 && (addrptr->multisig != 0 || addrptr->mine != 0) && ram_decode_hashdata(coinaddr,'a',addrptr->hh.key) != 0 )
+            {
+                if ( 0 && addrptr->mine == 0 && addrptr->verified == 0 )
+                {
+                    addrptr->verified = _verify_coinaddress(account,&ismultisig,&ismine,ram,coinaddr);
+                    if ( ismultisig != 0 )
+                        addrptr->multisig = 1;
+                    if ( ismine != 0 )
+                        addrptr->mine = 1;
+                }
+                if ( addrptr->mine != 0 )
+                    m++;
+                if ( addrptr->multisig != 0 || addrptr->mine != 0 )
+                    printf("n.%d check.(%s) account.(%s) multisig.%d nonstandard.%d mine.%d verified.%d\n",n,coinaddr,account,addrptr->multisig,addrptr->nonstandard,addrptr->mine,addrptr->verified), n++;
+            }
+        }
+        sprintf(retbuf,"{\"result\":\"addrlist\",\"multisig\":%d,\"mine\":%d,\"total\":%d}",n,m,count);
+        retstr = clonestr(retbuf);
+    } else retstr = clonestr("{\"error\":\"ramaddrlist no data\"}");
+    return(retstr);
+}
+
+cJSON *ram_address_entry_json(struct address_entry *bp)
+{
+    cJSON *array = cJSON_CreateArray();
+    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->blocknum));
+    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->txind));
+    cJSON_AddItemToArray(array,cJSON_CreateNumber(bp->v));
+    return(array);
+}
+
+void ram_payload_json(cJSON *json,struct rampayload *payload,int32_t spentflag)
+{
+    cJSON_AddItemToObject(json,"n",cJSON_CreateNumber(payload->B.v));
+    cJSON_AddItemToObject(json,"value",cJSON_CreateNumber(dstr(payload->value)));
+    if ( payload->B.isinternal != 0 )
+        cJSON_AddItemToObject(json,"MGWinternal",cJSON_CreateNumber(1));
+    if ( spentflag != 0 && payload->B.spent != 0 )
+        cJSON_AddItemToObject(json,"spent",ram_address_entry_json(&payload->spentB));
+}
+
+cJSON *ram_addrpayload_json(struct ramchain_info *ram,struct rampayload *payload)
+{
+    char txidstr[8192];
+    ram_txid(txidstr,ram,payload->otherind);
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txidstr));
+    cJSON_AddItemToObject(json,"txid_rawind",cJSON_CreateNumber(payload->otherind));
+    cJSON_AddItemToObject(json,"txout",ram_address_entry_json(&payload->B));
+    cJSON_AddItemToObject(json,"scriptind",cJSON_CreateNumber(payload->extra));
+    ram_payload_json(json,payload,1);
+    return(json);
+}
+
+cJSON *ram_txpayload_json(struct ramchain_info *ram,struct rampayload *txpayload,char *spent_txidstr,int32_t spent_vout)
+{
+    cJSON *item;
+    HUFF *hp;
+    int32_t datalen;
+    char coinaddr[8192],scriptstr[8192];
+    struct rawvin *vi;
+    struct rawtx *tx;
+    struct ramchain_hashptr *addrptr;
+    struct rampayload *addrpayload;
+    ram_addr(coinaddr,ram,txpayload->otherind);
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"address",cJSON_CreateString(coinaddr));
+    cJSON_AddItemToObject(json,"addr_rawind",cJSON_CreateNumber(txpayload->otherind));
+    cJSON_AddItemToObject(json,"addr_txlisti",cJSON_CreateNumber(txpayload->extra));
+    ram_payload_json(json,txpayload,0);
+    if ( txpayload->spentB.spent != 0 )
+    {
+        item = cJSON_CreateObject();
+        cJSON_AddItemToObject(item,"height",cJSON_CreateNumber(txpayload->spentB.blocknum));
+        cJSON_AddItemToObject(item,"txind",cJSON_CreateNumber(txpayload->spentB.txind));
+        cJSON_AddItemToObject(item,"vin",cJSON_CreateNumber(txpayload->spentB.v));
+        if ( (hp= ram->blocks.hps[txpayload->spentB.blocknum]) != 0 && (datalen= ram_expand_bitstream(0,ram->R,ram,hp)) > 0 )
+        {
+            if ( (vi= ram_rawvin(ram->R,txpayload->spentB.txind,txpayload->spentB.v)) != 0 )
+            {
+                if ( strcmp(vi->txidstr,spent_txidstr) != 0 )
+                    cJSON_AddItemToObject(item,"vin_txid_error",cJSON_CreateString(vi->txidstr));
+                if ( vi->vout != spent_vout )
+                    cJSON_AddItemToObject(item,"vin_error",cJSON_CreateNumber(spent_vout));
+            }
+            if ( (tx= ram_rawtx(ram->R,txpayload->spentB.txind)) != 0 )
+                cJSON_AddItemToObject(item,"txid",cJSON_CreateString(tx->txidstr));
+        }
+        cJSON_AddItemToObject(json,"spent",item);
+    }
+    else
+    {
+        if ( (addrpayload= ram_getpayloadi(&addrptr,ram,'a',txpayload->otherind,txpayload->extra)) != 0 )
+        {
+            ram_script(scriptstr,ram,addrpayload->extra);
+            cJSON_AddItemToObject(json,"script",cJSON_CreateString(scriptstr));
+            cJSON_AddItemToObject(json,"script_rawind",cJSON_CreateNumber(addrpayload->extra));
+        }
+    }
+    return(json);
+}
+
+cJSON *ram_coinaddr_json(struct ramchain_info *ram,char *coinaddr,int32_t unspentflag)
+{
+    int64_t total = 0;
+    cJSON *json = 0,*array = 0;
+    int32_t i,n,numpayloads;
+    struct ramchain_hashptr *addrptr;
+    struct rampayload *payloads;
+    if ( (payloads= ram_addrpayloads(&addrptr,&numpayloads,ram,coinaddr)) != 0 && addrptr != 0 && numpayloads > 0 )
+    {
+        for (i=n=0; i<numpayloads; i++)
+        {
+            if ( unspentflag == 0 || payloads[i].B.spent == 0 )
+            {
+                if ( payloads[i].B.spent == 0 && payloads[i].B.isinternal == 0 )
+                {
+                    n++;
+                    total += payloads[i].value;
+                }
+                if ( array == 0 )
+                    array = cJSON_CreateArray();
+                cJSON_AddItemToArray(array,ram_addrpayload_json(ram,&payloads[i]));
+            }
+        }
+        json = cJSON_CreateObject();
+        if ( array != 0 )
+            cJSON_AddItemToObject(json,coinaddr,array);
+        cJSON_AddItemToObject(json,"numtx",cJSON_CreateNumber(numpayloads));
+        cJSON_AddItemToObject(json,"calc_numunspent",cJSON_CreateNumber(n));
+        cJSON_AddItemToObject(json,"calc_unspent",cJSON_CreateNumber(dstr(total)));
+        cJSON_AddItemToObject(json,"numunspent",cJSON_CreateNumber(addrptr->numunspent));
+        cJSON_AddItemToObject(json,"unspent",cJSON_CreateNumber(dstr(addrptr->unspent)));
+        cJSON_AddItemToObject(json,"rawind",cJSON_CreateNumber(addrptr->rawind));
+        cJSON_AddItemToObject(json,ram->name,cJSON_CreateString(coinaddr));
+    }
+    return(json);
+}
+
+char *ram_coinaddr_str(struct ramchain_info *ram,char *coinaddr)
+{
+    cJSON *json;
+    char *retstr;
+    if ( coinaddr != 0 && coinaddr[0] != 0 && (json= ram_coinaddr_json(ram,coinaddr,1)) != 0 )
+    {
+        retstr = cJSON_Print(json);
+        free_json(json);
+        return(retstr);
+    }
+    return(clonestr("{\"error\":\"no addr info\"}"));
+}
+
+char *ram_addr_json(struct ramchain_info *ram,uint32_t rawind)
+{
+    char hashstr[8193];
+    return(ram_coinaddr_str(ram,ram_addr(hashstr,ram,rawind)));
+}
+
+char *ram_addrind_json(struct ramchain_info *ram,char *coinaddr)
+{
+    return(ram_coinaddr_str(ram,coinaddr));
+}
+
+cJSON *ram_txidstr_json(struct ramchain_info *ram,char *txidstr)
+{
+    int64_t unspent = 0,total = 0;
+    cJSON *json = 0,*array = 0;
+    int32_t i,n,numpayloads;
+    struct ramchain_hashptr *txptr;
+    struct rampayload *txpayloads;
+    if ( (txpayloads= ram_txpayloads(&txptr,&numpayloads,ram,txidstr)) != 0 && txptr != 0 && numpayloads > 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"height",cJSON_CreateNumber(txpayloads->B.blocknum));
+        cJSON_AddItemToObject(json,"txind",cJSON_CreateNumber(txpayloads->B.txind));
+        cJSON_AddItemToObject(json,"numvouts",cJSON_CreateNumber(numpayloads));
+        array = cJSON_CreateArray();
+        for (i=n=0; i<numpayloads; i++)
+        {
+            total += txpayloads[i].value;
+            if ( txpayloads[i].spentB.spent == 0 )
+                unspent += txpayloads[i].value;
+            cJSON_AddItemToArray(array,ram_txpayload_json(ram,&txpayloads[i],txidstr,i));
+        }
+        cJSON_AddItemToObject(json,"vouts",array);
+        cJSON_AddItemToObject(json,"total",cJSON_CreateNumber(dstr(total)));
+        cJSON_AddItemToObject(json,"unspent",cJSON_CreateNumber(dstr(unspent)));
+        cJSON_AddItemToObject(json,"rawind",cJSON_CreateNumber(txptr->rawind));
+        cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txidstr));
+    }
+    return(json);
+}
+
+char *ram_txidstr(struct ramchain_info *ram,char *txidstr)
+{
+    cJSON *json;
+    char *retstr;
+    if ( txidstr != 0 && txidstr[0] != 0 && (json= ram_txidstr_json(ram,txidstr)) != 0 )
+    {
+        retstr = cJSON_Print(json);
+        free_json(json);
+        return(retstr);
+    }
+    return(clonestr("{\"error\":\"no txid info\"}"));
+}
+
+char *ram_txid_json(struct ramchain_info *ram,uint32_t rawind)
+{
+    char hashstr[8193];
+    return(ram_txidstr(ram,ram_txid(hashstr,ram,rawind)));
+}
+
+char *ram_txidind_json(struct ramchain_info *ram,char *txidstr)
+{
+    return(ram_txidstr(ram,txidstr));
+}
+
+char *ram_script_json(struct ramchain_info *ram,uint32_t rawind)
+{
+    char hashstr[8193],retbuf[1024],*str;
+    if ( (str= ram_script(hashstr,ram,rawind)) != 0 )
+    {
+        sprintf(retbuf,"{\"result\":\"%u\",\"script\":\"%s\"}",rawind,str);
+        return(clonestr(retbuf));
+    }
+    return(clonestr("{\"error\":\"no script info\"}"));
+}
+
+char *ram_scriptind_json(struct ramchain_info *ram,char *str)
+{
+    char retbuf[1024];
+    uint32_t rawind;
+    if ( (rawind= ram_scriptind_RO(ram,str)) != 0 )
+    {
+        sprintf(retbuf,"{\"result\":\"%s\",\"rawind\":\"%u\"}",str,rawind);
+        return(clonestr(retbuf));
+    }
+    return(clonestr("{\"error\":\"no script info\"}"));
 }
 
 // >>>>>>>>>>>>>>  start external and API interface functions
@@ -5090,6 +6323,165 @@ char *ramrawind(char *origargstr,char *sender,char *previpaddr,char *destip,char
     else if ( strcmp(typestr,"txid") == 0 )
         return(ram_txidind_json(ram,str));
     else return(clonestr("{\"error\":\"no ramrawind invalid type\"}"));
+}
+
+char *ramscript(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char *txidstr,int32_t tx_vout,struct address_entry *bp)
+{
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    char retbuf[1024],scriptstr[8192];
+    struct rawvout *vo;
+    HUFF *hp;
+    struct ramchain_hashptr *txptr,*addrptr;
+    struct rampayload *txpayloads,*txpayload,*addrpayload;
+    int32_t datalen,numpayloads;
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    if ( bp == 0 )
+    {
+        if ( (txpayloads= ram_txpayloads(&txptr,&numpayloads,ram,txidstr)) != 0 )
+        {
+            if ( tx_vout < txptr->numpayloads )
+            {
+                txpayload = &txpayloads[tx_vout];
+                if ( (addrpayload= ram_getpayloadi(&addrptr,ram,'a',txpayload->otherind,txpayload->extra)) != 0 )
+                {
+                    ram_script(scriptstr,ram,addrpayload->extra);
+                    sprintf(retbuf,"{\"result\":\"script\",\"txid\":\"%s\",\"vout\":%u,\"script\":\"%s\"}",txidstr,tx_vout,scriptstr);
+                    return(clonestr(retbuf));
+                } else return(clonestr("{\"error\":\"ram_getpayloadi error\"}"));
+            } else return(clonestr("{\"error\":\"tx_vout error\"}"));
+        }
+        return(clonestr("{\"error\":\"no ram_txpayloads info\"}"));
+    }
+    else if ( (hp= ram->blocks.hps[bp->blocknum]) != 0 )
+    {
+        if ( (datalen= ram_expand_bitstream(0,ram->R,ram,hp)) > 0 )
+        {
+            if ( (vo= ram_rawvout(ram->R,bp->txind,bp->v)) != 0 )
+            {
+                sprintf(retbuf,"{\"result\":\"script\",\"txid\":\"%s\",\"vout\":%u,\"script\":\"%s\"}",txidstr,bp->v,vo->script);
+                return(clonestr(retbuf));
+            } else return(clonestr("{\"error\":\"ram_rawvout error\"}"));
+        } else return(clonestr("{\"error\":\"ram_expand_bitstream error\"}"));
+    }
+    else return(clonestr("{\"error\":\"no blocks.hps[] info\"}"));
+}
+
+char *ramtxlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char *coinaddr,int32_t unspentflag)
+{
+    cJSON *json;
+    char *retstr = 0;
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    json = ram_coinaddr_json(ram,coinaddr,unspentflag);
+    if ( json != 0 )
+    {
+        retstr = cJSON_Print(json);
+        free_json(json);
+    } else retstr = clonestr("{\"error\":\"ramtxlist no data\"}");
+    return(retstr);
+}
+
+char *ramrichlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,int32_t numwhales,int32_t recalcflag)
+{
+    int32_t i,ind,good,bad,numunspent,numaddrs,n = 0;
+    cJSON *item,*array = 0;
+    char coinaddr[1024];
+    struct ramchain_hashptr **addrs,*addrptr;
+    char *retstr;
+    double *sortbuf,startmilli = ram_millis();
+    uint64_t unspent;
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    if ( (addrs= ram_getallstrptrs(&numaddrs,ram,'a')) != 0 && numaddrs > 0 )
+    {
+        sortbuf = calloc(2*numaddrs,sizeof(*sortbuf));
+        for (i=good=bad=0; i<numaddrs; i++)
+        {
+            ram_decode_hashdata(coinaddr,'a',addrs[i]->hh.key);
+            if ( recalcflag != 0 )
+                unspent = ram_calc_unspent(&numunspent,&addrptr,ram,coinaddr);
+            else unspent = addrs[i]->unspent, addrptr = addrs[i], numunspent = addrptr->numunspent;
+            if ( unspent != 0 )
+            {
+                if ( addrs[i]->unspent == unspent && addrptr->numunspent == numunspent )
+                    good++;
+                else bad++;
+                sortbuf[n << 1] = dstr(unspent);
+                memcpy(&sortbuf[(n << 1) + 1],&i,sizeof(i));
+                n++;
+            }
+        }
+        if ( n > 1 )
+            qsort(sortbuf,n,sizeof(double) * 2,_decreasing_double_cmp);
+        if ( n > 0 )
+        {
+            array = cJSON_CreateArray();
+            for (i=0; i<numwhales&&i<n; i++)
+            {
+                item = cJSON_CreateObject();
+                memcpy(&ind,&sortbuf[(i << 1) + 1],sizeof(i));
+                ram_decode_hashdata(coinaddr,'a',addrs[ind]->hh.key);
+                cJSON_AddItemToObject(item,coinaddr,cJSON_CreateNumber(sortbuf[i<<1]));
+                cJSON_AddItemToObject(item,"unspent",cJSON_CreateNumber(dstr(addrs[ind]->unspent)));
+                cJSON_AddItemToArray(array,item);
+            }
+            item = cJSON_CreateObject();
+            if ( recalcflag != 0 )
+            {
+                cJSON_AddItemToObject(item,"cumulative errors",cJSON_CreateNumber(bad));
+                cJSON_AddItemToObject(item,"cumulative correct",cJSON_CreateNumber(good));
+            }
+            cJSON_AddItemToObject(item,"milliseconds",cJSON_CreateNumber(ram_millis()-startmilli));
+            cJSON_AddItemToArray(array,item);
+        }
+        free(sortbuf);
+        free(addrs);
+    }
+    if ( array != 0 )
+    {
+        retstr = cJSON_Print(array);
+        free_json(array);
+    } else retstr = clonestr("{\"error\":\"ramrichlist no data\"}");
+    return(retstr);
+}
+
+char *rambalances(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char **coins,double *rates,char ***coinaddrs,int32_t numcoins)
+{
+    uint64_t total = 0;
+    char *retstr = 0;
+    int32_t i,j;
+    cJSON *retjson,*array;
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    if ( numcoins > 0 && coins != 0 && coinaddrs != 0 )
+    {
+        retjson = cJSON_CreateObject();
+        array = cJSON_CreateArray();
+        if ( numcoins == 1 && strcmp(coins[0],coin) == 0 )
+        {
+            for (j=0; coinaddrs[0][j]!=0; j++)
+                total += ram_unspent_json(&array,coin,0.,coin,coinaddrs[0][j]);
+            cJSON_AddItemToObject(retjson,"total",array);
+        }
+        else if ( rates != 0 )
+        {
+            for (i=0; i<numcoins; i++)
+            {
+                for (j=0; coinaddrs[i][j]!=0; j++)
+                    total += ram_unspent_json(&array,coin,rates[i],coins[i],coinaddrs[i][j]);
+            }
+            cJSON_AddItemToObject(retjson,"subtotals",array);
+            cJSON_AddItemToObject(retjson,"estimated total",cJSON_CreateString(coin));
+            cJSON_AddItemToObject(retjson,coin,cJSON_CreateNumber(dstr(total)));
+        } else return(clonestr("{\"error\":\"rambalances: need rates for multicoin request\"}"));
+        retstr = cJSON_Print(retjson);
+        free_json(retjson);
+    }
+    return(clonestr("{\"error\":\"rambalances: numcoins zero or bad ptr\"}"));
 }
 
 char *ramblock(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,uint32_t blocknum)
@@ -5147,6 +6539,7 @@ char *ramcompress(char *origargstr,char *sender,char *previpaddr,char *destip,ch
         cJSON_AddItemToObject(json,"compressed",cJSON_CreateNumber(complen));
         retstr = cJSON_Print(json);
         free_json(json);
+        free(hexstr);
     } else retstr = clonestr("{\"error\":\"no block info\"}");
     free(data);
     return(retstr);
@@ -5176,222 +6569,23 @@ char *ramexpand(char *origargstr,char *sender,char *previpaddr,char *destip,char
     return(retstr);
 }
 
-char *ramscript(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char *txidstr,int32_t tx_vout,struct address_entry *bp)
-{
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    char retbuf[1024],scriptstr[8192];
-    struct rawvout *vo;
-    HUFF *hp;
-    struct ramchain_hashptr *txptr,*addrptr;
-    struct rampayload *txpayloads,*txpayload,*addrpayload;
-    int32_t datalen,numpayloads;
-    if ( ram == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    if ( bp == 0 )
-    {
-        if ( (txpayloads= ram_txpayloads(&txptr,&numpayloads,ram,txidstr)) != 0 )
-        {
-            if ( (tx_vout+1) < txptr->numpayloads )
-            {
-                txpayload = &txpayloads[tx_vout+1];
-                if ( (addrpayload= ram_getpayloadi(&addrptr,ram,'a',txpayload->otherind,txpayload->extra)) != 0 )
-                {
-                    ram_script(scriptstr,ram,addrpayload->extra);
-                    sprintf(retbuf,"{\"result\":\"script\",\"txid\":\"%s\",\"vout\":%u,\"script\":\"%s\"}",txidstr,tx_vout,scriptstr);
-                    return(clonestr(retbuf));
-                } else return(clonestr("{\"error\":\"ram_getpayloadi error\"}"));
-            } else return(clonestr("{\"error\":\"tx_vout error\"}"));
-        }
-        return(clonestr("{\"error\":\"no ram_txpayloads info\"}"));
-    }
-    else if ( (hp= ram->blocks.hps[bp->blocknum]) != 0 )
-    {
-        if ( (datalen= ram_expand_bitstream(0,ram->R,ram,hp)) > 0 )
-        {
-            if ( (vo= ram_rawvout(ram->R,bp->txind,bp->v)) != 0 )
-            {
-                sprintf(retbuf,"{\"result\":\"script\",\"txid\":\"%s\",\"vout\":%u,\"script\":\"%s\"}",txidstr,bp->v,vo->script);
-                return(clonestr(retbuf));
-            } else return(clonestr("{\"error\":\"ram_rawvout error\"}"));
-        } else return(clonestr("{\"error\":\"ram_expand_bitstream error\"}"));
-    }
-    else return(clonestr("{\"error\":\"no blocks.hps[] info\"}"));
-}
-
-char *ramtxlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char *coinaddr,int32_t unspentflag)
-{
-    char *retstr = 0;
-    int64_t total = 0;
-    cJSON *json = 0,*array = 0;
-    int32_t i,n,numpayloads;
-    struct ramchain_hashptr *addrptr;
-    struct rampayload *payloads;
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    if ( ram == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    if ( (payloads= ram_addrpayloads(&addrptr,&numpayloads,ram,coinaddr)) != 0 && addrptr != 0 && numpayloads > 0 )
-    {
-        for (i=n=0; i<numpayloads; i++)
-        {
-            if ( unspentflag == 0 || payloads[i].B.spent == 0 )
-            {
-                if ( payloads[i].B.spent == 0 && payloads[i].B.isinternal == 0 )
-                {
-                    n++;
-                    total += payloads[i].value;
-                }
-                if ( array == 0 )
-                    array = cJSON_CreateArray();
-                cJSON_AddItemToArray(array,ram_addrpayload_json(ram,&payloads[i]));
-            }
-        }
-        json = cJSON_CreateObject();
-        if ( array != 0 )
-            cJSON_AddItemToObject(json,coinaddr,array);
-        cJSON_AddItemToObject(json,"numtx",cJSON_CreateNumber(numpayloads));
-        cJSON_AddItemToObject(json,"calc_numunspent",cJSON_CreateNumber(n));
-        cJSON_AddItemToObject(json,"calc_unspent",cJSON_CreateNumber(dstr(total)));
-        cJSON_AddItemToObject(json,"numunspent",cJSON_CreateNumber(addrptr->numunspent));
-        cJSON_AddItemToObject(json,"unspent",cJSON_CreateNumber(dstr(addrptr->unspent)));
-    }
-    if ( json != 0 )
-    {
-        retstr = cJSON_Print(json);
-        free_json(json);
-    } else retstr = clonestr("{\"error\":\"ramtxlist no data\"}");
-    return(retstr);
-}
-
-char *ramrichlist(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,int32_t numwhales,int32_t recalcflag)
-{
-    int32_t i,ind,good,bad,numunspent,numaddrs,n = 0;
-    cJSON *item,*array = 0;
-    char coinaddr[1024];
-    struct ramchain_hashptr **addrs,*addrptr;
-    char *retstr;
-    double *sortbuf,startmilli = ram_millis();
-    uint64_t unspent;
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    if ( ram == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    if ( (addrs= ram_getallstrptrs(&numaddrs,ram,'a')) != 0 && numaddrs > 0 )
-    {
-        if ( recalcflag != 0 )
-        {
-            sortbuf = calloc(2*numaddrs,sizeof(*sortbuf));
-            for (i=good=bad=0; i<numaddrs; i++)
-            {
-                ram_decode_hashdata(coinaddr,'a',addrs[i]->hh.key);
-                if ( (unspent= ram_calc_unspent(&numunspent,&addrptr,ram,coinaddr)) != 0 )
-                {
-                    if ( addrptr->unspent == unspent && addrptr->numunspent == numunspent )
-                        good++;
-                    else bad++;
-                    sortbuf[n << 1] = dstr(unspent);
-                    memcpy(&sortbuf[(n << 1) + 1],&i,sizeof(i));
-                    n++;
-                }
-            }
-            if ( n > 1 )
-                qsort(sortbuf,n,sizeof(double) * 2,_decreasing_double_cmp);
-            if ( n > 0 )
-            {
-                array = cJSON_CreateArray();
-                for (i=0; i<numwhales&&i<n; i++)
-                {
-                    item = cJSON_CreateObject();
-                    memcpy(&ind,&sortbuf[(i << 1) + 1],sizeof(i));
-                    ram_decode_hashdata(coinaddr,'a',addrs[ind]->hh.key);
-                    cJSON_AddItemToObject(item,coinaddr,cJSON_CreateNumber(sortbuf[i<<1]));
-                    cJSON_AddItemToObject(item,"unspent",cJSON_CreateNumber(dstr(addrs[ind]->unspent)));
-                    cJSON_AddItemToArray(array,item);
-                }
-                item = cJSON_CreateObject();
-                cJSON_AddItemToObject(item,"cumulative errors",cJSON_CreateNumber(bad));
-                cJSON_AddItemToObject(item,"cumulative correct",cJSON_CreateNumber(good));
-                cJSON_AddItemToObject(item,"calculation milliseconds",cJSON_CreateNumber(ram_millis()-startmilli));
-                cJSON_AddItemToArray(array,item);
-            }
-            free(sortbuf);
-        }
-        else
-        {
-            if ( numaddrs > 1 )
-                qsort(addrs,numaddrs,sizeof(*addrs),_decreasing_uint64_cmp);
-            if ( numaddrs > 0 )
-            {
-                array = cJSON_CreateArray();
-                for (i=0; i<numwhales&&i<numaddrs; i++)
-                {
-                    item = cJSON_CreateObject();
-                    ram_decode_hashdata(coinaddr,'a',addrs[i]->hh.key);
-                    cJSON_AddItemToObject(item,coinaddr,cJSON_CreateNumber(addrs[i]->unspent));
-                    cJSON_AddItemToArray(array,item);
-                }
-            }
-        }
-        free(addrs);
-    }
-    if ( array != 0 )
-    {
-        retstr = cJSON_Print(array);
-        free_json(array);
-    } else retstr = clonestr("{\"error\":\"ramrichlist no data\"}");
-    return(retstr);
-}
-
-char *rambalances(char *origargstr,char *sender,char *previpaddr,char *destip,char *coin,char **coins,double *rates,char ***coinaddrs,int32_t numcoins)
-{
-    uint64_t total = 0;
-    char *retstr = 0;
-    int32_t i,j;
-    cJSON *retjson,*array;
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    if ( ram == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    if ( numcoins > 0 && coins != 0 && coinaddrs != 0 )
-    {
-        retjson = cJSON_CreateObject();
-        array = cJSON_CreateArray();
-        if ( numcoins == 1 && strcmp(coins[0],coin) == 0 )
-        {
-            for (j=0; coinaddrs[0][j]!=0; j++)
-                total += ram_unspent_json(&array,coin,0.,coin,coinaddrs[0][j]);
-            cJSON_AddItemToObject(retjson,"total",array);
-        }
-        else if ( rates != 0 )
-        {
-            for (i=0; i<numcoins; i++)
-            {
-                for (j=0; coinaddrs[i][j]!=0; j++)
-                    total += ram_unspent_json(&array,coin,rates[i],coins[i],coinaddrs[i][j]);
-            }
-            cJSON_AddItemToObject(retjson,"subtotals",array);
-            cJSON_AddItemToObject(retjson,"estimated total",cJSON_CreateString(coin));
-            cJSON_AddItemToObject(retjson,coin,cJSON_CreateNumber(dstr(total)));
-        } else return(clonestr("{\"error\":\"rambalances: need rates for multicoin request\"}"));
-        retstr = cJSON_Print(retjson);
-        free_json(retjson);
-    }
-    return(clonestr("{\"error\":\"rambalances: numcoins zero or bad ptr\"}"));
-}
-
 // >>>>>>>>>>>>>>  start initialization and runloops
 struct mappedblocks *ram_init_blocks(int32_t noload,HUFF **copyhps,struct ramchain_info *ram,uint32_t firstblock,struct mappedblocks *blocks,struct mappedblocks *prevblocks,int32_t format,int32_t shift)
 {
     void *ptr;
     int32_t numblocks,tmpsize = TMPALLOC_SPACE_INCR;
-    blocks->R = calloc(1,sizeof(*blocks->R));
-    blocks->R2 = calloc(1,sizeof(*blocks->R2));
-    blocks->R3 = calloc(1,sizeof(*blocks->R3));
+    blocks->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R),8) : calloc(1,sizeof(*blocks->R));
+    blocks->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R2),8) : calloc(1,sizeof(*blocks->R2));
+    blocks->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R3),8) : calloc(1,sizeof(*blocks->R3));
     blocks->ram = ram;
     blocks->prevblocks = prevblocks;
     blocks->format = format;
-    ptr = calloc(1,tmpsize), blocks->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), blocks->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
     if ( (blocks->shift = shift) != 0 )
         firstblock &= ~((1 << shift) - 1);
     blocks->firstblock = firstblock;
     numblocks = (ram->maxblock+1) - firstblock;
+    printf("initblocks.%d 1st.%d num.%d n.%d\n",format,firstblock,numblocks,numblocks>>shift);
     if ( numblocks < 0 )
     {
         printf("illegal numblocks %d with firstblock.%d vs maxblock.%d\n",blocks->numblocks,firstblock,ram->maxblock);
@@ -5399,12 +6593,11 @@ struct mappedblocks *ram_init_blocks(int32_t noload,HUFF **copyhps,struct ramcha
     }
     blocks->numblocks = numblocks;
     if ( blocks->hps == 0 )
-        blocks->hps = calloc(blocks->numblocks,sizeof(*blocks->hps));
+        blocks->hps = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,blocks->numblocks*sizeof(*blocks->hps),8) : calloc(1,blocks->numblocks*sizeof(*blocks->hps));
     if ( format != 0 )
     {
 #ifndef RAM_GENMODE
-        //blocks->flags = calloc(blocks->numblocks >> (shift+6),sizeof(*blocks->flags));
-        blocks->M = calloc(blocks->numblocks >> shift,sizeof(*blocks->M));
+        blocks->M = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M),8) : calloc(1,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M));
         if ( noload == 0 )
             blocks->blocknum = ram_load_blocks(ram,blocks,firstblock,blocks->numblocks);
 #endif
@@ -5441,20 +6634,20 @@ void ram_init_ramchain(struct ramchain_info *ram)
     ram->blocks.blocknum = ram->RTblocknum = (_get_RTheight(ram) - ram->min_confirms);
     ram->blocks.numblocks = ram->maxblock = (ram->RTblocknum + 10000);
     ram_init_directories(ram);
-    ram->blocks.M = calloc(1,sizeof(*ram->blocks.M));
-    ram->blocks.hps = calloc(ram->maxblock,sizeof(*ram->blocks.hps));
+    permalloc(ram->name,&ram->Perm,PERMALLOC_SPACE_INCR,0);
+    ram->blocks.M = permalloc(ram->name,&ram->Perm,sizeof(*ram->blocks.M),8);
+    ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
     printf("ramchain.%s RT.%d %.1f seconds to init_ramchain_directories\n",ram->name,ram->RTblocknum,(ram_millis() - startmilli)/1000.);
 //#ifndef RAM_GENMODE
-    ram_init_alloc_space(&ram->Tmp,tmpsize);
-    permalloc(ram->name,&ram->Perm,PERMALLOC_SPACE_INCR,0);
-    ptr = calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
-    ram->R = calloc(1,sizeof(*ram->R));
-    ram->R2 = calloc(1,sizeof(*ram->R2));
-    ram->R3 = calloc(1,sizeof(*ram->R3));
+    ram_init_tmpspace(ram,tmpsize);
+    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ram->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R),8) : calloc(1,sizeof(*ram->R));
+    ram->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R2),8) : calloc(1,sizeof(*ram->R2));
+    ram->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R3),8) : calloc(1,sizeof(*ram->R3));
     memset(blocknums,0,sizeof(blocknums));
-    nofile = ram_init_hashtable(&blocknums[0],ram,'a');
-    nofile += ram_init_hashtable(&blocknums[1],ram,'s');
-    nofile += ram_init_hashtable(&blocknums[2],ram,'t');
+    nofile = ram_init_hashtable(0,&blocknums[0],ram,'a');
+    nofile += ram_init_hashtable(0,&blocknums[1],ram,'s');
+    nofile += ram_init_hashtable(0,&blocknums[2],ram,'t');
     if ( nofile == 3 )
     {
         printf("REGEN\n");
@@ -5465,7 +6658,15 @@ void ram_init_ramchain(struct ramchain_info *ram)
         ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
         ram_update_RTblock(ram);
         for (pass=1; pass<=4; pass++)
+        {
+            if ( pass == 2 )
+            {
+                nofile = ram_init_hashtable(1,&blocknums[0],ram,'a');
+                nofile += ram_init_hashtable(1,&blocknums[1],ram,'s');
+                nofile += ram_init_hashtable(1,&blocknums[2],ram,'t');
+            }
             ram_process_blocks(ram,ram->mappedblocks[pass],ram->mappedblocks[pass-1],100000000.);
+        }
         printf("FINISHED REGEN\n");
         exit(1);
     } else printf("nofile.%d\n",nofile);
@@ -5474,7 +6675,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
         printf("WARNING: MARKER.(%s) set but no rawind. need to have it appear in blockchain first\n",ram->marker);
     printf("%.1f seconds to init_ramchain.%s hashtables marker.(%s) %u\n",(ram_millis() - startmilli)/1000.,ram->name,ram->marker,ram->marker_rawind);
     sprintf(fname,"ramchains/%s.blocks",ram->name);
-    minblocknum = numblocks = ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,0,fname,0);
+    minblocknum = numblocks = ram_map_bitstreams(0,ram,0,ram->blocks.M,&sha,ram->blocks.hps,0,fname,0);
     for (i=0; i<3; i++)
         if ( minblocknum == 0 || (blocknums[i] != 0 && blocknums[i] < minblocknum) )
             minblocknum = blocknums[i];
@@ -5613,9 +6814,10 @@ void activate_ramchain(struct ramchain_info *ram,char *name)
            
 void *process_ramchains(void *_argcoinstr)
 {
+    extern int32_t MULTITHREADS;
     void ensure_SuperNET_dirs(char *backupdir);
     char *argcoinstr = (_argcoinstr != 0) ? ((char **)_argcoinstr)[0] : 0;
-    int32_t modval,numinterleaves,threaded = 0;
+    int32_t modval,numinterleaves;
     double startmilli;
     struct ramchain_info *ram;
     int32_t i,pass,processed = 0;
@@ -5637,6 +6839,12 @@ void *process_ramchains(void *_argcoinstr)
             Ramchains[i]->startmilli = ram_millis();
         }
     printf("took %.1f seconds to init_ramchains %d coins argcoinstr.%p\n",(ram_millis() - startmilli)/1000.,Numramchains,argcoinstr);
+    for (i=0; i<Numramchains; i++)
+        if ( argcoinstr == 0 || strcmp(argcoinstr,Ramchains[i]->name) == 0 )
+        {
+            Ramchains[i]->NXTblocknum = _update_ramMGW(Ramchains[i],0);
+            printf("i.%d of %d: NXTblock.%d (%s)\n",i,Numramchains,Ramchains[i]->NXTblocknum,Ramchains[i]->name);
+        }
     while ( processed >= 0 )
     {
         processed = 0;
@@ -5645,7 +6853,7 @@ void *process_ramchains(void *_argcoinstr)
             ram = Ramchains[i];
             if ( argcoinstr == 0 || strcmp(argcoinstr,ram->name) == 0 )
             {
-                if ( threaded != 0 )
+                if ( MULTITHREADS != 0 )
                 {
                     printf("%d of %d: (%s) argcoinstr.%s\n",i,Numramchains,ram->name,argcoinstr!=0?argcoinstr:"ALL");
                     printf("call process_ramchain.(%s)\n",ram->name);
@@ -5655,6 +6863,7 @@ void *process_ramchains(void *_argcoinstr)
                 }
                 else
                 {
+                    ram->NXTblocknum = _update_ramMGW(ram,ram->NXTblocknum);
                     for (pass=1; pass<=4; pass++)
                     {
                         processed += ram_process_blocks(ram,ram->mappedblocks[pass],ram->mappedblocks[pass-1],1000.);
@@ -5664,20 +6873,19 @@ void *process_ramchains(void *_argcoinstr)
 #endif
                         if ( (ram->mappedblocks[pass]->blocknum >> ram->mappedblocks[pass]->shift) < (ram->mappedblocks[pass-1]->blocknum >> ram->mappedblocks[pass]->shift) )
                             break;
-                   }
+                    }
+                    ram->NXTblocknum = _update_ramMGW(ram,ram->NXTblocknum);
                 }
             }
         }
-        if ( processed == 0 )
+        for (i=0; i<Numramchains; i++)
         {
-            for (i=0; i<Numramchains; i++)
-            {
-                ram = Ramchains[i];
-                if ( argcoinstr == 0 || strcmp(argcoinstr,ram->name) == 0 )
-                    ram_update_disp(ram);
-            }
-            sleep(1);
+            ram = Ramchains[i];
+            if ( argcoinstr == 0 || strcmp(argcoinstr,ram->name) == 0 )
+                ram_update_disp(ram);
         }
+        if ( processed == 0 )
+            sleep(1);
     }
     printf("process_ramchains: finished launching\n");
     while ( 1 )

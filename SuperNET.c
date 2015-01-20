@@ -611,30 +611,124 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     freeUPNPDevlist(devlist);
     return 1; //ok - we are mapped:)
 }
-
-#include "lua-regex.h"
+/*
+#include "regex/lua-regex.h"
 
 void luatest(char *str,char *pattern)
 {
-  /*  LuaMatchState ms;
-    int init = 0;
-    while ( (init= str_find(&ms,str,strlen(str),pattern,strlen(pattern),init,0) != 0 )
+    LuaMatchState ms;
+    int i,init = 0;
+    printf("str.(%s) pattern.(%s): ",str,pattern);
+    while ( (init= lua_find(&ms,str,strlen(str),pattern,strlen(pattern),init,0)) != 0 )
     {
-        std::string str;
-        for(int i=0; i < ms.level; ++i){
-            ptrdiff_t l = ms.capture[i].len;
-            if (l == CAP_POSITION)
-                //  lua_pushinteger(ms, ms->capture[i].init - ms->src_init + 1);
-                printf("(pos %d:%d)\t", i, (int)(ms.capture[i].init));
+        for (i=0; i<ms.level; i++)
+        {
+            if ( ms.capture[i].len == CAP_POSITION )
+                printf("(pos %d:%d l.%d)\t",i,(int)ms.capture[i].init,ms.level);
             else
             {
-                str.assign(ms.capture[i].init, ms.capture[i].len);
-                printf("(%d:%s)\t", i, str.c_str());
+                printf("[%d:%s].%ld\t",i,ms.capture[i].init,ms.capture[i].len);
             }
         }
     }
-*/
+    printf("init.%d\n",init);
 }
+#include <regex.h>
+
+// The following is the size of a buffer to contain any error messages encountered when the regular expression is compiled.
+
+#define MAX_ERROR_MSG 0x1000
+
+// Compile the regular expression described by "regex_text" into "r".
+
+static int compile_regex (regex_t * r, const char * regex_text)
+{
+    int status = regcomp (r, regex_text, REG_EXTENDED|REG_NEWLINE);
+    if (status != 0) {
+        char error_message[MAX_ERROR_MSG];
+        regerror (status, r, error_message, MAX_ERROR_MSG);
+        printf ("Regex error compiling '%s': %s\n",
+                regex_text, error_message);
+        return 1;
+    }
+    return 0;
+}
+
+// Match the string in "to_match" against the compiled regular expression in "r".
+ 
+
+static int match_regex (regex_t * r, const char * to_match)
+{
+    // "P" is a pointer into the string which points to the end of the previous match.
+    const char * p = to_match;
+    // "N_matches" is the maximum number of matches allowed.
+    const int n_matches = 10;
+    // "M" contains the matches found.
+    regmatch_t m[n_matches];
+    
+    while (1)
+    {
+        int i = 0;
+        int nomatch = regexec (r, p, n_matches, m, 0);
+        if (nomatch) {
+            printf ("No more matches.\n");
+            return nomatch;
+        }
+        for (i = 0; i < n_matches; i++) {
+            int start;
+            int finish;
+            if (m[i].rm_so == -1) {
+                break;
+            }
+            start = (int)(m[i].rm_so + (p - to_match));
+            finish = (int)(m[i].rm_eo + (p - to_match));
+            if (i == 0) {
+                printf ("$& is ");
+            }
+            else {
+                printf ("$%d is ", i);
+            }
+            printf ("'%.*s' (bytes %d:%d)\n", (finish - start),
+                    to_match + start, start, finish);
+        }
+        if ( m[0].rm_eo == 0 )
+            break;
+        else p += m[0].rm_eo;
+    }
+    return 0;
+}
+
+int regexptest()
+{
+    regex_t r;
+    const char * regex_text;
+    const char * find_text;
+    //regex_text = "([[:digit:]]+)[^[:digit:]]+([[:digit:]]+)";
+    regex_text = "ni.*";
+    find_text = "This 1 is nice 2 so 33 for 4254";
+    printf ("Trying to find '%s' in '%s'\n", regex_text, find_text);
+    compile_regex(& r, regex_text);
+    match_regex(& r, find_text);
+    regfree (& r);
+    return 0;
+}
+
+
+int32_t bitcoin_assembler(char *script);
+
+void unscript()
+{
+    char r,i,buf[1024],*teststrs[16] = { "OP_DUP OP_HASH160 375e874aea7f0c8438282396ad09e212eed746b6 OP_EQUALVERIFY OP_CHECKSIG","OP_RETURN 0", "1 02860cc9b85cfc7f16ca855a6847aca6511c63e11c1e3c9ddbbb460e186652be6e 02c3eee9c06cd7ffa3ca45451fa65feb87914d43fbdeca7d94549a109bbc6979ac 2 OP_CHECKMULTISIG", "1 0210f4b684bdd114f4ac57bb3ab405cb0f5d6d32fc129fa24d9635dc8c010f92f8 02403fb3e7e4e8884ffcc39fd5b6d8d91fe24001f83d363fc2defe2058776759e0 02bbd5514ca46ca80b71720c5683720b9895a5d81fd3410111a8c2af4d52c034c0 3 OP_CHECKMULTISIG", "OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 197bf68fb520e8d3419dc1d4ac1eb89e7dfd7cfe561c19abf7611d7626d9f02c OP_EQUALVERIFY OP_SWAP OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226 OP_EQUALVERIFY OP_ROT OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 527ccdd755dcccf03192383624e0a7d0263815ce2ecf1f69cb0423ab7e6f0f3e OP_EQUALVERIFY OP_ADD OP_ADD 96 OP_SUB OP_DUP 2 OP_GREATERTHAN OP_IF 3 OP_SUB OP_ENDIF OP_DUP 2 OP_GREATERTHAN OP_IF 3 OP_SUB OP_ENDIF 04d4bf4642f56fc7af0d2382e2cac34fa16ed3321633f91d06128f0e5c0d17479778cc1f2cc7e4a0c6f1e72d905532e8e127a031bb9794b3ef9b68b657f51cc691 04208a50909284aede02ad107bb1f52175b025cdf0453537b686433bcade6d3e210b6c82bcbdf8676b2161687e232f5d9afdaa4ed7b3e3bf9608d41b40ebde6ed4 04c9ce67ff2df2cd6be5f58345b4e311c5f10aab49d3cf3f73e8dcac1f9cd0de966e924be091e7bc854aef0d0baafa80fe5f2d6af56b1788e1e8ec8d241b41c40d 3 OP_ROLL OP_ROLL 3 OP_ROLL OP_SWAP OP_CHECKSIGVERIFY" };
+    for (i=0; i<5; i++)
+    {
+        strcpy(buf,teststrs[i]);
+        printf("(%s) ",teststrs[i]);
+        r = bitcoin_assembler(buf);
+        printf("i.%d r.%d {%s}\n",i,r,buf);
+    }
+    getchar();
+}*/
+
 int main(int argc,const char *argv[])
 {
     FILE *fp;
@@ -642,7 +736,15 @@ int main(int argc,const char *argv[])
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
 #ifdef __APPLE__
-    luatest("hello world","*or*");
+   /* unscript();
+ int32_t _convert_to_bitcoinhex(char *scriptasm);
+    char buf[512];
+    strcpy(buf,"OP_RETURN 00");
+    //_convert_to_bitcoinhex(buf);
+    printf("(%s) -> (%s)\n","OP_RETURN 00",buf);
+    luatest("hello world","..");
+    regexptest();
+    getchar();*/
 #else
     if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
 #endif

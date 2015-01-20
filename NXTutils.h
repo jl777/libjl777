@@ -196,8 +196,8 @@ union NXTtype extract_NXTfield(CURL *curl_handle,char *origoutput,char *cmd,char
     jsonstr = issue_NXTPOST(curl_handle,cmd);
     if ( jsonstr != 0 )
     {
-        //if ( field != 0 && strcmp(field,"transactionId") == 0 )
-        //    printf("jsonstr.(%s)\n",jsonstr);
+        if ( field != 0 && strcmp(field,"transactionId") == 0 )
+            printf("jsonstr.(%s)\n",jsonstr);
         json = cJSON_Parse(jsonstr);
         if ( json == 0 ) printf("Error before: (%s) -> [%s]\n",jsonstr,cJSON_GetErrorPtr());
         else
@@ -290,6 +290,7 @@ int32_t issue_startForging(CURL *curl_handle,char *secret)
     union NXTtype ret;
     sprintf(cmd,"%s=startForging&secretPhrase=%s",_NXTSERVER,secret);
     ret = extract_NXTfield(curl_handle,0,cmd,"deadline",sizeof(int32_t));
+    printf("startforging deadline.%d\n",ret.val);
     return(ret.val);
 }
 
@@ -423,9 +424,9 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
 char *issue_getAsset(CURL *curl_handle,char *assetidstr)
 {
     char cmd[4096];
-    sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
-    //printf("cmd.(%s)\n",cmd);
-    return(issue_NXTPOST(curl_handle,cmd));
+    sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
+    printf("cmd.(%s)\n",cmd);
+    return(issue_NXTPOST(0,cmd));
     //printf("calculated.(%s)\n",ret.str);
 }
 
@@ -460,10 +461,13 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
                 else ap->name = clonestr(buf);
             }
             free_json(json);
-        }
+        } else printf("init_asset: couldnt parse.(%s)\n",jsonstr);
         free(jsonstr);
-        //printf("init_asset(%s) decimals.%d mult.%ld\n",assetidstr,ap->decimals,(long)ap->mult);
-        return(ap);
+        if ( ap->mult != 0 )
+        {
+            printf("init_asset(%s) decimals.%d mult.%ld\n",assetidstr,ap->decimals,(long)ap->mult);
+            return(ap);
+        }
     }
     printf("ERROR init_asset(%s)\n",assetidstr);
     return(0);
@@ -1195,6 +1199,8 @@ uint32_t get_NXTheight()
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             height = (int32_t)get_cJSON_int(json,"numberOfBlocks");
+            if ( height != 0 )
+                height--;
             free_json(json);
         }
         free(jsonstr);

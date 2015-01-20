@@ -17,35 +17,6 @@ struct NXT_guid
 };
 
 struct NXT_trade { uint64_t price,quantity,askorder,bidorder,blockbits,assetid; int32_t timestamp,decimals; };
-union _asset_price { uint64_t assetoshis,price; };
-
-struct NXT_assettxid
-{
-    struct NXT_str H;
-    uint64_t AMtxidbits,redeemtxid,assetbits,senderbits,receiverbits,quantity,convassetid;
-    double minconvrate;
-    union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
-    uint32_t coinblocknum,cointxind,coinv;
-    char *cointxid;
-    char *comment,*convwithdrawaddr,convname[16],teleport[64];
-    float estNXT;
-    int32_t completed,timestamp,vout,numconfs,convexpiration,buyNXT,sentNXT;
-};
-
-struct NXT_assettxid_list
-{
-    struct NXT_assettxid **txids;
-    int32_t num,max;
-};
-
-struct NXT_asset
-{
-    struct NXT_str H;
-    uint64_t issued,mult,assetbits,issuer;
-    char *description,*name;
-    struct NXT_assettxid **txids;   // all transactions for this asset
-    int32_t max,num,decimals,exdiv_height;
-};
 
 struct udp_info { uint64_t nxt64bits; uint32_t ipbits; uint16_t port; };
 #define SET_UDPINFO(up,bits,addr) ((up)->nxt64bits = bits, (up)->ipbits = calc_ipbits(inet_ntoa((addr)->sin_addr)), (up)->port = ntohs((addr)->sin_port))

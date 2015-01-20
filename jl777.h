@@ -62,7 +62,7 @@
 #define NXT_COINASSET "0"
 
 #define GENESISACCT "1739068987193023818"
-#define NODECOIN_SIG 0x63968736
+//#define NODECOIN_SIG 0x63968736
 //#define NXTCOINSCO_PORT 8777
 //#define NXTPROTOCOL_WEBJSON 7777
 #define BTCD_PORT 14631
@@ -203,8 +203,8 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "jl777str.h"
 #include "cJSON.c"
 #include "bitcoind_RPC.c"
-#include "jsoncodec.h"
 #include "SuperNET.h"
+#include "jsoncodec.h"
 #include "mappedptr.h"
 #include "ramchain.h"
 
@@ -235,29 +235,6 @@ struct pingpong_queue
 
 union NXTtype { uint64_t nxt64bits; uint32_t uval; int32_t val; int64_t lval; double dval; char *str; cJSON *json; };
 
-struct NXT_AMhdr
-{
-    uint32_t sig;
-    int32_t size;
-    uint64_t nxt64bits;
-};
-
-union _json_AM_data { unsigned char binarydata[sizeof(struct compressed_json)]; char jsonstr[sizeof(struct compressed_json)]; struct compressed_json jsn; };
-
-struct json_AM
-{
-    struct NXT_AMhdr H;
-	uint32_t funcid,gatewayid,timestamp,jsonflag;
-    union _json_AM_data U;
-};
-
-union _NXT_str_buf { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
-
-struct NXT_str
-{
-    uint64_t modified,nxt64bits;
-    union _NXT_str_buf U;
-};
 
 struct NXT_protocol_parms
 {
@@ -407,6 +384,7 @@ struct coin_info
     uint32_t uptodate,boughtNXT;
     int32_t maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;
     uint16_t bridgeport;
+    char multisigchar;
 };
 
 
@@ -613,10 +591,10 @@ char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
-int32_t SOFTWALL,SUPERNET_PORT = 7777;
+int32_t SOFTWALL,MAP_HUFF,SUPERNET_PORT = 7777;
 int32_t FASTMODE,SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP,UPNP,MULTIPORT;   // 3134975738 = 0xbadbeefa;
-int32_t DGSBLOCK = 213000;
+int32_t MULTITHREADS,DGSBLOCK = 213000;
 int32_t MAX_BUYNXT,DBSLEEP,NXT_FORKHEIGHT,Finished_init,Finished_loading,Historical_done,Debuglevel = 0;
 char NXTSERVER[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD],NXT_ASSETIDSTR[64],MGWROOT[1024];
 

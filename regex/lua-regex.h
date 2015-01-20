@@ -66,8 +66,8 @@ typedef struct LuaMatchState
     LuaCapture capture[LUA_REGEX_MAXCAPTURES];
 } LuaMatchState;
 
-int lua_find (LuaMatchState *ms, const char *s, size_t ls,const char *p, size_t lp, size_t init, int raw_find);
-int lua_match (LuaMatchState *ms, const char *s, size_t ls,const char *p, size_t lp, size_t init, int raw_find);
+int lua_find(LuaMatchState *ms, const char *s, size_t ls,const char *p, size_t lp, size_t init, int raw_find);
+int lua_match(LuaMatchState *ms, const char *s, size_t ls,const char *p, size_t lp, size_t init, int raw_find);
 char_buffer_st *lua_gsub (const char *src, size_t srcl, const char *p, size_t lp,const char *tr, size_t max_s, const char **error_ptr);
 
 #ifdef __cplusplus

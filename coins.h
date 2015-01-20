@@ -474,7 +474,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t i,j,n,useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
     char numstr[64],rpcuserpass[512],asset[256],_marker[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
-    char *marker,*privkey,*coinaddr,**privkeys;
+    char *marker,*privkey,*coinaddr,**privkeys,multisigchar[32];
     cJSON *ciphersobj,*limbo;
     //struct coinaddr *addrp = 0;
     struct nodestats *stats;
@@ -541,7 +541,6 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
             cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
-                //cp->addrs = hashtable_create("addrs",HASHTABLES_STARTSIZE,sizeof(*addrp),sizeof(*addrp),0,-1);
                 portable_mutex_init(&cp->consensus_mutex);
                 extract_cJSON_str(cp->myipaddr,sizeof(cp->myipaddr),json,"myipaddr");
                 extract_cJSON_str(cp->MGWissuer,sizeof(cp->MGWissuer),json,"issuer");
@@ -549,12 +548,10 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                     expand_nxt64bits(cp->MGWissuer,conv_rsacctstr(cp->MGWissuer,0));
                 if ( Debuglevel > 0 )
                     printf("MGW issuer.(%s) marker.(%s)\n",cp->MGWissuer,cp->marker!=0?cp->marker:"no marker");
-                //cp->coinid = conv_coinstr(coinstr);
                 cp->limboarray = limboarray;
-                //if ( cp->coinid >= 0 && cp->coinid < 256 )
-                //    Global_mp->coins[cp->coinid >> 6] |= (1L << (cp->coinid & 63));
                 if ( strcmp(cp->name,"BTCD") == 0 )
                 {
+                    extract_cJSON_str(cp->srvNXTACCTSECRET,sizeof(cp->srvNXTACCTSECRET),MGWconf,"secret");
                     Global_mp->Lfactor = (int32_t)get_API_int(cJSON_GetObjectItem(json,"Lfactor"),1);
                     if ( Global_mp->Lfactor > MAX_LFACTOR )
                         Global_mp->Lfactor = MAX_LFACTOR;
@@ -591,14 +588,15 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                         coinaddr = cp->srvpubaddr;
                         if ( strcmp("randvals",cp->srvpubaddr) != 0 && (privkey= get_telepod_privkey(&coinaddr,cp->srvcoinpubkey,cp)) != 0 )
                         {
-                            safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
+                            if ( cp->srvNXTACCTSECRET[0] == 0 )
+                                safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
                             cp->srvpubnxtbits = issue_getAccountId(0,privkey);
                             expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
                             if ( Debuglevel > 0 )
                                 printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                             free(privkey);
                         }
-                        else
+                        else if ( cp->srvNXTACCTSECRET[0] == 0 )
                         {
                             gen_randomacct(0,33,cp->srvNXTADDR,cp->srvNXTACCTSECRET,"randvals");
                             cp->srvpubnxtbits = calc_nxt64bits(cp->srvNXTADDR);
@@ -629,6 +627,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                 if ( dust == 0 )
                     dust = 10000;
                 cp->dust = dust;
+                    if ( extract_cJSON_str(multisigchar,sizeof(multisigchar),json,"multisigchar") > 0 )
+                    cp->multisigchar = multisigchar[0];
                 cp->maxevolveiters = get_API_int(cJSON_GetObjectItem(json,"maxevolveiters"),100);
                 cp->M = get_API_int(cJSON_GetObjectItem(json,"telepod_M"),1);
                 cp->N = get_API_int(cJSON_GetObjectItem(json,"telepod_N"),1);
@@ -663,6 +663,27 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
     return(cp);
 }
 
+int32_t is_whitelisted(char *ipaddr)
+{
+    int32_t i,n;
+    cJSON *array;
+    char str[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"whitelist");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( strcmp(str,ipaddr) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
 int32_t is_active_coin(char *coinstr)
 {
     int32_t i,n;
@@ -684,6 +705,82 @@ int32_t is_active_coin(char *coinstr)
     return(0);
 }
 
+void init_Specialaddrs()
+{
+    cJSON *array,*item;
+    int32_t i,n;
+    char NXTADDR[64];
+    array = cJSON_GetObjectItem(MGWconf,"special_NXTaddrs");
+    if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(NXTADDR,item);
+            if ( NXTADDR[0] == 0 )
+            {
+                fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
+                exit(1);
+            }
+            if ( Debuglevel > 0 )
+                printf("%s ",NXTADDR);
+            strcpy(Server_NXTaddrs[i],NXTADDR);
+            MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
+        }
+        if ( Debuglevel > 0 )
+            printf("special_addrs.%d\n",n);
+        MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;
+        MGW_blacklist[n] = MGW_whitelist[n] = GENESISACCT, n++;
+        MGW_whitelist[n] = "";
+        MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
+        MGW_blacklist[n++] = "";
+    }
+}
+
+void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemption,struct NXT_asset *ap)
+{
+    cJSON *array,*item;
+    int32_t i,n;
+    char NXTADDR[64];
+    if ( (ram->ap= ap) == 0 )
+        return;
+    array = cJSON_GetObjectItem(confjson,"special_NXTaddrs");
+    if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
+    {
+        n = cJSON_GetArraySize(array);
+        ram->special_NXTaddrs = calloc(n+2,sizeof(*ram->special_NXTaddrs));
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(NXTADDR,item);
+            if ( NXTADDR[0] == 0 )
+            {
+                fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
+                exit(1);
+            }
+            ram->special_NXTaddrs[i] = clonestr(NXTADDR);
+        }
+        if ( Debuglevel > 0 )
+            printf("special_addrs.%d\n",n);
+        ram->special_NXTaddrs[i++] = clonestr(NXTISSUERACCT);
+        ram->special_NXTaddrs[i++] = clonestr(GENESISACCT);
+    }
+    else
+    {
+        for (n=0; MGW_whitelist[n][0]!=0; n++)
+            ;
+        ram->special_NXTaddrs = calloc(n,sizeof(*ram->special_NXTaddrs));
+        for (i=0; i<n; i++)
+            ram->special_NXTaddrs[i] = clonestr(MGW_whitelist[i]);
+    }
+    ram->numspecials = n;
+}
+
 struct ramchain_info *get_ramchain_info(char *coinstr)
 {
     struct coin_info *cp = get_coin_info(coinstr);
@@ -694,11 +791,13 @@ struct ramchain_info *get_ramchain_info(char *coinstr)
 
 void activate_ramchain(struct ramchain_info *ram,char *name);
 uint32_t get_blockheight(struct coin_info *cp);
-void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
+void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t DEPOSIT_XFER_DURATION)
 {
+    //struct NXT_asset *ap = 0;
+    //int32_t creatededflag;
     strcpy(ram->name,cp->name);
     strcpy(ram->myipaddr,cp->myipaddr);
-    strcpy(ram->srvNXTACCTSECRET,cp->srvNXTADDR);
+    strcpy(ram->srvNXTACCTSECRET,cp->srvNXTACCTSECRET);
     strcpy(ram->srvNXTADDR,cp->srvNXTADDR);
     ram->marker = clonestr(cp->marker);
     ram->userpass = clonestr(cp->userpass);
@@ -706,36 +805,19 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp)
     ram->lastheighttime = (uint32_t)cp->lastheighttime;
     ram->RTblocknum = (uint32_t)cp->RTblockheight;
     ram->min_confirms = cp->min_confirms;
+    ram->multisigchar = cp->multisigchar;
     ram->estblocktime = cp->estblocktime;
     ram->firstiter = 1;
-    printf("%p init_ramchain_info(%s) (%s) active.%d (%s %s)\n",ram,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass);
-    if ( is_active_coin(cp->name) > 0 )
+    ram->NXTfee_equiv = cp->NXTfee_equiv;
+    ram->txfee = cp->txfee;
+    ram->min_NXTconfirms = MIN_NXTCONFIRMS;
+    ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
+    printf("%p init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c)\n",ram,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar);
+    if ( IS_LIBTEST > 0 && is_active_coin(cp->name) > 0 )
     {
-        if ( IS_LIBTEST > 0 )//== 7 )
-            activate_ramchain(ram,cp->name);
-        //init_compressionvars(0,cp->name,ram->RTblockheight + ((60 * 60 * 24 * 7) / ram->estblocktime));
-    } //else printf("(%s) not active\n",cp->name);
-}
-
-int32_t is_whitelisted(char *ipaddr)
-{
-    int32_t i,n;
-    cJSON *array;
-    char str[MAX_JSON_FIELD];
-    array = cJSON_GetObjectItem(MGWconf,"whitelist");
-    if ( array != 0 && is_cJSON_Array(array) != 0 )
-    {
-        n = cJSON_GetArraySize(array);
-        for (i=0; i<n; i++)
-        {
-            if ( array == 0 || n == 0 )
-                break;
-            copy_cJSON(str,cJSON_GetArrayItem(array,i));
-            if ( strcmp(str,ipaddr) == 0 )
-                return(1);
-        }
+        init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,0);
+        activate_ramchain(ram,cp->name);
     }
-    return(0);
 }
 
 int32_t is_trusted_issuer(char *issuer)
@@ -759,276 +841,171 @@ int32_t is_trusted_issuer(char *issuer)
     return(0);
 }
 
-char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
+void init_SuperNET_whitelist()
 {
-    void *init_SuperNET_globals();
-    static int didinit,exchangeflag;
-    static char ipbuf[64],*buf=0;
-    static int64_t len=0,allocsize=0;
-    int32_t init_SuperNET_storage(char *backupdir);
-    int32_t init_tradebots(cJSON *languagesobj);
-    uint64_t nxt64bits;
-    struct coin_info *cp;
-    cJSON *array,*item,*languagesobj = 0;
-    char ipaddr[64],coinstr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],userdir[MAX_JSON_FIELD],NXTADDR[MAX_JSON_FIELD],*jsonstr;
-    int32_t i,n,ismainnet,timezone=0;
-    void close_SuperNET_dbs();
-    if ( Global_mp == 0 )
-        Global_mp = init_SuperNET_globals();
-   // close_SuperNET_dbs();
-    NXTACCTSECRET[0] = 0;
-    NXTADDR[0] = 0;
-    exchangeflag = 0;//!strcmp(NXTACCTSECRET,"exchanges");
-    if ( Debuglevel > 0 )
-        printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
-    //printf("load MGW.conf (%s)\n",JSON_or_fname);
-    if ( JSON_or_fname[0] == '{' )
-        jsonstr = clonestr(JSON_or_fname);
-    else jsonstr = load_file(JSON_or_fname,&buf,&len,&allocsize);
-    if ( jsonstr != 0 )
+    cJSON *array,*item;
+    int32_t i,n;
+    char ipaddr[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"whitelist");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
     {
-        if ( Debuglevel > 0 )
-            printf("loaded.(%s)\n",jsonstr);
-        if ( MGWconf != 0 )
-            free_json(MGWconf);
-        MGWconf = cJSON_Parse(jsonstr);
-        if ( MGWconf != 0 )
+        int32_t add_SuperNET_whitelist(char *ipaddr);
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
         {
-            if ( myipaddr == 0 )
-            {
-                if ( didinit == 0 && extract_cJSON_str(ipbuf,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
-                    strcpy(ipbuf,"127.0.0.1");
-            } else parse_ipaddr(ipbuf,myipaddr);
-            myipaddr = ipbuf;
-            extract_cJSON_str(userdir,sizeof(userdir),MGWconf,"userdir");
-            if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
-                strcpy(Global_mp->myhandle,"myhandle");
-            timezone = get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0);
-            init_jdatetime(NXT_GENESISTIME,timezone * 3600);
-            languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
-            MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
-            MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
-            GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
-            FIRST_NXTBLOCK = get_API_int(cJSON_GetObjectItem(MGWconf,"FIRST_NXTBLOCK"),0);
-            extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
-            if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
-                FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
-            extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
-            extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
-            extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
-            extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
-             if ( IS_LIBTEST >= 0 )
-                IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);
-            SOFTWALL = get_API_int(cJSON_GetObjectItem(MGWconf,"SOFTWALL"),0);
-            FASTMODE = get_API_int(cJSON_GetObjectItem(MGWconf,"FASTMODE"),1);
-            SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
-            SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
-            APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
-            DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
-            MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
-            APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
-#ifndef HUFF_GENMODE
-            DBSLEEP *= 10;
-            APISLEEP *= 10;
-#endif
-            USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
-            UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
-            LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
-            MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),0);
-            if ( Debuglevel > 0 )
-                printf("(%s) USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",ipaddr,USESSL,IS_LIBTEST,APIPORT,APISLEEP);
-            ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
-            ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
-            if ( Debuglevel >= 0 )
-                Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
-            if ( NXTAPIURL[0] == 0 )
-            {
-                if ( USESSL == 0 )
-                    strcpy(NXTAPIURL,"http://127.0.0.1:");
-                else strcpy(NXTAPIURL,"https://127.0.0.1:");
-                if ( ismainnet != 0 )
-                    strcat(NXTAPIURL,"7876/nxt");
-                else strcat(NXTAPIURL,"6876/nxt");
-            }
-            strcpy(NXTSERVER,NXTAPIURL);
-            strcat(NXTSERVER,"?requestType");
-            if ( ismainnet != 0 )
-            {
-                NXT_FORKHEIGHT = 173271;
-                if ( NXTISSUERACCT[0] == 0 )
-                    strcpy(NXTISSUERACCT,"7117166754336896747");
-                //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
-            }
-            else
-            {
-                DGSBLOCK = 0;
-                if ( NXTISSUERACCT[0] == 0 )
-                    strcpy(NXTISSUERACCT,"18232225178877143084");
-                //origblock = "16787696303645624065";   //"91889681853055765";//"16787696303645624065";
-            }
-            //if ( ORIGBLOCK[0] == 0 )
-             //   strcpy(ORIGBLOCK,origblock);
-            extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
-            extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
-            extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
-            extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
-            Global_mp->gatewayid = -1;
-            for (i=0; i<3; i++)
-            {
-                Global_mp->gensocks[i] = -1;
-                if ( strcmp(myipaddr,Server_names[i]) == 0 )
-                    Global_mp->gatewayid = i;
-                if ( Debuglevel > 0 )
-                    printf("%s | ",Server_names[i]);
-            }
-            if ( Global_mp->gatewayid < 0 )
-                Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
-            if ( Global_mp->gatewayid >= 0 )
-                strcpy(myipaddr,Server_names[Global_mp->gatewayid]);
-            Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
-
-            if ( Debuglevel > 0 )
-                printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s gatewayid.%d 1st.%d\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK,Global_mp->gatewayid,FIRST_NXTBLOCK);
-            array = cJSON_GetObjectItem(MGWconf,"whitelist");
-            if ( array != 0 && is_cJSON_Array(array) != 0 )
-            {
-                int32_t add_SuperNET_whitelist(char *ipaddr);
-                n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i++)
-                {
-                    if ( array == 0 || n == 0 )
-                        break;
-                    item = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(ipaddr,item);
-                    add_SuperNET_whitelist(ipaddr);
-                }
-            }
-            array = cJSON_GetObjectItem(MGWconf,"coins");
-            if ( array != 0 && is_cJSON_Array(array) != 0 )
-            {
-                char *pubNXT,*BTCDaddr,*BTCaddr;//,pubkey[crypto_box_PUBLICKEYBYTES*2+1];
-                pubNXT = BTCDaddr = BTCaddr = "";
-                n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i++)
-                {
-                    if ( array == 0 || n == 0 )
-                        break;
-                    item = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
-                    if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr,userdir)) != 0 )
-                    {
-                        if ( Debuglevel > 0 )
-                            printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
-                        Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
-                        MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
-                        MGWcoins[Numcoins] = item;
-                        Daemons[Numcoins] = cp;
-                        cp->RTblockheight = get_blockheight(cp);
-                        if ( Debuglevel > 0 )
-                            printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
-                        Numcoins++;
-                        cp->json = item;
-                        parse_ipaddr(cp->myipaddr,myipaddr);
-                        strcpy(cp->name,coinstr);
-                        if ( strcmp(coinstr,"BTCD") == 0 )
-                        {
-                            BTCDaddr = cp->privateaddr;
-                            strcpy(NXTACCTSECRET,cp->privateNXTACCTSECRET);
-                            if ( Debuglevel > 0 )
-                                printf("BTCDaddr.(%s)\n",BTCDaddr);
-                            if ( cp->privatebits != 0 )
-                                expand_nxt64bits(NXTADDR,cp->privatebits);
-                            if ( DATADIR[0] == 0 )
-                                strcpy(DATADIR,"archive");
-                            if ( MGWROOT[0] == 0 )
-                                strcpy(MGWROOT,"/var/www");
-                            void init_rambases(); init_rambases();
-                            //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
-                            //addcontact("mypublic",cp->srvNXTADDR);
-                        }
-                        else if ( strcmp(coinstr,"BTC") == 0 )
-                            BTCaddr = cp->privateaddr;
-                        else if ( strcmp(coinstr,"NXT") == 0 )
-                            pubNXT = cp->privateNXTADDR;
-                        init_ramchain_info(&cp->RAM,cp);
-                     }
-                }
-            } else printf("no coins array.%p ?\n",array);
-                //init_filtered_bufs(); crashed ubunty
-                //if ( IS_LIBTEST >= 2 )
-            
-            //if ( NXTACCTSECRET[0] == 0 )
-            //    gen_randomacct(0,33,NXTADDR,NXTACCTSECRET,"randvals");
-            nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
-            expand_nxt64bits(NXTADDR,nxt64bits);
-            array = cJSON_GetObjectItem(MGWconf,"special_NXTaddrs");
-            if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
-            {
-                n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i++)
-                {
-                    if ( array == 0 || n == 0 )
-                        break;
-                    item = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(NXTADDR,item);
-                    if ( NXTADDR[0] == 0 )
-                    {
-                        fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
-                        exit(1);
-                    }
-                    if ( Debuglevel > 0 )
-                        printf("%s ",NXTADDR);
-                    strcpy(Server_NXTaddrs[i],NXTADDR);
-                    MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
-                }
-                if ( Debuglevel > 0 )
-                    printf("special_addrs.%d\n",n);
-                MGW_blacklist[n] = MGW_whitelist[n] = NXTISSUERACCT, n++;
-                MGW_blacklist[n] = MGW_whitelist[n] = GENESISACCT, n++;
-                MGW_whitelist[n] = "";
-                MGW_blacklist[n++] = "4551058913252105307";    // from accidental transfer
-                MGW_blacklist[n++] = "";
-            }
-            array = (IS_LIBTEST > 0) ? cJSON_GetObjectItem(MGWconf,"contacts") : 0;
-            if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
-            {
-                char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD];//,*retstr;
-                n = cJSON_GetArraySize(array);
-                printf("scanning %d contacts\n",n);
-                for (i=0; i<n; i++)
-                {
-                    if ( array == 0 || n == 0 )
-                        break;
-                    item = cJSON_GetArrayItem(array,i);
-                    if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 2 ) // must be ["handle","<acct>"]
-                    {
-                        copy_cJSON(handle,cJSON_GetArrayItem(item,0));
-                        copy_cJSON(acct,cJSON_GetArrayItem(item,1));
-                        if ( handle[0] != 0 && acct[0] != 0 )
-                        {
-                            printf("addcontact (%s) <-> (%s)\n",handle,acct);
-                            //retstr = addcontact(handle,acct);
-                            //if ( retstr != 0 )
-                            //   free(retstr);
-                        }
-                    }
-                }
-                printf("contacts.%d\n",n);
-            }
-            /*if ( didinit == 0 )
-            {
-                void start_polling_exchanges(int32_t exchangeflag);
-                int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
-                if ( init_exchanges(MGWconf,exchangeflag) > 0 )
-                    start_polling_exchanges(exchangeflag);
-            }*/
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(ipaddr,item);
+            add_SuperNET_whitelist(ipaddr);
         }
-        else printf("PARSE ERROR\n");
-        free(jsonstr);
     }
+}
 
-    /*if ( didinit == 0 )
+void init_coinsarray(char *userdir,char *myipaddr)
+{
+    char *pubNXT,*BTCDaddr,*BTCaddr;
+    cJSON *array,*item;
+    char coinstr[128];
+    int32_t i,n;
+    struct coin_info *cp;
+    array = cJSON_GetObjectItem(MGWconf,"coins");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
     {
+        pubNXT = BTCDaddr = BTCaddr = "";
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(coinstr,cJSON_GetObjectItem(item,"name"));
+            if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr,userdir)) != 0 )
+            {
+                if ( Debuglevel > 0 )
+                    printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
+                Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
+                MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
+                MGWcoins[Numcoins] = item;
+                Daemons[Numcoins] = cp;
+                cp->RTblockheight = get_blockheight(cp);
+                if ( Debuglevel > 0 )
+                    printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
+                Numcoins++;
+                cp->json = item;
+                parse_ipaddr(cp->myipaddr,myipaddr);
+                strcpy(cp->name,coinstr);
+                if ( strcmp(coinstr,"BTCD") == 0 )
+                {
+                    if ( DATADIR[0] == 0 )
+                        strcpy(DATADIR,"archive");
+                    if ( MGWROOT[0] == 0 )
+                        strcpy(MGWROOT,"/var/www");
+                    //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
+                    //addcontact("mypublic",cp->srvNXTADDR);
+                }
+                init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
+            }
+        }
+    } else printf("no coins array.%p ?\n",array);
+}
+
+void init_confcontacts()
+{
+    cJSON *array,*item;
+    char handle[MAX_JSON_FIELD],acct[MAX_JSON_FIELD];
+    int32_t i,n;
+    array = (IS_LIBTEST > 0) ? cJSON_GetObjectItem(MGWconf,"contacts") : 0;
+    if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
+    {
+        n = cJSON_GetArraySize(array);
+        printf("scanning %d contacts\n",n);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            if ( is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) == 2 ) // must be ["handle","<acct>"]
+            {
+                copy_cJSON(handle,cJSON_GetArrayItem(item,0));
+                copy_cJSON(acct,cJSON_GetArrayItem(item,1));
+                if ( handle[0] != 0 && acct[0] != 0 )
+                {
+                    printf("addcontact (%s) <-> (%s)\n",handle,acct);
+                    //retstr = addcontact(handle,acct);
+                    //if ( retstr != 0 )
+                    //   free(retstr);
+                }
+            }
+        }
+        printf("contacts.%d\n",n);
+    }
+}
+
+void init_legacyMGW(char *myipaddr)
+{
+    int32_t i,ismainnet;
+    ismainnet = get_API_int(cJSON_GetObjectItem(MGWconf,"MAINNET"),1);
+    extract_cJSON_str(NXTAPIURL,sizeof(NXTAPIURL),MGWconf,"NXTAPIURL");
+    if ( NXTAPIURL[0] == 0 )
+    {
+        if ( USESSL == 0 )
+            strcpy(NXTAPIURL,"http://127.0.0.1:");
+        else strcpy(NXTAPIURL,"https://127.0.0.1:");
+        if ( ismainnet != 0 )
+            strcat(NXTAPIURL,"7876/nxt");
+        else strcat(NXTAPIURL,"6876/nxt");
+    }
+    strcpy(NXTSERVER,NXTAPIURL);
+    strcat(NXTSERVER,"?requestType");
+    if ( ismainnet != 0 )
+    {
+        NXT_FORKHEIGHT = 173271;
+        if ( NXTISSUERACCT[0] == 0 )
+            strcpy(NXTISSUERACCT,"7117166754336896747");
+        //origblock = "14398161661982498695";    //"91889681853055765";//"16787696303645624065";
+    }
+    else
+    {
+        DGSBLOCK = 0;
+        if ( NXTISSUERACCT[0] == 0 )
+            strcpy(NXTISSUERACCT,"18232225178877143084");
+        //origblock = "16787696303645624065";   //"91889681853055765";//"16787696303645624065";
+    }
+    //if ( ORIGBLOCK[0] == 0 )
+    //   strcpy(ORIGBLOCK,origblock);
+    extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
+    extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
+    extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
+   // extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
+    Global_mp->gatewayid = -1;
+    for (i=0; i<3; i++)
+    {
+        Global_mp->gensocks[i] = -1;
+        if ( strcmp(myipaddr,Server_names[i]) == 0 )
+            Global_mp->gatewayid = i;
+        if ( Debuglevel > 0 )
+            printf("%s | ",Server_names[i]);
+    }
+    if ( Global_mp->gatewayid < 0 )
+        Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
+    if ( Global_mp->gatewayid >= 0 )
+        strcpy(myipaddr,Server_names[Global_mp->gatewayid]);
+}
+
+void init_tradebots_conf()
+{
+    /*if ( didinit == 0 )
+     {
+     void start_polling_exchanges(int32_t exchangeflag);
+     int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
+     if ( init_exchanges(MGWconf,exchangeflag) > 0 )
+     start_polling_exchanges(exchangeflag);
+     }*/
+    /*int32_t init_tradebots(cJSON *languagesobj);
+    if ( didinit == 0 )
+    {
+        languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
         init_tradebots(languagesobj);
         if ( ORIGBLOCK[0] == 0 )
         {
@@ -1049,6 +1026,100 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
             else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
         }
     }*/
+}
+
+void init_SuperNET_settings(char *userdir)
+{
+    extract_cJSON_str(userdir,MAX_JSON_FIELD,MGWconf,"userdir");
+    Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
+    if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
+        strcpy(Global_mp->myhandle,"myhandle");
+    init_jdatetime(NXT_GENESISTIME,get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0) * 3600);
+    MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
+    MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
+    GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
+    FIRST_NXTBLOCK = get_API_int(cJSON_GetObjectItem(MGWconf,"FIRST_NXTBLOCK"),0);
+    extract_cJSON_str(ORIGBLOCK,sizeof(ORIGBLOCK),MGWconf,"ORIGBLOCK");
+    if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
+        FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
+    extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
+    extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
+    extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
+    if ( IS_LIBTEST >= 0 )
+        IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);
+    MULTITHREADS = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTITHREADS"),0);
+    SOFTWALL = get_API_int(cJSON_GetObjectItem(MGWconf,"SOFTWALL"),0);
+    MAP_HUFF = get_API_int(cJSON_GetObjectItem(MGWconf,"MAP_HUFF"),1);
+    FASTMODE = get_API_int(cJSON_GetObjectItem(MGWconf,"FASTMODE"),1);
+    SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
+    SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
+    APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
+    DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
+    MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
+    APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
+/*#ifndef HUFF_GENMODE
+    DBSLEEP *= 10;
+    APISLEEP *= 10;
+#endif*/
+    USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
+    UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
+    LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
+    MULTIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTIPORT"),0);
+    ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
+    if ( Debuglevel >= 0 )
+        Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
+}
+
+char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
+{
+    void init_rambases();
+    void *init_SuperNET_globals();
+    static int didinit,exchangeflag;
+    static char ipbuf[64],*buf=0;
+    static int64_t len=0,allocsize=0;
+    int32_t init_SuperNET_storage(char *backupdir);
+    char ipaddr[64],userdir[MAX_JSON_FIELD],*jsonstr;
+    void close_SuperNET_dbs();
+    if ( Global_mp == 0 )
+        Global_mp = init_SuperNET_globals();
+    exchangeflag = 0;
+    if ( Debuglevel > 0 )
+        printf("init_MGWconf exchangeflag.%d myip.(%s)\n",exchangeflag,myipaddr);
+    if ( JSON_or_fname[0] == '{' )
+        jsonstr = clonestr(JSON_or_fname);
+    else jsonstr = load_file(JSON_or_fname,&buf,&len,&allocsize);
+    if ( jsonstr != 0 )
+    {
+        if ( Debuglevel > 0 )
+            printf("loaded.(%s)\n",jsonstr);
+        if ( MGWconf != 0 )
+            free_json(MGWconf);
+        MGWconf = cJSON_Parse(jsonstr);
+        if ( MGWconf != 0 )
+        {
+            if ( myipaddr == 0 )
+            {
+                if ( didinit == 0 && extract_cJSON_str(ipbuf,sizeof(ipbuf),MGWconf,"myipaddr") <= 0 )
+                    strcpy(ipbuf,"127.0.0.1");
+            } else parse_ipaddr(ipbuf,myipaddr);
+            myipaddr = ipbuf;
+            init_SuperNET_settings(userdir);
+            if ( Debuglevel > 0 )
+                printf("(%s) USESSL.%d IS_LIBTEST.%d APIPORT.%d APISLEEP.%d millis\n",ipaddr,USESSL,IS_LIBTEST,APIPORT,APISLEEP);
+            init_legacyMGW(myipaddr);
+            if ( Debuglevel > 0 )
+                printf("issuer.%s %08x NXTAPIURL.%s, minNXTconfirms.%d port.%s orig.%s gatewayid.%d 1st.%d\n",NXTISSUERACCT,GATEWAY_SIG,NXTAPIURL,MIN_NXTCONFIRMS,SERVER_PORTSTR,ORIGBLOCK,Global_mp->gatewayid,FIRST_NXTBLOCK);
+            init_rambases();
+            init_Specialaddrs();
+            init_SuperNET_whitelist();
+            init_coinsarray(userdir,myipaddr);
+            //init_filtered_bufs(); crashed ubunty
+            init_confcontacts();
+        }
+        else printf("PARSE ERROR\n");
+        free(jsonstr);
+    }
+    init_tradebots_conf();
     didinit = 1;
     return(myipaddr);
 }

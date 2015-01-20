@@ -739,6 +739,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 {
     FILE *fp = 0;
     struct coin_info *cp;
+    int32_t i,creatededflag;
     //myipaddr = clonestr("[2607:5300:100:200::b1d]:14631");
     //myipaddr = clonestr("[2001:16d8:dd24:0:86c9:681e:f931:256]");
     if ( myipaddr[0] == '[' )
@@ -770,16 +771,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             exit(-1);
         }
         if ( Global_mp->gatewayid >= 0 )
-        {
-            char cmd[256],*jsonstr;
             issue_startForging(0,cp->srvNXTACCTSECRET);
-            sprintf(cmd,"%s=getState",NXTSERVER);
-            if ( (jsonstr= issue_curl(0,cmd)) != 0 )
-            {
-                printf("GETSTATE.(%s)\n",jsonstr);
-                free(jsonstr);
-            }
-        }
         strcpy(Global_mp->myNXTADDR,cp->srvNXTADDR);
         Global_mp->nxt64bits = calc_nxt64bits(Global_mp->myNXTADDR);
         Historical_done = 1;
@@ -787,6 +779,15 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
         //    register_variant_handler(MULTIGATEWAY_VARIANT,process_directnet_syncwithdraw,MULTIGATEWAY_SYNCWITHDRAW,sizeof(struct batch_info),sizeof(struct batch_info),MGW_whitelist);
         printf("finished addcontact SUPERNET_PORT.%d USESSL.%d\n",SUPERNET_PORT,USESSL);
+        for (i=0; i<Numcoins; i++)
+        {
+            cp = Daemons[i];
+            if ( is_active_coin(cp->name) > 0 && cp->assetid[0] != 0 )
+            {
+                printf("initializing NXT %s asset.%s\n",cp->name,cp->assetid);
+                cp->RAM.ap = get_NXTasset(&creatededflag,Global_mp,cp->assetid);
+            }
+        }
     }
     return((SUPERNET_PORT << 1) | (USESSL&1));
 }
