@@ -252,6 +252,13 @@ void *ram_gethashdata(struct ramchain_info *ram,char type,uint32_t rawind);
 struct rampayload *ram_payloads(struct ramchain_hashptr **ptrp,int32_t *numpayloadsp,struct ramchain_info *ram,char *hashstr,char type);
 struct rampayload *ram_getpayloadi(struct ramchain_hashptr **ptrp,struct ramchain_info *ram,char type,uint32_t rawind,uint32_t i);
 
+int32_t _valid_txamount(struct ramchain_info *ram,uint64_t value)
+{
+    if ( value >= MIN_DEPOSIT_FACTOR * (ram->txfee + ram->NXTfee_equiv) )
+        return(1);
+    return(0);
+}
+
 // >>>>>>>>>>>>>>  start system functions
 
 double _kb(double n) { return(n / 1024.); }
@@ -1940,7 +1947,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                     tp->completed = 1;
                 if ( tp->receiverbits == ram->MGWbits ) // redeem start
                 {
-                    if ( tp->U.assetoshis >= MIN_DEPOSIT_FACTOR*(ram->txfee + ram->NXTfee_equiv) && (destaddr= _parse_withdraw_instructions(withdrawaddr,sender,ram,tp,ap)) != 0 )
+                    if ( _valid_txamount(ram,tp->U.assetoshis) > 0 && (destaddr= _parse_withdraw_instructions(withdrawaddr,sender,ram,tp,ap)) != 0 )
                     {
                         if ( tp->redeemstarted == 0 )
                         {
@@ -2025,14 +2032,14 @@ void ram_addunspent(struct ramchain_info *ram,char *coinaddr,struct rampayload *
         addrptr->numunspent++;
         if ( addrpayload->B.isinternal == 0 ) // all non-internal unspents could be MGW deposit or withdraw
         {
-            if ( addrptr->multisig != 0 && (msig= find_msigaddr(coinaddr)) != 0 )
+            if ( addrptr->multisig != 0 && (msig= find_msigaddr(coinaddr)) != 0 && _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,msig->NXTaddr) == 0 )
             {
                 {
                     char txidstr[256];
                     ram_txid(txidstr,ram,addrpayload->otherind);
                     printf("ram_addunspent.%s: pending deposit %s %.8f -> %s rawind %d.i%d for NXT.%s\n",txidstr,ram->name,dstr(addrpayload->value),coinaddr,addr_rawind,ind,msig->NXTaddr);
                 }
-                addrpayload->pendingdeposit = 1;
+                addrpayload->pendingdeposit = _valid_txamount(ram,addrpayload->value);
             } else if ( 0 && addrptr->multisig != 0 )
                 printf("find_msigaddr: couldnt find.(%s)\n",coinaddr);
             /*else if ( (tp= _is_pending_withdraw(ram,coinaddr)) != 0 )
@@ -2520,7 +2527,7 @@ uint32_t _update_ramMGW(struct ramchain_info *ram,uint32_t mostrecent)
             sprintf(cmd,"requestType=getAccountTransactions&account=%s",ram->special_NXTaddrs[j]);
             if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
             {
-                printf("special.%d (%s) (%s)\n",j,ram->special_NXTaddrs[j],jsonstr);
+                //printf("special.%d (%s) (%s)\n",j,ram->special_NXTaddrs[j],jsonstr);
                 if ( (redemptions= cJSON_Parse(jsonstr)) != 0 )
                 {
                     if ( (array= cJSON_GetObjectItem(redemptions,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -6254,7 +6261,7 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
                             break;
                         }
                     }
-                    if ( j == ap->num )
+                    if ( j == ap->num && _valid_txamount(ram,payloads[i].value) > 0 )
                     {
                         printf ("pendingdeposit.(%s %.8f) ",addr,dstr(payloads[i].value));
                         pending += payloads[i].value, numpending++;
@@ -7313,7 +7320,7 @@ void *process_ramchains(void *_argcoinstr)
                         printf("ERROR _process_ramchain.%s\n",ram->name);
                     processed--;
                 }
-                else if ( (ram->NXTblocknum-ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum-ram->min_confirms) < _get_RTheight(ram) )
+                else if ( (ram->NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(ram) )
                 {
                     if ( ram->mappedblocks[1]->blocknum >= _get_RTheight(ram)-2*ram->min_confirms )
                         ram->NXTblocknum = _update_ramMGW(ram,ram->NXTblocknum - ram->min_NXTconfirms); // possible for tx to disappear
