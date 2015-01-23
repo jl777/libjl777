@@ -21,7 +21,7 @@ struct SuperNET_db
     long maxitems,total_stored;
     DB *dbp;
     DB_ENV *storage;
-    struct hashtable *ramtable;
+    //struct hashtable *ramtable;
     int32_t *cipherids,selector,active;
     uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
 };

@@ -53,10 +53,10 @@ int32_t in_specialNXTaddrs(char *specialNXTaddrs[],char *NXTaddr)
 int32_t is_limbo_redeem(struct coin_info *cp,uint64_t redeemtxidbits)
 {
     int32_t j;
-    if ( cp != 0 && cp->limboarray != 0 )
+    if ( cp != 0 && cp->RAM.limboarray != 0 )
     {
-        for (j=0; cp->limboarray[j]!=0; j++)
-            if ( redeemtxidbits == cp->limboarray[j] )
+        for (j=0; cp->RAM.limboarray[j]!=0; j++)
+            if ( redeemtxidbits == cp->RAM.limboarray[j] )
                 return(1);
     }
     return(0);
@@ -311,10 +311,64 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig,char *origargs
     }
 }
 
+struct multisig_addr *MSIG_table,**MSIGS;
+portable_mutex_t MSIGmutex;
+int32_t didMSIGinit,Num_MSIGS;
+struct multisig_addr *find_msigaddr(char *msigaddr)
+{
+    int32_t i;//createdflag;
+    struct multisig_addr *msig = 0;
+    if ( didMSIGinit == 0 )
+    {
+        portable_mutex_init(&MSIGmutex);
+        didMSIGinit = 1;
+    }
+    portable_mutex_lock(&MSIGmutex);
+    //HASH_FIND(hh,MSIG_table,msigaddr,strlen(msigaddr),msig);
+    for (i=0; i<Num_MSIGS; i++)
+        if ( strcmp(msigaddr,MSIGS[i]->multisigaddr) == 0 )
+        {
+            msig = MSIGS[i];
+            break;
+        }
+    portable_mutex_unlock(&MSIGmutex);
+    return(msig);
+    /*if ( MTsearch_hashtable(&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr) == HASHSEARCH_ERROR )
+     {
+     printf("(%s) not MGW multisig addr\n",msigaddr);
+     return(0);
+     }
+     printf("found (%s)\n",msigaddr);
+     return(MTadd_hashtable(&createdflag,&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr));*/ // only do this if it is already there
+    //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
+}
+
+struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n)
+{
+    struct multisig_addr *msig;
+    if ( (msig= find_msigaddr(msigaddr)) == 0 )
+    {
+        msig = calloc(1,sizeof(*msig) + n*sizeof(struct pubkey_info));
+        strcpy(msig->multisigaddr,msigaddr);
+        if ( didMSIGinit == 0 )
+        {
+            portable_mutex_init(&MSIGmutex);
+            didMSIGinit = 1;
+        }
+        printf("add MSIG[%s]\n",msigaddr);
+        portable_mutex_lock(&MSIGmutex);
+        MSIGS = realloc(MSIGS,(1+Num_MSIGS) * sizeof(*MSIGS));
+        MSIGS[Num_MSIGS++] = msig;
+        //HASH_ADD_KEYPTR(hh,MSIG_table,clonestr(msigaddr),strlen(msigaddr),msig);
+        portable_mutex_unlock(&MSIGmutex);
+    }
+    return(msig);
+}
+
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender)
 {
     DBT key,data,*datap;
-    int32_t i,ret = 0,createdflag;
+    int32_t i,ret = 0;
     struct multisig_addr *msigram;
     struct SuperNET_db *sdb = &SuperNET_dbs[MULTISIG_DATA];
     update_MGW_msig(msig,sender);
@@ -331,7 +385,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sende
             add_NXT_coininfo(msig->pubkeys[i].nxt64bits,calc_nxt64bits(msig->NXTaddr),msig->coinstr,msig->pubkeys[i].coinaddr,msig->pubkeys[i].pubkey);
     if ( msig->H.size == 0 )
         msig->H.size = sizeof(*msig) + (msig->n * sizeof(msig->pubkeys[0]));
-    msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msig->multisigaddr);
+    msigram = ram_add_msigaddr(msig->multisigaddr,msig->n);//MTadd_hashtable(&createdflag,&sdb->ramtable,msig->multisigaddr);
     if ( msigram->created != 0 && msig->created != 0 )
     {
         if ( msigram->created < msig->created )
@@ -344,7 +398,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sende
         safecopy(msig->NXTpubkey,msigram->NXTpubkey,sizeof(msig->NXTpubkey));
     //if ( msigram->sender == 0 && msig->sender != 0 )
     //    createdflag = 1;
-    if ( createdflag != 0 || memcmp(msigram,msig,msig->H.size) != 0 )
+    if ( memcmp(msigram,msig,msig->H.size) != 0 ) //createdflag != 0 ||
     {
         clear_pair(&key,&data);
         key.data = msig->multisigaddr;
@@ -417,13 +471,17 @@ int32_t _update_redeembits(struct coin_info *cp,uint64_t redeembits,uint64_t AMt
     int32_t i,n = 0,num = 0;
     if ( cp == 0 )
         return(0);
-    if ( cp->limboarray != 0 )
-        for (n=0; cp->limboarray[n]!=0; n++)
-            ;
-    cp->limboarray = realloc(cp->limboarray,sizeof(*cp->limboarray) * (n+2));
-    cp->limboarray[n++] = redeembits;
-    cp->limboarray[n] = 0;
-    num++;
+    if ( cp->RAM.limboarray != 0 )
+        for (n=0; cp->RAM.limboarray[n]!=0; n++)
+            if ( cp->RAM.limboarray[n] == redeembits )
+                break;
+    if ( cp->RAM.limboarray[n] != redeembits )
+    {
+        cp->RAM.limboarray = realloc(cp->RAM.limboarray,sizeof(*cp->RAM.limboarray) * (n+2));
+        cp->RAM.limboarray[n++] = redeembits;
+        cp->RAM.limboarray[n] = 0;
+        num++;
+    }
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
         printf("n.%d set AMtxidbits.%llu -> %s.(%llu)\n",n,(long long)AMtxidbits,cp->name,(long long)redeembits);
     if ( cp != 0 )
@@ -798,14 +856,6 @@ uint64_t broadcast_moneysentAM(struct coin_info *cp,int32_t height)
     return(AMtxidbits);
 }
 
-struct multisig_addr *find_msigaddr(char *msigaddr)
-{
-    int32_t createdflag;
-    if ( MTsearch_hashtable(&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr) == HASHSEARCH_ERROR )
-        return(0);
-    return(MTadd_hashtable(&createdflag,&SuperNET_dbs[MULTISIG_DATA].ramtable,msigaddr));
-    //return((struct multisig_addr *)find_storage(MULTISIG_DATA,msigaddr,0));
-}
 
 // ADDRESS_DATA DB
 int32_t set_address_entry(struct address_entry *bp,uint32_t blocknum,int32_t txind,int32_t vin,int32_t vout,int32_t isinternal,int32_t spent)
@@ -1669,7 +1719,10 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
     struct multisig_addr *msig = 0;
     cJSON *pobj,*redeemobj,*pubkeysobj,*addrobj,*nxtobj,*nameobj,*idobj;
     if ( obj == 0 )
+    {
+        printf("decode_msigjson cant decode null obj\n");
         return(0);
+    }
     nameobj = cJSON_GetObjectItem(obj,"coin");
     copy_cJSON(coinstr,nameobj);
     if ( coinstr[0] == 0 )
@@ -1724,6 +1777,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
             if ( Debuglevel > 3 )
                 fprintf(stderr,"for msig.%s\n",msig->multisigaddr);
         } else { printf("%p %p %p\n",addrobj,redeemobj,pubkeysobj); free(msig); msig = 0; }
+        //printf("return msig.%p\n",msig);
         return(msig);
     } else fprintf(stderr,"decode msig:  error parsing.(%s)\n",cJSON_Print(obj));
     return(0);
@@ -2267,8 +2321,8 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
     expand_nxt64bits(NXTaddr,ap->H.nxt64bits);
     if ( (argjson = parse_json_AM(ap)) != 0 )
     {
-        if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-            fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+       // if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+       //     fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",ap->funcid,sender,receiver,txid,ap->U.jsonstr);
         switch ( ap->funcid )
         {
             case GET_COINDEPOSIT_ADDRESS:
@@ -2284,7 +2338,9 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
                         if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
                             fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         if ( update_msig_info(msig,syncflag,sender) > 0 )
-                            fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                        {
+                            //fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
+                        }
                     }
                     free(msig);
                 } //else printf("WARNING: sender.%s == NXTaddr.%s\n",sender,NXTaddr);
@@ -2364,6 +2420,7 @@ uint64_t process_NXTtransaction(char *specialNXTaddrs[],char *sender,char *recei
                         printf("warning: odd message len?? %ld\n",(long)n);
                     memset(buf,0,sizeof(buf));
                     decode_hex((void *)buf,(int32_t)(n>>1),AMstr);
+                    buf[n>>1] = 0;
                     hdr = (struct NXT_AMhdr *)buf;
                     process_MGW_message(specialNXTaddrs,(void *)hdr,sender,receiver,txid,syncflag,refcp->name);
                 }

@@ -273,6 +273,7 @@ struct telepod **gather_telepods(int32_t *nump,uint64_t *balancep,struct coin_in
     struct telepod *pod,**pods = 0;
     *nump = 0;
     *balancep = 0;
+    printf("need to port hashgather to uthash\n"); exit(1);
     rawlist = hashtable_gather_modified(&changed,cp->telepods,1); // no MT support (yet)
     if ( rawlist != 0 && changed != 0 )
     {

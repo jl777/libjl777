@@ -755,14 +755,15 @@ void ensure_SuperNET_dirs(char *backupdir)
 
 void init_rambases()
 {
-    struct multisig_addr *msig = 0;
+    /*struct multisig_addr *msig = 0;
     SuperNET_dbs[MULTISIG_DATA].ramtable = hashtable_create("multisigs",HASHTABLES_STARTSIZE,sizeof(struct multisig_addr)+sizeof(struct pubkey_info)*16,((long)&msig->multisigaddr[0] - (long)msig),sizeof(msig->multisigaddr),((long)&msig->modified - (long)msig));
+*/
 }
 
 int32_t init_SuperNET_storage(char *backupdir)
 {
     static int didinit;
-    int i,m,n,createdflag;
+    int i,m,n;
     struct coin_info *cp = get_coin_info("BTCD");
     struct SuperNET_db *sdb;
     if ( didinit == 0 )
@@ -807,17 +808,36 @@ int32_t init_SuperNET_storage(char *backupdir)
             if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
                 printf("ERROR hist process_hashtablequeues\n");
             {
+                int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
+                struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
+                struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n);
                 struct multisig_addr **msigs,*msigram;
+                char *retstr;
+                cJSON *json;
                 sdb = &SuperNET_dbs[MULTISIG_DATA];
+                if ( 0 && (retstr= issue_curl(0,"http://209.126.70.159/MGW/msig/ALL")) != 0 )
+                {
+                    if ( (json= cJSON_Parse(retstr)) != 0 )
+                    {
+                        if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                        {
+                            for (i=0; i<n; i++)
+                                if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),"8279528579993996036")) != 0 )
+                                    update_msig_info(msigram,i == n-1,"8279528579993996036");
+                        }
+                        free_json(json);
+                    }
+                    free(retstr);
+                }
                 if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
                 {
                     for (i=m=0; i<n; i++)
                     {
-                        msigram = MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
+                        msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
                         printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
-                        if ( createdflag != 0 )
+                        //if ( createdflag != 0 )
                             *msigram = *msigs[i], m++;
-                        else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                        //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
                         free(msigs[i]);
                     }
                     free(msigs);

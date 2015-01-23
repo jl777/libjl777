@@ -41,14 +41,6 @@ typedef union _bits64 bits64;
 typedef union _bits256 bits256;
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
-struct hashtable
-{
-    char *name;//[128];
-    void **hashtable;
-    uint64_t hashsize,numsearches,numiterations,numitems;
-    long keyoffset,keysize,modifiedoffset,structsize;
-};
-
 struct transfer_args
 {
     uint64_t modified;
@@ -122,15 +114,6 @@ struct exchange_pair { struct storage_header H; char exchange[64],base[16],rel[1
 
 struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
 
-struct multisig_addr
-{
-    struct storage_header H;
-    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
-    uint64_t sender,modified;
-    uint32_t m,n,created,valid,buyNXT;
-    struct pubkey_info pubkeys[];
-};
-
 union _NXT_str_buf { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
 
 struct NXT_str
@@ -147,7 +130,7 @@ struct NXT_assettxid
     uint64_t AMtxidbits,redeemtxid,assetbits,senderbits,receiverbits,quantity,convassetid;
     double minconvrate;
     union _asset_price U; // price 0 -> not buy/sell but might be deposit amount
-    uint32_t coinblocknum,cointxind,coinv,height;
+    uint32_t coinblocknum,cointxind,coinv,height,redeemstarted;
     char *cointxid;
     char *comment,*convwithdrawaddr,convname[16],teleport[64];
     float estNXT;
@@ -189,6 +172,25 @@ struct NXT_asset
 #define INCLUDE_DEFINES
 #include "ramchain.h"
 #undef INCLUDE_DEFINES
+
+struct multisig_addr
+{
+    struct storage_header H;
+    UT_hash_handle hh;
+    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
+    uint64_t sender,modified;
+    uint32_t m,n,created,valid,buyNXT;
+    struct pubkey_info pubkeys[];
+};
+
+struct hashtable
+{
+    char *name;//[128];
+    void **hashtable;
+    uint64_t hashsize,numsearches,numiterations,numitems;
+    long keyoffset,keysize,modifiedoffset,structsize;
+};
+
 
 struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
 

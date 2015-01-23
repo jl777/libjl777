@@ -424,8 +424,9 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
 char *issue_getAsset(CURL *curl_handle,char *assetidstr)
 {
     char cmd[4096];
-    sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
+    sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
     printf("cmd.(%s)\n",cmd);
+    //return(issue_curl(0,cmd));
     return(issue_NXTPOST(0,cmd));
     //printf("calculated.(%s)\n",ret.str);
 }
@@ -442,6 +443,11 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
+            if ( get_cJSON_int(json,"errorCode") != 0 )
+            {
+                printf("error init_asset(%s) for assetidstr.%s\n",jsonstr,assetidstr);
+                exit(-1);
+            }
             ap->decimals = (int32_t)get_cJSON_int(json,"decimals");
             for (i=7-ap->decimals; i>=0; i--)
                 mult *= 10;
@@ -462,12 +468,10 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
             }
             free_json(json);
         } else printf("init_asset: couldnt parse.(%s)\n",jsonstr);
+        printf("init_asset(%s) decimals.%d mult.%ld (%s)\n",assetidstr,ap->decimals,(long)ap->mult,jsonstr);
         free(jsonstr);
         if ( ap->mult != 0 )
-        {
-            printf("init_asset(%s) decimals.%d mult.%ld\n",assetidstr,ap->decimals,(long)ap->mult);
             return(ap);
-        }
     }
     printf("ERROR init_asset(%s)\n",assetidstr);
     return(0);
@@ -1394,7 +1398,7 @@ struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset 
         //tp->assetbits = ap->assetbits;
        // tp->redeemtxid = calc_nxt64bits(txid);
        // tp->timestamp = timestamp;
-        //printf("%d) %s t%d %s txid.%s\n",ap->num,ap->name,timestamp,assetidstr,txid);
+        printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
         if ( ap != 0 )
         {
             if ( ap->num >= ap->max )

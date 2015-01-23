@@ -548,7 +548,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                     expand_nxt64bits(cp->MGWissuer,conv_rsacctstr(cp->MGWissuer,0));
                 if ( Debuglevel > 0 )
                     printf("MGW issuer.(%s) marker.(%s)\n",cp->MGWissuer,cp->marker!=0?cp->marker:"no marker");
-                cp->limboarray = limboarray;
+                cp->RAM.limboarray = limboarray;
                 if ( strcmp(cp->name,"BTCD") == 0 )
                 {
                     extract_cJSON_str(cp->srvNXTACCTSECRET,sizeof(cp->srvNXTACCTSECRET),MGWconf,"secret");
@@ -743,10 +743,15 @@ void init_Specialaddrs()
 void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemption,struct NXT_asset *ap)
 {
     cJSON *array,*item;
-    int32_t i,n;
+    int32_t i,n,hasredemption = 0;
     char NXTADDR[64];
     if ( (ram->ap= ap) == 0 )
+    {
+        printf("no asset for %s\n",ram->name);
         return;
+    }
+    ram->MGWbits = calc_nxt64bits(MGWredemption);
+    printf("init_ram_MGWconfs.(%s) -> %llu\n",MGWredemption,(long long)ram->MGWbits);
     array = cJSON_GetObjectItem(confjson,"special_NXTaddrs");
     if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
     {
@@ -764,11 +769,15 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
                 exit(1);
             }
             ram->special_NXTaddrs[i] = clonestr(NXTADDR);
+            if ( strcmp(NXTADDR,MGWredemption) == 0 )
+                hasredemption = 1;
         }
         if ( Debuglevel > 0 )
             printf("special_addrs.%d\n",n);
-        ram->special_NXTaddrs[i++] = clonestr(NXTISSUERACCT);
+        if ( hasredemption == 0 )
+            ram->special_NXTaddrs[i++] = clonestr(MGWredemption);
         ram->special_NXTaddrs[i++] = clonestr(GENESISACCT);
+        n = i;
     }
     else
     {
@@ -779,6 +788,9 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
             ram->special_NXTaddrs[i] = clonestr(MGW_whitelist[i]);
     }
     ram->numspecials = n;
+    for (i=0; i<n; i++)
+        printf("(%s) ",ram->special_NXTaddrs[i]);
+    printf("numspecials.%d\n",ram->numspecials);
 }
 
 struct ramchain_info *get_ramchain_info(char *coinstr)
@@ -794,7 +806,7 @@ uint32_t get_blockheight(struct coin_info *cp);
 void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t DEPOSIT_XFER_DURATION)
 {
     //struct NXT_asset *ap = 0;
-    //int32_t creatededflag;
+    int32_t createdflag;
     strcpy(ram->name,cp->name);
     strcpy(ram->myipaddr,cp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,cp->srvNXTACCTSECRET);
@@ -808,22 +820,24 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->multisigchar = cp->multisigchar;
     ram->estblocktime = cp->estblocktime;
     ram->firstiter = 1;
+    ram->gatewayid = Global_mp->gatewayid;
     ram->NXTfee_equiv = cp->NXTfee_equiv;
     ram->txfee = cp->txfee;
     ram->min_NXTconfirms = MIN_NXTCONFIRMS;
     ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
-    printf("%p init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c)\n",ram,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar);
+    printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c)\n",ram->gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar);
     if ( IS_LIBTEST > 0 && is_active_coin(cp->name) > 0 )
     {
-        init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,0);
+        init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
         activate_ramchain(ram,cp->name);
-    }
+    } else printf("skip activate ramchains\n");
 }
 
 int32_t is_trusted_issuer(char *issuer)
 {
     int32_t i,n;
     cJSON *array;
+    uint64_t nxt64bits;
     char str[MAX_JSON_FIELD];
     array = cJSON_GetObjectItem(MGWconf,"issuers");
     if ( array != 0 && is_cJSON_Array(array) != 0 )
@@ -834,6 +848,12 @@ int32_t is_trusted_issuer(char *issuer)
             if ( array == 0 || n == 0 )
                 break;
             copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( str[0] == 'N' && str[1] == 'X' && str[2] == 'T' )
+            {
+                nxt64bits = conv_rsacctstr(str,0);
+                printf("str.(%s) -> %llu\n",str,(long long)nxt64bits);
+                expand_nxt64bits(str,nxt64bits);
+            }
             if ( strcmp(str,issuer) == 0 )
                 return(1);
         }
@@ -1030,6 +1050,7 @@ void init_tradebots_conf()
 
 void init_SuperNET_settings(char *userdir)
 {
+    uint64_t nxt64bits;
     extract_cJSON_str(userdir,MAX_JSON_FIELD,MGWconf,"userdir");
     Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
     if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
@@ -1043,6 +1064,12 @@ void init_SuperNET_settings(char *userdir)
     if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
         FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
     extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
+    if ( NXTISSUERACCT[0] == 'N' && NXTISSUERACCT[1] == 'X' && NXTISSUERACCT[2] == 'T' )
+    {
+        nxt64bits = conv_rsacctstr(NXTISSUERACCT,0);
+        printf("NXTISSUERACCT.(%s) -> %llu\n",NXTISSUERACCT,(long long)nxt64bits);
+        expand_nxt64bits(NXTISSUERACCT,nxt64bits);
+    }
     extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
     extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
     if ( IS_LIBTEST >= 0 )
