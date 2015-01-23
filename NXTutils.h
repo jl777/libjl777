@@ -1398,7 +1398,7 @@ struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset 
         //tp->assetbits = ap->assetbits;
        // tp->redeemtxid = calc_nxt64bits(txid);
        // tp->timestamp = timestamp;
-        printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
+        //printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
         if ( ap != 0 )
         {
             if ( ap->num >= ap->max )

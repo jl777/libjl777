@@ -2115,8 +2115,8 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
     expand_nxt64bits(NXTaddr,nxt64bits);
     memset(contacts,0,sizeof(contacts));
     M = (N - 1);
-    //if ( Global_mp->gatewayid < 0 || refcp == 0 )
-    //    return;
+    if ( Global_mp->gatewayid < 0 || refcp == 0 )
+        return;
     if ( (n= get_MGW_contacts(contacts,N)) != N )
     {
         printf("get_MGW_contacts(%d) only returned %d\n",N,n);

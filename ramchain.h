@@ -1977,7 +1977,9 @@ int32_t ram_mark_depositcomplete(struct ramchain_info *ram,struct NXT_assettxid 
                     {
                         printf("deposit complete %s.%s %.8f -> NXT.%llu txid.%llu | %d seconds\n",ram->name,tp->cointxid,dstr(tp->U.assetoshis),(long long)tp->receiverbits,tp->redeemtxid,(uint32_t)(time(NULL) - addrpayload->pendingdeposit));
                         addrpayload->pendingdeposit = 0;
-                    }
+                        tp->completed = 1;
+                    } else printf("deposit NOT PENDING? complete %s.%s %.8f -> NXT.%llu txid.%llu | %d seconds\n",ram->name,tp->cointxid,dstr(tp->U.assetoshis),(long long)tp->receiverbits,tp->redeemtxid,(uint32_t)(time(NULL) - addrpayload->pendingdeposit));
+
                     return(1);
                 } else printf("ram_mark_depositcomplete: mismatched rawind or value (%u vs %d) (%.8f vs %.8f)\n",txptr->rawind,addrpayload->otherind,dstr(txpayload->value),dstr(addrpayload->value));
             } else printf("ram_mark_depositcomplete: couldnt find addrpayload for %s vout.%d\n",tp->cointxid,tp->coinv);
@@ -2230,7 +2232,7 @@ void _process_AM_message(struct ramchain_info *ram,uint32_t height,struct json_A
     {
         if ( 0 && ((MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0) )
             fprintf(stderr,"func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",AM->funcid,sender,receiver,txid,AM->U.jsonstr);
-        else fprintf(stderr,"%c",AM->funcid);
+        //else fprintf(stderr,"%c",AM->funcid);
         if ( AM->funcid > 0 )
             argjson = _process_MGW_message(ram,height,AM->funcid,argjson,0,0,sender,receiver,txid);
         if ( argjson != 0 )
@@ -7274,7 +7276,7 @@ void *process_ramchains(void *_argcoinstr)
                         printf("ERROR _process_ramchain.%s\n",ram->name);
                     processed--;
                 }
-                else if ( ram->NXTblocknum < _get_NXTheight() || ram->mappedblocks[1]->blocknum < _get_RTheight(ram) )
+                else // if ( ram->NXTblocknum < _get_NXTheight() || ram->mappedblocks[1]->blocknum < _get_RTheight(ram) ) unconfirmed tx!
                 {
                     ram->NXTblocknum = _update_ramMGW(ram,ram->NXTblocknum - ram->min_NXTconfirms); // possible for tx to disappear
                     for (pass=1; pass<=4; pass++)
