@@ -314,6 +314,7 @@ char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXT
     if ( np == 0 || destnp == 0 || destnp->stats.nxt64bits == 0 )
     {
         sprintf(buf,"\"error\":\"no np.%p or global for sendmessage || %s destnp->stats.nxtbits %llu == 0\"}",np,destNXTaddr,(long long)destnp->stats.nxt64bits);
+        printf("%s\n",buf);
         return(clonestr(buf));
     }
     expand_nxt64bits(destsrvNXTaddr,destnp->stats.nxt64bits);

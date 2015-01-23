@@ -575,39 +575,45 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                         cp->privatebits = issue_getAccountId(0,privkey);
                         expand_nxt64bits(cp->privateNXTADDR,cp->privatebits);
                         conv_NXTpassword(Global_mp->myprivkey.bytes,Global_mp->mypubkey.bytes,cp->privateNXTACCTSECRET);
-                        if ( Debuglevel > 0 )
+                        if ( Debuglevel > 2 )
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->privateaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
-                        stats = get_nodestats(cp->privatebits);
-                        add_new_node(cp->privatebits);
-                        memcpy(stats->pubkey,Global_mp->mypubkey.bytes,sizeof(stats->pubkey));
-                        //conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
+                        if ( (stats = get_nodestats(cp->privatebits)) != 0 )
+                        {
+                            add_new_node(cp->privatebits);
+                            memcpy(stats->pubkey,Global_mp->mypubkey.bytes,sizeof(stats->pubkey));
+                            //conv_NXTpassword(Global_mp->private_privkey,Global_mp->private_pubkey,cp->privateNXTACCTSECRET);
+                        } else { printf("null return from get_nodestats in init_coin_info\n"); exit(1); }
                     }
                     if ( extract_cJSON_str(cp->srvpubaddr,sizeof(cp->srvpubaddr),json,"srvpubaddr") > 0 )
                     {
                         coinaddr = cp->srvpubaddr;
-                        if ( strcmp("randvals",cp->srvpubaddr) != 0 && (privkey= get_telepod_privkey(&coinaddr,cp->srvcoinpubkey,cp)) != 0 )
+                        if ( cp->srvNXTACCTSECRET[0] == 0 )
                         {
-                            if ( cp->srvNXTACCTSECRET[0] == 0 )
+                            if ( strcmp("randvals",cp->srvpubaddr) != 0 && (privkey= get_telepod_privkey(&coinaddr,cp->srvcoinpubkey,cp)) != 0 )
+                            {
                                 safecopy(cp->srvNXTACCTSECRET,privkey,sizeof(cp->srvNXTACCTSECRET));
-                            cp->srvpubnxtbits = issue_getAccountId(0,privkey);
-                            expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
-                            if ( Debuglevel > 0 )
-                                printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
-                            free(privkey);
+                                free(privkey);
+                            }
+                            else
+                            {
+                                gen_randomacct(0,33,cp->srvNXTADDR,cp->srvNXTACCTSECRET,"randvals");
+                                cp->srvpubnxtbits = calc_nxt64bits(cp->srvNXTADDR);
+                            }
                         }
-                        else if ( cp->srvNXTACCTSECRET[0] == 0 )
-                        {
-                            gen_randomacct(0,33,cp->srvNXTADDR,cp->srvNXTACCTSECRET,"randvals");
-                            cp->srvpubnxtbits = calc_nxt64bits(cp->srvNXTADDR);
-
-                        }
+                        cp->srvpubnxtbits = issue_getAccountId(0,cp->srvNXTACCTSECRET);
+                        expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
+                        if ( Debuglevel > 2 )
+                            printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                         conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
                         init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
-                        stats = get_nodestats(cp->srvpubnxtbits);
-                        stats->ipbits = calc_ipbits(cp->myipaddr);
-                        add_new_node(cp->srvpubnxtbits);
-                        memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
+                        //printf("SRV pubaddr.(%s) secret.(%s) -> %llu\n",cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
+                        if ( (stats= get_nodestats(cp->srvpubnxtbits)) != 0 )
+                        {
+                            stats->ipbits = calc_ipbits(cp->myipaddr);
+                            add_new_node(cp->srvpubnxtbits);
+                            memcpy(stats->pubkey,Global_mp->loopback_pubkey,sizeof(stats->pubkey));
+                        } else { printf("null return from get_nodestats in init_coin_info B\n"); exit(1); }
                     }
                 }
                 else if ( IS_LIBTEST > 0 && strcmp(cp->name,"BTCD") == 0 )
@@ -728,6 +734,11 @@ void init_Specialaddrs()
             if ( Debuglevel > 0 )
                 printf("%s ",NXTADDR);
             strcpy(Server_NXTaddrs[i],NXTADDR);
+            if ( i < 3 )
+            {
+                void bind_NXT_ipaddr(uint64_t nxt64bits,char *ip_port);
+                bind_NXT_ipaddr(calc_nxt64bits(NXTADDR),Server_names[i]);
+            }
             MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
         }
         if ( Debuglevel > 0 )
@@ -825,12 +836,12 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->txfee = cp->txfee;
     ram->min_NXTconfirms = MIN_NXTCONFIRMS;
     ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
-    printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c)\n",ram->gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar);
     if ( IS_LIBTEST > 0 && is_active_coin(cp->name) > 0 )
     {
+        printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c)\n",ram->gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar);
         init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
         activate_ramchain(ram,cp->name);
-    } else printf("skip activate ramchains\n");
+    } //else printf("skip activate ramchains\n");
 }
 
 int32_t is_trusted_issuer(char *issuer)

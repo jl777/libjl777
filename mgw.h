@@ -300,11 +300,11 @@ void broadcast_bindAM(char *refNXTaddr,struct multisig_addr *msig,char *origargs
     struct coin_info *cp = get_coin_info("BTCD");
     char *jsontxt,*AMtxid,AM[4096];
     struct json_AM *ap = (struct json_AM *)AM;
-    if ( cp != 0 && (jsontxt= create_multisig_json(msig,0)) != 0 )
+    if ( cp != 0 && (jsontxt= create_multisig_json(msig,1)) != 0 )
     {
         printf(">>>>>>>>>>>>>>>>>>>>>>>>>> send bind address AM\n");
         set_json_AM(ap,GATEWAY_SIG,BIND_DEPOSIT_ADDRESS,refNXTaddr,0,origargstr!=0?origargstr:jsontxt,1);
-        AMtxid = submit_AM(0,cp->srvNXTADDR,&ap->H,0,cp->srvNXTACCTSECRET);
+        AMtxid = submit_AM(0,refNXTaddr,&ap->H,0,cp->srvNXTACCTSECRET);
         if ( AMtxid != 0 )
             free(AMtxid);
         free(jsontxt);
@@ -1688,7 +1688,7 @@ struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char
 long calc_pubkey_jsontxt(int32_t truncated,char *jsontxt,struct pubkey_info *ptr,char *postfix)
 {
     if ( truncated != 0 )
-        sprintf(jsontxt,"{\"pubkey\":\"%s\",\"srv\":\"%llu\"}%s",ptr->pubkey,(long long)ptr->nxt64bits,postfix);
+        sprintf(jsontxt,"{\"address\":\"%s\"}%s",ptr->coinaddr,postfix);
     else sprintf(jsontxt,"{\"address\":\"%s\",\"pubkey\":\"%s\",\"srv\":\"%llu\"}%s",ptr->coinaddr,ptr->pubkey,(long long)ptr->nxt64bits,postfix);
     return(strlen(jsontxt));
 }
@@ -1973,15 +1973,22 @@ int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
     return(0);
 }
 
-char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **contacts,int32_t n,char *userpubkey,char *email,uint32_t buyNXT)
+char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,struct contact_info **oldcontacts,int32_t n,char *userpubkey,char *email,uint32_t buyNXT)
 {
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
     struct nodestats *stats;
-    struct contact_info *contact;
+    struct contact_info *contact,*contacts[4],_contacts[4];
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     uint64_t refbits = 0;
     int32_t i,iter,flag,valid = 0;
+    for (i=0; i<3; i++) // MGW bypass
+    {
+        contacts[i] = &_contacts[i];
+        memset(contacts[i],0,sizeof(*contacts[i]));
+        contacts[i]->nxt64bits = calc_nxt64bits(Server_NXTaddrs[i]);
+    }
+    n = i;
     refbits = conv_acctstr(refacct);
     expand_nxt64bits(refNXTaddr,refbits);
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
@@ -1994,6 +2001,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     for (iter=0; iter<2; iter++)
     for (i=0; i<n; i++)
     {
+        //fprintf(stderr,"iter.%d i.%d\n",iter,i);
         if ( (contact= contacts[i]) != 0 && contact->nxt64bits != 0 )
         {
             if ( iter == 0 && ismynxtbits(contact->nxt64bits) != 0 )//|| (stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits)) )
@@ -2032,6 +2040,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             } //else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
         }
     }
+    //fprintf(stderr,"call gen_multisig_addr\n");
     if ( (msig= gen_multisig_addr(NXTaddr,M,N,cp,refNXTaddr,userpubkey,contacts)) != 0 )
     {
         msig->valid = valid;
@@ -2050,13 +2059,14 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 if ( msig != 0 )
                 {
                     update_MGW_msig(msig,NXTaddr);
-                    if ( 0 && flag != 0 ) // let the client do this
+                    if ( 0 && MGW_initdone != 0 && Global_mp->gatewayid == 2 && flag != 0 ) // let the client do this
                         broadcast_bindAM(refNXTaddr,msig,0);
                     free(msig);
                 }
             }
         }
     }
+    fprintf(stderr,"return valid.%d\n",valid);
     if ( valid != N || retstr == 0 )
     {
         sprintf(buf,"{\"error\":\"missing msig info\",\"refacct\":\"%s\",\"coin\":\"%s\",\"M\":%d,\"N\":%d,\"valid\":%d}",refacct,coinstr,M,N,valid);
@@ -2107,23 +2117,29 @@ struct multisig_addr *find_NXT_msig(int32_t fixflag,char *NXTaddr,char *coinstr,
 void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
 {
     struct coin_info *cp,*refcp = get_coin_info("BTCD");
-    int32_t i,n,M,N=3;
+    int32_t i,M,N=3;
     struct multisig_addr *msig;
     char coinaddr[512],NXTaddr[64],NXTpubkey[128],*retstr;
     cJSON *coinjson;
-    struct contact_info *contacts[4];
+    struct contact_info *contacts[4],_contacts[4];
     expand_nxt64bits(NXTaddr,nxt64bits);
     memset(contacts,0,sizeof(contacts));
     M = (N - 1);
     if ( Global_mp->gatewayid < 0 || refcp == 0 )
         return;
-    if ( (n= get_MGW_contacts(contacts,N)) != N )
+    /*if ( (n= get_MGW_contacts(contacts,N)) != N )
     {
         printf("get_MGW_contacts(%d) only returned %d\n",N,n);
         for (i=0; i<n; i++)
             if ( contacts[i] != 0 )
                 free(contacts[i]);
         return;
+    }*/
+    for (i=0; i<3; i++)
+    {
+        contacts[i] = &_contacts[i];
+        memset(contacts[i],0,sizeof(*contacts[i]));
+        contacts[i]->nxt64bits = calc_nxt64bits(Server_NXTaddrs[i]);
     }
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
         printf("update_coinacct_addresses.(%s)\n",NXTaddr);

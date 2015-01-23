@@ -815,19 +815,28 @@ int32_t init_SuperNET_storage(char *backupdir)
                 char *retstr;
                 cJSON *json;
                 sdb = &SuperNET_dbs[MULTISIG_DATA];
-                if ( 0 && (retstr= issue_curl(0,"http://209.126.70.159/MGW/msig/ALL")) != 0 )
+                if ( 0 )
                 {
-                    if ( (json= cJSON_Parse(retstr)) != 0 )
+                    int j;
+                    char url[1024];
+                    for (j=0; j<3; j++)
                     {
-                        if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                        sprintf(url,"http://%s/MGW/msig/ALL",Server_names[j]);
+                        if ( (retstr= issue_curl(0,url)) != 0 )
                         {
-                            for (i=0; i<n; i++)
-                                if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),"8279528579993996036")) != 0 )
-                                    update_msig_info(msigram,i == n-1,"8279528579993996036");
+                            if ( (json= cJSON_Parse(retstr)) != 0 )
+                            {
+                                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                                {
+                                    for (i=0; i<n; i++)
+                                        if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 )
+                                            update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]);
+                                }
+                                free_json(json);
+                            }
+                            free(retstr);
                         }
-                        free_json(json);
                     }
-                    free(retstr);
                 }
                 if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
                 {
