@@ -351,6 +351,8 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
         strcat(cmd,"&message=");
         strcat(cmd,comment);
     }
+//printf("would have (%s)\n",cmd);
+//return(0);
     jsontxt = issue_NXTPOST(curl_handle,cmd);
     if ( jsontxt != 0 )
     {
@@ -424,11 +426,14 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
 char *issue_getAsset(CURL *curl_handle,char *assetidstr)
 {
     char cmd[4096];
-    sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
-    printf("cmd.(%s)\n",cmd);
+    //sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
+    //printf("cmd.(%s)\n",cmd);
     //return(issue_curl(0,cmd));
-    return(issue_NXTPOST(0,cmd));
+    //return(issue_NXTPOST(0,cmd));
     //printf("calculated.(%s)\n",ret.str);
+    sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
+    printf("cmd.(%s)\n",cmd);
+    return(issue_curl(0,cmd));
 }
 
 struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
@@ -2545,5 +2550,17 @@ long force_fpos(char *fname,FILE **fpp,long setfpos)
     return(setfpos);
 }
 
+cJSON *http_search(char *destip,char *type,char *file)
+{
+    cJSON *json = 0;
+    char url[1024],*retstr;
+    sprintf(url,"http://%s/%s/%s",destip,type,file);
+    if ( (retstr= issue_curl(0,url)) != 0 )
+    {
+        json = cJSON_Parse(retstr);
+        free(retstr);
+    }
+    return(json);
+}
 
 #endif

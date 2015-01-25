@@ -1844,7 +1844,7 @@ void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *em
     int32_t gatewayid;
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
-        sprintf(params,"{\"requestType\":\"genmultisig\",\"email\":\"%s\",\"buyNXT\":%d,\"destip\":\"%s\",\"destport\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"contacts\":[\"%s\", \"%s\", \"%s\"],\"M\":%d,\"N\":%d}",email,buyNXT,Server_names[gatewayid],refcp->bridgeport,userNXTaddr,userpubkey,coinstr,Server_NXTaddrs[0],Server_NXTaddrs[1],Server_NXTaddrs[2],NUM_GATEWAYS-1,NUM_GATEWAYS);
+        sprintf(params,"{\"requestType\":\"genmultisig\",\"email\":\"%s\",\"buyNXT\":%d,\"destip\":\"%s\",\"destport\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"contacts\":[\"%s\", \"%s\", \"%s\"],\"M\":%d,\"N\":%d}",email,buyNXT,Server_ipaddrs[gatewayid],refcp->bridgeport,userNXTaddr,userpubkey,coinstr,Server_NXTaddrs[0],Server_NXTaddrs[1],Server_NXTaddrs[2],NUM_GATEWAYS-1,NUM_GATEWAYS);
         retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
         if ( Debuglevel > 0 )
             printf("issue.(%s) -> (%s)\n",params,retstr);
@@ -1999,7 +1999,7 @@ char *MGWresponse_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 
 char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag)
 {
-    static char *Deposit_server = Server_names[NUM_GATEWAYS-1]; // change this
+    static char *Deposit_server = Server_ipaddrs[NUM_GATEWAYS-1]; // change this
     char *SuperNET_url();
     struct coin_info *cp,*refcp = get_coin_info("BTCD");
     char params[4096],*retstr,*serverip;
@@ -2011,10 +2011,10 @@ char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpub
     {
         if ( ((1<<gatewayid) & mask) == 0 )
             continue;
-        serverip = (gatewayid < NUM_GATEWAYS) ? Server_names[gatewayid] : Deposit_server;
+        serverip = (gatewayid < NUM_GATEWAYS) ? Server_ipaddrs[gatewayid] : Deposit_server;
         //curl -k --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"MGW\",\"rescan\":\"1\",\"actionflag\":\"0\",\"handler\":\"mgw\",\"destip\":\"209.126.70.159\",\"destport\":\"4000\",\"specialNXT\":\"7117166754336896747\",\"coin\":\"BTCD\",\"asset\":\"11060861818140490423\",\"exclude0\":\"7581814105672729429\",\"destNXT\":\"NXT-BAD7-238Z-2SEX-2TJ2S\"}"]  }' -H 'content-type: text/plain;' https://127.0.0.1:7777/
 
-        //sprintf(params,"{\"requestType\":\"MGW\",\"specialNXT\":\"%s\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",cp->MGWissuer,Server_names[gatewayid],refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
+        //sprintf(params,"{\"requestType\":\"MGW\",\"specialNXT\":\"%s\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"refcontact\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",cp->MGWissuer,Server_ipaddrs[gatewayid],refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
         sprintf(params,"{\"requestType\":\"MGW\",\"handler\":\"mgw\",\"destip\":\"%s\",\"destport\":%d,\"rescan\":%d,\"actionflag\":%d,\"destNXT\":\"%s\",\"userpubkey\":\"%s\",\"coin\":\"%s\",\"asset\":\"%s\",\"exclude0\":\"7581814105672729429\"}",serverip,refcp->bridgeport,rescan,actionflag,userNXTaddr,userpubkey,coinstr,cp->assetid);
         //printf("issue (%s)\n",params);
         retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);

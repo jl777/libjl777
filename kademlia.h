@@ -221,7 +221,7 @@ uint64_t _send_kademlia_cmd(int32_t queueflag,int32_t encrypted,struct pserver_i
         return(0);
     }
     len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf(">>>>>>>> directsend.[%s] encrypted.%d -> (%s)\n",_tokbuf,encrypted,pserver->ipaddr);
     txid = directsend_packet(queueflag,encrypted,pserver,_tokbuf,len,data,datalen);
     return(txid);

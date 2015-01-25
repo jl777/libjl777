@@ -505,8 +505,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                     printf("LIMBO ARRAY of %d of %d redeemtxids\n",j,n);
             }
         }
-        nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),0);
-        useaddmultisig = get_API_int(cJSON_GetObjectItem(json,"useaddmultisig"),0);
+        nohexout = get_API_int(cJSON_GetObjectItem(json,"nohexout"),1);
+        useaddmultisig = get_API_int(cJSON_GetObjectItem(json,"useaddmultisig"),1);
         blockheight = get_API_int(cJSON_GetObjectItem(json,"blockheight"),0);
         forkblock = get_API_int(cJSON_GetObjectItem(json,"forkblock"),0);
         pollseconds = get_API_int(cJSON_GetObjectItem(json,"pollseconds"),60);
@@ -737,7 +737,7 @@ void init_Specialaddrs()
             if ( i < 3 )
             {
                 void bind_NXT_ipaddr(uint64_t nxt64bits,char *ip_port);
-                bind_NXT_ipaddr(calc_nxt64bits(NXTADDR),Server_names[i]);
+                bind_NXT_ipaddr(calc_nxt64bits(NXTADDR),Server_ipaddrs[i]);
             }
             MGW_blacklist[i] = MGW_whitelist[i] = clonestr(NXTADDR);
         }
@@ -1005,23 +1005,23 @@ void init_legacyMGW(char *myipaddr)
     }
     //if ( ORIGBLOCK[0] == 0 )
     //   strcpy(ORIGBLOCK,origblock);
-    extract_cJSON_str(Server_names[0],sizeof(Server_names[0]),MGWconf,"MGW0_ipaddr");
-    extract_cJSON_str(Server_names[1],sizeof(Server_names[1]),MGWconf,"MGW1_ipaddr");
-    extract_cJSON_str(Server_names[2],sizeof(Server_names[2]),MGWconf,"MGW2_ipaddr");
+    extract_cJSON_str(Server_ipaddrs[0],sizeof(Server_ipaddrs[0]),MGWconf,"MGW0_ipaddr");
+    extract_cJSON_str(Server_ipaddrs[1],sizeof(Server_ipaddrs[1]),MGWconf,"MGW1_ipaddr");
+    extract_cJSON_str(Server_ipaddrs[2],sizeof(Server_ipaddrs[2]),MGWconf,"MGW2_ipaddr");
    // extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
     Global_mp->gatewayid = -1;
     for (i=0; i<3; i++)
     {
         Global_mp->gensocks[i] = -1;
-        if ( strcmp(myipaddr,Server_names[i]) == 0 )
+        if ( strcmp(myipaddr,Server_ipaddrs[i]) == 0 )
             Global_mp->gatewayid = i;
         if ( Debuglevel > 0 )
-            printf("%s | ",Server_names[i]);
+            printf("%s | ",Server_ipaddrs[i]);
     }
     if ( Global_mp->gatewayid < 0 )
         Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
     if ( Global_mp->gatewayid >= 0 )
-        strcpy(myipaddr,Server_names[Global_mp->gatewayid]);
+        strcpy(myipaddr,Server_ipaddrs[Global_mp->gatewayid]);
 }
 
 void init_tradebots_conf()

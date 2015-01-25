@@ -69,9 +69,9 @@
 
 #define NUM_GATEWAYS 3
 #define _NXTSERVER "requestType"
-#define EMERGENCY_PUNCH_SERVER Server_names[0]
-#define POOLSERVER Server_names[1]
-#define MIXER_ADDR Server_names[2]
+#define EMERGENCY_PUNCH_SERVER Server_ipaddrs[0]
+#define POOLSERVER Server_ipaddrs[1]
+#define MIXER_ADDR Server_ipaddrs[2]
 
 #define GENESISACCT "1739068987193023818"
 #define GENESISBLOCK "2680262203532249785"
@@ -586,7 +586,7 @@ char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 
 extern uv_loop_t *UV_loop;
-char Server_names[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD];
+char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;

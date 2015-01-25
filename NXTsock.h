@@ -103,7 +103,7 @@ int32_t process_client_packet(int32_t variant,struct server_request_header *req,
     else
     {
         printf("No handler for variant.%d funcid.%d (%s)\n",variant,req->funcid,clientip);
-        // whitelist = Server_names;
+        // whitelist = Server_ipaddrs;
         // if ( check_whitelist(whitelist,clientip) >= 0 )
         //     WINFO[req->srcgateway % NUM_GATEWAYS] = *req;
         req->argsize = 0;

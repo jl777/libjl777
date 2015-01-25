@@ -808,6 +808,7 @@ int32_t init_SuperNET_storage(char *backupdir)
             if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
                 printf("ERROR hist process_hashtablequeues\n");
             {
+                struct multisig_addr *find_msigaddr(char *msigaddr);
                 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
                 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
                 struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n);
@@ -815,35 +816,12 @@ int32_t init_SuperNET_storage(char *backupdir)
                 char *retstr;
                 cJSON *json;
                 sdb = &SuperNET_dbs[MULTISIG_DATA];
-                if ( 0 )
-                {
-                    int j;
-                    char url[1024];
-                    for (j=0; j<3; j++)
-                    {
-                        sprintf(url,"http://%s/MGW/msig/ALL",Server_names[j]);
-                        if ( (retstr= issue_curl(0,url)) != 0 )
-                        {
-                            if ( (json= cJSON_Parse(retstr)) != 0 )
-                            {
-                                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
-                                {
-                                    for (i=0; i<n; i++)
-                                        if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 )
-                                            update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]);
-                                }
-                                free_json(json);
-                            }
-                            free(retstr);
-                        }
-                    }
-                }
                 if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
                 {
                     for (i=m=0; i<n; i++)
                     {
                         msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                        printf("%d of %d: (%s)\n",i,n,msigs[i]->multisigaddr);
+                        printf("%d of %d: (%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
                         //if ( createdflag != 0 )
                             *msigram = *msigs[i], m++;
                         //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
@@ -851,6 +829,29 @@ int32_t init_SuperNET_storage(char *backupdir)
                     }
                     free(msigs);
                     printf("initialized %d of %d msig in RAM\n",m,n);
+                }
+                if ( 1 )
+                {
+                    int j;
+                    char url[1024];
+                    for (j=0; j<3; j++)
+                    {
+                        sprintf(url,"http://%s/MGW/msig/ALL",Server_ipaddrs[j]);
+                        if ( (retstr= issue_curl(0,url)) != 0 )
+                        {
+                            if ( (json= cJSON_Parse(retstr)) != 0 )
+                            {
+                                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                                {
+                                    for (i=0; i<n; i++)
+                                        if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
+                                            update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]);
+                                }
+                                free_json(json);
+                            }
+                            free(retstr);
+                        }
+                    }
                 }
             }
         }
