@@ -2596,7 +2596,7 @@ uint64_t conv_address_entry(char *coinaddr,char *txidstr,char *script,struct coi
     return(value);
 }
 
-uint64_t MGWtransfer_asset(cJSON **transferjsonp,int32_t forceflag,uint64_t nxt64bits,char *depositors_pubkey,struct NXT_asset *ap,uint64_t value,char *coinaddr,char *txidstr,struct address_entry *entry,uint32_t *buyNXTp,char *srvNXTADDR,char *srvNXTACCTSECRET)
+uint64_t MGWtransfer_asset(cJSON **transferjsonp,int32_t forceflag,uint64_t nxt64bits,char *depositors_pubkey,struct NXT_asset *ap,uint64_t value,char *coinaddr,char *txidstr,struct address_entry *entry,uint32_t *buyNXTp,char *srvNXTADDR,char *srvNXTACCTSECRET,int32_t deadline)
 {
     double get_current_rate(char *base,char *rel);
     char buf[MAX_JSON_FIELD],numstr[64],assetidstr[64],rsacct[64],NXTaddr[64],comment[MAX_JSON_FIELD],*errjsontxt,*str;
@@ -2646,7 +2646,7 @@ uint64_t MGWtransfer_asset(cJSON **transferjsonp,int32_t forceflag,uint64_t nxt6
             str = cJSON_Print(pair);
             stripwhite_ns(str,strlen(str));
             expand_nxt64bits(assetidstr,ap->assetbits);
-            depositid = issue_transferAsset(&errjsontxt,0,srvNXTACCTSECRET,NXTaddr,(iter == 0) ? assetidstr : NXT_ASSETIDSTR,(iter == 0) ? (value/ap->mult) : buyNXT*SATOSHIDEN,MIN_NQTFEE,DEPOSIT_XFER_DURATION,str,depositors_pubkey);
+            depositid = issue_transferAsset(&errjsontxt,0,srvNXTACCTSECRET,NXTaddr,(iter == 0) ? assetidstr : NXT_ASSETIDSTR,(iter == 0) ? (value/ap->mult) : buyNXT*SATOSHIDEN,MIN_NQTFEE,deadline,str,depositors_pubkey);
             free(str);
             if ( depositid != 0 && errjsontxt == 0 )
             {
@@ -2736,7 +2736,7 @@ uint64_t process_msigdeposits(cJSON **transferjsonp,int32_t forceflag,struct coi
             }
             if ( j == ap->num )
             {
-                total = MGWtransfer_asset(transferjsonp,forceflag,nxt64bits,depositors_pubkey,ap,value,coinaddr,txidstr,entry,buyNXTp,cp->srvNXTADDR,cp->srvNXTACCTSECRET);
+                total = MGWtransfer_asset(transferjsonp,forceflag,nxt64bits,depositors_pubkey,ap,value,coinaddr,txidstr,entry,buyNXTp,cp->srvNXTADDR,cp->srvNXTACCTSECRET,DEPOSIT_XFER_DURATION);
             }
         }
     }
