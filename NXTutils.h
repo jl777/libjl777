@@ -1331,7 +1331,7 @@ int32_t gen_randomacct(CURL *curl_handle,uint32_t randchars,char *NXTaddr,char *
         }
     }
     expand_nxt64bits(NXTaddr,issue_getAccountId(curl_handle,NXTsecret));
-    if ( Debuglevel > 0 )
+    if ( Debuglevel > 2 )
        printf("NXT.%s NXTsecret.(%s)\n",NXTaddr,NXTsecret);
     return(0);
 }
