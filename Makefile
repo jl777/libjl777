@@ -78,20 +78,6 @@ patch2: doesntexist; \
     cp lib/*  ../../libs; \
     cd ../..;
 
-patch3: doesntexist; \
-    echo "expanding nacl"; \
-    bzip2 -dc < nacl-20090405.tar.bz2 | tar -xf -; \
-    cd nacl-20090405; \
-    echo "compiling nacl, this will take some time"; \
-    ./do; \
-    cd ..; \
-    echo "randombytes.o and libnacl.a are in the build directory of nacl-20090405"; \
-    echo `date`; \
-    echo `ls -l nacl-20090405/build/*/lib/*/randombytes.o`; \
-    cp nacl-20090405/build/*/lib/*/randombytes.o libs
-    #echo `ls -l nacl-20090405/build/*/lib/amd64/randombytes.o`; \
-    #cp nacl-20090405/build/*/lib/amd64/randombytes.o libs
-
 onetime: doesntexist; \
     cd miniupnpc; \
     make; \

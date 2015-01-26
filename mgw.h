@@ -2079,7 +2079,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 }
                 else printf("error getting msigaddr for cp.%p ref.(%s) addr.(%s) pubkey.(%s)\n",cp,refNXTaddr,myacctcoinaddr,mypubkey);
             }
-            else if ( iter == 1 && ismynxtbits(contact->nxt64bits) == 0 && http_search_msig(Server_NXTaddrs[i],Server_ipaddrs[i],refacct) == 0 )
+            else if ( iter == 1 && ismynxtbits(contact->nxt64bits) == 0 )//&& http_search_msig(Server_NXTaddrs[i],Server_ipaddrs[i],refacct) == 0 )
             {
                 acctcoinaddr[0] = pubkey[0] = 0;
                 if ( get_NXT_coininfo(contact->nxt64bits,acctcoinaddr,pubkey,refbits,cp->name) == 0 || acctcoinaddr[0] == 0 || pubkey[0] == 0 )
@@ -2087,7 +2087,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                     if ( myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                         sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"myaddr\":\"%s\",\"mypubkey\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"userpubkey\":\"%s\"}",NXTaddr,myacctcoinaddr,mypubkey,coinstr,refNXTaddr,userpubkey);
                     else sprintf(buf,"{\"requestType\":\"getmsigpubkey\",\"NXT\":\"%s\",\"coin\":\"%s\",\"refNXTaddr\":\"%s\",\"userpubkey\":\"%s\"}",NXTaddr,coinstr,refNXTaddr,userpubkey);
-                    if ( Debuglevel > 1 )
+                    if ( Debuglevel > 2 )
                         printf("SENDREQ.(%s)\n",buf);
                     hopNXTaddr[0] = 0;
                     expand_nxt64bits(destNXTaddr,contact->nxt64bits);
@@ -2112,30 +2112,34 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             safecopy(msig->email,email,sizeof(msig->email));
             msig->buyNXT = buyNXT;
             update_msig_info(msig,1,NXTaddr);
-            if ( valid == N )
-            {
-                retstr = create_multisig_json(msig,0);
-                if ( retstr != 0 )
-                {
-                    if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone > 1 )
-                        printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
-                    if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
-                        send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
-                    if ( msig != 0 )
-                    {
-                        if ( 0 && update_MGW_msig(msig,NXTaddr) > 0 && Global_mp->gatewayid == 2 )
-                            broadcast_bindAM(refNXTaddr,msig,0);
-                        free(msig);
-                    }
-                }
-            }
         }
         //fprintf(stderr,"return valid.%d\n",valid);
-    } else free(msig), valid = N;
+    } else valid = N;
+    if ( valid == N && msig != 0 )
+    {
+        retstr = create_multisig_json(msig,0);
+        if ( retstr != 0 )
+        {
+            if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
+            {
+                //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone > 1 )
+                    printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
+                send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
+            }
+            if ( msig != 0 )
+            {
+                if ( 0 && update_MGW_msig(msig,NXTaddr) > 0 && Global_mp->gatewayid == 2 )
+                    broadcast_bindAM(refNXTaddr,msig,0);
+            }
+        }
+    }
+    if ( msig != 0 )
+        free(msig);
     if ( valid != N || retstr == 0 )
     {
         sprintf(buf,"{\"error\":\"missing msig info\",\"refacct\":\"%s\",\"coin\":\"%s\",\"M\":%d,\"N\":%d,\"valid\":%d}",refacct,coinstr,M,N,valid);
         retstr = clonestr(buf);
+        //printf("%s\n",buf);
     }
     return(retstr);
 }

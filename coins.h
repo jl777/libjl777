@@ -1069,6 +1069,7 @@ void init_SuperNET_settings(char *userdir)
         strcpy(Global_mp->myhandle,"myhandle");
     init_jdatetime(NXT_GENESISTIME,get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0) * 3600);
     MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
+    PERMUTE_RAWINDS = get_API_int(cJSON_GetObjectItem(MGWconf,"PERMUTE"),0);
     MIN_NXTCONFIRMS = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NXTCONFIRMS"),MIN_NXTCONFIRMS);
     GATEWAY_SIG = get_API_int(cJSON_GetObjectItem(MGWconf,"GATEWAY_SIG"),0);
     FIRST_NXTBLOCK = get_API_int(cJSON_GetObjectItem(MGWconf,"FIRST_NXTBLOCK"),0);

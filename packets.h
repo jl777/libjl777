@@ -508,7 +508,11 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         encrypted = 0;
         decoded[recvlen] = 0;
         if ( Debuglevel > 2 || len > 400 )
-            printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,decoded);
+        {
+            static int32_t debugmsg;
+            if ( debugmsg++ < 100 )
+                printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,decoded);
+        }
         //return(0);
     }
     else return(0); // if from data field, must decrypt or it is ignored

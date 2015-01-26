@@ -574,7 +574,7 @@ uint16_t extract_nameport(char *name,long namesize,struct sockaddr_in *addr)
         return(0);
     }
     port = ntohs(addr->sin_port);
-    //printf("sender.(%s) port.%d\n",name,port);
+//printf("extract_nameport: sender.(%s) port.%d\n",name,port);
     return(port);
 }
 
