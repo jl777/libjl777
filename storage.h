@@ -732,17 +732,20 @@ void ensure_SuperNET_dirs(char *backupdir)
         }
     }
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
-    sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
-    sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
-    sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
-    sprintf(dirname,"%s/%s",MGWROOT,"MGW/sent"), ensure_directory(dirname);
-    sprintf(dirname,"%s/%s",MGWROOT,"MGW/deposit"), ensure_directory(dirname);
-    
-    if ( DATADIR[0] != 0 && DATADIR[0] != '.' )
-        ensure_directory(DATADIR);
-    sprintf(dirname,"%s/%s",DATADIR,"mgw"), ensure_directory(dirname);
-    sprintf(dirname,"%s/%s",DATADIR,"bridge"), ensure_directory(dirname);
-    
+    if ( Global_mp->gatewayid >= 0 )
+    {
+        sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",MGWROOT,"MGW/sent"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",MGWROOT,"MGW/deposit"), ensure_directory(dirname);
+        
+        if ( DATADIR[0] != 0 && DATADIR[0] != '.' )
+            ensure_directory(DATADIR);
+        sprintf(dirname,"%s/%s",DATADIR,"RTmgw"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",DATADIR,"mgw"), ensure_directory(dirname);
+        sprintf(dirname,"%s/%s",DATADIR,"bridge"), ensure_directory(dirname);
+    }
     if ( backupdir == 0 || backupdir[0] == 0 )
         backupdir = ".";
     if ( backupdir[0] != '.' )
@@ -758,105 +761,6 @@ void init_rambases()
     /*struct multisig_addr *msig = 0;
     SuperNET_dbs[MULTISIG_DATA].ramtable = hashtable_create("multisigs",HASHTABLES_STARTSIZE,sizeof(struct multisig_addr)+sizeof(struct pubkey_info)*16,((long)&msig->multisigaddr[0] - (long)msig),sizeof(msig->multisigaddr),((long)&msig->modified - (long)msig));
 */
-}
-
-int32_t init_SuperNET_storage(char *backupdir)
-{
-    static int didinit;
-    int i,m,n;
-    struct coin_info *cp = get_coin_info("BTCD");
-    struct SuperNET_db *sdb;
-    if ( didinit == 0 )
-    {
-        ensure_SuperNET_dirs(backupdir);
-        didinit = 1;
-        init_rambases();
-        if ( IS_LIBTEST > 0 && IS_LIBTEST != 7 )
-        {
-            open_database(PUBLIC_DATA,&SuperNET_dbs[PUBLIC_DATA],"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
-            open_database(PRIVATE_DATA,&SuperNET_dbs[PRIVATE_DATA],"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
-            open_database(TELEPOD_DATA,&SuperNET_dbs[TELEPOD_DATA],"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
-            //open_database(DEADDROP_DATA,&SuperNET_dbs[DEADDROP_DATA],"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
-            open_database(CONTACT_DATA,&SuperNET_dbs[CONTACT_DATA],"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info),0);
-            open_database(NODESTATS_DATA,&SuperNET_dbs[NODESTATS_DATA],"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats),0);
-            //open_database(INSTANTDEX_DATA,&SuperNET_dbs[INSTANTDEX_DATA],"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
-            //open_database(PRICE_DATA,&SuperNET_dbs[PRICE_DATA],"prices.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct exchange_pair),sizeof(struct exchange_pair),0);
-            open_database(MULTISIG_DATA,&SuperNET_dbs[MULTISIG_DATA],"multisig.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct multisig_addr),sizeof(struct multisig_addr) + sizeof(struct pubkey_info)*16,0);
-            
-            //SuperNET_dbs[MULTISIG_DATA].overlap_write = 1;
-            if ( cp != 0 ) // encrypted dbs
-            {
-                sdb = &SuperNET_dbs[TELEPOD_DATA];
-                sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
-                sdb = &SuperNET_dbs[CONTACT_DATA];
-                sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
-            }
-            if ( IS_LIBTEST > 1 && IS_LIBTEST != 7 )
-            {
-                /*if ( (ret = db_env_create(&AStorage, 0)) != 0 )
-                {
-                    fprintf(stderr,"Error creating environment handle: %s\n",db_strerror(ret));
-                    return(-1);
-                }
-                else if ( (ret= AStorage->open(AStorage,"addresses",DB_CREATE|DB_INIT_LOG|DB_INIT_MPOOL|DB_INIT_TXN,0)) != 0 ) //
-                {
-                    fprintf(stderr,"error.%d opening Astorage\n",ret);
-                    return(-2);
-                }*/
-                open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
-            }
-            if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
-                printf("ERROR hist process_hashtablequeues\n");
-            {
-                struct multisig_addr *find_msigaddr(char *msigaddr);
-                int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
-                struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
-                struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n);
-                struct multisig_addr **msigs,*msigram;
-                char *retstr;
-                cJSON *json;
-                sdb = &SuperNET_dbs[MULTISIG_DATA];
-                if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
-                {
-                    for (i=m=0; i<n; i++)
-                    {
-                        msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                        printf("%d of %d: (%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
-                        //if ( createdflag != 0 )
-                            *msigram = *msigs[i], m++;
-                        //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
-                        free(msigs[i]);
-                    }
-                    free(msigs);
-                    printf("initialized %d of %d msig in RAM\n",m,n);
-                }
-                if ( 1 )
-                {
-                    int j;
-                    char url[1024];
-                    for (j=0; j<3; j++)
-                    {
-                        sprintf(url,"http://%s/MGW/msig/ALL",Server_ipaddrs[j]);
-                        if ( (retstr= issue_curl(0,url)) != 0 )
-                        {
-                            if ( (json= cJSON_Parse(retstr)) != 0 )
-                            {
-                                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
-                                {
-                                    for (i=0; i<n; i++)
-                                        if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
-                                            update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]);
-                                }
-                                free_json(json);
-                            }
-                            free(retstr);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return(0);
 }
 
 void close_SuperNET_dbs()
@@ -877,6 +781,126 @@ void close_SuperNET_dbs()
     //Price_dbs = 0;
     memset(Price_dbs,0,sizeof(Price_dbs));
     memset(SuperNET_dbs,0,sizeof(SuperNET_dbs));
+}
+
+int32_t is_zeroes(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(1);
+    for (i=0; str[i]!=0; i++)
+        if ( str[i] != '0' )
+            return(0);
+    return(1);
+}
+
+int32_t init_multisigDB()
+{
+    struct multisig_addr *find_msigaddr(char *msigaddr);
+    int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
+    struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
+    struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n,char *NXTaddr,char *NXTpubkey,int32_t buyNXT);
+    struct multisig_addr **msigs,*msigram;
+    struct SuperNET_db *sdb;
+    char url[1024],*retstr;
+    cJSON *json;
+    int i,m,n,j,added = 0;
+    if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    {
+        sdb = &SuperNET_dbs[MULTISIG_DATA];
+        if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
+        {
+            for (i=m=0; i<n; i++)
+            {
+                msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n,msigs[i]->NXTaddr,msigs[i]->NXTpubkey,msigs[i]->buyNXT);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
+                printf("%d of %d: (%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
+                //if ( createdflag != 0 )
+                *msigram = *msigs[i], m++;
+                //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                free(msigs[i]);
+            }
+            free(msigs);
+            printf("initialized %d of %d msig in RAM\n",m,n);
+        }
+        for (j=0; j<3; j++)
+        {
+            sprintf(url,"http://%s/MGW/msig/ALL",Server_ipaddrs[j]);
+            if ( (retstr= issue_curl(0,url)) != 0 )
+            {
+                if ( (json= cJSON_Parse(retstr)) != 0 )
+                {
+                    if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                    {
+                        for (i=0; i<n; i++)
+                            if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
+                            {
+                                printf("ADD.%d (%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
+                                if ( is_zeroes(msigram->NXTpubkey) != 0 )
+                                {
+                                    set_NXTpubkey(msigram->NXTpubkey,msigram->NXTaddr);
+                                    printf("FIX (%s) NXT.(%s) NXTpubkey.(%s)\n",msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
+                                }
+                                update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]), added++;
+                            }
+                    }
+                    free_json(json);
+                }
+                free(retstr);
+            }
+        }
+        printf("added.%d multisig addrs\n",added);
+        if ( added > 3 )
+        {
+            printf("too many msig addrs added, need to RESTART MGW, risk of miscalculating pending deposits\n");
+            close_SuperNET_db(&SuperNET_dbs[MULTISIG_DATA],MULTISIG_DATA);
+            exit(1);
+        }
+    }
+    return(added);
+}
+
+int32_t init_SuperNET_storage(char *backupdir)
+{
+    static int didinit;
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct SuperNET_db *sdb;
+    if ( didinit == 0 )
+    {
+        ensure_SuperNET_dirs(backupdir);
+        didinit = 1;
+        init_rambases();
+        if ( IS_LIBTEST > 0 && IS_LIBTEST != 7 )
+        {
+            open_database(MULTISIG_DATA,&SuperNET_dbs[MULTISIG_DATA],"multisig.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct multisig_addr),sizeof(struct multisig_addr) + sizeof(struct pubkey_info)*16,0);
+            init_multisigDB();
+            if ( Global_mp->gatewayid < 0 )
+            {
+                open_database(PUBLIC_DATA,&SuperNET_dbs[PUBLIC_DATA],"public.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+                open_database(PRIVATE_DATA,&SuperNET_dbs[PRIVATE_DATA],"private.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+                open_database(TELEPOD_DATA,&SuperNET_dbs[TELEPOD_DATA],"telepods.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+                //open_database(DEADDROP_DATA,&SuperNET_dbs[DEADDROP_DATA],"deaddrops.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct storage_header),4096,0);
+                open_database(CONTACT_DATA,&SuperNET_dbs[CONTACT_DATA],"contacts.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct contact_info),sizeof(struct contact_info),0);
+                open_database(NODESTATS_DATA,&SuperNET_dbs[NODESTATS_DATA],"nodestats.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct nodestats),sizeof(struct nodestats),0);
+                //open_database(INSTANTDEX_DATA,&SuperNET_dbs[INSTANTDEX_DATA],"InstantDEX.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct InstantDEX_quote),sizeof(struct InstantDEX_quote),1);
+                //open_database(PRICE_DATA,&SuperNET_dbs[PRICE_DATA],"prices.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct exchange_pair),sizeof(struct exchange_pair),0);
+                
+                //SuperNET_dbs[MULTISIG_DATA].overlap_write = 1;
+                if ( cp != 0 ) // encrypted dbs
+                {
+                    sdb = &SuperNET_dbs[TELEPOD_DATA];
+                    sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
+                    sdb = &SuperNET_dbs[CONTACT_DATA];
+                    sdb->privkeys = validate_ciphers(&sdb->cipherids,cp,cp->ciphersobj);
+                }
+            }
+            else if ( IS_LIBTEST == 2 )//> 1 && IS_LIBTEST != 7 )
+            {
+                open_database(ADDRESS_DATA,&SuperNET_dbs[ADDRESS_DATA],"address.db",DB_HASH,DB_CREATE | DB_AUTO_COMMIT,sizeof(struct address_entry),sizeof(struct address_entry),1);
+            }
+        }
+    }
+    return(0);
 }
 
 

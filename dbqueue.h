@@ -314,7 +314,8 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
     for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
     {
         sdb = &SuperNET_dbs[selector];
-        sdb->dbp->close(sdb->dbp,0);
+        if ( sdb->dbp != 0 )
+            sdb->dbp->close(sdb->dbp,0);
         sdb->active = -1;
         fprintf(stderr,"finished processing process_SuperNET_dbqueue.%d\n",selector);
     }

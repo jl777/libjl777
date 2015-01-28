@@ -10,6 +10,10 @@
 #define HARDCODED_VERSION "0.499"
 #define TIMESCRAMBLE
 
+#define MGW0_IPADDR "209.126.70.170"
+#define MGW1_IPADDR "209.126.70.156"
+#define MGW2_IPADDR "209.126.70.159"
+
 #define NXT_GENESISTIME 1385294400
 #define MAX_LFACTOR 10
 #define MAX_UDPLEN 1400
@@ -122,7 +126,6 @@
 #include <dirent.h>     //only NXTmembers.h
 #endif
 
-#include "includes/uv.h"
 #include <curl/curl.h>
 #include <curl/easy.h>
 
@@ -132,7 +135,6 @@
 
 #include <windows.h>
 //#include "utils/pthread.h"
-#include "includes/uv.h"
 #include "includes/gettimeofday.h"
 
 FILE *jl777fopen(char *fname,char *mode)

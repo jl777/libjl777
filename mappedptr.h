@@ -10,24 +10,6 @@
 #define xcode_mappedptr_h
 
 
-
-int32_t portable_mutex_init(portable_mutex_t *mutex)
-{
-    return(uv_mutex_init(mutex)); //pthread_mutex_init(mutex,NULL);
-}
-
-void portable_mutex_lock(portable_mutex_t *mutex)
-{
-    //printf("lock.%p\n",mutex);
-    uv_mutex_lock(mutex); // pthread_mutex_lock(mutex);
-}
-
-void portable_mutex_unlock(portable_mutex_t *mutex)
-{
-    // printf("unlock.%p\n",mutex);
-    uv_mutex_unlock(mutex); //pthread_mutex_unlock(mutex);
-}
-
 void *portable_thread_create(void *funcp,void *argp)
 {
     portable_thread_t *ptr;
