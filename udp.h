@@ -653,13 +653,13 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         portable_mutex_init(&mutex);
         didinit = 1;
     }
-    sprintf(hashstr,"%s.%s.%u.%u.%u",sender,name,totallen,totalcrc,blocksize);
+    sprintf(hashstr,"%s.%s.%s.%u.%u.%u",dest,sender,name,totallen,totalcrc,blocksize);
     txid = calc_txid((uint8_t *)hashstr,(int32_t)strlen(hashstr));
     //printf("hashstr.(%s) -> %llx | data.%p\n",hashstr,(long long)txid,data);
     sprintf(hashstr,"%llx",(long long)txid);
     portable_mutex_lock(&mutex);
     args = MTadd_hashtable(&createdflag,Global_mp->pending_xfers,hashstr);
-    if ( createdflag != 0 )
+    if ( createdflag != 0 || totallen != args->totallen || args->blocksize != blocksize )
     {
         safecopy(args->previpaddr,previpaddr,sizeof(args->previpaddr));
         safecopy(args->sender,sender,sizeof(args->sender));
@@ -669,6 +669,8 @@ struct transfer_args *create_transfer_args(char *previpaddr,char *sender,char *d
         args->totallen = totallen;
         args->blocksize = blocksize;
         args->numfrags = (totallen / blocksize);
+        memset(args->crcs,0,sizeof(args->crcs));
+        memset(args->gotcrcs,0,sizeof(args->gotcrcs));
         if ( (totallen % blocksize) != 0 )
             args->numfrags++;
         if ( Debuglevel > 1 )
@@ -723,6 +725,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
             memcpy(args->snapshot,args->data,args->totallen);
             args->snapshotcrc = _crc32(0,args->snapshot,args->totallen);
             args->completed++;
+            printf(">>>>>>>>> completed send to (%s) set ack[%d] <- %u | count.%d of %d | %p\n",args->dest,fragi,datacrc,count,args->numfrags,args);
         }
         if ( Debuglevel > 2 )
             printf(">>>>>>>>> set ack[%d] <- %u | count.%d of %d | %p\n",fragi,datacrc,count,args->numfrags,args);
@@ -761,7 +764,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     }
                     if ( count == args->numfrags )
                     {
-                        if ( Debuglevel > 2 )
+                        if ( Debuglevel > 1 )
                             printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,args->dest,checkcrc,totalcrc);
                         handler_gotfile(args,args->snapshot,args->totallen,args->snapshotcrc);
                         args->completed++;

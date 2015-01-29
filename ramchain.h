@@ -30,7 +30,7 @@
 #define MIN_DEPOSIT_FACTOR 5
 #define TMPALLOC_SPACE_INCR 10000000
 #define PERMALLOC_SPACE_INCR (1024 * 1024 * 128)
-#define MAX_PENDINGSENDS_TICKS 100
+#define MAX_PENDINGSENDS_TICKS 50
 
 #include <stdio.h>
 #include <string.h>
@@ -165,7 +165,7 @@ struct cointx_info
     uint32_t crc; // MUST be first
     char coinstr[16];
     uint64_t inputsum,amount,change,redeemtxid;
-    uint32_t allocsize,batchsize,batchcrc,gatewayid;
+    uint32_t allocsize,batchsize,batchcrc,gatewayid,isallocated;
     // bitcoin tx order
     uint32_t version,timestamp,numinputs;
     uint32_t numoutputs;
@@ -216,7 +216,7 @@ struct ramchain_info
     HUFF *tmphp,*tmphp2;
     char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker;
     uint32_t next_blocknum,next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
-    uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind,numgateways;
+    uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind,numgateways,nummsigs;
     uint64_t totalspends,numspends,totaloutputs,numoutputs,totalbits,totalbytes,txfee,dust,NXTfee_equiv;
     struct rawblock *R,*R2,*R3;
     struct rawblock_huffs H;
@@ -2506,6 +2506,7 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                             rettx = calloc(1,allocsize);
                             *rettx = *cointx;
                             rettx->allocsize = allocsize;
+                            rettx->isallocated = allocsize;
                             strcpy(rettx->signedtx,signedtx);
                             free(signedtx);
                             cointx = 0;
@@ -2933,7 +2934,7 @@ void ram_set_MGWpingstr(char *pingstr,struct ramchain_info *ram,int32_t selector
 void ram_set_MGWdispbuf(char *dispbuf,struct ramchain_info *ram,int32_t selector)
 {
     struct MGWstate *sp = ram_select_MGWstate(ram,selector);
-    sprintf(dispbuf,"[+%.8f %s - %.0f NXT rate %.2f] unspent %.8f circ %.8f pending.(R %.8f D %.8f) NXT.%d %s.%d\n",dstr(sp->MGWbalance),ram->name,dstr(sp->sentNXT),sp->MGWbalance<=0?0:dstr(sp->sentNXT)/dstr(sp->MGWbalance),dstr(sp->MGWunspent),dstr(sp->circulation),dstr(sp->MGWpendingredeems),dstr(sp->MGWpendingdeposits),sp->NXT_RTblocknum,ram->name,sp->RTblocknum);
+    sprintf(dispbuf,"[+%.8f %s - %.0f NXT rate %.2f] msigs.%d unspent %.8f circ %.8f pending.(R %.8f D %.8f) NXT.%d %s.%d\n",dstr(sp->MGWbalance),ram->name,dstr(sp->sentNXT),sp->MGWbalance<=0?0:dstr(sp->sentNXT)/dstr(sp->MGWbalance),ram->nummsigs,dstr(sp->MGWunspent),dstr(sp->circulation),dstr(sp->MGWpendingredeems),dstr(sp->MGWpendingdeposits),sp->NXT_RTblocknum,ram->name,sp->RTblocknum);
 }
 
 void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector)
@@ -3029,7 +3030,11 @@ void _clear_pendingsend(struct NXT_assettxid *tp)
     {
         for (i=0; i<3; i++)
             if ( (cointx= tp->pendingsends[i]) != 0 )
-                tp->pendingsends[i] = 0, free(cointx);
+            {
+                tp->pendingsends[i] = 0;
+                if ( cointx->isallocated != 0 )
+                    free(cointx);
+            }
     }
 }
 
@@ -3045,8 +3050,9 @@ struct NXT_assettxid *ram_add_pendingsend(int32_t *slotp,struct ramchain_info *r
 {
     static portable_mutex_t mutex;
     static int didinit;
-    int32_t createdflag,i,gatewayid = cointx->gatewayid;
+    int32_t createdflag,i,gatewayid;
     char redeemtxidstr[64];
+    fprintf(stderr,"ram_add_pendingsend.(%p %p %p %p) cointx gatewayid.%d\n",slotp,ram,tp,cointx,cointx->gatewayid);
     if ( didinit == 0 )
     {
         portable_mutex_init(&mutex);
@@ -3054,19 +3060,23 @@ struct NXT_assettxid *ram_add_pendingsend(int32_t *slotp,struct ramchain_info *r
     }
     if ( cointx == 0 )
     {
+        fprintf(stderr,"ram_add_pendingsend special\n");
         if ( tp == 0 )
         {
+            fprintf(stderr,"ram_add_pendingsend clear\n");
             portable_mutex_lock(&mutex);
+            fprintf(stderr,"clear pendingsends.%d\n",ram->numpendingsends);
             for (i=0; i<ram->numpendingsends; i++)
                 _clear_pendingsend(ram->pendingsends[i]);
             ram->numpendingsends = 0;
+            fprintf(stderr,"clear pendingsends array\n");
             memset(ram->pendingsends,0,sizeof(ram->pendingsends));
             portable_mutex_unlock(&mutex);
             return(0);
         }
         else
         {
-            printf("_RTmgw_handler: completed NXT.%llu redeem.%llu %.8f %.1f minutes | numpending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),(double)tp->redeemstarted/60.,ram->numpendingsends);
+            fprintf(stderr,"_RTmgw_handler: completed NXT.%llu redeem.%llu %.8f %.1f minutes | numpending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),(double)tp->redeemstarted/60.,ram->numpendingsends);
             i = *slotp;
             portable_mutex_lock(&mutex);
             ram->pendingsends[i] = ram->pendingsends[--ram->numpendingsends];
@@ -3074,40 +3084,42 @@ struct NXT_assettxid *ram_add_pendingsend(int32_t *slotp,struct ramchain_info *r
             return(tp);
         }
     }
+    gatewayid = cointx->gatewayid;
     portable_mutex_lock(&mutex);
-    if ( tp == 0 && ram->numpendingsends > 0 )
+    if ( ram->numpendingsends > 0 )
     {
         for (i=0; i<ram->numpendingsends; i++)
+            printf("[%p %llu] ",ram->pendingsends[i],(long long)ram->pendingsends[i]->redeemtxid);
+        printf("-> search for %llu\n",(long long)cointx->redeemtxid);
+        for (i=0; i<ram->numpendingsends; i++)
         {
-            if ( (tp= ram->pendingsends[i]) != 0 && cointx->redeemtxid == tp->redeemtxid )
+            if ( tp == ram->pendingsends[i] || (ram->pendingsends[i] != 0 && cointx->redeemtxid == ram->pendingsends[i]->redeemtxid) )
             {
+                tp = ram->pendingsends[i];
                 printf("match in slot.%d tp.%p %llu\n",i,tp,(long long)tp->redeemtxid);
                 break;
             }
         }
-        if ( i == ram->numpendingsends )
-            tp = 0;
     } else i = 0;
     if ( i == ram->numpendingsends )
     {
+        _expand_nxt64bits(redeemtxidstr,cointx->redeemtxid);
         if ( tp == 0 )
-        {
-            _expand_nxt64bits(redeemtxidstr,cointx->redeemtxid);
             tp = find_NXT_assettxid(&createdflag,ram->ap,redeemtxidstr);
-        }
         if ( ram->numpendingsends < (int)(sizeof(ram->pendingsends)/sizeof(*ram->pendingsends)) )
+        {
+            printf("tp.%p %llu -> slot.%d\n",tp,(long long)tp->redeemtxid,ram->numpendingsends);
             ram->pendingsends[ram->numpendingsends++] = tp;
+        }
         else printf("pending sends full? with %d vs %d\n",ram->numpendingsends,(int)(sizeof(ram->pendingsends)/sizeof(*ram->pendingsends)));
-    } else printf("found match in slot.%d tp.%p\n",i,tp);
+    } else printf("B found match in slot.%d tp.%p\n",i,tp);
     portable_mutex_unlock(&mutex);
+    
     if ( slotp != 0 )
         *slotp = i;
     if ( tp->pendingsends[gatewayid] != 0 )
-    {
-        printf("got another redeem.%llu from gateway.%d\n",(long long)cointx->redeemtxid,gatewayid);
-        free(tp->pendingsends[gatewayid]);
-    }
-    printf("GOT <<<<<<<<<<<< _process_realtime_MGW.%d coin.(%s) %.8f crc %08x redeemtxid.%llu | numpending.%d\n",gatewayid,cointx->coinstr,dstr(cointx->amount),cointx->batchcrc,(long long)cointx->redeemtxid,ram->numpendingsends);
+        fprintf(stderr,"got another redeem.%llu from gateway.%d\n",(long long)cointx->redeemtxid,gatewayid);
+    fprintf(stderr,"ADD <<<<<<<<<<<< _process_realtime_MGW.%d coin.(%s) %.8f crc %08x redeemtxid.%llu | numpending.%d\n",gatewayid,cointx->coinstr,dstr(cointx->amount),cointx->batchcrc,(long long)cointx->redeemtxid,ram->numpendingsends);
     tp->pendingsends[gatewayid] = cointx;
     return(tp);
 }
@@ -3137,7 +3149,7 @@ struct NXT_assettxid *_process_realtime_MGW(int32_t *sendip,struct ramchain_info
             return(0);
         }
         _expand_nxt64bits(redeemtxidstr,cointx->redeemtxid);
-        if ( strcmp(recvname+strlen(ram->name)+1,redeemtxidstr) != 0 )
+        if ( strncmp(recvname+strlen(ram->name)+1,redeemtxidstr,strlen(redeemtxidstr)) != 0 )
         {
             printf("_process_realtime_MGW: redeemtxid mismatch (%s) vs (%s)\n",recvname+strlen(ram->name)+1,redeemtxidstr);
             return(0);
@@ -3154,7 +3166,7 @@ struct NXT_assettxid *_process_realtime_MGW(int32_t *sendip,struct ramchain_info
             return(0);
         }
         ram_add_pendingsend(0,ram,0,cointx);
-        printf("GOT UNMATCHED <<<<<<<<<<<< _process_realtime_MGW.%d coin.(%s) %.8f crc %08x redeemtxid.%llu\n",gatewayid,cointx->coinstr,dstr(cointx->amount),cointx->batchcrc,(long long)cointx->redeemtxid);
+        printf("GOT <<<<<<<<<<<< _process_realtime_MGW.%d coin.(%s) %.8f crc %08x redeemtxid.%llu\n",gatewayid,cointx->coinstr,dstr(cointx->amount),cointx->batchcrc,(long long)cointx->redeemtxid);
     }
     return(0);
 }
@@ -3169,13 +3181,41 @@ int32_t cointxcmp(struct cointx_info *txA,struct cointx_info *txB)
     return(-1);
 }
 
+char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_assettxid *tp)
+{
+    char *cointxid;
+    int32_t sendi;
+    struct cointx_info *othercointx;
+    if ( cointxcmp(tp->pendingsends[0],tp->pendingsends[1]) == 0 && cointxcmp(tp->pendingsends[0],tp->pendingsends[2]) == 0 ) // consensus
+    {
+        printf("got consensus for %llu %.8f\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
+        if ( ram_MGW_ready(ram,0,tp->height,tp->senderbits,tp->U.assetoshis) > 0 )
+        {
+            if ( ram_verify_NXTtxstillthere(ram,tp->redeemtxid) != tp->U.assetoshis )
+            {
+                printf("_RTmgw_handler: tx gone due to a fork. NXT.%llu txid.%lld %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
+                exit(1); // seems the best thing to do
+            }
+            othercointx = (struct cointx_info *)tp->pendingsends[ram->S.gatewayid ^ 1];
+            if ( (cointxid= _sign_and_sendmoney(txidstr,ram,tp->pendingsends[ram->S.gatewayid],othercointx->signedtx,&tp->redeemtxid,&tp->U.assetoshis,1)) != 0 )
+            {
+                _complete_assettxid(ram,tp);
+                ram_add_pendingsend(&sendi,ram,tp,0);
+                printf("completed redeem.%llu for %.8f\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
+                return(txidstr);
+            }
+            else printf("_RTmgw_handler: error _sign_and_sendmoney for NXT.%llu redeem.%llu %.8f (%s)\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),othercointx->signedtx);
+        }
+    } else printf("no match yet %d %d\n",cointxcmp(tp->pendingsends[0],tp->pendingsends[1]),cointxcmp(tp->pendingsends[0],tp->pendingsends[2]));
+    return(0);
+}
+
 void _RTmgw_handler(struct transfer_args *args)
 {
-    char *cointxid,txidstr[512];
     struct NXT_assettxid *tp;
     struct ramchain_info *ram;
-    struct cointx_info *othercointx;
     int32_t sendi;
+    char txidstr[512];
     printf("_RTmgw_handler(%s %d bytes)\n",args->name,args->totallen);
     if ( (tp= _process_realtime_MGW(&sendi,&ram,(struct cointx_info *)args->data,args->sender,args->name)) != 0 )
     {
@@ -3184,31 +3224,14 @@ void _RTmgw_handler(struct transfer_args *args)
             printf("FATAL: _RTmgw_handler sendi %d >= %d ram->numpendingsends || sendi %d < 0 || %p ram->pendingsends[sendi] != %ptp\n",sendi,ram->numpendingsends,sendi,ram->pendingsends[sendi],tp);
             exit(1);
         }
-        if ( cointxcmp(tp->pendingsends[0],tp->pendingsends[1]) == 0 && cointxcmp(tp->pendingsends[0],tp->pendingsends[2]) == 0 ) // consensus
-        {
-            if ( ram_MGW_ready(ram,0,tp->height,tp->senderbits,tp->U.assetoshis) > 0 )
-            {
-                if ( ram_verify_NXTtxstillthere(ram,tp->redeemtxid) != tp->U.assetoshis )
-                {
-                    printf("_RTmgw_handler: tx gone due to a fork. NXT.%llu txid.%lld %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
-                    exit(1); // seems the best thing to do
-                }
-                othercointx = (struct cointx_info *)tp->pendingsends[ram->S.gatewayid ^ 1];
-                if ( (cointxid= _sign_and_sendmoney(txidstr,ram,tp->pendingsends[ram->S.gatewayid],othercointx->signedtx,&tp->redeemtxid,&tp->U.assetoshis,1)) != 0 )
-                {
-                    _complete_assettxid(ram,tp);
-                    ram_add_pendingsend(&sendi,ram,tp,0);
-                }
-                else printf("_RTmgw_handler: error _sign_and_sendmoney for NXT.%llu redeem.%llu %.8f (%s)\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),othercointx->signedtx);
-            }
-        }
+        ram_check_consensus(txidstr,ram,tp);
     }
     //getchar();
 }
 
 void _set_batchname(char *batchname,char *coinstr,int32_t gatewayid,uint64_t redeemtxid)
 {
-    sprintf(batchname,"%s.%llu",coinstr,(long long)redeemtxid);
+    sprintf(batchname,"%s.%llu.g%d",coinstr,(long long)redeemtxid,gatewayid);
 }
 
 void ram_send_cointx(struct ramchain_info *ram,struct cointx_info *cointx)
@@ -3241,21 +3264,35 @@ void ram_send_cointx(struct ramchain_info *ram,struct cointx_info *cointx)
 
 uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info *ram)
 {
-    int32_t j,disable_newsends,specialsender,specialreceiver;
-    char sender[64],receiver[64],withdrawaddr[512],*destaddr;
+    int32_t i,j,disable_newsends,specialsender,specialreceiver;
+    char sender[64],receiver[64],txidstr[512],withdrawaddr[512],*destaddr;
     struct NXT_assettxid *tp;
     struct NXT_asset *ap;
     struct cointx_info *cointx;
     uint64_t orphans = 0;
     *pendingredeemsp = 0;
     disable_newsends = (ram->numpendingsends > 0);
-    if ( disable_newsends != 0 )
+    if ( disable_newsends != 0 && ram->S.gatewayid >= 0 )
     {
         if ( ram->pendingticks++ > MAX_PENDINGSENDS_TICKS )
         {
-            printf("ram->pendingticks.%d > %d MAX_PENDINGSENDS_TICKS, clear and resync\n",ram->pendingticks,MAX_PENDINGSENDS_TICKS);
+            fprintf(stderr,"ram->pendingticks.%d > %d MAX_PENDINGSENDS_TICKS, clear and resync\n",ram->pendingticks,MAX_PENDINGSENDS_TICKS);
             ram_add_pendingsend(0,ram,0,0);
             ram->pendingticks = disable_newsends = 0;
+            fprintf(stderr,"resume find_pending_transfers\n");
+        }
+        else if ( (ram->pendingticks % 10) == 9 )
+        {
+            for (i=0; i<ram->numpendingsends; i++)
+                if ( (tp= ram->pendingsends[i]) != 0 )
+                {
+                    if ( ram_check_consensus(txidstr,ram,tp) == 0 )
+                    {
+                        for (j=0; j<ram->numgateways; j++)
+                            if ( ram->S.gatewayid != j && (cointx= tp->pendingsends[j]) != 0 )
+                                ram_send_cointx(ram,cointx);
+                    }
+                }
         }
     }
     else ram->pendingticks = 0;
@@ -7920,6 +7957,7 @@ uint64_t ram_calc_MGWunspent(uint64_t *pendingp,struct ramchain_info *ram)
         memset(ram->MGWunspents,0,sizeof(*ram->MGWunspents) * ram->MGWmaxunspents);
     if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
     {
+        ram->nummsigs = n;
         ram->MGWsmallest[0] = ram->MGWsmallestB[0] = 0;
         for (smallest=i=m=0; i<n; i++)
         {
@@ -9034,7 +9072,7 @@ void *process_ramchains(void *_argcoinstr)
                             for (gatewayid=0; gatewayid<ram->numgateways; gatewayid++)
                             {
                                 ram_set_MGWdispbuf(dispbuf,ram,gatewayid);
-                                printf("%s",dispbuf);
+                                printf("G%d:%s",gatewayid,dispbuf);
                             }
                             if ( ram->pendingticks != 0 )
                             {
@@ -9045,7 +9083,7 @@ void *process_ramchains(void *_argcoinstr)
                                     if ( (tp= ram->pendingsends[j]) != 0 )
                                         printf("(%llu %x %x %x) ",(long long)tp->redeemtxid,_extract_batchcrc(tp,0),_extract_batchcrc(tp,1),_extract_batchcrc(tp,2));
                                 }
-                                printf("pendingticks.%d numpending.%d",ram->pendingticks,ram->numpendingsends);
+                                printf("pendingticks.%d",ram->pendingticks);
                             }
                             putchar('\n');
                         }
@@ -9060,7 +9098,7 @@ void *process_ramchains(void *_argcoinstr)
                 ram_update_disp(ram);
         }
         if ( processed == 0 )
-            sleep(10);
+            sleep(20);
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");

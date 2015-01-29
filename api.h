@@ -1765,7 +1765,7 @@ char *bridge_test(int32_t sendflag,char *NXTACCTSECRET,char *destip,uint16_t bri
         if ( (bridgeport= cp->bridgeport) != 0 && cp->bridgeipaddr[0] != 0 )
             strcpy(destip,cp->bridgeipaddr);
         else bridgeport = destip[0] = 0;
-        printf("my bridgetest (%s:%d)\n",destip,bridgeport);
+        //printf("my bridgetest (%s:%d)\n",destip,bridgeport);
     }
     if ( destip[0] != 0 )
     {

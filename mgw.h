@@ -285,8 +285,8 @@ int32_t update_MGW_msig(struct multisig_addr *msig,char *sender)
         jsonstr = create_multisig_json(msig,0);
         if ( jsonstr != 0 )
         {
-            if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-                printf("add_MGWaddr(%s) from (%s)\n",jsonstr,sender!=0?sender:"");
+            //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+             //   printf("add_MGWaddr(%s) from (%s)\n",jsonstr,sender!=0?sender:"");
             //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
             //update_MGW_msigfile(0,msig,jsonstr);
            // update_MGW_msigfile(msig->NXTaddr,msig,jsonstr);
@@ -1717,8 +1717,8 @@ char *create_multisig_json(struct multisig_addr *msig,int32_t truncated)
         for (i=0; i<msig->n; i++)
             len += calc_pubkey_jsontxt(truncated,pubkeyjsontxt+strlen(pubkeyjsontxt),&msig->pubkeys[i],(i<(msig->n - 1)) ? ", " : "");
         sprintf(jsontxt,"{%s\"sender\":\"%llu\",\"buyNXT\":%u,\"created\":%u,\"M\":%d,\"N\":%d,\"NXTaddr\":\"%s\",\"NXTpubkey\":\"%s\",\"RS\":\"%s\",\"address\":\"%s\",\"redeemScript\":\"%s\",\"coin\":\"%s\",\"gatewayid\":\"%d\",\"pubkey\":[%s]}",truncated==0?"\"requestType\":\"MGWaddr\",":"",(long long)msig->sender,msig->buyNXT,msig->created,msig->m,msig->n,msig->NXTaddr,msig->NXTpubkey,rsacct,msig->multisigaddr,msig->redeemScript,msig->coinstr,Global_mp->gatewayid,pubkeyjsontxt);
-        if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-            printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
+        //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+        //    printf("(%s) pubkeys len.%ld msigjsonlen.%ld\n",jsontxt,len,strlen(jsontxt));
         return(clonestr(jsontxt));
     }
     else return(0);
@@ -2078,8 +2078,8 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             if ( iter == 0 && ismynxtbits(contact->nxt64bits) != 0 )//|| (stats->ipbits != 0 && calc_ipbits(cp->myipaddr) == stats->ipbits)) )
             {
                 myacctcoinaddr[0] = mypubkey[0] = 0;
-                if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-                    printf("Is me.%llu\n",(long long)contact->nxt64bits);
+                //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+                //   printf("Is me.%llu\n",(long long)contact->nxt64bits);
                 if ( cp != 0 && get_acct_coinaddr(myacctcoinaddr,cp,refNXTaddr) != 0 && get_bitcoind_pubkey(mypubkey,cp,myacctcoinaddr) != 0 && myacctcoinaddr[0] != 0 && mypubkey[0] != 0 )
                 {
                     flag++;
@@ -2104,11 +2104,11 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                 }
                 else
                 {
-                    printf("already have %llu:%llu (%s %s)\n",(long long)contact->nxt64bits,(long long)refbits,acctcoinaddr,pubkey);
+                    //printf("already have %llu:%llu (%s %s)\n",(long long)contact->nxt64bits,(long long)refbits,acctcoinaddr,pubkey);
                     valid++;
                 }
-                if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-                    printf("check %llu with get_NXT_coininfo i.%d valid.%d\n",(long long)contact->nxt64bits,i,valid);
+                //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
+                //    printf("check %llu with get_NXT_coininfo i.%d valid.%d\n",(long long)contact->nxt64bits,i,valid);
             } //else printf("iter.%d reject %llu\n",iter,(long long)contact->nxt64bits);
         }
     }
@@ -2132,7 +2132,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
             {
                 //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone > 1 )
-                    printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
+                //    printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
                 send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
             }
             if ( msig != 0 )
