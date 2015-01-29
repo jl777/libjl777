@@ -321,7 +321,7 @@ struct orderbook_tx **parse_json_orderbook(struct exchange_state *ep,int32_t max
             ep->numasks = parse_json_quotes(ep->askminmax,asks,askobj,maxdepth,pricefield,volfield);
         orders = conv_quotes(&ep->numbidasks,ep->type,ep->feedid,ep->baseid,ep->relid,bids,ep->numbids,asks,ep->numasks);
         if ( orders != 0 )
-            queue_enqueue(&ep->ordersQ,orders);
+            queue_enqueue(ep->name,&ep->ordersQ,orders);
         free(bids);
         free(asks);
         generate_quote_entry(ep);

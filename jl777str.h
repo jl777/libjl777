@@ -417,57 +417,6 @@ char *replace_singlequotes(char *str)
     return(str);
 }
 
-char *stringifyM(char *str)
-{
-    char *newstr;
-    int32_t i,j,n;
-    if ( str == 0 )
-        return(0);
-    else if ( str[0] == 0 )
-        return(str);
-    for (i=n=0; str[i]!=0; i++)
-        n += (str[i] == '"') ? 2 : 1;
-    newstr = (char *)malloc(n + 3);
-    j = 0;
-    newstr[j++] = '"';
-    for (i=0; str[i]!=0; i++)
-    {
-        if ( str[i] == '"' )
-        {
-            newstr[j++] = '\\';
-            newstr[j++] = '"';
-        }
-        else newstr[j++] = str[i];
-    }
-    newstr[j++] = '"';
-    newstr[j] = 0;
-    return(newstr);
-}
-
-#define replace_backslashquotes unstringify
-char *unstringify(char *str)
-{
-    int32_t i,j,n;
-    if ( str == 0 )
-        return(0);
-    else if ( str[0] == 0 )
-        return(str);
-    n = (int32_t)strlen(str);
-    if ( str[0] == '"' && str[n-1] == '"' )
-        str[n-1] = 0, i = 1;
-    else i = 0;
-    for (j=0; str[i]!=0; i++)
-    {
-        if ( str[i] == '\\' && (str[i+1] == 't' || str[i+1] == 'n' || str[i+1] == 'b' || str[i+1] == 'r') )
-            i++;
-        else if ( str[i] == '\\' && str[i+1] == '"' )
-            str[j++] = '"', i++;
-        else str[j++] = str[i];
-    }
-    str[j] = 0;
-    return(str);
-}
-
 long stripwhite(char *buf,long len)
 {
     int32_t i,j,c;

@@ -230,7 +230,7 @@ void SuperNET_idler(uv_idle_t *handle)
         {
             if ( wr == firstwr )
             {
-                //queue_enqueue(&sendQ,wr);
+                //queue_enqueue("sendQ",&sendQ,wr);
                 process_sendQ_item(wr);
                 if ( Debuglevel > 2 )
                     printf("SuperNET_idler: reached firstwr.%p\n",firstwr);
@@ -244,7 +244,7 @@ void SuperNET_idler(uv_idle_t *handle)
             }
             if ( firstwr == 0 )
                 firstwr = wr;
-            queue_enqueue(&sendQ,wr);
+            queue_enqueue("sendQ",&sendQ,wr);
         }
         if ( Debuglevel > 2 && queue_size(&sendQ) != 0 )
             printf("sendQ size.%d\n",queue_size(&sendQ));
@@ -539,7 +539,7 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
     }
     if ( Debuglevel > 3 )
         printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
-    queue_enqueue(&JSON_Q,ptrs);
+    queue_enqueue("JSON_Q",&JSON_Q,ptrs);
     if ( blockflag != 0 )
     {
         while ( (retstr= ptrs[1]) == 0 )
@@ -612,7 +612,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
         memcpy(ptr,&len,sizeof(len));
         memcpy(&ptr[sizeof(len)],ip_port,strlen(ip_port));
         memcpy(&ptr[sizeof(len) + 64],msg,len);
-        queue_enqueue(&NarrowQ,ptr);
+        queue_enqueue("NarrowQ",&NarrowQ,ptr);
         return(txid);
     }
     else
@@ -639,7 +639,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             memcpy(&ptr[sizeof(len)],&duration,sizeof(duration));
             memcpy(&ptr[sizeof(len) + sizeof(duration)],msg,len);
             ptr[sizeof(len) + sizeof(duration) + len] = 0;
-            queue_enqueue(&BroadcastQ,ptr);
+            queue_enqueue("BroadcastQ",&BroadcastQ,ptr);
             return(txid);
         } else printf("cant broadcast non-JSON.(%s)\n",msg);
     }

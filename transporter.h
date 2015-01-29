@@ -220,7 +220,7 @@ struct transporter_log *send_transporter_log(char *NXTaddr,char *NXTACCTSECRET,s
         {
             log->startmilli = milliseconds();
             printf("AFTER send_transporter_log to %s err.%d height.%d %d at %f\n",destnp->H.U.NXTaddr,err,log->createheight,(uint32_t)get_blockheight(cp),log->startmilli);
-            queue_enqueue(&Transporter_sendQ.pingpong[0],log);
+            queue_enqueue("Transporter_sendQ",&Transporter_sendQ.pingpong[0],log);
         }
     }
     else
@@ -349,7 +349,7 @@ char *transporter_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32
             log->startmilli = milliseconds();
             save_transporter_log(log);
             add_transporter_log(cp,log);
-            queue_enqueue(&Transporter_recvQ.pingpong[0],log);
+            queue_enqueue("Transporter_recvQ",&Transporter_recvQ.pingpong[0],log);
             printf(">>>>>>>>>> No errors, allocated transporter_log.%u\n",log->totalcrc);
         }
         else

@@ -372,7 +372,7 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
         req->flags = flags;
         req->cursor = cursor;
         sdb->busy++;
-        queue_enqueue(&sdb->queue,req);
+        queue_enqueue(sdb->name,&sdb->queue,req);
         usleep(DBSLEEP); // allow context switch so request has a chance of completing
     }
     return(req);

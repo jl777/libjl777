@@ -907,7 +907,7 @@ int32_t add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uin
                 if ( (msig= find_msigaddr(addr)) != 0 && msig->NXTaddr[0] != 0 )
                 {
                     printf("queue DepositQ for NXT.(%s) %s %.8f\n",msig->NXTaddr,addr,dstr(value));
-                    queue_enqueue(&DepositQ,clonestr(addr));
+                    queue_enqueue("DepositQ",&DepositQ,clonestr(addr));
                 }
             }
             return(0);

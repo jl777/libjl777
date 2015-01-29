@@ -250,7 +250,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( cp != 0 && nread > 0 )
     {
         
-        if ( Debuglevel > 2 || (nread > 400 && nread != MAX_UDPLEN) )
+        if ( Debuglevel > 2 )//|| (nread > 400 && nread != MAX_UDPLEN) )
             fprintf(stderr,"UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
@@ -263,7 +263,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
             up->len = (int32_t)nread;
             if ( addr != 0 )
                 up->addr = *addr;
-            queue_enqueue(&UDP_Q,up);
+            queue_enqueue("UDP_Q",&UDP_Q,up);
         }
         else process_packet(internalflag,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
     }
@@ -402,7 +402,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     if ( Global_mp->isMM == 0 && FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
     {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
-        queue_enqueue(&sendQ,wr);
+        queue_enqueue("sendQ",&sendQ,wr);
     }
     else r = process_sendQ_item(wr);
     return(r);
@@ -919,6 +919,8 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         data = (uint8_t *)load_file(name,&buf,&len,&allocsize);
         totallen = (int32_t)len;
     }
+    if ( totallen > MAX_TRANSFER_SIZE )
+        return(clonestr("{\"result\":\"start_transfer cant transfer oversized request\"}"));
     if ( data != 0 && totallen != 0 )
     {
         totalcrc = _crc32(0,data,totallen);
@@ -1045,8 +1047,12 @@ void add_SuperNET_peer(char *ip_port)
 
 void every_second(int32_t counter)
 {
+    uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
     static double firstmilli;
     char *ip_port;
+    struct coin_info *cp = get_coin_info("BTCD");
+    struct pserver_info *pserver;
+    int32_t gatewayid;
     if ( Finished_init == 0 )
         return;
     if ( firstmilli == 0 )
@@ -1057,6 +1063,15 @@ void every_second(int32_t counter)
     {
         add_SuperNET_peer(ip_port);
         free(ip_port);
+    }
+    if ( Global_mp->gatewayid >= 0 )
+    {
+        for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+            if ( gatewayid != Global_mp->gatewayid )
+            {
+                pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
+                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+            }
     }
 }
 

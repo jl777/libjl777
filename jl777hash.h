@@ -102,9 +102,11 @@ void lock_queue(queue_t *queue)
 	portable_mutex_lock(&queue->mutex);
 }
 
-void queue_enqueue(queue_t *queue,void *value)
+void queue_enqueue(char *name,queue_t *queue,void *value)
 {
     int32_t capacity = (int)(sizeof(queue->buffer)/sizeof(*queue->buffer));
+    if ( queue->name[0] == 0 )
+        safecopy(queue->name,name,sizeof(queue->name));
     //printf("enqueue %lx -> [%d] size.%d capacity.%d\n",(long)value,queue->in,queue->size,capacity);
     if ( value == 0 )
     {
@@ -115,7 +117,7 @@ void queue_enqueue(queue_t *queue,void *value)
     while ( ((queue->in+1) % capacity) == queue->out )
     {
         portable_mutex_unlock(&queue->mutex);
-        printf("queue %p waiting in.%d vs out.%d\n",queue,queue->in,queue->out);
+        printf("queue.(%s) %p waiting in.%d vs out.%d\n",queue->name,queue,queue->in,queue->out);
         sleep(1);
         lock_queue(queue);
     }
@@ -178,23 +180,23 @@ int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
             //printf("%s pingpong[%d].%p action.%p\n",ppq->name,iter,ptr,ppq->action);
             retval = (*ppq->action)(&ptr,argptr);
             if ( retval == 0 )
-                queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
+                queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
             else if ( retval < 0 )
             {
                 printf("%s iter.%d errorqueue %p vs %p\n",ppq->name,iter,ppq->errorqueue,&ppq->pingpong[0]);
                 if ( ppq->errorqueue == &ppq->pingpong[0] )
-                    queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
+                    queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
                 else if ( ppq->errorqueue != 0 )
-                    queue_enqueue(ppq->errorqueue,ptr);
+                    queue_enqueue(ppq->name,ppq->errorqueue,ptr);
                 else free(ptr);
             }
             else if ( ppq->destqueue != 0 )
             {
                 printf("%s iter.%d destqueue %p vs %p\n",ppq->name,iter,ppq->destqueue,&ppq->pingpong[0]);
                 if ( ppq->destqueue == &ppq->pingpong[0] )
-                    queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
+                    queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
                 else if ( ppq->destqueue != 0 )
-                    queue_enqueue(ppq->destqueue,ptr);
+                    queue_enqueue(ppq->name,ppq->destqueue,ptr);
                 else free(ptr);
             }
             else free(ptr);
@@ -517,7 +519,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     //while ( Global_mp->hashprocessing != 0 )
     //    usleep(1);
     Global_mp->hashprocessing++;
-    queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
+    queue_enqueue("hashtableQ1",&Global_mp->hashtable_queue[1],ptr);
     usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
         usleep(APISLEEP * 10);
@@ -538,7 +540,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
     //while ( Global_mp->hashprocessing != 0 )
     //    usleep(1);
     Global_mp->hashprocessing++;
-    queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
+    queue_enqueue("hashtableQ0",&Global_mp->hashtable_queue[0],ptr);
     usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
         usleep(APISLEEP * 10);
@@ -818,7 +820,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     //while ( Global_mp->hashprocessing != 0 )
     //    usleep(1);
     Global_mp->hashprocessing++;
-    queue_enqueue(&Global_mp->hashtable_queue[1],ptr);
+    queue_enqueue("hashtableQ1",&Global_mp->hashtable_queue[1],ptr);
     usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
         usleep(APISLEEP * 10);
@@ -839,7 +841,7 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
     //while ( Global_mp->hashprocessing != 0 )
     //    usleep(1);
     Global_mp->hashprocessing++;
-    queue_enqueue(&Global_mp->hashtable_queue[0],ptr);
+    queue_enqueue("hashtableQ0",&Global_mp->hashtable_queue[0],ptr);
     usleep(APISLEEP);
     while ( ptr->doneflag == 0 )
         usleep(APISLEEP * 10);

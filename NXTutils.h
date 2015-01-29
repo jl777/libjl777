@@ -351,8 +351,8 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
         strcat(cmd,"&message=");
         strcat(cmd,comment);
     }
-printf("would have (%s)\n",cmd);
-return(0);
+//printf("would have (%s)\n",cmd);
+//return(0);
     jsontxt = issue_NXTPOST(curl_handle,cmd);
     if ( jsontxt != 0 )
     {

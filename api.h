@@ -498,7 +498,7 @@ void queue_GUIpoll(char **ptrs)
     free(str); free(args);
     retbuf = realloc(retbuf,sizeof(ptrs) + strlen(retbuf+sizeof(ptrs)) + 1);
     //printf("QUEUED for GUI: (%s) -> (%s)\n",ptrs[0],retbuf+sizeof(ptrs));
-    queue_enqueue(&ResultsQ,retbuf);
+    queue_enqueue("resultsQ",&ResultsQ,retbuf);
 }
 
 char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1286,7 +1286,7 @@ char *gotnewpeer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     copy_cJSON(ip_port,objs[0]);
     if ( ip_port[0] != 0 )
     {
-        queue_enqueue(&P2P_Q,clonestr(ip_port));
+        queue_enqueue("P2P_Q",&P2P_Q,clonestr(ip_port));
         return(clonestr("{\"result\":\"ip_port queued\"}"));
     }
     return(0);

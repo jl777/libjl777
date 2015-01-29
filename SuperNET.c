@@ -149,7 +149,6 @@ cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 
 char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 {
-    void unstringify(char *);
     char params[4096],buf[1024],buf2[1024],ipaddr[64],args[8192],*retstr;
     int32_t port;
     cJSON *json,*argjson;

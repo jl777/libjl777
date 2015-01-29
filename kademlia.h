@@ -255,10 +255,13 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
 
 int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
 {
+    void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector);
     struct coin_info *cp = get_coin_info("BTCD");
+    char MGWpingstr[1024];
     if ( cp != 0 )
     {
-        sprintf(cmdstr,"{\"requestType\":\"ping\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        ram_get_MGWpingstr(&cp->RAM,MGWpingstr,-1);
+        sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
         return((int32_t)strlen(cmdstr));
@@ -545,10 +548,15 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
             change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender),isMM);
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
+        if ( cp->RAM.S.gatewayid >= 0 )
+        {
+            void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr);
+            ram_parse_MGWpingstr(&cp->RAM,sender,origargstr);
+        }
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }
-    if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 )
+    if ( is_remote_access(previpaddr) != 0 && retstr[0] != 0 && Debuglevel > 2 )
         fprintf(stderr,"PING.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -573,7 +581,7 @@ char *kademlia_pong(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"isMM\":\"%d\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d,\"lag\":\"%.3f\",\"numpings\":%d,\"numpongs\":%d,\"ave\":\"%.3f\"}",tag,isMM,sender,ipaddr,port,stats->pongmilli-stats->pingmilli,stats->numpings,stats->numpongs,(2*stats->pingpongsum)/(stats->numpings+stats->numpongs+1));
     }
     else sprintf(retstr,"{\"result\":\"kademlia_pong\",\"tag\":\"%s\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d\"}",tag,sender,ipaddr,port);
-    //if ( Debuglevel > 0 )
+    if ( Debuglevel > 2 )
         printf("PONG.(%s)\n",retstr);
     return(clonestr(retstr));
 }
@@ -642,7 +650,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
             ptr->selector = selector;
             ptr->keyhash = key;
             //printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
-            queue_enqueue(&storageQ,ptr);
+            queue_enqueue("storageQ",&storageQ,ptr);
         }
         //printf("free sps.%p\n",sps);
         free(keys);
@@ -1065,9 +1073,12 @@ void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struc
                     for (k=matchflag; k<j-1; k++)
                         buckets[k] = buckets[k+1];
                     buckets[k] = stats;
-                    for (k=0; k<j; k++)
-                        printf("%llu ",(long long)buckets[k]->nxt64bits);
-                    printf("ROTATE.%d: bucket[%d] <- %llu %s | bucketid.%d\n",j-1,matchflag,(long long)stats->nxt64bits,ipaddr,bucketid);
+                    if (  Debuglevel > 2 )
+                    {
+                        for (k=0; k<j; k++)
+                            printf("%llu ",(long long)buckets[k]->nxt64bits);
+                        printf("ROTATE.%d: bucket[%d] <- %llu %s | bucketid.%d\n",j-1,matchflag,(long long)stats->nxt64bits,ipaddr,bucketid);
+                    }
                 }
             } else printf("update_Kbucket.%d: impossible case matchflag.%d j.%d\n",bucketid,matchflag,j);
             return;

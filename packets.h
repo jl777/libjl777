@@ -510,7 +510,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
         if ( Debuglevel > 2 || len > 400 )
         {
             static int32_t debugmsg;
-            if ( debugmsg++ < 100 )
+            if ( debugmsg++ < 10 )
                 printf("process_packet internalflag.%d got nonencrypted len.%d %s/%d (%s)\n",internalflag,recvlen,sender,port,decoded);
         }
         //return(0);
@@ -605,7 +605,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             qp->tokenized_np = tokenized_np;
                             qp->decoded = clonestr((char *)decoded);
                             //printf("queue argjson.%p\n",argjson);
-                            queue_enqueue(&udp_JSON,qp);
+                            queue_enqueue("udp_JSON",&udp_JSON,qp);
                             argjson = 0;
                         }
                         else
@@ -618,7 +618,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     else fprintf(stderr,"encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
                 }
             }
-            else fprintf(stderr,"valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
+            else if ( valid < 0 ) fprintf(stderr,"valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
             if ( argjson != 0 )
                 free_json(argjson);
             if ( parmstxt != 0 )

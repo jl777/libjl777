@@ -2,12 +2,12 @@
 //  Created by jl777
 //  MIT License
 //
-// clusterDefiningBlock
+// garbage collect transfer args
 
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.499"
+#define HARDCODED_VERSION "0.599"
 #define TIMESCRAMBLE
 
 #define MGW0_IPADDR "209.126.70.170"
@@ -220,12 +220,13 @@ typedef struct queue
 #endif
     int32_t capacity,size,in,out,initflag;
 	portable_mutex_t mutex;
+    char name[32];
 	//pthread_cond_t cond_full;
 	//pthread_cond_t cond_empty;
 } queue_t;
 //#define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
 void *queue_dequeue(queue_t *queue);
-void queue_enqueue(queue_t *queue,void *ptr);
+void queue_enqueue(char *name,queue_t *queue,void *ptr);
 
 
 struct pingpong_queue
