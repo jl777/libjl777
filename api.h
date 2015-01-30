@@ -1606,16 +1606,40 @@ char *ramexpand_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 
 char *ramstatus_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD];
-    char *retstr = 0,*_retstr = "{\"error\":\"invalid ramstatus parameters\"}";
+    char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp);
+    cJSON *json;
+    char coin[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],buf[2048],senderip[64];
+    char *retstr = 0,*str,*_retstr = 0;
     copy_cJSON(destip,objs[0]);
     copy_cJSON(coin,objs[1]);
+    int32_t i;
+    uint16_t port;
     if ( coin[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        if ( destip[0] != 0 )
+        if ( previpaddr == 0 && destip[0] != 0 )
         {
             send_to_ipaddr(0,0,destip,origargstr,NXTACCTSECRET);
-            retstr = clonestr("{\"status\":\"sent request to destip\"}");
+            for (i=0; i<10; i++)
+            {break;
+                sleep(1);
+                if ( (str= GUIpoll(txidstr,senderip,&port)) != 0 )
+                {
+                    if ( (json= cJSON_Parse(str)) != 0 )
+                    {
+                        copy_cJSON(buf,cJSON_GetObjectItem(json,"result"));
+                        if ( strcmp(buf,"MGWstatus") == 0 && strcmp(destip,senderip) == 0 )
+                        {
+                            retstr = str;
+                            str = 0;
+                        }
+                        free_json(json);
+                    }
+                    if ( str != 0 )
+                        free(str);
+                }
+            }
+            if ( retstr == 0 )
+                retstr = clonestr("{\"status\":\"sent request to destip\"}");
         }
         else retstr = ramstatus(origargstr,sender,previpaddr,destip,coin);
     }
@@ -2010,20 +2034,18 @@ char *MGWresponse_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     return(clonestr(origargstr));
 }
 
-char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t rescan,int32_t actionflag)
+char *issue_ramstatus(char *coinstr)
 {
     static char *Deposit_server = Server_ipaddrs[NUM_GATEWAYS-1]; // change this
     char *SuperNET_url();
     struct coin_info *cp;//,*refcp = get_coin_info("BTCD");
-    char params[4096],*retstr,*serverip;
-    int32_t gatewayid;
-    //printf("MGWstatus(%s %s %s (%s) %d %d)\n",coinstr,userNXTaddr,userpubkey,email,rescan,actionflag);
+    char params[4096],retbuf[8192],*retstr,*serverip;
+    int32_t gatewayid,nonz = 0;
     if ( (cp= get_coin_info(coinstr)) == 0 )
         return(clonestr("{\"error\":\"unsupported coin\"}"));
+    strcpy(retbuf,"[");
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
     {
-        if ( ((1<<gatewayid) & mask) == 0 )
-            continue;
         serverip = (gatewayid < NUM_GATEWAYS) ? Server_ipaddrs[gatewayid] : Deposit_server;
         //curl -k --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"MGW\",\"rescan\":\"1\",\"actionflag\":\"0\",\"handler\":\"mgw\",\"destip\":\"209.126.70.159\",\"destport\":\"4000\",\"specialNXT\":\"7117166754336896747\",\"coin\":\"BTCD\",\"asset\":\"11060861818140490423\",\"exclude0\":\"7581814105672729429\",\"destNXT\":\"NXT-BAD7-238Z-2SEX-2TJ2S\"}"]  }' -H 'content-type: text/plain;' https://127.0.0.1:7777/
 
@@ -2034,12 +2056,16 @@ char *issue_MGWstatus(int32_t mask,char *coinstr,char *userNXTaddr,char *userpub
         retstr = bitcoind_RPC(0,(char *)"BTCD",SuperNET_url(),(char *)"",(char *)"SuperNET",params);
         if ( retstr != 0 )
         {
+            if ( nonz++ != 0 )
+                strcat(retbuf,", ");
+            strcat(retbuf,retstr);
             if ( Debuglevel > 0 )
                 printf("issue.(%s) -> (%s)\n",params,retstr);
            free(retstr);
         }
     }
-    return(0);
+    strcat(retbuf,"]");
+    return(clonestr(retbuf));
 }
 
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
