@@ -214,7 +214,7 @@ struct ramchain_info
     struct MGWstate S,otherS[3];
     double startmilli;
     HUFF *tmphp,*tmphp2;
-    char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker;
+    char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*opreturnmarker;
     uint32_t next_blocknum,next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
     uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind,numgateways,nummsigs;
     uint64_t totalspends,numspends,totaloutputs,numoutputs,totalbits,totalbytes,txfee,dust,NXTfee_equiv;
@@ -1871,7 +1871,7 @@ int32_t _sign_rawtransaction(char *deststr,unsigned long destsize,struct ramchai
     if ( (signparams= _createsignraw_json_params(ram,cointx,rawbytes,privkeys)) != 0 )
     {
         _stripwhite(signparams,0);
-        //printf("got signparams.(%s)\n",signparams);
+        printf("got signparams.(%s)\n",signparams);
         retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"signrawtransaction",signparams);
         if ( retstr != 0 )
         {
@@ -1992,6 +1992,8 @@ struct cointx_input *_find_bestfit(struct ramchain_info *ram,uint64_t value)
     for (above=below=i=0; i<ram->MGWnumunspents; i++)
     {
         vin = &ram->MGWunspents[i];
+        if ( vin->used != 0 )
+            continue;
         if ( vin->value == value )
             return(vin);
         else if ( vin->value > value )
@@ -2401,19 +2403,26 @@ struct cointx_info *_decode_rawtransaction(char *hexstr)
 
 char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32_t numredeems)
 {
-    char scriptstr[1024],*retstr = 0;
-    long len;
+    char scriptstr[1024],str40[41],*retstr = 0;
+    long len,i;
     struct rawvout *vout;
     struct cointx_info *cointx;
     if ( _make_OP_RETURN(scriptstr,redeems,numredeems) > 0 && (cointx= _decode_rawtransaction(rawtx)) != 0 )
     {
-        if ( replace_vout == cointx->numoutputs-1 )
-            cointx->outputs[cointx->numoutputs] = cointx->outputs[cointx->numoutputs-1];
-        cointx->numoutputs++;
+        //if ( replace_vout == cointx->numoutputs-1 )
+        //    cointx->outputs[cointx->numoutputs] = cointx->outputs[cointx->numoutputs-1];
+        //cointx->numoutputs++;
         vout = &cointx->outputs[replace_vout];
-        vout->value = 0;
-        vout->coinaddr[0] = 0;
-        safecopy(vout->script,scriptstr,sizeof(vout->script));
+        ///vout->value = 1;
+        //cointx->outputs[0].value -= vout->value;
+        //vout->coinaddr[0] = 0;
+        //safecopy(vout->script,scriptstr,sizeof(vout->script));
+        init_hexbytes_noT(str40,(void *)&redeems[0],sizeof(redeems[0]));
+        for (i=strlen(str40); i<40; i++)
+            str40[i] = '0';
+        str40[i] = 0;
+        sprintf(scriptstr,"76a914%s88ac",str40);
+        strcpy(vout->script,scriptstr);
         len = strlen(rawtx) * 2;
         retstr = calloc(1,len);
         disp_cointx(cointx);
@@ -2426,13 +2435,14 @@ char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32
 
 int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uint32_t script_rawind)
 {
+    static uint8_t zero12[12];
     void *ram_gethashdata(struct ramchain_info *ram,char type,uint32_t rawind);
-    int32_t i,j,len,numredeems = 0;
+    int32_t j,numredeems = 0;
     uint8_t *hashdata;
     uint64_t redeemtxid;
     if ( (hashdata= ram_gethashdata(ram,'s',script_rawind)) != 0 )
     {
-        if ( (len= hashdata[0]) < 256 && hashdata[1] == OP_RETURN_OPCODE && hashdata[2] == 'M' && hashdata[3] == 'G' && hashdata[4] == 'W' )
+        /*if ( (len= hashdata[0]) < 256 && hashdata[1] == OP_RETURN_OPCODE && hashdata[2] == 'M' && hashdata[3] == 'G' && hashdata[4] == 'W' )
         {
             numredeems = hashdata[5];
             if ( (numredeems*sizeof(uint64_t) + 5) == len )
@@ -2445,8 +2455,18 @@ int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uin
                     redeemtxids[i] = redeemtxid;
                 }
             } else printf("ram_is_MGW_OP_RETURN: numredeems.%d + 5 != %d len\n",numredeems,len);
+        }*/
+        //sprintf(scriptstr,"76a914%s88ac",str40);
+        if ( hashdata[1] == 0x76 && hashdata[2] == 0xa9 && hashdata[3] == 0x14 && memcmp(&hashdata[12],zero12,12) == 0 )
+        {
+            hashdata = &hashdata[4];
+            for (redeemtxid=j=0; j<(int32_t)sizeof(uint64_t); j++)
+                redeemtxid <<= 8, redeemtxid |= (*hashdata++ & 0xff);
+            redeemtxids[0] = redeemtxid;
+            printf("FOUND HACKRETURN.(%llu)\n",(long long)redeemtxid);
+            numredeems = 1;
         }
-    }
+   }
     return(numredeems);
 }
 
@@ -2466,10 +2486,10 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     cointx->outputs[0].value = MGWfee;
     strcpy(cointx->outputs[1].coinaddr,destaddr);
     cointx->outputs[1].value = value;
-    //strcpy(cointx->outputs[2].coinaddr,ram->marker);
-    //cointx->outputs[2].value = 0;
-    cointx->numoutputs = 2;
-    cointx->amount = amount = (MGWfee + value);
+    strcpy(cointx->outputs[2].coinaddr,ram->opreturnmarker);
+    cointx->outputs[2].value = 1;
+    cointx->numoutputs = 3;
+    cointx->amount = amount = (MGWfee + value + 1);
     fprintf(stderr,"calc_withdraw.%s %llu amount %.8f -> balance %.8f\n",ram->name,(long long)redeemtxid,dstr(cointx->amount),dstr(ram->S.MGWbalance));
    // if ( (cointx->amount + ram->txfee) <= ram->MGWbalance )
     if ( ram->S.MGWbalance >= 0 )
@@ -2944,9 +2964,13 @@ void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selec
 
 void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
 {
+    void save_MGW_status(char *NXTaddr,char *jsonstr);
+    char mgwstr[16],*jsonstr;
     int32_t gatewayid;
     struct MGWstate *sp;
     cJSON *json,*array,*nxtobj,*coinobj;
+    if ( Debuglevel > 2 )
+        printf("parse.(%s)\n",pingstr);
     if ( (array= cJSON_Parse(pingstr)) != 0 && is_cJSON_Array(array) != 0 )
     {
         json = cJSON_GetArrayItem(array,0);
@@ -2976,8 +3000,13 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
                 }
             } else printf("ram_parse_MGWpingstr: got wrong address.(%s) for gatewayid.%d expected.(%s)\n",sender,gatewayid,ram->special_NXTaddrs[gatewayid]);
         }
+        sprintf(mgwstr,"MGW%d",gatewayid);
+        jsonstr = cJSON_Print(json);
+        save_MGW_status(mgwstr,jsonstr);
+        free(jsonstr);
         free_json(array);
     }
+    //printf("parsed\n");
 }
 
 int32_t MGWstatecmp(struct MGWstate *spA,struct MGWstate *spB)
@@ -9107,5 +9136,23 @@ void *process_ramchains(void *_argcoinstr)
         sleep(60);
 }
 
+
+int32_t set_bridge_dispbuf(char *dispbuf,char *coinstr)
+{
+    int32_t gatewayid;
+    struct ramchain_info *ram;
+    dispbuf[0] = 0;
+    if ( (ram= get_ramchain_info(coinstr)) != 0 )
+    {
+        for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+        {
+            ram_set_MGWdispbuf(dispbuf,ram,gatewayid);
+            sprintf(dispbuf+strlen(dispbuf),"G%d:%s",gatewayid,dispbuf);
+        }
+        printf("set_bridge_dispbuf.(%s)\n",dispbuf);
+        return((int32_t)strlen(dispbuf));
+    }
+    return(0);
+}
 #endif
 #endif

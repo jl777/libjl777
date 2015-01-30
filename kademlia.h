@@ -548,7 +548,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
             change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender),isMM);
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
-        if ( cp->RAM.S.gatewayid >= 0 )
+        if ( cp->RAM.S.gatewayid >= 0 || Global_mp->iambridge != 0 )
         {
             void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr);
             ram_parse_MGWpingstr(&cp->RAM,sender,origargstr);

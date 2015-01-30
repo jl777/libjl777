@@ -842,6 +842,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     if ( cp->marker == 0 )
         cp->marker = clonestr(get_marker(cp->name));
     ram->marker = clonestr(cp->marker);
+    ram->opreturnmarker = clonestr(cp->privateaddr);
     ram->dust = cp->dust;
     ram->userpass = clonestr(cp->userpass);
     ram->serverport = clonestr(cp->serverport);
@@ -865,7 +866,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->txfee = cp->txfee;
     ram->NXTconvrate = (ram->NXTfee_equiv / ram->txfee);
     ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
-    if ( IS_LIBTEST > 0 && is_active_coin(cp->name) > 0 )
+    if ( Global_mp->iambridge != 0 || (IS_LIBTEST > 0 && is_active_coin(cp->name) > 0) )
     {
         printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) depositconfirms.%d\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms);
         init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
@@ -1043,6 +1044,10 @@ void init_legacyMGW(char *myipaddr)
     extract_cJSON_str(Server_ipaddrs[2],sizeof(Server_ipaddrs[2]),MGWconf,"MGW2_ipaddr");
     if ( Server_ipaddrs[2][0] == 0 )
         strcpy(Server_ipaddrs[2],MGW2_IPADDR);
+    extract_cJSON_str(Server_ipaddrs[3],sizeof(Server_ipaddrs[3]),MGWconf,"BRIDGE_ipaddr");
+    if ( Server_ipaddrs[3][0] == 0 )
+        strcpy(Server_ipaddrs[3],"76.176.198.6");
+    
   // extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
     Global_mp->gatewayid = -1;
     for (i=0; i<3; i++)
@@ -1099,6 +1104,8 @@ void init_SuperNET_settings(char *userdir)
     uint64_t nxt64bits;
     extract_cJSON_str(userdir,MAX_JSON_FIELD,MGWconf,"userdir");
     Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
+    if ( (Global_mp->iambridge = get_API_int(cJSON_GetObjectItem(MGWconf,"isbridge"),0)) != 0 )
+        printf("I AM A BRIDGE\n");
     if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
         strcpy(Global_mp->myhandle,"myhandle");
     init_jdatetime(NXT_GENESISTIME,get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0) * 3600);

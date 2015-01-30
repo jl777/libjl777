@@ -1055,7 +1055,7 @@ void every_second(int32_t counter)
     char *ip_port;
     struct coin_info *cp = get_coin_info("BTCD");
     struct pserver_info *pserver;
-    int32_t gatewayid;
+    int32_t i,gatewayid;
     if ( Finished_init == 0 )
         return;
     if ( firstmilli == 0 )
@@ -1069,11 +1069,20 @@ void every_second(int32_t counter)
     }
     if ( Global_mp->gatewayid >= 0 )
     {
-        for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
+        for (i=0; i<Num_in_whitelist; i++)
+        {break;
+            expand_ipbits(ip_port,SuperNET_whitelist[i]);
+            pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
+            send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+        }
+        for (gatewayid=0; gatewayid<=NUM_GATEWAYS; gatewayid++)
             if ( gatewayid != Global_mp->gatewayid )
             {
-                pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
-                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+                if ( Server_ipaddrs[gatewayid][0] != 0 )
+                {
+                    pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
+                    send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+                }
             }
     }
 }

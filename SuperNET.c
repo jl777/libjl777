@@ -228,67 +228,86 @@ char *process_commandline_json(cJSON *json)
     }
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
-    if ( strcmp(cmd,"pushtx") == 0 )
-        return(inject_pushtx(coin,json));
-    copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
-    copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));
-    copy_cJSON(userpubkey,cJSON_GetObjectItem(json,"pubkey"));
-    if ( userpubkey[0] == 0 )
+    if ( strcmp(cmd,"status") == 0 )
     {
-        pubkeybits = issue_getpubkey(&haspubkey,NXTacct);
-        if ( haspubkey != 0 )
-            init_hexbytes_noT(userpubkey,pubkeybits.bytes,sizeof(pubkeybits.bytes));
-    }
-    copy_cJSON(convertNXT,cJSON_GetObjectItem(json,"convertNXT"));
-    if ( convertNXT[0] != 0 )
-        buyNXT = (uint32_t)atol(convertNXT);
-    nxt64bits = conv_acctstr(NXTacct);
-    expand_nxt64bits(userNXTaddr,nxt64bits);
-    decode_hex(mypublic,sizeof(mypublic),userpubkey);
-    calc_sha256(0,hash,mypublic,32);
-    memcpy(&checkbits,hash,sizeof(checkbits));
-    if ( checkbits != nxt64bits )
-    {
-        sprintf(retbuf,"{\"error\":\"invalid pubkey\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"checkNXT\":\"%llu\"}",userpubkey,userNXTaddr,(long long)checkbits);
-        return(clonestr(retbuf));
-    }
-    memset(retjsons,0,sizeof(retjsons));
-    cmdstr[0] = 0;
-    //printf("got cmd.(%s)\n",cmd);
-    if ( strcmp(cmd,"newbie") == 0 )
-    {
-        waitfor = "MGWaddr";
-        strcpy(cmdstr,cmd);
-        array = cJSON_GetObjectItem(MGWconf,"active");
-        if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-        {
-            for (i=0; i<100; i++) // flush queue
-                GUIpoll(txidstr,senderipaddr,&port);
-            for (iter=0; iter<3; iter++) // give chance for servers to consensus
-            {
-                for (i=0; i<n; i++)
-                {
-                    copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-                    if ( coinstr[0] != 0 )
-                    {
-                        issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
-                        sleep(1);
-                    }
-                }
-                sleep(1);
-            }
-        }
-    }
-    else if ( strcmp(cmd,"status") == 0 )
-    {
+        char dispbuf[16384];
+        if ( set_bridge_dispbuf(dispbuf,coin) > 0 )
+            return(clonestr(dispbuf));
+        else return(clonestr("{\"error\":\"no MGW status available\"}"));
+/*
         waitfor = "MGWresponse";
         strcpy(cmdstr,cmd);
         //printf("cmdstr.(%s) waitfor.(%s)\n",cmdstr,waitfor);
         retstr = issue_MGWstatus((1<<NUM_GATEWAYS)-1,coin,userNXTaddr,userpubkey,0,rescan,actionflag);
         if ( retstr != 0 )
-            free(retstr), retstr = 0;
+            free(retstr), retstr = 0;*/
     }
-    else return(clonestr("{\"error\":\"only newbie command is supported now\"}"));
+    else
+    {
+        if ( strcmp(cmd,"pushtx") == 0 )
+            return(inject_pushtx(coin,json));
+        copy_cJSON(email,cJSON_GetObjectItem(json,"email"));
+        copy_cJSON(NXTacct,cJSON_GetObjectItem(json,"NXT"));
+        copy_cJSON(userpubkey,cJSON_GetObjectItem(json,"pubkey"));
+        if ( userpubkey[0] == 0 )
+        {
+            pubkeybits = issue_getpubkey(&haspubkey,NXTacct);
+            if ( haspubkey != 0 )
+                init_hexbytes_noT(userpubkey,pubkeybits.bytes,sizeof(pubkeybits.bytes));
+        }
+        copy_cJSON(convertNXT,cJSON_GetObjectItem(json,"convertNXT"));
+        if ( convertNXT[0] != 0 )
+            buyNXT = (uint32_t)atol(convertNXT);
+        nxt64bits = conv_acctstr(NXTacct);
+        expand_nxt64bits(userNXTaddr,nxt64bits);
+        decode_hex(mypublic,sizeof(mypublic),userpubkey);
+        calc_sha256(0,hash,mypublic,32);
+        memcpy(&checkbits,hash,sizeof(checkbits));
+        if ( checkbits != nxt64bits )
+        {
+            sprintf(retbuf,"{\"error\":\"invalid pubkey\",\"pubkey\":\"%s\",\"NXT\":\"%s\",\"checkNXT\":\"%llu\"}",userpubkey,userNXTaddr,(long long)checkbits);
+            return(clonestr(retbuf));
+        }
+        memset(retjsons,0,sizeof(retjsons));
+        cmdstr[0] = 0;
+        //printf("got cmd.(%s)\n",cmd);
+        if ( strcmp(cmd,"newbie") == 0 )
+        {
+            waitfor = "MGWaddr";
+            strcpy(cmdstr,cmd);
+            for (i=0; i<100; i++) // flush queue
+                GUIpoll(txidstr,senderipaddr,&port);
+            if ( coin[0] == 0 )
+            {
+                array = cJSON_GetObjectItem(MGWconf,"active");
+                if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                {
+                    for (iter=0; iter<3; iter++) // give chance for servers to consensus
+                    {
+                        for (i=0; i<n; i++)
+                        {
+                            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
+                            if ( coinstr[0] != 0 )
+                            {
+                                issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
+                                sleep(1);
+                            }
+                        }
+                        sleep(3);
+                    }
+                }
+            }
+            else
+            {
+                for (iter=0; iter<3; iter++) // give chance for servers to consensus
+                {
+                    issue_genmultisig(coin,userNXTaddr,userpubkey,email,buyNXT);
+                    sleep(3);
+                }
+            }
+        }
+        else return(clonestr("{\"error\":\"only newbie command is supported now\"}"));
+    }
     if ( waitfor != 0 )
     {
         for (i=0; i<3000; i++)
@@ -454,13 +473,23 @@ void bridge_handler(struct transfer_args *args)
 
 void *GUIpoll_loop(void *arg)
 {
+    cJSON *json;
     uint16_t port;
-    char txidstr[1024],senderipaddr[1024],*retstr;
+    char txidstr[1024],buf[MAX_JSON_FIELD],senderipaddr[1024],*retstr;
     while ( 1 )
     {
-        sleep(1);
         if ( (retstr= GUIpoll(txidstr,senderipaddr,&port)) != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                copy_cJSON(buf,cJSON_GetObjectItem(json,"result"));
+                if ( strcmp(buf,"MGWstatus") == 0 )
+                    printf("%s\n",retstr);
+                free_json(json);
+            }
             free(retstr);
+        }
+        else sleep(1);
     }
     return(0);
 }
@@ -860,7 +889,11 @@ int main(int argc,const char *argv[])
         //    printf("ERROR hist process_hashtablequeues\n");
     }
     while ( 1 )
-        sleep(60);
+    {
+        //extern void do_bridge_things();
+        //do_bridge_things();
+        sleep(20);
+    }
     return(0);
 }
 

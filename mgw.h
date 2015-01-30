@@ -2063,7 +2063,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     refbits = conv_acctstr(refacct);
     expand_nxt64bits(refNXTaddr,refbits);
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-        printf("GENMULTISIG.%d from (%s) refacct.(%s) %llu %s email.(%s) buyNXT.%u\n",N,previpaddr,refacct,(long long)refbits,refNXTaddr,email,buyNXT);
+        printf("GENMULTISIG.%d from (%s) for %s refacct.(%s) %llu %s email.(%s) buyNXT.%u\n",N,previpaddr,cp->name,refacct,(long long)refbits,refNXTaddr,email,buyNXT);
     if ( refNXTaddr[0] == 0 )
         return(clonestr("\"error\":\"genmultisig couldnt find refcontact\"}"));
     flag = 0;
