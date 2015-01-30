@@ -82,14 +82,14 @@ void set_MGW_depositfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"depo
 void save_MGW_file(char *fname,char *jsonstr)
 {
     FILE *fp;
-    char cmd[1024];
+    //char cmd[1024];
     if ( (fp= fopen(fname,"wb+")) != 0 )
     {
         fwrite(jsonstr,1,strlen(jsonstr),fp);
         fclose(fp);
-        sprintf(cmd,"chmod +r %s",fname);
-        system(cmd);
-        printf("fname.(%s) cmd.(%s)\n",fname,cmd);
+        //sprintf(cmd,"chmod +r %s",fname);
+        //system(cmd);
+        //printf("fname.(%s) cmd.(%s)\n",fname,cmd);
     }
 }
 

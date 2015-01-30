@@ -165,7 +165,7 @@ static int _increasing_double(const void *a,const void *b)
 #undef double_b
 }
 
-static int _increasing_uint64(const void *a,const void *b)
+int _increasing_uint64(const void *a,const void *b)
 {
 #define uint64_a (*(uint64_t *)a)
 #define uint64_b (*(uint64_t *)b)

@@ -1067,7 +1067,7 @@ void every_second(int32_t counter)
         add_SuperNET_peer(ip_port);
         free(ip_port);
     }
-    if ( Global_mp->gatewayid >= 0 )
+    if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {
         for (i=0; i<Num_in_whitelist; i++)
         {break;
