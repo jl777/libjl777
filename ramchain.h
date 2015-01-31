@@ -3081,14 +3081,14 @@ void _RTmgw_handler(struct transfer_args *args)
 void ram_send_cointx(struct ramchain_info *ram,struct cointx_info *cointx)
 {
     char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCTSECRET,char *dest,char *name,uint8_t *data,int32_t totallen,int32_t timeout,char *handler,int32_t syncmem);
-    char RTmgwname[512],fname[512],*retstr;
+    char RTmgwname[512],*retstr;
     int32_t gatewayid;
     FILE *fp;
     _set_RTmgwname(RTmgwname,cointx->coinstr,cointx->gatewayid,cointx->redeemtxid);
     cointx->crc = _crc32(0,(uint8_t *)((long)cointx+sizeof(cointx->crc)),(int32_t)(cointx->allocsize - sizeof(cointx->crc)));
-    if ( (fp= fopen(fname,"wb")) != 0 )
+    if ( (fp= fopen(RTmgwname,"wb")) != 0 )
     {
-        printf("save to (%s).%d crc.%x | batchcrc %x\n",fname,cointx->allocsize,cointx->crc,cointx->batchcrc);
+        printf("save to (%s).%d crc.%x | batchcrc %x\n",RTmgwname,cointx->allocsize,cointx->crc,cointx->batchcrc);
         fwrite(cointx,1,cointx->allocsize,fp);
         fclose(fp);
     }
