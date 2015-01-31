@@ -209,7 +209,7 @@ char *process_commandline_json(cJSON *json)
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     int32_t send_email(char *email,char *destNXTaddr,char *pubkeystr,char *msg);
     void issue_genmultisig(char *coinstr,char *userNXTaddr,char *userpubkey,char *email,int32_t buyNXT);
-    char txidstr[1024],senderipaddr[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048],*str;
+    char txidstr[1024],senderipaddr[1024],arg[1024],cmd[2048],coin[2048],userpubkey[2048],NXTacct[2048],userNXTaddr[2048],email[2048],convertNXT[2048],retbuf[1024],buf2[1024],coinstr[1024],cmdstr[512],*retstr = 0,*waitfor = 0,errstr[2048],*str;
     bits256 pubkeybits;
     unsigned char hash[256>>3],mypublic[256>>3];
     uint16_t port;
@@ -229,7 +229,50 @@ char *process_commandline_json(cJSON *json)
     copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
     copy_cJSON(cmd,cJSON_GetObjectItem(json,"requestType"));
     if ( strcmp(cmd,"status") == 0 )
-        return(issue_ramstatus(coin));
+    {
+        struct MGWstate S[3],*sp;
+        char fname[1024],*buf;
+        long fpos,jsonflag;
+        memset(S,0,sizeof(S));
+        FILE *fp;
+        copy_cJSON(arg,cJSON_GetObjectItem(json,"jsonflag"));
+        jsonflag = !strcmp(arg,"1");
+        if ( jsonflag != 0 )
+            printf("[");
+        for (i=0; i<3; i++)
+        {
+            sp = &S[i];
+            sprintf(fname,"%s/MGW/status/%s.%s",MGWROOT,coin,Server_ipaddrs[i]);
+            if ( (fp= fopen(fname,"rb")) != 0 )
+            {
+                fseek(fp,0,SEEK_END);
+                fpos = ftell(fp);
+                rewind(fp);
+                buf = calloc(1,fpos+1);
+                if ( fread(buf,1,fpos,fp) == fpos && (json= cJSON_Parse(buf)) != 0 )
+                {
+                    if ( jsonflag != 0 )
+                    {
+                        if ( i != 0 )
+                            printf(", ");
+                        printf("%s",buf);
+                    }
+                    else
+                    {
+                        ram_parse_MGWstate(sp,json,coin);
+                        printf("G%d:[+%.8f %s - %.0f NXT rate %.2f] unspent %.8f circ %.8f/%.8f pend.(R%.8f D%.8f) NXT.%d %s.%d<BR>",i,dstr(sp->MGWbalance),coin,dstr(sp->sentNXT),sp->MGWbalance<=0?0:dstr(sp->sentNXT)/dstr(sp->MGWbalance),dstr(sp->MGWunspent),dstr(sp->circulation),dstr(sp->supply),dstr(sp->MGWpendingredeems),dstr(sp->MGWpendingdeposits),sp->NXT_RTblocknum,coin,sp->RTblocknum);
+                    }
+                    free_json(json);
+                }
+                free(buf);
+                fclose(fp);
+            }
+        }
+        if ( jsonflag != 0 )
+            printf("]");
+        return(0);
+       //return(issue_ramstatus(coin));
+    }
     else
     {
         if ( strcmp(cmd,"pushtx") == 0 )

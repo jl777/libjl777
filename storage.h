@@ -716,24 +716,15 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 
 void ensure_SuperNET_dirs(char *backupdir)
 {
-    char dirname[1024],coinstr[128],*dirstr = "ramchains";
+    char dirname[1024],coinstr[128],dirstr[512];
     int32_t i,n;
     cJSON *array;
     //struct coin_info *cp;
-    ensure_directory(dirstr);
     array = cJSON_GetObjectItem(MGWconf,"active");
-    if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-    {
-        for (i=0; i<n; i++)
-        {
-            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
-            sprintf(dirname,"%s/%s",dirstr,coinstr), ensure_directory(dirname);
-            sprintf(dirname,"%s/%s/bitstream",dirstr,coinstr), ensure_directory(dirname);
-        }
-    }
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
-    if ( Global_mp->gatewayid >= 0 )
+    if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
     {
+        sprintf(dirname,"%s/%s",MGWROOT,"ramchains"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
@@ -745,6 +736,17 @@ void ensure_SuperNET_dirs(char *backupdir)
         sprintf(dirname,"%s/%s",DATADIR,"RTmgw"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",DATADIR,"mgw"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",DATADIR,"bridge"), ensure_directory(dirname);
+    }
+    sprintf(dirstr,"%s/%s",MGWROOT,"ramchains");
+    ensure_directory(dirstr);
+    if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
+            sprintf(dirname,"%s/%s",dirstr,coinstr), ensure_directory(dirname);
+            sprintf(dirname,"%s/%s/bitstream",dirstr,coinstr), ensure_directory(dirname);
+        }
     }
     if ( backupdir == 0 || backupdir[0] == 0 )
         backupdir = ".";

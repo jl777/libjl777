@@ -773,7 +773,8 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
         return;
     }
     ram->MGWbits = calc_nxt64bits(MGWredemption);
-    printf("init_ram_MGWconfs.(%s) -> %llu\n",MGWredemption,(long long)ram->MGWbits);
+    if ( Debuglevel > 0 )
+        printf("init_ram_MGWconfs.(%s) -> %llu\n",MGWredemption,(long long)ram->MGWbits);
     array = cJSON_GetObjectItem(confjson,"special_NXTaddrs");
     if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
     {
@@ -810,14 +811,20 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
             ram->special_NXTaddrs[i] = clonestr(MGW_whitelist[i]);
     }
     ram->numspecials = n;
-    for (i=0; i<n; i++)
-        printf("(%s) ",ram->special_NXTaddrs[i]);
-    printf("numspecials.%d\n",ram->numspecials);
+    if ( Debuglevel > 0 )
+    {
+        for (i=0; i<n; i++)
+            printf("(%s) ",ram->special_NXTaddrs[i]);
+        printf("numspecials.%d\n",ram->numspecials);
+    }
     if ( ram->limboarray == 0 )
         ram->limboarray = calloc(2,sizeof(*ram->limboarray));
-    for (i=0; ram->limboarray[i]!=0&&ram->limboarray[i]!=0; i++)
-        printf("%llu ",(long long)ram->limboarray[i]);
-    printf("limboarray.%d\n",i);
+    if ( Debuglevel > 0 )
+    {
+        for (i=0; ram->limboarray[i]!=0&&ram->limboarray[i]!=0; i++)
+            printf("%llu ",(long long)ram->limboarray[i]);
+        printf("limboarray.%d\n",i);
+    }
 }
 
 struct ramchain_info *get_ramchain_info(char *coinstr)
@@ -844,6 +851,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->marker = clonestr(cp->marker);
     ram->opreturnmarker = clonestr(cp->privateaddr);
     ram->dust = cp->dust;
+    ram->backups = clonestr(cp->backupdir);
     ram->userpass = clonestr(cp->userpass);
     ram->serverport = clonestr(cp->serverport);
     ram->lastheighttime = (uint32_t)cp->lastheighttime;
@@ -868,7 +876,8 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
     if ( Global_mp->iambridge != 0 || (IS_LIBTEST > 0 && is_active_coin(cp->name) > 0) )
     {
-        printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) depositconfirms.%d\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms);
+        if ( Debuglevel > 0 )
+            printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) depositconfirms.%d\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms);
         init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
         activate_ramchain(ram,cp->name);
     } //else printf("skip activate ramchains\n");
@@ -961,7 +970,11 @@ void init_coinsarray(char *userdir,char *myipaddr)
                     if ( DATADIR[0] == 0 )
                         strcpy(DATADIR,"archive");
                     if ( MGWROOT[0] == 0 )
-                        strcpy(MGWROOT,"/var/www");
+                    {
+                        if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
+                            strcpy(MGWROOT,"/var/www");
+                        else strcpy(MGWROOT,".");
+                    }
                     //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                     //addcontact("mypublic",cp->srvNXTADDR);
                 }
@@ -1104,7 +1117,7 @@ void init_SuperNET_settings(char *userdir)
     uint64_t nxt64bits;
     extract_cJSON_str(userdir,MAX_JSON_FIELD,MGWconf,"userdir");
     Global_mp->isMM = get_API_int(cJSON_GetObjectItem(MGWconf,"MMatrix"),0);
-    if ( (Global_mp->iambridge = get_API_int(cJSON_GetObjectItem(MGWconf,"isbridge"),0)) != 0 )
+    if ( (Global_mp->iambridge = get_API_int(cJSON_GetObjectItem(MGWconf,"isbridge"),0)) != 0 && Debuglevel > 0 )
         printf("I AM A BRIDGE\n");
     if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
         strcpy(Global_mp->myhandle,"myhandle");
@@ -1121,7 +1134,8 @@ void init_SuperNET_settings(char *userdir)
     if ( NXTISSUERACCT[0] == 'N' && NXTISSUERACCT[1] == 'X' && NXTISSUERACCT[2] == 'T' )
     {
         nxt64bits = conv_rsacctstr(NXTISSUERACCT,0);
-        printf("NXTISSUERACCT.(%s) -> %llu\n",NXTISSUERACCT,(long long)nxt64bits);
+        if ( Debuglevel > 0 )
+            printf("NXTISSUERACCT.(%s) -> %llu\n",NXTISSUERACCT,(long long)nxt64bits);
         expand_nxt64bits(NXTISSUERACCT,nxt64bits);
     }
     extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");

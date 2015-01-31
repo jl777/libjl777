@@ -97,6 +97,7 @@ void save_MGW_status(char *NXTaddr,char *jsonstr)
 {
     char fname[1024];
     set_MGW_statusfname(fname,NXTaddr);
+    //printf("save_MGW_status.(%s) -> (%s)\n",NXTaddr,fname);
     save_MGW_file(fname,jsonstr);
 }
 
@@ -2049,17 +2050,28 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     struct coin_info *cp = get_coin_info(coinstr);
     struct multisig_addr *msig;//,*dbmsig;
     struct nodestats *stats;
-    struct contact_info *contact,*contacts[4],_contacts[4];
+    struct contact_info *contact,*contacts[16],_contacts[16];
     char refNXTaddr[64],hopNXTaddr[64],destNXTaddr[64],mypubkey[1024],myacctcoinaddr[1024],pubkey[1024],acctcoinaddr[1024],buf[1024],*retstr = 0;
     uint64_t refbits = 0;
     int32_t i,iter,flag,valid = 0;
-    for (i=0; i<3; i++) // MGW bypass
+    if ( cp == 0 )
+        return(clonestr("\"error\":\"genmultisig unsupported coin\"}"));
+    memset(contacts,0,sizeof(contacts));
+    memset(_contacts,0,sizeof(_contacts));
+    if ( oldcontacts == 0 && N == 3 )
     {
-        contacts[i] = &_contacts[i];
-        memset(contacts[i],0,sizeof(*contacts[i]));
-        contacts[i]->nxt64bits = calc_nxt64bits(Server_NXTaddrs[i]);
+        for (i=0; i<3; i++) // MGW bypass
+        {
+            contacts[i] = &_contacts[i];
+            contacts[i]->nxt64bits = calc_nxt64bits(Server_NXTaddrs[i]);
+        }
+        n = i;
     }
-    n = i;
+    else if ( N == n )
+    {
+        for (i=0; i<n; i++)
+            contacts[i] = oldcontacts[i];
+    }
     refbits = conv_acctstr(refacct);
     expand_nxt64bits(refNXTaddr,refbits);
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
