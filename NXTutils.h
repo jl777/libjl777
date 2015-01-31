@@ -7,6 +7,40 @@
 #define gateway_NXTutils_h
 
 
+void *loadfile(int32_t *allocsizep,char *fname)
+{
+    FILE *fp;
+    long  filesize;
+    char *buf = 0;
+    *allocsizep = 0;
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        filesize = ftell(fp);
+        *allocsizep = (int32_t)filesize;
+        if ( filesize == 0 )
+        {
+            fclose(fp);
+            return(0);
+        }
+        buf = calloc(1,filesize + 1);
+        rewind(fp);
+        if ( buf == 0 )
+        {
+            printf("loadfile: Null buf for (%s).%ld???\n",fname,filesize);
+            return(0);
+        }
+        else
+        {
+            if ( fread(buf,1,filesize,fp) != filesize )
+                printf("error reading filesize.%ld\n",filesize);
+            buf[filesize] = 0;
+        }
+        fclose(fp);
+    }
+    return(buf);
+}
+
 char *load_file(char *fname,char **bufp,int64_t  *lenp,int64_t  *allocsizep)
 {
     FILE *fp;
