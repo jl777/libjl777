@@ -2638,26 +2638,16 @@ uint64_t ram_verify_NXTtxstillthere(struct ramchain_info *ram,uint64_t txidbits)
     _expand_nxt64bits(txidstr,txidbits);
     if ( (retstr= _issue_getTransaction(txidstr)) != 0 )
     {
+        //printf("verify.(%s)\n",retstr);
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( (attach= cJSON_GetObjectItem(json,"attachment")) != 0 )
-            {
                 quantity = get_API_nxt64bits(cJSON_GetObjectItem(attach,"quantityQNT"));
-                free_json(attach);
-            }
-            /*"attachment": {
-                "version.AssetTransfer": 1,
-                "quantityQNT": "1548984",
-                "version.Message": 1,
-                "messageIsText": true,
-                "asset": "11060861818140490423",
-                "message": "{\"redeem\":\"BTCD\",\"withdrawaddr\":\"RSM4BX2DNLXwsuAgvQPXYDpWcLYuiEYDyp\",\"InstantDEX\":\"\"}"
-            },*/
-            
             free_json(json);
         }
         free(retstr);
     }
+    //fprintf(stderr,"return %.8f\n",dstr(quantity * ram->ap->mult));
     return(quantity * ram->ap->mult);
 }
 
@@ -2961,11 +2951,11 @@ struct NXT_assettxid *_process_realtime_MGW(int32_t *sendip,struct ramchain_info
     else
     {
         *ramp = ram;
-        if ( strncmp(recvname,ram->name,strlen(ram->name)) != 0 )
+        /*if ( strncmp(recvname,ram->name,strlen(ram->name)) != 0 ) // + archive/RTmgw/
         {
-            printf("_process_realtime_MGW: coin mismatch recvname.(%s) vs %s\n",recvname,ram->name);
+            printf("_process_realtime_MGW: coin mismatch recvname.(%s) vs (%s).%ld\n",recvname,ram->name,strlen(ram->name));
             return(0);
-        }
+        }*/
         crc = _crc32(0,(uint8_t *)((long)cointx+sizeof(cointx->crc)),(int32_t)(cointx->allocsize-sizeof(cointx->crc)));
         if ( crc != cointx->crc )
         {
@@ -3017,7 +3007,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
 {
     void *loadfile(int32_t *allocsizep,char *fname);
     uint64_t retval;
-    char RTmgwname[1024],*cointxid;
+    char RTmgwname[1024],*cointxid,*retstr = 0;
     int32_t i,gatewayid,allocsize;
     struct cointx_info *cointxs[16],*othercointx;
     memset(cointxs,0,sizeof(cointxs));
@@ -3045,24 +3035,28 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
     printf("got consensus for %llu %.8f\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
     if ( ram_MGW_ready(ram,0,tp->height,tp->senderbits,tp->U.assetoshis) > 0 )
     {
+   // _process_realtime_MGW: coin mismatch recvname.(archive/RTmgw/BTCD.15171760342552245430.g0) vs BTCD
+        // need to wait for N coinblocks!!
+  //      getchar();
         if ( (retval= ram_verify_NXTtxstillthere(ram,tp->redeemtxid)) != tp->U.assetoshis )
         {
-            printf("_RTmgw_handler: tx gone due to a fork. NXT.%llu txid.%llu %.8f vs retval %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),dstr(retval));
+            fprintf(stderr,"_RTmgw_handler: tx gone due to a fork. NXT.%llu txid.%llu %.8f vs retval %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),dstr(retval));
             exit(1); // seems the best thing to do
         }
-        othercointx = cointxs[ram->S.gatewayid ^ 1];
+        othercointx = cointxs[(ram->S.gatewayid ^ 1) % ram->numgateways];
+        printf("[%d] othercointx = %p\n",(ram->S.gatewayid ^ 1) % ram->numgateways,othercointx);
         if ( (cointxid= _sign_and_sendmoney(txidstr,ram,cointxs[ram->S.gatewayid],othercointx->signedtx,&tp->redeemtxid,&tp->U.assetoshis,1)) != 0 )
         {
             _complete_assettxid(ram,tp);
             //ram_add_pendingsend(&sendi,ram,tp,0);
-            printf("completed redeem.%llu for %.8f\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
-            return(txidstr);
+            printf("completed redeem.%llu for %.8f cointxidstr.%s\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis),txidstr);
+            retstr = txidstr;
         }
         else printf("_RTmgw_handler: error _sign_and_sendmoney for NXT.%llu redeem.%llu %.8f (%s)\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),othercointx->signedtx);
     }
     for (gatewayid=0; gatewayid<ram->numgateways; gatewayid++)
         free(cointxs[gatewayid]);
-    return(0);
+    return(retstr);
 }
 
 void _RTmgw_handler(struct transfer_args *args)
@@ -3092,10 +3086,10 @@ void ram_send_cointx(struct ramchain_info *ram,struct cointx_info *cointx)
     FILE *fp;
     _set_RTmgwname(RTmgwname,cointx->coinstr,cointx->gatewayid,cointx->redeemtxid);
     cointx->crc = _crc32(0,(uint8_t *)((long)cointx+sizeof(cointx->crc)),(int32_t)(cointx->allocsize - sizeof(cointx->crc)));
-    //printf("save to (%s) crc.%x\n",fname,cointx->crc);
     if ( (fp= fopen(fname,"wb")) != 0 )
     {
-        fwrite(cointx,1,sizeof(*cointx),fp);
+        printf("save to (%s).%d crc.%x | batchcrc %x\n",fname,cointx->allocsize,cointx->crc,cointx->batchcrc);
+        fwrite(cointx,1,cointx->allocsize,fp);
         fclose(fp);
     }
     for (gatewayid=0; gatewayid<NUM_GATEWAYS; gatewayid++)
