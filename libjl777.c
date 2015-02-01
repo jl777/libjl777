@@ -89,12 +89,12 @@ void send_async_message(char *msg)
     uv_async_send(&Tasks_async);
 }*/
 
-void handler_gotfile(struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc)
+void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc)
 {
     void _RTmgw_handler(struct transfer_args *args);
     void bridge_handler(struct transfer_args *args);
     FILE *fp;
-    char buf[512];
+    char buf[512],*str;
     uint32_t now = (uint32_t)time(NULL);
     if ( args->syncmem != 0 )
     {
@@ -111,6 +111,7 @@ void handler_gotfile(struct transfer_args *args,uint8_t *data,int32_t len,uint32
         set_handler_fname(buf,args->handler,args->name);
         if ( (fp= fopen(buf,"wb")) != 0 )
         {
+            printf("handler_gotfile created.(%s).%d\n",buf,args->totallen);
             fwrite(args->data,1,args->totallen,fp);
             fclose(fp);
         }
@@ -120,6 +121,13 @@ void handler_gotfile(struct transfer_args *args,uint8_t *data,int32_t len,uint32
     }
     else if ( strcmp(args->handler,"bridge") == 0 )
         bridge_handler(args);
+    else if ( strcmp(args->handler,"ramchain") == 0 )
+    {
+        printf("handler_gotfile(%s len.%d) (%s)\n",args->name,args->totallen,args->data);
+        if ( (str= ramresponse((char *)args->data,sender,senderip)) != 0 )
+            free(str);
+    }
+    else printf("unknown handler.(%s)\n",args->handler);
     if ( args->syncmem == 0 )
     {
         memset(args->data,0,args->totallen);
@@ -332,7 +340,7 @@ void run_UVloop(void *arg)
 void run_libwebsockets(void *arg)
 {
     int32_t usessl = *(int32_t *)arg;
-    init_API_port(usessl,APIPORT+!usessl,APISLEEP);
+    init_API_port(USESSL,APIPORT+!usessl,APISLEEP);
 }
 
 void init_NXThashtables(struct NXThandler_info *mp)

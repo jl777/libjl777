@@ -1,6 +1,5 @@
-pkill SuperNET
+pkill -15 SuperNET
 ./BitcoinDarkd stop
-pkill SuperNET
 git pull
 sleep 4
 ps aux | grep SuperNET

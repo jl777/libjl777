@@ -722,11 +722,11 @@ void ensure_SuperNET_dirs(char *backupdir)
     //struct coin_info *cp;
     array = cJSON_GetObjectItem(MGWconf,"active");
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
+    sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
     if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
     {
         sprintf(dirname,"%s/%s",MGWROOT,"ramchains"), ensure_directory(dirname);
-        sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
-        sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW/status"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW/sent"), ensure_directory(dirname);
         sprintf(dirname,"%s/%s",MGWROOT,"MGW/deposit"), ensure_directory(dirname);

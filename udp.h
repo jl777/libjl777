@@ -122,7 +122,7 @@ uint16_t get_SuperNET_port(char *ipaddr)
 int32_t prevent_queueing(char *cmd)
 {
     if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 ||
-        strcmp("sendfrag",cmd) == 0 || strcmp("gotfrag",cmd) == 0 ||
+        strcmp("sendfrag",cmd) == 0 || strcmp("gotfrag",cmd) == 0 || strcmp("ramchain",cmd) == 0 ||
         strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
         0 )
         return(1);
@@ -707,7 +707,7 @@ void calc_crcs(uint32_t *crcs,uint8_t *data,int32_t len,int32_t num,int32_t bloc
     //printf("crcs.%u: %u %u %u | %d\n",_crc32(0,data,len),crcs[0],crcs[1],crcs[2],len-offset);
 }
 
-int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t datacrc,uint8_t *data,int32_t datalen)
+int32_t update_transfer_args(char *sender,char *senderip,struct transfer_args *args,uint32_t fragi,uint32_t numfrags,uint32_t totalcrc,uint32_t datacrc,uint8_t *data,int32_t datalen)
 {
     int i,count = 0;
     uint32_t checkcrc;
@@ -766,7 +766,7 @@ int32_t update_transfer_args(struct transfer_args *args,uint32_t fragi,uint32_t 
                     {
                         if ( Debuglevel > 1 )
                             printf("completed.%d (%s) totallen.%d to (%s) checkcrc.%u vs totalcrc.%u\n",count,args->name,args->totallen,args->dest,checkcrc,totalcrc);
-                        handler_gotfile(args,args->snapshot,args->totallen,args->snapshotcrc);
+                        handler_gotfile(sender,senderip,args,args->snapshot,args->totallen,args->snapshotcrc);
                         args->completed++;
                     }
                 }
@@ -838,7 +838,7 @@ char *sendfrag(char *previpaddr,char *sender,char *verifiedNXTaddr,char *NXTACCT
             if ( Debuglevel > 2 )
                 fprintf(stderr,"GOT SENDFRAG.(%s) datalen.%d %p %p (%u %u %u)\n",cmdstr,datalen,args->data,args->gotcrcs,args->crcs[0],args->crcs[1],args->crcs[2]);
             if ( datacrc == checkcrc )
-                count = update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,data,datalen);
+                count = update_transfer_args(sender,previpaddr,args,fragi,numfrags,totalcrc,datacrc,data,datalen);
             snapshotcrc = _crc32(0,args->snapshot,args->totallen);
             sprintf(cmdstr+strlen(cmdstr),",\"snapshotcrc\":%u",snapshotcrc);
         }
@@ -889,7 +889,7 @@ char *gotfrag(char *previpaddr,char *sender,char *NXTaddr,char *NXTACCTSECRET,ch
         totallen = numfrags * blocksize;
     //fprintf(stderr,"GOTFRAG.(%s)\n",cmdstr);
     args = create_transfer_args(previpaddr,NXTaddr,src,name,totallen,blocksize,totalcrc,handler,syncmem);
-    match = update_transfer_args(args,fragi,numfrags,totalcrc,datacrc,0,0);
+    match = update_transfer_args(sender,previpaddr,args,fragi,numfrags,totalcrc,datacrc,0,0);
     j = -1;
     if ( (snapshotcrc != args->totalcrc || match < args->numfrags) && args->blocksize == blocksize && args->totallen == totallen && args->totalcrc == totalcrc )
     {
