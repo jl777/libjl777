@@ -1830,7 +1830,7 @@ int32_t issue_createmultisig(struct coin_info *cp,struct multisig_addr *msig)
     char addr[256];
     cJSON *json,*msigobj,*redeemobj;
     char *params,*retstr = 0;
-    params = createmultisig_json_params(msig,msig->NXTaddr);
+    params = createmultisig_json_params(msig,(cp->use_addmultisig != 0) ? msig->NXTaddr : 0);
     flag = 0;
     if ( params != 0 )
     {

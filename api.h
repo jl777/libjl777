@@ -1531,14 +1531,15 @@ char *startxfer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 char *getfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     int32_t timeout = 60;
-    char fname[MAX_JSON_FIELD],handler[MAX_JSON_FIELD];
+    char fname[MAX_JSON_FIELD],handler[MAX_JSON_FIELD],name[MAX_JSON_FIELD];
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
-    copy_cJSON(fname,objs[0]);
+    copy_cJSON(name,objs[0]);
     copy_cJSON(handler,objs[1]);
     if ( (fname[0] != 0 || handler[0] != 0) && sender[0] != 0 && valid > 0 )
     {
-        printf("getfile.(%s).(%s) -> (%s) (%s)\n",fname,handler,sender,previpaddr);
+        set_handler_fname(fname,handler,name);
+        printf("getfile.(%s).(%s) (%s) -> (%s) (%s)\n",name,handler,fname,sender,previpaddr);
         return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,0,0,timeout,handler,0));
     }
     else return(clonestr("{\"error\":\"invalid getfile parameters\"}"));
@@ -2198,7 +2199,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", "totallen", "blocksize", "handler", "syncmem", 0 };
     static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "totallen", "blocksize", "count", "handler", "syncmem", "snapshotcrc", 0 };
     static char *startxfer[] = { (char *)startxfer_func, "startxfer", "V", "fname", "dest", "data", "timeout", "handler", "syncmem", 0 };
-    static char *getfile[] = { (char *)getfile_func, "getfile", "V", "fname", "handler", 0 };
+    static char *getfile[] = { (char *)getfile_func, "getfile", "V", "name", "handler", 0 };
 
     // Kademlia DHT
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };

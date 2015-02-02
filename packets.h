@@ -594,7 +594,8 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         if ( prevaddr != 0 )
                             extract_nameport(previpaddr,sizeof(previpaddr),(struct sockaddr_in *)prevaddr);
                         else previpaddr[0] = 0;
-                        //fprintf(stderr,"GOT.(%s) decoded.%p (%s)\n",parmstxt,decoded,decoded);
+                        if ( Debuglevel > 2 )
+                            fprintf(stderr,"GOT.(%s) decoded.%p (%s)\n",parmstxt,decoded,decoded);
                         if ( noqueue == 0 && FASTMODE == 0 )//IS_LIBTEST < 2 )
                         {
                             qp = calloc(1,sizeof(*qp));

@@ -830,7 +830,7 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
 struct ramchain_info *get_ramchain_info(char *coinstr)
 {
     struct coin_info *cp = get_coin_info(coinstr);
-    if ( cp != 0 )
+    if ( NORAMCHAINS == 0 && cp != 0 )
         return(&cp->RAM);
     else return(0);
 }
@@ -978,7 +978,8 @@ void init_coinsarray(char *userdir,char *myipaddr)
                     //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                     //addcontact("mypublic",cp->srvNXTADDR);
                 }
-                init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
+                if ( NORAMCHAINS == 0 )
+                    init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
             }
         }
     } else printf("no coins array.%p ?\n",array);
@@ -1152,6 +1153,7 @@ void init_SuperNET_settings(char *userdir)
     DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
     MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
     APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
+    NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),10);
 /*#ifndef HUFF_GENMODE
     DBSLEEP *= 10;
     APISLEEP *= 10;
