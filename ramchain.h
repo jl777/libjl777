@@ -2569,7 +2569,7 @@ uint64_t _get_NXT_ECblock(uint32_t *ecblockp)
     cJSON *json;
     uint64_t ecblock = 0;
     char cmd[256],*jsonstr;
-    sprintf(cmd,"requestType=getECblock");
+    sprintf(cmd,"requestType=getECBlock");
     if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -3237,7 +3237,7 @@ int32_t ram_mark_depositcomplete(struct ramchain_info *ram,struct NXT_assettxid 
                     return(1);
                 } else printf("ram_mark_depositcomplete: mismatched rawind or value (%u vs %d) (%.8f vs %.8f)\n",txptr->rawind,addrpayload->otherind,dstr(txpayload->value),dstr(addrpayload->value));
             } else printf("ram_mark_depositcomplete: couldnt find addrpayload for %s vout.%d\n",tp->cointxid,tp->coinv);
-        } else printf("ram_mark_depositcomplete: couldnt find txpayload.%p or tp->coinv.%d >= %d numtxpayloads blocknum.%d\n",txpayload,tp->coinv,numtxpayloads,blocknum);
+        } else printf("ram_mark_depositcomplete: couldnt find (%s) txpayload.%p or tp->coinv.%d >= %d numtxpayloads blocknum.%d\n",tp->cointxid,txpayload,tp->coinv,numtxpayloads,blocknum);
     } else printf("ram_mark_depositcomplete: unexpected null cointxid\n");
     return(0);
 }
@@ -3708,7 +3708,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     }
     i = _get_NXTheight(&oldest);
     ram->S.NXT_ECblock = _get_NXT_ECblock(&ram->S.NXT_ECheight);
-    printf("NXTheight.%d ECblock.%d\n",i,ram->S.NXT_ECheight);
+    printf("NXTheight.%d ECblock.%d mostrecent.%d\n",i,ram->S.NXT_ECheight,mostrecent);
     if ( firsttimep != 0 )
         *firsttimep = oldest;
     if ( i != ram->S.NXT_RTblocknum )
@@ -3718,12 +3718,14 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     }
     if ( mostrecent > 0 )
     {
+        printf("mostrecent %d <= %d (ram->S.NXT_RTblocknum %d - %d ram->min_NXTconfirms)\n", mostrecent,(ram->S.NXT_RTblocknum - ram->min_NXTconfirms),ram->S.NXT_RTblocknum,ram->min_NXTconfirms);
         while ( mostrecent <= (ram->S.NXT_RTblocknum - ram->min_NXTconfirms) )
         {
             sprintf(cmd,"requestType=getBlock&height=%u&includeTransactions=true",mostrecent);
+            printf("send cmd.(%s)\n",cmd);
             if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
             {
-                //printf("getBlock.%d (%s)\n",mostrecent,jsonstr);
+                printf("getBlock.%d (%s)\n",mostrecent,jsonstr);
                 if ( (json= cJSON_Parse(jsonstr)) != 0 )
                 {
                     timestamp = (uint32_t)get_cJSON_int(json,"timestamp");
@@ -3744,9 +3746,9 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
                             _process_NXTtransaction(1,ram,cJSON_GetArrayItem(array,i));
                     }
                     free_json(json);
-                }
+                } else printf("error parsing.(%s)\n",jsonstr);
                 free(jsonstr);
-            }
+            } else printf("error sending.(%s)\n",cmd);
             mostrecent++;
         }
         if ( ram->min_NXTconfirms == 0 )
@@ -7069,7 +7071,7 @@ int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchai
     strcpy(hash->coinstr,ram->name);
     hash->type = type;
     num = 0;
-    //if ( PERMUTE_RAWINDS != 0 )
+    if ( PERMUTE_RAWINDS != 0 )
     {
         ram_sethashname(fname,hash,0);
         strcat(fname,".perm");
@@ -8740,7 +8742,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
     ram->blocks.M = permalloc(ram->name,&ram->Perm,sizeof(*ram->blocks.M),8);
     ram->snapshots = permalloc(ram->name,&ram->Perm,sizeof(*ram->snapshots) * (ram->maxblock / 64),8);
     ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
-    printf("ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->name,ram->S.RTblocknum,(ram_millis() - startmilli)/1000.,ram->next_blocknum,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
+    printf("[%s] ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->dirpath,ram->name,ram->S.RTblocknum,(ram_millis() - startmilli)/1000.,ram->next_blocknum,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
     //#ifndef RAM_GENMODE
     ram_init_tmpspace(ram,tmpsize);
     ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
@@ -9072,7 +9074,7 @@ void *process_ramchains(void *_argcoinstr)
                 ram_update_disp(ram);
         }
         if ( processed == 0 )
-            sleep(200);
+            sleep(20);
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");
