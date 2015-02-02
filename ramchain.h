@@ -3010,7 +3010,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
 {
     void *loadfile(int32_t *allocsizep,char *fname);
     uint64_t retval;
-    char RTmgwname[1024],name[512],*cointxid,*retstr = 0;
+    char RTmgwname[1024],name[512],cmd[1024],hopNXTaddr[64],*cointxid,*retstr = 0;
     int32_t i,gatewayid,allocsize;
     struct cointx_info *cointxs[16],*othercointx;
     memset(cointxs,0,sizeof(cointxs));
@@ -3019,6 +3019,11 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
         _set_RTmgwname(RTmgwname,name,ram->name,gatewayid,tp->redeemtxid);
         if ( (cointxs[gatewayid]= loadfile(&allocsize,RTmgwname)) == 0 )
         {
+            char *send_tokenized_cmd(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *NXTACCTSECRET,char *cmdstr,char *destNXTaddr);
+            hopNXTaddr[0] = 0;
+            sprintf(cmd,"{\"requestType\":\"getfile\",\"NXT\":\"%s\",\"timestamp\":\"%ld\",\"fname\":\"%s\",\"handler\":\"RTmgw\"}",ram->srvNXTADDR,(long)time(NULL),name);
+            if ( (retstr= send_tokenized_cmd(0,hopNXTaddr,0,ram->srvNXTADDR,ram->srvNXTACCTSECRET,cmd,ram->special_NXTaddrs[gatewayid])) != 0 )
+                free(retstr), retstr = 0;
             printf("cant find.(%s) for %llu %.8f\n",RTmgwname,(long long)tp->redeemtxid,dstr(tp->U.assetoshis));
             break;
         }
@@ -3708,7 +3713,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     }
     i = _get_NXTheight(&oldest);
     ram->S.NXT_ECblock = _get_NXT_ECblock(&ram->S.NXT_ECheight);
-    printf("NXTheight.%d ECblock.%d mostrecent.%d\n",i,ram->S.NXT_ECheight,mostrecent);
+    //printf("NXTheight.%d ECblock.%d mostrecent.%d\n",i,ram->S.NXT_ECheight,mostrecent);
     if ( firsttimep != 0 )
         *firsttimep = oldest;
     if ( i != ram->S.NXT_RTblocknum )
@@ -3718,14 +3723,14 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     }
     if ( mostrecent > 0 )
     {
-        printf("mostrecent %d <= %d (ram->S.NXT_RTblocknum %d - %d ram->min_NXTconfirms)\n", mostrecent,(ram->S.NXT_RTblocknum - ram->min_NXTconfirms),ram->S.NXT_RTblocknum,ram->min_NXTconfirms);
+        //printf("mostrecent %d <= %d (ram->S.NXT_RTblocknum %d - %d ram->min_NXTconfirms)\n", mostrecent,(ram->S.NXT_RTblocknum - ram->min_NXTconfirms),ram->S.NXT_RTblocknum,ram->min_NXTconfirms);
         while ( mostrecent <= (ram->S.NXT_RTblocknum - ram->min_NXTconfirms) )
         {
             sprintf(cmd,"requestType=getBlock&height=%u&includeTransactions=true",mostrecent);
-            printf("send cmd.(%s)\n",cmd);
+            //printf("send cmd.(%s)\n",cmd);
             if ( (jsonstr= _issue_NXTPOST(cmd)) != 0 )
             {
-                printf("getBlock.%d (%s)\n",mostrecent,jsonstr);
+               // printf("getBlock.%d (%s)\n",mostrecent,jsonstr);
                 if ( (json= cJSON_Parse(jsonstr)) != 0 )
                 {
                     timestamp = (uint32_t)get_cJSON_int(json,"timestamp");
@@ -3862,7 +3867,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     }
     ram->S.circulation = _calc_circulation(ram->min_NXTconfirms,ram->ap,ram);
     ram->S.orphans = _find_pending_transfers(&ram->S.MGWpendingredeems,ram);
-    printf("return mostrecent.%d\n",mostrecent);
+    //printf("return mostrecent.%d\n",mostrecent);
     return(mostrecent);
 }
 
