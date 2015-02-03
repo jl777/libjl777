@@ -1,0 +1,70 @@
+This file is part of MXE.
+See index.html for further information.
+
+diff -urN a/popt.c b/popt.c
+--- a/popt.c	2010-01-19 01:39:10.000000000 +0100
++++ b/popt.c	2010-05-12 00:15:14.959504505 +0200
+@@ -972,6 +972,21 @@
+ /*@=unqualifiedtrans =nullstate@*/
+ }
+ 
++/* Win32 typically lacks random/srandom, but has rand/srand which
++ * produces frankly rubbish random numbers and has RAND_MAX = 0x7FFF.
++ */
++#ifndef HAVE_RANDOM
++static int
++random ()
++{
++  return rand () << 15 | rand ();
++}
++#endif
++
++#ifndef HAVE_SRANDOM
++#define srandom srand
++#endif
++
+ /*@unchecked@*/
+ static unsigned int seed = 0;
+ 
+diff -urN a/poptconfig.c b/poptconfig.c
+--- a/poptconfig.c	2009-05-20 15:18:07.000000000 +0200
++++ b/poptconfig.c	2010-05-12 00:15:14.959504505 +0200
+@@ -141,18 +141,23 @@
+ int poptSaneFile(const char * fn)
+ {
+     struct stat sb;
++#ifdef HAVE_GETUID
+     uid_t uid = getuid();
+-
++#endif
+     if (stat(fn, &sb) == -1)
+ 	return 1;
++#ifdef HAVE_GETUID
+     if ((uid_t)sb.st_uid != uid)
+ 	return 0;
++#endif
+     if (!S_ISREG(sb.st_mode))
+ 	return 0;
++#ifdef HAVE_GETUID
+ /*@-bitwisesigned@*/
+     if (sb.st_mode & (S_IWGRP|S_IWOTH))
+ 	return 0;
+ /*@=bitwisesigned@*/
++#endif
+     return 1;
+ }
+ 
+diff -urN a/popthelp.c b/popthelp.c
+--- a/popthelp.c	2009-08-28 02:06:33.000000000 +0200
++++ b/popthelp.c	2010-05-12 00:15:14.964949157 +0200
+@@ -12,8 +12,10 @@
+ 
+ #define        POPT_USE_TIOCGWINSZ
+ #ifdef POPT_USE_TIOCGWINSZ
++#ifdef HAVE_SYS_IOCTL_H
+ #include <sys/ioctl.h>
+ #endif
++#endif
+ 
+ #define	POPT_WCHAR_HACK
+ #ifdef 	POPT_WCHAR_HACK

@@ -1,0 +1,58 @@
+This file is part of MXE.
+See index.html for further information.
+
+diff -ru id3lib-3.8.3-orig/configure.in id3lib-3.8.3/configure.in
+--- id3lib-3.8.3-orig/configure.in	2003-03-02 01:23:00.000000000 +0100
++++ id3lib-3.8.3/configure.in	2010-01-23 14:15:24.000000000 +0100
+@@ -89,6 +89,8 @@
+ 
+ AC_ISC_POSIX
+ 
++AC_CHECK_TOOL([AR], [ar], [:])
++
+ dnl Initialize libtool
+ AM_PROG_LIBTOOL
+ 
+@@ -227,7 +229,6 @@
+ )
+ AC_CHECK_HEADERS(               \
+   string                        \
+-  iomanip.h                     \
+   ,,AC_MSG_ERROR([Missing a vital header file for id3lib])
+ )
+ 
+@@ -251,7 +252,7 @@
+ AC_CHECK_FUNCS(mkstemp)
+ AC_CHECK_FUNCS(
+   truncate                      \
+-  ,,AC_MSG_ERROR([Missing a vital function for id3lib])
++  ,,AC_MSG_WARN([Missing a vital function for id3lib])
+ )
+ 
+ dnl Checks for typedefs, structures, and compiler characteristics.
+diff -ru id3lib-3.8.3-orig/include/id3/globals.h id3lib-3.8.3/include/id3/globals.h
+--- id3lib-3.8.3-orig/include/id3/globals.h	2003-03-02 01:23:00.000000000 +0100
++++ id3lib-3.8.3/include/id3/globals.h	2010-01-23 14:22:58.000000000 +0100
+@@ -41,7 +41,7 @@
+  * we prefix variable declarations so they can
+  * properly get exported in windows dlls.
+  */
+-#ifdef WIN32
++#ifdef __MSVC_VER
+ #  define LINKOPTION_STATIC         1 //both for use and creation of static lib
+ #  define LINKOPTION_CREATE_DYNAMIC 2 //should only be used by prj/id3lib.dsp
+ #  define LINKOPTION_USE_DYNAMIC    3 //if your project links id3lib dynamic
+@@ -74,11 +74,11 @@
+ #      define CCONV __stdcall // Added for VB & Delphi Compatibility - By FrogPrince Advised By Lothar
+ #    endif
+ #  endif
+-#else /* !WIN32 */
++#else /* !__MSVC_VER */
+ #  define ID3_C_EXPORT
+ #  define ID3_CPP_EXPORT
+ #  define CCONV
+-#endif /* !WIN32 */
++#endif /* !__MSVC_VER */
+ 
+ #define ID3_C_VAR extern
+ 

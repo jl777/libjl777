@@ -1,0 +1,155 @@
+This file is part of MXE.
+See index.html for further information.
+
+Contains ad hoc patches for cross building.
+
+diff -ur winpcap/packetNtx/Dll/Packet32-Int.h winpcap.new/packetNtx/Dll/Packet32-Int.h
+--- winpcap/packetNtx/Dll/Packet32-Int.h	2010-10-14 08:16:46.000000000 +1100
++++ winpcap.new/packetNtx/Dll/Packet32-Int.h	2014-10-03 00:37:40.000000000 +1000
+@@ -43,7 +43,7 @@
+ #endif //HAVE_NPFIM_API
+ 
+ #ifdef __MINGW32__
+-#ifdef __MINGW64__
++#ifdef __MINGW64_VERSION_MAJOR
+ #include <ntddndis.h>
+ #else /*__MINGW64__*/
+ #include <ddk/ntddndis.h>
+diff -ur winpcap/wpcap/PRJ/GNUmakefile winpcap.new/wpcap/PRJ/GNUmakefile
+--- winpcap/wpcap/PRJ/GNUmakefile	2010-10-18 13:00:36.000000000 +1100
++++ winpcap.new/wpcap/PRJ/GNUmakefile	2014-10-03 00:35:44.000000000 +1000
+@@ -32,12 +32,12 @@
+ 	-DSIZEOF_CHAR=1 -DSIZEOF_SHORT=2 -DSIZEOF_INT=4 -DSIZEOF_LONG_LONG=8 -DWPCAP -D'_U_=' \
+ 	-DHAVE_SNPRINTF -DHAVE_VSNPRINTF \
+ 	-DSIZEOF_LONG_LONG=8 \
+-	-DHAVE_REMOTE -DHAVE_AIRPCAP_API \
++	-DHAVE_REMOTE \
+ 	-DHAVE_TC_API \
+ 	-DHAVE_ADDRINFO \
+ 	-DHAVE_LIMITS_H \
+ 	-DYY_NO_UNISTD_H \
+-	-mno-cygwin -shared ${OPTFLAGS}
++	-shared ${OPTFLAGS}
+ LDFLAGS = -Wl,--out-implib,../lib/libwpcap.a
+ LIBS = -L ../../${PACKET_DIR}/Dll/Project -lpacket -lws2_32
+ OBJS = ../libpcap/bpf/net/bpf_filter.o \
+@@ -93,3 +93,6 @@
+ 	${FLEX} ${LFLAGS} -t $< >$*.c
+ .c.o:
+ 	${CC} ${CFLAGS} -o $*.o -c $<
++libwpcap.a: ${OBJS}
++	${AR} rc $@ ${OBJS}
++	${RANLIB} $@
+diff -ur winpcap/wpcap/libpcap/Win32/Src/gai_strerror.c winpcap.new/wpcap/libpcap/Win32/Src/gai_strerror.c
+--- winpcap/wpcap/libpcap/Win32/Src/gai_strerror.c	2009-10-07 00:19:58.000000000 +1100
++++ winpcap.new/wpcap/libpcap/Win32/Src/gai_strerror.c	2014-10-03 00:35:44.000000000 +1000
+@@ -1,83 +1 @@
+-/*
+- * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the name of the project nor the names of its contributors
+- *    may be used to endorse or promote products derived from this software
+- *    without specific prior written permission.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
+- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
+- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-/*
+-#include <sys/cdefs.h>
+-
+-__FBSDID("$FreeBSD: /repoman/r/ncvs/src/lib/libc/net/gai_strerror.c,v 1.1 2005/04/06 12:45:51 ume Exp $");
+-
+-*/
+-
+-#ifdef WIN32
+-
+-#include <ws2tcpip.h>
+-
+-#else
+-
+-#include <netdb.h>
+-
+-#endif
+-
+-/* Entries EAI_ADDRFAMILY (1) and EAI_NODATA (7) are obsoleted, but left */
+-/* for backward compatibility with userland code prior to 2553bis-02 */
+-static char *ai_errlist[] = {
+-	"Success",					/* 0 */
+-	"Address family for hostname not supported",	/* 1 */
+-	"Temporary failure in name resolution",		/* EAI_AGAIN */
+-	"Invalid value for ai_flags",			/* EAI_BADFLAGS */
+-	"Non-recoverable failure in name resolution",	/* EAI_FAIL */
+-	"ai_family not supported",			/* EAI_FAMILY */
+-	"Memory allocation failure", 			/* EAI_MEMORY */
+-	"No address associated with hostname",		/* 7 */
+-	"hostname nor servname provided, or not known",	/* EAI_NONAME */
+-	"servname not supported for ai_socktype",	/* EAI_SERVICE */
+-	"ai_socktype not supported", 			/* EAI_SOCKTYPE */
+-	"System error returned in errno", 		/* EAI_SYSTEM */
+-	"Invalid value for hints",			/* EAI_BADHINTS */
+-	"Resolved protocol is unknown"			/* EAI_PROTOCOL */
+-};
+-
+-#ifndef EAI_MAX
+-#define EAI_MAX (sizeof(ai_errlist)/sizeof(ai_errlist[0]))
+-#endif
+-
+-/* on MingW, gai_strerror is available. 
+-   We need to compile gai_strerrorA only for Cygwin
+- */
+-#ifndef gai_strerror
+-
+-char *
+-WSAAPI gai_strerrorA(int ecode)
+-{
+-	if (ecode >= 0 && ecode < EAI_MAX)
+-		return ai_errlist[ecode];
+-	return "Unknown error";
+-}
+-
+-#endif /* gai_strerror */
+\ No newline at end of file
++/* already handled by <ws2tcpip.h> */
+diff -ur winpcap/wpcap/libpcap/inet.c winpcap.new/wpcap/libpcap/inet.c
+--- winpcap/wpcap/libpcap/inet.c	2009-10-07 00:20:04.000000000 +1100
++++ winpcap.new/wpcap/libpcap/inet.c	2014-10-03 00:35:44.000000000 +1000
+@@ -804,7 +804,7 @@
+ 		while(NAdapts--)
+ 		{
+ 			strcpy((char*)tUstr, tAstr);
+-			(char*)tUstr += strlen(tAstr) + 1;;
++			tUstr += strlen(tAstr) + 1;;
+ 			tAstr += strlen(tAstr) + 1;
+ 		}
+ 
+diff -ur winpcap/wpcap/libpcap/pcap-win32.c winpcap.new/wpcap/libpcap/pcap-win32.c
+--- winpcap/wpcap/libpcap/pcap-win32.c	2013-02-28 17:22:00.000000000 +1100
++++ winpcap.new/wpcap/libpcap/pcap-win32.c	2014-10-03 00:37:02.000000000 +1000
+@@ -38,7 +38,7 @@
+ 
+ #include <pcap-int.h>
+ #include <Packet32.h>
+-#ifdef __MINGW32__
++#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+ #include <ddk/ndis.h>
+ #else /*__MINGW32__*/
+ #include <ntddndis.h>

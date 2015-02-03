@@ -1,0 +1,60 @@
+This file is part of MXE.
+See index.html for further information.
+
+Contains ad hoc patches for cross building.
+
+From dc54ddf47055db70aeb19c618a70bd5448cff836 Mon Sep 17 00:00:00 2001
+From: Mark Brand <mabrand@mabrand.nl>
+Date: Thu, 11 Apr 2013 08:50:44 +0200
+Subject: [PATCH] add pkg-config support
+
+based on
+http://old.nabble.com/-PATCH--Add-pkgconfig-file-td23312302.html
+
+proposed to upstream
+https://sourceforge.net/tracker/?func=detail&aid=3511842&group_id=1032&atid=101032
+
+diff --git a/Makefile.am b/Makefile.am
+index 39c5628..b504bc6 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -68,3 +68,6 @@ dist-hook:
+ 
+ libtool: $(LIBTOOL_DEPS)
+ 	$(SHELL) ./config.status --recheck
++
++pkgconfigdir = $(libdir)/pkgconfig
++pkgconfig_DATA = glut.pc
+diff --git a/configure.ac b/configure.ac
+index 4f194d9..71e696d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -125,5 +125,6 @@ AC_CONFIG_FILES([
+ 	progs/demos/spaceball/Makefile
+ 	progs/demos/subwin/Makefile
+ 	src/Makefile
++	glut.pc
+ ])
+ AC_OUTPUT
+diff --git a/glut.pc.in b/glut.pc.in
+new file mode 100644
+index 0000000..ea57c4a
+--- /dev/null
++++ b/glut.pc.in
+@@ -0,0 +1,13 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@/@PACKAGE@
++
++Name: glut
++Description: A freely licensed alternative to the GLUT library
++Version: @VERSION@
++Libs: -L${libdir} -lglut
++Libs.private: -lglu32 -lopengl32 -lwinmm -lgdi32 -mwindows
++Cflags: -I${includedir}
++Cflags.private: -DFREEGLUT_STATIC
++
+-- 
+1.8.1.4
+

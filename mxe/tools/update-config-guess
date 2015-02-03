@@ -1,0 +1,37 @@
+#!/bin/sh
+# This file is part of MXE.
+# See index.html for further information.
+#
+# Script to automatically update config.guess
+# (http://savannah.gnu.org/projects/config)
+
+clean(){
+    rm -rf tmp-config-guess
+}
+
+. tools/compat-init.sh
+
+# Current config.guess timestamp.
+current_version=$(grep 'timestamp.*=' 'ext/config.guess' 2>/dev/null | \
+                  head -1 | cut -d'=' -f2 | $SED -e 's/^ //' -e 's/ *$//' )
+
+clean
+
+# Fetch latest config.guess from Savannah Git
+$WGET -q -O tmp-config-guess 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
+
+# Latest config.guess timestamp
+latest_version=$(grep 'timestamp.*=' 'tmp-config-guess' | head -1 | \
+                 head -1 | cut -d'=' -f2 | $SED -e 's/^ //' -e 's/ *$//')
+
+# Compare versions
+if [ "$current_version" != "$latest_version" ]; then
+    echo "New version found: $current_version --> $latest_version"
+    rm -f ext/config.guess
+    cp -a tmp-config-guess ext/config.guess
+    chmod +x ext/config.guess
+else
+    echo "No new version available: $current_version"
+fi
+
+clean
