@@ -19,9 +19,18 @@
 #ifndef ramchain_h
 #define ramchain_h
 
+
+#ifdef _WIN32
+#include "mman-win.h"
+#include <io.h>
+#include <share.h>
+#include <errno.h>
+#include <string.h>
+#endif
+
 #define MIN_DEPOSIT_FACTOR 5
-#define TMPALLOC_SPACE_INCR 10000000
 #define PERMALLOC_SPACE_INCR (1024 * 1024 * 128)
+#define TMPALLOC_SPACE_INCR 10000000
 #define MAX_PENDINGSENDS_TICKS 50
 
 #include <stdio.h>
@@ -270,7 +279,6 @@ struct ramchain_hashptr *ram_hashsearch(char *coinstr,struct alloc_space *mem,in
 #ifdef INCLUDE_CODE
 #ifndef ramchain_code_h
 #define ramchain_code_h
-int Numramchains; struct ramchain_info *Ramchains[100];
 
 #define ram_scriptind(ram,hashstr) ram_conv_hashstr(0,1,ram,hashstr,'s')
 #define ram_addrind(ram,hashstr) ram_conv_hashstr(0,1,ram,hashstr,'a')
@@ -341,7 +349,11 @@ void *alloc_aligned_buffer(uint64_t allocsize)
     { printf("%llu negative allocsize\n",(long long)allocsize); while ( 1 ) sleep(666); }
 	void *ptr;
 	allocsize = _align16(allocsize);
+	#ifndef _WIN32
 	if ( posix_memalign(&ptr,16,allocsize) != 0 )
+	#else
+	if ( ptr = _aligned_malloc(16,allocsize) != 0 )
+	#endif
 		printf("alloc_aligned_buffer can't get allocsize %llu\n",(long long)allocsize);
 	if ( ((unsigned long)ptr & 15) != 0 )
     { printf("%p[%llu] alloc_aligned_buffer misaligned\n",ptr,(long long)allocsize); while ( 1 ) sleep(666); }
@@ -371,14 +383,24 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	uint64_t filesize;
     void *ptr = 0;
 	*filesizep = 0;
+fprintf(stderr, "\n\tAbout to map_file\n");
+        #ifndef _WIN32
 	if ( enablewrite != 0 )
 		fd = open(fname,O_RDWR);
 	else fd = open(fname,O_RDONLY);
+        #else
+	if ( enablewrite != 0 )
+		fd = _sopen(fname, _O_RDWR | _O_BINARY , _SH_DENYNO);
+	else fd = _sopen(fname, _O_RDONLY | _O_BINARY , _SH_DENYNO);
+        #endif
+fprintf(stderr, "\n\topened file\n");
 	if ( fd < 0 )
 	{
-		printf("map_file: error opening enablewrite.%d %s\n",enablewrite,fname);
+		fprintf(stderr,"\nmap_file: error opening enablewrite.%d %s\n",enablewrite,fname);
+fprintf(stderr,"\n\t_sopen(fd) returns: %d (%s)\n", fd, strerror(errno));
         return(0);
 	}
+fprintf(stderr, "\nmap_file opened\n");
     if ( *filesizep == 0 )
         filesize = (uint64_t)lseek(fd,0,SEEK_END);
     else
@@ -390,10 +412,18 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 		rwflags |= PROT_WRITE;
 #ifdef __APPLE__
 	ptr = mmap(0,filesize,rwflags,flags,fd,0);
+#elif _WIN32
+fprintf(stderr, "\nmmap(0, %d, %d, %d, %d,0) being called\n", filesize, rwflags,flags,fd);
+	ptr = mmap(0,filesize,rwflags,flags,fd,0);
 #else
 	ptr = mmap64(0,filesize,rwflags,flags,fd,0);
 #endif
+fprintf(stderr, "\nafter mmap\n");
+        #ifndef _WIN32
 	close(fd);
+        #else
+	_close(fd);
+	#endif
     if ( ptr == 0 || ptr == MAP_FAILED )
 	{
 		printf("map_file.write%d: mapping %s failed? mp %p\n",enablewrite,fname,ptr);
@@ -430,7 +460,11 @@ void _close_mappedptr(struct mappedptr *mp)
 	// mp->actually_allocated = 0;
 	// }
 	if ( mp->actually_allocated != 0 && mp->fileptr != 0 )
+        	#ifndef _WIN32
 		free(mp->fileptr);
+	        #else
+		_aligned_free(mp->fileptr);
+		#endif
 	else if ( mp->fileptr != 0 )
 		release_map_file(mp->fileptr,mp->allocsize);
 	mp->fileptr = 0;
@@ -526,7 +560,11 @@ void ensure_filesize(char *fname,long filesize)
         //printf("filesize.%ld is less than %ld\n",filesize,allocsize);
         if ( (fp=fopen(fname,"ab")) != 0 )
         {
+	    #ifndef _WIN32
             zeroes = valloc(16*1024*1024);
+	    #else
+	    zeroes = _aligned_malloc(16*1024*1024, 16);
+	    #endif
             memset(zeroes,0,16*1024*1024);
             n = filesize - allocsize;
             while ( n > 16*1024*1024 )
@@ -538,7 +576,11 @@ void ensure_filesize(char *fname,long filesize)
             for (i=0; i<n; i++)
                 fputc(0,fp);
             fclose(fp);
+	    #ifndef _WIN32
             free(zeroes);
+	    #else
+	    _aligned_free(zeroes);
+	    #endif
         }
     }
     else if ( allocsize > filesize )
@@ -613,10 +655,11 @@ void ensure_dir(char *dirname) // jl777: does this work in windows?
     //printf("ensure.(%s)\n",fname);
     if ( (fp= fopen(fname,"rb")) == 0 )
     {
+fprintf(stderr, "\n%s doesn't exist. building\n", dirname);
         sprintf(cmd,"mkdir %s",dirname);
         fix_windows_insanity(cmd);
         if ( system(cmd) != 0 )
-            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
+            fprintf(stderr, "error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
         fp = fopen(fname,"wb");
         if ( fp != 0 )
             fclose(fp);
@@ -2845,14 +2888,7 @@ void ram_set_MGWdispbuf(char *dispbuf,struct ramchain_info *ram,int32_t selector
 
 void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector)
 {
-    MGWpingstr[0] = 0;
-    if ( Numramchains != 0 )
-    {
-        if ( ram == 0 )
-            ram = Ramchains[rand() % Numramchains];
-        if ( ram != 0 )
-            ram_set_MGWpingstr(MGWpingstr,ram,selector);
-    }
+    ram_set_MGWpingstr(MGWpingstr,ram,selector);
 }
 
 void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr)
@@ -3023,7 +3059,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
     struct cointx_info *cointxs[16],*othercointx;
     memset(cointxs,0,sizeof(cointxs));
     for (gatewayid=0; gatewayid<ram->numgateways; gatewayid++)
-    {
+    { 
         _set_RTmgwname(RTmgwname,name,ram->name,gatewayid,tp->redeemtxid);
         if ( (cointxs[gatewayid]= loadfile(&allocsize,RTmgwname)) == 0 )
         {
@@ -6539,7 +6575,11 @@ void ram_setformatstr(char *formatstr,int32_t format)
 
 void ram_setdirA(char *dirA,struct ramchain_info *ram)
 {
+    #ifndef _WIN32
     sprintf(dirA,"%s/ramchains/%s/bitstream",ram->dirpath,ram->name);
+    #else
+    sprintf(dirA,"ramchains\\%s\\bitstream",ram->dirpath,ram->name);
+    #endif
 }
 
 void ram_setdirB(int32_t mkdirflag,char *dirB,struct ramchain_info *ram,uint32_t blocknum)
@@ -6550,7 +6590,11 @@ void ram_setdirB(int32_t mkdirflag,char *dirB,struct ramchain_info *ram,uint32_t
     blocknum %= (64 * 64 * 64);
     ram_setdirA(dirA,ram);
     i = blocknum / (64 * 64);
+    #ifndef _WIN32
     sprintf(dirB,"%s/%05x_%05x",dirA,i*64*64,(i+1)*64*64-1);
+    #else
+    sprintf(dirB,"%s\\%05x_%05x",dirA,i*64*64,(i+1)*64*64-1);
+    #endif
     if ( mkdirflag != 0 && strcmp(dirB,lastdirB) != 0 )
     {
         ensure_dir(dirB);
@@ -6568,7 +6612,11 @@ void ram_setdirC(int mkdirflag,char *dirC,struct ramchain_info *ram,uint32_t blo
     ram_setdirB(mkdirflag,dirB,ram,blocknum);
     i = blocknum / (64 * 64);
     j = (blocknum - (i * 64 * 64)) / 64;
+    #ifndef _WIN32
     sprintf(dirC,"%s/%05x_%05x",dirB,i*64*64 + j*64,i*64*64 + (j+1)*64 - 1);
+    #else
+    sprintf(dirC,"%s\\%05x_%05x",dirB,i*64*64 + j*64,i*64*64 + (j+1)*64 - 1);
+    #endif
     if ( mkdirflag != 0 && strcmp(dirC,lastdirC) != 0 )
     {
         ensure_dir(dirC);
@@ -6582,6 +6630,7 @@ void ram_setfname(char *fname,struct ramchain_info *ram,uint32_t blocknum,char *
     char dirC[1024];
     ram_setdirC(0,dirC,ram,blocknum);
     sprintf(fname,"%s/%u.%s",dirC,blocknum,str);
+    fix_windows_insanity(fname);
 }
 
 void ram_purge_badblock(struct ramchain_info *ram,uint32_t blocknum)
@@ -8960,6 +9009,7 @@ void *ram_process_ramchain(void *_ram)
 }
 
 void *portable_thread_create(void *funcp,void *argp);
+int Numramchains; struct ramchain_info *Ramchains[100];
 void activate_ramchain(struct ramchain_info *ram,char *name)
 {
     Ramchains[Numramchains++] = ram;
@@ -9114,3 +9164,4 @@ int32_t set_bridge_dispbuf(char *dispbuf,char *coinstr)
 }
 #endif
 #endif
+
