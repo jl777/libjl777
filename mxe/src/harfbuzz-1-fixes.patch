@@ -1,0 +1,28 @@
+This file is part of MXE.
+See index.html for further information.
+
+Contains ad hoc patches for cross building.
+
+diff -ur a/src/harfbuzz-icu.pc.in b/src/harfbuzz-icu.pc.in
+--- a/src/harfbuzz-icu.pc.in	2013-05-28 23:16:58.000000000 +0200
++++ b/src/harfbuzz-icu.pc.in	2013-06-26 04:14:39.078153528 +0200
+@@ -8,6 +8,7 @@
+ Version: %VERSION%
+ 
+ Requires: harfbuzz
+-Requires.private: icu-uc
++Requires.private: icu-uc cairo-ft glib-2.0
+ Libs: -L${libdir} -lharfbuzz-icu
++Libs.private: -lusp10 -lgdi32
+ Cflags: -I${includedir}/harfbuzz
+diff -ur a/src/harfbuzz.pc.in b/src/harfbuzz.pc.in
+--- a/src/harfbuzz.pc.in	2013-05-28 23:15:43.000000000 +0200
++++ b/src/harfbuzz.pc.in	2013-06-26 04:15:16.842154388 +0200
+@@ -7,5 +7,7 @@
+ Description: HarfBuzz text shaping library
+ Version: %VERSION%
+ 
++Requires.private: cairo-ft glib-2.0
+ Libs: -L${libdir} -lharfbuzz
++Libs.private: -lusp10 -lgdi32
+ Cflags: -I${includedir}/harfbuzz

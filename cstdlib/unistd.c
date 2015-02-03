@@ -5,7 +5,7 @@
 #include "../interpreter.h"
 
 #ifndef BUILTIN_MINI_STDLIB
-
+#ifndef _WIN32
 static int ZeroValue = 0;
 
 void UnistdAccess(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -496,6 +496,6 @@ void UnistdSetupFunc(void)
     VariableDefinePlatformVar(NULL, "opterr", &IntType, (union AnyValue *)&opterr, TRUE);
     VariableDefinePlatformVar(NULL, "optopt", &IntType, (union AnyValue *)&optopt, TRUE);
 }
-
+#endif
 #endif /* !BUILTIN_MINI_STDLIB */
 

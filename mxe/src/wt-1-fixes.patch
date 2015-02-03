@@ -1,0 +1,165 @@
+This file is part of MXE.
+See index.html for further information.
+
+Contains ad hoc patches for cross building.
+
+From 91ffd2fb6f9c5ed3017af5363b3f14313a45ea9c Mon Sep 17 00:00:00 2001
+From: MXE
+Date: Mon, 18 Jun 2012 13:23:21 +0200
+Subject: [PATCH 1/2] fixes for mxe
+
+
+diff --git a/cmake/WtFindBoost-vintage.txt b/cmake/WtFindBoost-vintage.txt
+index e48b21e..1198139 100644
+--- a/cmake/WtFindBoost-vintage.txt
++++ b/cmake/WtFindBoost-vintage.txt
+@@ -70,6 +70,7 @@ ELSE(MSVC)
+       boost_thread-${BOOST_COMPILER}-mt-${BOOST_FLAGS}-${BOOST_VERSION}
+       boost_thread-${BOOST_COMPILER}-mt-${BOOST_VERSION}
+       boost_thread-${BOOST_COMPILER}-mt
++      boost_thread${BOOST_COMPILER}-mt
+       boost_thread-mt-${BOOST_VERSION}
+       boost_thread-mt
+       boost_thread-${BOOST_COMPILER}-${BOOST_VERSION}
+diff --git a/cmake/WtFindGm.txt b/cmake/WtFindGm.txt
+index 76697fc..9bc0fa1 100644
+--- a/cmake/WtFindGm.txt
++++ b/cmake/WtFindGm.txt
+@@ -59,6 +59,12 @@ IF(WIN32)
+   ELSE(GM_LIB AND GMPP_LIB AND GM_LIB_DEBUG AND GMPP_LIB_DEBUG AND GM_INCLUDE_DIR)
+     SET(GM_FOUND FALSE)
+   ENDIF(GM_LIB AND GMPP_LIB AND GM_LIB_DEBUG AND GMPP_LIB_DEBUG AND GM_INCLUDE_DIR)
++
++  IF(GM_INCLUDE_DIR AND GM_LIBS)
++    SET(GM_FOUND TRUE)
++    SET(GM_INCLUDE_DIRS ${GM_INCLUDE_DIR})
++    SET(GM_LIBRARIES optimized ${GM_LIBS})
++  ENDIF(GM_INCLUDE_DIR AND GM_LIBS)
+ ELSE(WIN32)
+   FIND_LIBRARY(GM_LIB
+     NAMES
+diff --git a/cmake/WtFindPangoFt2.txt b/cmake/WtFindPangoFt2.txt
+index cd1e640..b1bbe3d 100644
+--- a/cmake/WtFindPangoFt2.txt
++++ b/cmake/WtFindPangoFt2.txt
+@@ -36,11 +36,15 @@ SET(PANGO_FT2_INCLUDE_DIRS
+     ${GLIB2_INCLUDE_DIR}
+     ${GLIB2_CONFIG_INCLUDE_DIR})
+ 
+-SET(PANGO_FT2_LIBRARIES
+-    ${PANGO_FT2_LIBRARY}
+-    ${PANGO_LIBRARY}
+-    ${GOBJECT2_LIBRARY}
+-    ${GLIB2_LIBRARY})
++IF(PANGO_FT2_LIBS)
++    SET(PANGO_FT2_LIBRARIES optimized ${PANGO_FT2_LIBS})
++ELSE(PANGO_FT2_LIBS)
++    SET(PANGO_FT2_LIBRARIES
++        ${PANGO_FT2_LIBRARY}
++        ${PANGO_LIBRARY}
++        ${GOBJECT2_LIBRARY}
++        ${GLIB2_LIBRARY})
++ENDIF(PANGO_FT2_LIBS)
+ 
+ IF (PANGO_INCLUDE_DIR
+     AND FT2_INCLUDE_DIR
+diff --git a/cmake/WtFindSsl.txt b/cmake/WtFindSsl.txt
+index 3cc42d1..ae64671 100644
+--- a/cmake/WtFindSsl.txt
++++ b/cmake/WtFindSsl.txt
+@@ -94,6 +94,11 @@ IF(WIN32)
+       AND SSL_LIB_DEBUG
+       AND SSL_TOO_LIB_RELEASE
+       AND SSL_TOO_LIB_DEBUG)
++
++  IF(SSL_INCLUDE_DIRS AND OPENSSL_LIBS)
++      SET(SSL_FOUND true)
++      SET(SSL_LIBRARIES optimized ${OPENSSL_LIBS})
++  ENDIF(SSL_INCLUDE_DIRS AND OPENSSL_LIBS)
+ ELSE (WIN32)
+   FIND_LIBRARY(SSL_LIB
+     NAMES
+diff --git a/src/Wt/WRasterImage.C b/src/Wt/WRasterImage.C
+index 415d27e..7f1ed17 100644
+--- a/src/Wt/WRasterImage.C
++++ b/src/Wt/WRasterImage.C
+@@ -39,15 +39,6 @@
+ #define M_PI 3.14159265358979323846
+ #endif
+ 
+-#ifdef WIN32
+-namespace {
+-  double round(double x)
+-  {
+-    return floor(x + 0.5);
+-  }
+-}
+-#endif
+-
+ namespace {
+   static const double EPSILON = 1E-5;
+ 
+-- 
+1.9.3 (Apple Git-50)
+
+
+From 0904c43ee23d0690d4a872efbbda22839b0ef686 Mon Sep 17 00:00:00 2001
+From: MXE
+Date: Mon, 1 Dec 2014 23:28:45 +1100
+Subject: [PATCH 2/2] fixes for boost
+
+taken from:
+http://redmine.emweb.be/issues/3551
+
+diff --git a/src/Wt/Dbo/SqlQueryParse.C b/src/Wt/Dbo/SqlQueryParse.C
+index abc2c5d..04c6d92 100644
+--- a/src/Wt/Dbo/SqlQueryParse.C
++++ b/src/Wt/Dbo/SqlQueryParse.C
+@@ -20,7 +20,7 @@
+ #include <boost/spirit/include/phoenix_core.hpp>
+ #include <boost/spirit/include/phoenix_operator.hpp>
+ #include <boost/spirit/include/phoenix_object.hpp>
+-#include <boost/spirit/home/phoenix/statement/throw.hpp>
++#include <boost/phoenix/statement/throw.hpp>
+ #include <boost/bind.hpp>
+ #include <iostream>
+ 
+diff --git a/src/Wt/Json/Parser.C b/src/Wt/Json/Parser.C
+index ea0d3ad..bcc1a34 100644
+--- a/src/Wt/Json/Parser.C
++++ b/src/Wt/Json/Parser.C
+@@ -24,7 +24,7 @@
+ #include <boost/spirit/include/phoenix_core.hpp>
+ #include <boost/spirit/include/phoenix_operator.hpp>
+ #include <boost/spirit/include/phoenix_object.hpp>
+-#include <boost/spirit/home/phoenix/statement/throw.hpp>
++#include <boost/phoenix/statement/throw.hpp>
+ #include <boost/bind.hpp>
+ 
+ #endif // JSON_PARSER
+diff --git a/src/Wt/Render/CssParser.C b/src/Wt/Render/CssParser.C
+index 4734d1d..48942bd 100644
+--- a/src/Wt/Render/CssParser.C
++++ b/src/Wt/Render/CssParser.C
+@@ -34,7 +34,7 @@ using namespace Wt::Render;
+ #include <boost/fusion/include/adapt_struct.hpp>
+ #include <boost/variant/recursive_variant.hpp>
+ #include <boost/spirit/home/support/context.hpp>
+-#include <boost/spirit/home/phoenix.hpp>
++#include <boost/phoenix.hpp>
+ #include <boost/spirit/include/classic_file_iterator.hpp>
+ 
+ #include <map>
+@@ -157,8 +157,7 @@ struct fs_error_tag {};
+ template< typename Iterator >
+ struct ErrorReporting
+ {
+-  template< typename, typename, typename, typename, typename > // Phoenix v2
+-  struct result { typedef void type;};
++  typedef void result_type;
+ 
+   ErrorReporting(CssGrammer< Iterator >* grammer)
+     : grammer_(grammer)
+-- 
+1.9.3 (Apple Git-50)
+
