@@ -837,7 +837,7 @@ int32_t init_multisigDB()
                         for (i=0; i<n; i++)
                             if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
                             {
-                                printf("ADD.%d (%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
+                                printf("ADD.%d %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->coinstr,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
                                 if ( is_zeroes(msigram->NXTpubkey) != 0 )
                                 {
                                     set_NXTpubkey(msigram->NXTpubkey,msigram->NXTaddr);

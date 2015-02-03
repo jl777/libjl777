@@ -260,7 +260,7 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
     char MGWpingstr[1024];
     if ( cp != 0 )
     {
-        ram_get_MGWpingstr(&cp->RAM,MGWpingstr,-1);
+        ram_get_MGWpingstr(0,MGWpingstr,-1);
         sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
