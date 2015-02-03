@@ -387,7 +387,11 @@ int32_t scan_address_entries()
     uniq = m = 0;
     if ( cursorp != 0 )
     {
+		#ifndef _WIN32
         bigbuf = valloc(bulksize);
+		#else
+		bigbuf = _aligned_malloc(bulksize, 16);
+		#endif
         clear_pair(&key,&data);
         key.data = buf;
         key.ulen = sizeof(buf);
@@ -529,7 +533,11 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         reqflags = DB_MULTIPLE;
         data.ulen = bulksize;
         data.flags = DB_DBT_USERMEM;
+		#ifndef _WIN32
         data.data = ptr = valloc(data.ulen);
+		#else
+		data.data = ptr = _aligned_malloc(data.ulen,16);
+		#endif
     }
     if ( (ret= dbget(&SuperNET_dbs[selector],NULL,&key,&data,reqflags)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
@@ -721,6 +729,7 @@ void ensure_SuperNET_dirs(char *backupdir)
     cJSON *array;
     //struct coin_info *cp;
     array = cJSON_GetObjectItem(MGWconf,"active");
+    #ifndef _WIN32
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
@@ -756,6 +765,28 @@ void ensure_SuperNET_dirs(char *backupdir)
     sprintf(dirname,"%s/%s",backupdir,"backups/telepods"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive/telepods"), ensure_directory(dirname);
+    #else
+    printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\msig"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\status"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\sent"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\deposit"), ensure_directory(dirname);
+    
+    if ( DATADIR[0] != 0 && DATADIR[0] != '.' )
+        ensure_directory(DATADIR);
+    sprintf(dirname,"%s\\%s",DATADIR,"mgw"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",DATADIR,"bridge"), ensure_directory(dirname);
+    
+    if ( backupdir == 0 || backupdir[0] == 0 )
+        backupdir = ".";
+    if ( backupdir[0] != '.' )
+        ensure_directory(backupdir);
+    sprintf(dirname,"%s\\%s",backupdir,"backups"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"backups\\telepods"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"archive"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"archive\\telepods"), ensure_directory(dirname);
+    #endif
 }
 
 void init_rambases()
@@ -816,7 +847,7 @@ int32_t init_multisigDB()
             for (i=m=0; i<n; i++)
             {
                 msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n,msigs[i]->NXTaddr,msigs[i]->NXTpubkey,msigs[i]->buyNXT);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                printf("%d of %d: %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->coinstr,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
+                printf("%d of %d: (%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
                 //if ( createdflag != 0 )
                 *msigram = *msigs[i], m++;
                 //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
@@ -837,7 +868,7 @@ int32_t init_multisigDB()
                         for (i=0; i<n; i++)
                             if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
                             {
-                                printf("ADD.%d %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->coinstr,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
+                                printf("ADD.%d (%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
                                 if ( is_zeroes(msigram->NXTpubkey) != 0 )
                                 {
                                     set_NXTpubkey(msigram->NXTpubkey,msigram->NXTaddr);
