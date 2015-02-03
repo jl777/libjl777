@@ -3015,7 +3015,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
     struct cointx_info *cointxs[16],*othercointx;
     memset(cointxs,0,sizeof(cointxs));
     for (gatewayid=0; gatewayid<ram->numgateways; gatewayid++)
-    { 
+    {
         _set_RTmgwname(RTmgwname,name,ram->name,gatewayid,tp->redeemtxid);
         if ( (cointxs[gatewayid]= loadfile(&allocsize,RTmgwname)) == 0 )
         {
