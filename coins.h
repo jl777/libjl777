@@ -165,13 +165,13 @@ char *get_marker(char *coinstr)
     else if ( strcmp(coinstr,"NMC") == 0 )
         return(NMC_MARKER);
     /*else if ( strcmp(coinstr,"BTC") == 0 )
-        return("177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
-    else if ( strcmp(coinstr,"BTCD") == 0 )
-        return("RMMGbxZdav3cRJmWScNVX6BJivn6BNbBE8");
-    else if ( strcmp(coinstr,"LTC") == 0 )
-        return("LUERp4v5abpTk9jkuQh3KFxc4mFSGTMCiz");
-    else if ( strcmp(coinstr,"DRK") == 0 )
-        return("XmxSWLPA92QyAXxw2FfYFFex6QgBhadv2Q");*/
+     return("177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
+     else if ( strcmp(coinstr,"BTCD") == 0 )
+     return("RMMGbxZdav3cRJmWScNVX6BJivn6BNbBE8");
+     else if ( strcmp(coinstr,"LTC") == 0 )
+     return("LUERp4v5abpTk9jkuQh3KFxc4mFSGTMCiz");
+     else if ( strcmp(coinstr,"DRK") == 0 )
+     return("XmxSWLPA92QyAXxw2FfYFFex6QgBhadv2Q");*/
     else return(0);
 }
 
@@ -189,129 +189,129 @@ void set_legacy_coinid(char *coinstr,int32_t legacyid)
 }
 
 /*char *coinid_str(int32_t coinid)
-{
-    switch ( coinid )
-    {
-        case NXT_COINID: return("NXT");
-        case BTC_COINID: return("BTC");
-        case LTC_COINID: return("LTC");
-        case CGB_COINID: return("CGB");
-        case DOGE_COINID: return("DOGE");
-        case DRK_COINID: return("DRK");
-        case ANC_COINID: return("ANC");
-        case BC_COINID: return("BC");
-        case BTCD_COINID: return("BTCD");
-        case PPC_COINID: return("PPC");
-        case NMC_COINID: return("NMC");
-        case XC_COINID: return("XC");
-        case VRC_COINID: return("VRC");
-        case ZET_COINID: return("ZET");
-        case QRK_COINID: return("QRK");
-        case RDD_COINID: return("RDD");
-        case XPM_COINID: return("XPM");
-        case FTC_COINID: return("FTC");
-        case CLOAK_COINID: return("CLOAK");
-        case VIA_COINID: return("VIA");
-        case MEC_COINID: return("MEC");
-        case URO_COINID: return("URO");
-        case YBC_COINID: return("YBC");
-        case IFC_COINID: return("IFC");
-        case VTC_COINID: return("VTC");
-        case POT_COINID: return("POT");
-        case KEY_COINID: return("KEY");
-        case FRAC_COINID: return("FRAC");
-        case CNL_COINID: return("CNL");
-        case VOOT_COINID: return("VOOT");
-        case GML_COINID: return("GML");
-        case SYNC_COINID: return("SYNC");
-        case CRYPT_COINID: return("CRYPT");
-        case RZR_COINID: return("RZR");
-        case ICB_COINID: return("ICB");
-        case CYC_COINID: return("CYC");
-        case EAC_COINID: return("EAC");
-        case MAX_COINID: return("MAX");
-        case START_COINID: return("START");
-        case BBR_COINID: return("BBR");
-        case XMR_COINID: return("XMR");
-        case BTM_COINID: return("BTM");
-        case CHA_COINID: return("CHA");
-        case OPAL_COINID: return("OPAL");
-        case BITS_COINID: return("BITS");
-        case VPN_COINID: return("VPN");
-    }
-    return(ILLEGAL_COIN);
-}
-
-int32_t conv_coinstr(char *_name)
-{
-    int32_t i,coinid;
-    char name[256];
-    strcpy(name,_name);
-    for (i=0; name[i]!=0; i++)
-        name[i] = toupper(name[i]);
-    for (coinid=0; coinid<64; coinid++)
-        if ( strcmp(coinid_str(coinid),name) == 0 )
-            return(coinid);
-    return(-1);
-}
-
-char *get_backupmarker(char *coinstr)
-{
-    int32_t coinid;
-    if ( (coinid= conv_coinstr(coinstr)) < 0 )
-        return("<no marker>");
-    printf("backupmarker.(%s) coinid.%d\n",coinstr,coinid);
-    switch ( coinid )
-    {
-        case NXT_COINID: return("NXT doesnt need a marker");
-        case BTC_COINID: return(BTC_MARKER);
-        case LTC_COINID: return(LTC_MARKER);
-        case CGB_COINID: return(CGB_MARKER);
-        case DOGE_COINID: return(DOGE_MARKER);
-        case DRK_COINID: return(DRK_MARKER);
-        case ANC_COINID: return(ANC_MARKER);
-        case BC_COINID: return(BC_MARKER);
-        case BTCD_COINID: return(BTCD_MARKER);
-        case PPC_COINID: return(PPC_MARKER);
-        case NMC_COINID: return(NMC_MARKER);
-        case XC_COINID: return(XC_MARKER);
-        case VRC_COINID: return(VRC_MARKER);
-        case ZET_COINID: return(ZET_MARKER);
-        case QRK_COINID: return(QRK_MARKER);
-        case RDD_COINID: return(RDD_MARKER);
-        case XPM_COINID: return(XPM_MARKER);
-        case FTC_COINID: return(FTC_MARKER);
-        case CLOAK_COINID: return(CLOAK_MARKER);
-        case VIA_COINID: return(VIA_MARKER);
-        case MEC_COINID: return(MEC_MARKER);
-        case URO_COINID: return(URO_MARKER);
-        case YBC_COINID: return(YBC_MARKER);
-        case IFC_COINID: return(IFC_MARKER);
-        case VTC_COINID: return(VTC_MARKER);
-        case POT_COINID: return(POT_MARKER);
-        case KEY_COINID: return(KEY_MARKER);
-        case FRAC_COINID: return(FRAC_MARKER);
-        case CNL_COINID: return(CNL_MARKER);
-        case VOOT_COINID: return(VOOT_MARKER);
-        case GML_COINID: return(GML_MARKER);
-        case SYNC_COINID: return(SYNC_MARKER);
-        case CRYPT_COINID: return(CRYPT_MARKER);
-        case RZR_COINID: return(RZR_MARKER);
-        case ICB_COINID: return(ICB_MARKER);
-        case CYC_COINID: return(CYC_MARKER);
-        case EAC_COINID: return(EAC_MARKER);
-        case MAX_COINID: return(MAX_MARKER);
-        case START_COINID: return(START_MARKER);
-        case BBR_COINID: return(BBR_MARKER);
-        case XMR_COINID: return(XMR_MARKER);
-        case BTM_COINID: return(BTM_MARKER);
-        case CHA_COINID: return(CHA_MARKER);
-        case OPAL_COINID: return(OPAL_MARKER);
-        case BITS_COINID: return(BITS_MARKER);
-        case VPN_COINID: return(VPN_MARKER);
-    }
-    return(0);
-}*/
+ {
+ switch ( coinid )
+ {
+ case NXT_COINID: return("NXT");
+ case BTC_COINID: return("BTC");
+ case LTC_COINID: return("LTC");
+ case CGB_COINID: return("CGB");
+ case DOGE_COINID: return("DOGE");
+ case DRK_COINID: return("DRK");
+ case ANC_COINID: return("ANC");
+ case BC_COINID: return("BC");
+ case BTCD_COINID: return("BTCD");
+ case PPC_COINID: return("PPC");
+ case NMC_COINID: return("NMC");
+ case XC_COINID: return("XC");
+ case VRC_COINID: return("VRC");
+ case ZET_COINID: return("ZET");
+ case QRK_COINID: return("QRK");
+ case RDD_COINID: return("RDD");
+ case XPM_COINID: return("XPM");
+ case FTC_COINID: return("FTC");
+ case CLOAK_COINID: return("CLOAK");
+ case VIA_COINID: return("VIA");
+ case MEC_COINID: return("MEC");
+ case URO_COINID: return("URO");
+ case YBC_COINID: return("YBC");
+ case IFC_COINID: return("IFC");
+ case VTC_COINID: return("VTC");
+ case POT_COINID: return("POT");
+ case KEY_COINID: return("KEY");
+ case FRAC_COINID: return("FRAC");
+ case CNL_COINID: return("CNL");
+ case VOOT_COINID: return("VOOT");
+ case GML_COINID: return("GML");
+ case SYNC_COINID: return("SYNC");
+ case CRYPT_COINID: return("CRYPT");
+ case RZR_COINID: return("RZR");
+ case ICB_COINID: return("ICB");
+ case CYC_COINID: return("CYC");
+ case EAC_COINID: return("EAC");
+ case MAX_COINID: return("MAX");
+ case START_COINID: return("START");
+ case BBR_COINID: return("BBR");
+ case XMR_COINID: return("XMR");
+ case BTM_COINID: return("BTM");
+ case CHA_COINID: return("CHA");
+ case OPAL_COINID: return("OPAL");
+ case BITS_COINID: return("BITS");
+ case VPN_COINID: return("VPN");
+ }
+ return(ILLEGAL_COIN);
+ }
+ 
+ int32_t conv_coinstr(char *_name)
+ {
+ int32_t i,coinid;
+ char name[256];
+ strcpy(name,_name);
+ for (i=0; name[i]!=0; i++)
+ name[i] = toupper(name[i]);
+ for (coinid=0; coinid<64; coinid++)
+ if ( strcmp(coinid_str(coinid),name) == 0 )
+ return(coinid);
+ return(-1);
+ }
+ 
+ char *get_backupmarker(char *coinstr)
+ {
+ int32_t coinid;
+ if ( (coinid= conv_coinstr(coinstr)) < 0 )
+ return("<no marker>");
+ printf("backupmarker.(%s) coinid.%d\n",coinstr,coinid);
+ switch ( coinid )
+ {
+ case NXT_COINID: return("NXT doesnt need a marker");
+ case BTC_COINID: return(BTC_MARKER);
+ case LTC_COINID: return(LTC_MARKER);
+ case CGB_COINID: return(CGB_MARKER);
+ case DOGE_COINID: return(DOGE_MARKER);
+ case DRK_COINID: return(DRK_MARKER);
+ case ANC_COINID: return(ANC_MARKER);
+ case BC_COINID: return(BC_MARKER);
+ case BTCD_COINID: return(BTCD_MARKER);
+ case PPC_COINID: return(PPC_MARKER);
+ case NMC_COINID: return(NMC_MARKER);
+ case XC_COINID: return(XC_MARKER);
+ case VRC_COINID: return(VRC_MARKER);
+ case ZET_COINID: return(ZET_MARKER);
+ case QRK_COINID: return(QRK_MARKER);
+ case RDD_COINID: return(RDD_MARKER);
+ case XPM_COINID: return(XPM_MARKER);
+ case FTC_COINID: return(FTC_MARKER);
+ case CLOAK_COINID: return(CLOAK_MARKER);
+ case VIA_COINID: return(VIA_MARKER);
+ case MEC_COINID: return(MEC_MARKER);
+ case URO_COINID: return(URO_MARKER);
+ case YBC_COINID: return(YBC_MARKER);
+ case IFC_COINID: return(IFC_MARKER);
+ case VTC_COINID: return(VTC_MARKER);
+ case POT_COINID: return(POT_MARKER);
+ case KEY_COINID: return(KEY_MARKER);
+ case FRAC_COINID: return(FRAC_MARKER);
+ case CNL_COINID: return(CNL_MARKER);
+ case VOOT_COINID: return(VOOT_MARKER);
+ case GML_COINID: return(GML_MARKER);
+ case SYNC_COINID: return(SYNC_MARKER);
+ case CRYPT_COINID: return(CRYPT_MARKER);
+ case RZR_COINID: return(RZR_MARKER);
+ case ICB_COINID: return(ICB_MARKER);
+ case CYC_COINID: return(CYC_MARKER);
+ case EAC_COINID: return(EAC_MARKER);
+ case MAX_COINID: return(MAX_MARKER);
+ case START_COINID: return(START_MARKER);
+ case BBR_COINID: return(BBR_MARKER);
+ case XMR_COINID: return(XMR_MARKER);
+ case BTM_COINID: return(BTM_MARKER);
+ case CHA_COINID: return(CHA_MARKER);
+ case OPAL_COINID: return(OPAL_MARKER);
+ case BITS_COINID: return(BITS_MARKER);
+ case VPN_COINID: return(VPN_MARKER);
+ }
+ return(0);
+ }*/
 
 char *get_assetid_str(char *coinstr)
 {
@@ -357,19 +357,19 @@ uint64_t get_orderbook_assetid(char *coinstr)
 }
 
 /*int32_t is_gateway_addr(char *addr)
-{
-    int32_t i;
-    if ( strcmp(addr,NXTISSUERACCT) == 0 )
-        return(1);
-    for (i=0; i<256; i++)
-    {
-        if ( Server_NXTaddrs[i][0] == 0 )
-            break;
-        if ( strcmp(addr,Server_NXTaddrs[i]) == 0 )
-            return(1);
-    }
-    return(0);
-}*/
+ {
+ int32_t i;
+ if ( strcmp(addr,NXTISSUERACCT) == 0 )
+ return(1);
+ for (i=0; i<256; i++)
+ {
+ if ( Server_NXTaddrs[i][0] == 0 )
+ break;
+ if ( strcmp(addr,Server_NXTaddrs[i]) == 0 )
+ return(1);
+ }
+ return(0);
+ }*/
 
 char *parse_conf_line(char *line,char *field)
 {
@@ -633,7 +633,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                 if ( dust == 0 )
                     dust = 10000;
                 cp->dust = dust;
-                    if ( extract_cJSON_str(multisigchar,sizeof(multisigchar),json,"multisigchar") > 0 )
+                if ( extract_cJSON_str(multisigchar,sizeof(multisigchar),json,"multisigchar") > 0 )
                     cp->multisigchar = multisigchar[0];
                 cp->maxevolveiters = get_API_int(cJSON_GetObjectItem(json,"maxevolveiters"),100);
                 cp->M = get_API_int(cJSON_GetObjectItem(json,"telepod_M"),1);
@@ -1063,7 +1063,7 @@ void init_legacyMGW(char *myipaddr)
     if ( Server_ipaddrs[3][0] == 0 )
         strcpy(Server_ipaddrs[3],"76.176.198.6");
     
-  // extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
+    // extract_cJSON_str(NXTACCTSECRET,sizeof(NXTACCTSECRET),MGWconf,"secret");
     Global_mp->gatewayid = -1;
     for (i=0; i<3; i++)
     {
@@ -1089,29 +1089,29 @@ void init_tradebots_conf()
      start_polling_exchanges(exchangeflag);
      }*/
     /*int32_t init_tradebots(cJSON *languagesobj);
-    if ( didinit == 0 )
-    {
-        languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
-        init_tradebots(languagesobj);
-        if ( ORIGBLOCK[0] == 0 )
-        {
-            char blockidstr[64];
-            int32_t isrescan,height,timestamp;
-            set_current_NXTblock(&isrescan,0,ORIGBLOCK);
-            for (i=0; i<MIN_NXTCONFIRMS; i++)
-            {break;
-                strcpy(blockidstr,ORIGBLOCK);
-                set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
-                printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
-            }
-            if ( ORIGBLOCK[0] == 0 )
-            {
-                fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
-                exit(1);
-            }
-            else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
-        }
-    }*/
+     if ( didinit == 0 )
+     {
+     languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
+     init_tradebots(languagesobj);
+     if ( ORIGBLOCK[0] == 0 )
+     {
+     char blockidstr[64];
+     int32_t isrescan,height,timestamp;
+     set_current_NXTblock(&isrescan,0,ORIGBLOCK);
+     for (i=0; i<MIN_NXTCONFIRMS; i++)
+     {break;
+     strcpy(blockidstr,ORIGBLOCK);
+     set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
+     printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
+     }
+     if ( ORIGBLOCK[0] == 0 )
+     {
+     fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
+     exit(1);
+     }
+     else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
+     }
+     }*/
 }
 
 void init_SuperNET_settings(char *userdir)
@@ -1155,10 +1155,10 @@ void init_SuperNET_settings(char *userdir)
     MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
     APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
     NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),0);
-/*#ifndef HUFF_GENMODE
-    DBSLEEP *= 10;
-    APISLEEP *= 10;
-#endif*/
+    /*#ifndef HUFF_GENMODE
+     DBSLEEP *= 10;
+     APISLEEP *= 10;
+     #endif*/
     USESSL = get_API_int(cJSON_GetObjectItem(MGWconf,"USESSL"),0);
     UPNP = get_API_int(cJSON_GetObjectItem(MGWconf,"UPNP"),1);
     LOG2_MAX_XFERPACKETS = get_API_int(cJSON_GetObjectItem(MGWconf,"LOG2_MAXPACKETS"),3);
@@ -1220,7 +1220,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     init_tradebots_conf();
     didinit = 1;
     if ( Debuglevel > 1 )
-    printf("gatewayid.%d MGWROOT.(%s)\n",Global_mp->gatewayid,MGWROOT);
+        printf("gatewayid.%d MGWROOT.(%s)\n",Global_mp->gatewayid,MGWROOT);
     return(myipaddr);
 }
 #endif
