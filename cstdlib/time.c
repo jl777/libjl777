@@ -36,14 +36,29 @@ void StdDifftime(struct ParseState *Parser, struct Value *ReturnValue, struct Va
 }
 #endif
 
-void StdGmtime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
-{
-    ReturnValue->Val->Pointer = gmtime(Param[0]->Val->Pointer);
-}
-
+#ifndef _WIN32
 void StdGmtime_r(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
 {
     ReturnValue->Val->Pointer = gmtime_r(Param[0]->Val->Pointer, Param[1]->Val->Pointer);
+}
+
+void StdStrptime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+	  extern char *strptime(const char *s, const char *format, struct tm *tm);
+	  
+    ReturnValue->Val->Pointer = strptime(Param[0]->Val->Pointer, Param[1]->Val->Pointer, Param[2]->Val->Pointer);
+}
+
+void StdTimegm(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+    ReturnValue->Val->Integer = (int)timegm(Param[0]->Val->Pointer);
+}
+
+#endif
+
+void StdGmtime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
+{
+    ReturnValue->Val->Pointer = gmtime(Param[0]->Val->Pointer);
 }
 
 void StdLocaltime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
@@ -66,18 +81,6 @@ void StdStrftime(struct ParseState *Parser, struct Value *ReturnValue, struct Va
     ReturnValue->Val->Integer = (int)strftime(Param[0]->Val->Pointer, Param[1]->Val->Integer, Param[2]->Val->Pointer, Param[3]->Val->Pointer);
 }
 
-void StdStrptime(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
-{
-	  extern char *strptime(const char *s, const char *format, struct tm *tm);
-	  
-    ReturnValue->Val->Pointer = strptime(Param[0]->Val->Pointer, Param[1]->Val->Pointer, Param[2]->Val->Pointer);
-}
-
-void StdTimegm(struct ParseState *Parser, struct Value *ReturnValue, struct Value **Param, int NumArgs)
-{
-    ReturnValue->Val->Integer = (int)timegm(Param[0]->Val->Pointer);
-}
-
 /* handy structure definitions */
 const char StdTimeDefs[] = "\
 typedef int time_t; \
@@ -94,13 +97,15 @@ struct LibraryFunction StdTimeFunctions[] =
     { StdDifftime,      "double difftime(int, int);" },
 #endif
     { StdGmtime,        "struct tm *gmtime(int *);" },
-    { StdGmtime_r,      "struct tm *gmtime_r(int *, struct tm *);" },
     { StdLocaltime,     "struct tm *localtime(int *);" },
     { StdMktime,        "int mktime(struct tm *ptm);" },
     { StdTime,          "int time(int *);" },
     { StdStrftime,      "int strftime(char *, int, char *, struct tm *);" },
+#ifndef _WIN32
+    { StdGmtime_r,      "struct tm *gmtime_r(int *, struct tm *);" },
     { StdStrptime,      "char *strptime(char *, char *, struct tm *);" },
     { StdTimegm,        "int timegm(struct tm *);" },
+#endif
     { NULL,             NULL }
 };
 
