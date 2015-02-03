@@ -830,7 +830,7 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
 struct ramchain_info *get_ramchain_info(char *coinstr)
 {
     struct coin_info *cp = get_coin_info(coinstr);
-    if ( cp != 0 )
+    if ( NORAMCHAINS == 0 && cp != 0 )
         return(&cp->RAM);
     else return(0);
 }
@@ -840,12 +840,13 @@ uint32_t get_blockheight(struct coin_info *cp);
 void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t DEPOSIT_XFER_DURATION)
 {
     //struct NXT_asset *ap = 0;
+    struct coin_info *refcp = get_coin_info("BTCD");
     int32_t createdflag;
     strcpy(ram->name,cp->name);
     strcpy(ram->S.name,ram->name);
-    strcpy(ram->myipaddr,cp->myipaddr);
-    strcpy(ram->srvNXTACCTSECRET,cp->srvNXTACCTSECRET);
-    strcpy(ram->srvNXTADDR,cp->srvNXTADDR);
+    strcpy(ram->myipaddr,refcp->myipaddr);
+    strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
+    strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
     if ( cp->marker == 0 )
         cp->marker = clonestr(get_marker(cp->name));
     ram->marker = clonestr(cp->marker);
@@ -953,7 +954,6 @@ void init_coinsarray(char *userdir,char *myipaddr)
             if ( coinstr[0] != 0 && (cp= init_coin_info(item,coinstr,userdir)) != 0 )
             {
                 if ( Debuglevel > 0 )
-
                     printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
                 Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
                 MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
@@ -979,7 +979,8 @@ void init_coinsarray(char *userdir,char *myipaddr)
                     //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                     //addcontact("mypublic",cp->srvNXTADDR);
                 }
-                init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
+                if ( NORAMCHAINS == 0 )
+                    init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
             }
         }
     } else printf("no coins array.%p ?\n",array);
@@ -1153,6 +1154,7 @@ void init_SuperNET_settings(char *userdir)
     DBSLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"DBSLEEP"),100);
     MAX_BUYNXT = get_API_int(cJSON_GetObjectItem(MGWconf,"MAX_BUYNXT"),10);
     APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
+    NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),0);
 /*#ifndef HUFF_GENMODE
     DBSLEEP *= 10;
     APISLEEP *= 10;
@@ -1217,6 +1219,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
     }
     init_tradebots_conf();
     didinit = 1;
+    if ( Debuglevel > 1 )
     printf("gatewayid.%d MGWROOT.(%s)\n",Global_mp->gatewayid,MGWROOT);
     return(myipaddr);
 }
