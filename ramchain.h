@@ -1713,7 +1713,7 @@ int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normala
     retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"validateaddress",args);
     if ( retstr != 0 )
     {
-        //printf("got retstr.(%s)\n",retstr);
+        printf("got retstr.(%s)\n",retstr);
         if ( (json = cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -1890,7 +1890,7 @@ char *_submit_withdraw(struct ramchain_info *ram,struct cointx_info *cointx,char
     int32_t retval = 0;
     char fname[512],cointxid[4096],*signed2transaction,*retstr;
     len = strlen(othersignedtx);
-    fprintf(stderr,"submit_withdraw len.%ld\n",len);
+    fprintf(stderr,"submit_withdraw.(%s) len.%ld sizeof cointx.%ld\n",othersignedtx,len,sizeof(cointx));
     signed2transaction = calloc(1,2*len);
     if ( ram->S.gatewayid >= 0 && (retval= _sign_rawtransaction(signed2transaction+2,len+4000,ram,cointx,othersignedtx,0)) > 0 )
     {
@@ -1934,7 +1934,7 @@ char *_sign_and_sendmoney(char *cointxid,struct ramchain_info *ram,struct cointx
     char txidstr[64],NXTaddr[64],jsonstr[4096],*retstr = 0;
     int32_t i;
     uint64_t amount,senderbits,redeemtxid;
-    fprintf(stderr,"achieved consensus and sign! %s\n",othersignedtx);
+    fprintf(stderr,"achieved consensus and sign! (%s)\n",othersignedtx);
     if ( (retstr= _submit_withdraw(ram,cointx,othersignedtx)) != 0 )
     {
         if ( is_hexstr(retstr) != 0 )
@@ -3102,7 +3102,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
   //      getchar();
         if ( (retval= ram_verify_NXTtxstillthere(ram,tp->redeemtxid)) != tp->U.assetoshis )
         {
-            fprintf(stderr,"_RTmgw_handler: tx gone due to a fork. NXT.%llu txid.%llu %.8f vs retval %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),dstr(retval));
+            fprintf(stderr,"ram_check_consensus tx gone due to a fork. NXT.%llu txid.%llu %.8f vs retval %.8f\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),dstr(retval));
             exit(1); // seems the best thing to do
         }
         othercointx = cointxs[(ram->S.gatewayid ^ 1) % ram->numgateways];
@@ -3114,7 +3114,7 @@ char *ram_check_consensus(char *txidstr,struct ramchain_info *ram,struct NXT_ass
             printf("completed redeem.%llu for %.8f cointxidstr.%s\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis),txidstr);
             retstr = txidstr;
         }
-        else printf("_RTmgw_handler: error _sign_and_sendmoney for NXT.%llu redeem.%llu %.8f (%s)\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),othercointx->signedtx);
+        else printf("ram_check_consensus error _sign_and_sendmoney for NXT.%llu redeem.%llu %.8f (%s)\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),othercointx->signedtx);
     }
     for (gatewayid=0; gatewayid<ram->numgateways; gatewayid++)
         free(cointxs[gatewayid]);
@@ -7786,6 +7786,7 @@ uint64_t calc_addr_unspent(struct ramchain_info *ram,struct multisig_addr *msig,
 
 uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ramchain_hashptr **addrptrp,struct ramchain_info *ram,char *addr,int32_t MGWflag)
 {
+    char redeemScript[8192],normaladdr[8192];
     uint64_t pending,unspent = 0;
     struct multisig_addr *msig;
     int32_t i,numpayloads,n = 0;
@@ -7802,7 +7803,11 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
             {
                 unspent += payloads[i].value, n++;
                 if ( MGWflag != 0 && payloads[i].pendingsend == 0 )
-                    ram_update_MGWunspents(ram,addr,payloads[i].B.v,payloads[i].otherind,payloads[i].extra,payloads[i].value);
+                {
+                    if ( _map_msigaddr(redeemScript,ram,normaladdr,addr) >= 0 && redeemScript[0] != 0 )
+                        ram_update_MGWunspents(ram,addr,payloads[i].B.v,payloads[i].otherind,payloads[i].extra,payloads[i].value);
+                    else printf("ram_calc_unspent: redeemScript.(%s) (%s) for (%s)\n",redeemScript,normaladdr,addr);
+                }
             }
             if ( payloads[i].pendingdeposit != 0 )
                 pending += calc_addr_unspent(ram,msig,addr,&payloads[i]);
