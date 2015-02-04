@@ -387,7 +387,11 @@ int32_t scan_address_entries()
     uniq = m = 0;
     if ( cursorp != 0 )
     {
+		#ifndef _WIN32
         bigbuf = valloc(bulksize);
+		#else
+		bigbuf = _aligned_malloc(bulksize,16);
+		#endif
         clear_pair(&key,&data);
         key.data = buf;
         key.ulen = sizeof(buf);
@@ -429,7 +433,11 @@ int32_t scan_address_entries()
         }
         cursorclose(sdb,cursorp);
         //cursorp->close(cursorp);
+		#ifndef _WIN32
         free(bigbuf);
+		#else
+		_aligned_free(bigbuf);
+		#endif
     }
     //fprintf(stderr,"done copy all dB.%d\n",selector);
     //if ( 0 && IS_LIBTEST == 7 )
@@ -529,7 +537,11 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         reqflags = DB_MULTIPLE;
         data.ulen = bulksize;
         data.flags = DB_DBT_USERMEM;
+		#ifndef _WIN32		
         data.data = ptr = valloc(data.ulen);
+		#else
+		data.data = ptr = _aligned_malloc(data.ulen, 16);
+		#endif
     }
     if ( (ret= dbget(&SuperNET_dbs[selector],NULL,&key,&data,reqflags)) != 0 || data.data == 0 || data.size < sizeof(*hp) )
     {
@@ -538,7 +550,11 @@ struct storage_header *find_storage(int32_t selector,char *keystr,uint32_t bulks
         else
         {
             if ( ptr != 0 )
+				#ifndef _WIN32
                 free(ptr);
+				#else
+				_aligned_free(ptr);
+				#endif
             //fprintf(stderr,"find_storage.%d %s not found\n",selector,keystr);
             return(0);
         }
@@ -722,6 +738,7 @@ void ensure_SuperNET_dirs(char *backupdir)
     //struct coin_info *cp;
     array = cJSON_GetObjectItem(MGWconf,"active");
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
+	#ifndef _WIN32
     sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
     if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
@@ -756,6 +773,42 @@ void ensure_SuperNET_dirs(char *backupdir)
     sprintf(dirname,"%s/%s",backupdir,"backups/telepods"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive/telepods"), ensure_directory(dirname);
+	#else
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\msig"), ensure_directory(dirname);
+    if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
+    {
+        sprintf(dirname,"%s\\%s",MGWROOT,"ramchains"), ensure_directory(dirname);
+        sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\status"), ensure_directory(dirname);
+        sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\sent"), ensure_directory(dirname);
+        sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\deposit"), ensure_directory(dirname);
+        
+        if ( DATADIR[0] != 0 && DATADIR[0] != '.' )
+            ensure_directory(DATADIR);
+        sprintf(dirname,"%s\\%s",DATADIR,"RTmgw"), ensure_directory(dirname);
+        sprintf(dirname,"%s\\%s",DATADIR,"mgw"), ensure_directory(dirname);
+        sprintf(dirname,"%s\\%s",DATADIR,"bridge"), ensure_directory(dirname);
+    }
+    sprintf(dirstr,"%s\\%s",MGWROOT,"ramchains");
+    ensure_directory(dirstr);
+    if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            copy_cJSON(coinstr,cJSON_GetArrayItem(array,i));
+            sprintf(dirname,"%s\\%s",dirstr,coinstr), ensure_directory(dirname);
+            sprintf(dirname,"%s\\%s\\bitstream",dirstr,coinstr), ensure_directory(dirname);
+        }
+    }
+    if ( backupdir == 0 || backupdir[0] == 0 )
+        backupdir = ".";
+    if ( backupdir[0] != '.' )
+        ensure_directory(backupdir);
+    sprintf(dirname,"%s\\%s",backupdir,"backups"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"backups\\telepods"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"archive"), ensure_directory(dirname);
+    sprintf(dirname,"%s\\%s",backupdir,"archive\\telepods"), ensure_directory(dirname);
+	#endif
 }
 
 void init_rambases()
