@@ -844,17 +844,23 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     int32_t createdflag;
     strcpy(ram->name,cp->name);
     strcpy(ram->S.name,ram->name);
-    strcpy(ram->myipaddr,refcp->myipaddr);
+    if ( refcp->myipaddr != 0 )
+        strcpy(ram->myipaddr,refcp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
     strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
     if ( cp->marker == 0 )
         cp->marker = clonestr(get_marker(cp->name));
-    ram->marker = clonestr(cp->marker);
-    ram->opreturnmarker = clonestr(cp->privateaddr);
+    if ( cp->marker != 0 )
+        ram->marker = clonestr(cp->marker);
+    if ( cp->privateaddr != 0 )
+        ram->opreturnmarker = clonestr(cp->privateaddr);
     ram->dust = cp->dust;
-    ram->backups = clonestr(cp->backupdir);
-    ram->userpass = clonestr(cp->userpass);
-    ram->serverport = clonestr(cp->serverport);
+    if ( cp->backupdir != 0 )
+        ram->backups = clonestr(cp->backupdir);
+    if ( cp->userpass != 0 )
+        ram->userpass = clonestr(cp->userpass);
+    if ( cp->serverport != 0 )
+        ram->serverport = clonestr(cp->serverport);
     ram->lastheighttime = (uint32_t)cp->lastheighttime;
     ram->S.RTblocknum = (uint32_t)cp->RTblockheight;
     ram->min_confirms = cp->min_confirms;

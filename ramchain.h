@@ -412,7 +412,6 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 #elif _WIN32
 	ptr = mmap(0, filesize, rwflags, flags, fd,0);
 #else
-#else
 	ptr = mmap64(0,filesize,rwflags,flags,fd,0);
 #endif
 	#ifndef _WIN32
