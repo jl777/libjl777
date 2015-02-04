@@ -131,6 +131,7 @@ uint64_t calc_AESkeys(bits256 *AESpassword,char *AESpasswordstr,uint8_t *shared,
     sprintf(buf,"%llu.%d",(long long)nxt64bits,sequenceid);
     calc_sha256cat(AESpassword->bytes,(uint8_t *)buf,(int32_t)strlen(buf),shared,(int32_t)sizeof(bits256));
     init_hexbytes_noT(AESpasswordstr,AESpassword->bytes,sizeof(bits256));
+    // need to rmd160 before using as NXT password
     return(conv_NXTpassword(secret.bytes,pubkey.bytes,AESpasswordstr));
 }
 
