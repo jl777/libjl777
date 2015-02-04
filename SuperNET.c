@@ -11,7 +11,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <memory.h>
+#ifndef _WIN32
 #include <arpa/inet.h>
+#endif
 #include <sys/time.h>
 #include "uthash.h"
 
