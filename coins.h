@@ -566,6 +566,15 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                         printf("set default privacyServer to (%s)\n",cp->privacyserver);
                 if ( extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"privateaddr") > 0 || extract_cJSON_str(cp->privateaddr,sizeof(cp->privateaddr),json,"pubaddr") > 0 )
                 {
+                    if ( strcmp(cp->privateaddr,"privateaddr") == 0 )
+                    {
+                        char *str; int32_t allocsize;
+                        if ( (str= loadfile(&allocsize,"privateaddr")) != 0 )
+                        {
+                            strcpy(cp->privateaddr,str);
+                            free(str);
+                        }
+                    }
                     coinaddr = cp->privateaddr;
                     if ( (privkey= get_telepod_privkey(&coinaddr,cp->coinpubkey,cp)) != 0 )
                     {
