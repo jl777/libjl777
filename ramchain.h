@@ -145,7 +145,7 @@ struct mappedptr
 };
 
 struct ramsnapshot { long addroffset,txidoffset,scriptoffset; uint32_t addrind,txidind,scriptind; };
-struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind:30,extra:30,tbd:1,pendingdeposit:1,pendingsend:1,valid:1; };
+struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind:31,extra:31,pendingdeposit:1,pendingsend:1; };
 struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,permind,numpayloads:29,maxpayloads:29,mine:1,multisig:1,verified:1,nonstandard:1,tbd:2; int32_t numunspent; };
 struct ramchain_hashtable { char coinstr[16]; struct ramchain_hashptr *table; struct mappedptr M; FILE *newfp,*permfp; struct ramchain_hashptr **ptrs; uint32_t ind,numalloc; uint8_t type; };
 
@@ -7786,7 +7786,7 @@ uint64_t calc_addr_unspent(struct ramchain_info *ram,struct multisig_addr *msig,
 
 uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ramchain_hashptr **addrptrp,struct ramchain_info *ram,char *addr,int32_t MGWflag)
 {
-    char redeemScript[8192],normaladdr[8192];
+    //char redeemScript[8192],normaladdr[8192];
     uint64_t pending,unspent = 0;
     struct multisig_addr *msig;
     int32_t i,numpayloads,n = 0;
@@ -7804,15 +7804,8 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
                 unspent += payloads[i].value, n++;
                 if ( MGWflag != 0 && payloads[i].pendingsend == 0 )
                 {
-                    if ( payloads[i].valid != 0 || _map_msigaddr(redeemScript,ram,normaladdr,addr) >= 0 && redeemScript[0] != 0 )
-                    {
-                        payloads[i].valid = 1;
+                    if ( strcmp(addr,"bYjsXxENs4u7raX3EPyrgqPy46MUrq4k8h") != 0 && strcmp(addr,"bKzDfRnGGTDwqNZWGCXa42DRdumAGskqo4") != 0 ) // addresses made with different third dev MGW server for BTCD only
                         ram_update_MGWunspents(ram,addr,payloads[i].B.v,payloads[i].otherind,payloads[i].extra,payloads[i].value);
-                    }
-                    else
-                    {
-                        printf(">>>>>>> ram_calc_unspent: redeemScript.(%s) (%s) for (%s) %.8f\n",redeemScript,normaladdr,addr,dstr(payloads[i].value));
-                    }
                 }
             }
             if ( payloads[i].pendingdeposit != 0 )
