@@ -145,7 +145,7 @@ struct mappedptr
 };
 
 struct ramsnapshot { long addroffset,txidoffset,scriptoffset; uint32_t addrind,txidind,scriptind; };
-struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind; uint32_t extra:30,pendingdeposit:1,pendingsend:1; };
+struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind; uint32_t extra:29,pendingdeposit:1,pendingsend:1,invalid:1; };
 struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,permind,numpayloads:29,maxpayloads:29,mine:1,multisig:1,verified:1,nonstandard:1,tbd:2; int32_t numunspent; };
 struct ramchain_hashtable { char coinstr[16]; struct ramchain_hashptr *table; struct mappedptr M; FILE *newfp,*permfp; struct ramchain_hashptr **ptrs; uint32_t ind,numalloc; uint8_t type; };
 
@@ -7802,11 +7802,15 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
             if ( payloads[i].B.spent == 0 )
             {
                 unspent += payloads[i].value, n++;
-                if ( MGWflag != 0 && payloads[i].pendingsend == 0 )
+                if ( MGWflag != 0 && payloads[i].pendingsend == 0 && payloads[i].invalid == 0 )
                 {
                     if ( _map_msigaddr(redeemScript,ram,normaladdr,addr) >= 0 && redeemScript[0] != 0 )
                         ram_update_MGWunspents(ram,addr,payloads[i].B.v,payloads[i].otherind,payloads[i].extra,payloads[i].value);
-                    else printf("ram_calc_unspent: redeemScript.(%s) (%s) for (%s)\n",redeemScript,normaladdr,addr);
+                    else
+                    {
+                        payloads[i].invalid = 1;
+                        printf(">>>>>>> ram_calc_unspent: redeemScript.(%s) (%s) for (%s) %.8f\n",redeemScript,normaladdr,addr,dstr(payloads[i].value));
+                    }
                 }
             }
             if ( payloads[i].pendingdeposit != 0 )
