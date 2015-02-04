@@ -1558,13 +1558,17 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,char *dest
     copy_cJSON(destip,objs[0]);
     port = (uint16_t)get_API_int(objs[1],0);
     copy_cJSON(coin,objs[2]);
+    printf("process args (%s) (%s) port.%d\n",destip,coin,port);
     if ( coin[0] != 0 && destNXTaddr[0] != 0 && valid > 0 )
     {
         if ( is_remote_access(previpaddr) == 0 )
         {
             destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
             if ( (memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 || port != 0) && destip[0] != 0 )
+            {
+                printf("send to ipaddr.(%s/%d)\n",destip,port);
                 send_to_ipaddr(port,0,destip,origargstr,NXTACCTSECRET);
+            }
             else if ( (array= cJSON_Parse(origargstr)) != 0 )
             {
                 if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
@@ -1572,6 +1576,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,char *dest
                     json = cJSON_GetArrayItem(array,0);
                     jsonstr = cJSON_Print(json);
                     stripwhite_ns(jsonstr,strlen(jsonstr));
+                    printf("send cmd.(%s)\n",jsonstr);
                     if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,destNXTaddr)) != 0 )
                         free(str);
                     free(jsonstr);
@@ -1586,6 +1591,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,char *dest
         retstr = clonestr("{\"error\":\"unvalidated path with destip\"}");
         destip[0] = 0;
     }
+    printf("retstr.(%s)\n",retstr);
     return(retstr);
 }
 
@@ -1638,10 +1644,12 @@ char *ramstring_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     uint32_t rawind = 0;
     if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
+    printf("after process args\n");
     copy_cJSON(typestr,objs[3]);
     rawind = (uint32_t)get_API_int(objs[4],0);
     if ( get_ramchain_info(coin) != 0 && typestr[0] != 0 && sender[0] != 0 && valid > 0 )
     {
+        printf("calling ramstring\n");
         retstr = ramstring(origargstr,sender,previpaddr,coin,typestr,rawind);
         ram_sendresponse(typestr,coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
@@ -1656,8 +1664,10 @@ char *ramrawind_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         return(retstr);
     copy_cJSON(typestr,objs[3]);
     copy_cJSON(str,objs[4]);
+    printf("after process args\n");
     if ( get_ramchain_info(coin) != 0 && typestr[0] != 0 && str[0] != 0 && sender[0] != 0 && valid > 0 )
     {
+        printf("calling ramrawind\n");
         retstr = ramrawind(origargstr,sender,previpaddr,coin,typestr,str);
         ram_sendresponse(typestr,coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
@@ -1670,8 +1680,10 @@ char *ramstatus_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     char coin[MAX_JSON_FIELD],*retstr = 0;
     if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
+    printf("after process args\n");
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
+        printf("calling ramstatus\n");
         retstr = ramstatus(origargstr,sender,previpaddr,coin);
         ram_sendresponse("ramstatus",coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
