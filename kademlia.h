@@ -551,7 +551,7 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         if ( cp->RAM.S.gatewayid >= 0 || Global_mp->iambridge != 0 )
         {
             void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr);
-            ram_parse_MGWpingstr(&cp->RAM,sender,origargstr);
+            ram_parse_MGWpingstr(0,sender,origargstr);
         }
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);

@@ -253,7 +253,7 @@ char *process_commandline_json(cJSON *json)
                 {
                     if ( jsonflag != 0 )
                     {
-                        if ( i != 0 )
+                         if ( i != 0 )
                             printf(", ");
                         printf("%s",buf);
                     }
