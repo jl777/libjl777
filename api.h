@@ -9,7 +9,11 @@
 #ifndef API_H
 #define API_H
 
+#ifndef _WIN32
 #include "includes/libwebsockets.h"
+#else
+#include <libwebsockets.h>
+#endif
 
 char *block_on_SuperNET(int32_t blockflag,char *JSONstr);
 
