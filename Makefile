@@ -33,7 +33,7 @@ SuperNET: $(TARGET); \
     pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libminiupnpc.a libs/libjl777.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz
 
 special: /usr/lib/libjl777.so; \
-    gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lc -lcurl -lm -ldl; \
+    gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lcurl -lm -ldl; \
     sudo cp libs/libjl777.so /usr/lib/libjl777.so
 
 btcd: ../src/BitcoinDarkd; \

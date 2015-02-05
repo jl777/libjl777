@@ -2751,7 +2751,7 @@ void _complete_assettxid(struct ramchain_info *ram,struct NXT_assettxid *tp)
 char *_calc_withdrawaddr(char *withdrawaddr,struct ramchain_info *ram,struct NXT_assettxid *tp,cJSON *argjson)
 {
     cJSON *json;
-    int32_t convert = 0;
+    int32_t i,c,convert = 0;
     struct ramchain_info *newram;
     char buf[MAX_JSON_FIELD],autoconvert[MAX_JSON_FIELD],issuer[MAX_JSON_FIELD],*retstr;
     copy_cJSON(withdrawaddr,cJSON_GetObjectItem(argjson,"withdrawaddr"));
@@ -2802,6 +2802,9 @@ char *_calc_withdrawaddr(char *withdrawaddr,struct ramchain_info *ram,struct NXT
     //printf("withdrawaddr.(%s) autoconvert.(%s)\n",withdrawaddr,autoconvert);
     if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
         return(0);
+    for (i=0; withdrawaddr[i]!=0; i++)
+        if ( (c= withdrawaddr[i]) < ' ' || c == '\\' || c == '"' )
+            return(0);
     //printf("return.(%s)\n",withdrawaddr);
     return(withdrawaddr);
 }
@@ -3251,7 +3254,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                                         ram->numpendingsends++;
                                         //ram_add_pendingsend(0,ram,tp,cointx);
                                         // disable_newsends = 1;
-                                    }
+                                    } else tp->completed = 1; // ignore malformed requests for now
                                 } else printf("not ready to withdraw yet\n");
                             }
                             else if ( ram_check_consensus(txidstr,ram,tp) != 0 )

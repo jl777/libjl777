@@ -934,7 +934,7 @@ char *start_transfer(char *previpaddr,char *sender,char *verifiedNXTaddr,char *N
         calc_crcs(args->crcs,args->data,args->totallen,args->numfrags,args->blocksize);
         if ( (n= set_fragislots(args)) > 0 )
         {
-            fprintf(stderr,"completed.%d start_transfer.args.%p n.%d of %d (%s) timeout.%u (%s)\n",args->completed,args,n,args->numfrags,verifiedNXTaddr,args->timeout,totallen<4096?(char *)data:"");
+            fprintf(stderr,"(%s) completed.%d start_transfer.args.%p n.%d of %d (%s) timeout.%u (%s)\n",name,args->completed,args,n,args->numfrags,verifiedNXTaddr,args->timeout,totallen<4096?(char *)data:"");
             if ( n < 8 )
                 incr = 1;
             else incr = (n >> LOG2_MAX_XFERPACKETS);
