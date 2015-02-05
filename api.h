@@ -1544,7 +1544,7 @@ char *getfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     {
         set_handler_fname(fname,handler,name);
         printf("getfile.(%s).(%s) (%s) -> (%s) (%s)\n",name,handler,fname,sender,previpaddr);
-        return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,fname,0,0,timeout,handler,0));
+        return(start_transfer(previpaddr,sender,NXTaddr,NXTACCTSECRET,previpaddr,name,0,0,timeout,handler,0));
     }
     else return(clonestr("{\"error\":\"invalid getfile parameters\"}"));
 }
