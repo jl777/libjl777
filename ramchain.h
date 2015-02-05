@@ -2028,7 +2028,7 @@ int64_t _calc_cointx_inputs(struct ramchain_info *ram,struct cointx_info *cointx
                 fprintf(stderr,"numinputs %d sum %.8f vs amount %.8f change %.8f -> miners %.8f\n",cointx->numinputs,dstr(cointx->inputsum),dstr(amount),dstr(cointx->change),dstr(sum - cointx->change - cointx->amount));
                 return(cointx->inputsum);
             }
-        }
+        } else printf("no bestfit found\n");
     }
     fprintf(stderr,"error numinputs %d sum %.8f\n",cointx->numinputs,dstr(cointx->inputsum));
     return(0);
@@ -2401,7 +2401,7 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
 {
     char *rawparams,*signedtx,*changeaddr,*with_op_return=0,*retstr = 0;
     int64_t MGWfee,sum,amount;
-    int32_t allocsize;
+    int32_t allocsize,numoutputs = 0;
     struct cointx_info *cointx,TX,*rettx = 0;
     cointx = &TX;
     memset(cointx,0,sizeof(*cointx));
@@ -2409,13 +2409,18 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     cointx->redeemtxid = redeemtxid;
     cointx->gatewayid = ram->S.gatewayid;
     MGWfee = 0*(value >> 10) + ((ram->txfee + 2*ram->NXTfee_equiv)) - ram->txfee;
-    strcpy(cointx->outputs[0].coinaddr,ram->marker);
-    cointx->outputs[0].value = MGWfee;
-    strcpy(cointx->outputs[1].coinaddr,destaddr);
-    cointx->outputs[1].value = value;
-    strcpy(cointx->outputs[2].coinaddr,ram->opreturnmarker);
-    cointx->outputs[2].value = 1;
-    cointx->numoutputs = 3;
+    strcpy(cointx->outputs[numoutputs].coinaddr,ram->marker);
+    cointx->outputs[numoutputs++].value = MGWfee;
+    if ( strcmp(destaddr,ram->marker) == 0 )
+        cointx->outputs[numoutputs-1].value += value;
+    else
+    {
+        strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
+        cointx->outputs[numoutputs++].value = value;
+    }
+    strcpy(cointx->outputs[numoutputs].coinaddr,ram->opreturnmarker);
+    cointx->outputs[numoutputs++].value = 1;
+    cointx->numoutputs = numoutputs;
     cointx->amount = amount = (MGWfee + value + 1);
     fprintf(stderr,"calc_withdraw.%s %llu amount %.8f -> balance %.8f\n",ram->name,(long long)redeemtxid,dstr(cointx->amount),dstr(ram->S.MGWbalance));
    // if ( (cointx->amount + ram->txfee) <= ram->MGWbalance )
