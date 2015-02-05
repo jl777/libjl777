@@ -2007,15 +2007,17 @@ struct cointx_input *_find_bestfit(struct ramchain_info *ram,uint64_t value)
 
 int64_t _calc_cointx_inputs(struct ramchain_info *ram,struct cointx_info *cointx,int64_t amount)
 {
-    int64_t sum = 0;
+    int64_t remainder,sum = 0;
     int32_t i;
     struct cointx_input *vin;
     cointx->inputsum = cointx->numinputs = 0;
+    remainder = amount + ram->txfee;
     for (i=0; i<ram->MGWnumunspents&&i<((int)(sizeof(cointx->inputs)/sizeof(*cointx->inputs)))-1; i++)
     {
-        if ( (vin= _find_bestfit(ram,amount + ram->txfee)) != 0 )
+        if ( (vin= _find_bestfit(ram,remainder)) != 0 )
         {
             sum += vin->value;
+            remainder -= vin->value;
             vin->used = 1;
             cointx->inputs[cointx->numinputs++] = *vin;
             if ( sum >= (amount + ram->txfee) )
