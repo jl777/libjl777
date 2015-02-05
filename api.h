@@ -1551,45 +1551,51 @@ char *getfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
 
 #define RAMAPI_ERRORSTR "{\"error\":\"invalid ramchain parameters\"}"
 #define RAMAPI_ILLEGALREMOTE "{\"error\":\"invalid ramchain remote access\"}"
-char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,char *destNXTaddr,int32_t valid,char *origargstr,char *NXTaddr,char *NXTACCTSECRET)
+char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t valid,char *origargstr,char *NXTaddr,char *NXTACCTSECRET)
 {
     static bits256 zerokey;
-    char hopNXTaddr[64],destip[MAX_JSON_FIELD],*str,*jsonstr,*retstr = 0;
+    char hopNXTaddr[64],destNXTaddr[64],destip[MAX_JSON_FIELD],*str,*jsonstr,*retstr = 0;
     uint16_t port;
     cJSON *array,*json;
     int32_t createdflag;
+    struct pserver_info *pserver;
     struct NXT_acct *destnp;
     copy_cJSON(destip,objs[0]);
     port = (uint16_t)get_API_int(objs[1],0);
     copy_cJSON(coin,objs[2]);
     printf("process args (%s) (%s) port.%d\n",destip,coin,port);
-    if ( coin[0] != 0 && destNXTaddr[0] != 0 && valid > 0 )
+    if ( coin[0] != 0 && destip[0] != 0 && valid > 0 )
     {
         if ( is_remote_access(previpaddr) == 0 )
         {
-            destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-            if ( (memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 || port != 0) && destip[0] != 0 )
+            pserver = get_pserver(0,destip,0,0);
+            if ( pserver->nxt64bits != 0 )
             {
-                printf("send to ipaddr.(%s/%d)\n",destip,port);
-                send_to_ipaddr(port,0,destip,origargstr,NXTACCTSECRET);
-            }
-            else if ( (array= cJSON_Parse(origargstr)) != 0 )
-            {
-                if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
+                expand_nxt64bits(destNXTaddr,pserver->nxt64bits);
+                destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                if ( (memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 || port != 0) && destip[0] != 0 )
                 {
-                    json = cJSON_GetArrayItem(array,0);
-                    jsonstr = cJSON_Print(json);
-                    stripwhite_ns(jsonstr,strlen(jsonstr));
-                    printf("send cmd.(%s)\n",jsonstr);
-                    if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
-                        free(str);
-                    free(jsonstr);
+                    printf("send to ipaddr.(%s/%d)\n",destip,port);
+                    send_to_ipaddr(port,0,destip,origargstr,NXTACCTSECRET);
                 }
-                free_json(array);
-            } else printf("preprocess_ram_apiargs: error parsing (%s)\n",origargstr);
-            return(clonestr("{\"result\":\"sent request to destip\"}"));
-        } // only path to continue sequence
-    } else retstr = clonestr(RAMAPI_ERRORSTR);
+                else if ( (array= cJSON_Parse(origargstr)) != 0 )
+                {
+                    if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
+                    {
+                        json = cJSON_GetArrayItem(array,0);
+                        jsonstr = cJSON_Print(json);
+                        stripwhite_ns(jsonstr,strlen(jsonstr));
+                        printf("send cmd.(%s)\n",jsonstr);
+                        if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
+                            free(str);
+                        free(jsonstr);
+                    }
+                    free_json(array);
+                } else printf("preprocess_ram_apiargs: error parsing (%s)\n",origargstr);
+                return(clonestr("{\"result\":\"sent request to destip\"}"));
+            } // only path to continue sequence
+        } else retstr = clonestr(RAMAPI_ERRORSTR);
+    } else retstr = clonestr("{\"error\":\"dont have NXT addr for destip\"}");
     if ( destip[0] != 0 )
     {
         retstr = clonestr("{\"error\":\"unvalidated path with destip\"}");
@@ -1646,7 +1652,7 @@ char *ramstring_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 {
     char coin[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD],*retstr = 0;
     uint32_t rawind = 0;
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     printf("after process args\n");
     copy_cJSON(typestr,objs[3]);
@@ -1664,7 +1670,7 @@ char *ramstring_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 char *ramrawind_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char coin[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],*retstr = 0;
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     copy_cJSON(typestr,objs[3]);
     copy_cJSON(str,objs[4]);
@@ -1682,7 +1688,7 @@ char *ramrawind_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 char *ramstatus_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char coin[MAX_JSON_FIELD],*retstr = 0;
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     printf("after process args\n");
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
@@ -1699,7 +1705,7 @@ char *rampyramid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 {
     char coin[MAX_JSON_FIELD],*typestr,*retstr = 0;
     uint32_t blocknum;
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     blocknum = (uint32_t)get_API_int(objs[3],-1);
     typestr = cJSON_str(objs[4]);
@@ -1718,7 +1724,7 @@ char *ramscript_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     int32_t vout,tx_vout,blocknum,txind,validB = 0;
     struct address_entry B;
     memset(&B,0,sizeof(B));
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     txidstr = cJSON_str(objs[3]);
     tx_vout = (uint32_t)get_API_int(objs[4],-1);
@@ -1740,7 +1746,7 @@ char *ramblock_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 {
     char coin[MAX_JSON_FIELD],*retstr = 0;
     uint32_t blocknum;
-    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,sender,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
+    if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     blocknum = (uint32_t)get_API_int(objs[3],0);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )

@@ -2923,6 +2923,8 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
     char name[512],coinstr[512],*jsonstr;
     int32_t gatewayid;
     cJSON *json,*array;
+    if ( Finished_init == 0 )
+        return;
     if ( (array= cJSON_Parse(pingstr)) != 0 && is_cJSON_Array(array) != 0 )
     {
         json = cJSON_GetArrayItem(array,0);
