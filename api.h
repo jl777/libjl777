@@ -1595,13 +1595,12 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
                 return(clonestr("{\"result\":\"sent request to destip\"}"));
             } // only path to continue sequence
         } else retstr = clonestr(RAMAPI_ERRORSTR);
-    } else retstr = clonestr("{\"error\":\"dont have NXT addr for destip\"}");
+    }
     if ( destip[0] != 0 )
     {
         retstr = clonestr("{\"error\":\"unvalidated path with destip\"}");
         destip[0] = 0;
     }
-    printf("retstr.(%s)\n",retstr);
     return(retstr);
 }
 
