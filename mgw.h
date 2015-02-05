@@ -2144,7 +2144,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             if ( retstr != 0 && previpaddr != 0 && previpaddr[0] != 0 )
             {
                 //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone > 1 )
-                  printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
+                //    printf("retstr.(%s) previp.(%s)\n",retstr,previpaddr);
                 send_to_ipaddr(0,1,previpaddr,retstr,NXTACCTSECRET);
             }
             if ( msig != 0 )
@@ -2160,7 +2160,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
     {
         sprintf(buf,"{\"error\":\"missing msig info\",\"refacct\":\"%s\",\"coin\":\"%s\",\"M\":%d,\"N\":%d,\"valid\":%d}",refacct,coinstr,M,N,valid);
         retstr = clonestr(buf);
-        printf("%s\n",buf);
+        //printf("%s\n",buf);
     }
     return(retstr);
 }

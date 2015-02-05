@@ -31,7 +31,7 @@ int32_t Num_JSONwords = 128*0;*/
 
 int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *src,unsigned long *sublenp)
 {
-    int32_t i,j,k,flag,retval,level = 9;
+    int32_t i,j,k,flag,retval;//,level = 9;
     unsigned long len,sublen,slen;
     unsigned char *substr;
     len = *lenp;
@@ -60,7 +60,7 @@ int32_t _encode_json(unsigned char *dest,unsigned long *lenp,char *src,unsigned 
         substr[k++] = src[i];
     //substr[k] = 0;
     *sublenp = sublen = k;
-    retval = compress2(dest,lenp,substr,sublen,level);
+    retval = 0;//compress2(dest,lenp,substr,sublen,level);
     free(substr);
     return(retval);
 }
@@ -71,7 +71,7 @@ int32_t _decode_json(unsigned char *decoded,long sublen,unsigned char *encoded,u
     unsigned char *rawdecoded;
     rawdecoded = malloc(sublen+1);
     decoded[0] = 0;
-    retval = uncompress(rawdecoded,lenp,encoded,sublen);
+    retval = 0;//uncompress(rawdecoded,lenp,encoded,sublen);
     if ( retval == 0 )
     {
         for (i=j=0; i<sublen; i++)

@@ -2983,7 +2983,7 @@ int32_t ram_MGW_ready(struct ramchain_info *ram,uint32_t blocknum,uint32_t NXThe
         return(0);
     else if ( blocknum != 0 && ram->S.NXT_is_realtime != 0 && (blocknum + ram->depositconfirms) <= ram->S.RTblocknum && ram->S.enable_deposits != 0 )
         retval = 1;
-    else if ( NXTheight != 0 && ram->S.is_realtime != 0 && _enough_confirms(0.,amount * ram->NXTconvrate,ram->S.NXT_RTblocknum - NXTheight,ram->withdrawconfirms) > 0. )
+    else if ( NXTheight != 0 && ram->S.is_realtime != 0 && (NXTheight + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum )//_enough_confirms(0.,amount * ram->NXTconvrate,ram->S.NXT_RTblocknum - NXTheight,ram->withdrawconfirms) > 0. )
             retval = 1;
     if ( retval != 0 )
     {
@@ -3231,6 +3231,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                             (*pendingredeemsp) += tp->U.assetoshis;
                             printf("NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
                             numpending++;
+                          //  else if ( NXTheight != 0 && ram->S.is_realtime != 0 && _enough_confirms(0.,amount * ram->NXTconvrate,ram->S.NXT_RTblocknum - NXTheight,ram->withdrawconfirms) > 0. )
                             if ( disable_newsends == 0 )
                             {
                                 if ( ram_MGW_ready(ram,0,tp->height,0,tp->U.assetoshis) > 0 )
@@ -7795,7 +7796,7 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
         *calc_numunspentp = 0;
     pending = 0;
     if ( (payloads= ram_addrpayloads(addrptrp,&numpayloads,ram,addr)) != 0 && numpayloads > 0 )
-    {
+    {//withdraw to depositaddr?
         msig = find_msigaddr(addr);
         for (i=0; i<numpayloads; i++)
         {

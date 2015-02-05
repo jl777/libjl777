@@ -1581,7 +1581,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,char *dest
                     jsonstr = cJSON_Print(json);
                     stripwhite_ns(jsonstr,strlen(jsonstr));
                     printf("send cmd.(%s)\n",jsonstr);
-                    if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,retstr,destNXTaddr)) != 0 )
+                    if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
                         free(str);
                     free(jsonstr);
                 }
