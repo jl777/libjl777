@@ -2449,7 +2449,7 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                 if ( retstr != 0 && retstr[0] != 0 )
                 {
                     fprintf(stderr,"len.%ld calc_rawtransaction retstr.(%s)\n",strlen(retstr),retstr);
-                    if ( (with_op_return= _insert_OP_RETURN(retstr,2,&redeemtxid,1)) != 0 )
+                    if ( (with_op_return= _insert_OP_RETURN(retstr,numoutputs-1,&redeemtxid,1)) != 0 )
                     {
                         if ( (signedtx= _sign_localtx(ram,cointx,with_op_return)) != 0 )
                         {
