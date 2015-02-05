@@ -7764,8 +7764,8 @@ uint64_t calc_addr_unspent(struct ramchain_info *ram,struct multisig_addr *msig,
                 break;
             }
         }
-        if ( strcmp("9908a63216f866650f81949684e93d62d543bdb06a23b6e56344e1c419a70d4f",txidstr) == 0 )
-            printf("calc_addr_unspent.(%s) j.%d of apnum.%d valid.%d msig.%p\n",txidstr,j,ap->num,_valid_txamount(ram,addrpayload->value),msig);
+        //if ( strcmp("9908a63216f866650f81949684e93d62d543bdb06a23b6e56344e1c419a70d4f",txidstr) == 0 )
+        //    printf("calc_addr_unspent.(%s) j.%d of apnum.%d valid.%d msig.%p\n",txidstr,j,ap->num,_valid_txamount(ram,addrpayload->value),msig);
         if ( (addrpayload->pendingdeposit != 0 || j == ap->num) && _valid_txamount(ram,addrpayload->value) > 0 && msig != 0 )
         {
             //printf("addr_unspent.(%s)\n",msig->NXTaddr);
@@ -7804,12 +7804,12 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
         msig = find_msigaddr(addr);
         for (i=0; i<numpayloads; i++)
         {
-            {
+            /*{
                 char txidstr[512];
                 ram_txid(txidstr,ram,payloads[i].otherind);
                 if ( strcmp("9908a63216f866650f81949684e93d62d543bdb06a23b6e56344e1c419a70d4f",txidstr) == 0 )
                     printf("txid.(%s).%d pendingdeposit.%d %.8f\n",txidstr,payloads[i].B.v,payloads[i].pendingdeposit,dstr(payloads[i].value));
-            }
+            }*/
             if ( payloads[i].B.spent == 0 )
             {
                 unspent += payloads[i].value, n++;
