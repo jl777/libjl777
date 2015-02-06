@@ -8752,7 +8752,7 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
     {
         ram_expand_bitstream(&json,ram->R,ram,hp);
         permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum);
-        if ( json != 0 && permhp != 0 && permhp->allocsize < (sizeof(hexstr)/2-1) )
+        if ( json != 0 && permhp != 0 && hconv_bitlen(permhp->endpos) < (sizeof(hexstr)/2-1) )
         {
             init_hexbytes_noT(hexstr,permhp->buf,permhp->allocsize);
             if ( is_remote_access(previpaddr) != 0 )
@@ -8763,7 +8763,7 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
                 cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
             }
             cJSON_AddItemToObject(json,"data",cJSON_CreateString(hexstr));
-        } else printf("error getting json.%p or permhp.%p\n",json,permhp);
+        } else printf("error getting json.%p or permhp.%p allocsize.%d\n",json,permhp,permhp != 0 ? hconv_bitlen(permhp->endpos) : 0);
     }
     if ( json != 0 )
     {
