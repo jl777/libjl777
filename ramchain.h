@@ -7743,7 +7743,8 @@ char *ram_searchpermind(char *permstr,struct ramchain_info *ram,char type,uint32
     struct ramchain_hashtable *hash = ram_gethash(ram,type);
     int32_t i;
     permstr[0] = 0;
-    for (i=0; i<=hash->ind; i++)
+    //printf("(%c) searchpermind.(%d) ind.%d\n",type,permind,hash->ind);
+    for (i=1; i<=hash->ind; i++)
         if ( hash->ptrs[i] != 0 && hash->ptrs[i]->permind == permind )
         {
             ram_script(permstr,ram,i);
@@ -8230,6 +8231,7 @@ cJSON *ram_coinaddr_json(struct ramchain_info *ram,char *coinaddr,int32_t unspen
         cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
     }
     cJSON_AddItemToObject(json,ram->name,cJSON_CreateString(coinaddr));
+    cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(ram->srvNXTADDR));
     return(json);
 }
 
@@ -8297,6 +8299,7 @@ cJSON *ram_txidstr_json(struct ramchain_info *ram,char *txidstr,int32_t truncate
         ram_searchpermind(permstr,ram,'t',txptr->rawind);
         cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
     }
+    cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(ram->srvNXTADDR));
     return(json);
 }
 
@@ -8330,7 +8333,7 @@ char *ram_script_json(struct ramchain_info *ram,uint32_t rawind,int32_t truncate
     ram_searchpermind(permstr,ram,'s',rawind);
     if ( ram_script(hashstr,ram,rawind) != 0 )
     {
-        sprintf(retbuf,"{\"result\":\"%u\",\"script\":\"%s\",\"rawind\":\"%u\",\"permstr\":\"%s\"}",rawind,hashstr,rawind,permstr);
+        sprintf(retbuf,"{\"NXT\":\"%s\",\"result\":\"%u\",\"script\":\"%s\",\"rawind\":\"%u\",\"permstr\":\"%s\"}",ram->srvNXTADDR,rawind,hashstr,rawind,permstr);
         return(clonestr(retbuf));
     }
     return(clonestr("{\"error\":\"no script info\"}"));
@@ -8342,7 +8345,7 @@ char *ram_scriptind_json(struct ramchain_info *ram,char *str,int32_t truncatefla
     uint32_t rawind,permind;
     if ( (rawind= ram_scriptind_RO(&permind,ram,str)) != 0 )
     {
-        sprintf(retbuf,"{\"result\":\"%s\",\"rawind\":\"%u\",\"permind\":\"%u\"}",str,rawind,permind);
+        sprintf(retbuf,"{\"NXT\":\"%s\",\"result\":\"%s\",\"rawind\":\"%u\",\"permind\":\"%u\"}",ram->srvNXTADDR,str,rawind,permind);
         return(clonestr(retbuf));
     }
     return(clonestr("{\"error\":\"no script info\"}"));

@@ -1565,7 +1565,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
     copy_cJSON(coin,objs[2]);
     if ( strcmp(Global_mp->ipaddr,destip) == 0 )
         return(0);
-    printf("myipaddr.(%s) process args (%s) (%s) port.%d\n",Global_mp->ipaddr,destip,coin,port);
+    //printf("myipaddr.(%s) process args (%s) (%s) port.%d\n",Global_mp->ipaddr,destip,coin,port);
     if ( coin[0] != 0 && destip[0] != 0 && valid > 0 )
     {
         if ( is_remote_access(previpaddr) == 0 )
@@ -1655,12 +1655,10 @@ char *ramstring_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     uint32_t rawind = 0;
     if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
-    printf("after process args\n");
     copy_cJSON(typestr,objs[3]);
     rawind = (uint32_t)get_API_int(objs[4],0);
     if ( get_ramchain_info(coin) != 0 && typestr[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        printf("calling ramstring\n");
         retstr = ramstring(origargstr,sender,previpaddr,coin,typestr,rawind);
         ram_sendresponse(typestr,coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
@@ -1675,10 +1673,8 @@ char *ramrawind_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         return(retstr);
     copy_cJSON(typestr,objs[3]);
     copy_cJSON(str,objs[4]);
-    printf("after process args\n");
     if ( get_ramchain_info(coin) != 0 && typestr[0] != 0 && str[0] != 0 && sender[0] != 0 && valid > 0 )
     {
-        printf("calling ramrawind\n");
         retstr = ramrawind(origargstr,sender,previpaddr,coin,typestr,str);
         ram_sendresponse(typestr,coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
