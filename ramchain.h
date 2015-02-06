@@ -8411,6 +8411,7 @@ char *ramresponse(char *origargstr,char *sender,char *senderip)
                     snapjson = ram_snapshot_json(&snap);
                     snapstr = cJSON_Print(snapjson), free_json(snapjson);
                     copy_cJSON(shastr,cJSON_GetObjectItem(json,"sha256"));
+                    _stripwhite(snapstr,' ');
                     // update pyramid
                     printf("PYRAMID.B%d blocknum.%u sha.(%s) (%s)\n",format,blocknum,shastr,snapstr);
                     free(snapstr);
@@ -8429,7 +8430,7 @@ char *ramresponse(char *origargstr,char *sender,char *senderip)
                 printf("PYRAMID.%s (permind.%d %s).%c\n",origcmd,permind,permstr,type);
                 // update pyramid
             }
-            else printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s)\n",coin,origcmd,permstr,origargstr);
+            else if ( format == 0 ) printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s)\n",coin,origcmd,permstr,origargstr);
         }
         free_json(array);
     }
@@ -8487,7 +8488,7 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
                 hexstr = calloc(1,size*2+1);
                 init_hexbytes_noT(hexstr,permhp->buf,size);
                 retstr = calloc(1,size*2+1+512);
-                sprintf(retstr,"{\"blocknum\":\"%d\",\"size\":\"%d\",\"data\":\"%s\"}",blocknum,size,hexstr);
+                sprintf(retstr,"{\"NXT\":\"%s\",\"blocknum\":\"%d\",\"size\":\"%d\",\"data\":\"%s\"}",myNXTaddr,blocknum,size,hexstr);
                 free(hexstr);
                 return(retstr);
             } else return(clonestr("{\"error\":\"error doing ram_conv_permind\"}"));
