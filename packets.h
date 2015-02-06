@@ -581,7 +581,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             stripwhite_ns(parmstxt,strlen(parmstxt));
                             free_json(argjson);
                             argjson = cJSON_Parse(parmstxt);
-                            if ( Debuglevel > 2 )
+                            if ( Debuglevel > 1 )
                                 fprintf(stderr,"replace data.%s with (%s) (%s)\n",datalenstr,datastr,parmstxt);
                         }
                         else fprintf(stderr,"datalen.%d mismatch.(%s) -> %d [%x]\n",datalen,datalenstr,atoi(datalenstr),*(int *)(decoded+parmslen));
