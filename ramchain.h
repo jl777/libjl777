@@ -70,7 +70,7 @@ extern int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char
 
 // ramchain functions for external access
 void *process_ramchains(void *argcoinstr);
-char *ramresponse(char *origargstr,char *sender,char *previpaddr);
+char *ramresponse(char *origargstr,char *sender,char *previpaddr,char *datastr);
 
 char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);
 char *rampyramid(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);
@@ -8383,9 +8383,9 @@ cJSON *ram_snapshot_json(struct ramsnapshot *snap)
 }
 
 // >>>>>>>>>>>>>>  start external and API interface functions
-char *ramresponse(char *origargstr,char *sender,char *senderip)
+char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
 {
-    char origcmd[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],permstr[MAX_JSON_FIELD],shastr[MAX_JSON_FIELD],*datastr,*snapstr;
+    char origcmd[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],permstr[MAX_JSON_FIELD],shastr[MAX_JSON_FIELD],*snapstr;
     cJSON *array,*json,*snapjson;
     uint8_t *data;
     struct ramsnapshot snap;

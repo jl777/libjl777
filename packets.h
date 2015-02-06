@@ -574,7 +574,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         copy_cJSON(datalenstr,valueobj);
                         if ( datalen > 0 && datalen >= atoi(datalenstr) )
                         {
-                            init_hexbytes_noT(datastr,decoded + parmslen,atoi(datalenstr));
+                            init_hexbytes_noT(datastr,decoded + parmslen + 1,atoi(datalenstr));
                             cJSON_ReplaceItemInObject(tmpjson,"data",cJSON_CreateString(datastr));
                             free(parmstxt);
                             parmstxt = cJSON_Print(tmpjson);

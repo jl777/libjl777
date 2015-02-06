@@ -1645,7 +1645,7 @@ char *ramresponse_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     if ( Debuglevel > 0 )
         printf("ramresponse_func(%s)\n",origargstr);
     if ( sender[0] != 0 && valid > 0 )
-        return(ramresponse(origargstr,sender,previpaddr));
+        return(ramresponse(origargstr,sender,previpaddr,cJSON_str(objs[2])));
     else return(clonestr(RAMAPI_ERRORSTR));
 }
 
