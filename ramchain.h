@@ -76,7 +76,7 @@ char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);
 char *rampyramid(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);
 char *ramstring(char *origargstr,char *sender,char *previpaddr,char *coin,char *typestr,uint32_t rawind);
 char *ramrawind(char *origargstr,char *sender,char *previpaddr,char *coin,char *typestr,char *str);
-char *ramblock(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum);
+char *ramblock(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum);
 char *ramcompress(char *origargstr,char *sender,char *previpaddr,char *coin,char *ramhex);
 char *ramexpand(char *origargstr,char *sender,char *previpaddr,char *coin,char *bitstream);
 char *ramscript(char *origargstr,char *sender,char *previpaddr,char *coin,char *txidstr,int32_t tx_vout,struct address_entry *bp);
@@ -8734,12 +8734,12 @@ char *rambalances(char *origargstr,char *sender,char *previpaddr,char *coin,char
     return(clonestr("{\"error\":\"rambalances: numcoins zero or bad ptr\"}"));
 }
 
-char *ramblock(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum)
+char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum)
 {
     struct ramchain_info *ram = get_ramchain_info(coin);
     char hexstr[8192];
     cJSON *json = 0;
-    HUFF *hp;
+    HUFF *hp,*permhp;
     char *retstr = 0;
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
@@ -8751,9 +8751,17 @@ char *ramblock(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_
     else
     {
         ram_expand_bitstream(&json,ram->R,ram,hp);
-        if ( json != 0 && hp->allocsize < (sizeof(hexstr)/2-1) )
+        permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum);
+        if ( json != 0 && permhp != 0 && permhp->allocsize < (sizeof(hexstr)/2-1) )
         {
-            init_hexbytes_noT(hexstr,hp->buf,hp->allocsize);
+            init_hexbytes_noT(hexstr,permhp->buf,permhp->allocsize);
+            if ( is_remote_access(previpaddr) != 0 )
+            {
+                free_json(json);
+                json = cJSON_CreateObject();
+                cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(myNXTaddr));
+                cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
+            }
             cJSON_AddItemToObject(json,"data",cJSON_CreateString(hexstr));
         }
     }

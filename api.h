@@ -1748,7 +1748,7 @@ char *ramblock_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     blocknum = (uint32_t)get_API_int(objs[3],0);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
-        retstr = ramblock(origargstr,sender,previpaddr,coin,blocknum);
+        retstr = ramblock(NXTaddr,origargstr,sender,previpaddr,coin,blocknum);
         ram_sendresponse("ramblock",coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
     else retstr = clonestr(RAMAPI_ERRORSTR);
