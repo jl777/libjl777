@@ -1702,12 +1702,12 @@ char *ramstatus_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 
 char *rampyramid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char coin[MAX_JSON_FIELD],*typestr,*retstr = 0;
+    char coin[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD],*retstr = 0;
     uint32_t blocknum;
     if ( (retstr= preprocess_ram_apiargs(coin,previpaddr,objs,valid,origargstr,NXTaddr,NXTACCTSECRET)) != 0 )
         return(retstr);
     blocknum = (uint32_t)get_API_int(objs[3],-1);
-    typestr = cJSON_str(objs[4]);
+    copy_cJSON(typestr,objs[4]);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
         retstr = rampyramid(origargstr,sender,previpaddr,coin,blocknum,typestr);

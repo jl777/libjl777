@@ -147,7 +147,17 @@ struct mappedptr
 struct ramsnapshot { long addroffset,txidoffset,scriptoffset; uint32_t addrind,txidind,scriptind; };
 struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind:31,extra:31,pendingdeposit:1,pendingsend:1; };
 struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,permind,numpayloads:29,maxpayloads:29,mine:1,multisig:1,verified:1,nonstandard:1,tbd:2; int32_t numunspent; };
-struct ramchain_hashtable { char coinstr[16]; struct ramchain_hashptr *table; struct mappedptr M; FILE *newfp,*permfp; struct ramchain_hashptr **ptrs; uint32_t ind,numalloc; uint8_t type; };
+struct ramchain_hashtable
+{
+    char coinstr[16];
+    struct ramchain_hashptr *table;
+    struct mappedptr M;
+    FILE *newfp,*permfp;
+    struct ramchain_hashptr **ptrs;
+    long endpermpos;
+    uint32_t ind,numalloc;
+    uint8_t type;
+};
 
 
 #define MAX_BLOCKTX 0xffff
@@ -3243,19 +3253,18 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                             (*pendingredeemsp) += tp->U.assetoshis;
                             printf("NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
                             numpending++;
-                          //  else if ( NXTheight != 0 && ram->S.is_realtime != 0 && _enough_confirms(0.,amount * ram->NXTconvrate,ram->S.NXT_RTblocknum - NXTheight,ram->withdrawconfirms) > 0. )
                             if ( disable_newsends == 0 )
                             {
-                                if ( ram_MGW_ready(ram,0,tp->height,0,tp->U.assetoshis) > 0 )
+                                if ( (cointx= _calc_cointx_withdraw(ram,tp->convwithdrawaddr,tp->U.assetoshis,tp->redeemtxid)) != 0 )
                                 {
-                                    if ( (cointx= _calc_cointx_withdraw(ram,tp->convwithdrawaddr,tp->U.assetoshis,tp->redeemtxid)) != 0 )
+                                    if ( ram_MGW_ready(ram,0,tp->height,0,tp->U.assetoshis) > 0 )
                                     {
                                         ram_send_cointx(ram,cointx);
                                         ram->numpendingsends++;
                                         //ram_add_pendingsend(0,ram,tp,cointx);
                                         // disable_newsends = 1;
-                                    } else tp->completed = 1; // ignore malformed requests for now
-                                } else printf("not ready to withdraw yet\n");
+                                    } else printf("not ready to withdraw yet\n");
+                                } else tp->completed = 1; // ignore malformed requests for now
                             }
                             else if ( ram_check_consensus(txidstr,ram,tp) != 0 )
                                 printf("completed redeem.%llu with cointxid.%s\n",(long long)tp->redeemtxid,txidstr);
@@ -7159,11 +7168,12 @@ int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchai
     strcpy(hash->coinstr,ram->name);
     hash->type = type;
     num = 0;
-    if ( PERMUTE_RAWINDS != 0 )
+    //if ( PERMUTE_RAWINDS != 0 )
     {
         ram_sethashname(fname,hash,0);
         strcat(fname,".perm");
-        hash->permfp = fopen(fname,"wb+");
+        if ( (hash->permfp= fopen(fname,"rb+")) == 0 )
+            hash->permfp= fopen(fname,"wb+");
         if ( hash->permfp == 0 )
         {
             printf("couldnt create (%s)\n",fname);
@@ -7264,18 +7274,44 @@ void ram_disp_status(struct ramchain_info *ram)
 
 void ram_write_permentry(struct ramchain_hashtable *table,struct ramchain_hashptr *ptr)
 {
-    int32_t datalen,varlen;
+    uint8_t databuf[8192];
+    int32_t datalen,varlen = 0;
     uint64_t varint;
+    long fpos,len;
     if ( table->permfp != 0 )
     {
         varlen += hdecode_varint(&varint,ptr->hh.key,0,9);
         datalen = ((int32_t)varint + varlen);
-        if ( fwrite(ptr->hh.key,1,datalen,table->permfp) != datalen )
+        fpos = ftell(table->permfp);
+        if ( table->endpermpos < (fpos + datalen) )
         {
-            printf("ram_write_permentry: error saving type.%d ind.%d datalen.%d\n",table->type,ptr->permind,datalen);
-            exit(-1);
+            fseek(table->permfp,0,SEEK_END);
+            table->endpermpos = ftell(table->permfp);
+            fseek(table->permfp,fpos,SEEK_SET);
         }
-        fflush(table->permfp);
+        if ( (fpos + datalen) <= table->endpermpos )
+        {
+            if ( datalen < sizeof(databuf) )
+            {
+                if ( (len= fread(databuf,1,datalen,table->permfp)) == datalen )
+                {
+                    if ( memcmp(databuf,ptr->hh.key,datalen) != 0 )
+                        printf("ram_write_permentry: memcmp error in permhash datalen.%d\n",datalen);
+                    else return;
+                } else printf("ram_write_permentry: len.%ld != datalen.%d\n",len,datalen);
+            } else printf("datalen.%d too big for databuf[%ld]\n",datalen,sizeof(databuf));
+            exit(-1); // unrecoverable
+        }
+        else
+        {
+            if ( fwrite(ptr->hh.key,1,datalen,table->permfp) != datalen )
+            {
+                printf("ram_write_permentry: error saving type.%d ind.%d datalen.%d\n",table->type,ptr->permind,datalen);
+                exit(-1);
+            }
+            fflush(table->permfp);
+            table->endpermpos = ftell(table->permfp);
+        }
     }
 }
 
@@ -7679,12 +7715,14 @@ HUFF *ram_conv_permind(HUFF *permhp,struct ramchain_info *ram,HUFF *hp,uint32_t 
         printf("only format B supported for now\n");
         return(0);
     }
-    numbits = hdecode_varbits(&blocknum,hp), hemit_varbits(permhp,blocknum);
+    numbits = hdecode_varbits(&blocknum,hp);
     if ( blocknum != checkblocknum )
     {
-        printf("ram_conv_permind: blocknum.%d vs checkblocknum.%d\n",blocknum,checkblocknum);
-        return(0);
+        printf("ram_conv_permind: hp->blocknum.%d vs checkblocknum.%d\n",blocknum,checkblocknum);
+        //return(0);
+        blocknum = checkblocknum;
     }
+    hemit_varbits(permhp,blocknum);
     numbits += hdecode_smallbits(&numtx,hp), hemit_smallbits(permhp,numtx);
     numbits += hdecode_valuebits(&minted,hp), hemit_valuebits(permhp,minted);
     if ( numtx > 0 )
@@ -8419,6 +8457,7 @@ char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint3
     HUFF *permhp,*hp;
     cJSON *json;
     int32_t size,i,n;
+    //printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
     else if ( blocknum >= ram->maxblock )
@@ -8436,6 +8475,7 @@ char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint3
         n = 4096;
         if ( (blocknum % n) != 0 )
             return(clonestr("{\"error\":\"B4096 blocknum misaligned\"}"));
+        //printf("rampyramid B4096 for blocknum.%d\n",blocknum);
     }
     else
     {
@@ -8458,10 +8498,11 @@ char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint3
     {
         if ( (hp= ram->blocks.hps[blocknum+i]) == 0 )
             break;
-        if ( (permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum)) == 0 )
+        if ( (permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum+i)) == 0 )
             break;
         calc_sha256cat(tmp.bytes,hash.bytes,sizeof(hash),permhp->buf,hconv_bitlen(permhp->endpos)), hash = tmp;
     }
+    //printf("blocknum.%d i.%d of %d\n",blocknum,i,n);
     if ( i == n )
     {
         json = ram_snapshot_json(&ram->snapshots[blocknum/64]);
@@ -8935,7 +8976,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
                 } else errs++;
             }
             printf(">>>>>>>>>>>>> permind_changes.%d <<<<<<<<<<<<\n",ram->permind_changes);
-            if ( ram->addrhash.permfp != 0 && ram->txidhash.permfp != 0 && ram->scripthash.permfp != 0 && iter == 0 && ram->permind_changes != 0 )
+            if ( 0 && ram->addrhash.permfp != 0 && ram->txidhash.permfp != 0 && ram->scripthash.permfp != 0 && iter == 0 && ram->permind_changes != 0 )
             {
                 for (blocknum=0; blocknum<ram->blocks.contiguous; blocknum++)
                 {
