@@ -8236,20 +8236,23 @@ cJSON *ram_coinaddr_json(struct ramchain_info *ram,char *coinaddr,int32_t unspen
 char *ram_coinaddr_str(struct ramchain_info *ram,char *coinaddr,int32_t truncateflag,int32_t searchperms)
 {
     cJSON *json;
-    char *retstr;
+    char retbuf[1024],*retstr;
     if ( coinaddr != 0 && coinaddr[0] != 0 && (json= ram_coinaddr_json(ram,coinaddr,1,truncateflag,searchperms)) != 0 )
     {
         retstr = cJSON_Print(json);
         free_json(json);
         return(retstr);
     }
-    return(clonestr("{\"error\":\"no addr info\"}"));
+    sprintf(retbuf,"{\"error\":\"no addr info\",\"coin\":\"%s\",\"addr\":\"%s\"}",ram->name,coinaddr);
+    return(clonestr(retbuf));
 }
 
 char *ram_addr_json(struct ramchain_info *ram,uint32_t rawind,int32_t truncateflag)
 {
     char hashstr[8193];
-    return(ram_coinaddr_str(ram,ram_addr(hashstr,ram,rawind),truncateflag,1));
+    ram_addr(hashstr,ram,rawind);
+    printf("ram_addr_json(%d) -> (%s)\n",rawind,hashstr);
+    return(ram_coinaddr_str(ram,hashstr,truncateflag,1));
 }
 
 char *ram_addrind_json(struct ramchain_info *ram,char *coinaddr,int32_t truncateflag)
