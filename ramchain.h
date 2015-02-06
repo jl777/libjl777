@@ -6681,11 +6681,28 @@ void ram_purge_badblock(struct ramchain_info *ram,uint32_t blocknum)
    // delete_file(fname,0);
 }
 
+HUFF *ram_makehp(HUFF *tmphp,int32_t format,struct ramchain_info *ram,struct rawblock *tmp,int32_t blocknum)
+{
+    int32_t datalen;
+    uint8_t *block;
+    HUFF *hp = 0;
+    hclear(tmphp);
+    if ( (datalen= ram_emitblock(tmphp,format,ram,tmp)) > 0 )
+    {
+        //printf("ram_emitblock datalen.%d (%d) bitoffset.%d\n",datalen,hconv_bitlen(tmphp->endpos),tmphp->bitoffset);
+        block = permalloc(ram->name,&ram->Perm,datalen,5);
+        memcpy(block,tmphp->buf,datalen);
+        hp = hopen(ram->name,&ram->Perm,block,datalen,0);
+        hseek(hp,0,SEEK_END);
+        //printf("ram_emitblock datalen.%d bitoffset.%d endpos.%d\n",datalen,hp->bitoffset,hp->endpos);
+    } else printf("error emitblock.%d\n",blocknum);
+    return(hp);
+}
+
 HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,int32_t blocknum,int32_t format,HUFF **prevhpp)
 {
     HUFF *hp = 0;
-    int32_t datalen,regenflag = 0;
-    void *block = 0;
+    int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
     if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") != 0 )
@@ -6716,17 +6733,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
             }
         } else printf("error _get_blockinfo.(%u)\n",blocknum);
     }
-    hp = 0;
-    hclear(tmphp);
-    if ( (datalen= ram_emitblock(tmphp,format,ram,tmp)) > 0 )
-    {
-        //printf("ram_emitblock datalen.%d (%d) bitoffset.%d\n",datalen,hconv_bitlen(tmphp->endpos),tmphp->bitoffset);
-        block = permalloc(ram->name,&ram->Perm,datalen,5);
-        memcpy(block,tmphp->buf,datalen);
-        hp = hopen(ram->name,&ram->Perm,block,datalen,0);
-        hseek(hp,0,SEEK_END);
-        //printf("ram_emitblock datalen.%d bitoffset.%d endpos.%d\n",datalen,hp->bitoffset,hp->endpos);
-    } else printf("error emitblock.%d\n",blocknum);
+    hp = ram_makehp(tmphp,format,ram,tmp,blocknum);
     return(hp);
 }
 
@@ -8461,10 +8468,10 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
     struct ramchain_info *ram = get_ramchain_info(coin);
     char shastr[65],*hexstr,*retstr = 0;
     bits256 hash,tmp;
-    HUFF *permhp,*hp;
+    HUFF *permhp,*hp,*newhp,**hpptr;
     cJSON *json;
     int32_t size,i,n;
-    //printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
+    printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
     else if ( blocknum >= ram->maxblock )
@@ -8486,7 +8493,20 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
     }
     else
     {
-        if ( (hp= ram->blocks.hps[blocknum]) != 0 )
+        if ( (hp= ram->blocks.hps[blocknum]) == 0 )
+        {
+            if ( (hpptr= ram_get_hpptr(&ram->Vblocks,blocknum)) != 0 && (hp= *hpptr) != 0 )
+            {
+                if ( ram_expand_bitstream(0,ram->R3,ram,hp) > 0 )
+                {
+                    newhp = ram_makehp(ram->tmphp,'B',ram,ram->R3,blocknum);
+                    if ( (hpptr= ram_get_hpptr(&ram->Bblocks,blocknum)) != 0 )
+                        ram->blocks.hps[blocknum] = *hpptr = newhp;
+                } else hp = 0;
+   //if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
+            }
+        }
+        if ( hp != 0 )
         {
             if ( (permhp= ram_conv_permind(ram->tmphp,ram,hp,blocknum)) != 0 )
             {

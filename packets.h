@@ -559,7 +559,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     {
                         if ( /*strcmp("ping",checkstr) == 0 &&*/ internalflag == 0 && dontupdate == 0 )
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
-                        if ( strcmp("ping",checkstr) == 0 || strcmp("getdb",checkstr) == 0 || strcmp("genmultisig",checkstr) == 0 || strcmp("MGW",checkstr) == 0 || strcmp("MGWaddr",checkstr) == 0  || strcmp("ramstatus",checkstr) == 0 )
+                        if ( strcmp("ping",checkstr) == 0 || strcmp("getdb",checkstr) == 0 || strcmp("genmultisig",checkstr) == 0 || strcmp("MGW",checkstr) == 0 || strcmp("MGWaddr",checkstr) == 0  || strncmp("ram",checkstr,3) == 0 )
                             strcpy(checkstr,"valid");
                     }
                     else
