@@ -8763,7 +8763,7 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
                 cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
             }
             cJSON_AddItemToObject(json,"data",cJSON_CreateString(hexstr));
-        }
+        } else printf("error getting json.%p or permhp.%p\n",json,permhp);
     }
     if ( json != 0 )
     {
