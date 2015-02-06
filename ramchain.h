@@ -8404,7 +8404,7 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
             if ( strcmp(origcmd,"rampyramid") == 0 )
             {
                 blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocknum"),0);
-                if ( (format= (int32_t)get_API_int(cJSON_GetObjectItem(json,"B"),'B')) == 1 )
+                if ( (format= (int32_t)get_API_int(cJSON_GetObjectItem(json,"B"),0)) == 0 )
                 {
                     size = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"size"),0);
                     if ( size > 0 )
