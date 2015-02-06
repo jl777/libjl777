@@ -1712,7 +1712,7 @@ char *rampyramid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     copy_cJSON(typestr,objs[4]);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
-        retstr = rampyramid(origargstr,sender,previpaddr,coin,blocknum,typestr);
+        retstr = rampyramid(NXTaddr,origargstr,sender,previpaddr,coin,blocknum,typestr);
         ram_sendresponse("rampyramid",coin,retstr,NXTaddr,NXTACCTSECRET,sender,previpaddr);
     }
     else retstr = clonestr(RAMAPI_ERRORSTR);

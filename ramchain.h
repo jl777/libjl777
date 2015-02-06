@@ -73,7 +73,7 @@ void *process_ramchains(void *argcoinstr);
 char *ramresponse(char *origargstr,char *sender,char *previpaddr);
 
 char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);
-char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);
+char *rampyramid(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);
 char *ramstring(char *origargstr,char *sender,char *previpaddr,char *coin,char *typestr,uint32_t rawind);
 char *ramrawind(char *origargstr,char *sender,char *previpaddr,char *coin,char *typestr,char *str);
 char *ramblock(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum);
@@ -8449,7 +8449,7 @@ char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin)
     return(clonestr(retbuf));
 }
 
-char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr)
+char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr)
 {
     struct ramchain_info *ram = get_ramchain_info(coin);
     char shastr[65],*hexstr,*retstr = 0;
@@ -8507,6 +8507,7 @@ char *rampyramid(char *origargstr,char *sender,char *previpaddr,char *coin,uint3
     {
         json = ram_snapshot_json(&ram->snapshots[blocknum/64]);
         init_hexbytes_noT(shastr,hash.bytes,sizeof(hash));
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(myNXTaddr));
         cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
         cJSON_AddItemToObject(json,"B",cJSON_CreateNumber(n));
         cJSON_AddItemToObject(json,"sha256",cJSON_CreateString(shastr));
