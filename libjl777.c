@@ -126,7 +126,7 @@ void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint
     else if ( strcmp(args->handler,"ramchain") == 0 )
     {
         printf("handler_gotfile(%s len.%d) (%s)\n",args->name,args->totallen,args->data);
-        if ( (str= ramresponse((char *)args->data,sender,senderip)) != 0 )
+        if ( (str= ramresponse((char *)args->data,sender,senderip,0)) != 0 )
             free(str);
     }
     else printf("unknown handler.(%s)\n",args->handler);

@@ -8397,7 +8397,8 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
         if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
         {
             json = cJSON_GetArrayItem(array,0);
-            datastr = cJSON_str(cJSON_GetObjectItem(json,"data"));
+            if ( datastr == 0 )
+                datastr = cJSON_str(cJSON_GetObjectItem(json,"data"));
             copy_cJSON(origcmd,cJSON_GetObjectItem(json,"origcmd"));
             copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
             if ( strcmp(origcmd,"rampyramid") == 0 )
