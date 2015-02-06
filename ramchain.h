@@ -8740,6 +8740,7 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
     char hexstr[8192];
     cJSON *json = 0;
     HUFF *hp,*permhp;
+    int32_t datalen;
     char *retstr = 0;
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
@@ -8752,9 +8753,10 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
     {
         ram_expand_bitstream(&json,ram->R,ram,hp);
         permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum);
-        if ( json != 0 && permhp != 0 && hconv_bitlen(permhp->endpos) < (sizeof(hexstr)/2-1) )
+        datalen = hconv_bitlen(permhp->endpos);
+        if ( json != 0 && permhp != 0 && datalen < (sizeof(hexstr)/2-1) )
         {
-            init_hexbytes_noT(hexstr,permhp->buf,permhp->allocsize);
+            init_hexbytes_noT(hexstr,permhp->buf,datalen);
             if ( is_remote_access(previpaddr) != 0 )
             {
                 free_json(json);
@@ -8763,7 +8765,7 @@ char *ramblock(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,ch
                 cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
             }
             cJSON_AddItemToObject(json,"data",cJSON_CreateString(hexstr));
-        } else printf("error getting json.%p or permhp.%p allocsize.%d\n",json,permhp,permhp != 0 ? hconv_bitlen(permhp->endpos) : 0);
+        } else printf("error getting json.%p or permhp.%p allocsize.%d\n",json,permhp,permhp != 0 ? datalen : 0);
     }
     if ( json != 0 )
     {
