@@ -5711,7 +5711,7 @@ cJSON *ram_rawblock_json(struct rawblock *raw,int32_t allocsize)
     cJSON_AddItemToObject(json,"numtx",cJSON_CreateNumber(raw->numtx));
     cJSON_AddItemToObject(json,"mint",cJSON_CreateNumber(dstr(raw->minted)));
     if ( allocsize != 0 )
-        cJSON_AddItemToObject(json,"allocsize",cJSON_CreateNumber(allocsize));
+        cJSON_AddItemToObject(json,"rawsize",cJSON_CreateNumber(allocsize));
     if ( (n= raw->numtx) > 0 )
     {
         array = cJSON_CreateArray();
@@ -8397,6 +8397,7 @@ char *ramresponse(char *origargstr,char *sender,char *senderip)
         if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
         {
             json = cJSON_GetArrayItem(array,0);
+            datastr = cJSON_str(cJSON_GetObjectItem(json,"data"));
             copy_cJSON(origcmd,cJSON_GetObjectItem(json,"origcmd"));
             copy_cJSON(coin,cJSON_GetObjectItem(json,"coin"));
             if ( strcmp(origcmd,"rampyramid") == 0 )
@@ -8407,15 +8408,14 @@ char *ramresponse(char *origargstr,char *sender,char *senderip)
                     size = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"size"),0);
                     if ( size > 0 )
                     {
-                        datastr = cJSON_str(cJSON_GetObjectItem(json,"data"));
-                        if ( strlen(datastr) == size*2 )
+                        if ( datastr != 0 && strlen(datastr) == size*2 )
                         {
                             printf("PYRAMID.(%u %s).%d from NXT.(%s) ip.(%s)\n",blocknum,datastr,size,sender,senderip);
                             data = calloc(1,size);
                             decode_hex(data,size,datastr);
                             // update pyramid
                             free(data);
-                        } else printf("strlen(%s) is %ld not %d*2\n",datastr,strlen(datastr),size);
+                        } else if ( datastr != 0 ) printf("strlen(%s) is %ld not %d*2\n",datastr,strlen(datastr),size);
                     }
                 }
                 else
@@ -8430,20 +8430,29 @@ char *ramresponse(char *origargstr,char *sender,char *senderip)
                     free(snapstr);
                 }
             }
-            else if ( strcmp(origcmd,"addr") == 0 )
-                type = 'a';
-            else if ( strcmp(origcmd,"script") == 0 )
-                type = 's';
-            else if ( strcmp(origcmd,"txid") == 0 )
-                type = 't';
-            if ( type != 0 )
+            else if ( strcmp(origcmd,"ramblock") == 0 )
             {
-                copy_cJSON(permstr,cJSON_GetObjectItem(json,"permstr"));
-                permind = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"rawind"),0);
-                printf("PYRAMID.%s (permind.%d %s).%c\n",origcmd,permind,permstr,type);
-                // update pyramid
+                if ( datastr != 0 )
+                    printf("PYRAMID.B%d blocknum.%u (%s).permsize %ld\n",format,blocknum,datastr,strlen(datastr)/2);
             }
-            else if ( format == 0 ) printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s)\n",coin,origcmd,permstr,origargstr);
+            else
+            {
+                if ( strcmp(origcmd,"addr") == 0 )
+                    type = 'a';
+                else if ( strcmp(origcmd,"script") == 0 )
+                    type = 's';
+                else if ( strcmp(origcmd,"txid") == 0 )
+                    type = 't';
+                if ( type != 0 )
+                {
+                    copy_cJSON(permstr,cJSON_GetObjectItem(json,"permstr"));
+                    permind = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"rawind"),0);
+                    printf("PYRAMID.%s (permind.%d %s).%c\n",origcmd,permind,permstr,type);
+                    // update pyramid
+                }
+                else if ( format == 0 )
+                    printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s)\n",coin,origcmd,permstr,origargstr);
+            }
         }
         free_json(array);
     }
@@ -8501,7 +8510,7 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
                 {
                     newhp = ram_makehp(ram->tmphp,'B',ram,ram->R3,blocknum);
                     if ( (hpptr= ram_get_hpptr(&ram->Bblocks,blocknum)) != 0 )
-                        ram->blocks.hps[blocknum] = *hpptr = newhp;
+                        hp = ram->blocks.hps[blocknum] = *hpptr = newhp;
                 } else hp = 0;
    //if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
             }
