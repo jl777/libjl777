@@ -1563,7 +1563,9 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
     copy_cJSON(destip,objs[0]);
     port = (uint16_t)get_API_int(objs[1],0);
     copy_cJSON(coin,objs[2]);
-    printf("process args (%s) (%s) port.%d\n",destip,coin,port);
+    if ( strcmp(Global_mp->ipaddr,destip) == 0 )
+        return(0);
+    printf("myipaddr.(%s) process args (%s) (%s) port.%d\n",Global_mp->ipaddr,destip,coin,port);
     if ( coin[0] != 0 && destip[0] != 0 && valid > 0 )
     {
         if ( is_remote_access(previpaddr) == 0 )
