@@ -3257,7 +3257,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                         if ( tp->completed == 0 && tp->convwithdrawaddr != 0 )
                         {
                             (*pendingredeemsp) += tp->U.assetoshis;
-                            printf("NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
+                            printf("NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.enable_withdraws,ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
                             numpending++;
                             if ( disable_newsends == 0 )
                             {
@@ -3270,7 +3270,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                                         //ram_add_pendingsend(0,ram,tp,cointx);
                                         // disable_newsends = 1;
                                     } else printf("not ready to withdraw yet\n");
-                                } else tp->completed = 1; // ignore malformed requests for now
+                                } else if ( ram->S.enable_withdraws != 0 ) tp->completed = 1; // ignore malformed requests for now
                             }
                             else if ( ram_check_consensus(txidstr,ram,tp) != 0 )
                                 printf("completed redeem.%llu with cointxid.%s\n",(long long)tp->redeemtxid,txidstr);
@@ -3959,7 +3959,8 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
         }
     }
     ram->S.circulation = _calc_circulation(ram->min_NXTconfirms,ram->ap,ram);
-    ram->S.orphans = _find_pending_transfers(&ram->S.MGWpendingredeems,ram);
+    if ( ram->S.is_realtime != 0 )
+        ram->S.orphans = _find_pending_transfers(&ram->S.MGWpendingredeems,ram);
     //printf("return mostrecent.%d\n",mostrecent);
     return(mostrecent);
 }
@@ -5186,18 +5187,21 @@ int32_t ram_expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datale
     return(mode);
 }
 
-uint64_t ram_check_redeemcointx(struct ramchain_info *ram,char *script)
+uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,char *script)
 {
     uint64_t redeemtxid = 0;
     int32_t i;
+    *unspendablep = 0;
     if ( strcmp(script+22,"00000000000000000000000088ac") == 0 )
     {
+        if ( strncmp(script+8,"0000000000000000000000000000000000",strlen("0000000000000000000000000000000000")) == 0 )
+            *unspendablep = 1;
         for (redeemtxid=i=0; i<(int32_t)sizeof(uint64_t); i++)
         {
             redeemtxid <<= 8;
             redeemtxid |= (_decode_hex(&script[6 + 14 - i*2]) & 0xff);
         }
-        printf(">>>>>>>>>>>>>>> found MGW redeem %s -> %llu\n",script,(long long)redeemtxid);
+        //printf(">>>>>>>>>>>>>>> found MGW redeem %s -> %llu\n",script,(long long)redeemtxid);
     } //else printf("(%s).%d\n",script+22,strcmp(script+16,"00000000000000000000000088ac"));
     return(redeemtxid);
 }
@@ -6726,7 +6730,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( 1 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") != 0 )
+    if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") != 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -7352,8 +7356,8 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     uint32_t scriptind,addrind;
     struct address_entry B;
     char *str,coinaddr[1024],txidstr[512],scriptstr[512];
-    uint64_t value;
-    int32_t numbits = 0;
+    uint64_t value,unspent;
+    int32_t unspendable,numbits = 0;
     *addr_rawindp = 0;
     numbits += hdecode_varbits(&scriptind,hp);
     numbits += hdecode_varbits(&addrind,hp);
@@ -7376,10 +7380,11 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     table = ram_gethash(ram,'s');
     if ( scriptind > 0 && scriptind <= table->ind && (scriptptr= table->ptrs[scriptind]) != 0 )
     {
+        unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr);
         if ( iter != 1 && scriptptr->permind == 0 )
         {
             ram_script(scriptstr,ram,scriptind);
-            if ( (scriptptr->unspent= ram_check_redeemcointx(ram,scriptstr)) != 0 )  // this is MGW redeemtxid (inefficient, should be done binary)
+            if ( (scriptptr->unspent= unspent) != 0 )  // this is MGW redeemtxid (inefficient, should be done binary)
             {
                 ram_txid(txidstr,ram,txid_rawind);
                 printf("coin redeemtxid.(%s) with script.(%s)\n",txidstr,scriptstr);
@@ -7433,7 +7438,8 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
                     //    addrptr->multisig = 1;
                     if ( ram_addr(coinaddr,ram,addrind) != 0 && coinaddr[0] == ram->multisigchar )
                         addrptr->multisig = 1;
-                    ram_addunspent(ram,coinaddr,txpayload,addrptr,&payload,addrind,addrptr->numpayloads);
+                    if ( unspendable == 0 )
+                        ram_addunspent(ram,coinaddr,txpayload,addrptr,&payload,addrind,addrptr->numpayloads);
                     addrptr->payloads[addrptr->numpayloads++] = payload;
                 }
             }
@@ -9021,7 +9027,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
     //ram_process_blocks(ram,ram->mappedblocks[2],ram->mappedblocks[1],1000.*3600*24);
     ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
 #ifndef RAM_GENMODE
-    if ( strcmp(ram->name,"BTC") != 0 )
+    //if ( strcmp(ram->name,"BTC") != 0 )
     {
         HUFF *hp,*permhp;
         void *buf;

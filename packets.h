@@ -561,6 +561,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                             update_routing_probs(tokenized_np->H.U.NXTaddr,1,udp == 0,&tokenized_np->stats,nxtip,nxtport,pubkey);
                         if ( strcmp("ping",checkstr) == 0 || strcmp("getdb",checkstr) == 0 || strcmp("genmultisig",checkstr) == 0 || strcmp("MGW",checkstr) == 0 || strcmp("MGWaddr",checkstr) == 0  || strncmp("ram",checkstr,3) == 0 )
                             strcpy(checkstr,"valid");
+                        else printf("UNENCRYPTED.(%s)\n",parmstxt);
                     }
                     else
                     {
@@ -574,7 +575,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                         copy_cJSON(datalenstr,valueobj);
                         if ( datalen > 0 && datalen >= atoi(datalenstr) )
                         {
-                            init_hexbytes_noT(datastr,decoded + parmslen + 1,atoi(datalenstr));
+                            init_hexbytes_noT(datastr,decoded + parmslen,atoi(datalenstr));
                             cJSON_ReplaceItemInObject(tmpjson,"data",cJSON_CreateString(datastr));
                             free(parmstxt);
                             parmstxt = cJSON_Print(tmpjson);
