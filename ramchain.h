@@ -2419,15 +2419,15 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     strcpy(cointx->coinstr,ram->name);
     cointx->redeemtxid = redeemtxid;
     cointx->gatewayid = ram->S.gatewayid;
-    MGWfee = 0*(value >> 10) + ((ram->txfee + 2*ram->NXTfee_equiv)) - ram->txfee;
+    MGWfee = 0*(value >> 10) + (2 * (ram->txfee + ram->NXTfee_equiv)) - 1 - ram->txfee;
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->marker);
-    cointx->outputs[numoutputs++].value = MGWfee;
     if ( strcmp(destaddr,ram->marker) == 0 )
-        cointx->outputs[numoutputs-1].value += value;
+        cointx->outputs[numoutputs++].value = value;
     else
     {
+        cointx->outputs[numoutputs++].value = MGWfee;
         strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
-        cointx->outputs[numoutputs++].value = value;
+        cointx->outputs[numoutputs++].value = value - MGWfee;
     }
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->opreturnmarker);
     cointx->outputs[numoutputs++].value = 1;
