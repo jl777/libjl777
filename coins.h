@@ -888,7 +888,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     ram->S.gatewayid = Global_mp->gatewayid;
     ram->NXTfee_equiv = cp->NXTfee_equiv;
     ram->txfee = cp->txfee;
-    ram->NXTconvrate = (ram->NXTfee_equiv / ram->txfee);
+    ram->NXTconvrate = get_API_float(cJSON_GetObjectItem(cp->json,"NXTconv"));//();
     ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
     if ( Global_mp->iambridge != 0 || (IS_LIBTEST > 0 && is_active_coin(cp->name) > 0) )
     {

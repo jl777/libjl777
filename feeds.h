@@ -944,9 +944,18 @@ char *getquotes(char *exchange,char *base,char *rel,uint32_t oldest)
 
 double get_current_rate(char *base,char *rel)
 {
-    if ( strcmp(base,"BTCD") == 0 && strcmp(rel,"NXT") == 0 )
-        return(100.);
-    else return(0.);
+    struct coin_info *cp;
+    if ( strcmp(rel,"NXT") == 0 )
+    {
+        if ( (cp= get_coin_info(base)) != 0 )
+        {
+            if ( cp->RAM.NXTconvrate != 0. )
+                return(cp->RAM.NXTconvrate);
+            if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
+                return(cp->NXTfee_equiv / cp->txfee);
+        }
+    }
+    return(1.);
 }
 
 #endif
