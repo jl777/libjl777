@@ -1724,7 +1724,7 @@ int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normala
     retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"validateaddress",args);
     if ( retstr != 0 )
     {
-        printf("got retstr.(%s)\n",retstr);
+        //printf("got retstr.(%s)\n",retstr);
         if ( (json = cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -2422,12 +2422,12 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     MGWfee = 0*(value >> 10) + (2 * (ram->txfee + ram->NXTfee_equiv)) - 1 - ram->txfee;
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->marker);
     if ( strcmp(destaddr,ram->marker) == 0 )
-        cointx->outputs[numoutputs++].value = value;
+        cointx->outputs[numoutputs++].value = value - 1;
     else
     {
         cointx->outputs[numoutputs++].value = MGWfee;
         strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
-        cointx->outputs[numoutputs++].value = value - MGWfee;
+        cointx->outputs[numoutputs++].value = value - MGWfee - 1;
     }
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->opreturnmarker);
     cointx->outputs[numoutputs++].value = 1;
