@@ -853,7 +853,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     int32_t createdflag;
     strcpy(ram->name,cp->name);
     strcpy(ram->S.name,ram->name);
-    if ( refcp->myipaddr != 0 )
+    if ( refcp->myipaddr[0] != 0 )
         strcpy(ram->myipaddr,refcp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
     strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
@@ -861,10 +861,10 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         cp->marker = clonestr(get_marker(cp->name));
     if ( cp->marker != 0 )
         ram->marker = clonestr(cp->marker);
-    if ( cp->privateaddr != 0 )
+    if ( cp->privateaddr[0] != 0 )
         ram->opreturnmarker = clonestr(cp->privateaddr);
     ram->dust = cp->dust;
-    if ( cp->backupdir != 0 )
+    if ( cp->backupdir[0] != 0 )
         ram->backups = clonestr(cp->backupdir);
     if ( cp->userpass != 0 )
         ram->userpass = clonestr(cp->userpass);
@@ -893,7 +893,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     if ( Global_mp->iambridge != 0 || (IS_LIBTEST > 0 && is_active_coin(cp->name) > 0) )
     {
         if ( Debuglevel > 0 )
-            printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) depositconfirms.%d\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms);
+            printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) confirms.(deposit %d withdraw %d) rate %.8f\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms,ram->withdrawconfirms,ram->NXTconvrate);
         init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
         activate_ramchain(ram,cp->name);
     } //else printf("skip activate ramchains\n");
