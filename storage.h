@@ -868,6 +868,8 @@ int32_t init_multisigDB()
         {
             for (i=m=0; i<n; i++)
             {
+                if ( is_active_coin(msigs[i]->coinstr) == 0 )
+                    continue;
                 msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n,msigs[i]->NXTaddr,msigs[i]->NXTpubkey,msigs[i]->buyNXT);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
                 printf("%d of %d: %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->coinstr,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
                 //if ( createdflag != 0 )
@@ -888,7 +890,9 @@ int32_t init_multisigDB()
                     if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
                     {
                         for (i=0; i<n; i++)
-                            if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
+                        if ( (msigram= decode_msigjson(0,cJSON_GetArrayItem(json,i),Server_NXTaddrs[j])) != 0 )
+                        {
+                            if ( is_active_coin(msigram->coinstr) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
                             {
                                 printf("ADD.%d %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->coinstr,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
                                 if ( is_zeroes(msigram->NXTpubkey) != 0 )
@@ -898,6 +902,7 @@ int32_t init_multisigDB()
                                 }
                                 update_msig_info(msigram,i == n-1,Server_NXTaddrs[j]), added++;
                             }
+                        }
                     }
                     free_json(json);
                 }

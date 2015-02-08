@@ -5,15 +5,8 @@
 //  by jl777 on 12/29/14.
 //  MIT license
 
-// to port ramchains, the following is needed
-// void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp) or the equivalent needs to create the required ramchain_info
-// structures and allow for get_ramchain_info() to be implemented.
-//
-// need to provide external functions for:
-// struct ramchain_info *get_ramchain_info(char *coinstr);
-// also bitcoind_RPC.c, cJSON.h and cJSON.c are needed
-//
-// malloc, calloc, realloc, free, gettimeofday, strcpy, strncmp, strcmp, memcpy, mmap, munmap, msync, truncate;
+// check http backups for money sent to prevent doublesend in rare cases
+// other holes: TBD
 
 #ifdef INCLUDE_DEFINES
 #ifndef ramchain_h
