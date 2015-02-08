@@ -2869,29 +2869,38 @@ char *_parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct ramchain_
 
 struct MGWstate *ram_select_MGWstate(struct ramchain_info *ram,int32_t selector)
 {
-    struct MGWstate *sp;
-    if ( selector < 0 )
-        sp = &ram->S;
-    else if ( selector < ram->numgateways )
-        sp = &ram->otherS[selector];
+    struct MGWstate *sp = 0;
+    if ( ram != 0 )
+    {
+        if ( selector < 0 )
+            sp = &ram->S;
+        else if ( selector < ram->numgateways )
+            sp = &ram->otherS[selector];
+    }
     return(sp);
 }
 
 void ram_set_MGWpingstr(char *pingstr,struct ramchain_info *ram,int32_t selector)
 {
     struct MGWstate *sp = ram_select_MGWstate(ram,selector);
-    if ( ram->S.gatewayid >= 0 )
+    if ( ram != 0 && ram->S.gatewayid >= 0 )
     {
         ram->S.supply = (ram->S.totaloutputs - ram->S.totalspends);
         ram->otherS[ram->S.gatewayid] = ram->S;
     }
-    sprintf(pingstr,"\"coin\":\"%s\",\"gatewayid\":\"%d\",\"balance\":\"%llu\",\"sentNXT\":\"%llu\",\"unspent\":\"%llu\",\"supply\":\"%llu\",\"circulation\":\"%llu\",\"pendingredeems\":\"%llu\",\"pendingdeposits\":\"%llu\",\"internal\":\"%llu\",\"RTNXT\":{\"height\":\"%d\",\"lag\":\"%d\",\"ECblock\":\"%llu\",\"ECheight\":\"%u\"},\"%s\":{\"height\":\"%d\",\"lag\":\"%d\"},",ram->name,sp->gatewayid,(long long)(sp->MGWbalance),(long long)(sp->sentNXT),(long long)(sp->MGWunspent),(long long)(sp->supply),(long long)(sp->circulation),(long long)(sp->MGWpendingredeems),(long long)(sp->MGWpendingdeposits),(long long)(sp->orphans),sp->NXT_RTblocknum,sp->NXT_RTblocknum-sp->NXTblocknum,(long long)sp->NXT_ECblock,sp->NXT_ECheight,sp->name,sp->RTblocknum,sp->RTblocknum - sp->blocknum);
+    if ( sp != 0 )
+    {
+        sprintf(pingstr,"\"coin\":\"%s\",\"gatewayid\":\"%d\",\"balance\":\"%llu\",\"sentNXT\":\"%llu\",\"unspent\":\"%llu\",\"supply\":\"%llu\",\"circulation\":\"%llu\",\"pendingredeems\":\"%llu\",\"pendingdeposits\":\"%llu\",\"internal\":\"%llu\",\"RTNXT\":{\"height\":\"%d\",\"lag\":\"%d\",\"ECblock\":\"%llu\",\"ECheight\":\"%u\"},\"%s\":{\"height\":\"%d\",\"lag\":\"%d\"},",ram->name,sp->gatewayid,(long long)(sp->MGWbalance),(long long)(sp->sentNXT),(long long)(sp->MGWunspent),(long long)(sp->supply),(long long)(sp->circulation),(long long)(sp->MGWpendingredeems),(long long)(sp->MGWpendingdeposits),(long long)(sp->orphans),sp->NXT_RTblocknum,sp->NXT_RTblocknum-sp->NXTblocknum,(long long)sp->NXT_ECblock,sp->NXT_ECheight,sp->name,sp->RTblocknum,sp->RTblocknum - sp->blocknum);
+    }
  }
 
 void ram_set_MGWdispbuf(char *dispbuf,struct ramchain_info *ram,int32_t selector)
 {
     struct MGWstate *sp = ram_select_MGWstate(ram,selector);
-    sprintf(dispbuf,"[+%.8f %s - %.0f NXT rate %.2f] msigs.%d unspent %.8f circ %.8f/%.8f pend.(W%.8f D%.8f) NXT.%d %s.%d\n",dstr(sp->MGWbalance),ram->name,dstr(sp->sentNXT),sp->MGWbalance<=0?0:dstr(sp->sentNXT)/dstr(sp->MGWbalance),ram->nummsigs,dstr(sp->MGWunspent),dstr(sp->circulation),dstr(sp->supply),dstr(sp->MGWpendingredeems),dstr(sp->MGWpendingdeposits),sp->NXT_RTblocknum,ram->name,sp->RTblocknum);
+    if ( sp != 0 )
+    {
+        sprintf(dispbuf,"[+%.8f %s - %.0f NXT rate %.2f] msigs.%d unspent %.8f circ %.8f/%.8f pend.(W%.8f D%.8f) NXT.%d %s.%d\n",dstr(sp->MGWbalance),ram->name,dstr(sp->sentNXT),sp->MGWbalance<=0?0:dstr(sp->sentNXT)/dstr(sp->MGWbalance),ram->nummsigs,dstr(sp->MGWunspent),dstr(sp->circulation),dstr(sp->supply),dstr(sp->MGWpendingredeems),dstr(sp->MGWpendingdeposits),sp->NXT_RTblocknum,ram->name,sp->RTblocknum);
+    }
 }
 
 void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector)
@@ -2909,6 +2918,8 @@ void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selec
 void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr)
 {
     cJSON *nxtobj,*coinobj;
+    if ( sp == 0 || json == 0 || coinstr == 0 || coinstr[0] == 0 )
+        return;
     sp->MGWbalance = get_API_nxt64bits(cJSON_GetObjectItem(json,"balance"));
     sp->sentNXT = get_API_nxt64bits(cJSON_GetObjectItem(json,"sentNXT"));
     sp->MGWunspent = get_API_nxt64bits(cJSON_GetObjectItem(json,"unspent"));
@@ -2934,7 +2945,7 @@ void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr)
 void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
 {
     void save_MGW_status(char *NXTaddr,char *jsonstr);
-    char name[512],coinstr[512],*jsonstr;
+    char name[512],coinstr[512],*jsonstr = 0;
     int32_t gatewayid;
     cJSON *json,*array;
     if ( Finished_init == 0 )
@@ -2967,7 +2978,8 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
                 save_MGW_status(name,jsonstr);
             }
         } else if ( Debuglevel > 2 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
-        free(jsonstr);
+        if ( jsonstr != 0 )
+            free(jsonstr);
         free_json(array);
     }
     //printf("parsed\n");
