@@ -9246,13 +9246,13 @@ void *process_ramchains(void *_argcoinstr)
                 }
                 else //if ( (ram->S.NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(ram) )
                 {
-                    if ( ram->S.is_realtime != 0 )
+                    //if ( ram->S.is_realtime != 0 )
                     {
                         ram->S.NXTblocknum = _update_ramMGW(0,ram,ram->S.NXTblocknum);
                         if ( (ram->S.MGWpendingredeems + ram->S.MGWpendingdeposits) != 0 )
                             printf("\n");
                         ram->S.NXT_is_realtime = (ram->S.NXTblocknum >= (ram->S.NXT_RTblocknum - ram->min_NXTconfirms));
-                    } else ram->S.NXT_is_realtime = 0;
+                    } //else ram->S.NXT_is_realtime = 0;
                     ram_update_RTblock(ram);
                     for (pass=1; pass<=4; pass++)
                     {
