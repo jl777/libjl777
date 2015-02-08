@@ -2449,27 +2449,30 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
             {
                 //fprintf(stderr,"len.%ld rawparams.(%s)\n",strlen(rawparams),rawparams);
                 _stripwhite(rawparams,0);
-                retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"createrawtransaction",rawparams);
-                if ( retstr != 0 && retstr[0] != 0 )
+                if (  ram->S.gatewayid >= 0 )
                 {
-                    fprintf(stderr,"len.%ld calc_rawtransaction retstr.(%s)\n",strlen(retstr),retstr);
-                    if ( (with_op_return= _insert_OP_RETURN(retstr,numoutputs-1,&redeemtxid,1)) != 0 )
+                    retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"createrawtransaction",rawparams);
+                    if (retstr != 0 && retstr[0] != 0 )
                     {
-                        if ( (signedtx= _sign_localtx(ram,cointx,with_op_return)) != 0 )
+                        fprintf(stderr,"len.%ld calc_rawtransaction retstr.(%s)\n",strlen(retstr),retstr);
+                        if ( (with_op_return= _insert_OP_RETURN(retstr,numoutputs-1,&redeemtxid,1)) != 0 )
                         {
-                            allocsize = (int32_t)(sizeof(*rettx) + strlen(signedtx) + 1);
-                           // printf("signedtx returns.(%s) allocsize.%d\n",signedtx,allocsize);
-                            rettx = calloc(1,allocsize);
-                            *rettx = *cointx;
-                            rettx->allocsize = allocsize;
-                            rettx->isallocated = allocsize;
-                            strcpy(rettx->signedtx,signedtx);
-                            free(signedtx);
-                            cointx = 0;
-                        } else printf("error _sign_localtx.(%s)\n",with_op_return);
-                        free(with_op_return);
-                    } else printf("error replacing with OP_RETURN\n");
-                } else fprintf(stderr,"error creating rawtransaction\n");
+                            if ( (signedtx= _sign_localtx(ram,cointx,with_op_return)) != 0 )
+                            {
+                                allocsize = (int32_t)(sizeof(*rettx) + strlen(signedtx) + 1);
+                                // printf("signedtx returns.(%s) allocsize.%d\n",signedtx,allocsize);
+                                rettx = calloc(1,allocsize);
+                                *rettx = *cointx;
+                                rettx->allocsize = allocsize;
+                                rettx->isallocated = allocsize;
+                                strcpy(rettx->signedtx,signedtx);
+                                free(signedtx);
+                                cointx = 0;
+                            } else printf("error _sign_localtx.(%s)\n",with_op_return);
+                            free(with_op_return);
+                        } else printf("error replacing with OP_RETURN\n");
+                    } else fprintf(stderr,"error creating rawtransaction\n");
+                }
                 free(rawparams);
                 if ( retstr != 0 )
                     free(retstr);
@@ -2906,7 +2909,7 @@ void ram_set_MGWdispbuf(char *dispbuf,struct ramchain_info *ram,int32_t selector
 void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector)
 {
     MGWpingstr[0] = 0;
-    printf("get MGWpingstr\n");
+   // printf("get MGWpingstr\n");
     if ( Numramchains != 0 )
     {
         if ( ram == 0 )
@@ -6736,7 +6739,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") != 0 )
+    if ( 1 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") != 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -9242,13 +9245,13 @@ void *process_ramchains(void *_argcoinstr)
                 }
                 else //if ( (ram->S.NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(ram) )
                 {
-                   // if ( ram->mappedblocks[1]->blocknum >= (_get_RTheight(ram) - 2*ram->min_confirms - 10) )
+                    if ( ram->S.is_realtime != 0 )
                     {
                         ram->S.NXTblocknum = _update_ramMGW(0,ram,ram->S.NXTblocknum);
                         if ( (ram->S.MGWpendingredeems + ram->S.MGWpendingdeposits) != 0 )
                             printf("\n");
                         ram->S.NXT_is_realtime = (ram->S.NXTblocknum >= (ram->S.NXT_RTblocknum - ram->min_NXTconfirms));
-                    } //else ram->NXT_is_realtime = 0;
+                    } else ram->S.NXT_is_realtime = 0;
                     ram_update_RTblock(ram);
                     for (pass=1; pass<=4; pass++)
                     {
