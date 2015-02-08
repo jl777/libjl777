@@ -8981,7 +8981,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
     nofile = ram_init_hashtable(0,&blocknums[0],ram,'a');
     nofile += ram_init_hashtable(0,&blocknums[1],ram,'s');
     nofile += ram_init_hashtable(0,&blocknums[2],ram,'t');
-    if ( nofile == 3 )//|| strcmp(ram->name,"BTC") == 0 )
+    if ( nofile == 3 || strcmp(ram->name,"BTC") == 0 )
     {
         printf("REGEN\n");
         ram->mappedblocks[4] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->blocks4096,&ram->blocks64,4096,12);
@@ -8990,10 +8990,10 @@ void ram_init_ramchain(struct ramchain_info *ram)
         ram->mappedblocks[1] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->Vblocks,&ram->blocks,'V',0);
         ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
         ram_update_RTblock(ram);
-        for (pass=1; pass<=4; pass++)
+        for (pass=2; pass<=4; pass++)
         {
             printf("pass.%d\n",pass);
-            if ( 1 && pass == 2 )
+            if ( 0 && pass == 2 )
             {
                 nofile = ram_init_hashtable(1,&blocknums[0],ram,'a');
                 nofile += ram_init_hashtable(1,&blocknums[1],ram,'s');
