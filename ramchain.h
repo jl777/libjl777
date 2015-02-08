@@ -2906,6 +2906,7 @@ void ram_set_MGWdispbuf(char *dispbuf,struct ramchain_info *ram,int32_t selector
 void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector)
 {
     MGWpingstr[0] = 0;
+    printf("get MGWpingstr\n");
     if ( Numramchains != 0 )
     {
         if ( ram == 0 )
