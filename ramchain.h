@@ -7164,7 +7164,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                             ram->blocks.hps[blocknum] = hp;
 #endif
                     }
-                } else delete_file(fname,0), hclose(hp);
+                } //else delete_file(fname,0), hclose(hp);
             }
         } else printf("%s.%u couldnt get hpp\n",formatstr,blocknum);
     }
