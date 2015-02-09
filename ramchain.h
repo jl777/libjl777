@@ -7667,7 +7667,7 @@ int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint
                 return(-1);
     }
     datalen += hconv_bitlen(numbits);
-    if ( iter != 1 && (blocknum % (64*64)) == (64*64 - 1) )
+    if ( 0 && iter != 1 && (blocknum % (64*64)) == (64*64 - 1) )
     {
         void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
         ram_sync4096(ram,(blocknum >> 12) << 12);
@@ -8582,14 +8582,14 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
                     copy_cJSON(shastr,cJSON_GetObjectItem(json,"sha256"));
                     _stripwhite(snapstr,' ');
                     // update pyramid
-                    printf("PYRAMID.B%d blocknum.%u sha.(%s) (%s)\n",format,blocknum,shastr,snapstr);
+                    printf("PYRAMID.B%d blocknum.%u sha.(%s) (%s) from NXT.(%s) ip.(%s)\n",format,blocknum,shastr,snapstr,sender,senderip);
                     free(snapstr);
                 }
             }
             else if ( strcmp(origcmd,"ramblock") == 0 )
             {
                 if ( datastr != 0 )
-                    printf("PYRAMID.B%d blocknum.%u (%s).permsize %ld\n",format,blocknum,datastr,strlen(datastr)/2);
+                    printf("PYRAMID.B%d blocknum.%u (%s).permsize %ld from NXT.(%s) ip.(%s)\n",format,blocknum,datastr,strlen(datastr)/2,sender,senderip);
             }
             else
             {
@@ -8603,11 +8603,11 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
                 {
                     copy_cJSON(permstr,cJSON_GetObjectItem(json,"permstr"));
                     permind = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"rawind"),0);
-                    printf("PYRAMID.%s (permind.%d %s).%c\n",origcmd,permind,permstr,type);
+                    printf("PYRAMID.%s (permind.%d %s).%c from NXT.(%s) ip.(%s)\n",origcmd,permind,permstr,type,sender,senderip);
                     // update pyramid
                 }
                 else if ( format == 0 )
-                    printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s)\n",coin,origcmd,permstr,origargstr);
+                    printf("RAMRESPONSE unhandled: (%s) (%s) (%s) (%s) from NXT.(%s) ip.(%s)\n",coin,origcmd,permstr,origargstr,sender,senderip);
             }
         }
         free_json(array);
@@ -9149,6 +9149,11 @@ void ram_init_ramchain(struct ramchain_info *ram)
         }
     }
 #endif
+    for (i=0; i<ram->S.RTblocknum; i+=4096)
+    {
+        void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
+        ram_sync4096(ram,i);
+    }
     ram_disp_status(ram);
     //getchar();
 }
