@@ -339,6 +339,461 @@ void run_UVloop(void *arg)
     printf("end of uv_run\n");
 }
 
+#ifndef INSTALL_DATADIR
+#define INSTALL_DATADIR "~"
+#endif
+#define LOCAL_RESOURCE_PATH INSTALL_DATADIR
+char *resource_path = LOCAL_RESOURCE_PATH;
+static volatile int SSL_done;
+static volatile int force_exit = 0;
+
+struct serveable
+{
+	const char *urlpath;
+	const char *mimetype;
+};
+
+struct per_session_data__http
+{
+	int fd;
+};
+
+void dump_handshake_info(struct libwebsocket *wsi)
+{
+	int n;
+	static const char *token_names[] = {
+		/*[WSI_TOKEN_GET_URI]		=*/ "GET URI",
+		/*[WSI_TOKEN_POST_URI]		=*/ "POST URI",
+		/*[WSI_TOKEN_HOST]		=*/ "Host",
+		/*[WSI_TOKEN_CONNECTION]	=*/ "Connection",
+		/*[WSI_TOKEN_KEY1]		=*/ "key 1",
+		/*[WSI_TOKEN_KEY2]		=*/ "key 2",
+		/*[WSI_TOKEN_PROTOCOL]		=*/ "Protocol",
+		/*[WSI_TOKEN_UPGRADE]		=*/ "Upgrade",
+		/*[WSI_TOKEN_ORIGIN]		=*/ "Origin",
+		/*[WSI_TOKEN_DRAFT]		=*/ "Draft",
+		/*[WSI_TOKEN_CHALLENGE]		=*/ "Challenge",
+        
+		/* new for 04 */
+		/*[WSI_TOKEN_KEY]		=*/ "Key",
+		/*[WSI_TOKEN_VERSION]		=*/ "Version",
+		/*[WSI_TOKEN_SWORIGIN]		=*/ "Sworigin",
+        
+		/* new for 05 */
+		/*[WSI_TOKEN_EXTENSIONS]	=*/ "Extensions",
+        
+		/* client receives these */
+		/*[WSI_TOKEN_ACCEPT]		=*/ "Accept",
+		/*[WSI_TOKEN_NONCE]		=*/ "Nonce",
+		/*[WSI_TOKEN_HTTP]		=*/ "Http",
+        
+		"Accept:",
+		"If-Modified-Since:",
+		"Accept-Encoding:",
+		"Accept-Language:",
+		"Pragma:",
+		"Cache-Control:",
+		"Authorization:",
+		"Cookie:",
+		"Content-Length:",
+		"Content-Type:",
+		"Date:",
+		"Range:",
+		"Referer:",
+		"Uri-Args:",
+        
+		/*[WSI_TOKEN_MUXURL]	=*/ "MuxURL",
+	};
+	char buf[256];
+    
+	for (n = 0; n < sizeof(token_names) / sizeof(token_names[0]); n++) {
+		if (!lws_hdr_total_length(wsi, n))
+			continue;
+        
+		lws_hdr_copy(wsi, buf, sizeof buf, n);
+        
+		fprintf(stderr, "    %s = %s\n", token_names[n], buf);
+	}
+}
+
+const char * get_mimetype(const char *file)
+{
+	int n = (int)strlen(file);
+    
+	if (n < 5)
+		return NULL;
+    
+	if (!strcmp(&file[n - 4], ".ico"))
+		return "image/x-icon";
+    
+	if (!strcmp(&file[n - 4], ".png"))
+		return "image/png";
+    
+	if (!strcmp(&file[n - 5], ".html"))
+		return "text/html";
+    
+	return NULL;
+}
+
+void return_http_str(struct libwebsocket *wsi,uint8_t *retstr,int32_t retlen,char *insertstr,char *mediatype)
+{
+    int32_t len;
+    unsigned char buffer[8192];
+    len = retlen;
+    if ( insertstr != 0 && insertstr[0] != 0 )
+        len += (int32_t)strlen(insertstr);
+    sprintf((char *)buffer,
+            "HTTP/1.0 200 OK\r\n"
+            "Server: SuperNET\r\n"
+            "Content-Type: %s\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
+            "Access-Control-Allow-Credentials: true\r\n"
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+            "Content-Length: %u\r\n\r\n",
+            mediatype,(unsigned int)len);
+    //printf("html hdr.(%s)\n",buffer);
+    if ( insertstr != 0 && insertstr[0] != 0 )
+        strcat((char *)buffer,insertstr);
+    libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
+    libwebsocket_write(wsi,(unsigned char *)retstr,retlen,LWS_WRITE_HTTP);
+    if ( Debuglevel > 3 )
+        printf("SuperNET >>>>>>>>>>>>>> sends back (%s) retlen.%d\n",mediatype,retlen);
+}
+
+uint64_t conv_URL64(char *password,char *pin,char *str)
+{
+    char numstr[64],**pinp,**passwordp;
+    int32_t i,j;
+    pinp = passwordp = 0;
+    for (i=0; str[i]!=0; i++)
+    {
+        if ( str[i] == '?' )
+        {
+            *passwordp = (str + i + 1);
+            for (j=0; (*passwordp)[j]!=0; j++)
+            {
+                if ( (*passwordp)[j] == '&' )
+                {
+                    *pinp = &(*passwordp)[j+1];
+                    (*passwordp)[j] = 0;
+                    printf("pin.(%s) ",*pinp);
+                    break;
+                }
+            }
+            printf("password.(%s)\n",*passwordp);
+            break;
+        }
+        if ( str[i] >= '0' && str[i] <= '9' )
+            numstr[i] = str[i];
+        else return(0);
+    }
+    if ( i >= MAX_NXTTXID_LEN )
+        return(0);
+    numstr[i] = 0;
+    if ( passwordp != 0 )
+        strcpy(password,*passwordp);
+    if ( pinp != 0 )
+        strcpy(pin,*pinp);
+    return(calc_nxt64bits(numstr));
+}
+
+uint64_t html_mappings(cJSON *array,char *fname)
+{
+    static int didinit,numhtmlmappings;
+    static portable_mutex_t mutex;
+    static char *mappings[1000];
+    static uint64_t URL64s[sizeof(mappings)/sizeof(*mappings)];
+    int32_t i,j,n;
+    cJSON *item;
+    uint64_t URL64 = 0;
+    char filename[1024];
+    if ( didinit == 0 )
+    {
+        portable_mutex_init(&mutex);
+        didinit = 1;
+    }
+    if ( array != 0 )
+    {
+        if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        {
+            printf("n.%d items in array\n",n);
+            portable_mutex_lock(&mutex);
+            for (i=0; i<n; i++)
+            {
+                item = cJSON_GetArrayItem(array,i);
+                if ( cJSON_GetArraySize(item) == 2 )
+                {
+                    copy_cJSON(filename,cJSON_GetArrayItem(item,0));
+                    URL64 = get_API_nxt64bits(cJSON_GetArrayItem(item,1));
+                    printf("%d (%s %llu)\n",i,filename,(long long)URL64);
+                    if ( numhtmlmappings > 0 )
+                    {
+                        for (j=0; j<numhtmlmappings; j++)
+                            if ( strcmp(filename,mappings[j]) == 0 )
+                                break;
+                    } else j = 0;
+                    URL64s[j] = URL64;
+                    if ( j == numhtmlmappings && numhtmlmappings < (int32_t)(sizeof(mappings)/sizeof(*mappings)) )
+                    {
+                        mappings[j] = clonestr(filename);
+                        numhtmlmappings++;
+                    }
+                }
+            }
+            portable_mutex_unlock(&mutex);
+        }
+    }
+    else
+    {
+        portable_mutex_lock(&mutex);
+        if ( numhtmlmappings > 0 )
+        {
+            for (j=0; j<numhtmlmappings; j++)
+                if ( strcmp(fname,mappings[j]) == 0 )
+                {
+                    URL64 = URL64s[j];
+                    break;
+                }
+        }
+        portable_mutex_unlock(&mutex);
+    }
+    return(URL64);
+}
+
+// this protocol server (always the first one) just knows how to do HTTP
+static int callback_http(struct libwebsocket_context *context,struct libwebsocket *wsi,enum libwebsocket_callback_reasons reason,void *user,void *in,size_t len)
+{
+    char *block_on_SuperNET(int32_t blockflag,char *JSONstr);
+    static char password[512],pin[64],*filebuf=0;
+    static int64_t filelen=0,allocsize=0;
+	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],mediatype[MAX_JSON_FIELD],*retstr,*str,*filestr;
+    cJSON *json,*array,*map;
+    struct coin_info *cp;
+    uint64_t URL64;
+    //if ( len != 0 )
+    //printf("reason.%d len.%ld\n",reason,len);
+    strcpy(mediatype,"text/html");
+    switch ( reason )
+    {
+        case LWS_CALLBACK_HTTP:
+            if ( len < 1 )
+            {
+                //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_BAD_REQUEST, NULL);
+                return -1;
+            }
+            // if a legal POST URL, let it continue and accept data
+            if ( lws_hdr_total_length(wsi,WSI_TOKEN_POST_URI) != 0 )
+                return 0;
+            str = malloc(len+1);
+            memcpy(str,(void *)((long)in + 1),len-1);
+            str[len-1] = 0;
+            convert_percent22(str);
+            if ( Debuglevel > 3 )
+                printf("RPC GOT.(%s)\n",str);
+            if ( str[0] == 0 || (str[0] != '[' && str[0] != '{') )
+            {
+                URL64 = 0;
+                buf[0] = 0;
+                if ( str[0] == 0 )
+                    strcpy(fname,"html/index.html");
+                else if ( (URL64= html_mappings(0,str)) == 0 )
+                {
+                    if ( (URL64= conv_URL64(password,pin,str)) == 0 )
+                        sprintf(fname,"html/%s",str);
+                } else printf("MAPPED.(%s) -> %llu\n",str,(long long)URL64);
+                if ( strcmp(str,"supernet.js") == 0 )
+                {
+                    strcpy(mediatype,"application/javascript");
+                    if ( (cp= get_coin_info("BTCD")) != 0 )
+                        sprintf(buf,"var authToken = btoa(\"%s\");",cp->userpass);
+                }
+                printf("FNAME.(%s) URL64.%llu str.(%s)\n",fname,(long long)URL64,str);
+                if ( URL64 != 0 )
+                {
+                    filestr = load_URL64(&map,mediatype,URL64,&filebuf,&filelen,&allocsize,password,pin);
+                    if ( map != 0 )
+                    {
+                        html_mappings(map,0);
+                        free_json(map);
+                    }
+                }
+                else filestr = load_file(fname,&filebuf,&filelen,&allocsize);
+                if ( filestr != 0 )
+                    return_http_str(wsi,(uint8_t *)filestr,(int32_t)filelen,buf,mediatype);
+                else return_http_str(wsi,(uint8_t *)str,(int32_t)strlen(str),"ERROR LOADING: ",mediatype);
+            }
+            else
+            {
+                if ( (json= cJSON_Parse(str)) != 0 )
+                {
+                    retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
+                    if ( retstr != 0 )
+                    {
+                        return_http_str(wsi,(uint8_t *)retstr,(int32_t)strlen(retstr),0,"text/html");
+                        free(retstr);
+                    }
+                    free_json(json);
+                } else printf("couldnt parse.(%s)\n",str);
+            }
+            free(str);
+            return(-1);
+            break;
+        case LWS_CALLBACK_HTTP_BODY:
+            str = malloc(len+1);
+            memcpy(str,in,len);
+            str[len] = 0;
+            //if ( wsi != 0 )
+            //dump_handshake_info(wsi);
+            if ( Debuglevel > 3 && strcmp("{\"requestType\":\"BTCDpoll\"}",str) != 0 )
+                fprintf(stderr,">>>>>>>>>>>>>> SuperNET received RPC.(%s) wsi.%p user.%p\n",str,wsi,user);
+            //>>>>>>>>>>>>>> SuperNET received RPC.({"requestType":"BTCDjson","json":{\"requestType\":\"getpeers\"}})
+            //{"jsonrpc": "1.0", "id":"curltest", "method": "SuperNET", "params": ["{\"requestType\":\"getpeers\"}"]  }
+            if ( (json= cJSON_Parse(str)) != 0 )
+            {
+                if ( (array= cJSON_GetObjectItem(json,"params")) != 0 && is_cJSON_Array(array) != 0 )
+                {
+                    copy_cJSON(buf,cJSON_GetArrayItem(array,0));
+                    unstringify(buf);
+                    stripwhite_ns(buf,strlen(buf));
+                    retstr = block_on_SuperNET(1,buf);
+                }
+                else retstr = block_on_SuperNET(is_BTCD_command(json) == 0,str);
+                if ( retstr != 0 )
+                {
+                    return_http_str(wsi,(uint8_t *)retstr,(int32_t)strlen(retstr),0,mediatype);
+                    free(retstr);
+                }
+                free_json(json);
+            }
+            else return_http_str(wsi,(uint8_t *)str,(int32_t)strlen(str),0,mediatype);
+            free(str);
+            return(-1);
+            break;
+        case LWS_CALLBACK_HTTP_BODY_COMPLETION: // the whole sent body arried, close the connection
+            //lwsl_notice("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
+            //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_OK, NULL);
+            return -1;
+        case LWS_CALLBACK_HTTP_FILE_COMPLETION:     // kill the connection after we sent one file
+            //		lwsl_info("LWS_CALLBACK_HTTP_FILE_COMPLETION seen\n");
+            return -1;
+        case LWS_CALLBACK_HTTP_WRITEABLE:           // we can send more of whatever it is we were sending
+            /*flush_bail:
+             if ( lws_send_pipe_choked(wsi) == 0 )   // true if still partial pending
+             {
+             libwebsocket_callback_on_writable(context, wsi);
+             break;
+             }
+             bail:
+             close(pss->fd);*/
+            return -1;
+            /*
+             * callback for confirming to continue with client IP appear in
+             * protocol 0 callback since no websocket protocol has been agreed
+             * yet.  You can just ignore this if you won't filter on client IP
+             * since the default uhandled callback return is 0 meaning let the
+             * connection continue.
+             */
+        case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
+#if 0
+            libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
+            fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
+#endif
+            // if we returned non-zero from here, we kill the connection
+            break;
+        case LWS_CALLBACK_GET_THREAD_ID:
+            /*
+             * if you will call "libwebsocket_callback_on_writable"
+             * from a different thread, return the caller thread ID
+             * here so lws can use this information to work out if it
+             * should signal the poll() loop to exit and restart early
+             */
+            /* return pthread_getthreadid_np(); */
+            break;
+        default:
+            break;
+	}
+	return 0;
+}
+
+static struct libwebsocket_protocols protocols[] =
+{
+	// first protocol must always be HTTP handler
+    
+	{
+		"http-only",		// name
+		callback_http,		// callback
+		sizeof (struct per_session_data__http),	// per_session_data_size
+		0,			// max frame size / rx buffer
+	},
+	{ NULL, NULL, 0, 0 } // terminator
+};
+
+void sighandler(int sig)
+{
+	force_exit = 1;
+	//libwebsocket_cancel_service(context);
+}
+
+int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
+{
+	int n,opts = 0;
+	const char *iface = NULL;
+	struct lws_context_creation_info info;
+    struct libwebsocket_context *context;
+    
+	memset(&info,0,sizeof info);
+	info.port = port;
+    /*#if !defined(LWS_NO_DAEMONIZE) && !defined(WIN32)
+     if ( lws_daemonize("/tmp/.SuperNET-lock") != 0 )
+     {
+     fprintf(stderr,"Failed to daemonize\n");
+     return(-1);
+     }
+     #endif
+     signal(SIGINT, sighandler);*/
+	lwsl_notice("libwebsockets test server - (C) Copyright 2010-2013 Andy Green <andy@warmcat.com> -  licensed under LGPL2.1\n");
+	info.iface = iface;
+	info.protocols = protocols;
+ 	info.gid = -1;
+	info.uid = -1;
+	info.options = opts;
+	if ( use_ssl == 0 )
+    {
+		info.ssl_cert_filepath = NULL;
+		info.ssl_private_key_filepath = NULL;
+	}
+    else
+    {
+		char cert_path[1024];
+        char key_path[1024];
+		sprintf(cert_path,"SuperNET.pem");
+		if (strlen(resource_path) > sizeof(key_path) - 32)
+        {
+			lwsl_err("resource path too long\n");
+			return -1;
+		}
+		sprintf(key_path,"SuperNET.key.pem");
+		info.ssl_cert_filepath = cert_path;
+		info.ssl_private_key_filepath = key_path;
+	}
+	context = libwebsocket_create_context(&info);
+	if ( context == NULL )
+    {
+		lwsl_err("libwebsocket init failed\n");
+		return -1;
+	}
+	n = 0;
+    SSL_done |= (1 << use_ssl);
+	while ( n >= 0 && !force_exit )
+    {
+		n = libwebsocket_service(context,millis);
+	}
+	libwebsocket_context_destroy(context);
+	lwsl_notice("libwebsockets-test-server exited cleanly\n");
+	return 0;
+}
+
 void run_libwebsockets(void *arg)
 {
     int32_t usessl = *(int32_t *)arg;

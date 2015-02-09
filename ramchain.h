@@ -7605,9 +7605,19 @@ int32_t ram_rawtx_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_
     return(-3);
 }
 
+
 void ram_snapshot(struct ramsnapshot *snap,struct ramchain_info *ram)
 {
-    
+    memset(snap,0,sizeof(*snap));
+    snap->addrind = ram->next_addr_permind;
+    if ( ram->addrhash.permfp != 0 )
+        snap->addroffset = ftell(ram->addrhash.permfp);
+    snap->txidind = ram->next_txid_permind;
+    if ( ram->txidhash.permfp != 0 )
+        snap->txidoffset = ftell(ram->txidhash.permfp);
+    snap->scriptind = ram->next_script_permind;
+    if ( ram->scripthash.permfp != 0 )
+        snap->scriptoffset = ftell(ram->scripthash.permfp);
 }
 
 int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_t checkblocknum)
@@ -7641,7 +7651,6 @@ int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint
         }
         if ( (blocknum % 64) == 0 )
             ram_snapshot(&ram->snapshots[blocknum / 64],ram);
-        //printf("block.%d vs %d\n",blocknum,ram->next_blocknum);
         ram->next_blocknum++;
     }
     numbits += hdecode_smallbits(&numtx,hp);
@@ -7658,6 +7667,11 @@ int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint
                 return(-1);
     }
     datalen += hconv_bitlen(numbits);
+    if ( iter != 1 && (blocknum % (64*64)) == (64*64 - 1) )
+    {
+        void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
+        ram_sync4096(ram,(blocknum >> 12) << 12);
+    }
     return(datalen);
 }
 
@@ -8420,9 +8434,112 @@ cJSON *ram_snapshot_json(struct ramsnapshot *snap)
 }
 
 // >>>>>>>>>>>>>>  start external and API interface functions
+char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin)
+{
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    char retbuf[1024],*str;
+    if ( ram == 0 || ram->MGWpingstr[0] == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    ram_setdispstr(retbuf,ram,ram->startmilli);
+    str = stringifyM(retbuf);
+    sprintf(retbuf,"{\"result\":\"MGWstatus\",%s\"ramchain\":%s}",ram->MGWpingstr,str);
+    free(str);
+    return(clonestr(retbuf));
+}
+
+bits256 ram_perm_sha256(struct ramchain_info *ram,uint32_t blocknum,int32_t n)
+{
+    bits256 hash,tmp;
+    int32_t i;
+    HUFF *hp,*permhp;
+    memset(hash.bytes,0,sizeof(hash));
+    for (i=0; i<n; i++)
+    {
+        if ( (hp= ram->blocks.hps[blocknum+i]) == 0 )
+            break;
+        if ( (permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum+i)) == 0 )
+            break;
+        calc_sha256cat(tmp.bytes,hash.bytes,sizeof(hash),permhp->buf,hconv_bitlen(permhp->endpos)), hash = tmp;
+    }
+    return(hash);
+}
+
+char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr)
+{
+    struct ramchain_info *ram = get_ramchain_info(coin);
+    char shastr[65],*hexstr,*retstr = 0;
+    bits256 hash;
+    HUFF *permhp,*hp,*newhp,**hpptr;
+    cJSON *json;
+    int32_t size,i,n;
+    printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
+    if ( ram == 0 )
+        return(clonestr("{\"error\":\"no ramchain info\"}"));
+    else if ( blocknum >= ram->maxblock )
+        return(clonestr("{\"error\":\"blocknum too big\"}"));
+    else if ( blocknum >= ram->next_blocknum )
+        return(clonestr("{\"error\":\"blocknum past permblocks\"}"));
+    if ( strcmp(typestr,"B64") == 0 )
+    {
+        n = 64;
+        if ( (blocknum % n) != 0 )
+            return(clonestr("{\"error\":\"B64 blocknum misaligned\"}"));
+    }
+    else if ( strcmp(typestr,"B4096") == 0 )
+    {
+        n = 4096;
+        if ( (blocknum % n) != 0 )
+            return(clonestr("{\"error\":\"B4096 blocknum misaligned\"}"));
+        //printf("rampyramid B4096 for blocknum.%d\n",blocknum);
+    }
+    else
+    {
+        if ( (hp= ram->blocks.hps[blocknum]) == 0 )
+        {
+            if ( (hpptr= ram_get_hpptr(&ram->Vblocks,blocknum)) != 0 && (hp= *hpptr) != 0 )
+            {
+                if ( ram_expand_bitstream(0,ram->R3,ram,hp) > 0 )
+                {
+                    newhp = ram_makehp(ram->tmphp,'B',ram,ram->R3,blocknum);
+                    if ( (hpptr= ram_get_hpptr(&ram->Bblocks,blocknum)) != 0 )
+                        hp = ram->blocks.hps[blocknum] = *hpptr = newhp;
+                } else hp = 0;
+   //if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
+            }
+        }
+        if ( hp != 0 )
+        {
+            if ( (permhp= ram_conv_permind(ram->tmphp,ram,hp,blocknum)) != 0 )
+            {
+                size = hconv_bitlen(permhp->endpos);
+                hexstr = calloc(1,size*2+1);
+                init_hexbytes_noT(hexstr,permhp->buf,size);
+                retstr = calloc(1,size*2+1+512);
+                sprintf(retstr,"{\"NXT\":\"%s\",\"blocknum\":\"%d\",\"size\":\"%d\",\"data\":\"%s\"}",myNXTaddr,blocknum,size,hexstr);
+                free(hexstr);
+                return(retstr);
+            } else return(clonestr("{\"error\":\"error doing ram_conv_permind\"}"));
+        } else return(clonestr("{\"error\":\"no ramchain info for blocknum\"}"));
+    }
+    hash = ram_perm_sha256(ram,blocknum,n);
+    //printf("blocknum.%d i.%d of %d\n",blocknum,i,n);
+    if ( i == n )
+    {
+        json = ram_snapshot_json(&ram->snapshots[blocknum/64]);
+        init_hexbytes_noT(shastr,hash.bytes,sizeof(hash));
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(myNXTaddr));
+        cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
+        cJSON_AddItemToObject(json,"B",cJSON_CreateNumber(n));
+        cJSON_AddItemToObject(json,"sha256",cJSON_CreateString(shastr));
+        retstr = cJSON_Print(json);
+        free_json(json);
+    } else return(clonestr("{\"error\":\"some data missing\"}"));
+    return(retstr);
+}
+
 char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
 {
-    char origcmd[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],permstr[MAX_JSON_FIELD],shastr[MAX_JSON_FIELD],*snapstr;
+    char origcmd[MAX_JSON_FIELD],coin[MAX_JSON_FIELD],permstr[MAX_JSON_FIELD],shastr[MAX_JSON_FIELD],*snapstr,*retstr = 0;
     cJSON *array,*json,*snapjson;
     uint8_t *data;
     struct ramsnapshot snap;
@@ -8433,6 +8550,7 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
     {
         if ( is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) == 2 )
         {
+            retstr = cJSON_Print(array);
             json = cJSON_GetArrayItem(array,0);
             if ( datastr == 0 )
                 datastr = cJSON_str(cJSON_GetObjectItem(json,"data"));
@@ -8494,100 +8612,6 @@ char *ramresponse(char *origargstr,char *sender,char *senderip,char *datastr)
         }
         free_json(array);
     }
-    return(0);
-}
-
-char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin)
-{
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    char retbuf[1024],*str;
-    if ( ram == 0 || ram->MGWpingstr[0] == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    ram_setdispstr(retbuf,ram,ram->startmilli);
-    str = stringifyM(retbuf);
-    sprintf(retbuf,"{\"result\":\"MGWstatus\",%s\"ramchain\":%s}",ram->MGWpingstr,str);
-    free(str);
-    return(clonestr(retbuf));
-}
-
-char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr)
-{
-    struct ramchain_info *ram = get_ramchain_info(coin);
-    char shastr[65],*hexstr,*retstr = 0;
-    bits256 hash,tmp;
-    HUFF *permhp,*hp,*newhp,**hpptr;
-    cJSON *json;
-    int32_t size,i,n;
-    printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
-    if ( ram == 0 )
-        return(clonestr("{\"error\":\"no ramchain info\"}"));
-    else if ( blocknum >= ram->maxblock )
-        return(clonestr("{\"error\":\"blocknum too big\"}"));
-    else if ( blocknum >= ram->next_blocknum )
-        return(clonestr("{\"error\":\"blocknum past permblocks\"}"));
-    if ( strcmp(typestr,"B64") == 0 )
-    {
-        n = 64;
-        if ( (blocknum % n) != 0 )
-            return(clonestr("{\"error\":\"B64 blocknum misaligned\"}"));
-    }
-    else if ( strcmp(typestr,"B4096") == 0 )
-    {
-        n = 4096;
-        if ( (blocknum % n) != 0 )
-            return(clonestr("{\"error\":\"B4096 blocknum misaligned\"}"));
-        //printf("rampyramid B4096 for blocknum.%d\n",blocknum);
-    }
-    else
-    {
-        if ( (hp= ram->blocks.hps[blocknum]) == 0 )
-        {
-            if ( (hpptr= ram_get_hpptr(&ram->Vblocks,blocknum)) != 0 && (hp= *hpptr) != 0 )
-            {
-                if ( ram_expand_bitstream(0,ram->R3,ram,hp) > 0 )
-                {
-                    newhp = ram_makehp(ram->tmphp,'B',ram,ram->R3,blocknum);
-                    if ( (hpptr= ram_get_hpptr(&ram->Bblocks,blocknum)) != 0 )
-                        hp = ram->blocks.hps[blocknum] = *hpptr = newhp;
-                } else hp = 0;
-   //if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
-            }
-        }
-        if ( hp != 0 )
-        {
-            if ( (permhp= ram_conv_permind(ram->tmphp,ram,hp,blocknum)) != 0 )
-            {
-                size = hconv_bitlen(permhp->endpos);
-                hexstr = calloc(1,size*2+1);
-                init_hexbytes_noT(hexstr,permhp->buf,size);
-                retstr = calloc(1,size*2+1+512);
-                sprintf(retstr,"{\"NXT\":\"%s\",\"blocknum\":\"%d\",\"size\":\"%d\",\"data\":\"%s\"}",myNXTaddr,blocknum,size,hexstr);
-                free(hexstr);
-                return(retstr);
-            } else return(clonestr("{\"error\":\"error doing ram_conv_permind\"}"));
-        } else return(clonestr("{\"error\":\"no ramchain info for blocknum\"}"));
-    }
-    memset(hash.bytes,0,sizeof(hash));
-    for (i=0; i<n; i++)
-    {
-        if ( (hp= ram->blocks.hps[blocknum+i]) == 0 )
-            break;
-        if ( (permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum+i)) == 0 )
-            break;
-        calc_sha256cat(tmp.bytes,hash.bytes,sizeof(hash),permhp->buf,hconv_bitlen(permhp->endpos)), hash = tmp;
-    }
-    //printf("blocknum.%d i.%d of %d\n",blocknum,i,n);
-    if ( i == n )
-    {
-        json = ram_snapshot_json(&ram->snapshots[blocknum/64]);
-        init_hexbytes_noT(shastr,hash.bytes,sizeof(hash));
-        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(myNXTaddr));
-        cJSON_AddItemToObject(json,"blocknum",cJSON_CreateNumber(blocknum));
-        cJSON_AddItemToObject(json,"B",cJSON_CreateNumber(n));
-        cJSON_AddItemToObject(json,"sha256",cJSON_CreateString(shastr));
-        retstr = cJSON_Print(json);
-        free_json(json);
-    } else return(clonestr("{\"error\":\"some data missing\"}"));
     return(retstr);
 }
 
