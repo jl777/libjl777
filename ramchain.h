@@ -8471,7 +8471,7 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
     HUFF *permhp,*hp,*newhp,**hpptr;
     cJSON *json;
     int32_t size,i,n;
-    printf("rampyramid.%s (%s).%u\n",coin,typestr,blocknum);
+    printf("rampyramid.%s (%s).%u permblocks.%d\n",coin,typestr,blocknum,ram->next_blocknum);
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
     else if ( blocknum >= ram->maxblock )
@@ -8503,7 +8503,6 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
                     if ( (hpptr= ram_get_hpptr(&ram->Bblocks,blocknum)) != 0 )
                         hp = ram->blocks.hps[blocknum] = *hpptr = newhp;
                 } else hp = 0;
-   //if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
             }
         }
         if ( hp != 0 )
@@ -9016,7 +9015,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
         for (pass=1; pass<=4; pass++)
         {
             printf("pass.%d\n",pass);
-            if ( 0 && pass == 2 )
+            if ( 1 && pass == 2 )
             {
                 nofile = ram_init_hashtable(1,&blocknums[0],ram,'a');
                 nofile += ram_init_hashtable(1,&blocknums[1],ram,'s');

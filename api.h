@@ -1153,16 +1153,24 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
 
 void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum)
 {
+    int32_t ram_perm_sha256(bits256 *hashp,struct ramchain_info *ram,uint32_t blocknum,int32_t n);
     static bits256 zerokey;
-    char destip[64],hopNXTaddr[64],destNXTaddr[64],jsonstr[1024],*str;
+    char destip[64],hopNXTaddr[64],destNXTaddr[64],jsonstr[1024],shastr[128],hashstr[65],*str;
     struct pserver_info *pserver;
     struct NXT_acct *destnp;
     int32_t i,n,createdflag;
     cJSON *array;
+    bits256 hash;
     array = cJSON_GetObjectItem(MGWconf,"whitelist");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
-        sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"}",ram->name,ram->srvNXTADDR,blocknum);
+        if ( ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
+        {
+            init_hexbytes_noT(hashstr,hash.bytes,sizeof(hash));
+            sprintf(shastr,",\"mysha256\":\"%s\"",hashstr);
+        }
+        else shastr[0] = 0;
+        sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"%s}",ram->name,ram->srvNXTADDR,blocknum,shastr);
         printf("RAMSYNC.(%s)\n",jsonstr);
         for (i=0; i<n; i++)
         {
