@@ -5155,7 +5155,10 @@ int32_t ram_get_blockoffset(struct mappedblocks *blocks,uint32_t blocknum)
     {
         offset = (blocknum - blocks->firstblock);
         if ( offset >= blocks->numblocks )
+        {
+            printf("(%d - %d) = offset.%d >= numblocks.%d for format.%d\n",blocknum,blocks->firstblock,offset,blocks->numblocks,blocks->format);
             offset = -1;
+        }
     }
     return(offset);
 }
@@ -6740,7 +6743,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 && strcmp(ram->name,"BTC") == 0 )
+    if ( format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") == 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -6752,10 +6755,10 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
             ram_setfname(fname,ram,blocknum,formatstr);
             //delete_file(fname,0);
             regenflag = 1;
-            hp = 0;
             printf("ram_genblock fatal error generating %s blocknum.%d\n",ram->name,blocknum);
             //exit(-1);
         }
+        hp = 0;
     }
     if ( hp == 0 )
     {
@@ -7088,7 +7091,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
     prevhps = ram_get_hpptr(prevblocks,blocknum);
     ram_setfname(fname,ram,blocknum,formatstr);
     //printf("check create.(%s)\n",fname);
-    if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 )//&& verifyflag == 0 )
+    if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 && verifyflag == 0 )
     {
         fclose(fp);
         return(0);
@@ -7129,7 +7132,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
         //printf("create %s %d\n",formatstr,blocknum);
         if ( (hpptr= ram_get_hpptr(blocks,blocknum)) != 0 )
         {
-            if ( *hpptr == 0 && (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
+            if ( (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
             {
                 //printf("block.%d created.%c block.%d numtx.%d minted %.8f\n",blocknum,blocks->format,blocks->R->blocknum,blocks->R->numtx,dstr(blocks->R->minted));
                 if ( (fp= fopen(fname,"wb")) != 0 )
@@ -7156,16 +7159,12 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                             *hpptr = 0;
                             printf("OVERWRITE.(%s) size.%ld bitoffset.%d allocsize.%d\n",fname,ftell(fp),hp->bitoffset,hp->allocsize);
                         }
-#ifdef RAM_GENMODE
-                        hclose(hp);
-#else
                         *hpptr = hp;
                         if ( blocks->format != 'V' && ram->blocks.hps[blocknum] == 0 )
                             ram->blocks.hps[blocknum] = hp;
-#endif
                     }
                 } //else delete_file(fname,0), hclose(hp);
-            }
+            } else printf("genblock error %s (%c) blocknum.%u\n",ram->name,blocks->format,blocknum);
         } else printf("%s.%u couldnt get hpp\n",formatstr,blocknum);
     }
     else if ( blocks->format == 64 || blocks->format == 4096 )
@@ -7180,7 +7179,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
             hps = ram_get_hpptr(blocks,blocknum);
             if ( ram_save_bitstreams(&refsha,fname,prevhps,n) > 0 )
                 numblocks = ram_map_bitstreams(verifyflag,ram,blocknum,&blocks->M[(blocknum-blocks->firstblock) >> blocks->shift],&sha,hps,n,fname,&refsha);
-        } else printf("%s prev.%d missing blockptr at %d\n",ram->name,prevblocks->format,blocknum+i);
+        } else printf("%s prev.%d missing blockptr at %d (%d of %d)\n",ram->name,prevblocks->format,blocknum+i,i,n);
     }
     else
     {
@@ -7982,7 +7981,7 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
     //printf("%s shift.%d %-5s.%d %.1f min left | [%d < %d]? %f %f timebudget %f\n",formatstr,blocks->shift,ram->name,blocks->blocknum,estimated,(blocks->blocknum >> blocks->shift),(prev->blocknum >> blocks->shift),ram_millis(),(startmilli + timebudget),timebudget);
     while ( (blocks->blocknum >> blocks->shift) < (prev->blocknum >> blocks->shift) && ram_millis() < (startmilli + timebudget) )
     {
-        //printf("inside\n");
+        //printf("inside (%d) block.%d\n",blocks->format,blocks->blocknum);
         newflag = (ram->blocks.hps[blocks->blocknum] == 0);
         ram_create_block(1,ram,blocks,prev,blocks->blocknum), processed++;
         if ( (hpptr= ram_get_hpptr(blocks,blocks->blocknum)) != 0 && (hp= *hpptr) != 0 )
@@ -8447,21 +8446,21 @@ char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin)
     return(clonestr(retbuf));
 }
 
-bits256 ram_perm_sha256(struct ramchain_info *ram,uint32_t blocknum,int32_t n)
+int32_t ram_perm_sha256(bits256 *hashp,struct ramchain_info *ram,uint32_t blocknum,int32_t n)
 {
-    bits256 hash,tmp;
+    bits256 tmp;
     int32_t i;
     HUFF *hp,*permhp;
-    memset(hash.bytes,0,sizeof(hash));
+    memset(hashp->bytes,0,sizeof(*hashp));
     for (i=0; i<n; i++)
     {
         if ( (hp= ram->blocks.hps[blocknum+i]) == 0 )
             break;
         if ( (permhp = ram_conv_permind(ram->tmphp,ram,hp,blocknum+i)) == 0 )
             break;
-        calc_sha256cat(tmp.bytes,hash.bytes,sizeof(hash),permhp->buf,hconv_bitlen(permhp->endpos)), hash = tmp;
+        calc_sha256cat(tmp.bytes,hashp->bytes,sizeof(*hashp),permhp->buf,hconv_bitlen(permhp->endpos)), *hashp = tmp;
     }
-    return(hash);
+    return(i);
 }
 
 char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr)
@@ -8521,7 +8520,7 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
             } else return(clonestr("{\"error\":\"error doing ram_conv_permind\"}"));
         } else return(clonestr("{\"error\":\"no ramchain info for blocknum\"}"));
     }
-    hash = ram_perm_sha256(ram,blocknum,n);
+    i = ram_perm_sha256(&hash,ram,blocknum,n);
     //printf("blocknum.%d i.%d of %d\n",blocknum,i,n);
     if ( i == n )
     {
@@ -9286,10 +9285,8 @@ void *process_ramchains(void *_argcoinstr)
                     for (pass=1; pass<=4; pass++)
                     {
                         processed += ram_process_blocks(ram,ram->mappedblocks[pass],ram->mappedblocks[pass-1],60000.);
-#ifdef RAM_GENMODE
-                        if ( (ram->mappedblocks[pass]->blocknum >> ram->mappedblocks[pass]->shift) < (ram->mappedblocks[pass-1]->blocknum >> ram->mappedblocks[pass]->shift) )
-                            break;
-#endif
+                        //if ( (ram->mappedblocks[pass]->blocknum >> ram->mappedblocks[pass]->shift) < (ram->mappedblocks[pass-1]->blocknum >> ram->mappedblocks[pass]->shift) )
+                        //    break;
                     }
                     if ( ram_update_disp(ram) != 0 || 1 )
                     {

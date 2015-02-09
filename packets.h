@@ -620,7 +620,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                     else fprintf(stderr,"encrypted.%d: checkstr.(%s) for (%s)\n",encrypted,checkstr,parmstxt);
                 }
             }
-            else if ( valid < 0 ) fprintf(stderr,"valid.%d | unexpected non-tokenized message.(%s)\n",valid,decoded);
+            else if ( valid < 0 ) fprintf(stderr,"valid.%d | %s/%d -> unexpected non-tokenized message.(%s)\n",valid,sender,port,decoded);
             if ( argjson != 0 )
                 free_json(argjson);
             if ( parmstxt != 0 )

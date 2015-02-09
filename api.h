@@ -1110,7 +1110,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
     copy_cJSON(coin,objs[2]);
     if ( strcmp(Global_mp->ipaddr,destip) == 0 )
         return(0);
-    printf("myipaddr.(%s) process args (%s) (%s) port.%d\n",Global_mp->ipaddr,destip,coin,port);
+    //printf("myipaddr.(%s) process args (%s) (%s) port.%d\n",Global_mp->ipaddr,destip,coin,port);
     if ( coin[0] != 0 && destip[0] != 0 && valid > 0 )
     {
         if ( is_remote_access(previpaddr) == 0 )
@@ -1122,7 +1122,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
                 destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
                 if ( (memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 || port != 0) && destip[0] != 0 )
                 {
-                    printf("send to ipaddr.(%s/%d)\n",destip,port);
+                    //printf("send to ipaddr.(%s/%d)\n",destip,port);
                     send_to_ipaddr(port,0,destip,origargstr,NXTACCTSECRET);
                 }
                 else if ( (array= cJSON_Parse(origargstr)) != 0 )
@@ -1132,7 +1132,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
                         json = cJSON_GetArrayItem(array,0);
                         jsonstr = cJSON_Print(json);
                         stripwhite_ns(jsonstr,strlen(jsonstr));
-                        printf("send cmd.(%s)\n",jsonstr);
+                        //printf("send cmd.(%s)\n",jsonstr);
                         if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
                             free(str);
                         free(jsonstr);
@@ -1163,17 +1163,18 @@ void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum)
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
         sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"}",ram->name,ram->srvNXTADDR,blocknum);
+        printf("RAMSYNC.(%s)\n",jsonstr);
         for (i=0; i<n; i++)
         {
             copy_cJSON(destip,cJSON_GetArrayItem(array,i));
             pserver = get_pserver(0,destip,0,0);
-            if ( pserver->nxt64bits != 0 )
+            if ( pserver->nxt64bits != 0 && pserver->nxt64bits != Global_mp->nxt64bits )
             {
                 expand_nxt64bits(destNXTaddr,pserver->nxt64bits);
                 destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
                 if ( memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
                 {
-                    printf("send to ipaddr.(%s)\n",destip);
+                    //printf("send to ipaddr.(%s)\n",destip);
                     send_to_ipaddr(0,0,destip,jsonstr,ram->srvNXTACCTSECRET);
                 }
                 else if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,ram->srvNXTADDR,ram->srvNXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
@@ -1283,6 +1284,7 @@ char *rampyramid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         return(retstr);
     blocknum = (uint32_t)get_API_int(objs[3],-1);
     copy_cJSON(typestr,objs[4]);
+    printf("got pyramid: (%s)\n",origargstr);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
         retstr = rampyramid(NXTaddr,origargstr,sender,previpaddr,coin,blocknum,typestr);
