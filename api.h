@@ -39,7 +39,7 @@ struct per_session_data__http
 int32_t is_BTCD_command(cJSON *json)
 {
     // RPC.({"requestType":"BTCDjson","json":"{\"requestType\":\"telepodacct\"}"}) wsi.0x7f3650035cc0 user.0x7f3650037920
-    char *BTCDcmds[] = { "maketelepods", "teleport", "telepodacct", "MGW", "startxfer" };
+    char *BTCDcmds[] = { "maketelepods", "teleport", "telepodacct", "MGW", "startxfer", "rampyramid", "ramstring", "ramblock" };
     char request[MAX_JSON_FIELD],jsonstr[MAX_JSON_FIELD];
     long i,iter;
     cJSON *json2 = 0;
