@@ -206,7 +206,7 @@ struct MGWstate
     int64_t MGWbalance,supply;
     uint64_t totalspends,numspends,totaloutputs,numoutputs;
     uint64_t boughtNXT,circulation,sentNXT,MGWpendingredeems,orphans,MGWunspent,MGWpendingdeposits,NXT_ECblock;
-    uint32_t blocknum,RTblocknum,NXT_RTblocknum,NXTblocknum,is_realtime,NXT_is_realtime,enable_deposits,enable_withdraws,NXT_ECheight;
+    uint32_t blocknum,RTblocknum,NXT_RTblocknum,NXTblocknum,is_realtime,NXT_is_realtime,enable_deposits,enable_withdraws,NXT_ECheight,permblocks;
 };
 
 struct alloc_space { void *ptr; long used,size; };
@@ -218,7 +218,7 @@ struct ramchain_info
     double startmilli;
     HUFF *tmphp,*tmphp2;
     char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*opreturnmarker;
-    uint32_t next_blocknum,next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
+    uint32_t next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
     uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind,numgateways,nummsigs;
     uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv;
     struct rawblock *R,*R2,*R3;
@@ -229,7 +229,7 @@ struct ramchain_info
     struct NXT_asset *ap;
     uint64_t MGWbits,*limboarray;
     struct cointx_input *MGWunspents;
-    uint32_t min_NXTconfirms,NXTtimestamp,MGWnumunspents,MGWmaxunspents,numspecials,depositconfirms,firsttime,firstblock,numpendingsends,pendingticks;
+    uint32_t min_NXTconfirms,NXTtimestamp,MGWnumunspents,MGWmaxunspents,numspecials,depositconfirms,firsttime,firstblock,numpendingsends,pendingticks,remotemode;
     char multisigchar,**special_NXTaddrs,*MGWredemption,*backups,MGWsmallest[256],MGWsmallestB[256],MGWpingstr[1024],mgwstrs[3][8192];
     struct NXT_assettxid *pendingsends[512];
     float lastgetinfo,NXTconvrate;
@@ -2894,7 +2894,7 @@ void ram_set_MGWpingstr(char *pingstr,struct ramchain_info *ram,int32_t selector
     }
     if ( sp != 0 )
     {
-        sprintf(pingstr,"\"coin\":\"%s\",\"gatewayid\":\"%d\",\"balance\":\"%llu\",\"sentNXT\":\"%llu\",\"unspent\":\"%llu\",\"supply\":\"%llu\",\"circulation\":\"%llu\",\"pendingredeems\":\"%llu\",\"pendingdeposits\":\"%llu\",\"internal\":\"%llu\",\"RTNXT\":{\"height\":\"%d\",\"lag\":\"%d\",\"ECblock\":\"%llu\",\"ECheight\":\"%u\"},\"%s\":{\"height\":\"%d\",\"lag\":\"%d\"},",ram->name,sp->gatewayid,(long long)(sp->MGWbalance),(long long)(sp->sentNXT),(long long)(sp->MGWunspent),(long long)(sp->supply),(long long)(sp->circulation),(long long)(sp->MGWpendingredeems),(long long)(sp->MGWpendingdeposits),(long long)(sp->orphans),sp->NXT_RTblocknum,sp->NXT_RTblocknum-sp->NXTblocknum,(long long)sp->NXT_ECblock,sp->NXT_ECheight,sp->name,sp->RTblocknum,sp->RTblocknum - sp->blocknum);
+        sprintf(pingstr,"\"coin\":\"%s\",\"gatewayid\":\"%d\",\"balance\":\"%llu\",\"sentNXT\":\"%llu\",\"unspent\":\"%llu\",\"supply\":\"%llu\",\"circulation\":\"%llu\",\"pendingredeems\":\"%llu\",\"pendingdeposits\":\"%llu\",\"internal\":\"%llu\",\"RTNXT\":{\"height\":\"%d\",\"lag\":\"%d\",\"ECblock\":\"%llu\",\"ECheight\":\"%u\"},\"%s\":{\"permblocks\":\"%d\",\"height\":\"%d\",\"lag\":\"%d\"},",ram->name,sp->gatewayid,(long long)(sp->MGWbalance),(long long)(sp->sentNXT),(long long)(sp->MGWunspent),(long long)(sp->supply),(long long)(sp->circulation),(long long)(sp->MGWpendingredeems),(long long)(sp->MGWpendingdeposits),(long long)(sp->orphans),sp->NXT_RTblocknum,sp->NXT_RTblocknum-sp->NXTblocknum,(long long)sp->NXT_ECblock,sp->NXT_ECheight,sp->name,sp->permblocks,sp->RTblocknum,sp->RTblocknum - sp->blocknum);
     }
  }
 
@@ -7209,7 +7209,7 @@ int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchai
     strcpy(hash->coinstr,ram->name);
     hash->type = type;
     num = 0;
-    //if ( PERMUTE_RAWINDS != 0 )
+    if ( ram->remotemode == 0 )
     {
         ram_sethashname(fname,hash,0);
         strcat(fname,".perm");
@@ -7643,14 +7643,14 @@ int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint
     }
     if ( iter != 1 )
     {
-        if ( blocknum != ram->next_blocknum ) //PERMUTE_RAWINDS != 0 &&
+        if ( blocknum != ram->S.permblocks ) //PERMUTE_RAWINDS != 0 &&
         {
-            printf("ram_rawblock_update: blocknum.%d vs ram->next_blocknum.%d\n",blocknum,ram->next_blocknum);
+            printf("ram_rawblock_update: blocknum.%d vs ram->S.permblocks.%d\n",blocknum,ram->S.permblocks);
             return(-1);
         }
         if ( (blocknum % 64) == 0 )
             ram_snapshot(&ram->snapshots[blocknum / 64],ram);
-        ram->next_blocknum++;
+        ram->S.permblocks++;
     }
     numbits += hdecode_smallbits(&numtx,hp);
     numbits += hdecode_valuebits(&minted,hp);
@@ -8471,12 +8471,12 @@ char *rampyramid(char *myNXTaddr,char *origargstr,char *sender,char *previpaddr,
     HUFF *permhp,*hp,*newhp,**hpptr;
     cJSON *json;
     int32_t size,i,n;
-    printf("rampyramid.%s (%s).%u permblocks.%d\n",coin,typestr,blocknum,ram->next_blocknum);
+    printf("rampyramid.%s (%s).%u permblocks.%d\n",coin,typestr,blocknum,ram->S.permblocks);
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
     else if ( blocknum >= ram->maxblock )
         return(clonestr("{\"error\":\"blocknum too big\"}"));
-    else if ( blocknum >= ram->next_blocknum )
+    else if ( blocknum >= ram->S.permblocks )
         return(clonestr("{\"error\":\"blocknum past permblocks\"}"));
     if ( strcmp(typestr,"B64") == 0 )
     {
@@ -8975,11 +8975,172 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
     return(blocknum);
 }
 
+void ram_init_remotemode(struct ramchain_info *ram)
+{
+    
+}
+
+void ram_regen(struct ramchain_info *ram)
+{
+    uint32_t blocknums[3],pass,firstblock;
+    printf("REGEN\n");
+    ram->mappedblocks[4] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->blocks4096,&ram->blocks64,4096,12);
+    ram->mappedblocks[3] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->blocks64,&ram->Bblocks,64,6);
+    ram->mappedblocks[2] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->Bblocks,&ram->Vblocks,'B',0);
+    ram->mappedblocks[1] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->Vblocks,&ram->blocks,'V',0);
+    ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
+    ram_update_RTblock(ram);
+    for (pass=1; pass<=4; pass++)
+    {
+        printf("pass.%d\n",pass);
+        if ( 1 && pass == 2 )
+        {
+            ram_init_hashtable(1,&blocknums[0],ram,'a');
+            ram_init_hashtable(1,&blocknums[1],ram,'s');
+            ram_init_hashtable(1,&blocknums[2],ram,'t');
+        }
+        else if ( pass == 1 )
+        {
+            firstblock = ram_find_firstgap(ram,ram->mappedblocks[pass]->format);
+            printf("firstblock.%d\n",firstblock);
+            if ( firstblock < 10 )
+                ram->mappedblocks[pass]->blocknum = 0;
+            else ram->mappedblocks[pass]->blocknum = (firstblock - 1);
+            printf("firstblock.%u -> %u\n",firstblock,ram->mappedblocks[pass]->blocknum);
+        }
+        ram_process_blocks(ram,ram->mappedblocks[pass],ram->mappedblocks[pass-1],100000000.);
+    }
+    printf("FINISHED REGEN\n");
+    exit(1);
+}
+
+void ram_allocs(struct ramchain_info *ram)
+{
+    int32_t tmpsize = TMPALLOC_SPACE_INCR;
+    void *ptr;
+    permalloc(ram->name,&ram->Perm,PERMALLOC_SPACE_INCR,0);
+    ram->blocks.M = permalloc(ram->name,&ram->Perm,sizeof(*ram->blocks.M),8);
+    ram->snapshots = permalloc(ram->name,&ram->Perm,sizeof(*ram->snapshots) * (ram->maxblock / 64),8);
+    ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
+    ram_init_tmpspace(ram,tmpsize);
+    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ram->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R),8) : calloc(1,sizeof(*ram->R));
+    ram->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R2),8) : calloc(1,sizeof(*ram->R2));
+    ram->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R3),8) : calloc(1,sizeof(*ram->R3));
+}
+
+uint32_t ram_loadblocks(struct ramchain_info *ram,double startmilli)
+{
+    uint32_t numblocks;
+    numblocks = ram_setcontiguous(&ram->blocks);
+    ram->mappedblocks[4] = ram_init_blocks(0,ram->blocks.hps,ram,(numblocks>>12)<<12,&ram->blocks4096,&ram->blocks64,4096,12);
+    printf("set ramchain blocknum.%s %d (1st %d num %d) vs RT.%d %.1f seconds to init_ramchain.%s B4096\n",ram->name,ram->blocks4096.blocknum,ram->blocks4096.firstblock,ram->blocks4096.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
+    ram->mappedblocks[3] = ram_init_blocks(0,ram->blocks.hps,ram,ram->blocks4096.contiguous,&ram->blocks64,&ram->Bblocks,64,6);
+    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s B64\n",ram->name,ram->blocks64.blocknum,ram->blocks64.firstblock,ram->blocks64.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
+    ram->mappedblocks[2] = ram_init_blocks(0,ram->blocks.hps,ram,ram->blocks64.contiguous,&ram->Bblocks,&ram->Vblocks,'B',0);
+    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s B\n",ram->name,ram->Bblocks.blocknum,ram->Bblocks.firstblock,ram->Bblocks.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
+    ram->mappedblocks[1] = ram_init_blocks(0,ram->blocks.hps,ram,ram->Bblocks.contiguous,&ram->Vblocks,&ram->blocks,'V',0);
+    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s V\n",ram->name,ram->Vblocks.blocknum,ram->Vblocks.firstblock,ram->Vblocks.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
+    //ram_process_blocks(ram,ram->mappedblocks[2],ram->mappedblocks[1],1000.*3600*24);
+    ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
+    return(numblocks);
+}
+
+void ram_Hfiles(struct ramchain_info *ram)
+{
+    uint32_t blocknum,iter,i;
+    HUFF *hp;
+    for (blocknum=0; blocknum<ram->blocks.contiguous; blocknum+=64)
+    {break;
+        ram->minval = ram->maxval = ram->minval2 = ram->maxval2 = ram->minval4 = ram->maxval4 = ram->minval8 = ram->maxval8 = 0;
+        memset(&ram->H,0,sizeof(ram->H));
+        for (iter=0; iter<2; iter++)
+            for (i=0; i<64; i++)
+            {
+                if ( (hp= ram->blocks.hps[blocknum+i]) != 0 )
+                    ram_rawblock_update(iter==0?'H':'h',ram,hp,blocknum+i);
+            }
+        huffpair_gencodes(ram,&ram->H,0);
+        /*free(ram->H.numtx.items);
+         free(ram->H.tx0.numvins.items), free(ram->H.tx0.numvouts.items), free(ram->H.tx0.txid.items);
+         free(ram->H.tx1.numvins.items), free(ram->H.tx1.numvouts.items), free(ram->H.tx1.txid.items);
+         free(ram->H.txi.numvins.items), free(ram->H.txi.numvouts.items), free(ram->H.txi.txid.items);
+         free(ram->H.vin0.txid.items), free(ram->H.vin0.vout.items);
+         free(ram->H.vin1.txid.items), free(ram->H.vin1.vout.items);
+         free(ram->H.vini.txid.items), free(ram->H.vini.vout.items);
+         free(ram->H.vout0.addr.items), free(ram->H.vout0.script.items);
+         free(ram->H.vout1.addr.items), free(ram->H.vout1.script.items);
+         free(ram->H.vouti.addr.items), free(ram->H.vout2.script.items);
+         free(ram->H.vout2.addr.items), free(ram->H.vouti.script.items);
+         free(ram->H.voutn.addr.items), free(ram->H.voutn.script.items);*/
+    }
+    //fprintf(stderr,"totalbytes.%lld %s -> %s totalbits.%lld R%.3f\n",(long long)ram->totalbits,_mbstr((double)ram->totalbytes),_mbstr2((double)ram->totalbits/8),(long long)ram->totalbytes,(double)ram->totalbytes*8/ram->totalbits);
+}
+
+void ram_convertall(struct ramchain_info *ram)
+{
+    char fname[1024];
+    bits256 refsha,sha;
+    uint32_t blocknum,checkblocknum;
+    HUFF *hp,*permhp;
+    void *buf;
+    for (blocknum=0; blocknum<ram->blocks.contiguous; blocknum++)
+    {
+        if ( (hp= ram->blocks.hps[blocknum]) != 0 )
+        {
+            buf = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,hp->allocsize*2,9) : calloc(1,hp->allocsize*2);
+            permhp = hopen(ram->name,&ram->Perm,buf,hp->allocsize*2,0);
+            ram->blocks.hps[blocknum] = ram_conv_permind(permhp,ram,hp,blocknum);
+            permhp->allocsize = hconv_bitlen(permhp->endpos);
+            if ( 0 && (checkblocknum= ram_verify(ram,permhp,'B')) != checkblocknum )
+                printf("ram_verify(%d) -> %d?\n",checkblocknum,checkblocknum);
+        }
+        else { printf("unexpected gap at %d\n",blocknum); exit(-1); }
+    }
+    sprintf(fname,"%s/ramchains/%s.perm",MGWROOT,ram->name);
+    ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous);
+    ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
+    printf("converted to permind, please copy over files with .perm files and restart\n");
+    exit(1);
+}
+
+int32_t ram_scanblocks(struct ramchain_info *ram)
+{
+    uint32_t blocknum,errs=0,good=0,iter;
+    HUFF *hp;
+    for (iter=0; iter<2; iter++)
+    {
+        for (errs=good=blocknum=0; blocknum<ram->blocks.contiguous; blocknum++)
+        {
+            if ( (blocknum % 1000) == 0 )
+                fprintf(stderr,".");
+            if ( (hp= ram->blocks.hps[blocknum]) != 0 )
+            {
+                if ( ram_rawblock_update(iter,ram,hp,blocknum) > 0 )
+                    good++;
+                else
+                {
+                    printf("iter.%d error on block.%d purge it\n",iter,blocknum);
+                    while ( 1 ) sleep(1);
+                    //ram_purge_badblock(ram,blocknum);
+                    errs++;
+                    exit(-1);
+                }
+            } else errs++;
+        }
+        printf(">>>>>>>>>>>>> permind_changes.%d <<<<<<<<<<<<\n",ram->permind_changes);
+        if ( 0 && ram->addrhash.permfp != 0 && ram->txidhash.permfp != 0 && ram->scripthash.permfp != 0 && iter == 0 && ram->permind_changes != 0 )
+            ram_convertall(ram);
+    }
+    fprintf(stderr,"contiguous.%d good.%d errs.%d\n",ram->blocks.contiguous,good,errs);
+    ram_Hfiles(ram);
+    return(errs);
+}
+
 void ram_init_ramchain(struct ramchain_info *ram)
 {
-    int32_t i,datalen,nofile,pass,numblocks,tmpsize = TMPALLOC_SPACE_INCR;
-    uint8_t *ptr;
-    uint32_t blocknums[3],firstblock,permind,minblocknum = 0;
+    int32_t datalen,nofile,numblocks,errs;
+    uint32_t blocknums[3],permind;
     bits256 refsha,sha;
     double startmilli;
     char fname[1024];
@@ -8987,173 +9148,42 @@ void ram_init_ramchain(struct ramchain_info *ram)
     strcpy(ram->dirpath,MGWROOT);
     ram->blocks.blocknum = ram->S.RTblocknum = (_get_RTheight(ram) - ram->min_confirms);
     ram->blocks.numblocks = ram->maxblock = (ram->S.RTblocknum + 10000);
-    ram_init_directories(ram);
-    permalloc(ram->name,&ram->Perm,PERMALLOC_SPACE_INCR,0);
-    ram->blocks.M = permalloc(ram->name,&ram->Perm,sizeof(*ram->blocks.M),8);
-    ram->snapshots = permalloc(ram->name,&ram->Perm,sizeof(*ram->snapshots) * (ram->maxblock / 64),8);
-    ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
-    printf("[%s] ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->dirpath,ram->name,ram->S.RTblocknum,(ram_millis() - startmilli)/1000.,ram->next_blocknum,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
-    //#ifndef RAM_GENMODE
-    ram_init_tmpspace(ram,tmpsize);
-    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
-    ram->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R),8) : calloc(1,sizeof(*ram->R));
-    ram->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R2),8) : calloc(1,sizeof(*ram->R2));
-    ram->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R3),8) : calloc(1,sizeof(*ram->R3));
+    ram_allocs(ram);
+    printf("[%s] ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->dirpath,ram->name,ram->S.RTblocknum,(ram_millis() - startmilli)/1000.,ram->S.permblocks,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
     memset(blocknums,0,sizeof(blocknums));
     nofile = ram_init_hashtable(0,&blocknums[0],ram,'a');
     nofile += ram_init_hashtable(0,&blocknums[1],ram,'s');
     nofile += ram_init_hashtable(0,&blocknums[2],ram,'t');
-    if ( nofile == 3 )//|| strcmp(ram->name,"BTC") == 0 )
-    {
-        printf("REGEN\n");
-        ram->mappedblocks[4] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->blocks4096,&ram->blocks64,4096,12);
-        ram->mappedblocks[3] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->blocks64,&ram->Bblocks,64,6);
-        ram->mappedblocks[2] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->Bblocks,&ram->Vblocks,'B',0);
-        ram->mappedblocks[1] = ram_init_blocks(1,ram->blocks.hps,ram,0,&ram->Vblocks,&ram->blocks,'V',0);
-        ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
-        ram_update_RTblock(ram);
-        for (pass=1; pass<=4; pass++)
-        {
-            printf("pass.%d\n",pass);
-            if ( 1 && pass == 2 )
-            {
-                nofile = ram_init_hashtable(1,&blocknums[0],ram,'a');
-                nofile += ram_init_hashtable(1,&blocknums[1],ram,'s');
-                nofile += ram_init_hashtable(1,&blocknums[2],ram,'t');
-            }
-            else if ( pass == 1 )
-            {
-                firstblock = ram_find_firstgap(ram,ram->mappedblocks[pass]->format);
-                printf("firstblock.%d\n",firstblock);
-                if ( firstblock < 10 )
-                    ram->mappedblocks[pass]->blocknum = 0;
-                else ram->mappedblocks[pass]->blocknum = (firstblock - 10);
-                printf("firstblock.%u -> %u\n",firstblock,ram->mappedblocks[pass]->blocknum);
-            }
-            ram_process_blocks(ram,ram->mappedblocks[pass],ram->mappedblocks[pass-1],100000000.);
-        }
-        printf("FINISHED REGEN\n");
-        exit(1);
-    } else printf("nofile.%d\n",nofile);
     ram_update_RTblock(ram);
     if ( ram->marker != 0 && ram->marker[0] != 0 && (ram->marker_rawind= ram_addrind_RO(&permind,ram,ram->marker)) == 0 )
         printf("WARNING: MARKER.(%s) set but no rawind. need to have it appear in blockchain first\n",ram->marker);
     printf("%.1f seconds to init_ramchain.%s hashtables marker.(%s) %u\n",(ram_millis() - startmilli)/1000.,ram->name,ram->marker,ram->marker_rawind);
-    sprintf(fname,"%s/ramchains/%s.blocks",MGWROOT,ram->name);
-    minblocknum = numblocks = ram_map_bitstreams(0,ram,0,ram->blocks.M,&sha,ram->blocks.hps,0,fname,0);
-    for (i=0; i<3; i++)
-        if ( minblocknum == 0 || (blocknums[i] != 0 && blocknums[i] < minblocknum) )
-            minblocknum = blocknums[i];
-    printf("Mapped.(%s) numblocks.%d: sha %llx (%d %d %d) -> minblocknum.%u\n",fname,numblocks,(long long)sha.txid,blocknums[0],blocknums[1],blocknums[2],minblocknum);
-    numblocks = ram_setcontiguous(&ram->blocks);
-    
-    ram->mappedblocks[4] = ram_init_blocks(0,ram->blocks.hps,ram,(numblocks>>12)<<12,&ram->blocks4096,&ram->blocks64,4096,12);
-    printf("set ramchain blocknum.%s %d (1st %d num %d) vs RT.%d %.1f seconds to init_ramchain.%s B4096\n",ram->name,ram->blocks4096.blocknum,ram->blocks4096.firstblock,ram->blocks4096.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
-    ram->mappedblocks[3] = ram_init_blocks(0,ram->blocks.hps,ram,ram->blocks4096.contiguous,&ram->blocks64,&ram->Bblocks,64,6);
-    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s B64\n",ram->name,ram->blocks64.blocknum,ram->blocks64.firstblock,ram->blocks64.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
-    ram->mappedblocks[2] = ram_init_blocks(0,ram->blocks.hps,ram,ram->blocks64.contiguous,&ram->Bblocks,&ram->Vblocks,'B',0);
-    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s B\n",ram->name,ram->Bblocks.blocknum,ram->Bblocks.firstblock,ram->Bblocks.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
-    //#endif
-    ram->mappedblocks[1] = ram_init_blocks(0,ram->blocks.hps,ram,ram->Bblocks.contiguous,&ram->Vblocks,&ram->blocks,'V',0);
-    printf("set ramchain blocknum.%s %d vs (1st %d num %d) RT.%d %.1f seconds to init_ramchain.%s V\n",ram->name,ram->Vblocks.blocknum,ram->Vblocks.firstblock,ram->Vblocks.numblocks,ram->blocks.blocknum,(ram_millis() - startmilli)/1000.,ram->name);
-    //ram_process_blocks(ram,ram->mappedblocks[2],ram->mappedblocks[1],1000.*3600*24);
-    ram->mappedblocks[0] = ram_init_blocks(0,ram->blocks.hps,ram,0,&ram->blocks,0,0,0);
-#ifndef RAM_GENMODE
-    //if ( strcmp(ram->name,"BTC") != 0 )
+    if ( ram->remotemode != 0 )
+        ram_init_remotemode(ram);
+    else
     {
-        HUFF *hp,*permhp;
-        void *buf;
-        uint32_t blocknum,checkblocknum,errs=0,good=0,iter,i;
-        for (iter=0; iter<2; iter++)
-        {
-            for (errs=good=blocknum=0; blocknum<ram->blocks.contiguous; blocknum++)
-            {
-                if ( (blocknum % 1000) == 0 )
-                    fprintf(stderr,".");
-                if ( (hp= ram->blocks.hps[blocknum]) != 0 )
-                {
-                    if ( ram_rawblock_update(iter,ram,hp,blocknum) > 0 )
-                    {
-                        good++;
-                    }
-                    else
-                    {
-                        printf("iter.%d error on block.%d purge it\n",iter,blocknum);
-                        while ( 1 ) sleep(1);
-                        //ram_purge_badblock(ram,blocknum);
-                        errs++;
-                        exit(-1);
-                    }
-                } else errs++;
-            }
-            printf(">>>>>>>>>>>>> permind_changes.%d <<<<<<<<<<<<\n",ram->permind_changes);
-            if ( 0 && ram->addrhash.permfp != 0 && ram->txidhash.permfp != 0 && ram->scripthash.permfp != 0 && iter == 0 && ram->permind_changes != 0 )
-            {
-                for (blocknum=0; blocknum<ram->blocks.contiguous; blocknum++)
-                {
-                    if ( (hp= ram->blocks.hps[blocknum]) != 0 )
-                    {
-                        buf = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,hp->allocsize*2,9) : calloc(1,hp->allocsize*2);
-                        permhp = hopen(ram->name,&ram->Perm,buf,hp->allocsize*2,0);
-                        ram->blocks.hps[blocknum] = ram_conv_permind(permhp,ram,hp,blocknum);
-                        permhp->allocsize = hconv_bitlen(permhp->endpos);
-                        if ( 0 && (checkblocknum= ram_verify(ram,permhp,'B')) != checkblocknum )
-                            printf("ram_verify(%d) -> %d?\n",checkblocknum,checkblocknum);
-                    }
-                    else { printf("unexpected gap at %d\n",blocknum); exit(-1); }
-                }
-                sprintf(fname,"%s/ramchains/%s.perm",MGWROOT,ram->name);
-                ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous);
-                ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
-                printf("converted to permind, please copy over files with .perm files and restart\n");
-                exit(1);
-            }
-        }
-        fprintf(stderr,"contiguous.%d good.%d errs.%d\n",ram->blocks.contiguous,good,errs);
-        for (blocknum=0; blocknum<ram->blocks.contiguous; blocknum+=64)
-        {break;
-            ram->minval = ram->maxval = ram->minval2 = ram->maxval2 = ram->minval4 = ram->maxval4 = ram->minval8 = ram->maxval8 = 0;
-            memset(&ram->H,0,sizeof(ram->H));
-            for (iter=0; iter<2; iter++)
-                for (i=0; i<64; i++)
-                {
-                    if ( (hp= ram->blocks.hps[blocknum+i]) != 0 )
-                        ram_rawblock_update(iter==0?'H':'h',ram,hp,blocknum+i);
-                }
-            huffpair_gencodes(ram,&ram->H,0);
-            /*free(ram->H.numtx.items);
-             free(ram->H.tx0.numvins.items), free(ram->H.tx0.numvouts.items), free(ram->H.tx0.txid.items);
-             free(ram->H.tx1.numvins.items), free(ram->H.tx1.numvouts.items), free(ram->H.tx1.txid.items);
-             free(ram->H.txi.numvins.items), free(ram->H.txi.numvouts.items), free(ram->H.txi.txid.items);
-             free(ram->H.vin0.txid.items), free(ram->H.vin0.vout.items);
-             free(ram->H.vin1.txid.items), free(ram->H.vin1.vout.items);
-             free(ram->H.vini.txid.items), free(ram->H.vini.vout.items);
-             free(ram->H.vout0.addr.items), free(ram->H.vout0.script.items);
-             free(ram->H.vout1.addr.items), free(ram->H.vout1.script.items);
-             free(ram->H.vouti.addr.items), free(ram->H.vout2.script.items);
-             free(ram->H.vout2.addr.items), free(ram->H.vouti.script.items);
-             free(ram->H.voutn.addr.items), free(ram->H.voutn.script.items);*/
-        }
-        //fprintf(stderr,"totalbytes.%lld %s -> %s totalbits.%lld R%.3f\n",(long long)ram->totalbits,_mbstr((double)ram->totalbytes),_mbstr2((double)ram->totalbits/8),(long long)ram->totalbytes,(double)ram->totalbytes*8/ram->totalbits);
-        if ( numblocks == 0 && errs == 0 && ram->blocks.contiguous > 4096 )
-        {
-            datalen = -1;
-            sprintf(fname,"%s/ramchains/%s.blocks",MGWROOT,ram->name);
-            printf("&refsha.%p (%s) hps.%p cont.%d\n",&refsha,fname,ram->blocks.hps,ram->blocks.contiguous);
-            if ( ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous) > 0 )
-                datalen = ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
-            printf("Created.(%s) datalen.%d | please restart\n",fname,datalen);
-            exit(1);
-        }
+        ram_init_directories(ram);
+        if ( nofile == 3 )//|| strcmp(ram->name,"BTC") == 0 )
+            ram_regen(ram);
     }
-#endif
-    for (i=0; i<ram->S.RTblocknum; i+=4096)
+    sprintf(fname,"%s/ramchains/%s.blocks",MGWROOT,ram->name);
+    ram_map_bitstreams(0,ram,0,ram->blocks.M,&sha,ram->blocks.hps,0,fname,0);
+    numblocks = ram_loadblocks(ram,startmilli);
+    errs = ram_scanblocks(ram);
+    if ( numblocks == 0 && errs == 0 && ram->blocks.contiguous > 4096 )
+    {
+        datalen = -1;
+        if ( ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous) > 0 )
+            datalen = ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
+        printf("Created.(%s) datalen.%d | please restart\n",fname,datalen);
+        exit(1);
+    }
+    /*for (i=0; i<ram->S.RTblocknum; i+=4096)
     {
         void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
         ram_sync4096(ram,i);
-    }
+    }*/
     ram_disp_status(ram);
-    //getchar();
 }
 
 uint32_t ram_update_disp(struct ramchain_info *ram)

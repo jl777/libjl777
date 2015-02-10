@@ -1164,7 +1164,7 @@ void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum)
     array = cJSON_GetObjectItem(MGWconf,"whitelist");
     if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
-        if ( ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
+        if ( 0 && ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
         {
             init_hexbytes_noT(hashstr,hash.bytes,sizeof(hash));
             sprintf(shastr,",\"mysha256\":\"%s\"",hashstr);
