@@ -210,6 +210,15 @@ struct MGWstate
     uint32_t blocknum,RTblocknum,NXT_RTblocknum,NXTblocknum,is_realtime,NXT_is_realtime,enable_deposits,enable_withdraws,NXT_ECheight,permblocks;
 };
 
+struct syncstate
+{
+    bits256 majority,minority;
+    uint64_t requested[16];
+    void *substate;
+    uint32_t blocknum,allocsize;
+    uint16_t format,pending,majoritybits,minoritybits;
+};
+
 struct alloc_space { void *ptr; long used,size; };
 struct ramchain_info
 {
@@ -223,6 +232,7 @@ struct ramchain_info
     uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,lastdisp,maxind,numgateways,nummsigs;
     uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv;
     struct rawblock *R,*R2,*R3;
+    struct syncstate *verified;
     struct rawblock_huffs H;
     struct alloc_space Tmp,Perm;
     uint64_t minval,maxval,minval2,maxval2,minval4,maxval4,minval8,maxval8;
@@ -6769,7 +6779,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") == 0 )
+    if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") == 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -7189,7 +7199,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                         if ( blocks->format != 'V' && ram->blocks.hps[blocknum] == 0 )
                             ram->blocks.hps[blocknum] = hp;
                     }
-                } //else delete_file(fname,0), hclose(hp);
+                } else delete_file(fname,0), hclose(hp);
             } else printf("genblock error %s (%c) blocknum.%u\n",ram->name,blocks->format,blocknum);
         } else printf("%s.%u couldnt get hpp\n",formatstr,blocknum);
     }
@@ -7692,11 +7702,11 @@ int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint
                 return(-1);
     }
     datalen += hconv_bitlen(numbits);
-    if ( 0 && iter != 1 && (blocknum % (64*64)) == (64*64 - 1) )
+    /*if ( 0 && iter != 1 && (blocknum % (64*64)) == (64*64 - 1) )
     {
         void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
         ram_sync4096(ram,(blocknum >> 12) << 12);
-    }
+    }*/
     return(datalen);
 }
 
@@ -7997,6 +8007,21 @@ uint64_t ram_calc_MGWunspent(uint64_t *pendingp,struct ramchain_info *ram)
     return(unspent);
 }
 
+int32_t ram_getsources(uint64_t *sources,struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks)
+{
+    int32_t i,n = 0;
+    struct MGWstate S;
+    for (i=0; i<(int)(sizeof(ram->remotesrcs)/sizeof(*ram->remotesrcs)); i++)
+    {
+        S = ram->remotesrcs[i];
+        if ( S.nxt64bits == 0 )
+            break;
+        if ( S.permblocks >= (blocknum + numblocks) )
+            sources[n++] = S.nxt64bits;
+    }
+    return(n);
+}
+
 uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *blocks,struct mappedblocks *prev,double timebudget)
 {
     HUFF **hpptr,*hp = 0;
@@ -8007,7 +8032,6 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
     {
         if ( blocks->format == 'B' )
         {
-            
         }
         return(processed);
     }
@@ -9011,7 +9035,43 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
 
 void ram_init_remotemode(struct ramchain_info *ram)
 {
-    
+    void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum,uint64_t *sources,int32_t n,int32_t addshaflag);
+    struct syncstate *sync;
+    uint32_t blocknum,i,n,last4096,last64;
+    int32_t contiguous = -1;
+    last4096 = (ram->S.RTblocknum >> 12) << 12;
+    for (i=blocknum=0; blocknum<=last4096; blocknum+=4096,i++)
+    {
+        sync = &ram->verified[i];
+        while ( (n= ram_getsources(sync->requested,ram,blocknum,4096)) == 0 )
+        {
+            fprintf(stderr,"waiting for peers for block4096.%u of %u\n",blocknum,ram->S.RTblocknum);
+            sleep(3);
+        }
+        ram_sync4096(ram,blocknum,sync->requested,n,0);
+        sync->pending = n;
+        sync->blocknum = blocknum;
+        sync->format = 4096;
+        ram_update_RTblock(ram);
+        last4096 = (ram->S.RTblocknum >> 12) << 12;
+    }
+    sync = &ram->verified[i];
+
+    struct syncstate
+    {
+        bits256 majority,minority;
+        uint64_t requested[16];
+        void *substate;
+        uint32_t blocknum,allocsize;
+        uint16_t format,pending,majoritybits,minoritybits;
+    };
+    for (i=blocknum=0; (blocknum + 4096)<=ram->S.RTblocknum; blocknum+=4096,i++)
+    {
+        sync = &ram->verified[i];
+        if ( sync->pending == 0 )
+            //if ( ram_verifypeers(ram,sync) < 0 && contiguous < 0 )
+                contiguous = blocknum;
+    }
 }
 
 void ram_regen(struct ramchain_info *ram)
@@ -9055,6 +9115,7 @@ void ram_allocs(struct ramchain_info *ram)
     permalloc(ram->name,&ram->Perm,PERMALLOC_SPACE_INCR,0);
     ram->blocks.M = permalloc(ram->name,&ram->Perm,sizeof(*ram->blocks.M),8);
     ram->snapshots = permalloc(ram->name,&ram->Perm,sizeof(*ram->snapshots) * (ram->maxblock / 64),8);
+    ram->verified = permalloc(ram->name,&ram->Perm,sizeof(*ram->verified) * (ram->maxblock / 4096),8);
     ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
     ram_init_tmpspace(ram,tmpsize);
     ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
@@ -9180,7 +9241,8 @@ void ram_init_ramchain(struct ramchain_info *ram)
     char fname[1024];
     startmilli = ram_millis();
     strcpy(ram->dirpath,MGWROOT);
-    ram->blocks.blocknum = ram->S.RTblocknum = (_get_RTheight(ram) - ram->min_confirms);
+    ram->S.RTblocknum = _get_RTheight(ram);
+    ram->blocks.blocknum = (ram->S.RTblocknum - ram->min_confirms);
     ram->blocks.numblocks = ram->maxblock = (ram->S.RTblocknum + 10000);
     ram_allocs(ram);
     printf("[%s] ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->dirpath,ram->name,ram->S.RTblocknum,(ram_millis() - startmilli)/1000.,ram->S.permblocks,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
@@ -9212,11 +9274,6 @@ void ram_init_ramchain(struct ramchain_info *ram)
         printf("Created.(%s) datalen.%d | please restart\n",fname,datalen);
         exit(1);
     }
-    /*for (i=0; i<ram->S.RTblocknum; i+=4096)
-    {
-        void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum);
-        ram_sync4096(ram,i);
-    }*/
     ram_disp_status(ram);
 }
 

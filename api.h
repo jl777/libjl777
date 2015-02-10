@@ -7,7 +7,9 @@
 
 #ifndef API_H
 #define API_H
-//#include <Python/Python.h>
+#ifndef __APPLE__
+#include "Python.h"
+#endif
 #ifndef _WIN32
 #include "includes/libwebsockets.h"
 #else
@@ -561,16 +563,20 @@ char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
 
 char *python_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
- char name[MAX_JSON_FIELD];
- copy_cJSON(name,objs[0]);
- //Py_Initialize();
- FILE *fp = fopen(name, "r");
- //PyRun_SimpleFile(fp, name);
- //Py_Finalize();
- fclose(fp);
- return(clonestr("return string"));
+    char name[MAX_JSON_FIELD];
+    FILE *fp;
+    copy_cJSON(name,objs[0]);
+    if ( (fp= fopen(name, "r")) != 0 )
+    {
+#ifndef __APPLE__
+        Py_Initialize();
+        PyRun_SimpleFile(fp, name);
+        Py_Finalize();
+#endif
+        fclose(fp);
+    }
+    return(clonestr("return string"));
 }
-
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
@@ -1163,42 +1169,62 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
     return(retstr);
 }
 
-void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum)
+void ram_request4096(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char *jsonstr)
+{
+    static bits256 zerokey;
+    char hopNXTaddr[64],destNXTaddr[64],*str;
+    struct pserver_info *pserver;
+    int32_t createdflag;
+    struct NXT_acct *destnp;
+    if ( nxt64bits == 0 )
+    {
+        pserver = get_pserver(0,destip,0,0);
+        nxt64bits =  pserver->nxt64bits;
+    }
+    if ( nxt64bits != 0 && nxt64bits != Global_mp->nxt64bits )
+    {
+        expand_nxt64bits(destNXTaddr,nxt64bits);
+        destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+        if ( memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
+        {
+            //printf("send to ipaddr.(%s)\n",destip);
+            send_to_ipaddr(0,0,destip,jsonstr,ram->srvNXTACCTSECRET);
+        }
+        else if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,ram->srvNXTADDR,ram->srvNXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
+            free(str);
+    }
+}
+
+void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum,uint64_t *sources,int32_t n,int32_t addshaflag)
 {
     int32_t ram_perm_sha256(bits256 *hashp,struct ramchain_info *ram,uint32_t blocknum,int32_t n);
-    static bits256 zerokey;
-    char destip[64],hopNXTaddr[64],destNXTaddr[64],jsonstr[1024],shastr[128],hashstr[65],*str;
-    struct pserver_info *pserver;
-    struct NXT_acct *destnp;
-    int32_t i,n,createdflag;
+    char destip[64],jsonstr[1024],shastr[128],hashstr[65];
+    int32_t i;
     cJSON *array;
     bits256 hash;
-    array = cJSON_GetObjectItem(MGWconf,"whitelist");
-    if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    if ( addshaflag != 0 && ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
     {
-        if ( 0 && ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
-        {
-            init_hexbytes_noT(hashstr,hash.bytes,sizeof(hash));
-            sprintf(shastr,",\"mysha256\":\"%s\"",hashstr);
-        }
-        else shastr[0] = 0;
-        sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"%s}",ram->name,ram->srvNXTADDR,blocknum,shastr);
-        //printf("RAMSYNC.(%s)\n",jsonstr);
+        init_hexbytes_noT(hashstr,hash.bytes,sizeof(hash));
+        sprintf(shastr,",\"mysha256\":\"%s\"",hashstr);
+    }
+    else shastr[0] = 0;
+    sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"%s}",ram->name,ram->srvNXTADDR,blocknum,shastr);
+    if ( sources != 0 && n > 0 )
+    {
         for (i=0; i<n; i++)
+            if ( sources[i] != 0 )
+                ram_request4096(sources[i],0,ram,jsonstr);
+    }
+    else
+    {
+        array = cJSON_GetObjectItem(MGWconf,"whitelist");
+        if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
         {
-            copy_cJSON(destip,cJSON_GetArrayItem(array,i));
-            pserver = get_pserver(0,destip,0,0);
-            if ( pserver->nxt64bits != 0 && pserver->nxt64bits != Global_mp->nxt64bits )
+            //printf("RAMSYNC.(%s)\n",jsonstr);
+            for (i=0; i<n; i++)
             {
-                expand_nxt64bits(destNXTaddr,pserver->nxt64bits);
-                destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-                if ( memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
-                {
-                    //printf("send to ipaddr.(%s)\n",destip);
-                    send_to_ipaddr(0,0,destip,jsonstr,ram->srvNXTACCTSECRET);
-                }
-                else if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,ram->srvNXTADDR,ram->srvNXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
-                    free(str);
+                copy_cJSON(destip,cJSON_GetArrayItem(array,i));
+                ram_request4096(0,destip,ram,jsonstr);
             }
         }
     }
