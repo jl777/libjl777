@@ -52,15 +52,15 @@ patch: doesntexist; \
     sudo apt-get update; \
     sudo apt-get install libpython3.4-dev; \
     cp /usr/lib/python3.4/config-3.4m-x86_64-linux-gnu/libpython3.4m.a libs; \
-    git clone https://go.googlesource.com/go $HOME; \
-    cd $HOME/go; \
+    cd; git clone https://go.googlesource.com/go; \
+    cd go; \
     git checkout go1.4.1; \
     cd src; \
     ./all.bash; \
-    export GOPATH=$HOME/go; \
-    PATH="$PATH:$GOPATH/bin"; \
-    echo "export GOPATH=\$HOME/go" >> ~/.profile; \
-    echo "PATH=\"\$PATH:\$GOPATH/bin\"" >> ~/.profile; \
+    #export GOPATH=$HOME/go; \
+    #PATH="$PATH:$GOPATH/bin"; \
+    #echo "export GOPATH=\$HOME/go" >> ~/.profile; \
+    #echo "PATH=\"\$PATH:\$GOPATH/bin\"" >> ~/.profile; \
     go get golang.org/x/tools/cmd/...; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get  golang.org/x/tools;\
 
 patch3: doesntexist; \
