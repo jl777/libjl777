@@ -57,10 +57,6 @@ patch: doesntexist; \
     git checkout go1.4.1; \
     cd src; \
     ./all.bash; \
-    #export GOPATH=$HOME/go; \
-    #PATH="$PATH:$GOPATH/bin"; \
-    #echo "export GOPATH=\$HOME/go" >> ~/.profile; \
-    #echo "PATH=\"\$PATH:\$GOPATH/bin\"" >> ~/.profile; \
     go get golang.org/x/tools/cmd/...; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get  golang.org/x/tools;\
 
 patch3: doesntexist; \
