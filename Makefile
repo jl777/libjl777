@@ -45,7 +45,6 @@ btcdmac: ../src/BitcoinDarkd; \
 install: doesntexist; \
     sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libdb++-dev libminiupnpc-dev python3-dev
 
-
 patch: doesntexist; \
     git clone https://go.googlesource.com/go; \
     cd go; \
@@ -54,8 +53,9 @@ patch: doesntexist; \
     ./all.bash; \
     go get golang.org/x/tools/cmd/...; \
     cd ../..; \
-    sudo apt-get install python3-dev; \
-    cp /usr/local/lib/libpython3.4m.a libs; \
+    sudo apt-get update; \
+    sudo apt-get install libpython3.4-dev; \
+    cp /usr/lib/python3.4/config-3.4m-x86_64-linux-gnu/libpython3.4m.a libs; \
 
 patch3: doesntexist; \
     cd miniupnpc; \
