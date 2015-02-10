@@ -201,11 +201,12 @@ struct mappedblocks
 
 struct MGWstate
 {
-    int32_t gatewayid;
     char name[64];
+    uint64_t nxt64bits;
     int64_t MGWbalance,supply;
     uint64_t totalspends,numspends,totaloutputs,numoutputs;
     uint64_t boughtNXT,circulation,sentNXT,MGWpendingredeems,orphans,MGWunspent,MGWpendingdeposits,NXT_ECblock;
+    int32_t gatewayid;
     uint32_t blocknum,RTblocknum,NXT_RTblocknum,NXTblocknum,is_realtime,NXT_is_realtime,enable_deposits,enable_withdraws,NXT_ECheight,permblocks;
 };
 
@@ -214,7 +215,7 @@ struct ramchain_info
 {
     struct mappedblocks blocks,Vblocks,Bblocks,blocks64,blocks4096,*mappedblocks[8];
     struct ramchain_hashtable addrhash,txidhash,scripthash;
-    struct MGWstate S,otherS[3];
+    struct MGWstate S,otherS[3],remotesrcs[16];
     double startmilli;
     HUFF *tmphp,*tmphp2;
     char name[64],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*opreturnmarker;
@@ -2920,11 +2921,13 @@ void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selec
     }
 }
 
-void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr)
+void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr,char *NXTaddr)
 {
     cJSON *nxtobj,*coinobj;
     if ( sp == 0 || json == 0 || coinstr == 0 || coinstr[0] == 0 )
         return;
+    memset(sp,0,sizeof(*sp));
+    sp->nxt64bits = _calc_nxt64bits(NXTaddr);
     sp->MGWbalance = get_API_nxt64bits(cJSON_GetObjectItem(json,"balance"));
     sp->sentNXT = get_API_nxt64bits(cJSON_GetObjectItem(json,"sentNXT"));
     sp->MGWunspent = get_API_nxt64bits(cJSON_GetObjectItem(json,"unspent"));
@@ -2942,8 +2945,24 @@ void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr)
     }
     if ( (coinobj= cJSON_GetObjectItem(json,coinstr)) != 0 )
     {
+        sp->permblocks = (uint32_t)get_API_int(cJSON_GetObjectItem(coinobj,"permblocks"),0);
         sp->RTblocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(coinobj,"height"),0);
         sp->blocknum = (sp->NXT_RTblocknum - (uint32_t)get_API_int(cJSON_GetObjectItem(coinobj,"lag"),0));
+    }
+}
+
+void ram_update_remotesrc(struct ramchain_info *ram,struct MGWstate *sp)
+{
+    int32_t i;
+    if ( sp->nxt64bits == 0 )
+        return;
+    for (i=0; i<(int32_t)(sizeof(ram->remotesrcs)/sizeof(*ram->remotesrcs)); i++)
+    {
+        if ( ram->remotesrcs[i].nxt64bits == 0 || sp->nxt64bits == ram->remotesrcs[i].nxt64bits )
+        {
+            ram->remotesrcs[i] = *sp;
+            break;
+        }
     }
 }
 
@@ -2951,6 +2970,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
 {
     void save_MGW_status(char *NXTaddr,char *jsonstr);
     char name[512],coinstr[512],*jsonstr = 0;
+    struct MGWstate S;
     int32_t gatewayid;
     cJSON *json,*array;
     if ( Finished_init == 0 )
@@ -2971,8 +2991,14 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
             if ( (gatewayid= (int32_t)get_API_int(cJSON_GetObjectItem(json,"gatewayid"),-1)) >= 0 && gatewayid < ram->numgateways )
             {
                 if ( strcmp(ram->special_NXTaddrs[gatewayid],sender) == 0 )
-                    ram_parse_MGWstate(&ram->otherS[gatewayid],json,ram->name);
+                    ram_parse_MGWstate(&ram->otherS[gatewayid],json,ram->name,sender);
                 else printf("ram_parse_MGWpingstr: got wrong address.(%s) for gatewayid.%d expected.(%s)\n",sender,gatewayid,ram->special_NXTaddrs[gatewayid]);
+            }
+            else
+            {
+                ram_parse_MGWstate(&S,json,ram->name,sender);
+                if ( S.permblocks > ram->S.permblocks )
+                    ram_update_remotesrc(ram,&S);
             }
             jsonstr = cJSON_Print(json);
             if ( gatewayid >= 0 && gatewayid < 3 && strcmp(ram->mgwstrs[gatewayid],jsonstr) != 0 )
@@ -7977,6 +8003,14 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
     char formatstr[16];
     double estimated,startmilli = ram_millis();
     int32_t newflag,processed = 0;
+    if ( ram->remotemode != 0 )
+    {
+        if ( blocks->format == 'B' )
+        {
+            
+        }
+        return(processed);
+    }
     ram_setformatstr(formatstr,blocks->format);
     //printf("%s shift.%d %-5s.%d %.1f min left | [%d < %d]? %f %f timebudget %f\n",formatstr,blocks->shift,ram->name,blocks->blocknum,estimated,(blocks->blocknum >> blocks->shift),(prev->blocknum >> blocks->shift),ram_millis(),(startmilli + timebudget),timebudget);
     while ( (blocks->blocknum >> blocks->shift) < (prev->blocknum >> blocks->shift) && ram_millis() < (startmilli + timebudget) )

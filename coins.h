@@ -857,6 +857,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         strcpy(ram->myipaddr,refcp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
     strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
+    ram->S.nxt64bits = calc_nxt64bits(refcp->srvNXTADDR);
     if ( cp->marker == 0 )
         cp->marker = clonestr(get_marker(cp->name));
     if ( cp->marker != 0 )

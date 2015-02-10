@@ -261,7 +261,6 @@ struct NXThandler_info
     queue_t hashtable_queue[2];
     struct hashtable **Pservers_tablep,**NXTaccts_tablep,**NXTassets_tablep,**NXTasset_txids_tablep,**otheraddrs_tablep,**Telepathy_tablep,**redeemtxids,**coin_txidinds,**coin_txidmap,**pending_xfers;//,**Storage_tablep,**Private_tablep;,**NXTguid_tablep,
     cJSON *accountjson;
-    //FILE *storage_fps[2];
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64],myNXTADDR[64];
