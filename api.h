@@ -7,7 +7,7 @@
 
 #ifndef API_H
 #define API_H
-#include <Python/Python.h>
+//#include <Python/Python.h>
 #ifndef _WIN32
 #include "includes/libwebsockets.h"
 #else
@@ -563,10 +563,10 @@ char *python_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
 {
  char name[MAX_JSON_FIELD];
  copy_cJSON(name,objs[0]);
- Py_Initialize();
+ //Py_Initialize();
  FILE *fp = fopen(name, "r");
- PyRun_SimpleFile(fp, name);
- Py_Finalize();
+ //PyRun_SimpleFile(fp, name);
+ //Py_Finalize();
  fclose(fp);
  return(clonestr("return string"));
 }
