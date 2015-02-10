@@ -50,7 +50,7 @@ patch: doesntexist; \
     git clone https://go.googlesource.com/go; \
     cd go; \
     git checkout go1.4.1; \
-    cd go/src; \
+    cd src; \
     ./all.bash; \
     go get golang.org/x/tools/cmd/...; \
     cd ../..; \
