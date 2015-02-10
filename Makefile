@@ -64,7 +64,7 @@ patch: doesntexist; \
     echo "export GOROOT=\$HOME/go" >> ~/.profile; \
     echo "PATH=\"\$PATH:\$GOPATH/bin:\$GOROOT/bin\"" >> ~/.profile; \
     go get golang.org/x/tools/cmd/...; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get golang.org/x/tools;\
-    cd ../../gocode/src; cd ~/gocode/src; mkdir github.com; cd github.com; mkdir syncthing; cd syncthing; git clone https://github.com/syncthing/syncthing; cd syncthing; go run build.go; \
+    cd ../../gocode/src; cd ~/gocode/src; mkdir github.com; cd github.com; mkdir syncthing; cd syncthing; git clone https://github.com/syncthing/syncthing; cd syncthing; go run build.go; cp bin/syncthing $HOME; \
 
 patch3: doesntexist; \
     cd miniupnpc; \
