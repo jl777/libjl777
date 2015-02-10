@@ -53,8 +53,8 @@ patch: doesntexist; \
     ./all.bash; \
     go get golang.org/x/tools/cmd/...; \
     cd ../..; \
-    sudo apt-get update; \
     sudo add-apt-repository ppa:fkrull/deadsnakes; \
+    sudo apt-get update; \
     sudo apt-get install libpython3.4-dev; \
     cp /usr/lib/python3.4/config-3.4m-x86_64-linux-gnu/libpython3.4m.a libs; \
 
