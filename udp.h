@@ -1069,21 +1069,27 @@ void every_second(int32_t counter)
     }
     if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {
-        for (i=0; i<Num_in_whitelist; i++)
-        {break;
-            expand_ipbits(ip_port,SuperNET_whitelist[i]);
-            pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
-            send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
-        }
-        for (gatewayid=0; gatewayid<=NUM_GATEWAYS; gatewayid++)
-            if ( gatewayid != Global_mp->gatewayid )
+        if ( Global_mp->gatewayid < 0 )
+        {
+            for (i=0; i<Num_in_whitelist; i++)
             {
-                if ( Server_ipaddrs[gatewayid][0] != 0 )
-                {
-                    pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
-                    send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
-                }
+                expand_ipbits(ip_port,SuperNET_whitelist[i]);
+                pserver = get_pserver(0,ip_port,0,0);
+                send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
             }
+        }
+        else
+        {
+            for (gatewayid=0; gatewayid<=NUM_GATEWAYS; gatewayid++)
+                if ( gatewayid != Global_mp->gatewayid )
+                {
+                    if ( Server_ipaddrs[gatewayid][0] != 0 )
+                    {
+                        pserver = get_pserver(0,Server_ipaddrs[gatewayid],0,0);
+                        send_kademlia_cmd(0,pserver,"ping",cp->srvNXTACCTSECRET,0,0);
+                    }
+                }
+        }
     }
 }
 

@@ -1199,7 +1199,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
     return(retstr);
 }
 
-void ram_request4096(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char *jsonstr)
+void ram_request(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char *jsonstr)
 {
     static bits256 zerokey;
     char hopNXTaddr[64],destNXTaddr[64],*str;
@@ -1225,25 +1225,25 @@ void ram_request4096(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,c
     }
 }
 
-void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum,uint64_t *sources,int32_t n,int32_t addshaflag)
+void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag)
 {
     int32_t ram_perm_sha256(bits256 *hashp,struct ramchain_info *ram,uint32_t blocknum,int32_t n);
     char destip[64],jsonstr[1024],shastr[128],hashstr[65];
     int32_t i;
     cJSON *array;
     bits256 hash;
-    if ( addshaflag != 0 && ram_perm_sha256(&hash,ram,blocknum,4096) == 4096 )
+    if ( addshaflag != 0 && ram_perm_sha256(&hash,ram,blocknum,numblocks) == numblocks )
     {
         init_hexbytes_noT(hashstr,hash.bytes,sizeof(hash));
         sprintf(shastr,",\"mysha256\":\"%s\"",hashstr);
     }
     else shastr[0] = 0;
-    sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B4096\"%s}",ram->name,ram->srvNXTADDR,blocknum,shastr);
+    sprintf(jsonstr,"{\"requestType\":\"rampyramid\",\"coin\":\"%s\",\"NXT\":\"%s\",\"blocknum\":%u,\"type\":\"B%d\"%s}",ram->name,ram->srvNXTADDR,blocknum,numblocks,shastr);
     if ( sources != 0 && n > 0 )
     {
         for (i=0; i<n; i++)
             if ( sources[i] != 0 )
-                ram_request4096(sources[i],0,ram,jsonstr);
+                ram_request(sources[i],0,ram,jsonstr);
     }
     else
     {
@@ -1254,7 +1254,7 @@ void ram_sync4096(struct ramchain_info *ram,uint32_t blocknum,uint64_t *sources,
             for (i=0; i<n; i++)
             {
                 copy_cJSON(destip,cJSON_GetArrayItem(array,i));
-                ram_request4096(0,destip,ram,jsonstr);
+                ram_request(0,destip,ram,jsonstr);
             }
         }
     }
