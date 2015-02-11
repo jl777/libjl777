@@ -1202,7 +1202,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
 void ram_request(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char *jsonstr)
 {
     static bits256 zerokey;
-    char hopNXTaddr[64],destNXTaddr[64],*str;
+    char hopNXTaddr[64],destNXTaddr[64],ipaddr[64],*str;
     struct pserver_info *pserver;
     int32_t createdflag;
     struct NXT_acct *destnp;
@@ -1215,10 +1215,11 @@ void ram_request(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char 
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
         destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
-        if ( memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
+        expand_ipbits(ipaddr,destnp->stats.ipbits);
+        if ( 1 || memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
         {
             //printf("send to ipaddr.(%s)\n",destip);
-            send_to_ipaddr(0,0,destip,jsonstr,ram->srvNXTACCTSECRET);
+            send_to_ipaddr(0,0,ipaddr,jsonstr,ram->srvNXTACCTSECRET);
         }
         else if ( (str = send_tokenized_cmd(!prevent_queueing("ramchain"),hopNXTaddr,0,ram->srvNXTADDR,ram->srvNXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
             free(str);

@@ -378,7 +378,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     pserver->sentmilli = milliseconds();
     //for (i=0; i<16; i++)
     //    printf("%02x ",((unsigned char *)buf)[i]);
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     if ( SOFTWALL != 0 && is_whitelisted(ipaddr) <= 0 )
     {

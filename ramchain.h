@@ -2964,21 +2964,25 @@ void ram_parse_MGWstate(struct MGWstate *sp,cJSON *json,char *coinstr,char *NXTa
 void ram_update_remotesrc(struct ramchain_info *ram,struct MGWstate *sp)
 {
     int32_t i,oldi = -1,oldest = -1;
+    printf("update remote %llu\n",(long long)sp->nxt64bits);
     if ( sp->nxt64bits == 0 )
         return;
-    printf("update remote\n");
     for (i=0; i<(int32_t)(sizeof(ram->remotesrcs)/sizeof(*ram->remotesrcs)); i++)
     {
         if ( ram->remotesrcs[i].nxt64bits == 0 || sp->nxt64bits == ram->remotesrcs[i].nxt64bits )
         {
             ram->remotesrcs[i] = *sp;
+            printf("set slot.%d <- permblocks.%u\n",i,sp->permblocks);
             return;
         }
         if ( oldest < 0 || (ram->remotesrcs[i].permblocks != 0 && ram->remotesrcs[i].permblocks < oldest) )
             ram->remotesrcs[i].permblocks = oldest,oldi = i;
     }
     if ( oldi >= 0 && (sp->permblocks != 0 && sp->permblocks > oldest) )
+    {
+        printf("overwrite slot.%d <- permblocks.%u\n",oldi,sp->permblocks);
         ram->remotesrcs[oldi] = *sp;
+    }
 }
 
 void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
@@ -3013,8 +3017,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
             {
                 printf("call parse.(%s)\n",cJSON_Print(json));
                 ram_parse_MGWstate(&S,json,ram->name,sender);
-                if ( S.permblocks > ram->S.permblocks )
-                    ram_update_remotesrc(ram,&S);
+                ram_update_remotesrc(ram,&S);
             }
             jsonstr = cJSON_Print(json);
             if ( gatewayid >= 0 && gatewayid < 3 && strcmp(ram->mgwstrs[gatewayid],jsonstr) != 0 )
@@ -3024,7 +3027,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
                 //printf("name is (%s) + (%s) -> (%s)\n",ram->name,Server_ipaddrs[gatewayid],name);
                 save_MGW_status(name,jsonstr);
             }
-        } else if ( Debuglevel > 2 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
+        } else if ( Debuglevel > 1 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
         if ( jsonstr != 0 )
             free(jsonstr);
         free_json(array);
@@ -7196,7 +7199,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                         //if ( blocks->format == 'V' )
                         fprintf(stderr," %s CREATED.%c block.%d datalen.%d | RT.%u lag.%d\n",ram->name,blocks->format,blocknum,datalen+1,ram->S.RTblocknum,ram->S.RTblocknum-blocknum);
                         //else fprintf(stderr,"%s.B.%d ",ram->name,blocknum);
-                        if ( *hpptr != 0 )
+                        if ( 0 && *hpptr != 0 )
                         {
                             hclose(*hpptr);
                             *hpptr = 0;
@@ -9043,13 +9046,16 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
 int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t blocknum,int32_t log2bits)
 {
     void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
-    int32_t numblocks,n;
+    int32_t numblocks,i,n;
     numblocks = (1 << log2bits);
-    while ( (n= ram_getsources(sync->requested,ram,blocknum,4096)) == 0 )
+    while ( (n= ram_getsources(sync->requested,ram,blocknum,numblocks)) < 2 )
     {
-        fprintf(stderr,"waiting for peers for block4096.%u of %u\n",blocknum,ram->S.RTblocknum);
+        fprintf(stderr,"waiting for peers for block%d.%u of %u | peers.%d\n",numblocks,blocknum,ram->S.RTblocknum,n);
         sleep(3);
     }
+    for (i=0; i<n; i++)
+        printf("%llu ",(long long)sync->requested[i]);
+    printf("sources for %d.%d\n",blocknum,numblocks);
     ram_syncblocks(ram,blocknum,numblocks,sync->requested,n,numblocks == 64);
     sync->pending = n;
     sync->blocknum = blocknum;
@@ -9061,19 +9067,22 @@ int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t 
 void ram_init_remotemode(struct ramchain_info *ram)
 {
     struct syncstate *sync,*subsync;
-    uint32_t blocknum,i,last4096,last64;
+    uint32_t blocknum,i,last4096,last64,done = 0;
     //int32_t contiguous = -1;
     last4096 = (ram->S.RTblocknum >> 12) << 12;
-    for (i=blocknum=0; blocknum<=last4096; blocknum+=4096,i++)
-        last4096 = ram_syncblock(ram,&ram->verified[i],blocknum,12);
-    sync = &ram->verified[i];
-    last64 = (ram->S.RTblocknum >> 6) << 6;
-    sync->substate = calloc(64,sizeof(*sync));
-    for (i=0; blocknum<=last64; blocknum+=64,i++)
-        last64 = ram_syncblock(ram,&sync->substate[i],blocknum,6);
-    if ( i < 64 )
+    while ( done < (last4096 >> 12) )
     {
-        subsync = &sync->substate[i];
+        for (i=blocknum=0; blocknum<=last4096; blocknum+=4096,i++)
+            last4096 = ram_syncblock(ram,&ram->verified[i],blocknum,12);
+        sync = &ram->verified[i];
+        last64 = (ram->S.RTblocknum >> 6) << 6;
+        sync->substate = calloc(64,sizeof(*sync));
+        for (i=0; blocknum<=last64; blocknum+=64,i++)
+            last64 = ram_syncblock(ram,&sync->substate[i],blocknum,6);
+        if ( i < 64 )
+        {
+            subsync = &sync->substate[i];
+        }
     }
     /*struct syncstate
     {
