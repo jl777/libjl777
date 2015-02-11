@@ -570,11 +570,11 @@ void ensure_filesize(char *fname,long filesize)
         //printf("filesize.%ld is less than %ld\n",filesize,allocsize);
         if ( (fp=fopen(fname,"ab")) != 0 )
         {
-			#ifndef _WIN32
+#ifndef _WIN32
             zeroes = valloc(16*1024*1024);
-			#else
+#else
 			zeroes = _aligned_malloc(16*1024*1024, 16);
-			#endif
+#endif
             memset(zeroes,0,16*1024*1024);
             n = filesize - allocsize;
             while ( n > 16*1024*1024 )
@@ -586,11 +586,11 @@ void ensure_filesize(char *fname,long filesize)
             for (i=0; i<n; i++)
                 fputc(0,fp);
             fclose(fp);
-			#ifndef _WIN32
+#ifndef _WIN32
             free(zeroes);
-			#else
+#else
 			_aligned_free(zeroes);
-			#endif
+#endif
         }
     }
     else if ( allocsize > filesize )
@@ -696,9 +696,9 @@ int32_t compare_files(char *fname,char *fname2) // OS portable
                     printf("compare error at offset.%d: (%s) src.%ld vs. (%s) dest.%ld\n",offset,fname,ftell(fp),fname2,ftell(fp2)), errs++;
             //while ( (c= fgetc(srcfp)) != EOF )
             //   fputc(c,destfp);
-            fclose(fp);
+            fclose(fp2);
         }
-        fclose(fp2);
+        fclose(fp);
     }
     return(errs);
 }
@@ -7127,10 +7127,11 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
     prevhps = ram_get_hpptr(prevblocks,blocknum);
     ram_setfname(fname,ram,blocknum,formatstr);
     //printf("check create.(%s)\n",fname);
-    if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 && verifyflag == 0 )
+    if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 )
     {
         fclose(fp);
-        return(0);
+        if ( verifyflag == 0 )
+            return(0);
     }
     if ( 0 && blocks->format == 'V' )
     {
