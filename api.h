@@ -15,6 +15,7 @@
 #else
 #include <libwebsockets.h>
 #endif
+#define MAX_LEN 40
 
 
 int32_t is_BTCD_command(cJSON *json)
@@ -563,19 +564,48 @@ char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
 
 char *python_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    char buffer[MAX_LEN+1] = {0};
+    int out_pipe[2];
+    int saved_stdout;
+
+    saved_stdout = dup(STDOUT_FILENO);
+
+    if( pipe(out_pipe) != 0 ) {
+      exit(1);
+    }
+
+    dup2(out_pipe[1], STDOUT_FILENO);
+    close(out_pipe[1]);
+
     char name[MAX_JSON_FIELD];
     FILE *fp;
     copy_cJSON(name,objs[0]);
     if ( (fp= fopen(name, "r")) != 0 )
     {
-#ifndef __APPLE__
         Py_Initialize();
         PyRun_SimpleFile(fp, name);
         Py_Finalize();
-#endif
         fclose(fp);
     }
-    return(clonestr("return string"));
+    fflush(stdout);
+
+    read(out_pipe[0], buffer, MAX_LEN);
+
+    dup2(saved_stdout, STDOUT_FILENO);
+
+    return(clonestr(buffer));
+}
+
+char *bash_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char name[MAX_JSON_FIELD];
+    copy_cJSON(name,objs[0]);
+    char result[100];
+    const char * sh = "sh ";
+    strcpy(result, sh);
+    strcat(result,name);
+    system(result);
+    return(clonestr("Done"));
 }
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1890,11 +1920,11 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     // Privatbet
     static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", "prizefund", 0 };
 
-    // Python
+    // Embedded Langs
     static char *python[] = { (char *)python_func, "python", "V",  "name", 0 };
+    static char *bash[] = { (char *)bash_func, "bash", "V",  "name", 0 };
 
-
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, python, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGW, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, python, bash, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, placebid, placeask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGW, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
