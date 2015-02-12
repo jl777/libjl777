@@ -4043,7 +4043,7 @@ void hclear(HUFF *hp)
 {
     hp->bitoffset = 0;
     hupdate_internals(hp);
-    memset(hp->buf,0,hp->allocsize);
+    //memset(hp->buf,0,hp->allocsize);
     hp->endpos = 0;
 }
 
@@ -4373,6 +4373,33 @@ int32_t hflush(FILE *fp,HUFF *hp)
         return(-1);
     fflush(fp);
     //printf("HFLUSH len.%d numbytes.%d | fpos.%ld\n",len,numbytes,ftell(fp));
+    return(numbytes + len);
+}
+
+int32_t hsync(FILE *fp,HUFF *hp,void *buf)
+{
+    static uint32_t counter;
+    uint32_t len;
+    int32_t numbytes = 0;
+    uint64_t endbitpos;
+    long fpos = ftell(fp);
+    if ( hload_varint(&endbitpos,fp) > 0 )
+    {
+        len = hconv_bitlen(endbitpos);
+        if ( len < 1024*1024 && fread(buf,1,len,fp) == len )
+        {
+            if ( memcmp(buf,hp->buf,len) == 0 )
+                return(0);
+            else if ( counter++ < 10 ) printf("hsync data mismatch\n");
+        }
+    }
+    fseek(fp,fpos,SEEK_SET);
+    if ( (numbytes= (int32_t)hemit_varint(fp,hp->endpos)) < 0 )
+        return(-1);
+    len = hconv_bitlen(hp->endpos);
+    if ( fwrite(hp->buf,1,len,fp) != len )
+        return(-1);
+    //fflush(fp);
     return(numbytes + len);
 }
 
@@ -7365,7 +7392,7 @@ void ram_disp_status(struct ramchain_info *ram)
 void ram_write_permentry(struct ramchain_hashtable *table,struct ramchain_hashptr *ptr)
 {
     uint8_t databuf[8192];
-    int32_t datalen,varlen = 0;
+    int32_t datalen,noexit,varlen = 0;
     uint64_t varint;
     long fpos,len;
     if ( table->permfp != 0 )
@@ -7381,27 +7408,30 @@ void ram_write_permentry(struct ramchain_hashtable *table,struct ramchain_hashpt
         }
         if ( (fpos + datalen) <= table->endpermpos )
         {
+            noexit = 0;
             if ( datalen < sizeof(databuf) )
             {
                 if ( (len= fread(databuf,1,datalen,table->permfp)) == datalen )
                 {
                     if ( memcmp(databuf,ptr->hh.key,datalen) != 0 )
+                    {
                         printf("ram_write_permentry: memcmp error in permhash datalen.%d\n",datalen);
+                        fseek(table->permfp,fpos,SEEK_SET);
+                        noexit = 1;
+                    }
                     else return;
                 } else printf("ram_write_permentry: len.%ld != datalen.%d\n",len,datalen);
             } else printf("datalen.%d too big for databuf[%ld]\n",datalen,sizeof(databuf));
-            exit(-1); // unrecoverable
+            if ( noexit == 0 )
+                exit(-1); // unrecoverable
         }
-        else
+        if ( fwrite(ptr->hh.key,1,datalen,table->permfp) != datalen )
         {
-            if ( fwrite(ptr->hh.key,1,datalen,table->permfp) != datalen )
-            {
-                printf("ram_write_permentry: error saving type.%d ind.%d datalen.%d\n",table->type,ptr->permind,datalen);
-                exit(-1);
-            }
-            fflush(table->permfp);
-            table->endpermpos = ftell(table->permfp);
+            printf("ram_write_permentry: error saving type.%d ind.%d datalen.%d\n",table->type,ptr->permind,datalen);
+            exit(-1);
         }
+        fflush(table->permfp);
+        table->endpermpos = ftell(table->permfp);
     }
 }
 
@@ -7843,7 +7873,7 @@ HUFF *ram_conv_permind(HUFF *permhp,struct ramchain_info *ram,HUFF *hp,uint32_t 
     }
     //printf("hp.%d (end.%d bit.%d) -> permhp.%d (end.%d bit.%d)\n",datalen,hp->endpos,hp->bitoffset,hconv_bitlen(permhp->bitoffset),permhp->endpos,permhp->bitoffset);
     if ( ram->permfp != 0 )
-        hflush(ram->permfp,permhp);
+        hsync(ram->permfp,permhp,(void *)ram->R3);
     return(permhp);
 }
 
@@ -8067,7 +8097,11 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
                     printf("FATAL: error updating block.%d %c\n",blocks->blocknum,blocks->format);
                     while ( 1 ) sleep(1);
                 }
-                ram_conv_permind(ram->tmphp2,ram,hp,blocks->blocknum);
+                if ( ram->permfp != 0 )
+                {
+                    ram_conv_permind(ram->tmphp2,ram,hp,blocks->blocknum);
+                    fflush(ram->permfp);
+                }
             }
             //else printf("hpptr.%p hp.%p newflag.%d\n",hpptr,hp,newflag);
         } //else printf("ram_process_blocks: hpptr.%p hp.%p\n",hpptr,hp);
@@ -9251,7 +9285,8 @@ int32_t ram_scanblocks(struct ramchain_info *ram)
             {
                 if ( ram_rawblock_update(iter,ram,hp,blocknum) > 0 )
                 {
-                    ram_conv_permind(ram->tmphp2,ram,hp,blocknum);
+                    if ( iter == 0 && ram->permfp != 0 )
+                        ram_conv_permind(ram->tmphp2,ram,hp,blocknum);
                     good++;
                 }
                 else
@@ -9268,6 +9303,8 @@ int32_t ram_scanblocks(struct ramchain_info *ram)
         if ( 0 && ram->addrhash.permfp != 0 && ram->txidhash.permfp != 0 && ram->scripthash.permfp != 0 && iter == 0 && ram->permind_changes != 0 )
             ram_convertall(ram);
     }
+    if ( ram->permfp != 0 )
+        fflush(ram->permfp);
     fprintf(stderr,"contiguous.%d good.%d errs.%d\n",ram->blocks.contiguous,good,errs);
     ram_Hfiles(ram);
     return(errs);
