@@ -9359,11 +9359,13 @@ void ram_init_ramchain(struct ramchain_info *ram)
 
 uint32_t ram_update_disp(struct ramchain_info *ram)
 {
+    int32_t pingall(char *coinstr,char *srvNXTACCTSECRET);
     if ( ram_update_RTblock(ram) > ram->lastdisp )
     {
         ram->blocks.blocknum = ram->blocks.contiguous = ram_setcontiguous(&ram->blocks);
         ram_disp_status(ram);
         ram->lastdisp = ram_update_RTblock(ram);
+        pingall(ram->name,ram->srvNXTACCTSECRET);
         return(ram->lastdisp);
     }
     return(0);

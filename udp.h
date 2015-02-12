@@ -250,7 +250,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( cp != 0 && nread > 0 )
     {
         
-        if ( Debuglevel > 2 )//|| (nread > 400 && nread != MAX_UDPLEN) )
+        if ( Debuglevel > 1 )//|| (nread > 400 && nread != MAX_UDPLEN) )
             fprintf(stderr,"UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
@@ -625,8 +625,8 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
         np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
         if ( cmd == 0 )
         {
-            int32_t gen_pingstr(char *cmdstr,int32_t completeflag);
-            gen_pingstr(_cmd,1);
+            int32_t gen_pingstr(char *cmdstr,int32_t completeflag,char *coinstr);
+            gen_pingstr(_cmd,1,0);
             //sprintf(_cmd,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"pubkey\":\"%s\",\"ipaddr\":\"%s\"}","ping",cp->srvNXTADDR,(long)time(NULL),Global_mp->pubkeystr,cp->myipaddr);
         }
         else strcpy(_cmd,cmd);

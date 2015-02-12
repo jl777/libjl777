@@ -253,14 +253,14 @@ uint8_t *replace_datafield(char *cmdstr,uint8_t *databuf,int32_t *datalenp,char 
     return(data);
 }
 
-int32_t gen_pingstr(char *cmdstr,int32_t completeflag)
+int32_t gen_pingstr(char *cmdstr,int32_t completeflag,char *coinstr)
 {
     void ram_get_MGWpingstr(struct ramchain_info *ram,char *MGWpingstr,int32_t selector);
     struct coin_info *cp = get_coin_info("BTCD");
     char MGWpingstr[1024];
     if ( cp != 0 )
     {
-        ram_get_MGWpingstr(0,MGWpingstr,-1);
+        ram_get_MGWpingstr(coinstr==0?0:get_ramchain_info(coinstr),MGWpingstr,-1);
         sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
@@ -379,7 +379,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
             stats->pingmilli = milliseconds();
             stats->numpings++;
         }
-        gen_pingstr(cmdstr,1);
+        gen_pingstr(cmdstr,1,0);
         send_to_ipaddr(0,1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
         return(0);
     }

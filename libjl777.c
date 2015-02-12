@@ -160,6 +160,24 @@ int32_t expire_nodestats(struct nodestats *stats,uint32_t now)
     return(0);
 }
 
+int32_t pingall(char *coinstr,char *NXTACCTSECRET)
+{
+    int32_t i,n = 0;
+    char ipaddr[64],cmdstr[1024];
+    struct pserver_info *pserver;
+    for (i=n=0; i<Num_in_whitelist; i++)
+    {
+        expand_ipbits(ipaddr,SuperNET_whitelist[i]);
+        pserver = get_pserver(0,ipaddr,0,0);
+        if ( ismyipaddr(ipaddr) == 0 )
+        {
+            gen_pingstr(cmdstr,1,coinstr);
+            send_to_ipaddr(0,1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
+        }
+    }
+    return(n);
+}
+
 void every_minute(int32_t counter)
 {
     static int broadcast_count;
@@ -190,7 +208,7 @@ void every_minute(int32_t counter)
             {
                 expand_ipbits(ipaddr,nodes[i]->ipbits);
                 printf("(%llu %d %s) ",(long long)nodes[i]->nxt64bits,nodes[i]->lastcontact-now,ipaddr);
-                if ( gen_pingstr(_cmd,1) > 0 )
+                if ( gen_pingstr(_cmd,1,0) > 0 )
                 {
                     len = construct_tokenized_req((char *)finalbuf,_cmd,cp->srvNXTACCTSECRET);
                     send_packet(!prevent_queueing("ping"),nodes[i]->ipbits,0,finalbuf,len);

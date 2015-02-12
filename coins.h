@@ -1164,7 +1164,7 @@ void init_SuperNET_settings(char *userdir)
     MULTITHREADS = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTITHREADS"),0);
     SOFTWALL = get_API_int(cJSON_GetObjectItem(MGWconf,"SOFTWALL"),0);
     MAP_HUFF = get_API_int(cJSON_GetObjectItem(MGWconf,"MAP_HUFF"),1);
-    FASTMODE = get_API_int(cJSON_GetObjectItem(MGWconf,"FASTMODE"),0);
+    FASTMODE = get_API_int(cJSON_GetObjectItem(MGWconf,"FASTMODE"),1);
     SERVER_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SERVER_PORT"),3000);
     SUPERNET_PORT = get_API_int(cJSON_GetObjectItem(MGWconf,"SUPERNET_PORT"),_SUPERNET_PORT);
     APIPORT = get_API_int(cJSON_GetObjectItem(MGWconf,"APIPORT"),SUPERNET_PORT);
