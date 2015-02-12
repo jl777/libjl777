@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include/python3.4
+CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include/python3.4 -I/usr/include
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
