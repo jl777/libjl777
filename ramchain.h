@@ -2421,6 +2421,7 @@ int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uin
 
 struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destaddr,uint64_t value,uint64_t redeemtxid)
 {
+    //int64 nPayFee = nTransactionFee * (1 + (int64)nBytes / 1000);
     char *rawparams,*signedtx,*changeaddr,*with_op_return=0,*retstr = 0;
     int64_t MGWfee,sum,amount;
     int32_t allocsize,numoutputs = 0;
@@ -2431,6 +2432,11 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     cointx->redeemtxid = redeemtxid;
     cointx->gatewayid = ram->S.gatewayid;
     MGWfee = 0*(value >> 10) + (2 * (ram->txfee + ram->NXTfee_equiv)) - 1 - ram->txfee;
+    if ( value <= MGWfee + 1 + ram->txfee )
+    {
+        printf("%s redeem.%llu withdraw %.8f < MGWfee %.8f + 1 + txfee %.8f\n",ram->name,(long long)redeemtxid,dstr(value),dstr(MGWfee),dstr(ram->txfee));
+        return(0);
+    }
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->marker2);
     if ( strcmp(destaddr,ram->marker2) == 0 )
         cointx->outputs[numoutputs++].value = value - 1 - ram->txfee;
@@ -3316,7 +3322,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                         if ( tp->completed == 0 && tp->convwithdrawaddr != 0 )
                         {
                             (*pendingredeemsp) += tp->U.assetoshis;
-                            printf("NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.enable_withdraws,ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
+                            printf("%s NXT.%llu withdraw.(%llu %.8f).rt%d_%d_%d_%d.g%d -> %s elapsed %.1f minutes | pending.%d\n",ram->name,(long long)tp->senderbits,(long long)tp->redeemtxid,dstr(tp->U.assetoshis),ram->S.enable_withdraws,ram->S.is_realtime,(tp->height + ram->withdrawconfirms) <= ram->S.NXT_RTblocknum,ram->S.MGWbalance >= 0,(int32_t)(tp->senderbits % NUM_GATEWAYS),tp->convwithdrawaddr,(double)(time(NULL) - tp->redeemstarted)/60,ram->numpendingsends);
                             numpending++;
                             if ( disable_newsends == 0 )
                             {
