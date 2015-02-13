@@ -381,7 +381,7 @@ struct coin_info
     char srvpubaddr[128],srvNXTACCTSECRET[MAX_JSON_FIELD*2+1],srvcoinpubkey[1024],srvNXTADDR[64];
     
     char name[64],backupdir[512],privacyserver[64],myipaddr[64],transporteraddr[128],bridgeipaddr[64],MGWissuer[64];
-    char *userpass,*serverport,assetid[64],*marker,*tradebotfname,*pending_ptr;
+    char *userpass,*serverport,assetid[64],*marker,*marker2,*tradebotfname,*pending_ptr;
     uint64_t srvpubnxtbits,privatebits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,blockheight,RTblockheight,nxtaccts[512];
     uint32_t uptodate,boughtNXT;
     int32_t maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods,M,N,numlogs,clonesmear,pending_ptrmaxlen,srvport,numnxtaccts;

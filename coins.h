@@ -429,7 +429,7 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
     return(serverport);
 }
 
-struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,uint64_t txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,uint64_t NXTfee_equiv,int32_t forkblock,char *userpass)
+struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32_t estblocktime,char *name,int32_t minconfirms,uint64_t txfee,int32_t pollseconds,char *asset,char *conf_fname,char *serverport,int32_t blockheight,char *marker,char *marker2,uint64_t NXTfee_equiv,int32_t forkblock,char *userpass)
 {
     struct coin_info *cp = calloc(1,sizeof(*cp));
     //char userpass[512];
@@ -440,6 +440,7 @@ struct coin_info *create_coin_info(int32_t nohexout,int32_t useaddmultisig,int32
     cp->NXTfee_equiv = NXTfee_equiv;
     safecopy(cp->assetid,asset,sizeof(cp->assetid));
     cp->marker = clonestr(marker);
+    cp->marker2 = clonestr(marker2);
     cp->blockheight = blockheight;
     cp->min_confirms = minconfirms;
     cp->markeramount = cp->txfee = txfee;
@@ -473,8 +474,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
     void add_new_node(uint64_t nxt64bits);
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t i,j,n,useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
-    char numstr[64],rpcuserpass[512],asset[256],_marker[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
-    char *marker,*privkey,*coinaddr,**privkeys,multisigchar[32];
+    char numstr[64],rpcuserpass[512],asset[256],_marker[512],_marker2[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
+    char *marker,*marker2,*privkey,*coinaddr,**privkeys,multisigchar[32];
     cJSON *ciphersobj,*limbo;
     //struct coinaddr *addrp = 0;
     struct nodestats *stats;
@@ -522,13 +523,14 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
         NXTfee_equiv = get_API_nxt64bits(cJSON_GetObjectItem(json,"NXTfee_equiv_satoshis"));
         if ( NXTfee_equiv == 0 )
             NXTfee_equiv = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"NXTfee_equiv")));
-        if ( (marker = get_marker(coinstr)) == 0 )
-        {
-            extract_cJSON_str(_marker,sizeof(_marker),json,"marker");
-            if ( _marker[0] == 0 )
-                strcpy(_marker,get_marker(coinstr));
-            marker = clonestr(_marker);
-        }
+        extract_cJSON_str(_marker,sizeof(_marker),json,"marker");
+        extract_cJSON_str(_marker2,sizeof(_marker2),json,"marker2");
+        if ( _marker[0] == 0 )
+            marker = get_marker(coinstr);
+        else marker = _marker;
+        if ( _marker2[0] == 0 )
+            marker2 = get_marker(coinstr);
+        else marker2 = _marker2;
         if ( //marker != 0 && txfee != 0. && NXTfee_equiv != 0. &&
             extract_cJSON_str(confstr,sizeof(confstr),json,"conf") > 0 &&
             extract_cJSON_str(asset,sizeof(asset),json,"asset") > 0 &&
@@ -538,7 +540,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
             if ( userdir[0] != 0 )
                 sprintf(conf_filename,"%s/%s",userdir,confstr);
             else strcpy(conf_filename,confstr);
-            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,NXTfee_equiv,forkblock,rpcuserpass);
+            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,marker2,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
                 portable_mutex_init(&cp->consensus_mutex);
@@ -862,6 +864,10 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         cp->marker = clonestr(get_marker(cp->name));
     if ( cp->marker != 0 )
         ram->marker = clonestr(cp->marker);
+    if ( cp->marker2 == 0 )
+        cp->marker2 = clonestr(get_marker(cp->name));
+    if ( cp->marker2 != 0 )
+        ram->marker2 = clonestr(cp->marker2);
     if ( cp->privateaddr[0] != 0 )
         ram->opreturnmarker = clonestr(cp->privateaddr);
     ram->dust = cp->dust;
