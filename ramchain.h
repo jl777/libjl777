@@ -3328,7 +3328,11 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                                         //ram_add_pendingsend(0,ram,tp,cointx);
                                         // disable_newsends = 1;
                                     } else printf("not ready to withdraw yet\n");
-                                } else if ( ram->S.enable_withdraws != 0 ) tp->completed = 1; // ignore malformed requests for now
+                                }
+                                else if ( ram->S.enable_withdraws != 0 && ram->S.is_realtime != 0 && ram->S.NXT_is_realtime != 0 )
+                                {
+                                    //tp->completed = 1; // ignore malformed requests for now
+                                }
                             }
                             else if ( ram_check_consensus(txidstr,ram,tp) != 0 )
                                 printf("completed redeem.%llu with cointxid.%s\n",(long long)tp->redeemtxid,txidstr);
@@ -7471,17 +7475,17 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     if ( scriptind > 0 && scriptind <= table->ind && (scriptptr= table->ptrs[scriptind]) != 0 )
     {
         unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr);
+        ram_script(scriptstr,ram,scriptind);
+        if ( scriptptr->unspent == 0 && (scriptptr->unspent= unspent) != 0 )  // this is MGW redeemtxid
+        {
+            ram_txid(txidstr,ram,txid_rawind);
+            printf("coin redeemtxid.(%s) with script.(%s)\n",txidstr,scriptstr);
+            memset(&B,0,sizeof(B));
+            B.blocknum = blocknum, B.txind = txind, B.v = vout;
+            _ram_update_redeembits(ram,scriptptr->unspent,0,txidstr,&B);
+        }
         if ( iter != 1 && scriptptr->permind == 0 )
         {
-            ram_script(scriptstr,ram,scriptind);
-            if ( (scriptptr->unspent= unspent) != 0 )  // this is MGW redeemtxid (inefficient, should be done binary)
-            {
-                ram_txid(txidstr,ram,txid_rawind);
-                printf("coin redeemtxid.(%s) with script.(%s)\n",txidstr,scriptstr);
-                memset(&B,0,sizeof(B));
-                B.blocknum = blocknum, B.txind = txind, B.v = vout;
-                _ram_update_redeembits(ram,scriptptr->unspent,0,txidstr,&B);
-            }
             scriptptr->permind = ++ram->next_script_permind;
             ram_write_permentry(table,scriptptr);
             if ( scriptptr->permind != scriptptr->rawind )
@@ -9173,7 +9177,7 @@ void ram_selfheal(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks)
 
 uint32_t ram_syncblock64(struct syncstate **subsyncp,struct ramchain_info *ram,struct syncstate *sync,uint32_t blocknum)
 {
-    uint32_t i,last64,done = 0;
+    uint32_t i,j,last64,done = 0;
     struct syncstate *subsync;
     last64 = (ram->S.RTblocknum >> 6) << 6;
     //fprintf(stderr,"syncblock64 from %d: last64 %d\n",blocknum,last64);
@@ -9183,7 +9187,12 @@ uint32_t ram_syncblock64(struct syncstate **subsyncp,struct ramchain_info *ram,s
     {
         subsync = &sync->substate[i];
         if ( subsync->minoritybits != 0 )
-            ram_selfheal(ram,blocknum,64);
+        {
+            if ( subsync->substate == 0 )
+                subsync->substate = calloc(64,sizeof(*subsync->substate));
+            for (j=0; j<64; j++)
+                ram_syncblock(ram,&sync->substate[j],blocknum+j,0);
+        }
         else if ( subsync->majoritybits == 0 || bitweight(subsync->majoritybits) < 3 )
             last64 = ram_syncblock(ram,subsync,blocknum,6);
         else done++;
@@ -9197,8 +9206,11 @@ uint32_t ram_syncblock64(struct syncstate **subsyncp,struct ramchain_info *ram,s
 void ram_init_remotemode(struct ramchain_info *ram)
 {
     struct syncstate *sync,*subsync,*blocksync;
-    uint32_t blocknum,i,j,last64,last4096,done2,done = 0;
+    uint64_t requested[16];
+    int32_t contiguous,activeblock;
+    uint32_t blocknum,i,j,n,last64,last4096,done2,done = 0;
     last4096 = (ram->S.RTblocknum >> 12) << 12;
+    activeblock = contiguous = -1;
     while ( done < (last4096 >> 12) )
     {
         for (i=blocknum=0; blocknum<last4096; blocknum+=4096,i++)
@@ -9208,15 +9220,30 @@ void ram_init_remotemode(struct ramchain_info *ram)
                 ram_syncblock64(0,ram,sync,blocknum);
             else if ( sync->majoritybits == 0 || bitweight(sync->majoritybits) < 3 )
                 ram_syncblock(ram,sync,blocknum,12);
-            else done++;
+            else
+            {
+                done++;
+                if ( activeblock < 0 )
+                {
+                    activeblock = blocknum;
+                    if ( (n= ram_getsources(requested,ram,blocknum+j,1)) == 0 )
+                    {
+                        fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
+                        activeblock = -1;
+                        break;
+                    }
+                }
+            }
         }
         printf("block.%u last4096.%d done.%d of %d\n",blocknum,last4096,done,i);
         
         last64 = ((ram->S.RTblocknum >> 6) << 6);
         sync = &ram->verified[i];
-        if ( sync->substate == 0 )
-            sync->substate = calloc(64,sizeof(*sync->substate));
-        done2 = 0;
+        //if ( sync->substate == 0 )
+        //    sync->substate = calloc(64,sizeof(*sync->substate));
+        ram_syncblock64(&subsync,ram,sync,blocknum);
+
+       /* done2 = 0;
         for (i=0; blocknum<last64&&i<64; blocknum+=64,i++)
         {
             subsync = &sync->substate[i];
@@ -9233,9 +9260,9 @@ void ram_init_remotemode(struct ramchain_info *ram)
             else if ( subsync->majoritybits == 0 || bitweight(subsync->majoritybits) < 3 )
                 last64 = ram_syncblock(ram,subsync,blocknum,6);
             else done2++;
-        }
+        }*/
         printf("block.%u last64.%d done.%d of %d\n",blocknum,last64,done2,i);
-        subsync = &sync->substate[i];
+        //subsync = &sync->substate[i];
         if ( subsync->substate == 0 )
             subsync->substate = calloc(64,sizeof(*subsync->substate));
         for (i=0; blocknum<ram->S.RTblocknum&&i<64; blocknum++,i++)

@@ -1374,7 +1374,8 @@ char *rampyramid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         return(retstr);
     blocknum = (uint32_t)get_API_int(objs[3],-1);
     copy_cJSON(typestr,objs[4]);
-    printf("got pyramid: (%s)\n",origargstr);
+    if ( Debuglevel > 2 )
+        printf("got pyramid: (%s)\n",origargstr);
     if ( get_ramchain_info(coin) != 0 && sender[0] != 0 && valid > 0 )
     {
         retstr = rampyramid(NXTaddr,origargstr,sender,previpaddr,coin,blocknum,typestr);
