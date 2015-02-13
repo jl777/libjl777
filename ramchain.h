@@ -2464,9 +2464,12 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                     printf("Need to create more deposit addresses, need to have at least 2 available\n");
                     exit(1);
                 }
-                strcpy(cointx->outputs[cointx->numoutputs].coinaddr,changeaddr);
-                cointx->outputs[cointx->numoutputs].value = cointx->change;
-                cointx->numoutputs++;
+                if ( strcmp(cointx->outputs[0].coinaddr,changeaddr) != 0 )
+                {
+                    strcpy(cointx->outputs[cointx->numoutputs].coinaddr,changeaddr);
+                    cointx->outputs[cointx->numoutputs].value = cointx->change;
+                    cointx->numoutputs++;
+                } else cointx->outputs[cointx->numoutputs].value += cointx->change;
             }
             rawparams = _createrawtxid_json_params(ram,cointx);
             if ( rawparams != 0 )
