@@ -250,7 +250,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( cp != 0 && nread > 0 )
     {
         
-        if ( Debuglevel > 1 )//|| (nread > 400 && nread != MAX_UDPLEN) )
+        if ( Debuglevel > 2 )//|| (nread > 400 && nread != MAX_UDPLEN) )
             fprintf(stderr,"UDP RECEIVED %ld from %s/%d crc.%x\n",nread,ipaddr,supernet_port,_crc32(0,rcvbuf->base,nread));
         ASSERT(addr->sa_family == AF_INET);
         server_xferred += nread;
@@ -378,7 +378,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     pserver->sentmilli = milliseconds();
     //for (i=0; i<16; i++)
     //    printf("%02x ",((unsigned char *)buf)[i]);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("uv_udp_send %ld bytes to %s/%d crx.%x\n",wr->buf.len,ipaddr,supernet_port,_crc32(0,wr->buf.base,wr->buf.len));
     if ( SOFTWALL != 0 && is_whitelisted(ipaddr) <= 0 )
     {

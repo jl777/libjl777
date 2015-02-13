@@ -390,7 +390,7 @@ char *send_tokenized_cmd(int32_t queueflag,char *hopNXTaddr,int32_t L,char *veri
             cJSON_ReplaceItemInObject(json,"data",cJSON_CreateNumber(datalen));
             cmd = cJSON_Print(json);
             stripwhite_ns(cmd,strlen(cmd));
-            printf("cmdstr.(%s) -> (%s)\n",cmdstr,cmd);
+            printf("cmdstr.(%s) -> (%s).%08x\n",cmdstr,cmd,*(uint32_t *)data);
         }
         free_json(json);
     }

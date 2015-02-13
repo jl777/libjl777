@@ -603,16 +603,22 @@ char *language_func(char *cmd,char *fname,void (*language)(FILE *fp,char *cmd,ch
 char *python_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char fname[MAX_JSON_FIELD];
-    copy_cJSON(fname,objs[0]);
-    return(language_func("python",fname,call_python));
+    if ( is_remote_access(previpaddr) == 0 )
+    {
+        copy_cJSON(fname,objs[0]);
+        return(language_func("python",fname,call_python));
+    } else return(0);
 }
 
 char *syscall_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char fname[MAX_JSON_FIELD],syscall[MAX_JSON_FIELD];
-    copy_cJSON(fname,objs[0]);
-    copy_cJSON(syscall,objs[1]);
-    return(language_func(syscall,fname,call_system));
+    if ( is_remote_access(previpaddr) == 0 )
+    {
+        copy_cJSON(fname,objs[0]);
+        copy_cJSON(syscall,objs[1]);
+        return(language_func(syscall,fname,call_system));
+    } else return(0);
 }
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1304,8 +1310,8 @@ char *ramresponse_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 {
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
-    if ( Debuglevel > 0 )
-        printf("ramresponse_func(%s)\n",origargstr);
+    if ( Debuglevel > 2 )
+        fprintf(stderr,"ramresponse_func(%s)\n",origargstr);
     if ( sender[0] != 0 && valid > 0 )
         return(ramresponse(origargstr,sender,previpaddr,cJSON_str(objs[2])));
     else return(clonestr(RAMAPI_ERRORSTR));
