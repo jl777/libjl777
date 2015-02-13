@@ -2821,7 +2821,7 @@ char *_calc_withdrawaddr(char *withdrawaddr,struct ramchain_info *ram,struct NXT
         }
         else withdrawaddr[0] = autoconvert[0] = 0;
     }
-    //printf("PARSED withdrawaddr.(%s) autoconvert.(%s)\n",withdrawaddr,autoconvert);
+    printf("PARSED.%s withdrawaddr.(%s) autoconvert.(%s)\n",ram->name,withdrawaddr,autoconvert);
     if ( withdrawaddr[0] == 0 || autoconvert[0] != 0 )
         return(0);
     for (i=0; withdrawaddr[i]!=0; i++)
@@ -3664,12 +3664,13 @@ struct NXT_assettxid *_set_assettxid(struct ramchain_info *ram,uint32_t height,c
     tp->U.assetoshis = (quantity * ap->mult);
     tp->receiverbits = receiverbits;
     tp->senderbits = senderbits;
-    //printf("%s txid.(%s) (%s)\n",ram->name,redeemtxidstr,commentstr!=0?commentstr:"NULL");
+    printf("_set_assettxid(%s)\n",commentstr);
     if ( commentstr != 0 && (tp->comment == 0 || strcmp(tp->comment,commentstr) != 0) && (json= cJSON_Parse(commentstr)) != 0 )
     {
         copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
         if ( coinstr[0] == 0 )
             strcpy(coinstr,ram->name);
+        printf("%s txid.(%s) (%s)\n",ram->name,redeemtxidstr,commentstr!=0?commentstr:"NULL");
         if ( strcmp(coinstr,ram->name) == 0 )
         {
             if ( tp->comment != 0 )
@@ -3756,7 +3757,8 @@ uint32_t _process_NXTtransaction(int32_t confirmed,struct ramchain_info *ram,cJS
                 numconfs = (ram->S.NXT_RTblocknum - height);
         } else numconfs = 0;
         copy_cJSON(txid,cJSON_GetObjectItem(txobj,"transaction"));
-       // printf("TX.(%s)\n",txid);
+        if ( strcmp(txid,"1110183143900371107") == 0 )
+            printf("TX.(%s) %s\n",txid,cJSON_Print(txobj));
         type = get_cJSON_int(txobj,"type");
         subtype = get_cJSON_int(txobj,"subtype");
         timestamp = (int32_t)get_cJSON_int(txobj,"blockTimestamp");
@@ -3792,7 +3794,7 @@ uint32_t _process_NXTtransaction(int32_t confirmed,struct ramchain_info *ram,cJS
                     commentstr = clonestr(_unstringify(comment));
                 copy_cJSON(assetidstr,cJSON_GetObjectItem(attachment,"asset"));
                 //if ( strcmp(txid,"998606823456096714") == 0 )
-                //    printf("Inside comment: %s\n",comment);
+                printf("Inside comment.(%s): %s\n",assetidstr,comment);
                 if ( assetidstr[0] != 0 && ap->assetbits == _calc_nxt64bits(assetidstr) )
                 {
                     assetoshis = get_cJSON_int(attachment,"quantityQNT");
@@ -4165,7 +4167,7 @@ int32_t hemit_smallbits(HUFF *hp,uint16_t val)
         }
     } else numbits += hemit_bits(hp,val,3);
     count++, sum += numbits;
-    if ( (count % 100000) == 0 )
+    if ( (count % 10000000) == 0 )
         printf("ave smallbits %.1f after %ld samples\n",(double)sum/count,count);
     return(numbits);
 }
@@ -4229,7 +4231,7 @@ int32_t hemit_varbits(HUFF *hp,uint32_t val)
         }
     } else numbits += hemit_bits(hp,val,4);
     count++, sum += numbits;
-    if ( (count % 100000) == 0 )
+    if ( (count % 10000000) == 0 )
         printf("hemit_varbits.(%u) numbits.%d ave varbits %.1f after %ld samples\n",val,numbits,(double)sum/count,count);
     return(numbits);
 }
@@ -4263,7 +4265,7 @@ int32_t hemit_valuebits(HUFF *hp,uint64_t value)
     for (i=0; i<2; i++,value>>=32)
         numbits += hemit_varbits(hp,value & 0xffffffff);
     count++, sum += numbits;
-    if ( (count % 100000) == 0 )
+    if ( (count % 10000000) == 0 )
         printf("ave valuebits %.1f after %ld samples\n",(double)sum/count,count);
     return(numbits);
 }
@@ -5284,17 +5286,21 @@ uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,
     uint64_t redeemtxid = 0;
     int32_t i;
     *unspendablep = 0;
+    if ( strcmp(script,"76a914000000000000000000000000000000000000000088ac") == 0 )
+        *unspendablep = 1;
     if ( strcmp(script+22,"00000000000000000000000088ac") == 0 )
     {
-        if ( strncmp(script+8,"0000000000000000000000000000000000",strlen("0000000000000000000000000000000000")) == 0 )
-            *unspendablep = 1;
         for (redeemtxid=i=0; i<(int32_t)sizeof(uint64_t); i++)
         {
             redeemtxid <<= 8;
             redeemtxid |= (_decode_hex(&script[6 + 14 - i*2]) & 0xff);
         }
-        //printf(">>>>>>>>>>>>>>> found MGW redeem %s -> %llu\n",script,(long long)redeemtxid);
-    } //else printf("(%s).%d\n",script+22,strcmp(script+16,"00000000000000000000000088ac"));
+        printf("%s >>>>>>>>>>>>>>> found MGW redeem %s -> %llu | unspendable.%d\n",ram->name,script,(long long)redeemtxid,*unspendablep);
+    }
+    else if ( *unspendablep != 0 )
+        printf("%s >>>>>>>>>>>>>>> found unspendable %s\n",ram->name,script);
+
+    //else printf("(%s).%d\n",script+22,strcmp(script+16,"00000000000000000000000088ac"));
     return(redeemtxid);
 }
 
@@ -7450,7 +7456,7 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     uint32_t scriptind,addrind;
     struct address_entry B;
     char *str,coinaddr[1024],txidstr[512],scriptstr[512];
-    uint64_t value,unspent;
+    uint64_t value;
     int32_t unspendable,numbits = 0;
     *addr_rawindp = 0;
     numbits += hdecode_varbits(&scriptind,hp);
@@ -7474,22 +7480,25 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     table = ram_gethash(ram,'s');
     if ( scriptind > 0 && scriptind <= table->ind && (scriptptr= table->ptrs[scriptind]) != 0 )
     {
-        unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr);
         ram_script(scriptstr,ram,scriptind);
-        if ( scriptptr->unspent == 0 && (scriptptr->unspent= unspent) != 0 )  // this is MGW redeemtxid
+        scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr);
+        if ( iter != 1 )
         {
-            ram_txid(txidstr,ram,txid_rawind);
-            printf("coin redeemtxid.(%s) with script.(%s)\n",txidstr,scriptstr);
-            memset(&B,0,sizeof(B));
-            B.blocknum = blocknum, B.txind = txind, B.v = vout;
-            _ram_update_redeembits(ram,scriptptr->unspent,0,txidstr,&B);
-        }
-        if ( iter != 1 && scriptptr->permind == 0 )
-        {
-            scriptptr->permind = ++ram->next_script_permind;
-            ram_write_permentry(table,scriptptr);
-            if ( scriptptr->permind != scriptptr->rawind )
-                ram->permind_changes++;
+            if ( scriptptr->unspent != 0 )  // this is MGW redeemtxid
+            {
+                ram_txid(txidstr,ram,txid_rawind);
+                printf("coin redeemtxid.(%s) with script.(%s)\n",txidstr,scriptstr);
+                memset(&B,0,sizeof(B));
+                B.blocknum = blocknum, B.txind = txind, B.v = vout;
+                _ram_update_redeembits(ram,scriptptr->unspent,0,txidstr,&B);
+            }
+            if ( scriptptr->permind == 0 )
+            {
+                scriptptr->permind = ++ram->next_script_permind;
+                ram_write_permentry(table,scriptptr);
+                if ( scriptptr->permind != scriptptr->rawind )
+                    ram->permind_changes++;
+            }
         }
         table = ram_gethash(ram,'a');
         if ( addrind > 0 && addrind <= table->ind && (addrptr= table->ptrs[addrind]) != 0 )
