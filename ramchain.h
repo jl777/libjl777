@@ -9166,9 +9166,9 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
     return(blocknum);
 }
 
-void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
 int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t blocknum,int32_t log2bits)
 {
+    void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
     int32_t numblocks,n;
     numblocks = (1 << log2bits);
     while ( (n= ram_getsources(sync->requested,ram,blocknum,numblocks)) == 0 )
@@ -9229,11 +9229,9 @@ void ram_init_remotemode(struct ramchain_info *ram)
     int32_t contiguous,activeblock;
     uint32_t blocknum,i,j,n,last64,last4096,done2,done = 0;
     last4096 = (ram->S.RTblocknum >> 12) << 12;
-    activeblock = 0;
-    contiguous = -1;
-    while ( activeblock < last4096 )
+    activeblock = contiguous = -1;
+    while ( done < (last4096 >> 12) )
     {
-        done = 0;
         for (i=blocknum=0; blocknum<last4096; blocknum+=4096,i++)
         {
             sync = &ram->verified[i];
@@ -9244,18 +9242,15 @@ void ram_init_remotemode(struct ramchain_info *ram)
             else
             {
                 done++;
-                if ( 0 && activeblock == blocknum )
+                if ( 0 && activeblock < 0 )
                 {
-                    for (j=0; j<4096; j++)
+                    activeblock = blocknum;
+                    if ( (n= ram_getsources(requested,ram,blocknum+j,1)) == 0 )
                     {
-                        if ( (n= ram_getsources(requested,ram,blocknum+j,1)) == 0 )
-                        {
-                            fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
-                            continue;
-                        }
-                        ram_syncblocks(ram,blocknum+j,1,&requested[rand() % n],1,0);
+                        fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
+                        activeblock = -1;
+                        break;
                     }
-                    activeblock++;
                 }
             }
         }
@@ -9284,8 +9279,8 @@ void ram_init_remotemode(struct ramchain_info *ram)
             else if ( subsync->majoritybits == 0 || bitweight(subsync->majoritybits) < 3 )
                 last64 = ram_syncblock(ram,subsync,blocknum,6);
             else done2++;
-        }*/
-        printf("block.%u last64.%d done.%d of %d\n",blocknum,last64,done2,i);
+        }
+        printf("block.%u last64.%d done.%d of %d\n",blocknum,last64,done2,i);*/
         //subsync = &sync->substate[i];
         if ( subsync->substate == 0 )
             subsync->substate = calloc(64,sizeof(*subsync->substate));
@@ -9298,11 +9293,11 @@ void ram_init_remotemode(struct ramchain_info *ram)
     }
     for (i=0; i<4096; i++)
     {
-        for (blocknum=i; blocknum<ram->S.RTblocknum; blocknum+=64)
+        for (blocknum=i; blocknum<ram->S.RTblocknum; blocknum+=(ram->S.RTblocknum>>12))
         {
             if ( (n= ram_getsources(requested,ram,blocknum,1)) == 0 )
             {
-                fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
+                fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum,ram->S.RTblocknum,n);
                 continue;
             }
             ram_syncblocks(ram,blocknum,1,&requested[rand() % n],1,0);
