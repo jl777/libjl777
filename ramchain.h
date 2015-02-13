@@ -3665,7 +3665,7 @@ struct NXT_assettxid *_set_assettxid(struct ramchain_info *ram,uint32_t height,c
     tp->receiverbits = receiverbits;
     tp->senderbits = senderbits;
     printf("_set_assettxid(%s)\n",commentstr);
-    if ( commentstr != 0 && (tp->comment == 0 || strcmp(tp->comment,commentstr) != 0) && (json= cJSON_Parse(commentstr)) != 0 )
+    if ( commentstr != 0 && (json= cJSON_Parse(commentstr)) != 0 ) //(tp->comment == 0 || strcmp(tp->comment,commentstr) != 0) &&
     {
         copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
         if ( coinstr[0] == 0 )
@@ -3719,7 +3719,7 @@ struct NXT_assettxid *_set_assettxid(struct ramchain_info *ram,uint32_t height,c
             }
         } else printf("mismatched coin.%s vs (%s) for transfer.%llu (%s)\n",coinstr,ram->name,(long long)redeemtxid,commentstr);
         free_json(json);
-    }
+    } else printf("error with (%s) tp->comment %p\n",commentstr,tp->comment);
     return(tp);
 }
 
