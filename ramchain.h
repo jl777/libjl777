@@ -2469,7 +2469,7 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                     strcpy(cointx->outputs[cointx->numoutputs].coinaddr,changeaddr);
                     cointx->outputs[cointx->numoutputs].value = cointx->change;
                     cointx->numoutputs++;
-                } else cointx->outputs[cointx->numoutputs].value += cointx->change;
+                } else cointx->outputs[0].value += cointx->change;
             }
             rawparams = _createrawtxid_json_params(ram,cointx);
             if ( rawparams != 0 )
@@ -9166,9 +9166,9 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
     return(blocknum);
 }
 
+void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
 int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t blocknum,int32_t log2bits)
 {
-    void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
     int32_t numblocks,n;
     numblocks = (1 << log2bits);
     while ( (n= ram_getsources(sync->requested,ram,blocknum,numblocks)) == 0 )
@@ -9229,7 +9229,8 @@ void ram_init_remotemode(struct ramchain_info *ram)
     int32_t contiguous,activeblock;
     uint32_t blocknum,i,j,n,last64,last4096,done2,done = 0;
     last4096 = (ram->S.RTblocknum >> 12) << 12;
-    activeblock = contiguous = -1;
+    activeblock = 0;
+    contiguous = -1;
     while ( done < (last4096 >> 12) )
     {
         for (i=blocknum=0; blocknum<last4096; blocknum+=4096,i++)
@@ -9242,15 +9243,18 @@ void ram_init_remotemode(struct ramchain_info *ram)
             else
             {
                 done++;
-                if ( activeblock < 0 )
+                if ( activeblock == blocknum )
                 {
-                    activeblock = blocknum;
-                    if ( (n= ram_getsources(requested,ram,blocknum+j,1)) == 0 )
+                    for (j=0; j<4096; j++)
                     {
-                        fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
-                        activeblock = -1;
-                        break;
+                        if ( (n= ram_getsources(requested,ram,blocknum+j,1)) == 0 )
+                        {
+                            fprintf(stderr,"unexpected nopeers block.%u of %u | peers.%d\n",blocknum+j,ram->S.RTblocknum,n);
+                            continue;
+                        }
+                        ram_syncblocks(ram,blocknum+j,1,&requested[rand() % n],1,0);
                     }
+                    activeblock++;
                 }
             }
         }
