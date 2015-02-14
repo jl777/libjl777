@@ -9166,9 +9166,9 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
     return(blocknum);
 }
 
+void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
 int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t blocknum,int32_t log2bits)
 {
-    void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblocks,uint64_t *sources,int32_t n,int32_t addshaflag);
     int32_t numblocks,n;
     numblocks = (1 << log2bits);
     while ( (n= ram_getsources(sync->requested,ram,blocknum,numblocks)) == 0 )
@@ -9516,12 +9516,13 @@ void ram_init_ramchain(struct ramchain_info *ram)
     errs = ram_scanblocks(ram);
     if ( numblocks == 0 && errs == 0 && ram->blocks.contiguous > 4096 )
     {
+        printf("saving new %s.blocks\n",ram->name);
         datalen = -1;
         if ( ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous) > 0 )
             datalen = ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
         printf("Created.(%s) datalen.%d | please restart\n",fname,datalen);
         exit(1);
-    }
+    } else printf("no need to save numblocks.%d errs.%d contiguous.%d\n",numblocks,errs,ram->blocks.contiguous);
     ram_disp_status(ram);
 }
 

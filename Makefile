@@ -45,8 +45,17 @@ btcdmac: ../src/BitcoinDarkd; \
 install: doesntexist; \
     sudo add-apt-repository ppa:fkrull/deadsnakes; sudo apt-get update; sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libdb++-dev libminiupnpc-dev python3-dev libpcre-ocaml-dev #openjdk-7-jdk openjdk-7-jre-lib
 
+
 patch: doesntexist; \
-    sudo apt-get install openjdk-7-jdk openjdk-7-jre-lib \
+    sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
+    git clone http://git.linbit.com/csync2.git; \
+    cd csync2; ./automake.sh; ./configure  --prefix=/usr --localstatedir=/var --sysconfdir=/etc; make; sudo make install; sudo make cert; cd ..; \
+    echo "add: csync2          30865/tcp       # to /etc/services"; \
+    echo "http://oss.linbit.com/csync2/paper.pdf is useful"; \
+    #git clone git://git.csync.org/projects/csync.git; \
+    #cd csync; cmake ..; make; \
+    #echo "neon can be installed from: http://www.linuxfromscratch.org/blfs/view/svn/basicnet/neon.html"; \
+    sudo apt-get install openjdk-7-jdk openjdk-7-jre-lib; \
     sudo apt-get install mercurial; \
     sudo apt-get install libpcre-ocaml-dev; \
     sudo add-apt-repository ppa:fkrull/deadsnakes; \
