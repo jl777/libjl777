@@ -882,6 +882,8 @@ int32_t init_multisigDB()
         }
         for (j=0; j<3; j++)
         {
+            if ( Global_mp->gatewayid < 0 )
+                break;
             sprintf(url,"http://%s/MGW/msig/ALL",Server_ipaddrs[j]);
             if ( (retstr= issue_curl(0,url)) != 0 )
             {
