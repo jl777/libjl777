@@ -1077,7 +1077,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     char ip_port[64],*ptr;
     uint64_t txid = 0;
     int32_t port;
-    if ( 1 || SUPERNET_PORT != _SUPERNET_PORT )
+    if ( 0 && SUPERNET_PORT != _SUPERNET_PORT )
         return(0);
     if ( Debuglevel > 1 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
@@ -1147,7 +1147,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     if ( SUPERNET_PORT != _SUPERNET_PORT )
         return(clonestr("{\"error\":private SuperNET}"));
     strcpy(retjsonstr,"{\"result\":null}");
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     if ( Finished_loading == 0 )
     {
@@ -1191,7 +1191,6 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     }
     else
     {
-        //calc_sha256(0,hash,(uint8_t *)msg,len);
         txid = calc_txid((uint8_t *)msg,len);//hash,sizeof(hash));
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);

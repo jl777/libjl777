@@ -388,19 +388,20 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     return(retstr);
 }
 
-void submit_quote(uint64_t obookid,char *quotestr)
+void submit_quote(char *quotestr)
 {
-    char NXTaddr[64],keystr[64],datastr[MAX_JSON_FIELD*2],*retstr;
+    //uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t len,int32_t duration);
+    int32_t len;
+    char _tokbuf[4096];
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
-        strcpy(NXTaddr,cp->srvNXTADDR);
-        expand_nxt64bits(keystr,obookid);
-        init_hexbytes_noT(datastr,(uint8_t *)quotestr,strlen(quotestr)+1);
-        printf("submit_quote.(%s) <- (%s)\n",keystr,datastr);
-        retstr = kademlia_storedata(0,NXTaddr,cp->srvNXTACCTSECRET,NXTaddr,keystr,datastr);
-        if ( retstr != 0 )
-            free(retstr);
+        printf("submit_quote.(%s)\n",quotestr);
+        len = construct_tokenized_req(_tokbuf,quotestr,cp->srvNXTACCTSECRET);
+        call_SuperNET_broadcast(0,_tokbuf,len,300);
+   //retstr = kademlia_storedata(0,NXTaddr,cp->srvNXTACCTSECRET,NXTaddr,keystr,datastr);
+    //    if ( retstr != 0 )
+   //         free(retstr);
     }
 }
 
@@ -427,8 +428,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
             {
                 jsonstr = cJSON_Print(json);
                 stripwhite_ns(jsonstr,strlen(jsonstr));
-                printf("%s\n",jsonstr);
-                submit_quote(baseid ^ relid,jsonstr);
+                submit_quote(jsonstr);
                 free_json(json);
                 free(jsonstr);
             }
