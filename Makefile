@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include/python3.4 -I/usr/include
+CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include/python3.4 -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2  
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
@@ -65,11 +65,11 @@ getramchain0:  doesntexist; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.script /var/www/html/ramchains/BTCD/BTCD.script
 
 patch: doesntexist; \
-    sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
-    git clone http://git.linbit.com/csync2.git; \
-    cd csync2; ./automake.sh; ./configure  --prefix=/usr --localstatedir=/var --sysconfdir=/etc; make; sudo make install; sudo make cert; cd ..; \
-    echo "add: csync2          30865/tcp       # to /etc/services"; \
-    echo "http://oss.linbit.com/csync2/paper.pdf is useful"; \
+    #sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
+    #git clone http://git.linbit.com/csync2.git; \
+    #cd csync2; ./autogen.sh; ./configure  --prefix=/usr --localstatedir=/var --sysconfdir=/etc; make; sudo make install; sudo make cert; cd ..; \
+    #echo "add: csync2          30865/tcp       # to /etc/services"; \
+    #echo "http://oss.linbit.com/csync2/paper.pdf is useful"; \
     #git clone git://git.csync.org/projects/csync.git; \
     #cd csync; cmake ..; make; \
     #echo "neon can be installed from: http://www.linuxfromscratch.org/blfs/view/svn/basicnet/neon.html"; \
