@@ -17,6 +17,124 @@
 #define _iQ_price(iQ) ((double)(iQ)->relamount / (iQ)->baseamount)
 #define _iQ_volume(iQ) ((double)(iQ)->baseamount / SATOSHIDEN)
 
+struct rambook_info { UT_hash_handle hh; struct InstantDEX_quote *quotes; uint64_t obookid; int32_t numquotes,maxquotes; } *Rambooks;
+
+struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid)
+{
+    uint64_t obookid;
+    struct rambook_info *rb;
+    obookid = _obookid(baseid,relid);
+    HASH_FIND(hh,Rambooks,&obookid,sizeof(obookid),rb);
+    if ( rb == 0 )
+    {
+        rb = calloc(1,sizeof(*rb));
+        rb->obookid = obookid;
+        HASH_ADD(hh,Rambooks,obookid,sizeof(obookid),rb);
+    }
+    return(rb);
+}
+
+uint64_t find_best_market_maker()
+{
+    return(0); // sort by fees paid to InstantDEX
+}
+
+int32_t calc_users_maxopentrades(uint64_t nxt64bits)
+{
+    return(13);
+}
+
+int32_t get_top_MMaker(struct pserver_info **pserverp)
+{
+    static uint64_t bestMMbits;
+    struct nodestats *stats;
+    char ipaddr[64];
+    *pserverp = 0;
+    if ( bestMMbits == 0 )
+        bestMMbits = find_best_market_maker();
+    if ( bestMMbits != 0 )
+    {
+        stats = get_nodestats(bestMMbits);
+        expand_ipbits(ipaddr,stats->ipbits);
+        (*pserverp) = get_pserver(0,ipaddr,0,0);
+    }
+    return(0);
+}
+
+//struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t timestamp,type; };
+
+void purge_oldest_order(struct rambook_info *rb,struct orderbook_tx *tx) // allow one pair per orderbook
+{
+    int32_t oldi;
+    uint32_t i,oldest = 0;
+    if ( rb->numquotes == 0 )
+        return;
+    oldi = -1;
+    for (i=0; i<rb->numquotes; i++)
+    {
+        if ( rb->quotes[i].nxt64bits == tx->iQ.nxt64bits && (oldest == 0 || rb->quotes[i].timestamp < oldest) )
+        {
+            oldest = rb->quotes[i].timestamp;
+            oldi = i;
+        }
+    }
+    if ( oldi >= 0 )
+    {
+        printf("purge_oldest_order from NXT.%llu oldi.%d timestamp %u\n",(long long)tx->iQ.nxt64bits,oldi,oldest);
+        rb->quotes[oldi] = rb->quotes[--rb->numquotes];
+        memset(&rb->quotes[rb->numquotes],0,sizeof(rb->quotes[rb->numquotes]));
+    }
+}
+
+void add_user_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
+{
+    int32_t i;
+    if ( rb->numquotes > 0 )
+    {
+        for (i=0; i<rb->numquotes; i++)
+        {
+            if ( memcmp(iQ,&rb->quotes[i],sizeof(rb->quotes[i])) == 0 )
+                break;
+        }
+    } else i = 0;
+    if ( i == rb->numquotes )
+    {
+        if ( i >= rb->maxquotes )
+        {
+            rb->maxquotes += 1024;
+            rb->quotes = realloc(rb->quotes,rb->maxquotes * sizeof(*rb->quotes));
+            memset(&rb->quotes[i],0,1024 * sizeof(*rb->quotes));
+        }
+        rb->quotes[rb->numquotes++] = *iQ;
+    }
+}
+
+struct InstantDEX_quote *get_matching_quotes(int32_t *numquotesp,uint64_t baseid,uint64_t relid)
+{
+    struct rambook_info *rb;
+    rb = get_rambook(baseid,relid);
+    *numquotesp = rb->numquotes;
+    return(rb->quotes);
+}
+
+void save_orderbooktx(uint64_t nxt64bits,uint64_t baseid,uint64_t relid,struct orderbook_tx *tx)
+{
+    char NXTaddr[64];
+    uint64_t obookid;
+    struct NXT_acct *np;
+    struct rambook_info *rb;
+    int32_t createdflag,maxallowed;
+    obookid = _obookid(baseid,relid);
+    maxallowed = calc_users_maxopentrades(nxt64bits);
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    rb = get_rambook(baseid,relid);
+    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    if ( np->openorders >= maxallowed )
+        purge_oldest_order(rb,tx); // allow one pair per orderbook
+    add_user_order(rb,&tx->iQ);
+    np->openorders++;
+}
+
 void flip_iQ(struct InstantDEX_quote *iQ)
 {
     uint64_t amount;
@@ -188,11 +306,25 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
 
 // combine all orderbooks with flags, maybe even arbitrage, so need cloud quotes
 
+void add_to_orderbook(struct orderbook *op,int32_t iter,int32_t *numbidsp,int32_t *numasksp,struct orderbook_tx *order,int32_t refflipped,int32_t oldest)
+{
+    int32_t flipped;
+    if ( order->baseid < order->relid ) flipped = 0;
+    else flipped = _FLIPMASK;
+    if ( flipped != refflipped )
+        flip_iQ(&order->iQ);
+    if ( (order->iQ.type & _FLIPMASK) != refflipped )
+        flip_iQ(&order->iQ);
+    if ( order->iQ.timestamp >= oldest )
+        update_orderbook(iter,op,numbidsp,numasksp,&order->iQ);
+}
+
 struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid,struct orderbook_tx **feedorders,int32_t numfeeds)
 {
     struct orderbook_tx T;
+    struct InstantDEX_quote *quotes = 0;
     uint32_t purgetime = ((uint32_t)time(NULL) - NODESTATS_EXPIRATION);
-    int32_t i,iter,numbids,numasks,refflipped,flipped;
+    int32_t i,iter,numbids,numasks,refflipped,numquotes = 0;
     size_t retdlen = 0;
     char obookstr[64];
     struct orderbook *op = 0;
@@ -204,22 +336,24 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
     op->relid = refrelid;
     if ( refbaseid < refrelid ) refflipped = 0;
     else refflipped = _FLIPMASK;
-    origdata = (DBT *)find_storage(INSTANTDEX_DATA,obookstr,65536);
-    for (iter=numbids=numasks=0; iter<2; iter++)
+    origdata = 0;//(DBT *)find_storage(INSTANTDEX_DATA,obookstr,65536);
+    for (iter=0; iter<2; iter++)
     {
+        numbids = numasks = 0;
         if ( numfeeds > 0 && feedorders != 0 )
         {
             for (i=0; i<numfeeds; i++)
+                add_to_orderbook(op,iter,&numbids,&numasks,feedorders[i],refflipped,oldest);
+        }
+        if ( quotes != 0 || (quotes= get_matching_quotes(&numquotes,refbaseid,refrelid)) != 0 )
+        {
+            for (i=0; i<numquotes; i++)
             {
-                T = *feedorders[i];
-                if ( T.baseid < T.relid ) flipped = 0;
-                else flipped = _FLIPMASK;
-                if ( flipped != refflipped )
-                    flip_iQ(&T.iQ);
-                if ( (T.iQ.type & _FLIPMASK) != refflipped )
-                    flip_iQ(&T.iQ);
-                if ( T.iQ.timestamp >= oldest )
-                    update_orderbook(iter,op,&numbids,&numasks,&T.iQ);
+                memset(&T,0,sizeof(T));
+                T.baseid = refbaseid;
+                T.relid = refrelid;
+                T.iQ = quotes[i];
+                add_to_orderbook(op,iter,&numbids,&numasks,&T,refflipped,oldest);
             }
         }
         if ( (data= origdata) != 0 )
@@ -276,58 +410,6 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
         free(origdata);
     }
     return(op);
-}
-
-int32_t filtered_orderbook(char *datastr,char *jsonstr)
-{
-    cJSON *json;
-    uint64_t refbaseid,refrelid;
-    struct orderbook_tx T;
-    int32_t i,refflipped;
-    uint32_t oldest;
-    size_t retdlen = 0;
-    char obookstr[64];
-    void *retdata,*p;
-    DBT *data = 0;
-    datastr[0] = 0;
-    if ( (json= cJSON_Parse(jsonstr)) == 0 )
-        return(-1);
-    refbaseid = get_API_nxt64bits(cJSON_GetObjectItem(json,"baseid"));
-    refrelid = get_API_nxt64bits(cJSON_GetObjectItem(json,"rel"));
-    oldest = get_API_int(cJSON_GetObjectItem(json,"oldest"),0);
-    free_json(json);
-    if ( refbaseid == 0 || refrelid == 0 )
-        return(-2);
-    expand_nxt64bits(obookstr,refbaseid ^ refrelid);
-    if ( refbaseid < refrelid ) refflipped = 0;
-    else refflipped = _FLIPMASK;
-    data = (DBT *)find_storage(INSTANTDEX_DATA,obookstr,65536);
-    if ( data != 0 )
-    {
-        init_hexbytes_noT(datastr,(uint8_t *)"{\"data\":\"",strlen("{\"data\":\""));
-        for (DB_MULTIPLE_INIT(p,data); ;)
-        {
-            DB_MULTIPLE_NEXT(p,data,retdata,retdlen);
-            if ( p == NULL )
-                break;
-            T.iQ = *(struct InstantDEX_quote *)retdata;
-            if ( (T.iQ.type & _FLIPMASK) != refflipped )
-                flip_iQ(&T.iQ);
-            T.baseid = refbaseid;
-            T.relid = refrelid;
-            if ( T.iQ.timestamp >= oldest && retdlen == sizeof(T.iQ) )
-            {
-                for (i=0; i<retdlen; i++)
-                    printf("%02x ",((uint8_t *)retdata)[i]);
-                printf("%p %p: %d\n",p,retdata,(int)retdlen);
-                printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)T.iQ.baseamount,(long long)T.iQ.relamount,(long long)T.iQ.nxt64bits,T.iQ.timestamp,T.iQ.type);
-                init_hexbytes_noT(datastr+strlen(datastr),retdata,retdlen);
-            }
-        }
-    }
-    if ( datastr[0] != 0 )
-        init_hexbytes_noT(datastr+strlen(datastr),(uint8_t *)"\"}",strlen("\"}"));
-    return((int32_t)strlen(datastr));
 }
 
 char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -393,15 +475,15 @@ void submit_quote(char *quotestr)
     //uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t len,int32_t duration);
     int32_t len;
     char _tokbuf[4096];
+    struct pserver_info *pserver;
     struct coin_info *cp = get_coin_info("BTCD");
     if ( cp != 0 )
     {
         printf("submit_quote.(%s)\n",quotestr);
         len = construct_tokenized_req(_tokbuf,quotestr,cp->srvNXTACCTSECRET);
+        if ( get_top_MMaker(&pserver) >= 0 )
+            call_SuperNET_broadcast(pserver,_tokbuf,len,300);
         call_SuperNET_broadcast(0,_tokbuf,len,300);
-   //retstr = kademlia_storedata(0,NXTaddr,cp->srvNXTACCTSECRET,NXTaddr,keystr,datastr);
-    //    if ( retstr != 0 )
-   //         free(retstr);
     }
 }
 
@@ -410,10 +492,10 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
     cJSON *json;
     uint64_t nxt64bits,baseid,relid,txid = 0;
     double price,volume;
+    int32_t remoteflag;
     struct orderbook_tx tx,*txp;
     char buf[MAX_JSON_FIELD],txidstr[64],*jsonstr,*retstr = 0;
-    if ( is_remote_access(previpaddr) != 0 )
-        return(0);
+    remoteflag = (is_remote_access(previpaddr) != 0);
     nxt64bits = calc_nxt64bits(sender);
     baseid = get_API_nxt64bits(objs[0]);
     relid = get_API_nxt64bits(objs[1]);
@@ -424,7 +506,8 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
         if ( price != 0. && volume != 0. && dir != 0 )
         {
             create_orderbook_tx(dir,&tx,0,nxt64bits,baseid,relid,price,volume);
-            if ( (json= gen_InstantDEX_json(&tx.iQ,baseid,relid)) != 0 )
+            save_orderbooktx(nxt64bits,baseid,relid,&tx);
+            if ( remoteflag == 0 && (json= gen_InstantDEX_json(&tx.iQ,baseid,relid)) != 0 )
             {
                 jsonstr = cJSON_Print(json);
                 stripwhite_ns(jsonstr,strlen(jsonstr));
@@ -464,6 +547,68 @@ char *placebid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *placeask_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     return(placequote_func(previpaddr,-1,sender,valid,objs,numobjs,origargstr));
+}
+
+char *bid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(placequote_func(previpaddr,1,sender,valid,objs,numobjs,origargstr));
+}
+
+char *ask_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(placequote_func(previpaddr,-1,sender,valid,objs,numobjs,origargstr));
+}
+
+int32_t filtered_orderbook(char *datastr,char *jsonstr)
+{
+    cJSON *json;
+    uint64_t refbaseid,refrelid;
+    struct orderbook_tx T;
+    int32_t i,refflipped;
+    uint32_t oldest;
+    size_t retdlen = 0;
+    char obookstr[64];
+    void *retdata,*p;
+    DBT *data = 0;
+    datastr[0] = 0;
+    if ( (json= cJSON_Parse(jsonstr)) == 0 )
+        return(-1);
+    refbaseid = get_API_nxt64bits(cJSON_GetObjectItem(json,"baseid"));
+    refrelid = get_API_nxt64bits(cJSON_GetObjectItem(json,"rel"));
+    oldest = get_API_int(cJSON_GetObjectItem(json,"oldest"),0);
+    free_json(json);
+    if ( refbaseid == 0 || refrelid == 0 )
+        return(-2);
+    expand_nxt64bits(obookstr,refbaseid ^ refrelid);
+    if ( refbaseid < refrelid ) refflipped = 0;
+    else refflipped = _FLIPMASK;
+    data = (DBT *)find_storage(INSTANTDEX_DATA,obookstr,65536);
+    if ( data != 0 )
+    {
+        init_hexbytes_noT(datastr,(uint8_t *)"{\"data\":\"",strlen("{\"data\":\""));
+        for (DB_MULTIPLE_INIT(p,data); ;)
+        {
+            DB_MULTIPLE_NEXT(p,data,retdata,retdlen);
+            if ( p == NULL )
+                break;
+            T.iQ = *(struct InstantDEX_quote *)retdata;
+            if ( (T.iQ.type & _FLIPMASK) != refflipped )
+                flip_iQ(&T.iQ);
+            T.baseid = refbaseid;
+            T.relid = refrelid;
+            if ( T.iQ.timestamp >= oldest && retdlen == sizeof(T.iQ) )
+            {
+                for (i=0; i<retdlen; i++)
+                    printf("%02x ",((uint8_t *)retdata)[i]);
+                printf("%p %p: %d\n",p,retdata,(int)retdlen);
+                printf("Q: %llu -> %llu NXT.%llu %u type.%d\n",(long long)T.iQ.baseamount,(long long)T.iQ.relamount,(long long)T.iQ.nxt64bits,T.iQ.timestamp,T.iQ.type);
+                init_hexbytes_noT(datastr+strlen(datastr),retdata,retdlen);
+            }
+        }
+    }
+    if ( datastr[0] != 0 )
+        init_hexbytes_noT(datastr+strlen(datastr),(uint8_t *)"\"}",strlen("\"}"));
+    return((int32_t)strlen(datastr));
 }
 
 void check_for_InstantDEX(char *decoded,char *keystr)

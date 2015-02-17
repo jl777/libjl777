@@ -2535,8 +2535,8 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
         sprintf(cmd+strlen(cmd),"&type=%d",txtype);
     coinid = is_active_coin(cp->name);
     np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
-    if ( coinid >= 0 && coinid < 64 && np->timestamps[coinid] != 0 )
-        sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
+    //if ( coinid >= 0 && coinid < 64 && np->timestamps[coinid] != 0 )
+    //    sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
     if ( Debuglevel > 2 )
         printf("minconfirms.%d update_NXT_transactions.(%s) for (%s) cmd.(%s) type.%d\n",MIN_NXTCONFIRMS,refNXTaddr,cp->name,cmd,txtype);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
@@ -2558,10 +2558,10 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
                     {
                         process_NXTtransaction(specialNXTaddrs,sender,receiver,item,refNXTaddr,assetid,0,cp);
                         timestamp = (int32_t)get_cJSON_int(item,"blockTimestamp");
-                        if ( coinid >= 0 && coinid < 64 && timestamp > 0 && (timestamp - 3600) > np->timestamps[coinid] )
+                        //if ( coinid >= 0 && coinid < 64 && timestamp > 0 && (timestamp - 3600) > np->timestamps[coinid] )
                         {
-                            printf("new.%s timestamp.%d %d -> %d\n",cp->name,coinid,np->timestamps[coinid],timestamp-3600);
-                            np->timestamps[coinid] = (timestamp - 3600); // assumes no hour long block
+                           // printf("new.%s timestamp.%d %d -> %d\n",cp->name,coinid,np->timestamps[coinid],timestamp-3600);
+                           // np->timestamps[coinid] = (timestamp - 3600); // assumes no hour long block
                         } //else if ( timestamp < 0 ) genesis tx dont have any timestamps!
                           //  printf("missing blockTimestamp.(%s)\n",jsonstr), getchar();
                     }

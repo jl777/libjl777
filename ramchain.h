@@ -5574,6 +5574,7 @@ char *ram_decode_hashdata(char *strbuf,char type,uint8_t *hashdata)
 {
     uint64_t varint;
     int32_t datalen,scriptmode;
+    strbuf[0] = 0;
     if ( hashdata == 0 )
         return(0);
     hashdata += hdecode_varint(&varint,hashdata,0,9);

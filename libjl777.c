@@ -1079,7 +1079,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
     int32_t port;
     if ( 0 && SUPERNET_PORT != _SUPERNET_PORT )
         return(0);
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("call_SuperNET_broadcast.%p %p len.%d\n",pserver,msg,len);
     txid = calc_txid((uint8_t *)msg,(int32_t)strlen(msg));
     if ( pserver != 0 )
@@ -1114,7 +1114,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             if ( cmdstr != 0 )
                 free(cmdstr);
             free_json(array);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
             {
                 char debugstr[4096];
                 init_hexbytes_noT(debugstr,(uint8_t *)msg,len);
@@ -1144,11 +1144,11 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    if ( SUPERNET_PORT != _SUPERNET_PORT )
+    if ( Debuglevel > 2 )
+        printf("gotpacket.(%s) duration.%d from (%s) | (%d vs %d)\n",msg,duration,ip_port,SUPERNET_PORT,_SUPERNET_PORT);
+    if ( 0 && SUPERNET_PORT != _SUPERNET_PORT )
         return(clonestr("{\"error\":private SuperNET}"));
     strcpy(retjsonstr,"{\"result\":null}");
-    if ( Debuglevel > 1 )
-        printf("gotpacket.(%s) duration.%d from (%s)\n",msg,duration,ip_port);
     if ( Finished_loading == 0 )
     {
         if ( is_hexstr(msg) == 0 )
@@ -1194,6 +1194,8 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         txid = calc_txid((uint8_t *)msg,len);//hash,sizeof(hash));
         sprintf(txidstr,"%llu",(long long)txid);
         MTadd_hashtable(&createdflag,&Global_pNXT->msg_txids,txidstr);
+        if ( Debuglevel > 1 )
+            printf("C SuperNET_gotpacket from %s:%d size.%d ascii txid.%llu | flood.%d created.%d\n",ipaddr,p2pport,len,(long long)txid,flood,createdflag);
         if ( createdflag == 0 )
         {
             duplicates++;
@@ -1201,8 +1203,6 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
         }
         if ( len == 30 ) // hack against flood
             flood++;
-        if ( Debuglevel > 2 )
-            printf("C SuperNET_gotpacket from %s:%d size.%d ascii txid.%llu | flood.%d\n",ipaddr,p2pport,len,(long long)txid,flood);
         if ( (json= cJSON_Parse((char *)msg)) != 0 )
         {
             cJSON *argjson;
@@ -1215,8 +1215,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
                 if ( pubkeystr[0] != 0 )
                     add_new_node(calc_nxt64bits(verifiedNXTaddr));
                 free_json(argjson);
-            }
-            //printf("update (%s) (%s:%d) %s\n",verifiedNXTaddr,ipaddr,p2pport,pubkeystr);
+            } else printf("update parse error (%s) (%s:%d) %s\n",verifiedNXTaddr,ipaddr,p2pport,pubkeystr);
             kademlia_update_info(verifiedNXTaddr,ipaddr,p2pport,pubkeystr,(int32_t)time(NULL),1);
             retstr = SuperNET_json_commands(Global_mp,ipaddr,json,verifiedNXTaddr,valid,(char *)msg);
             if ( cmdstr != 0 )
@@ -1225,8 +1224,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
             if ( retstr == 0 )
                 retstr = clonestr("{\"result\":null}");
             return(retstr);
-        }
-        //else printf("cJSON_Parse error.(%s)\n",msg);
+        } else printf("cJSON_Parse error.(%s)\n",msg);
     }
     return(clonestr(retjsonstr));
 }
