@@ -83,7 +83,7 @@ void purge_coincache(struct coincache_info *cache,char *name,int32_t blockid)
     cJSON *json,*txobj,*txidobj;
     char *blocktxt;
     int32_t j,i,n,createdflag;
-    char txid[512];
+    char txid[MAX_JSON_FIELD];
     struct coin_txid *tp;
     if ( cache == 0 || blockid < 0 )
         return;

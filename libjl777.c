@@ -983,8 +983,12 @@ char *call_SuperNET_JSON(char *JSONstr)
     if ( cp != 0 && (json= cJSON_Parse(JSONstr)) != 0 )
     {
         expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
-        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-        cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(Global_mp->pubkeystr));
+        if ( cJSON_GetObjectItem(json,"NXT") == 0 )
+            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+        if ( cJSON_GetObjectItem(json,"pubkey") == 0 )
+            cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(Global_mp->pubkeystr));
+        if ( cJSON_GetObjectItem(json,"timestamp") == 0 )
+            cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
@@ -1121,7 +1125,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
                 debugstr[32] = 0;
                 printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu len.%d\n",debugstr,valid,duration,(long long)txid,len);
             }
-            ptr = calloc(1,sizeof(len) + sizeof(duration) + len);
+            ptr = calloc(1,sizeof(len) + sizeof(duration) + len + 1);
             memcpy(ptr,&len,sizeof(len));
             memcpy(&ptr[sizeof(len)],&duration,sizeof(duration));
             memcpy(&ptr[sizeof(len) + sizeof(duration)],msg,len);
@@ -1144,7 +1148,7 @@ char *SuperNET_gotpacket(char *msg,int32_t duration,char *ip_port)
     int32_t len,createdflag,valid;
     unsigned char packet[2*MAX_JSON_FIELD];
     char ipaddr[64],txidstr[64],retjsonstr[2*MAX_JSON_FIELD],verifiedNXTaddr[64],*cmdstr,*retstr;
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("gotpacket.(%s) duration.%d from (%s) | (%d vs %d)\n",msg,duration,ip_port,SUPERNET_PORT,_SUPERNET_PORT);
     if ( 0 && SUPERNET_PORT != _SUPERNET_PORT )
         return(clonestr("{\"error\":private SuperNET}"));

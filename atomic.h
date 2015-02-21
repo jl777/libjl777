@@ -289,7 +289,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
     int32_t createdflag;
     double vol,price,amountB;
     uint64_t qtyB,assetB;
-    char *jsonstr,*parsed,hopNXTaddr[64],buf[1024],calchash[1024],NXTaddr[64],responseutx[1024],signedtx[1024],otherNXTaddr[64];
+    char *jsonstr,*parsed,hopNXTaddr[64],buf[1024],calchash[MAX_JSON_FIELD],NXTaddr[64],responseutx[1024],signedtx[1024],otherNXTaddr[64];
     jsonstr = issue_calculateFullHash(0,utx,sig);
     if ( jsonstr != 0 )
     {

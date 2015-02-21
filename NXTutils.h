@@ -167,7 +167,7 @@ char *get_ipaddr()
     char *ipsrcs[] = { "http://ip-api.com/json", "http://ip.jsontest.com/?showMyIP", "http://www.telize.com/jsonip", "http://www.trackip.net/ip?json"};
     int32_t i,match = 1;
     cJSON *json,*obj;
-    char *jsonstr,ipaddr[512],str[512];
+    char *jsonstr,ipaddr[MAX_JSON_FIELD],str[MAX_JSON_FIELD];
   //  return(0);
     if ( _ipaddr != 0 )
         return(_ipaddr);
@@ -373,7 +373,7 @@ char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
 
 uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey)
 {
-    char cmd[4096],numstr[128],*jsontxt;
+    char cmd[4096],numstr[MAX_JSON_FIELD],*jsontxt;
     uint64_t txid = 0;
     cJSON *json,*errjson,*txidobj;
     *retstrp = 0;
@@ -430,7 +430,7 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
 {
     union NXTtype retval;
     cJSON *obj,*json = 0;
-    char buf[2048];
+    char buf[MAX_JSON_FIELD];
     *amountp = 0;
     sprintf(buf,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
     retval = extract_NXTfield(curl_handle,0,buf,0,0);
@@ -705,7 +705,7 @@ int32_t get_NXTconfirms(uint64_t txid)
 uint64_t get_sender(uint64_t *amountp,char *txidstr)
 {
     cJSON *json,*attachobj;
-    char *jsonstr,numstr[1024];
+    char *jsonstr,numstr[MAX_JSON_FIELD];
     uint64_t senderbits = 0;
     jsonstr = issue_getTransaction(0,txidstr);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -800,7 +800,7 @@ bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
 
 uint64_t cJSON_convassetid(cJSON *obj)
 {
-    char numstr[1024];
+    char numstr[MAX_JSON_FIELD];
     uint64_t assetid = 0;
     copy_cJSON(numstr,obj);
     assetid = calc_nxt64bits(numstr);
@@ -981,7 +981,7 @@ uint64_t issue_getBalance(CURL *curl_handle,char *NXTaddr)
 
 int32_t issue_decodeToken(CURL *curl_handle,char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN])
 {
-    char cmd[4096],token[512+2*NXT_TOKEN_LEN+1];
+    char cmd[4096],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1];
     cJSON *nxtobj,*validobj;
     union NXTtype retval;
     *validp = -1;
@@ -1009,7 +1009,7 @@ int32_t issue_decodeToken(CURL *curl_handle,char *sender,int32_t *validp,char *k
 
 int32_t issue_generateToken(CURL *curl_handle,char encoded[NXT_TOKEN_LEN],char *key,char *secret)
 {
-    char cmd[4096],token[512+2*NXT_TOKEN_LEN+1];
+    char cmd[4096],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1];
     cJSON *tokenobj;
     union NXTtype retval;
     encoded[0] = 0;
@@ -1037,7 +1037,7 @@ char *submit_AM(int32_t deadline,char *recipient,struct NXT_AMhdr *ap,char *reft
     //union NXTtype retval;
     int32_t len;
     cJSON *json,*txjson,*errjson;
-    char hexbytes[4096],cmd[5120],txid[MAX_NXTADDR_LEN],*jsonstr,*retstr = 0;
+    char hexbytes[4096],cmd[5120],txid[MAX_JSON_FIELD],*jsonstr,*retstr = 0;
     len = ap->size;//(int32_t)sizeof(*ap);
     if ( len > 1000 || len < 1 )
     {
@@ -1260,7 +1260,7 @@ int32_t set_current_NXTblock(int32_t *isrescanp,CURL *curl_handle,char *blockids
     int32_t numblocks = 0;//,numunlocked = 0;
     union NXTtype retval;
     cJSON *blockjson,*scanjson;//,*unlocked;//*nextjson,
-    char cmd[256],scanstr[256];//,unlockedstr[1024];
+    char cmd[MAX_JSON_FIELD],scanstr[MAX_JSON_FIELD];//,unlockedstr[1024];
     sprintf(cmd,"%s=getState",_NXTSERVER);
     *isrescanp = 0;
     blockidstr[0] = 0;
@@ -1287,7 +1287,7 @@ int32_t get_NXTblock(int32_t *timestampp)
 {
     int32_t isrescan,numblocks = 0;
     cJSON *scanjson,*json;
-    char cmd[256],scanstr[256],*retstr;
+    char cmd[MAX_JSON_FIELD],scanstr[MAX_JSON_FIELD],*retstr;
     sprintf(cmd,"%s=getBlockchainStatus",_NXTSERVER);
     isrescan = 0;
     if ( (retstr = issue_NXTPOST(0,cmd)) != 0 )
@@ -1378,7 +1378,7 @@ int32_t init_NXTAPI(CURL *curl_handle)
 {
     cJSON *json,*obj;
     int32_t timestamp;
-    char cmd[4096],dest[1024],*jsonstr;
+    char cmd[MAX_JSON_FIELD],dest[MAX_JSON_FIELD],*jsonstr;
     init_jsoncodec(0,0);
     return(0);
     sprintf(cmd,"%s=getTime",_NXTSERVER);
@@ -1991,7 +1991,7 @@ cJSON *parse_json_AM(struct json_AM *ap)
 
 int32_t get_API_int(cJSON *obj,int32_t val)
 {
-    char buf[1024];
+    char buf[MAX_JSON_FIELD+2];
     if ( obj != 0 )
     {
         copy_cJSON(buf,obj);
@@ -2002,7 +2002,7 @@ int32_t get_API_int(cJSON *obj,int32_t val)
 
 uint32_t get_API_uint(cJSON *obj,uint32_t val)
 {
-    char buf[1024];
+    char buf[MAX_JSON_FIELD+2];
     if ( obj != 0 )
     {
         copy_cJSON(buf,obj);
@@ -2014,7 +2014,7 @@ uint32_t get_API_uint(cJSON *obj,uint32_t val)
 uint64_t get_API_nxt64bits(cJSON *obj)
 {
     uint64_t nxt64bits = 0;
-    char buf[1024];
+    char buf[MAX_JSON_FIELD+2];
     if ( obj != 0 )
     {
         copy_cJSON(buf,obj);
@@ -2026,7 +2026,7 @@ uint64_t get_API_nxt64bits(cJSON *obj)
 double get_API_float(cJSON *obj)
 {
     double val = 0.;
-    char buf[1024];
+    char buf[MAX_JSON_FIELD+2];
     if ( obj != 0 )
     {
         copy_cJSON(buf,obj);
@@ -2072,7 +2072,7 @@ int32_t validate_token(CURL *curl_handle,char *pubkey,char *NXTaddr,char *tokeni
     cJSON *array=0,*firstitem=0,*tokenobj,*obj;
     int64_t timeval,diff = 0;
     int32_t valid,retcode = -13;
-    char buf[4096],sender[64],*firstjsontxt = 0;
+    char buf[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],*firstjsontxt = 0;
     unsigned char encoded[4096];
     array = cJSON_Parse(tokenizedtxt);
     if ( array == 0 )

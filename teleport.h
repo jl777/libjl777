@@ -612,7 +612,7 @@ struct telepod **available_telepods(int32_t *nump,double *availp,double *maturin
 
 void telepathic_teleport(struct contact_info *contact,cJSON *attachjson)
 {
-    char coinstr[512],attachstr[MAX_JSON_FIELD],tpdstr[MAX_JSON_FIELD];
+    char coinstr[MAX_JSON_FIELD],attachstr[MAX_JSON_FIELD],tpdstr[MAX_JSON_FIELD];
     int i,j;
     cJSON *tpd,*json;
     struct coin_info *cp;
@@ -1089,8 +1089,8 @@ cJSON *telepod_dispjson(struct telepod *pod,double netamount)
 
 char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawaddr,char *comment,char *cmd)
 {
-    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[64];
-    char transporteraddr[128],changeaddr[128],numstr[64],numstr2[64];
+    char retbuf[MAX_JSON_FIELD],txidstr[MAX_JSON_FIELD],str[MAX_JSON_FIELD],NXTaddr[MAX_JSON_FIELD];
+    char transporteraddr[MAX_JSON_FIELD],changeaddr[MAX_JSON_FIELD],numstr[MAX_JSON_FIELD],numstr2[MAX_JSON_FIELD];
     char *addr,*retstr;
     int32_t i,n,dir,numpos,numneg;
     uint64_t availsend,change;

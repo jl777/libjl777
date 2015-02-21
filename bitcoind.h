@@ -290,7 +290,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
 
 void establish_connections(char *myipaddr,char *NXTADDR,char *NXTACCTSECRET)
 {
-    char ipaddr[64];
+    char ipaddr[MAX_JSON_FIELD];
     int32_t iter,i,n,m = 0;
     cJSON *array;
     array = cJSON_GetObjectItem(MGWconf,"whitelist");

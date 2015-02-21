@@ -762,7 +762,8 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     uint64_t ind;
     int32_t allocsize;
     struct hashtable *hp = *hp_ptr;
-    *createdflagp = 0;
+    if ( createdflagp != 0 )
+        *createdflagp = 0;
     if ( key == 0 || *key == 0 || hp == 0 || (hp->keysize > 0 && strlen(key) >= hp->keysize) )
     {
         printf("%p key.(%s) len.%ld is too big for %s %ld, FATAL\n",key,key,strlen(key),hp!=0?hp->name:"",hp!=0?hp->keysize:0);
@@ -791,7 +792,8 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
         strcpy((void *)((long)ptr + hp->keyoffset),key);
         //if ( hp->modifiedoffset >= 0 ) *(int64_t *)((long)ptr + hp->modifiedoffset) = 1;
         hp->numitems++;
-        *createdflagp = 1;
+        if ( createdflagp != 0 )
+            *createdflagp = 1;
         ind = search_hashtable(hp,key);
         if ( ind == (uint64_t)-1 || hp->hashtable[ind] == 0 )
             printf("FATAL ERROR adding (%s) to hashtable.%s\n",key,hp->name);

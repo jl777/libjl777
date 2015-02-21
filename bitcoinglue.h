@@ -440,7 +440,7 @@ uint64_t check_txid(uint32_t *createtimep,struct coin_info *cp,int32_t minconfir
     uint64_t unspent = 0;
     int32_t i,n;
     cJSON *array,*item;
-    char *retstr,params[512],addr[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],script[MAX_JSON_FIELD];
+    char *retstr,params[MAX_JSON_FIELD],addr[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],script[MAX_JSON_FIELD];
     *createtimep = 0;
     if ( cp->nohexout == 0 )
         return(check_txout(createtimep,cp,minconfirms,coinaddr,reftxid,vout,refscript));

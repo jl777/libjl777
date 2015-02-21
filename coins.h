@@ -474,7 +474,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
     void add_new_node(uint64_t nxt64bits);
     char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp);
     int32_t i,j,n,useaddmultisig,nohexout,estblocktime,minconfirms,pollseconds,blockheight,forkblock,*cipherids;
-    char numstr[64],rpcuserpass[512],asset[256],_marker[512],_marker2[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
+    char numstr[MAX_JSON_FIELD],rpcuserpass[512],asset[256],_marker[512],_marker2[512],confstr[512],conf_filename[512],tradebotfname[512],serverip_port[512],buf[512];
     char *marker,*marker2,*privkey,*coinaddr,**privkeys,multisigchar[32];
     cJSON *ciphersobj,*limbo;
     //struct coinaddr *addrp = 0;
@@ -726,7 +726,7 @@ void init_Specialaddrs()
 {
     cJSON *array,*item;
     int32_t i,n;
-    char NXTADDR[64];
+    char NXTADDR[MAX_JSON_FIELD];
     array = cJSON_GetObjectItem(MGWconf,"special_NXTaddrs");
     if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
     {
@@ -777,7 +777,7 @@ void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemp
 {
     cJSON *array,*item;
     int32_t i,n,hasredemption = 0;
-    char NXTADDR[64];
+    char NXTADDR[MAX_JSON_FIELD];
     if ( (ram->ap= ap) == 0 )
     {
         printf("no asset for %s\n",ram->name);
@@ -960,7 +960,7 @@ void init_coinsarray(char *userdir,char *myipaddr)
 {
     char *pubNXT,*BTCDaddr,*BTCaddr;
     cJSON *array,*item;
-    char coinstr[128];
+    char coinstr[MAX_JSON_FIELD];
     int32_t i,n;
     struct coin_info *cp;
     array = cJSON_GetObjectItem(MGWconf,"coins");

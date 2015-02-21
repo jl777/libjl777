@@ -400,7 +400,7 @@ int32_t dbput(struct SuperNET_db *sdb,DB_TXN *txn,DBT *key,DBT *data,int32_t fla
 {
     if ( sdb->dbp != 0 )
     {
-        if ( 1 || sdb->selector == ADDRESS_DATA )
+        if ( 0 || sdb->selector == ADDRESS_DATA )
             return(sdb->dbp->put(sdb->dbp,txn,key,data,flags));
         else return(dbcmd("dbput",'P',sdb,txn,key,data,flags,0));
     }

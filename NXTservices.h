@@ -37,7 +37,8 @@ struct NXT_acct
     struct NXT_assettxid_list **txlists;    // one list for each asset in acct
     int32_t maxassets,numassets,bestdist,numcoins,pendingdeposits,openorders;//numcoinaccts
     int64_t buyqty,buysum,sellqty,sellsum;
-    double profits,redeemed;
+    uint32_t timestamp;
+    //double profits,redeemed;
     //uint32_t timestamps[64];
     struct acct_coin *coins[64];
     //struct coin_acct *coinaccts;

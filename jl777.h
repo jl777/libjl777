@@ -508,9 +508,6 @@ struct orderbook_tx
 {
     uint64_t baseid,relid;
     struct InstantDEX_quote iQ;
-    //uint32_t timestamp,type;
-    //uint64_t txid,nxt64bits,baseid,relid;
-    //uint64_t baseamount,relamount;
 };
 
 struct orderbook

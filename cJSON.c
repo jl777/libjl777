@@ -919,7 +919,7 @@ uint64_t get_satoshi_obj(cJSON *json,char *field)
 {
     int32_t i,n;
     uint64_t prev,satoshis,mult = 1;
-    char numstr[128],checkstr[128];
+    char numstr[MAX_JSON_FIELD],checkstr[MAX_JSON_FIELD];
     cJSON *numjson;
     numjson = cJSON_GetObjectItem(json,field);
     copy_cJSON(numstr,numjson);

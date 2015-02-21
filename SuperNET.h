@@ -108,7 +108,7 @@ struct contact_info
     char jsonstr[32768];
 };
 
-struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t timestamp,type; };
+struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount; uint32_t timestamp,type:31,isask:1; };
 
 struct orderbook_info { uint64_t baseid,relid,obookid; };
 

@@ -545,7 +545,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 tmpjson = cJSON_Parse(parmstxt);
                 if ( tmpjson != 0 )
                 {
-                    char nxtip[64];
+                    char nxtip[MAX_JSON_FIELD];
                     uint16_t noqueue,nxtport,dontupdate = 0;
                     copy_cJSON(checkstr,cJSON_GetObjectItem(tmpjson,"requestType"));
                     copy_cJSON(nxtip,cJSON_GetObjectItem(tmpjson,"ipaddr"));

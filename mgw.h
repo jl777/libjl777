@@ -198,7 +198,7 @@ int32_t update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*
 
 void *extract_jsonkey(cJSON *item,void *arg,void *arg2)
 {
-    char *redeemstr = calloc(1,128);
+    char *redeemstr = calloc(1,MAX_JSON_FIELD);
     copy_cJSON(redeemstr,cJSON_GetObjectItem(item,arg));
     return(redeemstr);
 }
@@ -222,7 +222,7 @@ void *extract_jsonints(cJSON *item,void *arg,void *arg2)
 
 void *extract_jsonmsig(cJSON *item,void *arg,void *arg2)
 {
-    char sender[1024];
+    char sender[MAX_JSON_FIELD];
     copy_cJSON(sender,cJSON_GetObjectItem(item,"sender"));
     return(decode_msigjson(0,item,sender));
 }
@@ -516,7 +516,7 @@ int32_t update_redeembits(struct coin_info *refcp,cJSON *argjson,uint64_t AMtxid
     cJSON *array;
     int32_t i,n,num = 0;
     struct coin_info *cp;
-    char coinstr[1024],redeemtxid[1024];
+    char coinstr[MAX_JSON_FIELD],redeemtxid[MAX_JSON_FIELD];
     if ( extract_cJSON_str(coinstr,sizeof(coinstr),argjson,"coin") <= 0 )
         return(0);
     if ( refcp != 0 && strcmp(refcp->name,coinstr) != 0 )
@@ -543,7 +543,7 @@ struct NXT_assettxid *set_assettxid(char **specialNXTaddrs,struct coin_info *cp,
     struct NXT_assettxid *tp;
     int32_t createdflag;
     cJSON *json,*cointxidobj;
-    char sender[64],redeemtxidstr[64],cointxid[512],coinstr[512];
+    char sender[MAX_JSON_FIELD],redeemtxidstr[MAX_JSON_FIELD],cointxid[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD];
     expand_nxt64bits(redeemtxidstr,redeemtxid);
     tp = find_NXT_assettxid(&createdflag,ap,redeemtxidstr);
     tp->assetbits = ap->assetbits;
@@ -1092,7 +1092,7 @@ void update_txid_infos(struct coin_info *cp,uint32_t blockheight,int32_t txind,c
 
 uint32_t get_blocktxind(int32_t *txindp,struct coin_info *cp,uint32_t blockheight,char *blockhashstr,char *reftxidstr)
 {
-    char txidstr[1024],mintedstr[512];
+    char txidstr[MAX_JSON_FIELD],mintedstr[MAX_JSON_FIELD];
     cJSON *json,*txobj;
     int32_t txind,n;
     uint64_t minted = 0;
@@ -3367,7 +3367,7 @@ int32_t process_redeem(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MAX_
     char numstr[128],rsacct[64];
     int32_t createdflag;
     cJSON *item;
-    double pending;
+    //double pending;
     if ( is_limbo_redeem(cp,tp->redeemtxid) == 0 )
     {
         np = get_NXTacct(&createdflag,Global_mp,sender);
@@ -3383,7 +3383,7 @@ int32_t process_redeem(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MAX_
         sprintf(numstr,"%.8f",dstr(tp->quantity * ap->mult)), cJSON_AddItemToObject(item,"amount",cJSON_CreateString(numstr));
         cJSON_AddItemToObject(item,"confirms",cJSON_CreateNumber(tp->numconfs));
         cJSON_AddItemToArray(*arrayp,item);
-        if ( (pending= enough_confirms(np->redeemed,tp->estNXT,tp->numconfs,1)) > 0 )
+        /*if ( (pending= enough_confirms(np->redeemed,tp->estNXT,tp->numconfs,1)) > 0 )
         {
             numredeems = add_redeem(destaddrs,destamounts,redeems,pending_withdrawp,cp,ap,destaddr,tp,numredeems);
             np->redeemed += tp->estNXT;
@@ -3394,7 +3394,7 @@ int32_t process_redeem(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MAX_
             sprintf(numstr,"%.2f",dstr(np->redeemed)), cJSON_AddItemToObject(item,"already",cJSON_CreateString(numstr));
             sprintf(numstr,"%.2f",dstr(tp->estNXT)), cJSON_AddItemToObject(item,"estNXT",cJSON_CreateString(numstr));
             sprintf(numstr,"%.3f",pending), cJSON_AddItemToObject(item,"wait",cJSON_CreateString(numstr));
-        }
+        }*/
     }
     return(numredeems);
 }

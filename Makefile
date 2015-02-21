@@ -46,7 +46,7 @@ install: doesntexist; \
     sudo add-apt-repository ppa:fkrull/deadsnakes; sudo apt-get update; sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libdb++-dev libminiupnpc-dev python3-dev libpcre-ocaml-dev #openjdk-7-jdk openjdk-7-jre-lib
 
 getramchain2:  doesntexist; \
-    mkdir /var/www/html/ramchains; rmkdir /var/www/html/ramchains/BTCD; \
+    mkdir /var/www/html/ramchains; mkdir /var/www/html/ramchains/BTCD; \
     rsync -rtv guest@209.126.70.159::ramchains/BTCD.blocks /var/www/html/ramchains/BTCD.blocks; \
     rsync -rtv guest@209.126.70.159::ramchains/BTCD.addr /var/www/html/ramchains/BTCD/BTCD.addr; \
     rsync -rtv guest@209.126.70.159::ramchains/BTCD.txid /var/www/html/ramchains/BTCD/BTCD.txid; \

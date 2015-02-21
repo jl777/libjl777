@@ -391,7 +391,7 @@ struct tradebot *add_compiled(struct tradebot_language *lp,int32_t expected_iosi
 {
     int32_t i,n,insize,outputsize,iosize = 0;
     void *ptr;
-    char signalname[1024],botname[1024],typestr[512];
+    char signalname[MAX_JSON_FIELD],botname[MAX_JSON_FIELD],typestr[MAX_JSON_FIELD];
     cJSON *signalobj,*item,*typeobj;
     struct tradebot *tradebot;
     if ( compiled == 0 )

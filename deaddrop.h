@@ -41,7 +41,7 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
     cJSON *json;
     uint64_t calcaddr;
     struct coin_info *cp = get_coin_info("BTCD");
-    char key[64],datastr[1024],sender[64],otherkeystr[512],*retstr;
+    char key[64],datastr[MAX_JSON_FIELD],sender[64],otherkeystr[512],*retstr;
     if ( cp == 0 )
         return(-1);
     if ( memcmp(&args->otherpubkey,&zerokey,sizeof(zerokey)) == 0 )

@@ -732,7 +732,7 @@ void add_storage(int32_t selector,char *keystr,char *datastr)
 
 void ensure_SuperNET_dirs(char *backupdir)
 {
-    char dirname[1024],coinstr[128],dirstr[512];
+    char dirname[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],dirstr[MAX_JSON_FIELD];
     int32_t i,n;
     cJSON *array;
     //struct coin_info *cp;
