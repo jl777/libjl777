@@ -1057,7 +1057,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
-#define PUZZLE_THRESHOLD (HIT_LIMIT / 777)
+#define PUZZLE_THRESHOLD (HIT_LIMIT / 3000)
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
