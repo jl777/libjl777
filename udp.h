@@ -1348,7 +1348,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
                 array = cJSON_CreateArray();
             sprintf(numstr,"%llu",(long long)nonce);
             cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
-            printf("found.%d nonce.%llu for %llu remaining %.2f seconds\n",cJSON_GetArraySize(array),(long long)nonce,(long long)sender,(endmilli - milliseconds())/1000.);
+            printf("found.%d nonce.%llu hit.%llu for %llu remaining %.2f seconds\n",cJSON_GetArraySize(array),(long long)nonce,(long long)hit,(long long)sender,(endmilli - milliseconds())/1000.);
             if ( cJSON_GetArraySize(array) > 32 ) // stay within 1kb can switch to binary to get more capacity
                 break;
         }
@@ -1409,11 +1409,12 @@ char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
                     nonce = get_API_nxt64bits(cJSON_GetArrayItem(array,i));
                     memcpy(&data[offset],&nonce,sizeof(nonce));
                     hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
+                    printf("got.%d nonce.%llu hit.%llu for %llu\n",i,(long long)nonce,(long long)hit,(long long)sender);
                     if ( hit < threshold )
                         ident->activewt++;
+                    else
                     {
                         sprintf(buf,"{\"error\":\"hit.%llu >= threshold.%llu from %s\"}",(long long)hit,(long long)threshold,sender);
-                        printf("i.%d of %d: (%s)\n",i,n,buf);
                         ident->activewt = 0;
                         return(clonestr(buf));
                     }
