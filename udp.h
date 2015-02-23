@@ -1070,7 +1070,7 @@ int32_t ConvertToTrits(const uint8_t *input,const uint32_t inputSize,TRIT * outp
 {
     int32_t i;
 	for (i=0; i<(inputSize << 3); i++)
-		*output++ = input[i >> 3] & (1 << (i & 7));
+		*output++ = (input[i >> 3] & (1 << (i & 7))) != 0;
     return(i);
 }
 
