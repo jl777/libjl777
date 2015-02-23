@@ -1057,7 +1057,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
-#define PUZZLE_THRESHOLD (HIT_LIMIT / 3000)
+#define PUZZLE_THRESHOLD (HIT_LIMIT / 777)
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
@@ -1190,7 +1190,7 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
 	SaM_Squeeze(&state,hash);
 	for (i=0; i<27; i++)
     {
-        if ( (trit= hash[i]) < -1 )
+        /*if ( (trit= hash[i]) < -1 )
         {
             printf("hash[%d] underflow %d\n",i,hash[i]);
             //trit = -1;
@@ -1199,8 +1199,8 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
         {
             printf("hash[%d] overflow %d\n",i,hash[i]);
             //trit = 1;
-        }
- 		hit = (hit * 3 + trit + 1);
+        }*/
+ 		hit = (hit * 3 + hash[i] + 1);
     }
 	return(hit);
 }
