@@ -1173,12 +1173,13 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
     if ( inputSize > MAX_INPUT_SIZE )
         inputSize = MAX_INPUT_SIZE;
 	numtrits = ConvertToTrits(input,inputSize,inputTrits);
+    if ( 0 )
     {
         uint8_t checkbuf[SAM_HASH_SIZE];
         int32_t n;
         n = ConvertToBytes(inputTrits,numtrits,checkbuf);
         if ( n != inputSize )
-            printf("to bytes.%d vs input.%d\n",n,inputSize);
+            printf("ConvertToBytes error to bytes.%d vs input.%d\n",n,inputSize);
         else if ( memcmp(input,checkbuf,n) != 0 )
             printf("memcmp error after converts\n");
     }
