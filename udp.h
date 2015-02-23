@@ -1057,7 +1057,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
-#define PUZZLE_THRESHOLD (HIT_LIMIT / 3000)
+#define PUZZLE_THRESHOLD (HIT_LIMIT / 10000)
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
@@ -1306,7 +1306,7 @@ long set_sambuf(uint8_t *data,uint32_t puzzletime,uint64_t challenger,uint64_t d
 
 char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint32_t i,len,num,duration,reftime,now = (uint32_t)time(NULL);
+    uint32_t len,num,duration,reftime,now = (uint32_t)time(NULL);
     char buf[MAX_JSON_FIELD],hopNXTaddr[64],numstr[64],*jsonstr;
     uint64_t threshold,senderbits,nonce,hit;
     uint8_t data[64];
@@ -1340,8 +1340,8 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         randombytes((uint8_t *)&nonce,sizeof(nonce));
         memcpy(&data[offset],&nonce,sizeof(nonce));
         hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
-        if ( (rand() % 1000) == 0 )
-        printf("%llu vs %llu\n",(long long)hit,(long long)threshold);
+        //if ( (rand() % 1000) == 0 )
+            //printf("%llu vs %llu\n",(long long)hit,(long long)threshold);
         if ( hit < threshold )
         {
             if ( array == 0 )
@@ -1349,7 +1349,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             sprintf(numstr,"%llu",(long long)nonce);
             cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
             printf("found.%d nonce.%llu for %llu remaining %.2f seconds\n",cJSON_GetArraySize(array),(long long)nonce,(long long)sender,(endmilli - milliseconds())/1000.);
-            if ( cJSON_GetArraySize(array) > 44 ) // stay within 1kb can switch to binary to get more capacity
+            if ( cJSON_GetArraySize(array) > 32 ) // stay within 1kb can switch to binary to get more capacity
                 break;
         }
     }
@@ -1370,7 +1370,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             free(jsonstr);
             hopNXTaddr[0] = 0;
             return(send_tokenized_cmd(!prevent_queueing("nonces"),hopNXTaddr,0,NXTaddr,NXTACCTSECRET,buf,sender));
-        }
+        } else printf("challeng_func: len.%d too big\n",len);
         free(jsonstr);
         return(clonestr("{\"result\":\"too many nonces\"}"));
     }
@@ -1386,6 +1386,7 @@ char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     long offset = 0;
     uint64_t nonce,mybits,otherbits,threshold,hit;
     cJSON *array;
+    printf("nonces: %u %llu\n",Global_mp->puzzletime,(long long)Global_mp->puzzlethreshold);
     if ( is_remote_access(previpaddr) == 0 )
         return(clonestr("{\"error\":\"nonces have to be from remote\"}"));
     if ( Global_mp->insmallworld != 0 )
