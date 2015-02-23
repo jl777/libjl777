@@ -1193,12 +1193,12 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
         if ( (trit= hash[i]) < -1 )
         {
             printf("hash[%d] underflow %d\n",i,hash[i]);
-            trit = -1;
+            //trit = -1;
         }
         else if ( trit > 1 )
         {
             printf("hash[%d] overflow %d\n",i,hash[i]);
-            trit = 1;
+            //trit = 1;
         }
  		hit = (hit * 3 + trit + 1);
     }
