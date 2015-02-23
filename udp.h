@@ -1172,6 +1172,8 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
     int32_t i,numtrits,trit;
     if ( inputSize > MAX_INPUT_SIZE )
         inputSize = MAX_INPUT_SIZE;
+    memset(inputTrits,0,sizeof(inputTrits));
+    memset(hash,0,sizeof(hash));
 	numtrits = ConvertToTrits(input,inputSize,inputTrits);
     if ( 0 )
     {
@@ -1189,9 +1191,15 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
 	for (i=0; i<27; i++)
     {
         if ( (trit= hash[i]) < -1 )
+        {
+            printf("hash[%d] underflow %d\n",i,hash[i]);
             trit = -1;
+        }
         else if ( trit > 1 )
+        {
+            printf("hash[%d] overflow %d\n",i,hash[i]);
             trit = 1;
+        }
  		hit = (hit * 3 + trit + 1);
     }
 	return(hit);
