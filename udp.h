@@ -1339,7 +1339,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
                 array = cJSON_CreateArray();
             sprintf(numstr,"%llu",(long long)nonce);
             cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
-            printf("found.%d nonce.%llu remaining %.2f seconds\n",cJSON_GetArraySize(array),(long long)nonce,1000.*(endmilli - milliseconds()));
+            printf("found.%d nonce.%llu for %llu remaining %.2f seconds\n",cJSON_GetArraySize(array),(long long)nonce,(long long)sender,(endmilli - milliseconds())/1000.);
             if ( cJSON_GetArraySize(array) > 44 ) // stay within 1kb can switch to binary to get more capacity
                 break;
         }
