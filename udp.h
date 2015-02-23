@@ -1314,7 +1314,7 @@ long set_sambuf(uint8_t *data,uint32_t puzzletime,uint64_t challenger,uint64_t d
 
 char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint32_t len,num,duration,reftime,now = (uint32_t)time(NULL);
+    uint32_t n,len,num,duration,reftime,now = (uint32_t)time(NULL);
     char buf[MAX_JSON_FIELD],hopNXTaddr[64],numstr[64],*jsonstr;
     uint64_t threshold,senderbits,nonce,hit;
     uint8_t data[64];
@@ -1338,7 +1338,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         return(clonestr("{\"error\":\"puzzletime variance\"}"));
     }
     offset = set_sambuf(data,reftime,senderbits,calc_nxt64bits(NXTaddr));
-    num = 0;
+    num = n = 0;
     array = 0;
     while ( milliseconds() < endmilli )
     {
@@ -1360,7 +1360,9 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             if ( cJSON_GetArraySize(array) > 32 ) // stay within 1kb can switch to binary to get more capacity
                 break;
         }
+        n++;
     }
+    printf("hashes.%d for duration.%d = %.1f per second\n",n,duration,(double)n/duration);
     if ( array != 0 )
     {
         json = cJSON_CreateObject();
