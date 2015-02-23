@@ -1332,6 +1332,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
             data[offset+i] = (rand() >> 8) & 0xff;
         memcpy(&nonce,&data[offset],sizeof(nonce));
         hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
+        printf("%llu vs %llu\n",(long long)hit,(long long)threshold);
         if ( hit < threshold )
         {
             if ( array == 0 )
