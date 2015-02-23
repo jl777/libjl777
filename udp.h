@@ -1038,6 +1038,7 @@ void add_SuperNET_peer(char *ip_port)
 }
 
 //////////////////////////////
+// 32 byte token
 
 #define TRIT signed char
 
@@ -1316,7 +1317,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     duration = (uint32_t)get_API_int(objs[1],0);
     threshold = get_API_nxt64bits(objs[2]);
     endmilli = (milliseconds() + duration*1000);
-    if ( abs(reftime - now) > 3 )
+    if ( 0 && abs(reftime - now) > 3 )
     {
         printf("sender.%s via previp.(%s) reftime.%u vs now.%u too different\n",sender,previpaddr,reftime,now);
         return(clonestr("{\"error\":\"puzzletime variance\"}"));

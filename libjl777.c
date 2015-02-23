@@ -1272,6 +1272,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             issue_startForging(0,cp->srvNXTACCTSECRET);
         strcpy(Global_mp->myNXTADDR,cp->srvNXTADDR);
         Global_mp->nxt64bits = calc_nxt64bits(Global_mp->myNXTADDR);
+        SaM_PrepareIndices();
         Historical_done = 1;
         Finished_init = 1;
         //if ( IS_LIBTEST > 1 && Global_mp->gatewayid >= 0 )
