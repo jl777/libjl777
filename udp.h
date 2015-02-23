@@ -1098,7 +1098,7 @@ int32_t ConvertToBytes(const TRIT *input,const uint32_t inputSize,uint8_t *outpu
 
 void SaM_PrepareIndices()
 {
-	int i,nextIndex,currentIndex = 0;
+	int32_t i,nextIndex,currentIndex = 0;
 	for (i=0; i<SAM_STATE_SIZE; i++)
     {
 		nextIndex = ((currentIndex + 1) * SAM_MAGIC_NUMBER) % SAM_STATE_SIZE;
@@ -1110,7 +1110,7 @@ void SaM_PrepareIndices()
 void SaM_SplitAndMerge(struct SAM_STATE *state)
 {
 	struct SAM_STATE leftPart,rightPart;
-	int i,round,nextIndex,currentIndex = 0;
+	int32_t i,round,nextIndex,currentIndex = 0;
 	for (round=1; round<=SAM_MAGIC_NUMBER; round++)
     {
 		for (i=0; i<SAM_STATE_SIZE; i++)
@@ -1169,7 +1169,7 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
   	TRIT hash[SAM_HASH_SIZE];
     struct SAM_STATE state;
     uint64_t hit = 0;
-    int32_t i,numtrits;
+    int32_t i,numtrits,trit;
     if ( inputSize > MAX_INPUT_SIZE )
         inputSize = MAX_INPUT_SIZE;
 	numtrits = ConvertToTrits(input,inputSize,inputTrits);
@@ -1187,7 +1187,13 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
 	SaM_Absorb(&state,inputTrits,inputSize << 3);
 	SaM_Squeeze(&state,hash);
 	for (i=0; i<27; i++)
-		hit = (hit * 3 + hash[i] + 1);
+    {
+        if ( (trit= hash[i]) < -1 )
+            trit = -1;
+        else if ( trit > 1 )
+            trit = 1;
+ 		hit = (hit * 3 + hash[i] + 1);
+    }
 	return(hit);
 }
 
@@ -1334,6 +1340,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         randombytes((uint8_t *)&nonce,sizeof(nonce));
         memcpy(&data[offset],&nonce,sizeof(nonce));
         hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
+        if ( (rand() % 1000) == 0 )
         printf("%llu vs %llu\n",(long long)hit,(long long)threshold);
         if ( hit < threshold )
         {
