@@ -1053,7 +1053,7 @@ void add_SuperNET_peer(char *ip_port)
 
 struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identities[1000];
 #define MAX_IDENTITIES ((int32_t)(sizeof(Identities)/sizeof(*Identities)))
-#define MIN_INDENTITIES 3
+#define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
 #define PUZZLE_THRESHOLD (HIT_LIMIT / 1337)
