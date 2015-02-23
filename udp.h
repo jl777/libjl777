@@ -1393,7 +1393,7 @@ char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         return(clonestr("{\"error\":\"already in small world\"}"));
     reftime = (uint32_t)get_API_int(objs[0],0);
     threshold = get_API_nxt64bits(objs[1]);
-    if ( Global_mp->puzzletime == reftime && Global_mp->puzzlethreshold == threshold )
+    //if ( Global_mp->puzzletime == reftime && Global_mp->puzzlethreshold == threshold )
     {
         array = objs[2];
         mybits = calc_nxt64bits(NXTaddr);
@@ -1423,7 +1423,7 @@ char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         }
         else return(clonestr("{\"error\":\"unexpected nonces from stranger\"}"));
     }
-    else return(clonestr("{\"error\":\"unexpected nonce when not puzzling or mismatched threshold\"}"));
+    //else return(clonestr("{\"error\":\"unexpected nonce when not puzzling or mismatched threshold\"}"));
 }
 
 void enter_smallworld(int32_t duration,uint64_t threshold)
