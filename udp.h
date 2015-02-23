@@ -1169,11 +1169,11 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
   	TRIT hash[SAM_HASH_SIZE];
     struct SAM_STATE state;
     uint64_t hit = 0;
-    int32_t i,numtrits,trit;
+    int32_t i,numtrits;
     if ( inputSize > MAX_INPUT_SIZE )
         inputSize = MAX_INPUT_SIZE;
-    memset(inputTrits,0,sizeof(inputTrits));
-    memset(hash,0,sizeof(hash));
+    //memset(inputTrits,0,sizeof(inputTrits));
+    //memset(hash,0,sizeof(hash));
 	numtrits = ConvertToTrits(input,inputSize,inputTrits);
     if ( 0 )
     {
