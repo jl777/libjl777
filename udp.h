@@ -1192,7 +1192,7 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
             trit = -1;
         else if ( trit > 1 )
             trit = 1;
- 		hit = (hit * 3 + hash[i] + 1);
+ 		hit = (hit * 3 + trit + 1);
     }
 	return(hit);
 }
