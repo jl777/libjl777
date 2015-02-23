@@ -1278,7 +1278,7 @@ int32_t GetNeighbors(uint64_t *neighbors,int32_t maxNeighbors)
             {
 				totalWeight -= weights[i];
 				neighbors[counter++] = Identities[i].nxt64bits;
-				weights[i] = weights[--n];
+				weights[i] = 0;
 				break;
 			}
 			hit -= weights[i];
