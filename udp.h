@@ -1057,7 +1057,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
-#define PUZZLE_THRESHOLD (HIT_LIMIT / 1337)
+#define PUZZLE_THRESHOLD (HIT_LIMIT / 777)
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
@@ -1347,6 +1347,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     {
         json = cJSON_CreateObject();
         cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("nonces"));
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
         cJSON_AddItemToObject(json,"reftime",cJSON_CreateNumber(reftime));
         sprintf(numstr,"%llu",(long long)threshold), cJSON_AddItemToObject(json,"threshold",cJSON_CreateString(numstr));
         cJSON_AddItemToObject(json,"nonces",array);
