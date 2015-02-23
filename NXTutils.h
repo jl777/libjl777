@@ -866,38 +866,6 @@ uint64_t get_asset_mult(uint64_t assetidbits)
     return(mult);
 }
 
-uint64_t calc_assetoshis(uint64_t assetidbits,double amount)
-{
-    cJSON *json;
-    int32_t i,decimals,errcode;
-    uint64_t mult,assetoshis = 0;
-    char assetidstr[64],*jsonstr;
-    if ( assetidbits == 0 || assetidbits == NXT_ASSETID )
-        return(amount * SATOSHIDEN);
-    expand_nxt64bits(assetidstr,assetidbits);
-    jsonstr = issue_getAsset(0,assetidstr);
-    if ( jsonstr != 0 )
-    {
-        //printf("Assetjson.(%s) for asset.(%s)\n",jsonstr,assetidstr);
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-        {
-            errcode = (int32_t)get_cJSON_int(json,"errorCode");
-            if ( errcode == 0 )
-            {
-                decimals = (int32_t)get_cJSON_int(json,"decimals");
-                mult = 1;
-                for (i=7-decimals; i>=0; i--)
-                    mult *= 10;
-                assetoshis = (amount * SATOSHIDEN) / mult;
-            }
-            free_json(json);
-        }
-        free(jsonstr);
-    }
-    //printf("assetoshis.%llu\n",(long long)assetoshis);
-    return(assetoshis);
-}
-
 double conv_assetoshis(uint64_t assetidbits,uint64_t assetoshis)
 {
     cJSON *json;
@@ -2058,7 +2026,7 @@ int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,c
     char argstr[1024],pubkey[1024],token[1024];
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
     init_hexbytes_noT(pubkey,np->stats.pubkey,sizeof(np->stats.pubkey));
-    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"time\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
+    sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"timestamp\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
     issue_generateToken(curl_handle,token,argstr,NXTACCTSECRET);
     token[NXT_TOKEN_LEN] = 0;
@@ -2275,9 +2243,6 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
     else fclose(fp);
 }
 
-
-#ifdef oldway
-
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
     char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
@@ -2317,6 +2282,9 @@ int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
     }
     return(quantity);
 }
+
+#ifdef oldway
+
 
 void **addto_listptr(int32_t *nump,void **list,void *ptr)
 {

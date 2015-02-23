@@ -49,7 +49,8 @@ struct NXT_acct
     //uv_stream_t *tcp,*connect;
     //char dispname[128];//,udp_sender[64];//,tcp_sender[64];
     struct nodestats stats;
-    char *signedtx,NXTACCTSECRET[128];
+    //char NXTACCTSECRET[128]; //
+    char *signedtx;
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 

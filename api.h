@@ -270,21 +270,20 @@ char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 
 char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint64_t assetA,assetB;
-    double qtyA,qtyB;
+    uint64_t assetA,assetB,qtyA,qtyB;
     int32_t type;
     char otherNXTaddr[MAX_JSON_FIELD],*retstr = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
-    copy_cJSON(otherNXTaddr,objs[0]);
-    assetA = get_API_nxt64bits(objs[1]);
-    qtyA = get_API_float(objs[2]);
-    assetB = get_API_nxt64bits(objs[3]);
-    qtyB = get_API_float(objs[4]);
+    assetA = get_API_nxt64bits(objs[0]);
+    assetB = get_API_nxt64bits(objs[1]);
+    qtyA = get_API_nxt64bits(objs[2]);
+    qtyB = get_API_nxt64bits(objs[3]);
+    copy_cJSON(otherNXTaddr,objs[4]);
     type = get_API_int(objs[5],0);
-    
+    printf("assetA.%llu %.8f -> assetB.%llu %.8f to NXT.%s\n",(long long)assetA,dstr(qtyA),(long long)assetB,dstr(qtyB),otherNXTaddr);
     if ( sender[0] != 0 && valid > 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
-        retstr = makeoffer(sender,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
+        retstr = makeoffer(NXTaddr,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
 }
@@ -297,19 +296,22 @@ char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     copy_cJSON(full,objs[2]);
     if ( sender[0] != 0 && valid > 0 )
         retstr = processutx(sender,utx,sig,full);
-    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+    else retstr = clonestr("{\"result\":\"invalid processutx_func request\"}");
     return(retstr);
 }
 
 char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char signedtx[MAX_JSON_FIELD],*retstr = 0;
-    if ( is_remote_access(previpaddr) != 0 )
+    char signedtx[MAX_JSON_FIELD],feetxid[MAX_JSON_FIELD],*retstr = 0;
+    uint64_t feeB;
+    if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(signedtx,objs[0]);
+    feeB = get_API_nxt64bits(objs[1]);
+    copy_cJSON(feetxid,objs[2]);
     if ( sender[0] != 0 && valid > 0 && signedtx[0] != 0 )
-        retstr = respondtx(sender,signedtx);
-    else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
+        retstr = respondtx(sender,signedtx,feeB,feetxid);
+    else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
     return(retstr);
 }
 
@@ -1905,6 +1907,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *getfile[] = { (char *)getfile_func, "getfile", "V", "name", "handler", 0 };
 
     // Kademlia DHT
+    static char *puzzles[] = { (char *)challenge_func, "puzzles", "V", "reftime", "duration", "threshold", 0 };
+    static char *nonces[] = { (char *)response_func, "nonces", "V", "reftime", "threshold", "nonces", 0 };
     static char *store[] = { (char *)store_func, "store", "V", "pubkey", "key", "name", "data", 0 };
     static char *findvalue[] = { (char *)findvalue_func, "findvalue", "V", "pubkey", "key", "name", "data", 0 };
     static char *findnode[] = { (char *)findnode_func, "findnode", "V", "pubkey", "key", "name", "data", 0 };
@@ -1942,7 +1946,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *bid[] = { (char *)bid_func, "bid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "type", 0 };
     static char *ask[] = { (char *)ask_func, "ask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "type", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
-    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", 0 };
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", "feeB", "feetxid", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
 
     // Tradebot
@@ -1957,7 +1961,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *python[] = { (char *)python_func, "python", "V", "name", 0 };
     static char *syscall[] = { (char *)syscall_func, "syscall", "V", "name", "cmd", "params", 0 };
 
-     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, python, syscall, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile };
+     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, python, syscall, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

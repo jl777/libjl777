@@ -261,7 +261,7 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag,char *coinstr)
     if ( cp != 0 )
     {
         ram_get_MGWpingstr(coinstr==0?0:get_ramchain_info(coinstr),MGWpingstr,-1);
-        sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
+        sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"timestamp\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
         return((int32_t)strlen(cmdstr));
@@ -388,7 +388,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
         if ( strcmp(kadcmd,"pong") == 0 )
         {
             encrypted = 1;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld,\"MMatrix\":%d,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),Global_mp->isMM,pserver->ipaddr,pserver->lastport,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"timestamp\":%ld,\"MMatrix\":%d,\"yourip\":\"%s\",\"yourport\":%d,\"ipaddr\":\"%s\",\"pubkey\":\"%s\",\"ver\":\"%s\"",kadcmd,verifiedNXTaddr,(long)time(NULL),Global_mp->isMM,pserver->ipaddr,pserver->lastport,cp->myipaddr,pubkeystr,HARDCODED_VERSION);
             //send_to_ipaddr(1,pserver->ipaddr,cmdstr,NXTACCTSECRET);
             //return(0);
             //len = construct_tokenized_req(_tokbuf,cmdstr,NXTACCTSECRET);
@@ -400,7 +400,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
                 encrypted = 1;
             else if ( (strcmp(kadcmd,"store") == 0 || strcmp(kadcmd,"findnode") == 0) && datastr != 0 && datastr[0] != 0 )
                 encrypted = 4;
-            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"time\":%ld",kadcmd,verifiedNXTaddr,(long)time(NULL));
+            sprintf(cmdstr,"{\"requestType\":\"%s\",\"NXT\":\"%s\",\"timestamp\":%ld",kadcmd,verifiedNXTaddr,(long)time(NULL));
         }
     }
     if ( key != 0 && key[0] != 0 )

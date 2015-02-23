@@ -612,6 +612,8 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                                 cp->srvpubnxtbits = calc_nxt64bits(cp->srvNXTADDR);
                             }
                         }
+                        if ( strcmp("BTCD",cp->name) == 0 )
+                            safecopy(Global_mp->srvNXTACCTSECRET,cp->srvNXTACCTSECRET,sizeof(Global_mp->srvNXTACCTSECRET));
                         cp->srvpubnxtbits = issue_getAccountId(0,cp->srvNXTACCTSECRET);
                         expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
                         if ( Debuglevel > 2 )
@@ -879,6 +881,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         ram->serverport = clonestr(cp->serverport);
     ram->lastheighttime = (uint32_t)cp->lastheighttime;
     ram->S.RTblocknum = (uint32_t)cp->RTblockheight;
+    ram->minoutput = get_API_int(cJSON_GetObjectItem(cp->json,"minoutput"),1);
     ram->min_confirms = cp->min_confirms;
     ram->depositconfirms = get_API_int(cJSON_GetObjectItem(cp->json,"depositconfirms"),ram->min_confirms);
     ram->min_NXTconfirms = MIN_NXTCONFIRMS;

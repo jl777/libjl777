@@ -233,7 +233,7 @@ struct ramchain_info
     char name[64],permfname[512],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*marker2,*opreturnmarker;
     uint32_t next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
     uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,marker2_rawind,lastdisp,maxind,numgateways,nummsigs;
-    uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv;
+    uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv,minoutput;
     struct rawblock *R,*R2,*R3;
     struct syncstate *verified;
     struct rawblock_huffs H;
@@ -2283,7 +2283,7 @@ int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx)
     int32_t retval;
     len = strlen(hexstr) * 2;
     //disp_cointx(cointx);
-    checkstr = calloc(1,len);
+    checkstr = calloc(1,len + 1);
     _emit_cointx(checkstr,len,cointx);
     if ( (retval= strcmp(checkstr,hexstr)) != 0 )
     {
@@ -2373,7 +2373,7 @@ char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32
         sprintf(scriptstr,"76a914%s88ac",str40);
         strcpy(vout->script,scriptstr);
         len = strlen(rawtx) * 2;
-        retstr = calloc(1,len);
+        retstr = calloc(1,len + 1);
         disp_cointx(cointx);
         if ( _emit_cointx(retstr,len,cointx) < 0 )
             free(retstr), retstr = 0;
@@ -2431,26 +2431,26 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
     strcpy(cointx->coinstr,ram->name);
     cointx->redeemtxid = redeemtxid;
     cointx->gatewayid = ram->S.gatewayid;
-    MGWfee = 0*(value >> 10) + (2 * (ram->txfee + ram->NXTfee_equiv)) - 1 - ram->txfee;
-    if ( value <= MGWfee + 1 + ram->txfee )
+    MGWfee = 0*(value >> 10) + (2 * (ram->txfee + ram->NXTfee_equiv)) - ram->minoutput - ram->txfee;
+    if ( value <= MGWfee + ram->minoutput + ram->txfee )
     {
-        printf("%s redeem.%llu withdraw %.8f < MGWfee %.8f + 1 + txfee %.8f\n",ram->name,(long long)redeemtxid,dstr(value),dstr(MGWfee),dstr(ram->txfee));
+        printf("%s redeem.%llu withdraw %.8f < MGWfee %.8f + minoutput %.8f + txfee %.8f\n",ram->name,(long long)redeemtxid,dstr(value),dstr(MGWfee),dstr(ram->minoutput),dstr(ram->txfee));
         return(0);
     }
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->marker2);
     if ( strcmp(destaddr,ram->marker2) == 0 )
-        cointx->outputs[numoutputs++].value = value - 1 - ram->txfee;
+        cointx->outputs[numoutputs++].value = value - ram->minoutput - ram->txfee;
     else
     {
         cointx->outputs[numoutputs++].value = MGWfee;
         strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
-        cointx->outputs[numoutputs++].value = value - MGWfee - 1 - ram->txfee;
+        cointx->outputs[numoutputs++].value = value - MGWfee - ram->minoutput - ram->txfee;
     }
     opreturn_output = numoutputs;
     strcpy(cointx->outputs[numoutputs].coinaddr,ram->opreturnmarker);
-    cointx->outputs[numoutputs++].value = 1;
+    cointx->outputs[numoutputs++].value = ram->minoutput;
     cointx->numoutputs = numoutputs;
-    cointx->amount = amount = (MGWfee + value + 1 + ram->txfee);
+    cointx->amount = amount = (MGWfee + value + ram->minoutput + ram->txfee);
     fprintf(stderr,"calc_withdraw.%s %llu amount %.8f -> balance %.8f\n",ram->name,(long long)redeemtxid,dstr(cointx->amount),dstr(ram->S.MGWbalance));
     if ( ram->S.MGWbalance >= 0 )
     {
