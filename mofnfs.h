@@ -416,7 +416,8 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         char cmdstr[512];
         printf("\n*****************\ncompare (%s) vs (%s)\n",filename,"foo.txt.restore");
         sprintf(cmdstr,"cmp %s %s",filename,"foo.txt.restore");
-        system(cmdstr);
+        if ( system(cmdstr) != 0 )
+            printf("error with system call\n");
         printf("done\n\n");
     }
     return(retstr);
@@ -483,7 +484,8 @@ char *_restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
         char cmdstr[512];
         printf("\n*****************\ncompare (%s) vs (%s)\n",fname,destfname);
         sprintf(cmdstr,"cmp %s %s",fname,destfname);
-        system(cmdstr);
+        if ( system(cmdstr) != 0 )
+            printf("error with system call\n");
         printf("done\n\n");
     }
     return(retstr);

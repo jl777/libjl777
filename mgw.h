@@ -127,9 +127,12 @@ cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
                 free(str);
                 free_json(json);
             }
-            sprintf(cmd,"chmod +r %s",fname);
-            system(cmd);
             fclose(fp);
+#ifndef WIN32
+            sprintf(cmd,"chmod +r %s",fname);
+            if ( system(cmd) != 0 )
+                printf("update_MGW_file chmod error\n");
+#endif
         } else printf("couldnt open (%s)\n",fname);
         if ( newjson != 0 )
             free_json(newjson);
@@ -142,7 +145,8 @@ cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
         fsize = ftell(fp);
         rewind(fp);
         str = calloc(1,fsize);
-        fread(str,1,fsize,fp);
+        if ( fread(str,1,fsize,fp) != fsize )
+            printf("error reading %ld from %s\n",fsize,fname);
         json = cJSON_Parse(str);
         free(str);
         *newjsonp = newjson;

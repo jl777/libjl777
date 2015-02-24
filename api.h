@@ -575,7 +575,8 @@ void call_system(FILE *fp,char *cmd,char *fname,char *params)
     char cmdstr[1024];
     sprintf(cmdstr,"%s %s %s > /tmp/syscall",cmd,fname,params);
     fprintf(stderr,"SYSCALL.(%s)\n",cmdstr);
-    system(cmdstr);
+    if ( system(cmdstr) != 0 )
+        printf("error with system call\n");
 }
 
 char *language_func(char *cmd,char *fname,void (*language)(FILE *fp,char *cmd,char *fname,char *params),char *params)
@@ -607,7 +608,8 @@ char *language_func(char *cmd,char *fname,void (*language)(FILE *fp,char *cmd,ch
         filesize = ftell(fp);
         rewind(fp);
         buffer = calloc(1,filesize);
-        fread(buffer,1,filesize,fp);
+        if ( fread(buffer,1,filesize,fp) != filesize )
+            printf("fread error in language_function\n");
         fclose(fp);
     }
     return(buffer);
