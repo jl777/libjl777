@@ -73,6 +73,46 @@ cJSON *rambook_json(struct rambook_info *rb)
     return(json);
 }
 
+uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ) // allow one pair per orderbook
+{
+    char NXTaddr[64];
+    struct NXT_acct *np;
+    int32_t age,oldi,createdflag;
+    uint64_t nxt64bits = 0;
+    uint32_t now,i,j,oldest = 0;
+    if ( rb->numquotes == 0 )
+        return(0);
+    oldi = -1;
+    now = (uint32_t)time(NULL);
+    for (i=j=0; i<rb->numquotes; i++)
+    {
+        age = (now - rb->quotes[i].timestamp);
+        printf("%d ",age);
+        if ( age < ORDERBOOK_EXPIRATION )
+            continue;
+        if ( (iQ == 0 || rb->quotes[i].nxt64bits == iQ->nxt64bits) && (oldest == 0 || rb->quotes[i].timestamp < oldest) )
+        {
+            oldest = rb->quotes[i].timestamp;
+            printf("(oldi.%d %u) ",j,oldest);
+            nxt64bits = rb->quotes[i].nxt64bits;
+            oldi = j;
+        }
+        rb->quotes[j++] = rb->quotes[i];
+    }
+    rb->numquotes = j;
+    if ( oldi >= 0 )
+    {
+        printf("purge_oldest_order from NXT.%llu oldi.%d timestamp %u\n",(long long)iQ->nxt64bits,oldi,oldest);
+        rb->quotes[oldi] = rb->quotes[--rb->numquotes];
+        memset(&rb->quotes[rb->numquotes],0,sizeof(rb->quotes[rb->numquotes]));
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        if ( np->openorders > 0 )
+            np->openorders--;
+    } else printf("no purges\n");
+    return(nxt64bits);
+}
+
 struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid)
 {
     uint64_t assetids[2];
@@ -86,6 +126,7 @@ struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid)
         printf("CREATE RAMBOOK.(%llu -> %llu)\n",(long long)baseid,(long long)relid);
         HASH_ADD(hh,Rambooks,assetids,sizeof(rb->assetids),rb);
     }
+    purge_oldest_order(rb,0);
     return(rb);
 }
 
@@ -378,7 +419,7 @@ uint64_t is_feetx_unconfirmed(uint64_t feetxid,uint64_t fee,char *fullhash)
     sprintf(cmd,"requestType=getUnconfirmedTransactions&account=%s",INSTANTDEX_ACCT);
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
-        //printf("getUnconfirmedTransactions.%d (%s)\n",mostrecent,jsonstr);
+        printf("getUnconfirmedTransactions (%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"unconfirmedTransactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -429,7 +470,10 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t
         for (i=0; i<numbooks; i++)
         {
             rb = obooks[i];
-            if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
+            if ( rb->numquotes == 0 )
+                continue;
+            printf("checking base.%llu -> rel.%llu | rb %llu -> %llu\n",(long long)baseid,(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
+            if ( rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
             for (j=0; j<rb->numquotes; j++)
             {
@@ -511,44 +555,6 @@ void add_user_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     }
 }
 
-uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ) // allow one pair per orderbook
-{
-    char NXTaddr[64];
-    struct NXT_acct *np;
-    int32_t age,oldi,createdflag;
-    uint64_t nxt64bits = 0;
-    uint32_t now,i,j,oldest = 0;
-    if ( rb->numquotes == 0 )
-        return(0);
-    oldi = -1;
-    now = (uint32_t)time(NULL);
-    for (i=j=0; i<rb->numquotes; i++)
-    {
-        age = (now - rb->quotes[i].timestamp);
-        if ( age > ORDERBOOK_EXPIRATION )
-            continue;
-        if ( rb->quotes[i].nxt64bits == iQ->nxt64bits && (oldest == 0 || rb->quotes[i].timestamp < oldest) )
-        {
-            oldest = rb->quotes[i].timestamp;
-            nxt64bits = rb->quotes[i].nxt64bits;
-            oldi = j;
-        }
-        rb->quotes[j++] = rb->quotes[i];
-    }
-    rb->numquotes = j;
-    if ( oldi >= 0 )
-    {
-        printf("purge_oldest_order from NXT.%llu oldi.%d timestamp %u\n",(long long)iQ->nxt64bits,oldi,oldest);
-        rb->quotes[oldi] = rb->quotes[--rb->numquotes];
-        memset(&rb->quotes[rb->numquotes],0,sizeof(rb->quotes[rb->numquotes]));
-        expand_nxt64bits(NXTaddr,nxt64bits);
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( np->openorders > 0 )
-            np->openorders--;
-    }
-    return(nxt64bits);
-}
-
 void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
 {
     char NXTaddr[64];
@@ -559,7 +565,7 @@ void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     maxallowed = calc_users_maxopentrades(iQ->nxt64bits);
     expand_nxt64bits(NXTaddr,iQ->nxt64bits);
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    if ( np->openorders >= maxallowed )
+    //if ( np->openorders >= maxallowed )
         purge_oldest_order(rb,iQ); // allow one pair per orderbook
     add_user_order(rb,iQ);
     np->openorders++;
@@ -567,11 +573,8 @@ void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
 
 void add_to_orderbook(struct orderbook *op,int32_t iter,int32_t *numbidsp,int32_t *numasksp,struct rambook_info *rb,struct InstantDEX_quote *iQ,int32_t polarity,int32_t oldest)
 {
-    uint32_t purgetime = ((uint32_t)time(NULL) - ORDERBOOK_EXPIRATION);
     if ( iQ->timestamp >= oldest )
         update_orderbook(iter,op,numbidsp,numasksp,iQ,polarity);
-    else if ( iQ->timestamp > purgetime )
-        purge_oldest_order(rb,iQ);
 }
 
 struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid)

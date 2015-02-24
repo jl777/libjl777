@@ -1057,7 +1057,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_INDENTITIES 2
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
-#define PUZZLE_THRESHOLD (HIT_LIMIT / 777)
+#define PUZZLE_THRESHOLD (HIT_LIMIT / 1337)
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
@@ -1518,7 +1518,7 @@ void every_second(int32_t counter)
     }
     if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {
-        if ( Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
+        if ( 0 && Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
             enter_smallworld(PUZZLE_DURATION,PUZZLE_THRESHOLD);
         else if ( Global_mp->puzzletime != 0 )
             poll_smallworld(MIN_SMALLWORLDPEERS);

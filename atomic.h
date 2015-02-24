@@ -402,7 +402,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                 free_json(commentobj);
                                 amountB = conv_assetoshis(assetB,qtyB);
                                 price = (amountB / vol);
-                                if ( 1 )//(iQ= order_match(offertx->recipientbits,assetB,qtyB,offertx->senderbits,offertx->assetidbits,offertx->U.quantityQNT,feeA,feeAtxid,full)) != 0 )
+                                if ( (iQ= order_match(offertx->recipientbits,assetB,qtyB,offertx->senderbits,offertx->assetidbits,offertx->U.quantityQNT,feeA,feeAtxid,full)) != 0 )
                                 {
                                     fee = set_NXTtx(offertx->recipientbits,&T,assetB,qtyB,offertx->senderbits,-1);//FEEBITS);
                                     fee = INSTANTDEX_FEE;
@@ -420,7 +420,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                             hopNXTaddr[0] = 0;
                                             send_tokenized_cmd(!prevent_queueing("respondtx"),hopNXTaddr,0,NXTaddr,Global_mp->srvNXTACCTSECRET,buf,otherNXTaddr);
                                             free(tx);
-                                            //iQ->sent = 1;
+                                            iQ->sent = 1;
                                             printf("send (%s) to %s\n",buf,otherNXTaddr);
                                             sprintf(buf,"{\"results\":\"utx from NXT.%llu accepted with fullhash.(%s) %.8f of %llu for %.8f of %llu -> price %.8f\"}",(long long)offertx->senderbits,full,vol,(long long)offertx->assetidbits,amountB,(long long)assetB,price);
                                         }
