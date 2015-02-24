@@ -460,7 +460,7 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
     return(json);
 }
 
-char *issue_getAsset(CURL *curl_handle,char *assetidstr)
+char *issue_getAsset(int32_t isMScoin,char *assetidstr)
 {
     char cmd[4096];
     //sprintf(cmd,"%s=getAsset&asset=%s",_NXTSERVER,assetidstr);
@@ -468,19 +468,21 @@ char *issue_getAsset(CURL *curl_handle,char *assetidstr)
     //return(issue_curl(0,cmd));
     //return(issue_NXTPOST(0,cmd));
     //printf("calculated.(%s)\n",ret.str);
-    sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
+    if ( isMScoin != 0 )
+        sprintf(cmd,"%s=getCurrency&currency=%s",NXTSERVER,assetidstr);
+    else sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
     //printf("cmd.(%s)\n",cmd);
     return(issue_curl(0,cmd));
 }
 
-struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
+struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr,int32_t isMScoin)
 {
     int32_t is_active_coin(char *str);
     cJSON *json;
     uint64_t mult = 1;
     char *jsonstr,buf[4096];
     int32_t i;
-    jsonstr = issue_getAsset(0,assetidstr);
+    jsonstr = issue_getAsset(isMScoin,assetidstr);
     if ( jsonstr != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -488,13 +490,13 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
             if ( get_cJSON_int(json,"errorCode") != 0 )
             {
                 printf("error init_asset(%s) for assetidstr.%s\n",jsonstr,assetidstr);
-                exit(-1);
+                return(0);
             }
             ap->decimals = (int32_t)get_cJSON_int(json,"decimals");
             for (i=7-ap->decimals; i>=0; i--)
                 mult *= 10;
             ap->mult = mult;
-            if ( extract_cJSON_str(buf,sizeof(buf),json,"quantityQNT") > 0 )
+            if ( extract_cJSON_str(buf,sizeof(buf),json,isMScoin == 0 ? "quantityQNT" : "currentSupply") > 0 )
                 ap->issued = calc_nxt64bits(buf);
             if ( extract_cJSON_str(buf,sizeof(buf),json,"account") > 0 )
                 ap->issuer = calc_nxt64bits(buf);
@@ -514,7 +516,12 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr)
             printf("init_asset(%s) decimals.%d mult.%ld (%s)\n",assetidstr,ap->decimals,(long)ap->mult,jsonstr);
         free(jsonstr);
         if ( ap->mult != 0 )
+        {
+            if ( isMScoin != 0 )
+                ap->type = 5, ap->subtype = 3;
+            else ap->type = 2, ap->subtype = 1;
             return(ap);
+        }
     }
     printf("ERROR init_asset(%s)\n",assetidstr);
     return(0);
@@ -526,7 +533,8 @@ struct NXT_asset *get_NXTasset(int32_t *createdp,struct NXThandler_info *mp,char
     ap = MTadd_hashtable(createdp,mp->NXTassets_tablep,assetidstr);
     if ( *createdp != 0 )
     {
-        init_asset(ap,assetidstr);
+        if ( init_asset(ap,assetidstr,0) == 0 )
+            init_asset(ap,assetidstr,1);
         ap->assetbits = ap->H.nxt64bits = calc_nxt64bits(assetidstr);
     }
     return(ap);

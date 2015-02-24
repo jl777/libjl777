@@ -55,14 +55,21 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
         cmd[0] = 0;
         if ( utx->type == 0 && utx->subtype == 0 )
             sprintf(cmd,"%s=sendMoney&amountNQT=%lld",_NXTSERVER,(long long)(utx->U.amountNQT*myshare));
-        else if ( utx->type == 2 && utx->subtype == 1 )
+        else
         {
             expand_nxt64bits(assetidstr,utx->assetidbits);
-            sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,assetidstr,(long long)(utx->U.quantityQNT*myshare));
+            if ( utx->type == 2 && utx->subtype == 1 )
+                sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,assetidstr,(long long)(utx->U.quantityQNT*myshare));
+            else if ( utx->type == 5 && utx->subtype == 3 )
+                sprintf(cmd,"%s=transferCurrency&currency=%s&units=%lld",_NXTSERVER,assetidstr,(long long)(utx->U.quantityQNT*myshare));
+            else
+            {
+                printf("unsupported type.%d subtype.%d\n",utx->type,utx->subtype);
+                return(0);
+            }
             if ( utx->comment[0] != 0 )
                 strcat(cmd,"&message="),strcat(cmd,utx->comment);
         }
-        else printf("unsupported type.%d subtype.%d\n",utx->type,utx->subtype);
         if ( reftxid != 0 && reftxid[0] != 0 && cmd[0] != 0 )
             strcat(cmd,"&referencedTransactionFullHash="),strcat(cmd,reftxid);
         if ( cmd[0] != 0 )
@@ -86,8 +93,11 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
 
 uint64_t set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int64_t amount,uint64_t other64bits,int32_t feebits)
 {
+    char assetidstr[64];
     uint64_t fee = 0;
+    int32_t createdflag;
     struct NXT_tx U;
+    struct NXT_asset *ap;
     memset(&U,0,sizeof(U));
     U.senderbits = nxt64bits;
     U.recipientbits = other64bits;
@@ -100,8 +110,10 @@ uint64_t set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int
     }
     if ( assetidbits != NXT_ASSETID )
     {
-        U.type = 2;
-        U.subtype = 1;
+        expand_nxt64bits(assetidstr,assetidbits);
+        ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+        U.type = ap->type;
+        U.subtype = ap->subtype;
         U.U.quantityQNT = amount - fee;
     } else U.U.amountNQT = amount - fee;
     U.feeNQT = MIN_NQTFEE;
@@ -170,16 +182,20 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     assetidbits = NXT_ASSETID;
     quantity = 0;
     size = sizeof(*utx);
-    if ( strcmp(type,"2") == 0 && strcmp(subtype,"1") == 0 )
+    if ( (strcmp(type,"2") == 0 && strcmp(subtype,"1") == 0) || (strcmp(type,"5") == 0 && strcmp(subtype,"3") == 0) )
     {
         attachmentobj = cJSON_GetObjectItem(json,"attachment");
         if ( attachmentobj != 0 )
         {
             if ( extract_cJSON_str(assetidstr,sizeof(assetidstr),attachmentobj,"asset") > 0 )
                 assetidbits = calc_nxt64bits(assetidstr);
+            else if ( extract_cJSON_str(assetidstr,sizeof(assetidstr),attachmentobj,"currency") > 0 )
+                assetidbits = calc_nxt64bits(assetidstr);
             if ( extract_cJSON_str(comment,sizeof(comment),attachmentobj,"message") > 0 )
                 size += strlen(comment);
             if ( extract_cJSON_str(quantityQNT,sizeof(quantityQNT),attachmentobj,"quantityQNT") > 0 )
+                quantity = calc_nxt64bits(quantityQNT);
+            else if ( extract_cJSON_str(quantityQNT,sizeof(quantityQNT),attachmentobj,"units") > 0 )
                 quantity = calc_nxt64bits(quantityQNT);
         }
     }

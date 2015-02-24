@@ -16,7 +16,7 @@ struct price_data **Price_datas;
 #define _issue_curl(curl_handle,label,url) bitcoind_RPC(curl_handle,label,url,0,0,0)
 
 //int32_t create_orderbook_tx(uint32_t timestamp,struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume,uint64_t baseamount,uint64_t relamount);
-struct orderbook *create_orderbook(uint32_t oldest,uint64_t baseid,uint64_t relid);
+//struct orderbook *create_orderbook(uint32_t oldest,uint64_t baseid,uint64_t relid);
 void free_orderbook(struct orderbook *op);
 //int32_t bid_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume);
 //int32_t ask_orderbook_tx(struct orderbook_tx *tx,int32_t type,uint64_t nxt64bits,uint64_t baseid,uint64_t relid,double price,double volume);
@@ -437,6 +437,28 @@ int32_t parse_poloniex(struct exchange_state *ep,int32_t maxdepth)
     return(ep->updated);
 }
 
+int32_t parse_bitfinex(struct exchange_state *ep,int32_t maxdepth)
+{
+    cJSON *json;
+    char *jsonstr;
+    prep_exchange_state(ep);
+    if ( ep->url[0] == 0 )
+        sprintf(ep->url,"https://api.bitfinex.com/v1/book/%s%s",ep->lbase,ep->lrel);
+    jsonstr = _issue_curl(0,ep->name,ep->url);
+    //{"bids":[{"price":"239.78","amount":"12.0","timestamp":"1424748729.0"},{"p
+    if ( jsonstr != 0 )
+    {
+        if ( (json = cJSON_Parse(jsonstr)) != 0 )
+        {
+            parse_json_orderbook(ep,maxdepth,json,0,"bids","asks","price","amount");
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(ep->updated);
+}
+
+/*
 int32_t parse_bter(struct exchange_state *ep,int32_t maxdepth)
 {
     cJSON *json,*obj;
@@ -467,7 +489,7 @@ int32_t parse_bter(struct exchange_state *ep,int32_t maxdepth)
     return(ep->updated);
 }
 
-/*int32_t parse_mintpal(struct exchange_state *ep,int32_t maxdepth)
+int32_t parse_mintpal(struct exchange_state *ep,int32_t maxdepth)
 {
     cJSON *json,*bidobj,*askobj;
     char *buystr,*sellstr;
@@ -630,12 +652,12 @@ void load_orderbooks()
         disp_quotepairs("B","Y","okcoin",bids,numbids,asks,numasks);
 }
 #endif
-char *exchange_names[] = { "nxtae", "bter", "bittrex", "cryptsy", "poloniex" };
+char *exchange_names[] = { "nxtae", "bitfinex", "bittrex", "cryptsy", "poloniex" };
 #define NUM_EXCHANGES ((int32_t)(sizeof(exchange_names)/sizeof(*exchange_names)))
 typedef int32_t (*exchange_func)(struct exchange_state *ep,int32_t maxdepth);
 exchange_func exchange_funcs[NUM_EXCHANGES] =
 {
-    parse_NXT, parse_bter, parse_bittrex, parse_cryptsy, parse_poloniex
+    parse_NXT, parse_bitfinex, parse_bittrex, parse_cryptsy, parse_poloniex
 };
 
 struct exchange_state **Activefiles; int32_t Numactivefiles;
@@ -838,7 +860,6 @@ int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
         if ( confobj == 0 )
             break;
         array = cJSON_GetObjectItem(confobj,exchange_names[i]);
-        printf("array for %s %p\n",exchange_names[i],array);
         if ( array == 0 )
             continue;
         if ( (n= cJSON_GetArraySize(array)) > 0 )
@@ -855,7 +876,7 @@ int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
     {
         start_polling_exchanges(writeflag);
         fprintf(stderr,"finished start_polling_exchanges\n");
-        exit(0);
+        //exit(0);
     }
     return(Numactivefiles);
 }

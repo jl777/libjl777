@@ -48,7 +48,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
         while ( ret == 0 )
         {
             iQ = data.data;
-            printf("%p key.%d: %s, data.size %d: %llu %u %u | vs %llu %u %u\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,refiQ->type);
+            printf("%p key.%d: %s, data.size %d: %llu %u %llu | vs %llu %u %llu\n",iQ,n,(char *)key.data,data.size,(long long)iQ->nxt64bits,iQ->timestamp,(long long)iQ->type,(long long)refiQ->nxt64bits,refiQ->timestamp,(long long)refiQ->type);
             if ( iQ->nxt64bits == refiQ->nxt64bits && iQ->type == refiQ->type && refiQ->timestamp > iQ->timestamp )
             {
                 clear_pair(&key,&data);

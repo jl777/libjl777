@@ -249,7 +249,8 @@ char *update_lotto_transactions(char *refNXTaddr,char *assetidstr,char *lottosee
     printf("lottoseed.(%s) -> %s %llu | hash2 %s\n",lottoseed,hexstr,(long long)lotto,hexstr2);
     jsonarg = cJSON_CreateArray();
     ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-    init_asset(ap,assetidstr);
+    if ( init_asset(ap,assetidstr,0) == 0 )
+        init_asset(ap,assetidstr,1);
     if ( refNXTaddr == 0 || assetidstr == 0 )//|| ap->mult == 0 )
     {
         printf("illegal refNXTaddr.(%s) (%s).mult %d\n",refNXTaddr,assetidstr,(int)ap->mult);

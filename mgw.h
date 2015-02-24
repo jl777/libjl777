@@ -3828,7 +3828,8 @@ return(0);
             fsize = ftell(fp);
             rewind(fp);
             buf = calloc(1,fsize);
-            fread(buf,1,fsize,fp);
+            if ( fread(buf,1,fsize,fp) != fsize )
+                printf("fread error in check_MGW_cache\n");
             fclose(fp);
             if ( (json= cJSON_Parse(buf)) != 0 )
             {

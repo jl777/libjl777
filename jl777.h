@@ -510,6 +510,7 @@ struct orderbook_tx
 struct orderbook
 {
     uint64_t baseid,relid;
+    char base[16],rel[16];
     struct InstantDEX_quote *bids,*asks;
     int32_t numbids,numasks;
 };

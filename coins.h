@@ -1105,39 +1105,19 @@ void init_legacyMGW(char *myipaddr)
         strcpy(myipaddr,Server_ipaddrs[Global_mp->gatewayid]);
 }
 
-void init_tradebots_conf()
+void init_tradebots_conf(cJSON *MGWconf)
 {
-    /*if ( didinit == 0 )
-     {
-     void start_polling_exchanges(int32_t exchangeflag);
-     int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
-     if ( init_exchanges(MGWconf,exchangeflag) > 0 )
-     start_polling_exchanges(exchangeflag);
-     }*/
+    int32_t writeflag = 1;
+    void start_polling_exchanges(int32_t exchangeflag);
+    int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
+    if ( init_exchanges(MGWconf,writeflag) > 0 )
+        start_polling_exchanges(writeflag);
     /*int32_t init_tradebots(cJSON *languagesobj);
      if ( didinit == 0 )
      {
      languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
      init_tradebots(languagesobj);
-     if ( ORIGBLOCK[0] == 0 )
-     {
-     char blockidstr[64];
-     int32_t isrescan,height,timestamp;
-     set_current_NXTblock(&isrescan,0,ORIGBLOCK);
-     for (i=0; i<MIN_NXTCONFIRMS; i++)
-     {break;
-     strcpy(blockidstr,ORIGBLOCK);
-     set_prev_NXTblock(0,&height,&timestamp,ORIGBLOCK,blockidstr);
-     printf("i.%d height.%d block.(%s)\n",i,height,blockidstr);
-     }
-     if ( ORIGBLOCK[0] == 0 )
-     {
-     fprintf(stderr,"need a non-zero origblock.(%s)\n",ORIGBLOCK);
-     exit(1);
-     }
-     else printf("ORIGBLOCK.(%s)\n",ORIGBLOCK);
-     }
-     }*/
+      }*/
 }
 
 void init_SuperNET_settings(char *userdir)
@@ -1244,7 +1224,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         else printf("PARSE ERROR\n");
         free(jsonstr);
     }
-    init_tradebots_conf();
+    //init_tradebots_conf(MGWconf);
     didinit = 1;
     if ( Debuglevel > 1 )
         printf("gatewayid.%d MGWROOT.(%s)\n",Global_mp->gatewayid,MGWROOT);
