@@ -934,11 +934,11 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t
             rb = obooks[i];
             if ( rb->numquotes == 0 )
                 continue;
-            printf("checking base.%llu -> rel.%llu | rb %llu -> %llu\n",(long long)baseid,(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
-            if ( rb->assetids[1] != baseid || rb->assetids[0] != relid )
-                continue;
             baseamount = (baseqty * rb->basemult);
             relamount = ((relqty + 0*relfee) * rb->relmult);
+            printf("checking base.%llu %.8f -> %.8f rel.%llu | rb %llu -> %llu\n",(long long)baseid,dstr(baseamount),dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
+            if ( rb->assetids[1] != baseid || rb->assetids[0] != relid )
+                continue;
             for (j=0; j<rb->numquotes; j++)
             {
                 iQ = &rb->quotes[j];
