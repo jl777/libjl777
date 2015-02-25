@@ -942,7 +942,7 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t relid,uint64_t 
             for (j=0; j<rb->numquotes; j++)
             {
                 iQ = &rb->quotes[j];
-                printf("matched.%d %llu <= %llu and %llu >= %llu relfee.%llu\n",iQ->matched,(long long)baseamount,(long long)iQ->baseamount,(long long)relamount,(long long)iQ->relamount,(long long)relfee);
+                printf("matched.%d (%llu vs %llu) %llu <= %llu and %llu >= %llu relfee.%llu\n",iQ->matched,(long long)iQ->nxt64bits,(long long)nxt64bits,(long long)baseamount,(long long)iQ->baseamount,(long long)relamount,(long long)iQ->relamount,(long long)relfee);
                 if ( iQ->matched == 0 && iQ->nxt64bits == nxt64bits && baseamount <= iQ->baseamount && relamount >= iQ->relamount )
                 {
                     otherbalance = get_asset_quantity(&unconfirmed,otherNXTaddr,assetidstr);
