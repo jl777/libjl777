@@ -417,7 +417,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                 //feeAtxid = get_satoshi_obj(commentobj,"feeAtxid");
                                 amountB = conv_assetoshis(assetB,qtyB);
                                 price = (amountB / vol);
-                                printf("assetB.%llu qtyB.%llu feeA.%llu feeAtxid.%llu | %.8f amountB %.8f\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid,price,amountB);
+                                printf("assetB.%llu qtyB.%llu feeA.%llu feeAtxid.%llu | %.8f amountB %.8f qty %llu\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid,price,amountB,(long long)offertx->U.quantityQNT);
                                 free_json(commentobj);
                                 if ( (iQ= order_match(offertx->recipientbits,assetB,qtyB,offertx->senderbits,offertx->assetidbits,offertx->U.quantityQNT,feeA,feeAtxid,full)) != 0 )
                                 {
