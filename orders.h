@@ -225,7 +225,7 @@ struct rambook_info **get_allrambooks(int32_t *numbooksp)
     {
         purge_oldest_order(rb,0);
         obooks[i++] = rb;
-        printf("rambook.(%s) %s %llu.%d / %s %llu.%d\n",rb->exchange,rb->base,(long long)rb->assetids[0],(int)(rb->assetids[3]>>32),rb->rel,(long long)rb->assetids[1],(int)rb->assetids[0]);
+        printf("rambook.(%s) %s %llu.%d / %s %llu.%d\n",rb->exchange,rb->base,(long long)rb->assetids[0],(int)(rb->assetids[3]>>32),rb->rel,(long long)rb->assetids[1],(uint32_t)rb->assetids[3]);
     }
     if ( i != *numbooksp )
         printf("get_allrambooks HASH_COUNT.%d vs i.%d\n",*numbooksp,i);
@@ -418,9 +418,7 @@ struct rambook_info *_add_rambook_quote(struct rambook_info *rb,uint64_t nxt64bi
     if ( timestamp == 0 )
         timestamp = (uint32_t)time(NULL);
     if ( dir > 0 )
-    {
         create_InstantDEX_quote(&iQ,timestamp,0,rb->assetids[3],nxt64bits,price,volume,baseamount,relamount);
-    }
     else
     {
         set_best_amounts(&baseamount,&relamount,price,volume);
@@ -1013,8 +1011,11 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
     char obookstr[64];
     struct rambook_info **obooks,*rb;
     struct orderbook *op = 0;
+    uint64_t basemult,relmult;
     expand_nxt64bits(obookstr,_obookid(refbaseid,refrelid));
     op = (struct orderbook *)calloc(1,sizeof(*op));
+    set_assetname(&basemult,op->base,refbaseid);
+    set_assetname(&relmult,op->rel,refrelid);
     op->baseid = refbaseid;
     op->relid = refrelid;
     for (iter=0; iter<2; iter++)
@@ -1026,10 +1027,6 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
             for (i=0; i<numbooks; i++)
             {
                 rb = obooks[i];
-                if ( op->base[0] == 0 )
-                    strcpy(op->base,rb->base);
-                if ( op->rel[0] == 0 )
-                    strcpy(op->rel,rb->rel);
                 if ( strcmp(rb->exchange,INSTANTDEX_NAME) != 0 )
                     haveexchanges++;
                 if ( rb->numquotes == 0 )
