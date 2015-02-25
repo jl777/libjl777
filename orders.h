@@ -52,6 +52,7 @@ uint64_t _calc_decimals_mult(int32_t decimals)
     uint64_t mult = 1;
     for (i=7-decimals; i>=0; i--)
         mult *= 10;
+    printf("_calc_decimals_mult(%d) -> %llu\n",decimals,(long long)mult);
     return(mult);
 }
 
@@ -65,7 +66,8 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
         if ( get_cJSON_int(json,"errorCode") == 0 )
         {
             decimals = (int32_t)get_cJSON_int(json,"decimals");
-            *multp = _calc_decimals_mult(decimals);
+            if ( decimals >= 0 && decimals <= 8 )
+                *multp = _calc_decimals_mult(decimals);
             if ( extract_cJSON_str(buf,sizeof(buf),json,"name") <= 0 )
                 decimals = -1;
         }
