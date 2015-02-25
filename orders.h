@@ -1076,7 +1076,7 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
     //printf("(%f %f %llu %u)\n",quotes->price,quotes->vol,(long long)quotes->nxt64bits,quotes->timestamp);
     if ( op != 0 )
     {
-        if ( haveexchanges == 0 )
+        if ( 0 && haveexchanges == 0 )
             init_rambooks(op->base,op->rel,refbaseid,refrelid);
         free(op);
         op = 0;
