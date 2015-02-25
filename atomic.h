@@ -400,13 +400,13 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                 if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
                 {
                     stripwhite_ns(parsed,strlen(parsed));
-                    printf("PARSED OFFER.(%s) full.(%s) (%s) offer sender.%s\n",parsed,full,calchash,sender);
+                    //printf("PARSED OFFER.(%s) full.(%s) (%s) offer sender.%s\n",parsed,full,calchash,sender);
                     if ( (offerjson= cJSON_Parse(parsed)) != 0 )
                     {
                         offertx = set_NXT_tx(offerjson);
                         expand_nxt64bits(otherNXTaddr,offertx->senderbits);
                         vol = conv_assetoshis(offertx->assetidbits,offertx->U.quantityQNT);
-                        printf("other.(%s) vol %f\n",otherNXTaddr,vol);
+                        //printf("other.(%s) vol %f\n",otherNXTaddr,vol);
                         if ( vol != 0. && offertx->comment[0] != 0 )
                         {
                             commentobj = cJSON_Parse(offertx->comment);
@@ -416,7 +416,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                 qtyB = get_satoshi_obj(commentobj,"qtyB");
                                 feeA = get_satoshi_obj(commentobj,"feeA");
                                 //feeAtxid = get_satoshi_obj(commentobj,"feeAtxid");
-                                printf("%llu %llu %llu %llu\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid);
+                                //printf("%llu %llu %llu %llu\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid);
                                 free_json(commentobj);
                                 amountB = conv_assetoshis(assetB,qtyB);
                                 price = (amountB / vol);
@@ -445,7 +445,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                         else sprintf(buf,"{\"error\":\"from %s error signing responsutx.(%s)\"}",otherNXTaddr,NXTaddr);
                                     }
                                     else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,NXTaddr);
-                                } else sprintf(buf,"{\"error\":\"nothing matches %s from %s\"}",parsed,otherNXTaddr);
+                                } else sprintf(buf,"{\"error\":\"nothing matches offer from %s\"}",otherNXTaddr);
                             }
                             else sprintf(buf,"{\"error\":\"%s error parsing comment comment.(%s)\"}",otherNXTaddr,offertx->comment);
                         }
