@@ -916,7 +916,7 @@ uint64_t is_feetx_unconfirmed(uint64_t feetxid,uint64_t fee,char *fullhash)
     return(senderbits);
 }
 
-struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t baseqty,uint64_t othernxtbits,uint64_t relid,uint64_t relqty,uint64_t relfee,uint64_t relfeetxid,char *fullhash)
+struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t relid,uint64_t relqty,uint64_t othernxtbits,uint64_t baseid,uint64_t baseqty,uint64_t relfee,uint64_t relfeetxid,char *fullhash)
 {
     //struct NXT_asset *ap;
     char otherNXTaddr[64],assetidstr[64];
@@ -937,17 +937,19 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t
             baseamount = (baseqty * rb->basemult);
             relamount = ((relqty + 0*relfee) * rb->relmult);
             printf("checking base.%llu %.8f -> %.8f rel.%llu | rb %llu -> %llu\n",(long long)baseid,dstr(baseamount),dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
-            if ( rb->assetids[1] != baseid || rb->assetids[0] != relid )
+            if ( rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
             for (j=0; j<rb->numquotes; j++)
             {
                 iQ = &rb->quotes[j];
-                if ( iQ->matched == 0 && iQ->nxt64bits == nxt64bits && relamount >= iQ->baseamount && baseamount <= iQ->relamount )
+                printf(" %llu >= %llu and %llu <= %llu relfee.%llu\n",(long long)baseamount,(long long)iQ->baseamount,(long long)relamount,(long long)iQ->relamount,(long long)relfee);
+                if ( iQ->matched == 0 && iQ->nxt64bits == nxt64bits && baseamount >= iQ->baseamount && relamount <= iQ->relamount )
                 {
                     otherbalance = get_asset_quantity(&unconfirmed,otherNXTaddr,assetidstr);
-                    printf("MATCHED! %llu >= %llu and %llu <= %llu relfee.%llu otherbalance %.8f unconfirmed %.8f\n",(long long)relamount,(long long)iQ->baseamount,(long long)baseamount,(long long)iQ->relamount,(long long)relfee,dstr(otherbalance),dstr(unconfirmed));
+                    printf("MATCHED! %llu >= %llu and %llu <= %llu relfee.%llu otherbalance %.8f unconfirmed %.8f\n",(long long)baseamount,(long long)iQ->baseamount,(long long)relamount,(long long)iQ->relamount,(long long)relfee,dstr(otherbalance),dstr(unconfirmed));
                     if ( is_feetx_unconfirmed(relfeetxid,relfee,fullhash) == othernxtbits && otherbalance >= (baseqty - 0*relfee) )
                     {
+                        printf("MATCHED for real\n");
                         iQ->matched = 1;
                         free(obooks);
                         return(iQ);
