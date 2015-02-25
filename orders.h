@@ -196,7 +196,7 @@ struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid,char *exchange)
     exchangebits = stringbits(exchange);
     basetype = set_assetname(&basemult,base,baseid);
     reltype = set_assetname(&relmult,rel,relid);
-    printf("get_rambook.(%s) %s %llu.%d / %s %llu.%d\n",exchange,base,(long long)baseid,basetype,rel,(long long)relid,reltype);
+    printf("get_rambook.(%s) %s %llu.%d / %s %llu.%d [%llu %llu]\n",exchange,base,(long long)baseid,basetype,rel,(long long)relid,reltype,(long long)basemult,(long long)relmult);
     assetids[0] = baseid, assetids[1] = relid, assetids[2] = exchangebits, assetids[3] = (((uint64_t)basetype << 32) | reltype);
     if ( (rb= find_rambook(assetids)) == 0 )
     {
@@ -934,7 +934,7 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t relid,uint64_t 
             rb = obooks[i];
             baseamount = (baseqty * rb->basemult);
             relamount = ((relqty + 0*relfee) * rb->relmult);
-            printf("checking base.%llu %llu %.8f -> %llu %.8f rel.%llu | rb %llu -> %llu\n",(long long)baseid,(long long)baseqty,dstr(baseamount),(long long)relqty,dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
+            printf("[%llu %llu] checking base.%llu %llu %.8f -> %llu %.8f rel.%llu | rb %llu -> %llu\n",(long long)rb->basemult,(long long)rb->relmult,(long long)baseid,(long long)baseqty,dstr(baseamount),(long long)relqty,dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
             if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
             for (j=0; j<rb->numquotes; j++)
