@@ -1078,8 +1078,8 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
     {
         if ( 0 && haveexchanges == 0 )
             init_rambooks(op->base,op->rel,refbaseid,refrelid);
-        free(op);
-        op = 0;
+        if ( (op->numbids + op->numasks) == 0 )
+            free_orderbook(op), op = 0;
     }
     return(op);
 }
