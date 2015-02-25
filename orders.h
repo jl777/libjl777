@@ -196,6 +196,7 @@ struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid,char *exchange)
     exchangebits = stringbits(exchange);
     basetype = set_assetname(&basemult,base,baseid);
     reltype = set_assetname(&relmult,rel,relid);
+    printf("get_rambook.(%s) %s %llu.%d / %s %llu.%d\n",exchange,base,(long long)baseid,basetype,rel,(long long)relid,reltype);
     assetids[0] = baseid, assetids[1] = relid, assetids[2] = exchangebits, assetids[3] = (((uint64_t)basetype << 32) | reltype);
     if ( (rb= find_rambook(assetids)) == 0 )
     {
@@ -224,6 +225,7 @@ struct rambook_info **get_allrambooks(int32_t *numbooksp)
     {
         purge_oldest_order(rb,0);
         obooks[i++] = rb;
+        printf("rambook.(%s) %s %llu.%d / %s %llu.%d\n",rb->exchange,rb->base,(long long)rb->assetids[0],(int)(rb->assetids[3]>>32),rb->rel,(long long)rb->assetids[1],(int)rb->assetids[0]);
     }
     if ( i != *numbooksp )
         printf("get_allrambooks HASH_COUNT.%d vs i.%d\n",*numbooksp,i);
@@ -704,9 +706,10 @@ void ramparse_NXT(struct rambook_info *bids,struct rambook_info *asks,int32_t ma
         free(sellstr);
 }
 
-int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid,int32_t maxdepth)
+int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
 {
     int32_t i,n = 0;
+    printf("init_rambooks.(%s %s)\n",base,rel);
     if ( base == 0 && rel == 0 && base[0] != 0 && rel[0] != 0 )
     {
         baseid = stringbits(base);
@@ -1004,7 +1007,7 @@ void add_to_orderbook(struct orderbook *op,int32_t iter,int32_t *numbidsp,int32_
         update_orderbook(iter,op,numbidsp,numasksp,iQ,polarity);
 }
 
-struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid,uint32_t maxdepth)
+struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t refrelid)
 {
     int32_t i,j,iter,numbids,numasks,numbooks,polarity,haveexchanges = 0;
     char obookstr[64];
@@ -1063,7 +1066,7 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
     if ( op != 0 )
     {
         if ( haveexchanges == 0 )
-            init_rambooks(op->base,op->rel,refbaseid,refrelid,maxdepth);
+            init_rambooks(op->base,op->rel,refbaseid,refrelid);
         free(op);
         op = 0;
     }
@@ -1088,7 +1091,7 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     init_hexbytes_noT(datastr,(uint8_t *)buf,strlen(buf));
     //printf("ORDERBOOK.(%s)\n",buf);
     retstr = 0;
-    if ( baseid != 0 && relid != 0 && (op= create_orderbook(oldest,baseid,relid,maxdepth)) != 0 )
+    if ( baseid != 0 && relid != 0 && (op= create_orderbook(oldest,baseid,relid)) != 0 )
     {
         if ( op->numbids == 0 && op->numasks == 0 )
             retstr = clonestr("{\"error\":\"no bids or asks\"}");
