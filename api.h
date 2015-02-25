@@ -291,11 +291,13 @@ char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char utx[MAX_JSON_FIELD],full[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
+    uint64_t feeAtxid;
     copy_cJSON(utx,objs[0]);
     copy_cJSON(sig,objs[1]);
     copy_cJSON(full,objs[2]);
+    feeAtxid = get_API_nxt64bits(objs[3]);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = processutx(sender,utx,sig,full);
+        retstr = processutx(sender,utx,sig,full,feeAtxid);
     else retstr = clonestr("{\"result\":\"invalid processutx_func request\"}");
     return(retstr);
 }
@@ -1949,7 +1951,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *ask[] = { (char *)ask_func, "ask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "type", 0 };
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", "feeB", "feetxid", 0 };
-    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", 0 };
+    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", "feeAtxid", 0 };
 
     // Tradebot
     static char *pricedb[] = { (char *)pricedb_func, "pricedb", "V", "exchange", "base", "rel", "stop", 0 };

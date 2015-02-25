@@ -375,7 +375,7 @@ uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash)
     return(feetxid);
 }
 
-char *processutx(char *sender,char *utx,char *sig,char *full)
+char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
 {
     struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t baseqty,uint64_t othernxtbits,uint64_t relid,uint64_t relqty,uint64_t relfee,uint64_t relfeetxid,char *fullhash);
    //PARSED OFFER.({"sender":"8989816935121514892","timestamp":20810867,"height":2147483647,"amountNQT":"0","verify":false,"subtype":1,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetB\":\"1639299849328439538\",\"qtyB\":\"1000000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","feeNQT":"100000000","senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","type":2,"deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","recipient":"8989816935121514892"})
@@ -384,7 +384,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
     cJSON *json,*obj,*offerjson,*commentobj;
     struct NXT_tx *offertx;
     double vol,price,amountB;
-    uint64_t qtyB,assetB,fee,feeA,feetxid,feeAtxid;
+    uint64_t qtyB,assetB,fee,feeA,feetxid;
     char *jsonstr,*parsed,hopNXTaddr[64],buf[MAX_JSON_FIELD],calchash[MAX_JSON_FIELD],NXTaddr[64],responseutx[MAX_JSON_FIELD],signedtx[MAX_JSON_FIELD],otherNXTaddr[64];
     printf("PROCESSUTX.(%s) sig.%s full.%s from (%s)\n",utx,sig,full,sender);
     jsonstr = issue_calculateFullHash(0,utx,sig);
@@ -415,7 +415,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full)
                                 assetB = get_satoshi_obj(commentobj,"assetB");
                                 qtyB = get_satoshi_obj(commentobj,"qtyB");
                                 feeA = get_satoshi_obj(commentobj,"feeA");
-                                feeAtxid = get_satoshi_obj(commentobj,"feeAtxid");
+                                //feeAtxid = get_satoshi_obj(commentobj,"feeAtxid");
                                 printf("%llu %llu %llu %llu\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid);
                                 free_json(commentobj);
                                 amountB = conv_assetoshis(assetB,qtyB);
@@ -517,6 +517,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         return(clonestr(buf));
     }
     fee = set_NXTtx(nxt64bits,&T,assetA,assetoshisA,other64bits,-1);//FEEBITS);
+    fee = INSTANTDEX_FEE;
     sprintf(T.comment,"{\"obookid\":\"%llu\",\"assetB\":\"%llu\",\"qtyB\":\"%llu\",\"feeA\":\"%llu\"}",(long long)(assetA ^ assetB),(long long)assetB,(long long)assetoshisB,(long long)fee);
     tx = sign_NXT_tx(utxbytes,signedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
     if ( tx != 0 )
