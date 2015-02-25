@@ -708,7 +708,7 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
 {
     int32_t i,n = 0;
     printf("init_rambooks.(%s %s)\n",base,rel);
-    if ( base == 0 && rel == 0 && base[0] != 0 && rel[0] != 0 )
+    if ( base != 0 && rel != 0 && base[0] != 0 && rel[0] != 0 )
     {
         baseid = stringbits(base);
         relid = stringbits(rel);
