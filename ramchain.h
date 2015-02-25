@@ -9672,7 +9672,7 @@ void *process_ramchains(void *_argcoinstr)
                 ram_update_disp(ram);
         }
         if ( processed == 0 )
-            sleep(20);
+            sleep(300);
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");
