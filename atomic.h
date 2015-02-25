@@ -400,7 +400,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                 if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
                 {
                     stripwhite_ns(parsed,strlen(parsed));
-                    //printf("PARSED OFFER.(%s) full.(%s) (%s) offer sender.%s\n",parsed,full,calchash,sender);
+                    printf("PARSED OFFER.(%s) full.(%s) (%s) offer sender.%s\n",parsed,full,calchash,sender);
                     if ( (offerjson= cJSON_Parse(parsed)) != 0 )
                     {
                         offertx = set_NXT_tx(offerjson);
@@ -443,8 +443,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                             sprintf(buf,"{\"results\":\"utx from NXT.%llu accepted with fullhash.(%s) %.8f of %llu for %.8f of %llu -> price %.8f\"}",(long long)offertx->senderbits,full,vol,(long long)offertx->assetidbits,amountB,(long long)assetB,price);
                                         }
                                         else sprintf(buf,"{\"error\":\"from %s error signing responsutx.(%s)\"}",otherNXTaddr,NXTaddr);
-                                    }
-                                    else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,NXTaddr);
+                                    } else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,NXTaddr);
                                 } else sprintf(buf,"{\"error\":\"nothing matches offer from %s\"}",otherNXTaddr);
                             }
                             else sprintf(buf,"{\"error\":\"%s error parsing comment comment.(%s)\"}",otherNXTaddr,offertx->comment);
@@ -463,6 +462,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
         free(jsonstr);
     }
     else sprintf(buf,"{\"error\":\"processutx cant issue calcfullhash\"}");
+    printf("PROCESS RETURNS.(%s)\n",buf);
     return(clonestr(buf));
 }
 
