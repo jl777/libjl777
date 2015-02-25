@@ -766,7 +766,7 @@ cJSON *gen_orderbook_item(struct InstantDEX_quote *iQ,int32_t allflag,uint64_t b
         price = calc_price_volume(&volume,baseamount,relamount);
         if ( allflag != 0 )
         {
-            sprintf(offerstr,"{\"price\":\"%.11f\",\"volume\":\"%.8f\",\"requestType\":\"makeoffer\",\"baseid\":\"%llu\",\"baseamount\":\"%llu\",\"realid\":\"%llu\",\"relamount\":\"%llu\",\"other\":\"%llu\",\"type\":\"%llu\"}",price,volume,(long long)baseid,(long long)baseamount,(long long)relid,(long long)relamount,(long long)iQ->nxt64bits,(long long)iQ->type);
+            sprintf(offerstr,"{\"price\":\"%.11f\",\"volume\":\"%.8f\",\"requestType\":\"makeoffer\",\"baseid\":\"%llu\",\"baseamount\":\"%llu\",\"realid\":\"%llu\",\"relamount\":\"%llu\",\"other\":\"%llu\",\"type\":\"%llu\",\"matched\":%d,\"sent\":%d,\"closed\":%d}",price,volume,(long long)baseid,(long long)baseamount,(long long)relid,(long long)relamount,(long long)iQ->nxt64bits,(long long)iQ->type,iQ->matched,iQ->sent,iQ->closed);
         }
         else sprintf(offerstr,"{\"price\":\"%.11f\",\"volume\":\"%.8f\"}",price,volume);
     }
@@ -779,6 +779,13 @@ cJSON *gen_InstantDEX_json(struct rambook_info *rb,int32_t isask,struct InstantD
     char numstr[64],base[64],rel[64];
     double price,volume;
     uint64_t mult;
+    if ( iQ->matched != 0 )
+        cJSON_AddItemToObject(json,"matched",cJSON_CreateNumber(1));
+    if ( iQ->sent != 0 )
+        cJSON_AddItemToObject(json,"sent",cJSON_CreateNumber(1));
+    if ( iQ->closed != 0 )
+        cJSON_AddItemToObject(json,"closed",cJSON_CreateNumber(1));
+
     price = calc_price_volume(&volume,iQ->baseamount,iQ->relamount);
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString((isask != 0) ? "ask" : "bid"));
     set_assetname(&mult,base,refbaseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(base));
@@ -944,7 +951,7 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t relid,uint64_t 
             rb = obooks[i];
             baseamount = (baseqty * rb->basemult);
             relamount = ((relqty + 0*relfee) * rb->relmult);
-            printf("[%llu %llu] checking base.%llu %llu %.8f -> %llu %.8f rel.%llu | rb %llu -> %llu\n",(long long)rb->basemult,(long long)rb->relmult,(long long)baseid,(long long)baseqty,dstr(baseamount),(long long)relqty,dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
+            //printf("[%llu %llu] checking base.%llu %llu %.8f -> %llu %.8f rel.%llu | rb %llu -> %llu\n",(long long)rb->basemult,(long long)rb->relmult,(long long)baseid,(long long)baseqty,dstr(baseamount),(long long)relqty,dstr(relamount),(long long)relid,(long long)rb->assetids[0],(long long)rb->assetids[1]);
             if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
             for (j=0; j<rb->numquotes; j++)
@@ -1029,12 +1036,13 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
         numbids = numasks = 0;
         if ( (obooks= get_allrambooks(&numbooks)) != 0 )
         {
-            printf("got %d rambooks\n",numbooks);
+            printf("got %d rambooks: oldest.%u\n",numbooks,oldest);
             for (i=0; i<numbooks; i++)
             {
                 rb = obooks[i];
                 if ( strcmp(rb->exchange,INSTANTDEX_NAME) != 0 )
                     haveexchanges++;
+                printf("numquotes.%d: %llu %llu\n",rb->numquotes,(long long)rb->assetids[0],(long long)rb->assetids[1]);
                 if ( rb->numquotes == 0 )
                     continue;
                 if ( rb->assetids[0] == refbaseid && rb->assetids[1] == refrelid )
