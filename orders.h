@@ -764,7 +764,6 @@ cJSON *gen_orderbook_item(struct InstantDEX_quote *iQ,int32_t allflag,uint64_t b
         price = calc_price_volume(&volume,baseamount,relamount);
         if ( allflag != 0 )
         {
-            // "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
             sprintf(offerstr,"{\"price\":\"%.11f\",\"volume\":\"%.8f\",\"requestType\":\"makeoffer\",\"baseid\":\"%llu\",\"baseamount\":\"%llu\",\"realid\":\"%llu\",\"relamount\":\"%llu\",\"other\":\"%llu\",\"type\":\"%llu\"}",price,volume,(long long)baseid,(long long)baseamount,(long long)relid,(long long)relamount,(long long)iQ->nxt64bits,(long long)iQ->type);
         }
         else sprintf(offerstr,"{\"price\":\"%.11f\",\"volume\":\"%.8f\"}",price,volume);
@@ -928,9 +927,7 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t
     int64_t unconfirmed;
     expand_nxt64bits(otherNXTaddr,othernxtbits);
     expand_nxt64bits(assetidstr,baseid);
-    //ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-    //expand_nxt64bits(assetidstr,relid);
-    //ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+    printf("other.(%s) asset.%s\n",otherNXTaddr,assetidstr);
     if ( (obooks= get_allrambooks(&numbooks)) != 0 )
     {
         for (i=0; i<numbooks; i++)
