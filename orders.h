@@ -87,7 +87,7 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         if ( strcmp(assetmap[i][0],assetstr) == 0 )
         {
             strcpy(name,assetmap[i][1]);
-            *multp = atoi(assetmap[i][2]);
+            *multp = _calc_decimals_mult(atoi(assetmap[i][2]));
             return(INSTANTDEX_NATIVE); // native crypto type
         }
     }
