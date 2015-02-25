@@ -1058,6 +1058,7 @@ struct identity_info { uint64_t nxt64bits; uint32_t activewt,passivewt; } Identi
 #define MIN_SMALLWORLDPEERS 5
 #define PUZZLE_DURATION 15
 #define PUZZLE_THRESHOLD (HIT_LIMIT / 1337)
+// oh, just recalled, use divisors that are powers of 3
 
 int32_t Num_identities = 0;
 int SAM_INDICES[SAM_STATE_SIZE];
@@ -1098,32 +1099,69 @@ int32_t ConvertToBytes(const TRIT *input,const uint32_t inputSize,uint8_t *outpu
 
 void SaM_PrepareIndices()
 {
-	int32_t i,nextIndex,currentIndex = 0;
+	int32_t i,j,nextIndex,currentIndex = 0;
 	for (i=0; i<SAM_STATE_SIZE; i++)
     {
 		nextIndex = ((currentIndex + 1) * SAM_MAGIC_NUMBER) % SAM_STATE_SIZE;
 		SAM_INDICES[currentIndex] = nextIndex;
 		currentIndex = nextIndex;
 	}
+    /*
+     TRIT SAMANY[3][3],SAMSUM[3][3];
+     #define SAM_ANY(a,b) SAMANY[a+1][b+1]
+     #define SAM_SUM(a,b) SAMSUM[a+1][b+1]
+     for (i=0; i<3; i++)
+        for (j=0; j<3; j++)
+        {
+            SAMANY[i][j] = SaM_Any(i-1,j-1);
+            SAMSUM[i][j] = SaM_Sum(i-1,j-1);
+        }
+    for (i=0; i<3; i++)
+    {
+        printf("{ ");
+        for (j=0; j<3; j++)
+            printf("%d, ",SAMANY[i][j]);
+        printf("}, ");
+    }
+    printf(" SAMANY\n");
+    for (i=0; i<3; i++)
+    {
+        printf("{ ");
+        for (j=0; j<3; j++)
+            printf("%d, ",SAMSUM[i][j]);
+        printf("}, ");
+    }
+    printf(" SAMSUM\n");
+    getchar();*/
 }
 
-void SaM_SplitAndMerge(struct SAM_STATE *state)
+void SaM_SplitAndMerge(struct SAM_STATE *state,int32_t numrounds)
 {
+    static const char SAMANY[3][3] = { { -1, -1, 0, }, { -1, 0, 1, }, { 0, 1, 1, } };
+    static const char SAMSUM[3][3] = { { 1, -1, 0, }, { -1, 0, 1, }, { 0, 1, -1, } };
 	struct SAM_STATE leftPart,rightPart;
-	int32_t i,round,nextIndex,currentIndex = 0;
-	for (round=1; round<=SAM_MAGIC_NUMBER; round++)
+	int32_t i,round,nextIndex,ind,currentIndex = 0;
+    if ( numrounds <= 0 )
+        return;
+	for (round=1; round<=numrounds; round++)
     {
 		for (i=0; i<SAM_STATE_SIZE; i++)
         {
 			nextIndex = SAM_INDICES[currentIndex];
-			leftPart.trits[i] = SaM_Any(state->trits[currentIndex],-state->trits[nextIndex]);
-			rightPart.trits[i] = SaM_Any(-state->trits[currentIndex],state->trits[nextIndex]);
+			//leftPart.trits[i] = SaM_Any(state->trits[currentIndex],-state->trits[nextIndex]);
+			//rightPart.trits[i] = SaM_Any(-state->trits[currentIndex],state->trits[nextIndex]);
+			leftPart.trits[i] = SAMANY[state->trits[currentIndex] + 1][-state->trits[nextIndex] + 1];
+			rightPart.trits[i] = SAMANY[-state->trits[currentIndex] + 1][state->trits[nextIndex] + 1];
 			currentIndex = nextIndex;
 		}
-		for (i=0; i<SAM_STATE_SIZE; i++)
+        ind = round;
+		for (i=0; i<SAM_STATE_SIZE; i++,ind++)
         {
+            if ( ind >= SAM_STATE_SIZE )
+                ind = 0;
 			nextIndex = SAM_INDICES[currentIndex];
-			state->trits[(i + round) % SAM_STATE_SIZE] = SaM_Sum(leftPart.trits[currentIndex],rightPart.trits[nextIndex]);
+			//state->trits[(i + round) % SAM_STATE_SIZE] = SaM_Sum(leftPart.trits[currentIndex],rightPart.trits[nextIndex]);
+			state->trits[ind] = SAMSUM[leftPart.trits[currentIndex]+1][rightPart.trits[nextIndex]+1];
 			currentIndex = SAM_INDICES[nextIndex];
 		}
 	}
@@ -1136,7 +1174,7 @@ void SaM_Initialize(struct SAM_STATE *state)
 		state->trits[i] = ((i & 1) != 0) ? TRIT_FALSE : TRIT_TRUE;
 }
 
-void SaM_Absorb(struct SAM_STATE *state,const TRIT *input,uint32_t inputSize)
+void SaM_Absorb(struct SAM_STATE *state,const TRIT *input,uint32_t inputSize,int32_t numrounds)
 {
     int32_t i,n,offset = 0;
     if ( inputSize > MAX_INPUT_SIZE )
@@ -1145,25 +1183,25 @@ void SaM_Absorb(struct SAM_STATE *state,const TRIT *input,uint32_t inputSize)
 	for (i=0; i<n; i++,offset+=SAM_HASH_SIZE)
     {
 		memcpy(state->trits,&input[offset],SAM_HASH_SIZE * sizeof(TRIT));
-		SaM_SplitAndMerge(state);
+		SaM_SplitAndMerge(state,numrounds);
 	}
 	if ( (i= (inputSize % SAM_HASH_SIZE)) != 0 )
     {
 		memcpy(state->trits,&input[n * SAM_HASH_SIZE],i * sizeof(TRIT));
 		for (; i<SAM_HASH_SIZE; i++)
 			state->trits[i] = ((i & 1) != 0) ? TRIT_FALSE : TRIT_TRUE;
-		SaM_SplitAndMerge(state);
+		SaM_SplitAndMerge(state,numrounds);
 	}
 }
 
-void SaM_Squeeze(struct SAM_STATE *state,TRIT *output)
+void SaM_Squeeze(struct SAM_STATE *state,TRIT *output,int32_t numrounds)
 {
-	SaM_SplitAndMerge(state);
+	SaM_SplitAndMerge(state,numrounds);
 	memcpy(output,state->trits,SAM_HASH_SIZE * sizeof(TRIT));
-	SaM_SplitAndMerge(state);
+	SaM_SplitAndMerge(state,numrounds);
 }
 
-uint64_t Hit(const uint8_t *input,int32_t inputSize)
+uint64_t Hit(const uint8_t *input,int32_t inputSize,int32_t numrounds)
 {
     TRIT inputTrits[MAX_INPUT_SIZE << 3];
   	TRIT hash[SAM_HASH_SIZE];
@@ -1186,8 +1224,8 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize)
             printf("memcmp error after converts\n");
     }
 	SaM_Initialize(&state);
-	SaM_Absorb(&state,inputTrits,inputSize << 3);
-	SaM_Squeeze(&state,hash);
+	SaM_Absorb(&state,inputTrits,inputSize << 3,numrounds);
+	SaM_Squeeze(&state,hash,numrounds);
 	for (i=0; i<27; i++)
     {
         /*if ( (trit= hash[i]) < -1 )
@@ -1314,6 +1352,7 @@ long set_sambuf(uint8_t *data,uint32_t puzzletime,uint64_t challenger,uint64_t d
 
 char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    int32_t numrounds = SAM_MAGIC_NUMBER;
     uint32_t n,len,num,duration,reftime,now = (uint32_t)time(NULL);
     char buf[MAX_JSON_FIELD],hopNXTaddr[64],numstr[64],*jsonstr;
     uint64_t threshold,senderbits,nonce,hit;
@@ -1347,7 +1386,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         //memcpy(&nonce,&data[offset],sizeof(nonce));
         randombytes((uint8_t *)&nonce,sizeof(nonce));
         memcpy(&data[offset],&nonce,sizeof(nonce));
-        hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
+        hit = Hit(data,(uint32_t)(offset + sizeof(nonce)),numrounds);
         //if ( (rand() % 1000) == 0 )
             //printf("%llu vs %llu\n",(long long)hit,(long long)threshold);
         if ( hit < threshold )
@@ -1390,7 +1429,7 @@ char *challenge_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     struct identity_info *ident;
-    uint32_t i,n,reftime;
+    uint32_t i,n,reftime,numrounds = SAM_MAGIC_NUMBER;
     uint8_t data[64];
     char buf[1024];
     long offset = 0;
@@ -1418,7 +1457,7 @@ char *response_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
                 {
                     nonce = get_API_nxt64bits(cJSON_GetArrayItem(array,i));
                     memcpy(&data[offset],&nonce,sizeof(nonce));
-                    hit = Hit(data,(uint32_t)(offset + sizeof(nonce)));
+                    hit = Hit(data,(uint32_t)(offset + sizeof(nonce)),numrounds);
                     printf("got.%d nonce.%llu hit.%llu for %llu\n",i,(long long)nonce,(long long)hit,(long long)sender);
                     if ( hit < threshold )
                         ident->activewt++;
@@ -1518,7 +1557,7 @@ void every_second(int32_t counter)
     }
     if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {
-        if ( 0 && Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
+        if ( 1 && Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
             enter_smallworld(PUZZLE_DURATION,PUZZLE_THRESHOLD);
         else if ( Global_mp->puzzletime != 0 )
             poll_smallworld(MIN_SMALLWORLDPEERS);
