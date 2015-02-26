@@ -192,15 +192,19 @@ struct rambook_info *find_rambook(uint64_t rambook_hashbits[4])
     return(rb);
 }
 
-struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid,char *exchange)
+struct rambook_info *get_rambook(char *_base,uint64_t baseid,char *_rel,uint64_t relid,char *exchange)
 {
     char base[16],rel[16];
     uint64_t assetids[4],basemult,relmult,exchangebits;
     uint32_t i,basetype,reltype;
     struct rambook_info *rb;
     exchangebits = stringbits(exchange);
-    basetype = set_assetname(&basemult,base,baseid);
-    reltype = set_assetname(&relmult,rel,relid);
+    if ( _base == 0 )
+        basetype = set_assetname(&basemult,base,baseid);
+    else basetype = INSTANTDEX_NATIVE, strcpy(base,_base);
+    if ( _rel == 0 )
+        reltype = set_assetname(&relmult,rel,relid);
+    else reltype = INSTANTDEX_NATIVE, strcpy(rel,_rel);
     assetids[0] = baseid, assetids[1] = relid, assetids[2] = exchangebits, assetids[3] = (((uint64_t)basetype << 32) | reltype);
     if ( (rb= find_rambook(assetids)) == 0 )
     {
@@ -440,12 +444,12 @@ struct rambook_info *add_rambook_quote(char *exchange,struct InstantDEX_quote *i
         timestamp = (uint32_t)time(NULL);
     if ( dir > 0 )
     {
-        rb = get_rambook(baseid,relid,exchange);
+        rb = get_rambook(0,baseid,0,relid,exchange);
         create_InstantDEX_quote(iQ,timestamp,0,rb->assetids[3],nxt64bits,price,volume,baseamount,relamount);
     }
     else
     {
-        rb = get_rambook(relid,baseid,exchange);
+        rb = get_rambook(0,relid,0,baseid,exchange);
         set_best_amounts(&baseamount,&relamount,price,volume);
         create_InstantDEX_quote(iQ,timestamp,0,rb->assetids[3],nxt64bits,0,0,relamount,baseamount);
     }
@@ -794,8 +798,8 @@ void add_exchange_pair(char *base,uint64_t baseid,char *rel,uint64_t relid,char 
     int32_t exchangeid,i,n;
     struct orderpair *pair;
     struct exchange_info *exchange = 0;
-    bids = get_rambook(baseid,relid,exchangestr);
-    asks = get_rambook(relid,baseid,exchangestr);
+    bids = get_rambook(base,baseid,rel,relid,exchangestr);
+    asks = get_rambook(rel,relid,base,baseid,exchangestr);
     for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
         exchange = &Exchanges[exchangeid];
@@ -828,8 +832,6 @@ void add_exchange_pair(char *base,uint64_t baseid,char *rel,uint64_t relid,char 
         if ( i == n )
         {
             pair = &exchange->orderpairs[n];
-            strcpy(pair->bids->base,base), strcpy(pair->bids->rel,rel);
-            strcpy(pair->asks->base,rel), strcpy(pair->asks->rel,base);
             pair->bids = bids, pair->asks = asks, pair->ramparse = ramparse;
             if ( exchange->num++ >= (int32_t)(sizeof(exchange->orderpairs)/sizeof(*exchange->orderpairs)) )
             {
