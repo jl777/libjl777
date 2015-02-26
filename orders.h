@@ -70,7 +70,7 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
             decimals = (int32_t)get_cJSON_int(json,"decimals");
             if ( decimals >= 0 && decimals <= 8 )
                 *multp = _calc_decimals_mult(decimals);
-            if ( extract_cJSON_str(buf,sizeof(buf),json,"name") <= 0 )
+            if ( extract_cJSON_str(buf,MAX_JSON_FIELD,json,"name") <= 0 )
                 decimals = -1;
         }
         free_json(json);
@@ -80,7 +80,7 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
 
 uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
 {
-    char assetstr[64],buf[1024],*jsonstr,*jsonstr2;
+    char assetstr[64],buf[MAX_JSON_FIELD],*jsonstr,*jsonstr2;
     uint32_t i,retval = INSTANTDEX_UNKNOWN;
     *multp = 1;
     expand_nxt64bits(assetstr,assetbits);

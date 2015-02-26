@@ -733,7 +733,7 @@ int32_t safecopy(char *dest,char *src,long len)
             dest[i] = src[i];
         if ( i == len )
         {
-            printf("%s too long %ld\n",src,len); while ( 1 ) sleep(1);
+            printf("safecopy: %s too long %ld\n",src,len); while ( 1 ) sleep(1);
             return(-1);
         }
         dest[i] = 0;
