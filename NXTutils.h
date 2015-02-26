@@ -533,8 +533,8 @@ struct NXT_asset *get_NXTasset(int32_t *createdp,struct NXThandler_info *mp,char
     ap = MTadd_hashtable(createdp,mp->NXTassets_tablep,assetidstr);
     if ( *createdp != 0 )
     {
-        if ( init_asset(ap,assetidstr,0) == 0 )
-            init_asset(ap,assetidstr,1);
+        if ( init_asset(ap,assetidstr,0) == 0 && init_asset(ap,assetidstr,1) == 0 )
+            ap->mult = 1, ap->decimals = 8;
         ap->assetbits = ap->H.nxt64bits = calc_nxt64bits(assetidstr);
     }
     return(ap);

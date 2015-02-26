@@ -1099,7 +1099,7 @@ int32_t ConvertToBytes(const TRIT *input,const uint32_t inputSize,uint8_t *outpu
 
 void SaM_PrepareIndices()
 {
-	int32_t i,j,nextIndex,currentIndex = 0;
+	int32_t i,nextIndex,currentIndex = 0;
 	for (i=0; i<SAM_STATE_SIZE; i++)
     {
 		nextIndex = ((currentIndex + 1) * SAM_MAGIC_NUMBER) % SAM_STATE_SIZE;
@@ -1557,7 +1557,7 @@ void every_second(int32_t counter)
     }
     if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {
-        if ( 1 && Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
+        if ( 0 && Global_mp->insmallworld == 0 && Num_identities >= MIN_INDENTITIES )
             enter_smallworld(PUZZLE_DURATION,PUZZLE_THRESHOLD);
         else if ( Global_mp->puzzletime != 0 )
             poll_smallworld(MIN_SMALLWORLDPEERS);
