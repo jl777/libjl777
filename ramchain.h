@@ -66,6 +66,7 @@ extern int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char
 // ramchain functions for external access
 void *process_ramchains(void *argcoinstr);
 char *ramresponse(char *origargstr,char *sender,char *previpaddr,char *datastr);
+uint32_t _get_NXTheight(uint32_t *firsttimep);
 
 char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);
 char *rampyramid(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);

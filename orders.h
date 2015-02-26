@@ -200,7 +200,6 @@ struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid,char *exchange)
     exchangebits = stringbits(exchange);
     basetype = set_assetname(&basemult,base,baseid);
     reltype = set_assetname(&relmult,rel,relid);
-    printf("get_rambook.(%s) %s %llu.%d / %s %llu.%d [%llu %llu]\n",exchange,base,(long long)baseid,basetype,rel,(long long)relid,reltype,(long long)basemult,(long long)relmult);
     assetids[0] = baseid, assetids[1] = relid, assetids[2] = exchangebits, assetids[3] = (((uint64_t)basetype << 32) | reltype);
     if ( (rb= find_rambook(assetids)) == 0 )
     {
@@ -516,7 +515,7 @@ void ramparse_cryptsy(struct rambook_info *bids,struct rambook_info *asks,int32_
     {
         if ( strcmp(bids->rel,"BTC") != 0 )
         {
-            printf("parse_cryptsy: only BTC markets supported\n");
+            printf("parse_cryptsy.(%s/%s): only BTC markets supported\n",bids->base,bids->rel);
             return;
         }
         marketjson = cJSON_Parse(marketstr);
@@ -739,6 +738,7 @@ void *poll_exchange(void *_exchangeidp)
     }
     exchange = &Exchanges[exchangeid];
     sleeptime = EXCHANGE_SLEEP;
+    printf("poll_exchange.(%s).%d\n",exchange->name,exchangeid);
     while ( 1 )
     {
         n = 0;
@@ -751,7 +751,7 @@ void *poll_exchange(void *_exchangeidp)
                 bids = pair->bids, asks = pair->asks;
                 if ( pair->lastmilli == 0. || milliseconds() > (pair->lastmilli + 1000.*QUOTE_SLEEP) )
                 {
-                    // printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),ep->lastmilli,ep->name,ep->base,ep->rel);
+                     printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),pair->lastmilli,exchange->name,bids->base,bids->rel);
                     (*pair->ramparse)(bids,asks,maxdepth);
                     pair->lastmilli = exchange->lastmilli = milliseconds();
                     if ( (bids->updated + asks->updated) != 0 )
@@ -792,7 +792,7 @@ void add_exchange_pair(uint64_t baseid,uint64_t relid,char *exchangestr,void (*r
     struct rambook_info *bids,*asks;
     int32_t exchangeid,n;
     struct orderpair *pair;
-    struct exchange_info *exchange;
+    struct exchange_info *exchange = 0;
     bids = get_rambook(baseid,relid,exchangestr);
     asks = get_rambook(relid,baseid,exchangestr);
     for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
@@ -810,9 +810,9 @@ void add_exchange_pair(uint64_t baseid,uint64_t relid,char *exchangestr,void (*r
         printf("cant add anymore exchanges.(%s)\n",exchangestr);
     else
     {
-        if ( (n= Exchanges[exchangeid].num) == 0 )
+        if ( (n= exchange->num) == 0 )
         {
-            printf("Start monitoring (%s).%d\n",exchangestr,exchangeid);
+            printf("Start monitoring (%s).%d\n",exchange->name,exchangeid);
             exchange->exchangeid = exchangeid;
             if ( portable_thread_create((void *)poll_exchange,&exchange->exchangeid) == 0 )
                 printf("ERROR poll_exchange\n");
