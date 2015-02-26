@@ -485,7 +485,8 @@ int32_t parseram_json_quotes(int32_t dir,struct rambook_info *rb,cJSON *array,in
             printf("unexpected case in parseram_json_quotes\n");
             continue;
         }
-        printf("%-8s %s %13.8f vol %.8f\n",rb->exchange,dir>0?"bid":"ask",price,volume);
+        if ( Debuglevel > 2 )
+            printf("%-8s %s %5s/%-5s %13.8f vol %.8f\n",rb->exchange,dir>0?"bid":"ask",rb->base,rb->rel,price,volume);
         if ( _add_rambook_quote(rb,stringbits(rb->exchange),timestamp,dir,price,volume,0,0) != rb )
             printf("ERROR: rambook mismatch for %s/%s dir.%d price %.8f vol %.8f\n",rb->base,rb->rel,dir,price,volume);
     }
@@ -939,6 +940,7 @@ cJSON *gen_InstantDEX_json(struct rambook_info *rb,int32_t isask,struct InstantD
     set_assetname(&mult,rel,refrelid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(rel));
     cJSON_AddItemToObject(json,"price",cJSON_CreateNumber(price));
     cJSON_AddItemToObject(json,"volume",cJSON_CreateNumber(volume));
+    cJSON_AddItemToObject(json,"exchange",cJSON_CreateString(rb->exchange));
     
     cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(iQ->timestamp));
     cJSON_AddItemToObject(json,"age",cJSON_CreateNumber((uint32_t)time(NULL) - iQ->timestamp));
@@ -1198,9 +1200,9 @@ struct orderbook *create_orderbook(uint32_t oldest,uint64_t refbaseid,uint64_t r
                 printf("numquotes.%d: %llu %llu\n",rb->numquotes,(long long)rb->assetids[0],(long long)rb->assetids[1]);
                 if ( rb->numquotes == 0 )
                     continue;
-                if ( rb->assetids[0] == refbaseid && rb->assetids[1] == refrelid )
+                if ( (rb->assetids[0] == refbaseid && rb->assetids[1] == refrelid) || (strcmp(op->base,rb->base) == 0 && strcmp(op->rel,rb->rel) == 0) )
                     polarity = 1;
-                else if ( rb->assetids[1] == refbaseid && rb->assetids[0] == refrelid )
+                else if ( (rb->assetids[1] == refbaseid && rb->assetids[0] == refrelid) || (strcmp(op->base,rb->rel) == 0 && strcmp(op->rel,rb->base) == 0)  )
                     polarity = -1;
                 else continue;
                 for (j=0; j<rb->numquotes; j++)
