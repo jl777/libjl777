@@ -89,6 +89,7 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         if ( strcmp(assetmap[i][0],assetstr) == 0 )
         {
             strcpy(name,assetmap[i][1]);
+            printf("SETASSETNAME.(%s) <- %s\n",name,assetstr);
             *multp = _calc_decimals_mult(atoi(assetmap[i][2]));
             return(INSTANTDEX_NATIVE); // native crypto type
         }
@@ -210,7 +211,7 @@ struct rambook_info *get_rambook(uint64_t baseid,uint64_t relid,char *exchange)
         touppercase(rb->rel), strcpy(rb->lrel,rb->rel), tolowercase(rb->lrel);
         for (i=0; i<4; i++)
             rb->assetids[i] = assetids[i];
-        printf("CREATE RAMBOOK.(%llu.%d -> %llu.%d) %s\n",(long long)baseid,basetype,(long long)relid,reltype,exchange);
+        printf("CREATE RAMBOOK.(%llu.%d -> %llu.%d) %s (%s) (%s)\n",(long long)baseid,basetype,(long long)relid,reltype,exchange,rb->base,rb->rel);
         HASH_ADD(hh,Rambooks,assetids,sizeof(rb->assetids),rb);
     }
     purge_oldest_order(rb,0);
