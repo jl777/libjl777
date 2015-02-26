@@ -96,6 +96,7 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
     }
     if ( (jsonstr= issue_getAsset(0,assetstr)) != 0 )
     {
+        printf("set assetname for (%s)\n",jsonstr);
         if ( _set_assetname(multp,buf,jsonstr) < 0 )
         {
             if ( (jsonstr2= issue_getAsset(1,assetstr)) != 0 )
