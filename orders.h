@@ -826,8 +826,11 @@ void add_exchange_pair(char *base,uint64_t baseid,char *rel,uint64_t relid,char 
         else
         {
             for (i=0; i<n; i++)
+            {
+                pair = &exchange->orderpairs[i];
                 if ( strcmp(base,pair->bids->base) == 0 && strcmp(rel,pair->bids->rel) == 0 )
                     break;
+            }
         }
         if ( i == n )
         {
