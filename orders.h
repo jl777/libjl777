@@ -788,10 +788,10 @@ void *poll_exchange(void *_exchangeidp)
     return(0);
 }
 
-void add_exchange_pair(uint64_t baseid,uint64_t relid,char *exchangestr,void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth))
+void add_exchange_pair(char *base,uint64_t baseid,char *rel,uint64_t relid,char *exchangestr,void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth))
 {
     struct rambook_info *bids,*asks;
-    int32_t exchangeid,n;
+    int32_t exchangeid,i,n;
     struct orderpair *pair;
     struct exchange_info *exchange = 0;
     bids = get_rambook(baseid,relid,exchangestr);
@@ -817,13 +817,25 @@ void add_exchange_pair(uint64_t baseid,uint64_t relid,char *exchangestr,void (*r
             exchange->exchangeid = exchangeid;
             if ( portable_thread_create((void *)poll_exchange,&exchange->exchangeid) == 0 )
                 printf("ERROR poll_exchange\n");
+            i = n;
         }
-        pair = &exchange->orderpairs[n];
-        pair->bids = bids, pair->asks = asks, pair->ramparse = ramparse;
-        if ( exchange->num++ >= (int32_t)(sizeof(exchange->orderpairs)/sizeof(*exchange->orderpairs)) )
+        else
         {
-            printf("exchange.(%s) orderpairs hit max\n",exchangestr);
-            exchange->num = ((int32_t)(sizeof(exchange->orderpairs)/sizeof(*exchange->orderpairs)) - 1);
+            for (i=0; i<n; i++)
+                if ( strcmp(base,pair->bids->base) == 0 && strcmp(rel,pair->bids->rel) == 0 )
+                    break;
+        }
+        if ( i == n )
+        {
+            pair = &exchange->orderpairs[n];
+            strcpy(pair->bids->base,base), strcpy(pair->bids->rel,rel);
+            strcpy(pair->asks->base,rel), strcpy(pair->asks->rel,base);
+            pair->bids = bids, pair->asks = asks, pair->ramparse = ramparse;
+            if ( exchange->num++ >= (int32_t)(sizeof(exchange->orderpairs)/sizeof(*exchange->orderpairs)) )
+            {
+                printf("exchange.(%s) orderpairs hit max\n",exchangestr);
+                exchange->num = ((int32_t)(sizeof(exchange->orderpairs)/sizeof(*exchange->orderpairs)) - 1);
+            }
         }
     }
 }
@@ -831,7 +843,8 @@ void add_exchange_pair(uint64_t baseid,uint64_t relid,char *exchangestr,void (*r
 int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
 {
     int32_t i,createdflag,mask = 0,n = 0;
-    char assetidstr[64];
+    char assetidstr[64],_base[64],_rel[64];
+    uint64_t basemult,relmult;
     printf("init_rambooks.(%s %s)\n",base,rel);
     if ( base != 0 && rel != 0 && base[0] != 0 && rel[0] != 0 )
     {
@@ -851,11 +864,11 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
             mask |= 8;
         if ( (mask & 1) != 0 )
         {
-            add_exchange_pair(baseid,relid,"cryptsy",ramparse_cryptsy);
-            add_exchange_pair(baseid,relid,"bittrex",ramparse_bittrex);
-            add_exchange_pair(baseid,relid,"poloniex",ramparse_poloniex);
+            add_exchange_pair(base,baseid,rel,relid,"cryptsy",ramparse_cryptsy);
+            add_exchange_pair(base,baseid,rel,relid,"bittrex",ramparse_bittrex);
+            add_exchange_pair(base,baseid,rel,relid,"poloniex",ramparse_poloniex);
             if ( (mask & (~1)) != 0 )
-                add_exchange_pair(baseid,relid,"bitfinex",ramparse_bitfinex);
+                add_exchange_pair(base,baseid,rel,relid,"bitfinex",ramparse_bitfinex);
         }
         if ( strcmp(base,"NXT") == 0 || strcmp(rel,"NXT") == 0 )
         {
@@ -863,17 +876,22 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
             {
                 for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
                     if ( strcmp(assetmap[i][1],base) == 0 )
-                        add_exchange_pair(calc_nxt64bits(assetmap[i][0]),relid,"nxtae",ramparse_NXT);
+                        add_exchange_pair(base,calc_nxt64bits(assetmap[i][0]),rel,relid,"nxtae",ramparse_NXT);
             }
             else
             {
                 for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
                     if ( strcmp(assetmap[i][1],rel) == 0 )
-                        add_exchange_pair(baseid,calc_nxt64bits(assetmap[i][0]),"nxtae",ramparse_NXT);
+                        add_exchange_pair(base,baseid,rel,calc_nxt64bits(assetmap[i][0]),"nxtae",ramparse_NXT);
             }
         }
     }
-    else add_exchange_pair(baseid,relid,"nxtae",ramparse_NXT);
+    else
+    {
+        set_assetname(&basemult,_base,baseid);
+        set_assetname(&relmult,_rel,relid);
+        add_exchange_pair(_base,baseid,_rel,relid,"nxtae",ramparse_NXT);
+    }
     return(n);
 }
 
