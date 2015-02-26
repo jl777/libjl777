@@ -1348,7 +1348,8 @@ struct orderbook *create_jumpbooks(struct orderbook **top,struct orderbook **fro
     {
         *top = create_orderbook(base,0,jumper,0,oldest);  // base/jump
         *fromp = create_orderbook(jumper,0,rel,0,oldest); // jump/rel
-        jumpbook = make_jumpbook(base,jumper,rel,*top,*fromp);
+        if ( *top != 0 && *fromp != 0 )
+            jumpbook = make_jumpbook(base,jumper,rel,*top,*fromp);
     } else *fromp = *top = 0;
     return(jumpbook);
 }
