@@ -406,7 +406,7 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	uint64_t filesize;
     void *ptr = 0;
 	*filesizep = 0;
-	#ifndef _WIN32
+#ifndef _WIN32
 	if ( enablewrite != 0 )
 		fd = open(fname,O_RDWR);
 	else fd = open(fname,O_RDONLY);
@@ -414,7 +414,7 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	if ( enablewrite != 0 )
 		fd = _sopen(fname, _O_RDWR | _O_BINARY, _SH_DENYNO);
 	else fd = _sopen(fname, _O_RDONLY | _O_BINARY, _SH_DENYNO);
-	#endif
+#endif
 	if ( fd < 0 )
 	{
 		printf("map_file: error opening enablewrite.%d %s\n",enablewrite,fname);
@@ -429,18 +429,16 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	rwflags = PROT_READ;
 	if ( enablewrite != 0 )
 		rwflags |= PROT_WRITE;
-#ifdef __APPLE__
+#if __APPLE__ || _WIN32 || __i386__
 	ptr = mmap(0,filesize,rwflags,flags,fd,0);
-#elif _WIN32
-	ptr = mmap(0, filesize, rwflags, flags, fd,0);
 #else
 	ptr = mmap64(0,filesize,rwflags,flags,fd,0);
 #endif
-	#ifndef _WIN32
+#ifndef _WIN32
 	close(fd);
-	#else
+#else
 	_close(fd);
-	#endif
+#endif
     if ( ptr == 0 || ptr == MAP_FAILED )
 	{
 		printf("map_file.write%d: mapping %s failed? mp %p\n",enablewrite,fname,ptr);
@@ -3266,7 +3264,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
     struct cointx_info *cointx;
     uint64_t orphans = 0;
     *pendingredeemsp = 0;
-    disable_newsends = (ram->numpendingsends > 0);
+    disable_newsends = ((ram->numpendingsends > 0) || (ram->S.gatewayid < 0));
     if ( (ap= ram->ap) == 0 )
     {
         printf("no NXT_asset for %s\n",ram->name);
