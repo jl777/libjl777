@@ -64,6 +64,12 @@ getramchain0:  doesntexist; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.txid /var/www/html/ramchains/BTCD/BTCD.txid; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.script /var/www/html/ramchains/BTCD/BTCD.script
 
+chess:  doesntexist; \
+    git clone https://github.com/official-stockfish/Stockfish; cd Stockfish/src; make build ARCH=x86-64; cd ../..
+
+chessjs:  doesntexist; \
+    git clone https://github.com/exoticorn/stockfish-js
+
 patch: doesntexist; \
     #sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
     #git clone http://git.linbit.com/csync2.git; \

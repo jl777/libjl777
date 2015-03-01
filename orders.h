@@ -1571,6 +1571,34 @@ char *ask_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
     return(placequote_func(previpaddr,-1,sender,valid,objs,numobjs,origargstr));
 }
 
+char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    return(clonestr("{\"signals\":[{\"name\":\"SMA\",\"scale\":\"price\"},{\"name\":\"slope\",\"scale\":\"auto\"}]}"));
+}
+
+char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD];
+    uint32_t start,end,resolution;
+    uint64_t baseid,relid;
+    copy_cJSON(sigstr,objs[0]);
+    start = (uint32_t)get_API_int(objs[1],0);
+    end = (uint32_t)get_API_int(objs[2],(uint32_t)time(NULL));
+    resolution = (uint32_t)get_API_int(objs[3],60);
+    baseid = get_API_nxt64bits(objs[4]);
+    relid = get_API_nxt64bits(objs[5]);
+    copy_cJSON(base,objs[6]);
+    copy_cJSON(rel,objs[7]);
+    if ( strcmp(sigstr,"SMA") == 0 )
+    {
+        return(clonestr("{\"SMA\":\"[[300000000, 1.234567, 1.234777, 1.234666, 1.234570], [300000060, 1.234577, 1.234777, 1.234656, 1.234560]]\"}"));
+    }
+    else if ( strcmp(sigstr,"slope") == 0 )
+    {
+        return(clonestr("{\"slope\":\"[[300000000, 0.00000001234567, 0.00000001234567, -0.00000001234567, 0.00000001234567], [300000000, 0.00000001234567, 0.00000001234567, -0.00000001234567, 0.00000001234567]]\"}"));
+    } else return(clonestr("{\"error\":\"unknown signal\"}"));
+}
+
 
 #undef _obookid
 

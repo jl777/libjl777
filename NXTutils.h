@@ -460,6 +460,25 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
     return(json);
 }
 
+uint64_t _get_bestassetprice(char *assetcmd,uint64_t assetid)
+{
+    char cmd[4096],*jsonstr;
+    cJSON *json;
+    uint64_t price = 0;
+    sprintf(cmd,"%s=%s&asset=%llu&firstIndex=0&lastIndex=0",NXTSERVER,assetcmd,(long long)assetid);
+    if ( (jsonstr= issue_curl(0,cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            price = get_API_nxt64bits(cJSON_GetObjectItem(json,"priceNQT"));
+        free(jsonstr);
+    }
+    return(price);
+}
+
+uint64_t get_nxtlowask(uint64_t assetid) { return(_get_bestassetprice("getAskOrders",assetid)); }
+uint64_t get_nxthighbid(uint64_t assetid) { return(_get_bestassetprice("getBidOrders",assetid)); }
+uint64_t get_nxtlastprice(uint64_t assetid) { return(_get_bestassetprice("getTrades",assetid)); }
+
 char *issue_getAsset(int32_t isMScoin,char *assetidstr)
 {
     char cmd[4096];
