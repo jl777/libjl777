@@ -708,7 +708,7 @@ uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSE
 
 void set_jtrade_tx(struct jumptrades *jtrade,struct tradeleg *leg,char *NXTACCTSECRET,uint64_t nxt64bits,char *triggerhash)
 {
-    printf("set_jtrade_tx\n");
+    printf("set_jtrade_tx.%llu (%s) (%llu %llu %.8f) (%llu %llu %.8f)\n",(long long)nxt64bits,triggerhash,(long long)leg->src.nxt64bits,(long long)leg->src.assetid,dstr(leg->src.amount),(long long)leg->dest.nxt64bits,(long long)leg->dest.assetid,dstr(leg->dest.amount));
     if ( leg->src.assetid == NXT_ASSETID || leg->dest.assetid == NXT_ASSETID )
     {
         if ( leg->src.nxt64bits == nxt64bits )
@@ -716,6 +716,7 @@ void set_jtrade_tx(struct jumptrades *jtrade,struct tradeleg *leg,char *NXTACCTS
             if ( leg->src.assetid == NXT_ASSETID )
                 leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             else leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+            printf("txid normal %llu\n",leg->txid);
         }
         else if ( leg->src.nxt64bits == 0 )
         {
@@ -723,7 +724,8 @@ void set_jtrade_tx(struct jumptrades *jtrade,struct tradeleg *leg,char *NXTACCTS
                 leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             else if ( leg->src.nxt64bits == nxt64bits )
                 leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
-        } else printf("set_jtrade_tx: illegal src or dest jtrade_tx\n");
+            printf("txid nxtae %llu\n",leg->txid);
+        } else printf("set_jtrade_tx: illegal src.%llu or dest.%llu jtrade_tx by %llu\n",(long long)leg->src.nxt64bits,(long long)leg->dest.nxt64bits,(long long)nxt64bits);
     } else printf("set_jtrade_tx: unsupported jtrade_tx\n");
 }
 
