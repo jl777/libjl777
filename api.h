@@ -2020,7 +2020,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
                     safecopy(NXTACCTSECRET,Global_mp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
                     strcpy(NXTaddr,Global_mp->myNXTADDR);
                     //expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
-                    printf("use localserver NXT.%s to send command (cp %llu)\n",NXTaddr,(long long)cp->srvpubnxtbits);
+                    //printf("use localserver NXT.%s to send command (cp %llu)\n",NXTaddr,(long long)cp->srvpubnxtbits);
                 }
                 else
                 {

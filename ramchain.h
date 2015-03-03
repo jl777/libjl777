@@ -6847,7 +6847,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( 1 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 && strcmp(ram->name,"BTC") == 0 )
+    if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 && strcmp(ram->name,"BTC") == 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -7298,7 +7298,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
 FILE *ram_permopen(char *fname,char *coinstr)
 {
     FILE *fp;
-    if ( strcmp(coinstr,"BTC") == 0 )
+    if ( 0 && strcmp(coinstr,"BTC") == 0 )
         return(0);
     if ( (fp= fopen(fname,"rb+")) == 0 )
         fp= fopen(fname,"wb+");
@@ -9671,7 +9671,7 @@ void *process_ramchains(void *_argcoinstr)
                 ram_update_disp(ram);
         }
         if ( processed == 0 )
-            sleep(300);
+            sleep(30);
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");
