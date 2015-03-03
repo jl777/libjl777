@@ -132,6 +132,7 @@ uint64_t set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int
     } else U.U.amountNQT = amount - fee;
     U.feeNQT = MIN_NQTFEE;
     U.deadline = 10;//DEFAULT_NXT_DEADLINE;
+    printf("set_NXTtx(%llu -> %llu) %.8f of %llu\n",(long long)U.senderbits,(long long)U.recipientbits,dstr(amount),(long long)assetidbits);
     *tx = U;
     return(fee);
 }
