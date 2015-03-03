@@ -2017,9 +2017,10 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
             {
                 if ( 1 || notlocalip(cp->privacyserver) == 0 )
                 {
-                    safecopy(NXTACCTSECRET,cp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
-                    expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
-                    //printf("use localserver NXT.%s to send command\n",NXTaddr);
+                    safecopy(NXTACCTSECRET,Global_mp->srvNXTACCTSECRET,sizeof(NXTACCTSECRET));
+                    strcpy(NXTaddr,Global_mp->myNXTADDR);
+                    //expand_nxt64bits(NXTaddr,cp->srvpubnxtbits);
+                    printf("use localserver NXT.%s to send command (cp %llu)\n",NXTaddr,(long long)cp->srvpubnxtbits);
                 }
                 else
                 {
