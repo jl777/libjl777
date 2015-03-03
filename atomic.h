@@ -101,7 +101,7 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
                 free(retstr);
             }
         }
-    } else printf("cant gen_NXT_txjson when sender is not me\n");
+    } else printf("cant gen_NXT_txjson when sender.%llu is not me.%llu\n",(long long)utx->senderbits,(long long)nxt64bits);
     return(json);
 }
 
@@ -815,7 +815,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     {
         if ( mynxt64bits == nxt64bits )
         {
-            printf("create fee tx\n");
+            printf("create fee tx %llu vs %llu\n",(long long)calc_nxt64bits(Global_mp->myNXTADDR),(long long)nxt64bits);
             set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
             strcpy(T.comment,comment);
             printf("sign it\n");
