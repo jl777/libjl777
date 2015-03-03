@@ -733,27 +733,35 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     jump.nxt64bits = jump64bits, jump.assetid = jumpasset, jump.amount = jumpamount;
     dest.nxt64bits = other64bits, dest.assetid = assetB, dest.amount = amountB;
     memset(jtrades,0,sizeof(*jtrades));
+    printf("init_jtrades\n");
     jtrades->qtyA = amountA, jtrades->qtyB = amountB, jtrades->jumpqty = jumpamount;
     if ( assetA != NXT_ASSETID )
     {
         expand_nxt64bits(assetidstr,assetA);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-        jtrades->qtyA /= ap->mult;
+        if ( ap->mult != 0 )
+            jtrades->qtyA /= ap->mult;
+        else printf("%llu null apmult\n",(long long)assetA);
     }
     if ( assetB != NXT_ASSETID )
     {
         expand_nxt64bits(assetidstr,assetB);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-        jtrades->qtyB /= ap->mult;
+        if ( ap->mult != 0 )
+            jtrades->qtyB /= ap->mult;
+        else printf("%llu null apmult\n",(long long)assetB);
     }
     if ( jumpasset != 0 && jumpasset != NXT_ASSETID )
     {
         expand_nxt64bits(assetidstr,jumpasset);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
-        jtrades->jumpqty /= ap->mult;
+        if ( ap->mult != 0 )
+            jtrades->jumpqty /= ap->mult;
+        else printf("%llu null apmult\n",(long long)jumpasset);
     }
     jtrades->nxt64bits = nxt64bits, jtrades->other64bits = other64bits, jtrades->jump64bits = jump64bits;
     jtrades->fee = jtrades->otherfee = INSTANTDEX_FEE;
+    printf("(%llu %llu %llu) assetA.%llu assetB.%llu jumpasset.%llu\n",(long long)nxt64bits,(long long)other64bits,(long long)jump64bits,(long long)assetA,(long long)assetB,(long long)jumpasset);
     if ( jumpasset != 0 )
     {
         jtrades->fee <<= 1;
@@ -781,20 +789,24 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
             purge_jumptrades(jtrades);
             return(0);
         }
+        printf("call set_jtrade\n");
         numlegs = set_jtrade(numlegs,jtrades,&src,jtrades->qtyA,&dest,jtrades->qtyB);
         jumpstr[0] = 0;
     }
     sprintf(comment,"{\"requestType\":\"processjumptrade\",\"NXT\":\"%llu\",\"assetA\":\"%llu\",\"amountA\":\"%llu\",%s\"other\":\"%llu\",\"assetB\":\"%llu\",\"amountB\":\"%llu\",\"feeA\":\"%llu\"}",(long long)nxt64bits,(long long)assetA,(long long)amountA,jumpstr,(long long)other64bits,(long long)assetB,(long long)amountB,(long long)jtrades->fee);
-    if ( triggerhash[0] == 0 )
+    if ( triggerhash == 0 || triggerhash[0] == 0 )
     {
         set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
         strcpy(T.comment,comment);
         jtrades->feetx = sign_NXT_tx(jtrades->feeutxbytes,jtrades->feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
+        printf("signed tx %llu trigger.(%s)\n",(long long)jtrades->feetx,triggerhash);
         get_txhashes(jtrades->feesighash,jtrades->triggerhash,jtrades->feetx);
+        triggerhash = jtrades->triggerhash;
         jtrades->feetxid = jtrades->feetx->txid;
     }
     else
     {
+        printf("triggerhash.(%s)\n",triggerhash);
         jtrades->feetxid = feeAtxid;
         strcpy(jtrades->triggerhash,triggerhash);
         if ( other64bits == mynxt64bits )
@@ -807,7 +819,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         for (i=0; i<numlegs; i++)
             set_jtrade_tx(jtrades,&jtrades->legs[i],NXTACCTSECRET,mynxt64bits,jtrades->triggerhash);
         return(jtrades);
-    }
+    } else printf("invalid triggerhash\n");
     printf("init_jtrades.(%s) invalid triggerhash\n",jtrades->triggerhash);
     purge_jumptrades(jtrades);
     return(0);
@@ -914,6 +926,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
     uint64_t nxt64bits,other64bits,feetxid,jump64bits = 0;
     nxt64bits = calc_nxt64bits(NXTaddr);
     other64bits = calc_nxt64bits(otherNXTaddr);
+    printf("makeoffer2\n");
     if ( jumpasset != 0 )
     {
         if ( jumpasset == assetA || jumpasset == assetB || strcmp(NXTaddr,jumpNXTaddr) == 0 || strcmp(jumpNXTaddr,otherNXTaddr) == 0 )
@@ -948,6 +961,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
         }
         purge_jumptrades(jtrades);
     } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
+    printf("makeoffer2.(%s)\n",buf);
     return(clonestr(buf));
 }
 
