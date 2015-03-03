@@ -813,15 +813,18 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     printf("comment.(%s)\n",comment);
     if ( triggerhash == 0 || triggerhash[0] == 0 )
     {
-        printf("create fee tx\n");
-        set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
-        strcpy(T.comment,comment);
-        printf("sign it\n");
-        jtrades->feetx = sign_NXT_tx(jtrades->feeutxbytes,jtrades->feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
-        printf("signed tx %llu trigger.(%s)\n",(long long)jtrades->feetx,triggerhash);
-        get_txhashes(jtrades->feesighash,jtrades->triggerhash,jtrades->feetx);
-        triggerhash = jtrades->triggerhash;
-        jtrades->feetxid = jtrades->feetx->txid;
+        if ( mynxt64bits == nxt64bits )
+        {
+            printf("create fee tx\n");
+            set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
+            strcpy(T.comment,comment);
+            printf("sign it\n");
+            jtrades->feetx = sign_NXT_tx(jtrades->feeutxbytes,jtrades->feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
+            printf("signed tx %llu trigger.(%s)\n",(long long)jtrades->feetx,triggerhash);
+            get_txhashes(jtrades->feesighash,jtrades->triggerhash,jtrades->feetx);
+            triggerhash = jtrades->triggerhash;
+            jtrades->feetxid = jtrades->feetx->txid;
+        } else printf("%llu is not me %llu\n",(long long)mynxt64bits,(long long)nxt64bits);
     }
     else
     {
