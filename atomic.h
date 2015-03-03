@@ -629,6 +629,11 @@ uint64_t calc_nxtprice(struct jumptrades *jtrades,uint64_t assetid,uint64_t amou
             return(nxtamount);
         ptr = &jtrades->relnxtamount;
     }
+    else
+    {
+        printf("calc_nxtprice: illegal assetid.%llu\n",(long long)assetid);
+        return(0);
+    }
     nxtprice = calc_nxtmedianprice(assetid);
     nxtamount = (nxtprice * amount); // already adjusted for decimals
     printf("nxtprice %.8f nxtamount %.8f -> (*%p)\n",dstr(nxtprice),dstr(nxtamount),ptr);
@@ -745,6 +750,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     memset(jtrades,0,sizeof(*jtrades));
     printf("init_jtrades\n");
     jtrades->qtyA = amountA, jtrades->qtyB = amountB, jtrades->jumpqty = jumpamount;
+    jtrades->baseid = assetA, jtrades->relid = assetB, jtrades->jumpasset = jumpasset;
     if ( assetA != NXT_ASSETID )
     {
         expand_nxt64bits(assetidstr,assetA);
