@@ -36,7 +36,7 @@ struct NXT_tx
     union _NXT_tx_num U;
     int32_t deadline,type,subtype,verify,number;
     uint32_t timestamp;
-    char comment[128];
+    char comment[2048];
 };
 
 int32_t NXTutxcmp(struct NXT_tx *ref,struct NXT_tx *tx,double myshare)
