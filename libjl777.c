@@ -337,7 +337,7 @@ void SuperNET_idler(uv_idle_t *handle)
         if ( (counter % 60) == 17 )
         {
             every_minute(counter/60);
-            update_Allnodes();
+            update_Allnodes(0,0);
             poll_telepods("BTCD");
             poll_telepods("BTC");
         }
@@ -1133,6 +1133,7 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             memcpy(&ptr[sizeof(len) + sizeof(duration)],msg,len);
             ptr[sizeof(len) + sizeof(duration) + len] = 0;
             queue_enqueue("BroadcastQ",&BroadcastQ,ptr);
+            update_Allnodes(msg,len);
             return(txid);
         } else printf("cant broadcast non-JSON.(%s)\n",msg);
     }

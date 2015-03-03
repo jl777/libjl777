@@ -680,7 +680,7 @@ uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSE
     uint64_t txid = 0;
     char cmd[4096],*jsonstr;
     cJSON *json;
-    sprintf(cmd,"%s=%s&asset=%llu&referencedTransactionFullHash=%s&message=%s&secretPhrase=%s&feeNQT=%llu&quantityQNT=%llu&priceNQT=%llu&deadline=%d",NXTSERVER,bidask,(long long)assetid,triggerhash,comment,NXTACCTSECRET,MIN_NQTFEE,(long long)qty,(long long)NXTprice,deadline);
+    sprintf(cmd,"%s=%s&asset=%llu&referencedTransactionFullHash=%s&message=%s&secretPhrase=%s&feeNQT=%llu&quantityQNT=%llu&priceNQT=%llu&deadline=%d",NXTSERVER,bidask,(long long)assetid,triggerhash,comment,NXTACCTSECRET,(long long)MIN_NQTFEE,(long long)qty,(long long)NXTprice,deadline);
     if ( (jsonstr= issue_curl(0,cmd)) != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )

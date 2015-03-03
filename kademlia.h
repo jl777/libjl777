@@ -28,9 +28,10 @@ uint64_t Allnodes[10000];
 int32_t Numallnodes;
 #define MAX_ALLNODES ((int32_t)(sizeof(Allnodes)/sizeof(*Allnodes)))
 
-void update_Allnodes()
+void update_Allnodes(char *_tokbuf,int32_t n)
 {
-    int32_t i,lag;
+    char hopNXTaddr[64];
+    int32_t i,lag,L = 0;
     uint32_t now = (uint32_t)time(NULL);
     char NXTaddr[64];
     struct nodestats *stats,*sp;
@@ -48,6 +49,12 @@ void update_Allnodes()
                 if ( memcmp(sp,stats,sizeof(*sp)) != 0 )
                     update_nodestats_data(stats);
                 free(sp);
+            }
+            if ( _tokbuf != 0 )
+            {
+                char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXTaddr,char *msg,int32_t msglen,char *destNXTaddr,unsigned char *data,int32_t datalen);
+                hopNXTaddr[0] = 0;
+                sendmessage(0,hopNXTaddr,L,Global_mp->myNXTADDR,_tokbuf,n,NXTaddr,0,0);
             }
         }
     }

@@ -5300,7 +5300,7 @@ int32_t ram_expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datale
     return(mode);
 }
 
-uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,char *script)
+uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,char *script,uint32_t blocknum)
 {
     uint64_t redeemtxid = 0;
     int32_t i;
@@ -5314,7 +5314,7 @@ uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,
             redeemtxid <<= 8;
             redeemtxid |= (_decode_hex(&script[6 + 14 - i*2]) & 0xff);
         }
-        printf("%s >>>>>>>>>>>>>>> found MGW redeem %s -> %llu | unspendable.%d\n",ram->name,script,(long long)redeemtxid,*unspendablep);
+        printf("%s >>>>>>>>>>>>>>> found MGW redeem @blocknum.%u %s -> %llu | unspendable.%d\n",ram->name,blocknum,script,(long long)redeemtxid,*unspendablep);
     }
     else if ( *unspendablep != 0 )
         printf("%s >>>>>>>>>>>>>>> found unspendable %s\n",ram->name,script);
@@ -6847,7 +6847,7 @@ HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,in
     int32_t regenflag = 0;
     if ( format == 0 )
         format = 'V';
-    if ( 0 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 )//&& strcmp(ram->name,"BTC") == 0 )
+    if ( 1 && format == 'B' && prevhpp != 0 && (hp= *prevhpp) != 0 && strcmp(ram->name,"BTC") == 0 )
     {
         if ( ram_expand_bitstream(0,tmp,ram,hp) <= 0 )
         {
@@ -7194,7 +7194,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
     if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 )
     {
         fclose(fp);
-        if ( verifyflag == 0 )
+       // if ( verifyflag == 0 )
             return(0);
     }
     if ( 0 && blocks->format == 'V' )
@@ -7503,7 +7503,7 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     if ( scriptind > 0 && scriptind <= table->ind && (scriptptr= table->ptrs[scriptind]) != 0 )
     {
         ram_script(scriptstr,ram,scriptind);
-        scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr);
+        scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr,blocknum);
         if ( iter != 1 )
         {
             if ( scriptptr->unspent != 0 )  // this is MGW redeemtxid
@@ -7547,7 +7547,7 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
                 if ( addrptr->numpayloads >= addrptr->maxpayloads )
                 {
                     //printf("realloc max.%d for (%d %d %d) with num.%d\n",ptr->maxpayloads,blocknum,txind,vout,ptr->numpayloads);
-                    addrptr->maxpayloads = (addrptr->numpayloads + 1);
+                    addrptr->maxpayloads = (addrptr->numpayloads + 16);
                     addrptr->payloads = realloc(addrptr->payloads,addrptr->maxpayloads * sizeof(struct rampayload));
                 }
                 if ( iter <= 2 )
@@ -9618,7 +9618,7 @@ void *process_ramchains(void *_argcoinstr)
                 }
                 else //if ( (ram->S.NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(ram) )
                 {
-                    if ( strcmp(ram->name,"BTC") != 0 )//ram->S.is_realtime != 0 )
+                    //if ( strcmp(ram->name,"BTC") != 0 )//ram->S.is_realtime != 0 )
                     {
                         ram->S.NXTblocknum = _update_ramMGW(0,ram,ram->S.NXTblocknum);
                         if ( (ram->S.MGWpendingredeems + ram->S.MGWpendingdeposits) != 0 )
