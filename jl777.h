@@ -259,7 +259,7 @@ struct NXThandler_info
     cJSON *accountjson;
     uv_udp_t *udp;
     unsigned char loopback_pubkey[crypto_box_PUBLICKEYBYTES],loopback_privkey[crypto_box_SECRETKEYBYTES];
-    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64],myNXTADDR[64],srvNXTACCTSECRET[256];
+    char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64],*myNXTADDR,*srvNXTACCTSECRET;
     bits256 mypubkey,myprivkey;
     uint64_t nxt64bits,puzzlethreshold,*neighbors;//,coins[4];
     int32_t initassets,Lfactor,gatewayid,gensocks[256];
