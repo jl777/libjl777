@@ -7264,7 +7264,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
                         if ( blocks->format != 'V' && ram->blocks.hps[blocknum] == 0 )
                             ram->blocks.hps[blocknum] = hp;
                     }
-                } else delete_file(fname,0), hclose(hp);
+                } //else delete_file(fname,0), hclose(hp);
             } else printf("genblock error %s (%c) blocknum.%u\n",ram->name,blocks->format,blocknum);
         } else printf("%s.%u couldnt get hpp\n",formatstr,blocknum);
     }
