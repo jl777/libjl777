@@ -809,7 +809,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
             purge_jumptrades(jtrades);
             return(0);
         }
-        printf("call set_jtrade: src.%llu %.8f -> dest.%llu %.8f\n",(long long)src->assetid,dstr(jtrades->qtyA),(long long)dest->assetid,dstr(jtrades->qtyB));
+        printf("call set_jtrade: src.%llu %.8f -> dest.%llu %.8f\n",(long long)src.assetid,dstr(jtrades->qtyA),(long long)dest.assetid,dstr(jtrades->qtyB));
         numlegs = set_jtrade(numlegs,jtrades,&src,jtrades->qtyA,&dest,jtrades->qtyB);
         jumpstr[0] = 0;
     }
