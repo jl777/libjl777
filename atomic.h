@@ -631,13 +631,14 @@ uint64_t calc_nxtprice(struct jumptrades *jtrades,uint64_t assetid,uint64_t amou
     }
     nxtprice = calc_nxtmedianprice(assetid);
     nxtamount = (nxtprice * amount); // already adjusted for decimals
+    printf("nxtprice %.8f nxtamount %.8f\n",dstr(nxtprice),dstr(nxtamount));
     *ptr = nxtamount;
     return(nxtprice);
 }
 
 uint64_t calc_NXTprice(struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
 {
-    printf("calc_NXTprice\n");
+    printf("calc_NXTprice dest.%.8f src.%8f\n",dstr(destqty),dstr(srcqty));
     if ( src->assetid == NXT_ASSETID )
         return(src->amount / destqty);
     else if ( dest->assetid == NXT_ASSETID )

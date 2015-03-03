@@ -468,6 +468,7 @@ uint64_t _get_bestassetprice(char *assetcmd,uint64_t assetid)
     sprintf(cmd,"%s=%s&asset=%llu&firstIndex=0&lastIndex=0",NXTSERVER,assetcmd,(long long)assetid);
     if ( (jsonstr= issue_curl(0,cmd)) != 0 )
     {
+        printf("cmd.(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
             price = get_API_nxt64bits(cJSON_GetObjectItem(json,"priceNQT"));
         free(jsonstr);
