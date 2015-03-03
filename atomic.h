@@ -734,6 +734,7 @@ int32_t reject_trade(uint64_t mynxt64bits,struct _tradeleg *src,struct _tradeleg
     if ( mynxt64bits == src->nxt64bits )
     {
         printf("verify asset.%llu amount.%llu -> NXT.%llu asset.%llu amount %llu is in orderbook\n",(long long)src->assetid,(long long)src->amount,(long long)dest->nxt64bits,(long long)dest->assetid,(long long)dest->amount);
+        return(0);
     }
     else printf("mismatched nxtid %llu != %llu\n",(long long)mynxt64bits,(long long)src->nxt64bits);
     return(-1);
