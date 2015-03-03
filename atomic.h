@@ -631,7 +631,7 @@ uint64_t calc_nxtprice(struct jumptrades *jtrades,uint64_t assetid,uint64_t amou
     }
     nxtprice = calc_nxtmedianprice(assetid);
     nxtamount = (nxtprice * amount); // already adjusted for decimals
-    printf("nxtprice %.8f nxtamount %.8f\n",dstr(nxtprice),dstr(nxtamount));
+    printf("nxtprice %.8f nxtamount %.8f -> (*%p)\n",dstr(nxtprice),dstr(nxtamount),ptr);
     *ptr = nxtamount;
     return(nxtprice);
 }
@@ -667,6 +667,7 @@ int32_t set_tradequad(int32_t numlegs,struct jumptrades *jtrades,struct _tradele
     printf("set_tradequad\n");
     srcNXTprice = calc_nxtprice(jtrades,src->assetid,src->amount);
     destNXTprice = calc_nxtprice(jtrades,dest->assetid,dest->amount);
+    printf("set_tradequad src %.8f dest %.8f\n",dstr(srcNXTprice),dstr(destNXTprice));
     leg = set_tradeleg(&jtrades->legs[numlegs++],src,&srcae), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = src->nxt64bits;
     leg = set_tradeleg(&jtrades->legs[numlegs++],&srcae,dest), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = dest->nxt64bits;
     leg = set_tradeleg(&jtrades->legs[numlegs++],dest,&destae), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = dest->nxt64bits;
@@ -803,10 +804,13 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         jumpstr[0] = 0;
     }
     sprintf(comment,"{\"requestType\":\"processjumptrade\",\"NXT\":\"%llu\",\"assetA\":\"%llu\",\"amountA\":\"%llu\",%s\"other\":\"%llu\",\"assetB\":\"%llu\",\"amountB\":\"%llu\",\"feeA\":\"%llu\"}",(long long)nxt64bits,(long long)assetA,(long long)amountA,jumpstr,(long long)other64bits,(long long)assetB,(long long)amountB,(long long)jtrades->fee);
+    printf("comment.(%s)\n",comment);
     if ( triggerhash == 0 || triggerhash[0] == 0 )
     {
+        printf("create fee tx\n");
         set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
         strcpy(T.comment,comment);
+        printf("sign it\n");
         jtrades->feetx = sign_NXT_tx(jtrades->feeutxbytes,jtrades->feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
         printf("signed tx %llu trigger.(%s)\n",(long long)jtrades->feetx,triggerhash);
         get_txhashes(jtrades->feesighash,jtrades->triggerhash,jtrades->feetx);

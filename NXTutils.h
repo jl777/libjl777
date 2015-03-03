@@ -463,14 +463,19 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
 uint64_t _get_bestassetprice(char *assetcmd,uint64_t assetid)
 {
     char cmd[4096],*jsonstr;
-    cJSON *json;
+    cJSON *array;
     uint64_t price = 0;
+    int32_t n;
     sprintf(cmd,"%s=%s&asset=%llu&firstIndex=0&lastIndex=0",NXTSERVER,assetcmd,(long long)assetid);
     if ( (jsonstr= issue_curl(0,cmd)) != 0 )
     {
         printf("cmd.(%s) -> (%s)\n",cmd,jsonstr);
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-            price = get_API_nxt64bits(cJSON_GetObjectItem(json,"priceNQT"));
+        if ( (array= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) == 1 )
+                price = get_API_nxt64bits(cJSON_GetObjectItem(cJSON_GetArrayItem(array,0),"priceNQT"));
+            free_json(array);
+        }
         free(jsonstr);
     }
     return(price);
