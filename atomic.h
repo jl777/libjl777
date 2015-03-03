@@ -245,7 +245,7 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
     cJSON *refjson,*txjson;
     char *parsed,*str,errstr[32];
     struct NXT_tx *refutx = 0;
-    printf("sign_NXT_tx reftxid.(%s)\n",reftxid);
+    printf("sign_NXT_tx.%llu  reftxid.(%s)\n",(long long)nxt64bits,reftxid);
     txjson = gen_NXT_tx_json(utx,reftxid,myshare,NXTACCTSECRET,nxt64bits);
     utxbytes[0] = signedtx[0] = 0;
     if ( txjson != 0 )
@@ -259,6 +259,7 @@ struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCT
         }
         else if ( extract_cJSON_str(utxbytes,1024,txjson,"unsignedTransactionBytes") > 0 && extract_cJSON_str(signedtx,1024,txjson,"transactionBytes") > 0 )
         {
+            printf("signedbytes.(%s)\n",signedtx);
             if ( (parsed= issue_parseTransaction(0,signedtx)) != 0 )
             {
                 refjson = cJSON_Parse(parsed);
