@@ -914,9 +914,11 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
                                 assetbits = get_API_nxt64bits(cJSON_GetObjectItem(attachobj,"asset"));
                                 qty = get_API_nxt64bits(cJSON_GetObjectItem(attachobj,"quantityQNT"));
                                 price = get_API_nxt64bits(cJSON_GetObjectItem(attachobj,"priceNQT"));
+                                printf("subtype.%d: asset.%llu qty.%llu %.8f\n",subtype,(long long)assetbits,(long long)qty,dstr(price));
                                 for (j=0; j<jtrades->numlegs; j++)
                                 {
                                     leg = &jtrades->legs[j];
+                                    printf("j.%d legnxt.%llu sender.%llu\n",j,(long long)leg->nxt64bits,(long long)senderbits);
                                     if ( leg->nxt64bits == senderbits )
                                     {
                                         printf("leg qty.%llu %.8f vs %llu %.8f\n",(long long)leg->qty,dstr(leg->NXTprice),(long long)qty,dstr(price));
