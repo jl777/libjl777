@@ -917,22 +917,27 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
                                 for (j=0; j<jtrades->numlegs; j++)
                                 {
                                     leg = &jtrades->legs[j];
-                                    if ( leg->nxt64bits == senderbits && leg->qty == qty && leg->NXTprice == price )
+                                    if ( leg->nxt64bits == senderbits )
                                     {
-                                        if ( (subtype == 2 && leg->src.assetid == assetbits) || (subtype == 3 && leg->dest.assetid == assetbits) )
+                                        printf("leg qty.%llu %.8f vs %llu %.8f\n",(long long)leg->qty,dstr(leg->NXTprice),(long long)qty,dstr(price));
+                                        if ( leg->qty == qty && leg->NXTprice == price )
                                         {
-                                            printf("numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
-                                            ///if ( validate_balance() > 0 )
-                                            //{
-                                               // otherbalance = get_asset_quantity(&unconfirmed,otherNXTaddr,assetidstr);
-
+                                            printf("subtype.%d: asset.%llu vs src.%llu dest.%llu\n",subtype,(long long)assetbits,(long long)leg->src.assetid,(long long)leg->dest.assetid);
+                                            if ( (subtype == 2 && leg->src.assetid == assetbits) || (subtype == 3 && leg->dest.assetid == assetbits) )
+                                            {
+                                                printf("numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
+                                                ///if ( validate_balance() > 0 )
+                                                //{
+                                                // otherbalance = get_asset_quantity(&unconfirmed,otherNXTaddr,assetidstr);
+                                                
                                                 leg->txid = txid;
                                                 leg->expiration = expiration;
                                                 numvalid++;
-                                            //} else printf("%llu not enough balance\n",(long long)senderbits);
-                                            break;
+                                                //} else printf("%llu not enough balance\n",(long long)senderbits);
+                                                break;
+                                            }
+                                            else printf("subtype.%d src.%llu dest.%llu: numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",subtype,(long long)leg->src.assetid,(long long)leg->dest.assetid,numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
                                         }
-                                        else printf("subtype.%d src.%llu dest.%llu: numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",subtype,(long long)leg->src.assetid,(long long)leg->dest.assetid,numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
                                     }
                                 }
                             }
@@ -991,7 +996,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
         }
         purge_jumptrades(jtrades);
     } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
-    printf("makeoffer2.(%s)\n",buf);
+    printf("FINISHED makeoffer2.(%s)\n",buf);
     return(clonestr(buf));
 }
 
