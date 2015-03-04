@@ -716,16 +716,16 @@ void set_jtrade_tx(struct jumptrades *jtrade,struct tradeleg *leg,char *NXTACCTS
         if ( leg->src.nxt64bits == nxt64bits )
         {
             if ( leg->src.assetid == NXT_ASSETID )
-                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
-            else leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+            else leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             printf("txid normal %llu\n",(long long)leg->txid);
         }
         else if ( leg->src.nxt64bits == 0 )
         {
             if ( leg->dest.nxt64bits == nxt64bits )
-                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             else if ( leg->src.nxt64bits == nxt64bits )
-                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             printf("txid nxtae %llu\n",(long long)leg->txid);
         } else printf("set_jtrade_tx: illegal src.%llu or dest.%llu jtrade_tx by %llu\n",(long long)leg->src.nxt64bits,(long long)leg->dest.nxt64bits,(long long)nxt64bits);
     } else printf("set_jtrade_tx: unsupported jtrade_tx\n");
