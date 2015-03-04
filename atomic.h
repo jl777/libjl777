@@ -716,16 +716,16 @@ void set_jtrade_tx(struct jumptrades *jtrade,struct tradeleg *leg,char *NXTACCTS
         if ( leg->src.nxt64bits == nxt64bits )
         {
             if ( leg->src.assetid == NXT_ASSETID )
-                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
-            else leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+            else leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             printf("txid normal %llu\n",(long long)leg->txid);
         }
         else if ( leg->src.nxt64bits == 0 )
         {
             if ( leg->dest.nxt64bits == nxt64bits )
-                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->dest.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             else if ( leg->src.nxt64bits == nxt64bits )
-                leg->txid = submit_triggered_bidask("placeAskOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
+                leg->txid = submit_triggered_bidask("placeBidOrder",nxt64bits,NXTACCTSECRET,leg->src.assetid,leg->qty,leg->NXTprice,triggerhash,jtrade->comment);
             printf("txid nxtae %llu\n",(long long)leg->txid);
         } else printf("set_jtrade_tx: illegal src.%llu or dest.%llu jtrade_tx by %llu\n",(long long)leg->src.nxt64bits,(long long)leg->dest.nxt64bits,(long long)nxt64bits);
     } else printf("set_jtrade_tx: unsupported jtrade_tx\n");
@@ -872,7 +872,7 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
         sprintf(cmd,"requestType=getUnconfirmedTransactions&account=%llu",(long long)accts[iter]);
         if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
         {
-            //printf("getUnconfirmedTransactions (%s)\n",jsonstr);
+            printf("iter.%d %llu getUnconfirmedTransactions (%s)\n",iter,(long long)accts[iter],jsonstr);
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
             {
                 if ( (array= cJSON_GetObjectItem(json,"unconfirmedTransactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -1000,6 +1000,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     struct jumptrades *jtrades;
     double endmilli;
     uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount;
+    printf("processjumptrade\n");
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     assetA = get_API_nxt64bits(objs[0]);
