@@ -700,7 +700,7 @@ uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSE
     if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
     {
         stripwhite_ns(jsonstr,(int32_t)strlen(jsonstr));
-        printf("submit.(%s)\n",jsonstr);
+        printf("submit.(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
             txid = get_API_nxt64bits(cJSON_GetObjectItem(json,"transaction"));
         free(jsonstr);
