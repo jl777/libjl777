@@ -872,7 +872,7 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
         sprintf(cmd,"requestType=getUnconfirmedTransactions&account=%llu",(long long)accts[iter]);
         if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
         {
-            printf("iter.%d %llu getUnconfirmedTransactions (%s)\n",iter,(long long)accts[iter],jsonstr);
+            //printf("iter.%d %llu getUnconfirmedTransactions (%s)\n",iter,(long long)accts[iter],jsonstr);
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
             {
                 if ( (array= cJSON_GetObjectItem(json,"unconfirmedTransactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -973,7 +973,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
     if ( (jtrades= init_jtrades(0,"",calc_nxt64bits(NXTaddr),NXTACCTSECRET,nxt64bits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
     {
         strcpy(buf,jtrades->comment);
-        endmilli = milliseconds() + 20. * 1000;
+        endmilli = milliseconds() + 60. * 1000;
         if ( (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,otherNXTaddr)) != 0 )
             free(str);
         if ( jumpNXTaddr[0] != 0 && (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,jumpNXTaddr)) != 0 )
@@ -986,7 +986,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
                 printf("Jump trades triggered! feetxid.%llu\n",(long long)feetxid);
                 break;
             }
-            sleep(1);
+            sleep(5);
         }
         purge_jumptrades(jtrades);
     } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
@@ -1016,7 +1016,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     jumpamount = get_API_nxt64bits(objs[10]);
     if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,calc_nxt64bits(sender),assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
     {
-        endmilli = milliseconds() + 10. * 1000;
+        endmilli = milliseconds() + 60. * 1000;
         strcpy(buf,jtrades->comment);
         while ( milliseconds() < endmilli )
         {
@@ -1025,7 +1025,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
                 printf("Jump trades should be triggered!\n");
                 break;
             }
-            sleep(1);
+            sleep(3);
         }
         purge_jumptrades(jtrades);
     } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
