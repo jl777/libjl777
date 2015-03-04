@@ -35,6 +35,8 @@ void update_Allnodes(char *_tokbuf,int32_t n)
     uint32_t now = (uint32_t)time(NULL);
     char NXTaddr[64];
     struct nodestats *stats,*sp;
+    if ( Finished_init == 0 )
+        return;
     for (i=0; i<MAX_ALLNODES; i++)
     {
         if ( Allnodes[i] != 0 )
