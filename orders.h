@@ -9,6 +9,7 @@
 #define xcode_orders_h
 
 #define INSTANTDEX_NAME "iDEX"
+#define INSTANTDEX_MINVOLPERC 0.75
 #define INSTANTDEX_NATIVE 0
 #define INSTANTDEX_ASSET 1
 #define INSTANTDEX_MSCOIN 2
@@ -18,11 +19,12 @@
 
 #define MAX_EXCHANGES 16
 struct orderpair { struct rambook_info *bids,*asks; void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth); float lastmilli; };
-struct exchange_info { FILE *fp; uint64_t nxt64bits; char name[16]; struct orderpair orderpairs[4096]; uint32_t num,exchangeid,lastblock; float lastmilli; } Exchanges[MAX_EXCHANGES];
+struct exchange_info { uint64_t nxt64bits; char name[16]; struct orderpair orderpairs[4096]; uint32_t num,exchangeid,lastblock; float lastmilli; } Exchanges[MAX_EXCHANGES];
 
 struct rambook_info
 {
     UT_hash_handle hh;
+    FILE *fp;
     char url[128],base[16],rel[16],lbase[16],lrel[16],exchange[16];
     struct InstantDEX_quote *quotes;
     uint64_t assetids[4];
@@ -52,6 +54,12 @@ char *assetmap[][3] =
     { "275548135983837356", "VIA", "4" },
 };
 
+double calc_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount)
+{
+    *volumep = ((double)baseamount / SATOSHIDEN);
+    return((double)relamount / baseamount);
+}
+
 uint64_t stringbits(char *str)
 {
     uint64_t bits = 0;
@@ -67,10 +75,14 @@ uint64_t stringbits(char *str)
 
 void set_exchange_fname(char *fname,char *exchangestr,char *base,char *rel)
 {
+    char exchange[16];
+    if ( strcmp(exchange,"iDEX") == 0 )
+        strcpy(exchange,"InstantDEX");
+    else strcpy(exchange,exchangestr);
     ensure_dir(PRICEDIR);
-    sprintf(fname,"%s/%s",PRICEDIR,exchangestr);
+    sprintf(fname,"%s/%s",PRICEDIR,exchange);
     ensure_dir(fname);
-    sprintf(fname,"%s/%s/%s_%s",PRICEDIR,exchangestr,base,rel);
+    sprintf(fname,"%s/%s/%s_%s",PRICEDIR,exchange,base,rel);
 }
 
 struct exchange_info *find_exchange(char *exchangestr,int32_t createflag)
@@ -87,6 +99,7 @@ struct exchange_info *find_exchange(char *exchangestr,int32_t createflag)
             strcpy(exchange->name,exchangestr);
             exchange->exchangeid = exchangeid;
             exchange->nxt64bits = stringbits(exchangestr);
+            printf("CREATE EXCHANGE.(%s) id.%d %llu\n",exchangestr,exchangeid,(long long)exchange->nxt64bits);
             break;
         }
         if ( strcmp(exchangestr,exchange->name) == 0 )
@@ -102,39 +115,41 @@ int32_t is_exchange_nxt64bits(uint64_t nxt64bits)
     for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
         exchange = &Exchanges[exchangeid];
+        printf("(%s).(%llu vs %llu) ",exchange->name,(long long)exchange->nxt64bits,(long long)nxt64bits);
         if ( exchange->name[0] == 0 )
             return(0);
         if ( exchange->nxt64bits == nxt64bits )
             return(1);
     }
+    printf("no exchangebits match\n");
     return(0);
 }
 
 void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
 {
-    struct exchange_info *exchange;
     char fname[1024];
     long offset = 0;
+    double price,vol;
     uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
-    if ( (exchange= find_exchange(rb->exchange,0)) != 0 )
+    if ( rb->fp == 0 )
     {
-        if ( exchange->fp == 0 )
-        {
-            set_exchange_fname(fname,rb->exchange,rb->base,rb->rel);
-            if ( (exchange->fp = fopen(fname,"rb+")) != 0 )
-                fseek(exchange->fp,0,SEEK_SET);
-            else exchange->fp = fopen(fname,"wb+");
-        }
-        if ( exchange->fp != 0 )
-        {
-            offset = 0;
-            memcpy(&data[offset],&iQ->baseamount,sizeof(iQ->baseamount)), offset += sizeof(iQ->baseamount);
-            memcpy(&data[offset],&iQ->relamount,sizeof(iQ->relamount)), offset += sizeof(iQ->relamount);
-            memcpy(&data[offset],&iQ->timestamp,sizeof(iQ->timestamp)), offset += sizeof(iQ->timestamp);
-            fwrite(data,1,offset,exchange->fp);
-            fflush(exchange->fp);
-        }
-    } else printf("cant find exchange.(%s)?\n",rb->exchange);
+        set_exchange_fname(fname,rb->exchange,rb->base,rb->rel);
+        if ( (rb->fp= fopen(fname,"rb+")) != 0 )
+            fseek(rb->fp,0,SEEK_SET);
+        else rb->fp = fopen(fname,"wb+");
+        printf("opened.(%s) fpos.%ld\n",fname,ftell(rb->fp));
+    }
+    if ( rb->fp != 0 )
+    {
+        offset = 0;
+        memcpy(&data[offset],&iQ->baseamount,sizeof(iQ->baseamount)), offset += sizeof(iQ->baseamount);
+        memcpy(&data[offset],&iQ->relamount,sizeof(iQ->relamount)), offset += sizeof(iQ->relamount);
+        memcpy(&data[offset],&iQ->timestamp,sizeof(iQ->timestamp)), offset += sizeof(iQ->timestamp);
+        fwrite(data,1,offset,rb->fp);
+        fflush(rb->fp);
+        price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+        printf("emit.(%s) %12.8f %12.8f %s_%s %16llu %16llu\n",rb->exchange,price,vol,rb->base,rb->rel,(long long)iQ->baseamount,(long long)iQ->relamount);
+    }
 }
 
 uint64_t _calc_decimals_mult(int32_t decimals)
@@ -409,12 +424,6 @@ int32_t get_top_MMaker(struct pserver_info **pserverp)
     return(-1);
 }
 
-double calc_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount)
-{
-    *volumep = ((double)baseamount / SATOSHIDEN);
-    return((double)relamount / baseamount);
-}
-
 void set_best_amounts(uint64_t *baseamountp,uint64_t *relamountp,double price,double volume)
 {
     double checkprice,checkvol,distA,distB,metric,bestmetric = (1. / SMALLVAL);
@@ -482,7 +491,6 @@ void add_user_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
         rb->quotes[rb->numquotes++] = *iQ;
     }
     rb->updated = 1;
-    emit_iQ(rb,iQ);
     //printf("add_user_order i.%d numquotes.%d\n",i,rb->numquotes);
 }
 
@@ -535,6 +543,7 @@ struct rambook_info *add_rambook_quote(char *exchange,struct InstantDEX_quote *i
         create_InstantDEX_quote(iQ,timestamp,0,rb->assetids[3],nxt64bits,0,0,relamount,baseamount,rb->exchange);
     }
     save_InstantDEX_quote(rb,iQ);
+    emit_iQ(rb,iQ);
     return(rb);
 }
 
@@ -597,6 +606,7 @@ struct InstantDEX_quote *clone_quotes(int32_t *nump,struct rambook_info *rb)
     {
         quotes = calloc(rb->numquotes,sizeof(*rb->quotes));
         memcpy(quotes,rb->quotes,rb->numquotes * sizeof(*rb->quotes));
+        memset(rb->quotes,0,rb->numquotes * sizeof(*rb->quotes));
     }
     rb->numquotes = 0;
     return(quotes);
@@ -614,15 +624,31 @@ int32_t emit_orderbook_changes(struct rambook_info *rb,struct InstantDEX_quote *
 {
     int32_t i,j,numchanges = 0;
     struct InstantDEX_quote *iQ;
+    if ( rb->numquotes == 0 || numold == 0 )
+        return(0);
+    if ( 0 && numold != 0 )
+    {
+        for (j=0; j<numold; j++)
+            printf("%llu ",(long long)oldquotes[j].baseamount);
+        printf("%s %s_%s OLD.%d\n",rb->exchange,rb->base,rb->rel,numold);
+    }
     for (i=0; i<rb->numquotes; i++)
     {
         iQ = &rb->quotes[i];
-        for (j=0; j<numold; j++)
-            if ( iQcmp(iQ,&oldquotes[j]) == 0 )
-                break;
+        //printf("%llu ",(long long)iQ->baseamount);
+        if ( numold > 0 )
+        {
+            for (j=0; j<numold; j++)
+            {
+                //printf("%s %s_%s %d of %d: %llu/%llu vs %llu/%llu\n",rb->exchange,rb->base,rb->rel,j,numold,(long long)iQ->baseamount,(long long)iQ->relamount,(long long)oldquotes[j].baseamount,(long long)oldquotes[j].relamount);
+                if ( iQcmp(iQ,&oldquotes[j]) == 0 )
+                    break;
+            }
+        } else j = 0;
         if ( j == numold )
-            emit_iQ(rb,iQ);
+            emit_iQ(rb,iQ), numchanges++;
     }
+    //printf("%s %s_%s NEW.%d\n\n",rb->exchange,rb->base,rb->rel,rb->numquotes);
     if ( oldquotes != 0 )
         free(oldquotes);
     return(numchanges);
@@ -641,7 +667,7 @@ void ramparse_cryptsy(struct rambook_info *bids,struct rambook_info *asks,int32_
     {
         if ( strcmp(bids->rel,"BTC") != 0 )
         {
-            printf("parse_cryptsy.(%s/%s): only BTC markets supported\n",bids->base,bids->rel);
+            //printf("parse_cryptsy.(%s/%s): only BTC markets supported\n",bids->base,bids->rel);
             return;
         }
         marketjson = cJSON_Parse(marketstr);
@@ -671,7 +697,6 @@ void ramparse_cryptsy(struct rambook_info *bids,struct rambook_info *asks,int32_
         }
         sprintf(bids->url,"http://pubapi.cryptsy.com/api.php?method=singleorderdata&marketid=%s",market);
     }
-    bids->numquotes = asks->numquotes = 0;
     jsonstr = _issue_curl(0,"cryptsy",bids->url);
     if ( jsonstr != 0 )
     {
@@ -887,6 +912,7 @@ void *poll_exchange(void *_exchangeidp)
                 {
                     //printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),pair->lastmilli,exchange->name,bids->base,bids->rel);
                     (*pair->ramparse)(bids,asks,maxdepth);
+                    //fprintf(stderr,"%s:%s_%s.(%d %d)\n",exchange->name,bids->base,bids->rel,bids->numquotes,asks->numquotes);
                     pair->lastmilli = exchange->lastmilli = milliseconds();
                     if ( (bids->updated + asks->updated) != 0 )
                     {
@@ -929,7 +955,6 @@ void add_exchange_pair(char *base,uint64_t baseid,char *rel,uint64_t relid,char 
     struct exchange_info *exchange = 0;
     bids = get_rambook(base,baseid,rel,relid,exchangestr);
     asks = get_rambook(rel,relid,base,baseid,exchangestr);
- 
     if ( (exchange= find_exchange(exchangestr,1)) == 0 )
         printf("cant add anymore exchanges.(%s)\n",exchangestr);
     else
@@ -971,6 +996,11 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
     char assetidstr[64],_base[64],_rel[64];
     uint64_t basemult,relmult;
     printf("init_rambooks.(%s %s)\n",base,rel);
+    if ( strcmp(base,"BTC") == 0 )
+    {
+        strcpy(base,rel);
+        strcpy(rel,"BTC");
+    }
     if ( base != 0 && rel != 0 && base[0] != 0 && rel[0] != 0 )
     {
         baseid = stringbits(base);
@@ -1247,6 +1277,32 @@ struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t relid,uint64_t 
             }
         }
         free(obooks);
+    }
+    return(0);
+}
+
+struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount)
+{
+    struct InstantDEX_quote *iQ;
+    struct rambook_info **obooks,*rb;
+    int32_t i,j,numbooks;
+    double refprice,refvol,price,vol;
+    refprice = calc_price_volume(&refvol,baseamount,relamount);
+    if ( (obooks= get_allrambooks(&numbooks)) != 0 )
+    {
+        for (i=0; i<numbooks; i++)
+        {
+            rb = obooks[i];
+            if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
+                continue;
+            for (j=0; j<rb->numquotes; j++)
+            {
+                iQ = &rb->quotes[j];
+                price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+                if ( iQ->matched == 0 && iQ->nxt64bits == my64bits && price <= refprice+SMALLVAL && vol >= refvol*INSTANTDEX_MINVOLPERC )
+                    return(iQ);
+            }
+        }
     }
     return(0);
 }

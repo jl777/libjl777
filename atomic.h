@@ -10,6 +10,7 @@
 #ifndef xcode_atomic_h
 #define xcode_atomic_h
 
+#define INSTANTDEX_TRIGGERDEADLINE 10
 #define JUMPTRADE_SECONDS 10
 #define INSTANTDEX_ACCT "4383817337783094122"
 #define INSTANTDEX_FEE (2.5 * SATOSHIDEN)
@@ -132,7 +133,7 @@ uint64_t set_NXTtx(uint64_t nxt64bits,struct NXT_tx *tx,uint64_t assetidbits,int
         U.U.quantityQNT = amount - fee;
     } else U.U.amountNQT = amount - fee;
     U.feeNQT = MIN_NQTFEE;
-    U.deadline = 10;//DEFAULT_NXT_DEADLINE;
+    U.deadline = INSTANTDEX_TRIGGERDEADLINE;
     printf("set_NXTtx(%llu -> %llu) %.8f of %llu\n",(long long)U.senderbits,(long long)U.recipientbits,dstr(amount),(long long)assetidbits);
     *tx = U;
     return(fee);
@@ -591,6 +592,7 @@ struct jumptrades
     struct tradeleg legs[8];
     float endmilli;
     struct NXT_tx *feetx;
+    struct InstantDEX_quote *iQ;
 } JTRADES[1000];
 
 cJSON *_tradeleg_json(struct _tradeleg *halfleg)
@@ -781,7 +783,7 @@ int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *
 
 uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment)
 {
-    int32_t deadline = 10 + time_to_nextblock()/60;
+    int32_t deadline = INSTANTDEX_TRIGGERDEADLINE + time_to_nextblock()/60;
     uint64_t txid = 0;
     char cmd[4096],*jsonstr;
     cJSON *json;
@@ -1098,16 +1100,24 @@ void poll_jumptrades(char *NXTACCTSECRET)
                     printf("Jump trades triggered! feetxid.%llu\n",(long long)feetxid);
                     jtrades->state = -2;
                 }
-            } else jtrades->state = -1;
+            }
+            else
+            {
+                if ( jtrades->iQ != 0 )
+                    jtrades->iQ->sent = jtrades->iQ->matched = 0;
+                jtrades->state = -1;
+            }
         }
     }
 }
 
 char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount);
     char triggerhash[MAX_JSON_FIELD],buf[1024];
     struct jumptrades *jtrades;
-    uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount;
+    struct InstantDEX_quote *iQ = 0;
+    uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount,senderbits,mybits;
     printf("processjumptrade\n");
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
@@ -1122,11 +1132,25 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     jump64bits = get_API_nxt64bits(objs[8]);
     jumpasset = get_API_nxt64bits(objs[9]);
     jumpamount = get_API_nxt64bits(objs[10]);
-    if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,calc_nxt64bits(sender),assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
+    senderbits = calc_nxt64bits(sender);
+    mybits = calc_nxt64bits(NXTaddr);
+    if ( mybits == other64bits )
+        iQ = search_pendingtrades(other64bits,assetB,amountB,assetA,amountA);
+    else if ( mybits == jump64bits )
     {
-        jtrades->endmilli = milliseconds() + JUMPTRADE_SECONDS * 1000;
-        strcpy(buf,jtrades->comment);
-    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
+        if ( (iQ= search_pendingtrades(jump64bits,jumpasset,jumpamount,assetA,amountA)) == 0 )
+            iQ = search_pendingtrades(jump64bits,jumpasset,jumpamount,assetB,amountB);
+    }
+    if ( iQ != 0 )
+    {
+        iQ->matched = 1;
+        if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,senderbits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
+        {
+            jtrades->iQ = iQ;
+            jtrades->endmilli = milliseconds() + JUMPTRADE_SECONDS * 1000;
+            strcpy(buf,jtrades->comment);
+        } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
+    } else strcpy(buf,"{\"error\":\"couldnt find matching trade\"}");
     return(clonestr(buf));
 }
 
@@ -1141,3 +1165,4 @@ char *jumptrades_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 }
 
 #endif
+
