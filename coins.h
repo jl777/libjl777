@@ -1129,6 +1129,8 @@ void init_SuperNET_settings(char *userdir)
         printf("I AM A BRIDGE\n");
     if ( extract_cJSON_str(Global_mp->myhandle,sizeof(Global_mp->myhandle),MGWconf,"myhandle") <= 0 )
         strcpy(Global_mp->myhandle,"myhandle");
+    if ( extract_cJSON_str(PRICEDIR,sizeof(PRICEDIR),MGWconf,"PRICEDIR") <= 0 )
+        strcpy(PRICEDIR,"./prices");
     init_jdatetime(NXT_GENESISTIME,get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0) * 3600);
     MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
     PERMUTE_RAWINDS = get_API_int(cJSON_GetObjectItem(MGWconf,"PERMUTE"),0);

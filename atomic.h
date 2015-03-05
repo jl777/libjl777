@@ -641,11 +641,11 @@ cJSON *jumptrades_json()
 {
     cJSON *array = 0,*json = cJSON_CreateObject();
     struct jumptrades *jtrades = 0;
-    int32_t i,ind;
+    int32_t i;
     for (i=0; i<(int32_t)(sizeof(JTRADES)/sizeof(*JTRADES)); i++)
     {
-        jtrades = &JTRADES[ind];
-        if ( jtrades->state >= 2 )
+        jtrades = &JTRADES[i];
+        if ( jtrades->state != 0 )
         {
             if ( array == 0 )
                 array = cJSON_CreateArray();
