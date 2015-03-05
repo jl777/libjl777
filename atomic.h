@@ -10,6 +10,7 @@
 #ifndef xcode_atomic_h
 #define xcode_atomic_h
 
+#define JUMPTRADE_SECONDS 10
 #define INSTANTDEX_ACCT "4383817337783094122"
 #define INSTANTDEX_FEE (2.5 * SATOSHIDEN)
 //#define FEEBITS 10
@@ -586,14 +587,74 @@ struct jumptrades
     uint64_t fee,otherfee,feetxid,otherfeetxid,baseid,relid,basenxtamount,relnxtamount,nxt64bits,other64bits,jump64bits,qtyA,qtyB,jumpqty;
     char comment[MAX_JSON_FIELD],feeutxbytes[2048],feesignedtx[2048],triggerhash[65],feesighash[65],numlegs;
     uint32_t otherexpiration;
+    int32_t state;
     struct tradeleg legs[8];
+    float endmilli;
     struct NXT_tx *feetx;
-};
+} JTRADES[1000];
 
-void get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
+cJSON *_tradeleg_json(struct _tradeleg *halfleg)
 {
-    init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
-    init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
+    uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits);
+    cJSON *json = cJSON_CreateObject();
+    char numstr[64],name[64];
+    uint64_t mult;
+    sprintf(numstr,"%llu",(long long)halfleg->nxt64bits), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)halfleg->assetid), cJSON_AddItemToObject(json,"assetid",cJSON_CreateString(numstr));
+    set_assetname(&mult,name,halfleg->assetid), cJSON_AddItemToObject(json,"name",cJSON_CreateString(name));
+    sprintf(numstr,"%.8f",dstr(halfleg->amount)), cJSON_AddItemToObject(json,"amount",cJSON_CreateString(numstr));
+    return(json);
+}
+
+cJSON *tradeleg_json(struct tradeleg *leg)
+{
+    cJSON *json = cJSON_CreateObject();
+    char numstr[64];
+    cJSON_AddItemToObject(json,"src",_tradeleg_json(&leg->src));
+    cJSON_AddItemToObject(json,"dest",_tradeleg_json(&leg->dest));
+    sprintf(numstr,"%llu",(long long)leg->nxt64bits), cJSON_AddItemToObject(json,"sender",cJSON_CreateString(numstr));
+    if ( leg->txid != 0 )
+        sprintf(numstr,"%llu",(long long)leg->txid), cJSON_AddItemToObject(json,"txid",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)leg->qty), cJSON_AddItemToObject(json,"qty",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(leg->NXTprice)), cJSON_AddItemToObject(json,"price",cJSON_CreateString(numstr));
+    if ( leg->expiration != 0 )
+        cJSON_AddItemToObject(json,"expiration",cJSON_CreateNumber(leg->expiration - time(NULL)));
+    return(json);
+}
+
+cJSON *jumptrade_json(struct jumptrades *jtrades)
+{
+    cJSON *array = cJSON_CreateArray(),*json;
+    int32_t i;
+    if ( (json= cJSON_Parse(jtrades->comment)) != 0 )
+    {
+        for (i=0; i<jtrades->numlegs; i++)
+            cJSON_AddItemToArray(array,tradeleg_json(&jtrades->legs[i]));
+        cJSON_AddItemToObject(json,"numlegs",cJSON_CreateNumber(jtrades->numlegs));
+        cJSON_AddItemToObject(json,"state",cJSON_CreateNumber(jtrades->state));
+        cJSON_AddItemToObject(json,"expiration",cJSON_CreateNumber((milliseconds() - jtrades->endmilli) / 1000.));
+    } else json = cJSON_CreateObject();
+    return(json);
+}
+
+cJSON *jumptrades_json()
+{
+    cJSON *array = 0,*json = cJSON_CreateObject();
+    struct jumptrades *jtrades = 0;
+    int32_t i,ind;
+    for (i=0; i<(int32_t)(sizeof(JTRADES)/sizeof(*JTRADES)); i++)
+    {
+        jtrades = &JTRADES[ind];
+        if ( jtrades->state >= 2 )
+        {
+            if ( array == 0 )
+                array = cJSON_CreateArray();
+            cJSON_AddItemToArray(array,jumptrade_json(jtrades));
+        }
+    }
+    if ( array != 0 )
+        cJSON_AddItemToObject(json,"jumptrades",array);
+    return(json);
 }
 
 void purge_jumptrades(struct jumptrades *jtrades)
@@ -601,7 +662,34 @@ void purge_jumptrades(struct jumptrades *jtrades)
     printf("purge_jumptrades\n");
     if ( jtrades->feetx != 0 )
         free(jtrades->feetx);
-    free(jtrades);
+    memset(jtrades,0,sizeof(*jtrades));
+    //free(jtrades);
+}
+
+struct jumptrades *get_jumptrade()
+{
+    static int32_t lasti;
+    int32_t i,ind;
+    struct jumptrades *jtrades = 0;
+    for (i=0; i<(int32_t)(sizeof(JTRADES)/sizeof(*JTRADES)); i++)
+    {
+        ind = (i + lasti) % ((int32_t)(sizeof(JTRADES)/sizeof(*JTRADES)));
+        jtrades = &JTRADES[ind];
+        if ( jtrades->state <= 0 )
+        {
+            purge_jumptrades(jtrades);
+            jtrades->state = 1;
+            lasti = ind;
+            return(jtrades);
+        }
+    }
+    return(jtrades);
+}
+
+void get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
+{
+    init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
+    init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
 }
 
 uint64_t calc_nxtmedianprice(uint64_t assetid)
@@ -750,7 +838,9 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     struct NXT_asset *ap;
     char jumpstr[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],assetidstr[64];
     struct _tradeleg src,dest,jump,myjump;
-    struct jumptrades *jtrades = calloc(1,sizeof(*jtrades));
+    struct jumptrades *jtrades = get_jumptrade();
+    if ( jtrades == 0 )
+        return(0);
     src.nxt64bits = nxt64bits, src.assetid = assetA, src.amount = amountA;
     myjump.nxt64bits = nxt64bits, jump.assetid = jumpasset, jump.amount = jumpamount;
     jump.nxt64bits = jump64bits, jump.assetid = jumpasset, jump.amount = jumpamount;
@@ -848,6 +938,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     {
         for (i=0; i<jtrades->numlegs; i++)
             set_jtrade_tx(jtrades,&jtrades->legs[i],NXTACCTSECRET,mynxt64bits,jtrades->triggerhash);
+        jtrades->state = 2;
         return(jtrades);
     } else printf("invalid triggerhash\n");
     printf("init_jtrades.(%s) invalid triggerhash\n",jtrades->triggerhash);
@@ -957,10 +1048,8 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
 char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amountA,char *jumpNXTaddr,uint64_t jumpasset,uint64_t jumpamount,char *otherNXTaddr,uint64_t assetB,uint64_t amountB)
 {
     char buf[4096],*str;
-    double endmilli;
-    int32_t errcode;
     struct jumptrades *jtrades;
-    uint64_t nxt64bits,other64bits,feetxid,jump64bits = 0;
+    uint64_t nxt64bits,other64bits,jump64bits = 0;
     nxt64bits = calc_nxt64bits(NXTaddr);
     other64bits = calc_nxt64bits(otherNXTaddr);
     printf("makeoffer2\n");
@@ -981,32 +1070,43 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
     if ( (jtrades= init_jtrades(0,"",calc_nxt64bits(NXTaddr),NXTACCTSECRET,nxt64bits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
     {
         strcpy(buf,jtrades->comment);
-        endmilli = milliseconds() + 60. * 1000;
         if ( (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,otherNXTaddr)) != 0 )
             free(str);
         if ( jumpNXTaddr[0] != 0 && (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,jumpNXTaddr)) != 0 )
             free(str);
-        while ( milliseconds() < endmilli )
-        {
-            if ( validated_jumptrades(jtrades) == (jtrades->numlegs + 1) )
-            {
-                feetxid = issue_broadcastTransaction(&errcode,0,jtrades->feesignedtx,NXTACCTSECRET);
-                printf("Jump trades triggered! feetxid.%llu\n",(long long)feetxid);
-                break;
-            }
-            sleep(5);
-        }
-        purge_jumptrades(jtrades);
-    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
-    printf("FINISHED makeoffer2.(%s)\n",buf);
+        jtrades->endmilli = milliseconds() + 2. * JUMPTRADE_SECONDS * 1000;
+    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
     return(clonestr(buf));
+}
+
+void poll_jumptrades(char *NXTACCTSECRET)
+{
+    float millis = milliseconds();
+    uint64_t feetxid;
+    int32_t i,errcode;
+    struct jumptrades *jtrades;
+    for (i=0; i<(int32_t)(sizeof(JTRADES)/sizeof(*JTRADES)); i++)
+    {
+        jtrades = &JTRADES[i];
+        if ( jtrades->state >= 2 )
+        {
+            if ( millis < jtrades->endmilli )
+            {
+                if ( validated_jumptrades(jtrades) == (jtrades->numlegs + 1) )
+                {
+                    feetxid = issue_broadcastTransaction(&errcode,0,jtrades->feesignedtx,NXTACCTSECRET);
+                    printf("Jump trades triggered! feetxid.%llu\n",(long long)feetxid);
+                    jtrades->state = -2;
+                }
+            } else jtrades->state = -1;
+        }
+    }
 }
 
 char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char triggerhash[MAX_JSON_FIELD],buf[1024];
     struct jumptrades *jtrades;
-    double endmilli;
     uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount;
     printf("processjumptrade\n");
     if ( is_remote_access(previpaddr) == 0 )
@@ -1024,161 +1124,20 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     jumpamount = get_API_nxt64bits(objs[10]);
     if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,calc_nxt64bits(sender),assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
     {
-        endmilli = milliseconds() + 60. * 1000;
+        jtrades->endmilli = milliseconds() + JUMPTRADE_SECONDS * 1000;
         strcpy(buf,jtrades->comment);
-        while ( milliseconds() < endmilli )
-        {
-            if ( validated_jumptrades(jtrades) == (jtrades->numlegs + 1) )
-            {
-                printf("Jump trades should be triggered!\n");
-                break;
-            }
-            sleep(3);
-        }
-        purge_jumptrades(jtrades);
-    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades\"}");
+    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
     return(clonestr(buf));
 }
 
-char *processutx2(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
+char *jumptrades_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t baseqty,uint64_t othernxtbits,uint64_t relid,uint64_t relqty,uint64_t relfee,uint64_t relfeetxid,char *fullhash);
-    //PARSED OFFER.({"sender":"8989816935121514892","timestamp":20810867,"height":2147483647,"amountNQT":"0","verify":false,"subtype":1,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetB\":\"1639299849328439538\",\"qtyB\":\"1000000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","feeNQT":"100000000","senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","type":2,"deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","recipient":"8989816935121514892"})
-    struct NXT_tx T,*tx;
-    struct InstantDEX_quote *iQ;
-    cJSON *json,*obj,*offerjson,*commentobj;
-    struct NXT_tx *offertx;
-    double vol,price,amountB;
-    uint64_t qtyB,assetB,fee,feeA,feetxid;
-    char *jsonstr,*parsed,hopNXTaddr[64],buf[MAX_JSON_FIELD],calchash[MAX_JSON_FIELD],NXTaddr[64],responseutx[MAX_JSON_FIELD],signedtx[MAX_JSON_FIELD],otherNXTaddr[64];
-    printf("PROCESSUTX.(%s) sig.%s full.%s from (%s)\n",utx,sig,full,sender);
-    jsonstr = issue_calculateFullHash(0,utx,sig);
-    if ( jsonstr != 0 )
-    {
-        json = cJSON_Parse(jsonstr);
-        if ( json != 0 )
-        {
-            obj = cJSON_GetObjectItem(json,"fullHash");
-            copy_cJSON(calchash,obj);
-            if ( strcmp(calchash,full) == 0 )
-            {
-                if ( (parsed = issue_parseTransaction(0,utx)) != 0 )
-                {
-                    stripwhite_ns(parsed,strlen(parsed));
-                    printf("PARSED OFFER.(%s) full.(%s) (%s) offer sender.%s\n",parsed,full,calchash,sender);
-                    if ( (offerjson= cJSON_Parse(parsed)) != 0 )
-                    {
-                        offertx = set_NXT_tx(offerjson);
-                        expand_nxt64bits(otherNXTaddr,offertx->senderbits);
-                        vol = conv_assetoshis(offertx->assetidbits,offertx->U.quantityQNT);
-                        //printf("other.(%s) vol %f\n",otherNXTaddr,vol);
-                        if ( vol != 0. && offertx->comment[0] != 0 )
-                        {
-                            commentobj = cJSON_Parse(offertx->comment);
-                            if ( commentobj != 0 )
-                            {
-                                assetB = get_satoshi_obj(commentobj,"assetB");
-                                qtyB = get_satoshi_obj(commentobj,"qtyB");
-                                feeA = get_satoshi_obj(commentobj,"feeA");
-                                //feeAtxid = get_satoshi_obj(commentobj,"feeAtxid");
-                                amountB = conv_assetoshis(assetB,qtyB);
-                                price = (amountB / vol);
-                                printf("assetB.%llu qtyB.%llu feeA.%llu feeAtxid.%llu | %.8f amountB %.8f qty %llu\n",(long long)assetB,(long long)qtyB,(long long)feeA,(long long)feeAtxid,price,amountB,(long long)offertx->U.quantityQNT);
-                                free_json(commentobj);
-                                if ( (iQ= order_match(offertx->recipientbits,assetB,qtyB,offertx->senderbits,offertx->assetidbits,offertx->U.quantityQNT,feeA,feeAtxid,full)) != 0 )
-                                {
-                                    fee = set_NXTtx(offertx->recipientbits,&T,assetB,qtyB,offertx->senderbits,-1);//FEEBITS);
-                                    fee = INSTANTDEX_FEE;
-                                    //feetxid = send_feetx(assetB,fee,full);
-                                    feetxid = send_feetx(NXT_ASSETID,fee,full);
-                                    sprintf(T.comment,"{\"obookid\":\"%llu\",\"assetA\":\"%llu\",\"qtyA\":\"%llu\",\"feeB\":\"%llu\",\"feetxid\":\"%llu\"}",(long long)(offertx->assetidbits ^ assetB),(long long)offertx->assetidbits,(long long)offertx->U.quantityQNT,(long long)fee,(long long)feetxid);
-                                    printf("processutx.(%s) -> (%llu) price %.8f vol %.8f\n",T.comment,(long long)offertx->recipientbits,price,vol);
-                                    expand_nxt64bits(NXTaddr,offertx->recipientbits);
-                                    if ( strcmp(Global_mp->myNXTADDR,NXTaddr) == 0 )
-                                    {
-                                        tx = sign_NXT_tx(responseutx,signedtx,Global_mp->srvNXTACCTSECRET,offertx->recipientbits,&T,full,1.);
-                                        if ( tx != 0 )
-                                        {
-                                            sprintf(buf,"{\"requestType\":\"respondtx\",\"NXT\":\"%s\",\"signedtx\":\"%s\",\"timestamp\":%ld,\"feeB\":\"%llu\",\"feetxid\":\"%llu\"}",NXTaddr,signedtx,time(NULL),(long long)fee,(long long)feetxid);
-                                            hopNXTaddr[0] = 0;
-                                            send_tokenized_cmd(!prevent_queueing("respondtx"),hopNXTaddr,0,NXTaddr,Global_mp->srvNXTACCTSECRET,buf,otherNXTaddr);
-                                            free(tx);
-                                            iQ->sent = 1;
-                                            printf("send (%s) to %s\n",buf,otherNXTaddr);
-                                            sprintf(buf,"{\"results\":\"utx from NXT.%llu accepted with fullhash.(%s) %.8f of %llu for %.8f of %llu -> price %.8f\"}",(long long)offertx->senderbits,full,vol,(long long)offertx->assetidbits,amountB,(long long)assetB,price);
-                                        }
-                                        else sprintf(buf,"{\"error\":\"from %s error signing responsutx.(%s)\"}",otherNXTaddr,NXTaddr);
-                                    } else sprintf(buf,"{\"error\":\"cant send response to %s, no access to acct %s\"}",otherNXTaddr,NXTaddr);
-                                } else sprintf(buf,"{\"error\":\"nothing matches offer from %s\"}",otherNXTaddr);
-                            }
-                            else sprintf(buf,"{\"error\":\"%s error parsing comment comment.(%s)\"}",otherNXTaddr,offertx->comment);
-                        }
-                        else sprintf(buf,"{\"error\":\"%s missing comment.(%s) or zero vol %.8f\"}",otherNXTaddr,parsed,vol);
-                        free_json(offerjson);
-                    }
-                    else sprintf(buf,"{\"error\":\"%s cant json parse offer.(%s)\"}",otherNXTaddr,parsed);
-                    free(parsed);
-                }
-                else sprintf(buf,"{\"error\":\"%s cant parse processutx.(%s)\"}",otherNXTaddr,utx);
-            }
-            free_json(json);
-        }
-        else sprintf(buf,"{\"error\":\"cant parse calcfullhash results.(%s) from %s\"}",jsonstr,otherNXTaddr);
-        free(jsonstr);
-    }
-    else sprintf(buf,"{\"error\":\"processutx cant issue calcfullhash\"}");
-    printf("PROCESS RETURNS.(%s)\n",buf);
-    return(clonestr(buf));
-}
-
-char *respondtx2(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr)
-{
-    // RESPONSETX.({"fullHash":"210f0b0f6e817897929dc4a0a83666246287925c742a6a8a1613626fa5662d16","signatureHash":"3f8e42ba625f78c9f741501a83d86db4ed0dba2af5ab60315a5f7b01d0f8b737","transaction":"10914616006631165729","amountNQT":"0","verify":true,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetA\":\"7631394205089352260\",\"qtyA\":\"1000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","type":2,"feeNQT":"100000000","recipient":"8989816935121514892","sender":"8989816935121514892","timestamp":20877092,"height":2147483647,"subtype":1,"senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","signature":"005b7022a385932cabb7d3dd2b2d51d585f9b8f3ece8837746209a08d623cc0fb3f3c76107ec3ce01d7bb7093befd0421756bea4b1caa075766733f9a76d4193"})
-    char otherNXTaddr[64],NXTaddr[64],buf[1024],*pendingtxbytes;
-    uint64_t othertxid,mytxid;
-    int32_t createdflag,errcode;
-    struct NXT_acct *othernp;
-    struct NXT_tx *pendingtx,*recvtx;
-    sprintf(buf,"{\"error\":\"some error with respondtx got (%s) from NXT.%s\"}",signedtx,sender);
-    printf("RESPONDTX.(%s) from (%s)\n",signedtx,sender);
-    recvtx = conv_txbytes(signedtx);
-    if ( recvtx != 0 )
-    {
-        expand_nxt64bits(otherNXTaddr,recvtx->senderbits);
-        othernp = get_NXTacct(&createdflag,Global_mp,otherNXTaddr);
-        expand_nxt64bits(NXTaddr,recvtx->recipientbits);
-        //np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-        if ( (pendingtxbytes= othernp->signedtx) != 0 && strcmp(NXTaddr,Global_mp->myNXTADDR) == 0 )
-        {
-            pendingtx = conv_txbytes(pendingtxbytes);
-            if ( pendingtx != 0 && pendingtx->senderbits == recvtx->recipientbits && pendingtx->recipientbits == recvtx->senderbits )
-            {
-                if ( recvtx->verify != 0 && memcmp(pendingtx->fullhash,recvtx->refhash,sizeof(pendingtx->fullhash)) == 0 )
-                {
-                    if ( equiv_NXT_tx(recvtx,pendingtx->comment) == 0 && equiv_NXT_tx(pendingtx,recvtx->comment) == 0 )
-                    {
-                        sprintf(buf,"{\"error\":\"error broadcasting tx\"}");
-                        othertxid = issue_broadcastTransaction(&errcode,0,signedtx,Global_mp->srvNXTACCTSECRET);
-                        if ( othertxid != 0 && errcode == 0 )
-                        {
-                            mytxid = issue_broadcastTransaction(&errcode,0,pendingtxbytes,Global_mp->srvNXTACCTSECRET);
-                            if ( mytxid != 0 && errcode == 0 )
-                            {
-                                sprintf(buf,"{\"result\":\"tradecompleted\",\"txid\":\"%llu\",\"signedtx\":\"%s\",\"othertxid\":\"%llu\"}",(long long)mytxid,pendingtxbytes,(long long)othertxid);
-                                printf("TRADECOMPLETE.(%s)\n",buf);
-                                free(othernp->signedtx);
-                                othernp->signedtx = 0;
-                            } else printf("TRADE ERROR.%d mytxid.%llu\n",errcode,(long long)mytxid);
-                        } else printf("TRADE ERROR.%d othertxid.%llu\n",errcode,(long long)othertxid);
-                    } else sprintf(buf,"{\"error\":\"pendingtx for NXT.%s (%s) doesnt match received tx (%s)\"}",otherNXTaddr,pendingtxbytes,signedtx);
-                } else sprintf(buf,"{\"error\":\"refhash != fullhash from NXT.%s or unsigned.%d\"}",otherNXTaddr,recvtx->verify);
-                free(pendingtx);
-            } else sprintf(buf,"{\"error\":\"mismatched sender/recipient NXT.%s <-> NXT.%s\"}",otherNXTaddr,NXTaddr);
-        } else sprintf(buf,"{\"error\":\"no pending tx with (%s) or cant access account NXT.%s\"}",otherNXTaddr,NXTaddr);
-        free(recvtx);
-    }
-    printf("RETVAL.(%s)\n",buf);
-    return(clonestr(buf));
+    char *retstr;
+    cJSON *json;
+    json = jumptrades_json();
+    retstr = cJSON_Print(json);
+    free_json(json);
+    return(retstr);
 }
 
 #endif

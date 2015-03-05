@@ -326,6 +326,7 @@ void SuperNET_idler(uv_idle_t *handle)
         process_udpentry(up);
     if ( millis > (lastclock + 1000) )
     {
+        poll_jumptrades(Global_mp->srvNXTACCTSECRET);
         poll_pricedbs();
         every_second(counter);
         retstr = findaddress(0,0,0,0,0,0,0,0,0,0);

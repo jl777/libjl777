@@ -121,7 +121,7 @@ uint16_t get_SuperNET_port(char *ipaddr)
 
 int32_t prevent_queueing(char *cmd)
 {
-    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 || strcmp("processjumptrade",cmd) == 0 || 
+    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 || 
         strcmp("sendfrag",cmd) == 0 || strcmp("gotfrag",cmd) == 0 || strcmp("ramchain",cmd) == 0 ||
         strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
         0 )
