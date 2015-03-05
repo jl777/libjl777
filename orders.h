@@ -114,6 +114,8 @@ void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
 {
     struct exchange_info *exchange;
     char fname[1024];
+    long offset = 0;
+    uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
     if ( (exchange= find_exchange(rb->exchange,0)) != 0 )
     {
         if ( exchange->fp == 0 )
@@ -125,7 +127,11 @@ void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
         }
         if ( exchange->fp != 0 )
         {
-            fwrite(iQ,1,sizeof(*iQ),exchange->fp);
+            offset = 0;
+            memcpy(&data[offset],&iQ->baseamount,sizeof(iQ->baseamount)), offset += sizeof(iQ->baseamount);
+            memcpy(&data[offset],&iQ->relamount,sizeof(iQ->relamount)), offset += sizeof(iQ->relamount);
+            memcpy(&data[offset],&iQ->timestamp,sizeof(iQ->timestamp)), offset += sizeof(iQ->timestamp);
+            fwrite(data,1,offset,exchange->fp);
             fflush(exchange->fp);
         }
     } else printf("cant find exchange.(%s)?\n",rb->exchange);
