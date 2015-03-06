@@ -1686,6 +1686,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
     {
         volume = get_API_float(objs[2]);
         price = get_API_float(objs[3]);
+        set_best_amounts(&baseamount,&relamount,price,volume);
     }
     type = get_API_nxt64bits(objs[7]);
     timestamp = (uint32_t)get_API_int(objs[4],0);

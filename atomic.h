@@ -632,6 +632,7 @@ cJSON *jumptrade_json(struct jumptrades *jtrades)
     {
         for (i=0; i<jtrades->numlegs; i++)
             cJSON_AddItemToArray(array,tradeleg_json(&jtrades->legs[i]));
+        cJSON_AddItemToObject(json,"legs",array);
         cJSON_AddItemToObject(json,"numlegs",cJSON_CreateNumber(jtrades->numlegs));
         cJSON_AddItemToObject(json,"state",cJSON_CreateNumber(jtrades->state));
         cJSON_AddItemToObject(json,"expiration",cJSON_CreateNumber((milliseconds() - jtrades->endmilli) / 1000.));
@@ -769,24 +770,6 @@ int32_t set_tradepair(int32_t numlegs,uint64_t *NXTpricep,struct jumptrades *jtr
     return(numlegs);
 }
 
-int32_t set_tradequad(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
-{
-    struct tradeleg *leg;
-    struct _tradeleg srcae,destae;
-    uint64_t destNXTprice,srcNXTprice;
-    srcae.nxt64bits = 0, srcae.assetid = NXT_ASSETID, srcae.amount = 0;
-    destae = srcae;
-    printf("set_tradequad\n");
-    srcNXTprice = calc_nxtprice(jtrades,src->assetid,src->amount);
-    destNXTprice = calc_nxtprice(jtrades,dest->assetid,dest->amount);
-    printf("set_tradequad src %.8f dest %.8f\n",dstr(srcNXTprice),dstr(destNXTprice));
-    leg = set_tradeleg(&jtrades->legs[numlegs++],src,&srcae), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = src->nxt64bits;
-    leg = set_tradeleg(&jtrades->legs[numlegs++],&srcae,dest), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = dest->nxt64bits;
-    leg = set_tradeleg(&jtrades->legs[numlegs++],dest,&destae), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = dest->nxt64bits;
-    leg = set_tradeleg(&jtrades->legs[numlegs++],&destae,src), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = src->nxt64bits;
-    return(numlegs);
-}
-
 int32_t outofband_price(uint64_t assetid,uint64_t NXTprice)
 {
     uint64_t highbid,lowask;
@@ -798,6 +781,29 @@ int32_t outofband_price(uint64_t assetid,uint64_t NXTprice)
     if ( lowask > highbid && highbid != 0 && NXTprice > highbid && NXTprice < lowask )
         return(0);
     return(-1);
+}
+
+int32_t set_tradequad(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
+{
+    struct tradeleg *leg;
+    struct _tradeleg srcae,destae;
+    uint64_t destNXTprice,srcNXTprice;
+    srcae.nxt64bits = 0, srcae.assetid = NXT_ASSETID, srcae.amount = 0;
+    destae = srcae;
+    printf("set_tradequad\n");
+    srcNXTprice = calc_nxtprice(jtrades,src->assetid,src->amount);
+    destNXTprice = calc_nxtprice(jtrades,dest->assetid,dest->amount);
+    if ( outofband_price(src->assetid,srcNXTprice) != 0 || outofband_price(dest->assetid,destNXTprice) != 0 )
+    {
+        printf("Outofband error\n");
+        return(0);
+    }
+    printf("set_tradequad src %.8f dest %.8f\n",dstr(srcNXTprice),dstr(destNXTprice));
+    leg = set_tradeleg(&jtrades->legs[numlegs++],src,&srcae), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = src->nxt64bits;
+    leg = set_tradeleg(&jtrades->legs[numlegs++],&srcae,dest), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = dest->nxt64bits;
+    leg = set_tradeleg(&jtrades->legs[numlegs++],dest,&destae), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = dest->nxt64bits;
+    leg = set_tradeleg(&jtrades->legs[numlegs++],&destae,src), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = src->nxt64bits;
+    return(numlegs);
 }
 
 int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
@@ -885,7 +891,9 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     int32_t i,createdflag;
     struct NXT_tx T;
     struct NXT_asset *ap;
-    char jumpstr[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],assetidstr[64];
+    int64_t unconfirmed;
+    uint64_t balance;
+    char jumpstr[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],assetidstr[64],NXTaddr[64];
     struct _tradeleg src,dest,jump,myjump;
     struct jumptrades *jtrades = get_jumptrade();
     if ( jtrades == 0 )
@@ -903,7 +911,16 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         expand_nxt64bits(assetidstr,assetA);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
         if ( ap->mult != 0 )
+        {
             jtrades->qtyA /= ap->mult;
+            expand_nxt64bits(NXTaddr,nxt64bits);
+            balance = ap->mult * get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
+            if ( balance < amountA )
+            {
+                printf("balance %.8f < amountA %.8f for asset.%s\n",dstr(balance),dstr(amountA),assetidstr);
+                return(0);
+            }
+        }
         else printf("%llu null apmult\n",(long long)assetA);
     }
     if ( assetB != NXT_ASSETID )
@@ -911,7 +928,16 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         expand_nxt64bits(assetidstr,assetB);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
         if ( ap->mult != 0 )
+        {
             jtrades->qtyB /= ap->mult;
+            expand_nxt64bits(NXTaddr,other64bits);
+            balance = ap->mult * get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
+            if ( balance < amountB )
+            {
+                printf("balance %.8f < amountB %.8f for asset.%s\n",dstr(balance),dstr(amountB),assetidstr);
+                return(0);
+            }
+        }
         else printf("%llu null apmult\n",(long long)assetB);
     }
     if ( jumpasset != 0 && jumpasset != NXT_ASSETID )
@@ -919,7 +945,16 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         expand_nxt64bits(assetidstr,jumpasset);
         ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
         if ( ap->mult != 0 )
+        {
             jtrades->jumpqty /= ap->mult;
+            expand_nxt64bits(NXTaddr,jump64bits);
+            balance = ap->mult * get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
+            if ( balance < jumpamount )
+            {
+                printf("balance %.8f < jumpamount %.8f for asset.%s\n",dstr(balance),dstr(jumpamount),assetidstr);
+                return(0);
+            }
+        }
         else printf("%llu null apmult\n",(long long)jumpasset);
     }
     jtrades->nxt64bits = nxt64bits, jtrades->other64bits = other64bits, jtrades->jump64bits = jump64bits;
@@ -1074,14 +1109,9 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
                                             if ( (subtype == 2 && leg->src.assetid == assetbits) || (subtype == 3 && leg->dest.assetid == assetbits) )
                                             {
                                                 printf("numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
-                                                ///if ( validate_balance() > 0 )
-                                                //{
-                                                // otherbalance = get_asset_quantity(&unconfirmed,otherNXTaddr,assetidstr);
-                                                
                                                 leg->txid = txid;
                                                 leg->expiration = expiration;
                                                 numvalid++;
-                                                //} else printf("%llu not enough balance\n",(long long)senderbits);
                                                 break;
                                             }
                                             else printf("subtype.%d src.%llu dest.%llu: numvalid.%d txid.%llu assetbits.%llu qty %llu price %.8f\n",subtype,(long long)leg->src.assetid,(long long)leg->dest.assetid,numvalid,(long long)txid,(long long)assetbits,(long long)qty,dstr(price));
@@ -1157,7 +1187,10 @@ void poll_jumptrades(char *NXTACCTSECRET)
             else
             {
                 if ( jtrades->iQ != 0 )
+                {
+                    printf(">>>>>>>>>>>>>>> reset iQ->matched\n");
                     jtrades->iQ->sent = jtrades->iQ->matched = 0;
+                }
                 jtrades->state = -1;
             }
         }
