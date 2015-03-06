@@ -1229,9 +1229,9 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     }
     if ( iQ != 0 )
     {
-        iQ->matched = 1;
         if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,senderbits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB)) != 0 )
         {
+            iQ->matched = 1;
             jtrades->iQ = iQ;
             jtrades->endmilli = milliseconds() + JUMPTRADE_SECONDS * 1000;
             strcpy(buf,jtrades->comment);
