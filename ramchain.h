@@ -3001,6 +3001,7 @@ void ram_update_remotesrc(struct ramchain_info *ram,struct MGWstate *sp)
 
 void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
 {
+    extern int32_t NORAMCHAINS;
     void save_MGW_status(char *NXTaddr,char *jsonstr);
     char name[512],coinstr[MAX_JSON_FIELD],*jsonstr = 0;
     struct MGWstate S;
@@ -3041,7 +3042,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
                 //printf("name is (%s) + (%s) -> (%s)\n",ram->name,Server_ipaddrs[gatewayid],name);
                 save_MGW_status(name,jsonstr);
             }
-        } else if ( Debuglevel > 1 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
+        } else if ( Debuglevel > 1 && NORAMCHAINS == 0 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
         if ( jsonstr != 0 )
             free(jsonstr);
         free_json(array);

@@ -469,7 +469,7 @@ uint64_t _get_bestassetprice(char *assetcmd,char *arrayfield,uint64_t assetid)
     sprintf(cmd,"%s=%s&asset=%llu&firstIndex=0&lastIndex=0",NXTSERVER,assetcmd,(long long)assetid);
     if ( (jsonstr= issue_curl(0,cmd)) != 0 )
     {
-        //printf("cmd.(%s) -> (%s)\n",cmd,jsonstr);
+        printf("cmd.(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,arrayfield)) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) == 1 )
@@ -481,8 +481,8 @@ uint64_t _get_bestassetprice(char *assetcmd,char *arrayfield,uint64_t assetid)
     return(price);
 }
 
-uint64_t get_nxtlowask(uint64_t assetid) { return(_get_bestassetprice("getAskOrders","bidOrders",assetid)); }
-uint64_t get_nxthighbid(uint64_t assetid) { return(_get_bestassetprice("getBidOrders","askOrders",assetid)); }
+uint64_t get_nxtlowask(uint64_t assetid) { return(_get_bestassetprice("getAskOrders","askOrders",assetid)); }
+uint64_t get_nxthighbid(uint64_t assetid) { return(_get_bestassetprice("getBidOrders","bidOrders",assetid)); }
 uint64_t get_nxtlastprice(uint64_t assetid) { return(_get_bestassetprice("getTrades","trades",assetid)); }
 
 char *issue_getAsset(int32_t isMScoin,char *assetidstr)
