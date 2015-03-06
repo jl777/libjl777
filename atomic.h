@@ -787,9 +787,9 @@ int32_t outofband_price(uint64_t assetid,uint64_t NXTprice)
         return(0);
     highbid = get_nxthighbid(assetid);
     lowask = get_nxtlowask(assetid);
+    printf("highbid %.8f lowask %.8f | NXTprice %.8f\n",dstr(highbid),dstr(lowask),dstr(NXTprice));
     if ( lowask > highbid && highbid != 0 && NXTprice > highbid && NXTprice < lowask )
         return(0);
-    printf("highbid %.8f lowask %.8f | NXTprice %.8f\n",dstr(highbid),dstr(lowask),dstr(NXTprice));
     return(-1);
 }
 

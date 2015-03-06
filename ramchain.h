@@ -3343,7 +3343,7 @@ uint64_t _find_pending_transfers(uint64_t *pendingredeemsp,struct ramchain_info 
                                     //tp->completed = 1; // ignore malformed requests for now
                                 }
                             }
-                            if ( ram_check_consensus(txidstr,ram,tp) != 0 )
+                            if ( ram->S.gatewayid >= 0 && ram_check_consensus(txidstr,ram,tp) != 0 )
                                 printf("completed redeem.%llu with cointxid.%s\n",(long long)tp->redeemtxid,txidstr);
                             //printf("(%llu %.8f).%d ",(long long)tp->redeemtxid,dstr(tp->U.assetoshis),(int32_t)(time(NULL) - tp->redeemstarted));
                         } else printf("%llu %.8f: completed.%d withdraw.%p destaddr.%p\n",(long long)tp->redeemtxid,dstr(tp->U.assetoshis),tp->completed,tp->convwithdrawaddr,destaddr);
