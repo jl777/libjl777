@@ -1187,6 +1187,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
             strcpy(buf,jtrades->comment);
         } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
     } else strcpy(buf,"{\"error\":\"couldnt find matching trade\"}");
+    printf("PROCESSJUMPTRADE.(%s)\n",buf);
     return(clonestr(buf));
 }
 

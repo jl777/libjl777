@@ -1300,6 +1300,7 @@ struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,
             {
                 iQ = &rb->quotes[j];
                 price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+                printf("matched.%d (%llu vs %llu) %.8f vol %.8f vs ref %.8f %.8f\n",iQ->matched,(long long)iQ->nxt64bits,(long long)my64bits,price,vol,refprice,refvol);
                 if ( iQ->matched == 0 && iQ->nxt64bits == my64bits && price <= refprice+SMALLVAL && vol >= refvol*INSTANTDEX_MINVOLPERC )
                     return(iQ);
             }
@@ -1688,7 +1689,7 @@ char *placequote_func(char *previpaddr,int32_t dir,char *sender,int32_t valid,cJ
     }
     type = get_API_nxt64bits(objs[7]);
     timestamp = (uint32_t)get_API_int(objs[4],0);
-    printf("t.%u placequote type.%llu dir.%d sender.(%s) valid.%d price %.11f vol %.8f\n",timestamp,(long long)type,dir,sender,valid,price,volume);
+    printf("t.%u placequote type.%llu dir.%d sender.(%s) valid.%d price %.11f vol %.8f %llu/%llu\n",timestamp,(long long)type,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     if ( sender[0] != 0 && valid > 0 )
     {
         if ( price != 0. && volume != 0. && dir != 0 )
