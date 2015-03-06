@@ -4,6 +4,7 @@
 //  Created by jl777 on 7/9/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
+// calc confirmations of inventory
 
 #ifndef xcode_orders_h
 #define xcode_orders_h
