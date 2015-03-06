@@ -1102,7 +1102,7 @@ void init_legacyMGW(char *myipaddr)
     if ( Global_mp->gatewayid < 0 )
         Global_mp->gatewayid = get_API_int(cJSON_GetObjectItem(MGWconf,"gatewayid"),Global_mp->gatewayid);
     if ( Global_mp->gatewayid >= 0 )
-        strcpy(myipaddr,Server_ipaddrs[Global_mp->gatewayid]);
+        strcpy(myipaddr,Server_ipaddrs[Global_mp->gatewayid]), NORAMCHAINS = 0;
 }
 
 void init_tradebots_conf(cJSON *MGWconf)
@@ -1165,7 +1165,7 @@ void init_SuperNET_settings(char *userdir)
     QUOTE_SLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"QUOTE_SLEEP"),10);
     EXCHANGE_SLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"EXCHANGE_SLEEP"),5);
     APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
-    NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),0);
+    NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),1);
     /*#ifndef HUFF_GENMODE
      DBSLEEP *= 10;
      APISLEEP *= 10;
