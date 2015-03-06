@@ -795,12 +795,12 @@ int32_t outofband_price(uint64_t assetid,uint64_t NXTprice)
 
 int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
 {
-    printf("set_jtrade\n");
+    printf(">>>>>>>>>>>>>>>>>>> set_jtrade\n");
     uint64_t NXTprice;
     if ( src->assetid == NXT_ASSETID || dest->assetid == NXT_ASSETID )
     {
         numlegs = set_tradepair(numlegs,&NXTprice,jtrades,src,srcqty,dest,destqty);
-        if ( outofband_price(src->assetid,NXTprice) != 0 && outofband_price(dest->assetid,NXTprice) != 0 )
+        if ( outofband_price(src->assetid,NXTprice) != 0 || outofband_price(dest->assetid,NXTprice) != 0 )
         {
             printf("outofband rejects trade\n");
             purge_jumptrades(jtrades);
