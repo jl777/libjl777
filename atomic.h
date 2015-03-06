@@ -10,13 +10,13 @@
 #ifndef xcode_atomic_h
 #define xcode_atomic_h
 
-#define INSTANTDEX_TRIGGERDEADLINE 10
+#define INSTANTDEX_TRIGGERDEADLINE 5
 #define JUMPTRADE_SECONDS 10
 #define INSTANTDEX_ACCT "4383817337783094122"
 #define INSTANTDEX_FEE (2.5 * SATOSHIDEN)
 //#define FEEBITS 10
 
-int32_t time_to_nextblock()
+int32_t time_to_nextblock(int32_t lookahead)
 {
     /*
      sha256(lastblockgensig+publickey)[0-7] / basetarget * effective balance
@@ -25,7 +25,7 @@ int32_t time_to_nextblock()
      or you can just look if base target is below 90% and adjust accordingly
      */
     // http://jnxt.org/forge/forgers.json
-    return(600); // clearly need to do some calcs
+    return(lookahead * 200); // clearly need to do some calcs
 }
 
 union _NXT_tx_num { int64_t amountNQT; int64_t quantityQNT; };
@@ -823,7 +823,7 @@ int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *
 
 uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment)
 {
-    int32_t deadline = INSTANTDEX_TRIGGERDEADLINE + time_to_nextblock()/60;
+    int32_t deadline = 1 + time_to_nextblock(2)/60;
     uint64_t txid = 0;
     char cmd[4096],*jsonstr;
     cJSON *json;
