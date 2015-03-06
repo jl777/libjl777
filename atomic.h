@@ -739,13 +739,19 @@ uint64_t calc_nxtprice(struct jumptrades *jtrades,uint64_t assetid,uint64_t amou
     return(nxtprice);
 }
 
-uint64_t calc_NXTprice(struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
+uint64_t calc_NXTprice(uint64_t *qtyp,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
 {
     printf("calc_NXTprice dest.%.8f src.%8f\n",dstr(destqty),dstr(srcqty));
     if ( src->assetid == NXT_ASSETID )
+    {
+        *qtyp = destqty;
         return(src->amount / destqty);
+    }
     else if ( dest->assetid == NXT_ASSETID )
+    {
+        *qtyp = srcqty;
         return(dest->amount / srcqty);
+    }
     return(0);
 }
 
@@ -754,10 +760,11 @@ struct tradeleg *set_tradeleg(struct tradeleg *leg,struct _tradeleg *src,struct 
 int32_t set_tradepair(int32_t numlegs,uint64_t *NXTpricep,struct jumptrades *jtrades,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
 {
     struct tradeleg *leg;
-    *NXTpricep = calc_NXTprice(src,srcqty,dest,destqty);
-    leg = set_tradeleg(&jtrades->legs[numlegs++],src,dest), leg->nxt64bits = src->nxt64bits, leg->qty = srcqty, leg->NXTprice = *NXTpricep;
+    uint64_t qty;
+    *NXTpricep = calc_NXTprice(&qty,src,srcqty,dest,destqty);
+    leg = set_tradeleg(&jtrades->legs[numlegs++],src,dest), leg->nxt64bits = src->nxt64bits, leg->qty = qty, leg->NXTprice = *NXTpricep;
     printf("set_tradeleg src.(%llu legqty %.8f price %.8f)\n",(long long)src->nxt64bits,dstr(leg->qty),dstr(leg->NXTprice));
-    leg = set_tradeleg(&jtrades->legs[numlegs++],dest,src), leg->nxt64bits = dest->nxt64bits, leg->qty = destqty, leg->NXTprice = *NXTpricep;
+    leg = set_tradeleg(&jtrades->legs[numlegs++],dest,src), leg->nxt64bits = dest->nxt64bits, leg->qty = qty, leg->NXTprice = *NXTpricep;
     printf("set_tradeleg dest.(%llu legqty %.8f price %.8f)\n",(long long)dest->nxt64bits,dstr(leg->qty),dstr(leg->NXTprice));
     return(numlegs);
 }
