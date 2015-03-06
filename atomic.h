@@ -790,15 +790,15 @@ int32_t set_tradequad(int32_t numlegs,struct jumptrades *jtrades,struct _tradele
     uint64_t destNXTprice,srcNXTprice;
     srcae.nxt64bits = 0, srcae.assetid = NXT_ASSETID, srcae.amount = 0;
     destae = srcae;
-    printf("set_tradequad\n");
     srcNXTprice = calc_nxtprice(jtrades,src->assetid,src->amount);
     destNXTprice = calc_nxtprice(jtrades,dest->assetid,dest->amount);
+    printf("set_tradequad %.8f src.(%llu amount %.8f qty %llu) dest.(%llu amount %.8f qty %llu) %.8f\n",dstr(srcNXTprice),(long long)src->assetid,dstr(src->amount),(long long)srcqty,(long long)dest->assetid,dstr(dest->amount),(long long)destqty,dstr(destNXTprice));
+    sleep(5);
     if ( outofband_price(src->assetid,srcNXTprice) != 0 || outofband_price(dest->assetid,destNXTprice) != 0 )
     {
         printf("Outofband error\n");
         return(0);
     }
-    printf("set_tradequad src %.8f dest %.8f\n",dstr(srcNXTprice),dstr(destNXTprice));
     leg = set_tradeleg(&jtrades->legs[numlegs++],src,&srcae), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = src->nxt64bits;
     leg = set_tradeleg(&jtrades->legs[numlegs++],&srcae,dest), leg->qty = srcqty, leg->NXTprice = srcNXTprice, leg->nxt64bits = dest->nxt64bits;
     leg = set_tradeleg(&jtrades->legs[numlegs++],dest,&destae), leg->qty = destqty, leg->NXTprice = destNXTprice, leg->nxt64bits = dest->nxt64bits;
