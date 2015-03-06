@@ -755,7 +755,7 @@ int32_t set_tradepair(int32_t numlegs,uint64_t *NXTpricep,struct jumptrades *jtr
 {
     struct tradeleg *leg;
     *NXTpricep = calc_NXTprice(src,srcqty,dest,destqty);
-    leg = set_tradeleg(&jtrades->legs[numlegs++],src,dest), leg->nxt64bits = src->nxt64bits, leg->qty = destqty, leg->NXTprice = *NXTpricep;
+    leg = set_tradeleg(&jtrades->legs[numlegs++],src,dest), leg->nxt64bits = src->nxt64bits, leg->qty = srcqty, leg->NXTprice = *NXTpricep;
     printf("set_tradeleg src.(%llu legqty %.8f price %.8f)\n",(long long)src->nxt64bits,dstr(leg->qty),dstr(leg->NXTprice));
     leg = set_tradeleg(&jtrades->legs[numlegs++],dest,src), leg->nxt64bits = dest->nxt64bits, leg->qty = destqty, leg->NXTprice = *NXTpricep;
     printf("set_tradeleg dest.(%llu legqty %.8f price %.8f)\n",(long long)dest->nxt64bits,dstr(leg->qty),dstr(leg->NXTprice));
@@ -797,10 +797,10 @@ int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *
 {
     printf(">>>>>>>>>>>>>>>>>>> set_jtrade\n");
     uint64_t NXTprice;
-    if ( src->assetid == NXT_ASSETID || dest->assetid == NXT_ASSETID )
+    if ( src->assetid == NXT_ASSETID )
     {
         numlegs = set_tradepair(numlegs,&NXTprice,jtrades,src,srcqty,dest,destqty);
-        if ( outofband_price(src->assetid,NXTprice) != 0 || outofband_price(dest->assetid,NXTprice) != 0 )
+        if ( outofband_price(dest->assetid,NXTprice) != 0 )
         {
             printf("outofband rejects trade\n");
             purge_jumptrades(jtrades);
@@ -808,7 +808,17 @@ int32_t set_jtrade(int32_t numlegs,struct jumptrades *jtrades,struct _tradeleg *
         }
         return(numlegs);
     }
-    else return(set_tradequad(numlegs,jtrades,src,srcqty,dest,destqty));
+    else if ( dest->assetid == NXT_ASSETID )
+    {
+        numlegs = set_tradepair(numlegs,&NXTprice,jtrades,src,srcqty,dest,destqty);
+        if ( outofband_price(src->assetid,NXTprice) != 0 )
+        {
+            printf("outofband rejects trade\n");
+            purge_jumptrades(jtrades);
+            return(0);
+        }
+        return(numlegs);
+    } else return(set_tradequad(numlegs,jtrades,src,srcqty,dest,destqty));
 }
 
 uint64_t submit_triggered_bidask(char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment)
