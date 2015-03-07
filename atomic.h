@@ -1079,7 +1079,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     }
     strcpy(jtrades->comment,comment);
     if ( jtrades->balancetxid != 0 )
-        sprintf(balancestr,",\"balancetxid\":\"%llu\"",jtrades->balancetxid);
+        sprintf(balancestr,",\"balancetxid\":\"%llu\"",(long long)jtrades->balancetxid);
     else balancestr[0] = 0;
     sprintf(jtrades->comment + strlen(jtrades->comment) - 1,",\"feeAtxid\":\"%llu\",\"triggerhash\":\"%s\"%s}",(long long)jtrades->feetxid,jtrades->triggerhash,jtrades->balancetxid == 0 ? "" : balancestr);
     if ( strlen(jtrades->triggerhash) == 64 )
