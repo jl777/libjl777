@@ -114,8 +114,8 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
             if ( retstr != 0 )
             {
                 json = cJSON_Parse(retstr);
-                if ( json != 0 )
-                    printf("Parsed.(%s)\n",cJSON_Print(json));
+                //if ( json != 0 )
+                 //   printf("Parsed.(%s)\n",cJSON_Print(json));
                 free(retstr);
             }
         }
@@ -262,11 +262,13 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
 struct NXT_tx *sign_NXT_tx(char utxbytes[1024],char signedtx[1024],char *NXTACCTSECRET,uint64_t nxt64bits,struct NXT_tx *utx,char *reftxid,double myshare)
 {
     cJSON *refjson,*txjson;
-    char *parsed,*str,errstr[32];
+    char *parsed,*str,errstr[32],_utxbytes[8192];
     struct NXT_tx *refutx = 0;
     printf("sign_NXT_tx.%llu  reftxid.(%s)\n",(long long)nxt64bits,reftxid);
     txjson = gen_NXT_tx_json(utx,reftxid,myshare,NXTACCTSECRET,nxt64bits);
-    utxbytes[0] = signedtx[0] = 0;
+    if ( utxbytes == 0 )
+        utxbytes = _utxbytes;
+    signedtx[0] = 0;
     if ( txjson != 0 )
     {
         if ( extract_cJSON_str(errstr,sizeof(errstr),txjson,"errorCode") > 0 )
@@ -1047,11 +1049,9 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
             printf("create fee tx %llu vs %llu\n",(long long)calc_nxt64bits(Global_mp->myNXTADDR),(long long)nxt64bits);
             set_NXTtx(nxt64bits,&T,NXT_ASSETID,jtrades->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
             strcpy(T.comment,comment);
-            printf("sign it\n");
             jtrades->feetx = sign_NXT_tx(jtrades->feeutxbytes,jtrades->feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
             get_txhashes(jtrades->feesighash,jtrades->triggerhash,jtrades->feetx);
             triggerhash = jtrades->triggerhash;
-            printf("signed tx %llu trigger.(%s)\n",(long long)jtrades->feetx,triggerhash);
             jtrades->feetxid = jtrades->feetx->txid;
         } else printf("%llu is not me %llu\n",(long long)mynxt64bits,(long long)nxt64bits);
     }
