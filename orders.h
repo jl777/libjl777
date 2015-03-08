@@ -1665,9 +1665,9 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
     printf("dir.%d auto_makeoffer2(%llu %.8f | %llu %.8f) ref %.8f vol %.8f\n",dir,(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount),refprice,refvol);
     if ( (op= create_orderbook(base,baseid,rel,relid,oldest)) != 0 )
     {
-        if ( dir > 1 && (n= op->numasks) != 0 )
+        if ( dir > 0 && (n= op->numasks) != 0 )
             quotes = op->asks;
-        else if ( dir < -1 && (n= op->numbids) != 0 )
+        else if ( dir < 0 && (n= op->numbids) != 0 )
             quotes = op->bids;
         if ( n > 0 )
         {
