@@ -13,7 +13,7 @@
 #define INSTANTDEX_TRIGGERDEADLINE 5
 #define JUMPTRADE_SECONDS 10
 #define INSTANTDEX_ACCT "4383817337783094122"
-#define INSTANTDEX_FEE (2.5 * SATOSHIDEN)
+#define INSTANTDEX_FEE ((long)(2.5 * SATOSHIDEN))
 //#define FEEBITS 10
 
 int32_t time_to_nextblock(int32_t lookahead)

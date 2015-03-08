@@ -361,15 +361,15 @@ cJSON *all_orderbooks()
     return(json);
 }
 
-uint64_t find_best_market_maker() // store ranked list
+uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char *refNXTaddr,uint32_t timestamp)
 {
     char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],*jsonstr;
     cJSON *json,*array,*txobj;
-    int32_t i,n,createdflag;
+    int32_t i,n,createdflag,totaltickets = 0;
     struct NXT_acct *np,*maxnp = 0;
     uint64_t amount,senderbits;
     uint32_t now = (uint32_t)time(NULL);
-    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,38785003);
+    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,timestamp);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
     {
        // mm string.({"requestProcessingTime":33,"transactions":[{"fullHash":"2a2aab3b84dadf092cf4cedcd58a8b5a436968e836338e361c45651bce0ef97e","confirmations":203,"signatureHash":"52a4a43d9055fe4861b3d13fbd03a42fecb8c9ad4ac06a54da7806a8acd9c5d1","transaction":"711527527619439146","amountNQT":"1100000000","transactionIndex":2,"ecBlockHeight":360943,"block":"6797727125503999830","recipientRS":"NXT-74VC-NKPE-RYCA-5LMPT","type":0,"feeNQT":"100000000","recipient":"4383817337783094122","version":1,"sender":"423766016895692955","timestamp":38929220,"ecBlockId":"10121077683890606382","height":360949,"subtype":0,"senderPublicKey":"4e5bbad625df3d536fa90b1e6a28c3f5a56e1fcbe34132391c8d3fd7f671cb19","deadline":1440,"blockTimestamp":38929430,"senderRS":"NXT-8E6V-YBWH-5VMR-26ESD","signature":"4318f36d9cf68ef0a8f58303beb0ed836b670914065a868053da5fe8b096bc0c268e682c0274e1614fc26f81be4564ca517d922deccf169eafa249a88de58036"}]})
@@ -393,6 +393,10 @@ uint64_t find_best_market_maker() // store ranked list
                                 np->quantity = 0;
                                 np->timestamp = now;
                             }
+                            if ( amount == INSTANTDEX_FEE )
+                                totaltickets++;
+                            else if ( amount >= 2*INSTANTDEX_FEE )
+                                totaltickets += 2;
                             np->quantity += amount;
                             if ( maxnp == 0 || np->quantity > maxnp->quantity )
                                 maxnp = np;
@@ -404,6 +408,14 @@ uint64_t find_best_market_maker() // store ranked list
         }
         free(jsonstr);
     }
+    if ( refNXTaddr != 0 )
+    {
+        np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
+        if ( numticketsp != 0 )
+            *numticketsp = (int32_t)(np->quantity / INSTANTDEX_FEE);
+    }
+    if ( totalticketsp != 0 )
+        *totalticketsp = totaltickets;
     if ( maxnp != 0 )
     {
         printf("Best MM %llu total %.8f\n",(long long)maxnp->H.nxt64bits,dstr(maxnp->quantity));
@@ -426,7 +438,7 @@ int32_t get_top_MMaker(struct pserver_info **pserverp)
     char ipaddr[64];
     *pserverp = 0;
     if ( bestMMbits == 0 )
-        bestMMbits = find_best_market_maker();
+        bestMMbits = find_best_market_maker(0,0,0,38785003);
     if ( bestMMbits != 0 )
     {
         stats = get_nodestats(bestMMbits);
@@ -1891,7 +1903,21 @@ char *cancelquote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
     printf("cancelquote %llu\n",(long long)quoteid);
     if ( cancelquote(NXTaddr,quoteid) > 0 )
         return(clonestr("{\"result\":\"quote cancelled\"}"));
-    else return(clonestr("{\"result\":\"not quote to cancel\"}"));
+    else return(clonestr("{\"result\":\"no quote to cancel\"}"));
+}
+
+char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char buf[MAX_JSON_FIELD];
+    uint64_t bestMMbits;
+    int32_t totaltickets,numtickets;
+    uint32_t firsttimestamp;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    firsttimestamp = (uint32_t)get_API_int(objs[0],38785003);
+    bestMMbits = find_best_market_maker(&totaltickets,&numtickets,NXTaddr,firsttimestamp);
+    sprintf(buf,"{\"result\":\"lottostats\",\"totaltickets\":\"%d\",\"NXT\":\"%s\",\"numtickets\":\"%d\",\"odds\":\"%.2f\",\"topMM\":\"%llu\"}",totaltickets,NXTaddr,numtickets,numtickets == 0 ? 0 : (double)totaltickets / numtickets,(long long)bestMMbits);
+    return(clonestr(buf));
 }
 
 char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1901,7 +1927,7 @@ char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 
 char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD];
+    char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD];
     uint32_t start,end,resolution;
     uint64_t baseid,relid;
     copy_cJSON(sigstr,objs[0]);
@@ -1912,6 +1938,7 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     relid = get_API_nxt64bits(objs[5]);
     copy_cJSON(base,objs[6]);
     copy_cJSON(rel,objs[7]);
+    copy_cJSON(exchange,objs[8]);
     if ( strcmp(sigstr,"SMA") == 0 )
     {
         return(clonestr("{\"SMA\":\"[[300000000, 1.234567, 1.234777, 1.234666, 1.234570], [300000060, 1.234577, 1.234777, 1.234656, 1.234560]]\"}"));
