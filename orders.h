@@ -275,7 +275,7 @@ uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
         if ( np->openorders > 0 )
             np->openorders--;
         fprintf(stderr,"purge_oldest_order from NXT.%llu (openorders.%d) oldi.%d timestamp %u\n",(long long)nxt64bits,np->openorders,oldi,oldest);
-    } else fprintf(stderr,"no purges: numquotes.%d\n",rb->numquotes);
+    } //else fprintf(stderr,"no purges: numquotes.%d\n",rb->numquotes);
     return(nxt64bits);
 }
 
@@ -326,7 +326,7 @@ struct rambook_info **get_allrambooks(int32_t *numbooksp)
     {
         purge_oldest_order(rb,0);
         obooks[i++] = rb;
-        printf("rambook.(%s) %s %llu.%d / %s %llu.%d\n",rb->exchange,rb->base,(long long)rb->assetids[0],(int)(rb->assetids[3]>>32),rb->rel,(long long)rb->assetids[1],(uint32_t)rb->assetids[3]);
+        //printf("rambook.(%s) %s %llu.%d / %s %llu.%d\n",rb->exchange,rb->base,(long long)rb->assetids[0],(int)(rb->assetids[3]>>32),rb->rel,(long long)rb->assetids[1],(uint32_t)rb->assetids[3]);
     }
     if ( i != *numbooksp )
         printf("get_allrambooks HASH_COUNT.%d vs i.%d\n",*numbooksp,i);
@@ -1660,7 +1660,9 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
     char *base = 0,*rel = 0;
     //struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount,type; uint32_t timestamp; char exchange[9]; uint8_t closed:1,sent:1,matched:1,isask:1; };
     besti = -1;
-    printf("auto_makeoffer2(%llu %.8f | %llu %.8f)\n",(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount));
+    if ( (refprice= calc_price_volume(&refvol,baseamount,relamount)) <= SMALLVAL )
+        return(0);
+    printf("dir.%d auto_makeoffer2(%llu %.8f | %llu %.8f) ref %.8f vol %.8f\n",dir,(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount),refprice,refvol);
     if ( (op= create_orderbook(base,baseid,rel,relid,oldest)) != 0 )
     {
         if ( dir > 1 && (n= op->numasks) != 0 )
@@ -1669,9 +1671,6 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
             quotes = op->bids;
         if ( n > 0 )
         {
-            if ( (refprice= calc_price_volume(&refvol,baseamount,relamount)) <= SMALLVAL )
-                return(0);
-            printf("refprice %.8f refvol %.8f\n",refprice,refvol);
             for (i=0; i<n; i++)
             {
                 iQ = &quotes[i];
@@ -1698,7 +1697,7 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
                     }
                 }
             }
-        }
+        } else printf("n.%d\n",n);
         if ( besti >= 0 )
         {
             iQ = &quotes[besti];
