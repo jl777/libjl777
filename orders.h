@@ -1296,14 +1296,15 @@ struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,
         for (i=0; i<numbooks; i++)
         {
             rb = obooks[i];
-            printf("(%llu -> %llu).%d\n",(long long)rb->assetids[0],(long long)rb->assetids[1],rb->numquotes);
+            printf("(%llu -> %llu).%d vs %llu/%llu\n",(long long)rb->assetids[0],(long long)rb->assetids[1],rb->numquotes,(long long)baseid,(long long)relid);
             if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
+            printf(">>>>>>>>>>>> (%llu -> %llu).%d vs %llu/%llu\n",(long long)rb->assetids[0],(long long)rb->assetids[1],rb->numquotes,(long long)baseid,(long long)relid);
             for (j=0; j<rb->numquotes; j++)
             {
                 iQ = &rb->quotes[j];
                 price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
-                printf("matched.%d (%llu vs %llu) %.8f vol %.8f vs ref %.8f %.8f\n",iQ->matched,(long long)iQ->nxt64bits,(long long)my64bits,price,vol,refprice,refvol);
+                printf("matched.%d (%llu vs %llu) %.8f vol %.8f vs ref %.8f %.8f vs %.8f\n",iQ->matched,(long long)iQ->nxt64bits,(long long)my64bits,price,vol,refprice,refvol,((1. + INSTANTDEX_PRICESLIPPAGE)*refprice + SMALLVAL));
                 if ( iQ->matched == 0 && iQ->nxt64bits == my64bits && price <= ((1. + INSTANTDEX_PRICESLIPPAGE)*refprice + SMALLVAL) && vol >= refvol*INSTANTDEX_MINVOLPERC )
                     return(iQ);
             }
