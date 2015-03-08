@@ -1670,12 +1670,15 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
         {
             if ( (refprice= calc_price_volume(&refvol,baseamount,relamount)) <= SMALLVAL )
                 return(0);
+            printf("refprice %.8f refvol %.8f\n",refprice,refvol);
             for (i=0; i<n; i++)
             {
                 iQ = &quotes[i];
+                printf("matchedflag.%d exchange.(%s) %llu/%llu\n",iQ->matched,iQ->exchange,(long long)iQ->baseamount,(long long)iQ->relamount);
                 if ( iQ->matched == 0 && strcmp(INSTANTDEX_NAME,iQ->exchange) == 0 )
                 {
                     price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+                    printf("price %.8f vol %.8f | %.8f > %.8f? %.8f > %.8f?\n",price,vol,vol,(refvol * INSTANTDEX_MINVOLPERC),refvol,(vol * INSTANTDEX_MINVOLPERC));
                     if ( vol > (refvol * INSTANTDEX_MINVOLPERC) && refvol > (vol * INSTANTDEX_MINVOLPERC) )
                     {
                         if ( vol < refvol )
