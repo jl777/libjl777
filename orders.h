@@ -1684,11 +1684,13 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
                         if ( vol < refvol )
                             metric = (vol / refvol);
                         else metric = 1.;
+                        printf("price %f against %f or %f\n",price,(refprice * INSTANTDEX_PRICESLIPPAGE + SMALLVAL),(refprice / (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL));
                         if ( dir > 0 && price < (refprice * INSTANTDEX_PRICESLIPPAGE + SMALLVAL) )
                             metric *= (1. + (refprice - price)/refprice);
-                        else if ( dir < 0 && price > (refprice / INSTANTDEX_PRICESLIPPAGE - SMALLVAL) )
+                        else if ( dir < 0 && price > (refprice / (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL) )
                             metric *= (1. + (price - refprice)/refprice);
                         else metric = 0.;
+                        printf("metric %f\n",metric);
                         if ( metric != 0. && metric < bestmetric )
                         {
                             bestmetric = metric;
