@@ -413,15 +413,19 @@ uint64_t find_best_market_maker(cJSON **tradehistp,int32_t *totalticketsp,int32_
                             np->quantity += amount;
                             if ( maxnp == 0 || np->quantity > maxnp->quantity )
                                 maxnp = np;
-                            if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 && (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
+                            if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 )
                             {
-                                copy_cJSON(message,msgobj);
-                                unstringify(message);
-                                if ( (msgobj= cJSON_Parse(message)) != 0 )
+                                printf("(%s)\n",cJSON_Print(txobj));
+                                if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                                 {
-                                    if ( histarray == 0 )
-                                        histarray = cJSON_CreateArray();
-                                    cJSON_AddItemToArray(histarray,msgobj);
+                                    copy_cJSON(message,msgobj);
+                                    unstringify(message);
+                                    if ( (msgobj= cJSON_Parse(message)) != 0 )
+                                    {
+                                        if ( histarray == 0 )
+                                            histarray = cJSON_CreateArray();
+                                        cJSON_AddItemToArray(histarray,msgobj);
+                                    }
                                 }
                             }
                         }
