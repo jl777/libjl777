@@ -150,7 +150,7 @@ void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
         fwrite(data,1,offset,rb->fp);
         fflush(rb->fp);
         price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
-        printf("emit.(%s) %12.8f %12.8f %s_%s %16llu %16llu\n",rb->exchange,price,vol,rb->base,rb->rel,(long long)iQ->baseamount,(long long)iQ->relamount);
+        //printf("emit.(%s) %12.8f %12.8f %s_%s %16llu %16llu\n",rb->exchange,price,vol,rb->base,rb->rel,(long long)iQ->baseamount,(long long)iQ->relamount);
     }
 }
 
@@ -202,7 +202,7 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
     }
     if ( (jsonstr= issue_getAsset(0,assetstr)) != 0 )
     {
-        printf("set assetname for (%s)\n",jsonstr);
+      //  printf("set assetname for (%s)\n",jsonstr);
         if ( _set_assetname(multp,buf,jsonstr) < 0 )
         {
             if ( (jsonstr2= issue_getAsset(1,assetstr)) != 0 )
@@ -1396,7 +1396,6 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
                 rb = obooks[i];
                 if ( strcmp(rb->exchange,INSTANTDEX_NAME) != 0 )
                     haveexchanges++;
-                printf("numquotes.%d: %llu %llu\n",rb->numquotes,(long long)rb->assetids[0],(long long)rb->assetids[1]);
                 if ( rb->numquotes == 0 )
                     continue;
                 if ( (rb->assetids[0] == refbaseid && rb->assetids[1] == refrelid) || (strcmp(op->base,rb->base) == 0 && strcmp(op->rel,rb->rel) == 0) )
@@ -1404,6 +1403,7 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
                 else if ( (rb->assetids[1] == refbaseid && rb->assetids[0] == refrelid) || (strcmp(op->base,rb->rel) == 0 && strcmp(op->rel,rb->base) == 0)  )
                     polarity = -1;
                 else continue;
+                printf("numquotes.%d: %llu %llu\n",rb->numquotes,(long long)rb->assetids[0],(long long)rb->assetids[1]);
                 for (j=0; j<rb->numquotes; j++)
                     add_to_orderbook(op,iter,&numbids,&numasks,rb,&rb->quotes[j],polarity,oldest);
             }
@@ -1435,6 +1435,7 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
         }
         if ( (op->numbids + op->numasks) == 0 )
             free_orderbook(op), op = 0;
+        else printf("ORDERBOOK %s/%s numbids.%d numasks.%d\n",op->base,op->rel,op->numbids,op->numasks);
     }
     return(op);
 }
