@@ -445,7 +445,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
     uint32_t now = (uint32_t)time(NULL);
     if ( timestamp == 0 )
         timestamp = 38785003;
-    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0&withMessage=true",INSTANTDEX_ACCT,timestamp);
+    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0&withMessage=true",refNXTaddr,timestamp);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
     {
         printf("jsonstr.(%s)\n",jsonstr);
