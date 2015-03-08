@@ -446,9 +446,9 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
     if ( timestamp == 0 )
         timestamp = 38785003;
     sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0&withMessage=true",INSTANTDEX_ACCT,timestamp);
-    //printf("cmd.(%s)\n",cmdstr);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
     {
+        printf("jsonstr.(%s)\n",jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -457,38 +457,35 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                 {
                     txobj = cJSON_GetArrayItem(array,i);
                     copy_cJSON(receiverstr,cJSON_GetObjectItem(txobj,"recipient"));
-                    if ( strcmp(receiverstr,INSTANTDEX_ACCT) == 0 )
+                    if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
                     {
-                        if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
+                        expand_nxt64bits(NXTaddr,senderbits);
+                        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                        amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
+                        if ( np->timestamp != now )
                         {
-                            expand_nxt64bits(NXTaddr,senderbits);
-                            np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-                            amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
-                            if ( np->timestamp != now )
+                            np->quantity = 0;
+                            np->timestamp = now;
+                        }
+                        if ( amount == INSTANTDEX_FEE )
+                            totaltickets++;
+                        else if ( amount >= 2*INSTANTDEX_FEE )
+                            totaltickets += 2;
+                        np->quantity += amount;
+                        if ( maxnp == 0 || np->quantity > maxnp->quantity )
+                            maxnp = np;
+                        if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 )
+                        {
+                            printf("(%s)\n",cJSON_Print(txobj));
+                            if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                             {
-                                np->quantity = 0;
-                                np->timestamp = now;
-                            }
-                            if ( amount == INSTANTDEX_FEE )
-                                totaltickets++;
-                            else if ( amount >= 2*INSTANTDEX_FEE )
-                                totaltickets += 2;
-                            np->quantity += amount;
-                            if ( maxnp == 0 || np->quantity > maxnp->quantity )
-                                maxnp = np;
-                            if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 )
-                            {
-                                printf("(%s)\n",cJSON_Print(txobj));
-                                if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
+                                copy_cJSON(message,msgobj);
+                                unstringify(message);
+                                if ( (msgobj= cJSON_Parse(message)) != 0 )
                                 {
-                                    copy_cJSON(message,msgobj);
-                                    unstringify(message);
-                                    if ( (msgobj= cJSON_Parse(message)) != 0 )
-                                    {
-                                        if ( histarray == 0 )
-                                            histarray = cJSON_CreateArray();
-                                        cJSON_AddItemToArray(histarray,msgobj);
-                                    }
+                                    if ( histarray == 0 )
+                                        histarray = cJSON_CreateArray();
+                                    cJSON_AddItemToArray(histarray,msgobj);
                                 }
                             }
                         }
