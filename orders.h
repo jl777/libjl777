@@ -361,16 +361,25 @@ cJSON *all_orderbooks()
     return(json);
 }
 
-uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char *refNXTaddr,uint32_t timestamp)
+cJSON *tabulate_trade_history(cJSON *array)
 {
-    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],*jsonstr;
-    cJSON *json,*array,*txobj;
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"history",array);
+    return(json);
+}
+
+uint64_t find_best_market_maker(cJSON **tradehistp,int32_t *totalticketsp,int32_t *numticketsp,char *refNXTaddr,uint32_t timestamp)
+{
+    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],message[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json,*array,*txobj,*msgobj,*attachment,*histarray = 0;
     int32_t i,n,createdflag,totaltickets = 0;
     struct NXT_acct *np,*maxnp = 0;
     uint64_t amount,senderbits;
     uint32_t now = (uint32_t)time(NULL);
     if ( timestamp == 0 )
         timestamp = 38785003;
+    if ( tradehistp != 0 )
+        *tradehistp = 0;
     sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,timestamp);
     //printf("cmd.(%s)\n",cmdstr);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
@@ -404,6 +413,17 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
                             np->quantity += amount;
                             if ( maxnp == 0 || np->quantity > maxnp->quantity )
                                 maxnp = np;
+                            if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 && (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(txobj,"message")) != 0 )
+                            {
+                                copy_cJSON(message,msgobj);
+                                unstringify(message);
+                                if ( (msgobj= cJSON_Parse(message)) != 0 )
+                                {
+                                    if ( histarray == 0 )
+                                        histarray = cJSON_CreateArray();
+                                    cJSON_AddItemToArray(histarray,msgobj);
+                                }
+                            }
                         }
                     }
                 }
@@ -417,6 +437,12 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
         np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
         if ( numticketsp != 0 )
             *numticketsp = (int32_t)(np->quantity / INSTANTDEX_FEE);
+        if ( histarray != 0 )
+        {
+            histarray = tabulate_trade_history(histarray);
+            if ( tradehistp != 0 )
+                *tradehistp = histarray;
+        }
     }
     if ( totalticketsp != 0 )
         *totalticketsp = totaltickets;
@@ -442,7 +468,7 @@ int32_t get_top_MMaker(struct pserver_info **pserverp)
     char ipaddr[64];
     *pserverp = 0;
     if ( bestMMbits == 0 )
-        bestMMbits = find_best_market_maker(0,0,0,38785003);
+        bestMMbits = find_best_market_maker(0,0,0,0,38785003);
     if ( bestMMbits != 0 )
     {
         stats = get_nodestats(bestMMbits);
@@ -1912,7 +1938,8 @@ char *cancelquote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *
 
 char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char buf[MAX_JSON_FIELD];
+    char buf[MAX_JSON_FIELD],*retstr;
+    cJSON *history,*json;
     uint64_t bestMMbits;
     int32_t totaltickets,numtickets;
     uint32_t firsttimestamp;
@@ -1920,9 +1947,14 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         return(0);
     firsttimestamp = (uint32_t)get_API_int(objs[0],0);
     printf("firsttimestamp.%u\n",firsttimestamp);
-    bestMMbits = find_best_market_maker(&totaltickets,&numtickets,NXTaddr,firsttimestamp);
+    bestMMbits = find_best_market_maker(&history,&totaltickets,&numtickets,NXTaddr,firsttimestamp);
     sprintf(buf,"{\"result\":\"lottostats\",\"totaltickets\":\"%d\",\"NXT\":\"%s\",\"numtickets\":\"%d\",\"odds\":\"%.2f\",\"topMM\":\"%llu\"}",totaltickets,NXTaddr,numtickets,numtickets == 0 ? 0 : (double)totaltickets / numtickets,(long long)bestMMbits);
-    return(clonestr(buf));
+    json = cJSON_Parse(buf);
+    if ( history != 0 )
+        cJSON_AddItemToObject(json,"trade",history);
+    retstr = cJSON_Print(json);
+    free_json(json);
+    return(retstr);
 }
 
 char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
