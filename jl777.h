@@ -617,6 +617,7 @@ uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32
 char *addcontact(char *handle,char *acct);
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
 void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc);
+char *call_SuperNET_JSON(char *JSONstr);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {

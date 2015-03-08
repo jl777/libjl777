@@ -298,7 +298,6 @@ void SuperNET_idler(uv_idle_t *handle)
             }
             else if ( (ptrs= queue_dequeue(&JSON_Q)) != 0 )
             {
-                char *call_SuperNET_JSON(char *JSONstr);
                 jsonstr = ptrs[0];
                 if ( Debuglevel > 3 )
                     printf("dequeue JSON_Q.(%s)\n",jsonstr);
