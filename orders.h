@@ -476,7 +476,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                                         for (j=0; j<m; j++)
                                         {
                                             copy_cJSON(triggerhash,cJSON_GetArrayItem(histarray,j));
-                                            if ( strcmp(triggerhash,newtriggerhash) != 0 )
+                                            if ( strcmp(triggerhash,newtriggerhash) == 0 )
                                             {
                                                 duplicates++;
                                                 break;
