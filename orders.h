@@ -1659,6 +1659,7 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
     char *base = 0,*rel = 0;
     //struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount,type; uint32_t timestamp; char exchange[9]; uint8_t closed:1,sent:1,matched:1,isask:1; };
     besti = -1;
+    printf("auto_makeoffer2(%llu %.8f | %llu %.8f)\n",(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount));
     if ( (op= create_orderbook(base,baseid,rel,relid,oldest)) != 0 )
     {
         if ( dir > 1 && (n= op->numasks) != 0 )
@@ -1715,8 +1716,8 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
             sprintf(cmd,"{\"requestType\":\"makeoffer2\",\"NXT\":\"%llu\",\"baseid\":\"%llu\",\"baseamount\":\"%llu\",%s\"other\":\"%llu\",\"relid\":\"%llu\",\"relamount\":\"%llu\"}",(long long)mynxt64bits,(long long)assetA,(long long)amountA,jumpstr,(long long)iQ->nxt64bits,(long long)assetB,(long long)amountB);
             expand_nxt64bits(otherNXTaddr,iQ->nxt64bits);
             return(submit_atomic_txfrag("makeoffer2",cmd,NXTaddr,NXTACCTSECRET,otherNXTaddr));
-        }
-    }
+        } else printf("besti.%d\n",besti);
+    } else printf("cant make orderbook\n");
     return(0);
 }
 
