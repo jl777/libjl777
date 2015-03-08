@@ -430,9 +430,9 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
 
 cJSON *tabulate_trade_history(cJSON *array)
 {
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddItemToObject(json,"history",array);
-    return(json);
+    //cJSON *json = cJSON_CreateObject();
+   // cJSON_AddItemToObject(json,"history",array);
+    return(array);
 }
 
 cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
@@ -462,15 +462,15 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                             if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                             {
                                 copy_cJSON(message,msgobj);
-                                printf("(%s) -> ",message);
+                                //printf("(%s) -> ",message);
                                 unstringify(message);
-                                printf("(%s)\n",message);
                                 if ( (msgobj= cJSON_Parse(message)) != 0 )
                                 {
+                                    printf("(%s)\n",message);
                                     if ( histarray == 0 )
                                         histarray = cJSON_CreateArray();
                                     cJSON_AddItemToArray(histarray,msgobj);
-                                }
+                                } else printf("parse error on.(%s)\n",message);
                             }
                         }
                     }
@@ -481,10 +481,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
         free(jsonstr);
     }
     if ( histarray != 0 )
-    {
         retjson = tabulate_trade_history(histarray);
-        free_json(histarray);
-    }
     return(retjson);
 }
 
