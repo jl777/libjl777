@@ -1227,8 +1227,9 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
         if ( jumpNXTaddr[0] != 0 && (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,jumpNXTaddr)) != 0 )
             free(str);
         jtrades->endmilli = milliseconds() + 2. * JUMPTRADE_SECONDS * 1000;
-    } else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
-    return(clonestr(buf));
+        return(clonestr(buf));
+    } //else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
+    return(0);
 }
 
 void poll_jumptrades(char *NXTACCTSECRET)
