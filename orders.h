@@ -1302,7 +1302,7 @@ struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,
                 iQ = &rb->quotes[j];
                 price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
                 printf("matched.%d (%llu vs %llu) %.8f vol %.8f vs ref %.8f %.8f\n",iQ->matched,(long long)iQ->nxt64bits,(long long)my64bits,price,vol,refprice,refvol);
-                if ( iQ->matched == 0 && iQ->nxt64bits == my64bits && price <= (INSTANTDEX_PRICESLIPPAGE*refprice + SMALLVAL) && vol >= refvol*INSTANTDEX_MINVOLPERC )
+                if ( iQ->matched == 0 && iQ->nxt64bits == my64bits && price <= ((1. + INSTANTDEX_PRICESLIPPAGE)*refprice + SMALLVAL) && vol >= refvol*INSTANTDEX_MINVOLPERC )
                     return(iQ);
             }
         }
@@ -1684,8 +1684,8 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
                         if ( vol < refvol )
                             metric = (vol / refvol);
                         else metric = 1.;
-                        printf("price %f against %f or %f\n",price,(refprice * INSTANTDEX_PRICESLIPPAGE + SMALLVAL),(refprice / (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL));
-                        if ( dir > 0 && price < (refprice * INSTANTDEX_PRICESLIPPAGE + SMALLVAL) )
+                        printf("price %f against %f or %f\n",price,(refprice * (1. + INSTANTDEX_PRICESLIPPAGE) + SMALLVAL),(refprice / (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL));
+                        if ( dir > 0 && price < (refprice * (1. + INSTANTDEX_PRICESLIPPAGE) + SMALLVAL) )
                             metric *= (1. + (refprice - price)/refprice);
                         else if ( dir < 0 && price > (refprice / (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL) )
                             metric *= (1. + (price - refprice)/refprice);
