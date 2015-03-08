@@ -369,6 +369,8 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
     struct NXT_acct *np,*maxnp = 0;
     uint64_t amount,senderbits;
     uint32_t now = (uint32_t)time(NULL);
+    if ( timestamp == 0 )
+        timestamp = 38785003;
     sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,timestamp);
     printf("cmd.(%s)\n",cmdstr);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
@@ -1916,7 +1918,7 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     uint32_t firsttimestamp;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
-    firsttimestamp = (uint32_t)get_API_int(objs[0],38785003);
+    firsttimestamp = (uint32_t)get_API_int(objs[0],0);
     printf("firsttimestamp.%u\n",firsttimestamp);
     bestMMbits = find_best_market_maker(&totaltickets,&numtickets,NXTaddr,firsttimestamp);
     sprintf(buf,"{\"result\":\"lottostats\",\"totaltickets\":\"%d\",\"NXT\":\"%s\",\"numtickets\":\"%d\",\"odds\":\"%.2f\",\"topMM\":\"%llu\"}",totaltickets,NXTaddr,numtickets,numtickets == 0 ? 0 : (double)totaltickets / numtickets,(long long)bestMMbits);
