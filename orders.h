@@ -1662,7 +1662,7 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
     besti = -1;
     if ( (refprice= calc_price_volume(&refvol,baseamount,relamount)) <= SMALLVAL )
         return(0);
-    printf("dir.%d auto_makeoffer2(%llu %.8f | %llu %.8f) ref %.8f vol %.8f\n",dir,(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount),refprice,refvol);
+    printf("%s dir.%d auto_makeoffer2(%llu %.8f | %llu %.8f) ref %.8f vol %.8f\n",NXTaddr,dir,(long long)baseid,dstr(baseamount),(long long)relid,dstr(relamount),refprice,refvol);
     if ( (op= create_orderbook(base,baseid,rel,relid,oldest)) != 0 )
     {
         if ( dir > 0 && (n= op->numasks) != 0 )
@@ -1770,7 +1770,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     }
     type = get_API_nxt64bits(objs[7]);
     timestamp = (uint32_t)get_API_int(objs[4],0);
-    printf("t.%u placequote type.%llu dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",timestamp,(long long)type,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
+    printf("NXT.%s t.%u placequote type.%llu dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,(long long)type,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     if ( remoteflag == 0 && (retstr= auto_makeoffer2(NXTaddr,NXTACCTSECRET,dir,baseid,baseamount,relid,relamount)) != 0 )
         return(retstr);
     if ( sender[0] != 0 && valid > 0 )
