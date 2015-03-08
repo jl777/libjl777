@@ -1224,9 +1224,10 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
         strcpy(buf,jtrades->comment);
         if ( (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,otherNXTaddr)) != 0 )
             free(str);
-        if ( jumpNXTaddr[0] != 0 && (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,jumpNXTaddr)) != 0 )
+        if ( jumpNXTaddr != 0 && jumpNXTaddr[0] != 0 && (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,jumpNXTaddr)) != 0 )
             free(str);
         jtrades->endmilli = milliseconds() + 2. * JUMPTRADE_SECONDS * 1000;
+        printf("MAKEOFFER2.(%s)\n",buf);
         return(clonestr(buf));
     } //else strcpy(buf,"{\"error\":\"couldnt initialize jtrades, probably too many pending\"}");
     return(0);
