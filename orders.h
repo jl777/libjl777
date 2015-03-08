@@ -1917,6 +1917,7 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     firsttimestamp = (uint32_t)get_API_int(objs[0],38785003);
+    printf("firsttimestamp.%u\n",firsttimestamp);
     bestMMbits = find_best_market_maker(&totaltickets,&numtickets,NXTaddr,firsttimestamp);
     sprintf(buf,"{\"result\":\"lottostats\",\"totaltickets\":\"%d\",\"NXT\":\"%s\",\"numtickets\":\"%d\",\"odds\":\"%.2f\",\"topMM\":\"%llu\"}",totaltickets,NXTaddr,numtickets,numtickets == 0 ? 0 : (double)totaltickets / numtickets,(long long)bestMMbits);
     return(clonestr(buf));
