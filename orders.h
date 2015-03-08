@@ -1292,9 +1292,11 @@ struct InstantDEX_quote *search_pendingtrades(uint64_t my64bits,uint64_t baseid,
     refprice = calc_price_volume(&refvol,baseamount,relamount);
     if ( (obooks= get_allrambooks(&numbooks)) != 0 )
     {
+        printf("search numbooks.%d\n",numbooks);
         for (i=0; i<numbooks; i++)
         {
             rb = obooks[i];
+            printf("(%llu -> %llu).%d\n",(long long)rb->assetids[0],(long long)rb->assetids[1],rb->numquotes);
             if ( rb->numquotes == 0 || rb->assetids[0] != baseid || rb->assetids[1] != relid )
                 continue;
             for (j=0; j<rb->numquotes; j++)
