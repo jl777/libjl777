@@ -1287,7 +1287,7 @@ char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
             return(jsonstr);
         }
     }
-    return(clonestr("{\"result\":\"no openorders\"}"));
+    return(clonestr("{\"errror\":\"no openorders\"}"));
 }
 
 int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
@@ -2002,16 +2002,20 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 
 char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char *retstr;
-    cJSON *history,*json;
+    char *retstr,*openorderstr;
+    cJSON *history,*json,*openorders = 0;
     uint32_t firsttimestamp;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
+    json = cJSON_CreateObject();
+    if ( (openorderstr= openorders_func(NXTaddr,NXTACCTSECRET,previpaddr,sender,valid,objs,numobjs,origargstr)) != 0 )
+        openorders = cJSON_Parse(openorderstr), free(openorderstr);
     firsttimestamp = (uint32_t)get_API_int(objs[0],0);
     history = get_tradehistory(NXTaddr,firsttimestamp);
-    json = cJSON_CreateObject();
     if ( history != 0 )
         cJSON_AddItemToObject(json,"tradehistory",history);
+    if ( openorders != 0 )
+        cJSON_AddItemToObject(json,"openorders",openorders);
     retstr = cJSON_Print(json);
     free_json(json);
     return(retstr);
