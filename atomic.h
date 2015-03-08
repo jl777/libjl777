@@ -933,7 +933,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
     jump.nxt64bits = jump64bits, jump.assetid = jumpasset, jump.amount = jumpamount;
     dest.nxt64bits = other64bits, dest.assetid = assetB, dest.amount = amountB;
     memset(jtrades,0,sizeof(*jtrades));
-    printf("init_jtrades\n");
+    printf("init_jtrades(%llu %.8f -> %llu %.8f)\n",(long long)assetA,dstr(amountA),(long long)assetB,dstr(amountB));
     jtrades->qtyA = amountA, jtrades->qtyB = amountB, jtrades->jumpqty = jumpamount;
     jtrades->baseid = assetA, jtrades->relid = assetB;
     if ( assetA != NXT_ASSETID )

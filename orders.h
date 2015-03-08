@@ -1708,7 +1708,7 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
         {
             iQ = &quotes[besti];
             jumpstr[0] = 0;
-            if ( dir > 0 )
+            if ( dir < 0 )
             {
                 assetA = relid;
                 amountA = iQ->relamount;
