@@ -437,9 +437,9 @@ cJSON *tabulate_trade_history(cJSON *array)
 
 cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
 {
-    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],message[MAX_JSON_FIELD],*jsonstr;
+    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],message[MAX_JSON_FIELD],newtriggerhash[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],*jsonstr;
     cJSON *json,*array,*txobj,*msgobj,*attachment,*retjson = 0,*histarray = 0;
-    int32_t i,n;
+    int32_t i,j,n,m,duplicates = 0;
     uint64_t senderbits;
     if ( timestamp == 0 )
         timestamp = 38785003;
@@ -468,8 +468,23 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                                 {
                                     printf("(%s)\n",message);
                                     if ( histarray == 0 )
-                                        histarray = cJSON_CreateArray();
-                                    cJSON_AddItemToArray(histarray,msgobj);
+                                        histarray = cJSON_CreateArray(), j = m = 0;
+                                    else
+                                    {
+                                        copy_cJSON(newtriggerhash,cJSON_GetObjectItem(msgobj,"triggerhash"));
+                                        m = cJSON_GetArraySize(histarray);
+                                        for (j=0; j<m; j++)
+                                        {
+                                            copy_cJSON(triggerhash,cJSON_GetArrayItem(histarray,j));
+                                            if ( strcmp(triggerhash,newtriggerhash) != 0 )
+                                            {
+                                                duplicates++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if ( j == m )
+                                        cJSON_AddItemToArray(histarray,msgobj);
                                 } else printf("parse error on.(%s)\n",message);
                             }
                         }
@@ -482,6 +497,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
     }
     if ( histarray != 0 )
         retjson = tabulate_trade_history(histarray);
+    printf("duplicates.%d\n",duplicates);
     return(retjson);
 }
 
@@ -2008,6 +2024,7 @@ char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
         cJSON_AddItemToObject(json,"openorders",openorders);
     retstr = cJSON_Print(json);
     free_json(json);
+    stripwhite_ns(retstr,strlen(retstr));
     return(retstr);
 }
 
