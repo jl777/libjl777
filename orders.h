@@ -1254,13 +1254,13 @@ char *allorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     return(clonestr("{\"error\":\"no orderbooks\"}"));
 }
 
-char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+cJSON *openorders_json(char *NXTaddr)
 {
     cJSON *array,*json = 0;
     struct rambook_info **obooks,*rb;
     struct InstantDEX_quote *iQ;
     int32_t i,j,numbooks,n = 0;
-    char nxtaddr[64],*jsonstr;
+    char nxtaddr[64];
     if ( (obooks= get_allrambooks(&numbooks)) != 0 )
     {
         array = cJSON_CreateArray();
@@ -1282,10 +1282,21 @@ char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         {
             json = cJSON_CreateObject();
             cJSON_AddItemToObject(json,"openorders",array);
-            jsonstr = cJSON_Print(json);
-            free_json(json);
-            return(jsonstr);
+            return(json);
         }
+    }
+    return(json);
+}
+
+char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    cJSON *json = 0;
+    char *jsonstr;
+    if ( (json= openorders_json(NXTaddr)) != 0 )
+    {
+        jsonstr = cJSON_Print(json);
+        free_json(json);
+        return(jsonstr);
     }
     return(clonestr("{\"error\":\"no openorders\"}"));
 }
@@ -2002,23 +2013,17 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 
 char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char *retstr,*openorderstr;
+    char *retstr;
     cJSON *history,*json,*openorders = 0;
     uint32_t firsttimestamp;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     json = cJSON_CreateObject();
-    if ( (openorderstr= openorders_func(NXTaddr,NXTACCTSECRET,previpaddr,sender,valid,objs,numobjs,origargstr)) != 0 )
-    {
-        openorders = cJSON_Parse(openorderstr), free(openorderstr);
-        if ( cJSON_GetObjectItem(openorders,"error") != 0 )
-            free_json(openorders), openorders = 0;
-    }
     firsttimestamp = (uint32_t)get_API_int(objs[0],0);
     history = get_tradehistory(NXTaddr,firsttimestamp);
     if ( history != 0 )
         cJSON_AddItemToObject(json,"tradehistory",history);
-    if ( openorders != 0 )
+    if ( (openorders= openorders_json(NXTaddr)) != 0 )
         cJSON_AddItemToObject(json,"openorders",openorders);
     retstr = cJSON_Print(json);
     free_json(json);
