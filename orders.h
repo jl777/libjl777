@@ -56,6 +56,17 @@ char *assetmap[][3] =
     { "275548135983837356", "VIA", "4" },
 };
 
+void clear_InstantDEX_quoteflags(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 0; }
+void cancel_InstantDEX_quote(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 1; }
+
+uint64_t calc_quoteid(struct InstantDEX_quote *iQ)
+{
+    struct InstantDEX_quote Q;
+    Q = *iQ;
+    clear_InstantDEX_quoteflags(&Q);
+    return(calc_txid((uint8_t *)&Q,sizeof(Q)));
+}
+
 double calc_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount)
 {
     *volumep = ((double)baseamount / SATOSHIDEN);
@@ -1102,6 +1113,7 @@ cJSON *gen_InstantDEX_json(struct rambook_info *rb,int32_t isask,struct InstantD
     sprintf(numstr,"%llu",(long long)iQ->baseamount), cJSON_AddItemToObject(json,"baseamount",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)refrelid), cJSON_AddItemToObject(json,"relid",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)iQ->relamount), cJSON_AddItemToObject(json,"relamount",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)calc_quoteid(iQ)), cJSON_AddItemToObject(json,"quoteid",cJSON_CreateString(numstr));
     return(json);
 }
 
@@ -1169,7 +1181,7 @@ char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
             {
                 iQ = &rb->quotes[j];
                 expand_nxt64bits(nxtaddr,iQ->nxt64bits);
-                if ( strcmp(NXTaddr,nxtaddr) == 0 )
+                if ( strcmp(NXTaddr,nxtaddr) == 0 && iQ->closed == 0 )
                     cJSON_AddItemToArray(array,gen_InstantDEX_json(rb,iQ->isask,iQ,rb->assetids[0],rb->assetids[1])), n++;
             }
         }
@@ -1184,6 +1196,36 @@ char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
         }
     }
     return(clonestr("{\"result\":\"no openorders\"}"));
+}
+
+int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
+{
+    struct rambook_info **obooks,*rb;
+    struct InstantDEX_quote *iQ;
+    int32_t i,j,numbooks,n = 0;
+    char nxtaddr[64];
+    if ( (obooks= get_allrambooks(&numbooks)) != 0 )
+    {
+        for (i=0; i<numbooks; i++)
+        {
+            rb = obooks[i];
+            if ( rb->numquotes == 0 )
+                continue;
+            for (j=0; j<rb->numquotes; j++)
+            {
+                iQ = &rb->quotes[j];
+                expand_nxt64bits(nxtaddr,iQ->nxt64bits);
+                if ( strcmp(NXTaddr,nxtaddr) == 0 && iQ->closed == 0 && calc_quoteid(iQ) == quoteid )
+                {
+                    cancel_InstantDEX_quote(iQ);
+                    n++;
+                    break;
+                }
+            }
+        }
+        free(obooks);
+    }
+    return(n);
 }
 
 uint64_t is_feetx_unconfirmed(uint64_t feetxid,uint64_t fee,char *fullhash)
@@ -1752,7 +1794,7 @@ void submit_quote(char *quotestr)
 char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
-    uint64_t type,baseamount,relamount,nxt64bits,baseid,relid,txid = 0;
+    uint64_t type,baseamount,relamount,nxt64bits,baseid,relid,quoteid = 0;
     double price,volume;
     uint32_t timestamp;
     int32_t remoteflag;
@@ -1796,11 +1838,11 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
                 free_json(json);
                 free(jsonstr);
             }
-            txid = calc_txid((uint8_t *)&iQ,sizeof(iQ));
-            if ( txid != 0 )
+            quoteid = calc_quoteid(&iQ);
+            if ( quoteid != 0 )
             {
-                expand_nxt64bits(txidstr,txid);
-                sprintf(buf,"{\"result\":\"success\",\"txid\":\"%s\"}",txidstr);
+                expand_nxt64bits(txidstr,quoteid);
+                sprintf(buf,"{\"result\":\"success\",\"quoteid\":\"%s\"}",txidstr);
                 retstr = clonestr(buf);
                 printf("placequote.(%s)\n",buf);
             }
@@ -1837,6 +1879,19 @@ char *bid_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,i
 char *ask_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     return(placequote_func(NXTaddr,NXTACCTSECRET,previpaddr,-1,sender,valid,objs,numobjs,origargstr));
+}
+
+char *cancelquote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    uint64_t quoteid;
+    printf("inside cancelquote\n");
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
+    quoteid = get_API_nxt64bits(objs[0]);
+    printf("cancelquote %llu\n",(long long)quoteid);
+    if ( cancelquote(NXTaddr,quoteid) > 0 )
+        return(clonestr("{\"result\":\"quote cancelled\"}"));
+    else return(clonestr("{\"result\":\"not quote to cancel\"}"));
 }
 
 char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
