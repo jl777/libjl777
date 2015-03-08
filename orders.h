@@ -439,16 +439,13 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
 {
     char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],message[MAX_JSON_FIELD],*jsonstr;
     cJSON *json,*array,*txobj,*msgobj,*attachment,*retjson = 0,*histarray = 0;
-    int32_t i,n,createdflag,totaltickets = 0;
-    struct NXT_acct *np,*maxnp = 0;
-    uint64_t amount,senderbits;
-    uint32_t now = (uint32_t)time(NULL);
+    int32_t i,n;
+    uint64_t senderbits;
     if ( timestamp == 0 )
         timestamp = 38785003;
     sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&withMessage=true",refNXTaddr,timestamp);
     if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
     {
-        printf("(%s) jsonstr.(%s)\n",cmdstr,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -460,27 +457,14 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                     if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
                     {
                         expand_nxt64bits(NXTaddr,senderbits);
-                        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-                        amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
-                        if ( np->timestamp != now )
-                        {
-                            np->quantity = 0;
-                            np->timestamp = now;
-                        }
-                        if ( amount == INSTANTDEX_FEE )
-                            totaltickets++;
-                        else if ( amount >= 2*INSTANTDEX_FEE )
-                            totaltickets += 2;
-                        np->quantity += amount;
-                        if ( maxnp == 0 || np->quantity > maxnp->quantity )
-                            maxnp = np;
                         if ( refNXTaddr != 0 && strcmp(NXTaddr,refNXTaddr) == 0 )
                         {
-                            printf("(%s)\n",cJSON_Print(txobj));
                             if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                             {
                                 copy_cJSON(message,msgobj);
+                                printf("(%s) -> ",message);
                                 unstringify(message);
+                                printf("(%s)\n",message);
                                 if ( (msgobj= cJSON_Parse(message)) != 0 )
                                 {
                                     if ( histarray == 0 )
