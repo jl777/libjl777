@@ -1691,7 +1691,7 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
                             metric *= (1. + (price - refprice)/refprice);
                         else metric = 0.;
                         printf("metric %f\n",metric);
-                        if ( metric != 0. && metric < bestmetric )
+                        if ( metric > bestmetric )
                         {
                             bestmetric = metric;
                             besti = i;
