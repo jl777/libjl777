@@ -1274,7 +1274,6 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     struct InstantDEX_quote *iQ = 0;
     int64_t balancing;
     uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount,senderbits,mybits,balancetxid;
-    printf("processjumptrade\n");
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     assetA = get_API_nxt64bits(objs[0]);
@@ -1292,6 +1291,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     balancetxid = get_API_nxt64bits(objs[12]);
     senderbits = calc_nxt64bits(sender);
     mybits = calc_nxt64bits(NXTaddr);
+    printf("processjumptrade (%llu %.8f -> %llu %.8f)\n",(long long)assetA,dstr(amountA),(long long)assetB,dstr(amountB));
     if ( mybits == other64bits )
         iQ = search_pendingtrades(other64bits,assetB,amountB,assetA,amountA);
     else if ( mybits == jump64bits )
