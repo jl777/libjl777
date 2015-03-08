@@ -1287,7 +1287,7 @@ char *openorders_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
             return(jsonstr);
         }
     }
-    return(clonestr("{\"errror\":\"no openorders\"}"));
+    return(clonestr("{\"error\":\"no openorders\"}"));
 }
 
 int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
@@ -2009,7 +2009,11 @@ char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
         return(0);
     json = cJSON_CreateObject();
     if ( (openorderstr= openorders_func(NXTaddr,NXTACCTSECRET,previpaddr,sender,valid,objs,numobjs,origargstr)) != 0 )
+    {
         openorders = cJSON_Parse(openorderstr), free(openorderstr);
+        if ( cJSON_GetObjectItem(openorders,"error") != 0 )
+            free_json(openorders), openorders = 0;
+    }
     firsttimestamp = (uint32_t)get_API_int(objs[0],0);
     history = get_tradehistory(NXTaddr,firsttimestamp);
     if ( history != 0 )
