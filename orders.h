@@ -433,21 +433,26 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
 
 struct tradehistory *_update_tradehistory(struct tradehistory *hist,uint64_t assetid,uint64_t purchased,uint64_t sold)
 {
-    int32_t i;
+    int32_t i = 0;
     if ( hist == 0 )
         hist = calloc(1,sizeof(*hist));
-    for (i=0; hist[i].assetid!=0; i++)
-        if ( hist[i].assetid == assetid )
-            break;
+    if ( hist[i].assetid != 0 )
+    {
+        for (i=0; hist[i].assetid!=0; i++)
+            if ( hist[i].assetid == assetid )
+                break;
+    }
     if ( hist[i].assetid == 0 )
     {
         hist = realloc(hist,(i+1) * sizeof(*hist));
+        memset(&hist[i],0,sizeof(hist[i]));
         hist[i].assetid = assetid;
     }
     if ( hist[i].assetid == assetid )
     {
         hist[i].purchased += purchased;
         hist[i].sold += sold;
+        printf("hist[%d] %llu +%llu -%llu -> (%llu %llu)\n",i,(long long)hist[i].assetid,purchased,sold,(long long)hist[i].purchased,(long long)hist[i].sold);
     } else printf("_update_tradehistory: impossible case!\n");
     return(hist);
 }
@@ -464,8 +469,8 @@ cJSON *_tradehistory_json(struct tradehistory *asset)
     cJSON *json = cJSON_CreateObject();
     char numstr[64];
     sprintf(numstr,"%llu",(long long)asset->assetid), cJSON_AddItemToObject(json,"assetid",cJSON_CreateString(numstr));
-    cJSON_AddItemToObject(json,"purchased",cJSON_CreateNumber(dstr(asset->purchased)));
-    cJSON_AddItemToObject(json,"sold",cJSON_CreateNumber(dstr(asset->sold)));
+    sprintf(numstr,"%llu",(long long)asset->purchased), cJSON_AddItemToObject(json,"purchased",cJSON_CreateString(numstr));
+    sprintf(numstr,"%llu",(long long)asset->sold), cJSON_AddItemToObject(json,"sold",cJSON_CreateString(numstr));
     return(json);
 }
 
@@ -517,7 +522,10 @@ cJSON *tabulate_trade_history(uint64_t mynxt64bits,cJSON *array)
         }
     }
     if ( hist != 0 )
-        return(tradehistory_json(hist,array));
+    {
+        array = tradehistory_json(hist,array);
+        free(hist);
+    }
     return(array);
 }
 
