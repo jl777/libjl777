@@ -2424,7 +2424,7 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         return(clonestr("{\"error\":\"too far in future\"}"));
     strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
     numbids = scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid);
-    numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid);
+    numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,base,rel,baseid,relid);
     if ( numbids == 0 && numasks == 0)
         return(clonestr("{\"error\":\"no data\"}"));
     if ( 1 )//finalize_displaybars(bars) > 0 )
