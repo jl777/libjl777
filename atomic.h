@@ -347,7 +347,7 @@ struct NXT_tx *conv_txbytes(char *txbytes)
     return(tx);
 }
 
-char *respondtx(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr)
+char *respondtx(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr,uint64_t quoteid)
 {
     // RESPONSETX.({"fullHash":"210f0b0f6e817897929dc4a0a83666246287925c742a6a8a1613626fa5662d16","signatureHash":"3f8e42ba625f78c9f741501a83d86db4ed0dba2af5ab60315a5f7b01d0f8b737","transaction":"10914616006631165729","amountNQT":"0","verify":true,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetA\":\"7631394205089352260\",\"qtyA\":\"1000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","type":2,"feeNQT":"100000000","recipient":"8989816935121514892","sender":"8989816935121514892","timestamp":20877092,"height":2147483647,"subtype":1,"senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","signature":"005b7022a385932cabb7d3dd2b2d51d585f9b8f3ece8837746209a08d623cc0fb3f3c76107ec3ce01d7bb7093befd0421756bea4b1caa075766733f9a76d4193"})
     char otherNXTaddr[64],NXTaddr[64],buf[1024],*pendingtxbytes;
@@ -380,7 +380,7 @@ char *respondtx(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr)
                             mytxid = issue_broadcastTransaction(&errcode,0,pendingtxbytes,Global_mp->srvNXTACCTSECRET);
                             if ( mytxid != 0 && errcode == 0 )
                             {
-                                sprintf(buf,"{\"result\":\"tradecompleted\",\"txid\":\"%llu\",\"signedtx\":\"%s\",\"othertxid\":\"%llu\"}",(long long)mytxid,pendingtxbytes,(long long)othertxid);
+                                sprintf(buf,"{\"result\":\"tradecompleted\",\"txid\":\"%llu\",\"signedtx\":\"%s\",\"othertxid\":\"%llu\",\"quoteid\":\"%llu\"}",(long long)mytxid,pendingtxbytes,(long long)othertxid,(long long)quoteid);
                                 printf("TRADECOMPLETE.(%s)\n",buf);
                                 free(othernp->signedtx);
                                 othernp->signedtx = 0;
@@ -397,13 +397,15 @@ char *respondtx(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr)
     return(clonestr(buf));
 }
 
-uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash)
+uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash,char *comment)
 {
     char feeutx[MAX_JSON_FIELD],signedfeetx[MAX_JSON_FIELD];
     struct NXT_tx feeT,*feetx;
     uint64_t feetxid = 0;
     int32_t errcode;
     set_NXTtx(calc_nxt64bits(Global_mp->myNXTADDR),&feeT,assetbits,fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
+    if ( comment != 0 && comment[0] != 0 )
+        strcpy(feeT.comment,comment);
     printf("feetx for %llu %.8f fullhash.(%s) secret.(%s)\n",(long long)Global_mp->myNXTADDR,dstr(fee),fullhash,Global_mp->srvNXTACCTSECRET);
     if ( (feetx= sign_NXT_tx(feeutx,signedfeetx,Global_mp->srvNXTACCTSECRET,calc_nxt64bits(Global_mp->myNXTADDR),&feeT,fullhash,1.)) != 0 )
     {
@@ -414,7 +416,7 @@ uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash)
     return(feetxid);
 }
 
-char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
+char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid,uint64_t quoteid)
 {
     struct InstantDEX_quote *order_match(uint64_t nxt64bits,uint64_t baseid,uint64_t baseqty,uint64_t othernxtbits,uint64_t relid,uint64_t relqty,uint64_t relfee,uint64_t relfeetxid,char *fullhash);
    //PARSED OFFER.({"sender":"8989816935121514892","timestamp":20810867,"height":2147483647,"amountNQT":"0","verify":false,"subtype":1,"attachment":{"asset":"7631394205089352260","quantityQNT":"1000","comment":"{\"assetB\":\"1639299849328439538\",\"qtyB\":\"1000000\"}"},"recipientRS":"NXT-CWEE-VXCV-697E-9YKJT","feeNQT":"100000000","senderPublicKey":"25c5fed2690701cf06f267e7c227b1a3c0dfa9c6fc3cdb593b3af6f16d65302f","type":2,"deadline":720,"senderRS":"NXT-CWEE-VXCV-697E-9YKJT","recipient":"8989816935121514892"})
@@ -464,7 +466,8 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                     fee = set_NXTtx(offertx->recipientbits,&T,assetB,qtyB,offertx->senderbits,-1);//FEEBITS);
                                     fee = INSTANTDEX_FEE;
                                     //feetxid = send_feetx(assetB,fee,full);
-                                    feetxid = send_feetx(NXT_ASSETID,fee,full);
+                                    sprintf(T.comment,"{\"obookid\":\"%llu\",\"assetA\":\"%llu\",\"qtyA\":\"%llu\",\"feeB\":\"%llu\",\"feetxid\":\"%llu\"}",(long long)(offertx->assetidbits ^ assetB),(long long)offertx->assetidbits,(long long)offertx->U.quantityQNT,(long long)fee,(long long)feetxid);
+                                    feetxid = send_feetx(NXT_ASSETID,fee,full,T.comment);
                                     sprintf(T.comment,"{\"obookid\":\"%llu\",\"assetA\":\"%llu\",\"qtyA\":\"%llu\",\"feeB\":\"%llu\",\"feetxid\":\"%llu\"}",(long long)(offertx->assetidbits ^ assetB),(long long)offertx->assetidbits,(long long)offertx->U.quantityQNT,(long long)fee,(long long)feetxid);
                                     printf("processutx.(%s) -> (%llu) price %.8f vol %.8f\n",T.comment,(long long)offertx->recipientbits,price,vol);
                                     expand_nxt64bits(NXTaddr,offertx->recipientbits);
@@ -473,7 +476,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid)
                                         tx = sign_NXT_tx(responseutx,signedtx,Global_mp->srvNXTACCTSECRET,offertx->recipientbits,&T,full,1.);
                                         if ( tx != 0 )
                                         {
-                                            sprintf(buf,"{\"requestType\":\"respondtx\",\"NXT\":\"%s\",\"signedtx\":\"%s\",\"timestamp\":%ld,\"feeB\":\"%llu\",\"feetxid\":\"%llu\"}",NXTaddr,signedtx,time(NULL),(long long)fee,(long long)feetxid);
+                                            sprintf(buf,"{\"requestType\":\"respondtx\",\"NXT\":\"%s\",\"signedtx\":\"%s\",\"timestamp\":%ld,\"feeB\":\"%llu\",\"feetxid\":\"%llu\",\"quoteid\":\"%llu\"}",NXTaddr,signedtx,time(NULL),(long long)fee,(long long)feetxid,(long long)quoteid);
                                             hopNXTaddr[0] = 0;
                                             send_tokenized_cmd(!prevent_queueing("respondtx"),hopNXTaddr,0,NXTaddr,Global_mp->srvNXTACCTSECRET,buf,otherNXTaddr);
                                             free(tx);
@@ -538,7 +541,7 @@ char *submit_atomic_txfrag(char *apicmd,char *cmdstr,char *NXTaddr,char *NXTACCT
     return(sendmessage(!prevent_queueing(apicmd),hopNXTaddr,0,NXTaddr,_tokbuf,(int32_t)n,destNXTaddr,0,0));
 }
 
-char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,uint64_t qtyA,uint64_t assetB,uint64_t qtyB,int32_t type)
+char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uint64_t assetA,uint64_t qtyA,uint64_t assetB,uint64_t qtyB,int32_t type,uint64_t quoteid)
 {
     char hopNXTaddr[64],buf[1024],signedtx[1024],utxbytes[1024],sighash[65],fullhash[65];
     struct NXT_tx T,*tx;
@@ -575,8 +578,9 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
         init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
         init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
         //feetxid = send_feetx(assetA,fee,fullhash);
-        feetxid = send_feetx(NXT_ASSETID,INSTANTDEX_FEE,fullhash);
-        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"timestamp\":%ld,\"feeA\":\"%llu\",\"feeAtxid\":\"%llu\"}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL),(long long)INSTANTDEX_FEE,(long long)feetxid);
+        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"timestamp\":%ld,\"feeA\":\"%llu\",\"feeAtxid\":\"%llu\",\"quoteid\":\"%llu\"}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL),(long long)INSTANTDEX_FEE,(long long)feetxid,(long long)quoteid);
+        feetxid = send_feetx(NXT_ASSETID,INSTANTDEX_FEE,fullhash,buf);
+        sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"timestamp\":%ld,\"feeA\":\"%llu\",\"feeAtxid\":\"%llu\",\"quoteid\":\"%llu\"}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL),(long long)INSTANTDEX_FEE,(long long)feetxid,(long long)quoteid);
         free(tx);
         if ( 0 )
         {
@@ -1061,7 +1065,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         jtrades->feetxid = feeAtxid;
         strcpy(jtrades->triggerhash,triggerhash);
         if ( other64bits == mynxt64bits )
-            jtrades->otherfeetxid = send_feetx(NXT_ASSETID,jtrades->otherfee,triggerhash);
+            jtrades->otherfeetxid = send_feetx(NXT_ASSETID,jtrades->otherfee,triggerhash,comment);
     }
     if ( jtrades->balances[0][0] != 0 )
     {

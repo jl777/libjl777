@@ -489,12 +489,12 @@ cJSON *tradehistory_json(struct tradehistory *hist,cJSON *array)
         cJSON_AddItemToArray(assets,_tradehistory_json(&hist[i]));
         item = cJSON_CreateObject();
         set_assetname(&mult,assetname,hist[i].assetid);
-        cJSON_AddItemToObject(item,"net",cJSON_CreateString(numstr));
-        sprintf(numstr,"%.8f",dstr(hist[i].purchased - hist[i].sold)), cJSON_AddItemToObject(item,"net",cJSON_CreateString(numstr));
+        cJSON_AddItemToObject(item,"asset",cJSON_CreateString(assetname));
+        sprintf(numstr,"%.8f",dstr(hist[i].purchased) - dstr(hist[i].sold)), cJSON_AddItemToObject(item,"net",cJSON_CreateString(numstr));
         cJSON_AddItemToArray(netpos,item);
     }
     cJSON_AddItemToObject(json,"assets",assets);
-    cJSON_AddItemToObject(json,"netposition",netpos);
+    cJSON_AddItemToObject(json,"netpositions",netpos);
     return(json);
 }
 
@@ -1360,6 +1360,66 @@ char *allorderbooks_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char
     return(clonestr("{\"error\":\"no orderbooks\"}"));
 }
 
+void update_iQ_flags()
+{
+    uint64_t quoteid;
+    char cmd[1024],txidstr[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json,*array,*txobj,*attachment,*msgobj;
+    int32_t i,j,k,n,numbooks;
+    struct InstantDEX_quote *iQ;
+    struct rambook_info *rb,**obooks;
+    if ( (obooks= get_allrambooks(&numbooks)) == 0 )
+        return;
+    sprintf(cmd,"requestType=getUnconfirmedTransactions&account=%s",INSTANTDEX_ACCT);
+    if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
+    {
+        printf("getUnconfirmedTransactions (%s)\n",jsonstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( (array= cJSON_GetObjectItem(json,"unconfirmedTransactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    txobj = cJSON_GetArrayItem(array,i);
+                    copy_cJSON(txidstr,cJSON_GetObjectItem(txobj,"transaction"));
+                    if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
+                    {
+                        if ( (quoteid= get_API_nxt64bits(cJSON_GetObjectItem(msgobj,"quoteid"))) != 0 )
+                        {
+                            printf("pending quoteid.%llu\n",(long long)quoteid);
+                            for (j=0; j<numbooks; j++)
+                            {
+                                rb = obooks[i];
+                                if ( strcmp(INSTANTDEX_NAME,rb->exchange) == 0 )
+                                {
+                                    for (k=0; k<rb->numquotes; k++)
+                                    {
+                                        iQ = &rb->quotes[k];
+                                        if ( calc_quoteid(iQ) == quoteid )
+                                        {
+                                            if ( iQ->matched == 0 )
+                                            {
+                                                iQ->matched = 1;
+                                                printf("MARK MATCHED TRADE FROM UNCONFIRMED\n");
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    if ( k != rb->numquotes )
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    free(obooks);
+}
+
 cJSON *openorders_json(char *NXTaddr)
 {
     cJSON *array,*json = 0;
@@ -1367,6 +1427,7 @@ cJSON *openorders_json(char *NXTaddr)
     struct InstantDEX_quote *iQ;
     int32_t i,j,numbooks,n = 0;
     char nxtaddr[64];
+    update_iQ_flags();
     if ( (obooks= get_allrambooks(&numbooks)) != 0 )
     {
         array = cJSON_CreateArray();
@@ -1824,6 +1885,7 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     cJSON *json,*bids,*asks,*item;
     struct orderbook *op,*toNXT,*fromNXT,*toBTCD,*fromBTCD,*toBTC,*fromBTC,*toJLH,*fromJLH,*books[5];
     char obook[64],buf[MAX_JSON_FIELD],baserel[128],gui[MAX_JSON_FIELD],datastr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],assetA[64],assetB[64],*retstr = 0;
+    update_iQ_flags();
     baseid = get_API_nxt64bits(objs[0]);
     relid = get_API_nxt64bits(objs[1]);
     allflag = get_API_int(objs[2],0);
@@ -2011,6 +2073,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     struct rambook_info *rb;
     struct InstantDEX_quote iQ;
     char buf[MAX_JSON_FIELD],txidstr[64],gui[MAX_JSON_FIELD],*jsonstr,*retstr = 0;
+    update_iQ_flags();
     remoteflag = (is_remote_access(previpaddr) != 0);
     nxt64bits = calc_nxt64bits(sender);
     baseid = get_API_nxt64bits(objs[0]);

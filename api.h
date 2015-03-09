@@ -270,7 +270,7 @@ char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 
 char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint64_t assetA,assetB,qtyA,qtyB;
+    uint64_t assetA,assetB,qtyA,qtyB,quoteid;
     int32_t type;
     char otherNXTaddr[MAX_JSON_FIELD],*retstr = 0;
     if ( is_remote_access(previpaddr) != 0 )
@@ -281,16 +281,17 @@ char *makeoffer_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     qtyB = get_API_nxt64bits(objs[3]);
     copy_cJSON(otherNXTaddr,objs[4]);
     type = get_API_int(objs[5],0);
+    quoteid = get_API_nxt64bits(objs[6]);
     printf("assetA.%llu %.8f -> assetB.%llu %.8f to NXT.%s\n",(long long)assetA,dstr(qtyA),(long long)assetB,dstr(qtyB),otherNXTaddr);
     if ( sender[0] != 0 && valid > 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
-        retstr = makeoffer(NXTaddr,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type);
+        retstr = makeoffer(NXTaddr,NXTACCTSECRET,otherNXTaddr,assetA,qtyA,assetB,qtyB,type,quoteid);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
 }
 
 char *makeoffer2_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint64_t assetA,assetB,amountA,amountB,jumpasset,jumpamount;
+    uint64_t quoteid,assetA,assetB,amountA,amountB,jumpasset,jumpamount;
     char otherNXTaddr[MAX_JSON_FIELD],jumpNXTaddr[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],*retstr = 0;
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
@@ -303,10 +304,11 @@ char *makeoffer2_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     copy_cJSON(otherNXTaddr,objs[5]);
     assetB = get_API_nxt64bits(objs[6]);
     amountB = get_API_nxt64bits(objs[7]);
+    quoteid = get_API_nxt64bits(objs[8]);
     copy_cJSON(gui,objs[8]), gui[4] = 0;
     printf("makeoffer2: sender.(%s) other.(%s) valid.%d\n",sender,otherNXTaddr,valid);
     if ( sender[0] != 0 && valid > 0 && otherNXTaddr[0] != 0 )//&& assetA != 0 && qtyA != 0. && assetB != 0. && qtyB != 0. )
-        retstr = makeoffer2(NXTaddr,NXTACCTSECRET,assetA,amountA,jumpNXTaddr,jumpasset,jumpamount,otherNXTaddr,assetB,amountB,gui);
+        retstr = makeoffer2(NXTaddr,NXTACCTSECRET,assetA,amountA,jumpNXTaddr,jumpasset,jumpamount,otherNXTaddr,assetB,amountB,gui,quoteid);
     else retstr = clonestr("{\"result\":\"invalid makeoffer_func request\"}");
     return(retstr);
 }
@@ -314,13 +316,14 @@ char *makeoffer2_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char utx[MAX_JSON_FIELD],full[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
-    uint64_t feeAtxid;
+    uint64_t feeAtxid,quoteid;
     copy_cJSON(utx,objs[0]);
     copy_cJSON(sig,objs[1]);
     copy_cJSON(full,objs[2]);
     feeAtxid = get_API_nxt64bits(objs[3]);
+    quoteid = get_API_nxt64bits(objs[4]);
     if ( sender[0] != 0 && valid > 0 )
-        retstr = processutx(sender,utx,sig,full,feeAtxid);
+        retstr = processutx(sender,utx,sig,full,feeAtxid,quoteid);
     else retstr = clonestr("{\"result\":\"invalid processutx_func request\"}");
     return(retstr);
 }
@@ -328,14 +331,15 @@ char *processutx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char signedtx[MAX_JSON_FIELD],feetxid[MAX_JSON_FIELD],*retstr = 0;
-    uint64_t feeB;
+    uint64_t feeB,quoteid;
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     copy_cJSON(signedtx,objs[0]);
     feeB = get_API_nxt64bits(objs[1]);
     copy_cJSON(feetxid,objs[2]);
+    quoteid = get_API_nxt64bits(objs[3]);
     if ( sender[0] != 0 && valid > 0 && signedtx[0] != 0 )
-        retstr = respondtx(sender,signedtx,feeB,feetxid);
+        retstr = respondtx(sender,signedtx,feeB,feetxid,quoteid);
     else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
     return(retstr);
 }
@@ -1977,9 +1981,9 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", ",gui", 0 };
     static char *bid[] = { (char *)bid_func, "bid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "type", "gui", 0 };
     static char *ask[] = { (char *)ask_func, "ask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "type", "gui", 0 };
-    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", "feeB", "feetxid", 0 };
-    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", "feeAtxid", 0 };
-    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", 0 };
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "signedtx", "feeB", "feetxid", "quoteid", 0 };
+    static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", "feeAtxid", "quoteid", 0 };
+    static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", "quoteid", 0 };
     static char *makeoffer2[] = { (char *)makeoffer2_func, "makeoffer2", "V", "baseid", "baseamount", "jumpaddr", "jumpasset", "jumpamount", "other", "relid", "relamount", "gui", "quoteid", 0 };
     static char *processjumptrade[] = { (char *)processjumptrade_func, "processjumptrade", "V", "assetA", "amountA", "other", "assetB", "amountB", "feeA", "feeAtxid", "triggerhash", "jumper", "jumpasset", "jumpamount", "balancing", "balancetxid", "gui", "quoteid", 0 };
     static char *jumptrades[] = { (char *)jumptrades_func, "jumptrades", "V", 0 };
