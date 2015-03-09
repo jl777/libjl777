@@ -2344,10 +2344,11 @@ void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
     int32_t ind;
     ind = (int32_t)((long)iQ->timestamp - bars->start) / bars->resolution;
     price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+   // if ( dir < 0 )
+   //     fprintf(stderr,"%d.(%f %f).%d ",dir,price,vol,ind);
     if ( ind >= 0 && ind < bars->width )
     {
         _update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
-        fprintf(stderr,"%d.(%f %f) ",dir,price,vol);
         //printf("ind.%d %u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",ind,iQ->timestamp,dir,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
     }
     //sleep(1);
@@ -2398,7 +2399,7 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 {
     char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD],*retstr;
     uint32_t width,resolution,now = (uint32_t)time(NULL);
-    int32_t i,start,numbids,numasks;
+    int32_t i,start,numbids,numasks = 0;
     uint64_t baseid,relid;
     struct displaybars *bars;
     cJSON *json,*array;
@@ -2422,7 +2423,9 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     if ( bars->end > time(NULL)+100*resolution )
         return(clonestr("{\"error\":\"too far in future\"}"));
     strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
-    if ( (numbids= scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid)) == 0)
+    numbids = scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid);
+    numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid);
+    if ( numbids == 0 && numasks == 0)
         return(clonestr("{\"error\":\"no data\"}"));
     if ( 1 )//finalize_displaybars(bars) > 0 )
     {
@@ -2432,7 +2435,7 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         for (i=0; i<bars->width; i++)
             if ( bars->bars[i][BARI_FIRSTBID] != 0.f )
                 cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
-        cJSON_AddItemToObject(json,"bars",array);
+        cJSON_AddItemToObject(json,"ohlc",array);
         retstr = cJSON_Print(json);
         free_json(json);
         free(bars);
