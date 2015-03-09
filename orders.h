@@ -452,7 +452,7 @@ struct tradehistory *_update_tradehistory(struct tradehistory *hist,uint64_t ass
     {
         hist[i].purchased += purchased;
         hist[i].sold += sold;
-        printf("hist[%d] %llu +%llu -%llu -> (%llu %llu)\n",i,(long long)hist[i].assetid,purchased,sold,(long long)hist[i].purchased,(long long)hist[i].sold);
+        printf("hist[%d] %llu +%llu -%llu -> (%llu %llu)\n",i,(long long)hist[i].assetid,(long long)purchased,(long long)sold,(long long)hist[i].purchased,(long long)hist[i].sold);
     } else printf("_update_tradehistory: impossible case!\n");
     return(hist);
 }
