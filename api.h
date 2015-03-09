@@ -7,7 +7,7 @@
 
 #ifndef API_H
 #define API_H
-#include "Python.h"
+//#include "Python.h"
 #ifndef _WIN32
 #include "includes/libwebsockets.h"
 #else
@@ -594,9 +594,9 @@ char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
 
 void call_python(FILE *fp,char *cmd,char *fname)
 {
-    Py_Initialize();
-    PyRun_SimpleFile(fp,fname);
-    Py_Finalize();
+    //Py_Initialize();
+    //PyRun_SimpleFile(fp,fname);
+    //Py_Finalize();
 }
 
 void call_system(FILE *fp,char *cmd,char *fname)
