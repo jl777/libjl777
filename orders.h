@@ -2387,7 +2387,6 @@ int32_t finalize_displaybars(struct displaybars *bars)
         if ( (aveprice= calc_barprice_aves(bar)) != 0.f )
         {
             fprintf(stderr,"%f ",aveprice);
-            //ohlc_json(bar);
             nonz++;
         }
     }
@@ -2427,7 +2426,7 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,base,rel,baseid,relid);
     if ( numbids == 0 && numasks == 0)
         return(clonestr("{\"error\":\"no data\"}"));
-    if ( 1 )//finalize_displaybars(bars) > 0 )
+    if ( finalize_displaybars(bars) > 0 )
     {
         printf("now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
         json = cJSON_CreateObject();
