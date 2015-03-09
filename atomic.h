@@ -916,7 +916,7 @@ int32_t reject_trade(uint64_t mynxt64bits,struct _tradeleg *src,struct _tradeleg
     return(-1);
 }
 
-struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t mynxt64bits,char *NXTACCTSECRET,uint64_t nxt64bits,uint64_t assetA,uint64_t amountA,uint64_t jump64bits,uint64_t jumpasset,uint64_t jumpamount,uint64_t other64bits,uint64_t assetB,uint64_t amountB,int64_t balancing,uint64_t balancetxid,char *gui)
+struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t mynxt64bits,char *NXTACCTSECRET,uint64_t nxt64bits,uint64_t assetA,uint64_t amountA,uint64_t jump64bits,uint64_t jumpasset,uint64_t jumpamount,uint64_t other64bits,uint64_t assetB,uint64_t amountB,int64_t balancing,uint64_t balancetxid,char *gui,uint64_t quoteid)
 {
     int32_t i,createdflag;
     struct NXT_tx T;
@@ -1040,7 +1040,7 @@ struct jumptrades *init_jtrades(uint64_t feeAtxid,char *triggerhash,uint64_t myn
         printf("balancing mismatch: %lld vs %lld\n",(long long)jtrades->balances[0][0],(long long)balancing);
         return(0);
     }
-    sprintf(comment,"{\"requestType\":\"processjumptrade\",\"NXT\":\"%llu\",\"assetA\":\"%llu\",\"amountA\":\"%llu\",%s\"other\":\"%llu\",\"assetB\":\"%llu\",\"amountB\":\"%llu\",\"feeA\":\"%llu\",\"balancing\":%lld,\"gui\":\"%s\"}",(long long)nxt64bits,(long long)assetA,(long long)amountA,jumpstr,(long long)other64bits,(long long)assetB,(long long)amountB,(long long)jtrades->fee,(long long)jtrades->balances[0][0],gui);
+    sprintf(comment,"{\"requestType\":\"processjumptrade\",\"NXT\":\"%llu\",\"assetA\":\"%llu\",\"amountA\":\"%llu\",%s\"other\":\"%llu\",\"assetB\":\"%llu\",\"amountB\":\"%llu\",\"feeA\":\"%llu\",\"balancing\":%lld,\"gui\":\"%s\",\"quoteid\":\"%llu\"}",(long long)nxt64bits,(long long)assetA,(long long)amountA,jumpstr,(long long)other64bits,(long long)assetB,(long long)amountB,(long long)jtrades->fee,(long long)jtrades->balances[0][0],gui,(long long)quoteid);
     printf("comment.(%s)\n",comment);
     if ( triggerhash == 0 || triggerhash[0] == 0 )
     {
@@ -1197,7 +1197,7 @@ int32_t validated_jumptrades(struct jumptrades *jtrades)
     return(numvalid * balanced);
 }
 
-char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amountA,char *jumpNXTaddr,uint64_t jumpasset,uint64_t jumpamount,char *otherNXTaddr,uint64_t assetB,uint64_t amountB,char *gui)
+char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amountA,char *jumpNXTaddr,uint64_t jumpasset,uint64_t jumpamount,char *otherNXTaddr,uint64_t assetB,uint64_t amountB,char *gui,uint64_t quoteid)
 {
     char buf[4096],*str;
     struct jumptrades *jtrades;
@@ -1219,7 +1219,7 @@ char *makeoffer2(char *NXTaddr,char *NXTACCTSECRET,uint64_t assetA,uint64_t amou
         printf("{\"error\":\"%s\",\"descr\":\"NXT.%llu makeoffer to NXT.%s %.8f asset.%llu for %.8f asset.%llu jump.%llu (%s)\"}\n","illegal parameter",(long long)nxt64bits,otherNXTaddr,dstr(amountA),(long long)assetA,dstr(amountB),(long long)assetB,(long long)jumpasset,jumpNXTaddr);
         return(0);
     }
-    if ( (jtrades= init_jtrades(0,"",calc_nxt64bits(NXTaddr),NXTACCTSECRET,nxt64bits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB,0,0,gui)) != 0 )
+    if ( (jtrades= init_jtrades(0,"",calc_nxt64bits(NXTaddr),NXTACCTSECRET,nxt64bits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB,0,0,gui,quoteid)) != 0 )
     {
         strcpy(buf,jtrades->comment);
         if ( (str= submit_atomic_txfrag("processjumptrade",jtrades->comment,NXTaddr,NXTACCTSECRET,otherNXTaddr)) != 0 )
@@ -1273,7 +1273,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     struct jumptrades *jtrades;
     struct InstantDEX_quote *iQ = 0;
     int64_t balancing;
-    uint64_t assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount,senderbits,mybits,balancetxid;
+    uint64_t quoteid,assetA,amountA,other64bits,assetB,amountB,feeA,feeAtxid,jump64bits,jumpasset,jumpamount,senderbits,mybits,balancetxid;
     if ( is_remote_access(previpaddr) == 0 )
         return(0);
     assetA = get_API_nxt64bits(objs[0]);
@@ -1290,6 +1290,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     balancing = get_API_nxt64bits(objs[11]);
     balancetxid = get_API_nxt64bits(objs[12]);
     copy_cJSON(gui,objs[13]), gui[4] = 0;
+    quoteid = get_API_nxt64bits(objs[14]);
     senderbits = calc_nxt64bits(sender);
     mybits = calc_nxt64bits(NXTaddr);
     printf("processjumptrade (%llu %.8f -> %llu %.8f)\n",(long long)assetA,dstr(amountA),(long long)assetB,dstr(amountB));
@@ -1302,7 +1303,7 @@ char *processjumptrade_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,c
     }
     if ( iQ != 0 )
     {
-        if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,senderbits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB,balancing,balancetxid,gui)) != 0 )
+        if ( (jtrades= init_jtrades(feeAtxid,triggerhash,calc_nxt64bits(NXTaddr),NXTACCTSECRET,senderbits,assetA,amountA,jump64bits,jumpasset,jumpamount,other64bits,assetB,amountB,balancing,balancetxid,gui,quoteid)) != 0 )
         {
             iQ->matched = 1;
             jtrades->iQ = iQ;
