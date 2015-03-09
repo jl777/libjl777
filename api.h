@@ -1962,7 +1962,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *allsignals[] = { (char *)allsignals_func, "allsignals", "V", 0 };
     static char *lottostats[] = { (char *)lottostats_func, "lottostats", "V", "timestamp", 0 };
     static char *tradehistory[] = { (char *)tradehistory_func, "tradehistory", "V", "timestamp", 0 };
-    static char *getsignal[] = { (char *)getsignal_func, "getsignal", "V", "signal", "start", "end", "resolution", "baseid", "relid", "base", "rel", "exchange", 0 };
+    static char *getsignal[] = { (char *)getsignal_func, "getsignal", "V", "signal", "start", "width", "resolution", "baseid", "relid", "base", "rel", "exchange", 0 };
     static char *openorders[] = { (char *)openorders_func, "openorders", "V", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "baseid", "relid", "allfields", "oldest", "maxdepth", "base", "rel", "gui", 0 };
     static char *cancelquote[] = { (char *)cancelquote_func, "cancelquote", "V", "quoteid", 0 };

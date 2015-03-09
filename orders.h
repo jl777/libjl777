@@ -271,6 +271,7 @@ int32_t scan_exchange_prices(void (*process_quote)(void *ptr,int32_t arg,struct 
         while ( fread(data,1,sizeof(data),fp) == sizeof(data) )
         {
             memset(&iQ,0,sizeof(iQ));
+            offset = 0;
             memcpy(&iQ.baseamount,&data[offset],sizeof(iQ.baseamount)), offset += sizeof(iQ.baseamount);
             memcpy(&iQ.relamount,&data[offset],sizeof(iQ.relamount)), offset += sizeof(iQ.relamount);
             memcpy(&iQ.timestamp,&data[offset],sizeof(iQ.timestamp)), offset += sizeof(iQ.timestamp);
@@ -2300,29 +2301,106 @@ void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
 {
     double price,vol;
     price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
-    printf("%u: %12.8f %12.8f\n",iQ->timestamp,price,vol);
+    printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
+}
+
+void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
+{
+    struct displaybars *bars = ptr;
+    double price,vol;
+    int32_t ind;
+    ind = (iQ->timestamp - bars->start) / bars->resolution;
+    if ( ind >= 0 && ind < bars->width )
+    {
+        price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+        update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
+        //printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
+    }
+}
+
+cJSON *ohlc_json(float bar[NUM_BARPRICES])
+{
+    cJSON *array = cJSON_CreateArray();
+    double prices[4];
+    int32_t i;
+    memset(prices,0,sizeof(prices));
+    if ( bar[BARI_FIRSTBID] != 0.f && bar[BARI_FIRSTASK] != 0.f )
+        prices[0] = (bar[BARI_FIRSTBID] + bar[BARI_FIRSTASK]) / 2.f;
+    if ( bar[BARI_HIGHBID] != 0.f && bar[BARI_LOWASK] != 0.f )
+    {
+        if ( bar[BARI_HIGHBID] < bar[BARI_LOWASK] )
+            prices[1] = bar[BARI_LOWASK], prices[2] = bar[BARI_HIGHBID];
+        else prices[2] = bar[BARI_LOWASK], prices[1] = bar[BARI_HIGHBID];
+    }
+    if ( bar[BARI_LASTBID] != 0.f && bar[BARI_LASTASK] != 0.f )
+        prices[3] = (bar[BARI_LASTBID] + bar[BARI_LASTASK]) / 2.f;
+    printf("ohlc_json %f %f %f %f\n",prices[0],prices[1],prices[2],prices[3]);
+    for (i=0; i<4; i++)
+        cJSON_AddItemToArray(array,cJSON_CreateNumber(prices[i]));
+    return(array);
+}
+
+int32_t finalize_displaybars(struct displaybars *bars)
+{
+    int32_t ind,nonz = 0;
+    float *bar,aveprice;
+    printf("finalize.%d\n",bars->width);
+    for (ind=0; ind<bars->width; ind++)
+    {
+        bar = bars->bars[ind];
+        if ( (aveprice= calc_barprice_aves(bar)) != 0.f )
+        {
+            fprintf(stderr,"%f ",aveprice);
+            //ohlc_json(bar);
+            nonz++;
+        }
+    }
+    printf("finalize nonz.%d\n",nonz);
+    return(nonz);
 }
 
 char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD];
-    uint32_t start,end,resolution;
-    int32_t numbids,numasks;
+    char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD],*retstr;
+    uint32_t width,resolution,now = (uint32_t)time(NULL);
+    int32_t i,start,numbids,numasks;
     uint64_t baseid,relid;
-    cJSON *json;
+    struct displaybars *bars;
+    cJSON *json,*array;
     copy_cJSON(sigstr,objs[0]);
-    start = (uint32_t)get_API_int(objs[1],0);
-    end = (uint32_t)get_API_int(objs[2],(uint32_t)time(NULL));
+    start = (int32_t)get_API_int(objs[1],0);
+    if ( start < 0 )
+        start += now;
+    width = (uint32_t)get_API_int(objs[2],now);
+    if ( width < 1 || width >= 4096 )
+        return(clonestr("{\"error\":\"too wide\"}"));
     resolution = (uint32_t)get_API_int(objs[3],60);
     baseid = get_API_nxt64bits(objs[4]);
     relid = get_API_nxt64bits(objs[5]);
-    copy_cJSON(base,objs[6]);
-    copy_cJSON(rel,objs[7]);
-    copy_cJSON(exchange,objs[8]);
-    json = cJSON_CreateObject();
-    if ( (numbids= scan_exchange_prices(disp_quote,&json,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(disp_quote,&json,-1,exchange,rel,base,relid,baseid)) == 0)
+    copy_cJSON(base,objs[6]), base[15] = 0;
+    copy_cJSON(rel,objs[7]), rel[15] = 0;
+    copy_cJSON(exchange,objs[8]), exchange[15] = 0;
+    bars = calloc(1,sizeof(*bars));
+    bars->baseid = baseid, bars->relid = relid, bars->resolution = resolution, bars->width = width, bars->start = start;
+    bars->end = start + width*resolution;
+    if ( bars->end > time(NULL)+100*resolution )
+        return(clonestr("{\"error\":\"too far in future\"}"));
+    strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
+    if ( (numbids= scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid)) == 0)
         return(clonestr("{\"error\":\"no data\"}"));
-    return(clonestr("{\"result\":\"test\"}"));
+    if ( finalize_displaybars(bars) > 0 )
+    {
+        json = cJSON_CreateObject();
+        array = cJSON_CreateArray();
+        //for (i=0; i<bars->width; i++)
+        //    cJSON_AddItemToArray(array,ohlc_json(&bars->bars[i*NUM_BARPRICES]));
+        cJSON_AddItemToObject(json,"bars",array);
+        retstr = cJSON_Print(json);
+        free_json(json);
+        free(bars);
+        return(retstr);
+    } else free(bars);
+    return(clonestr("{\"error\":\"no data\"}"));
 }
 
 

@@ -20,6 +20,7 @@
 #define ADD_ZFLOATS(dest,src) (dest).bar.V += (src).bar.V, (dest).nonz.V += (src).nonz.V
 #define invert_price(x) (((x) == 0.) ? 0. : (1. / (x)))
 
+
 void invert_bar(float invbar[NUM_BARPRICES],float bar[NUM_BARPRICES])
 {
     int32_t bari;
@@ -106,6 +107,7 @@ float check_price(float price)
 
 void update_bar(float bar[NUM_BARPRICES],float bid,float ask)
 {
+    //printf("update.(%f %f)\n",bid,ask);
     if ( (bid= check_price(bid)) != 0.f )
     {
         bar[BARI_LASTBID] = bid;
@@ -143,9 +145,9 @@ void barinsert_arbvirts(float bar[NUM_BARPRICES],float arbbid,float arbask,float
     bar[BARI_VIRTASK] = virtask;
 }
 
-void calc_barprice_aves(float bar[NUM_BARPRICES])
+float calc_barprice_aves(float bar[NUM_BARPRICES])
 {
-	int32_t n;
+	int32_t n = 0;
 	float price,min,max;
 	double bidsum,asksum;
 	//printf("calc_barprice_aves\n");
@@ -181,7 +183,9 @@ void calc_barprice_aves(float bar[NUM_BARPRICES])
 	{
         bar[BARI_AVEPRICE] = (bidsum + asksum) / 2.;
         bar[BARI_MEDIAN] = (min + max) / 2.;
+        return(bar[BARI_AVEPRICE]);
 	}
+    return(0);
 }
 
 void init_bar(float bar[NUM_BARPRICES],float quotes[][2],int32_t n)
@@ -278,7 +282,7 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
     struct exchange_quote *qp;
     memset(ptrs,0,sizeof(*ptrs));
     ptrs->jdatetime = jdatetime;
-    op = create_orderbook(0,dp->baseid,0,dp->relid,0,"bars");//,orders,numorders);
+    op = 0;//create_orderbook(0,dp->baseid,0,dp->relid,0,"bars");//,orders,numorders);
     if ( op != 0 )
     {
         numbids = op->numbids;

@@ -425,7 +425,7 @@ char *processutx(char *sender,char *utx,char *sig,char *full,uint64_t feeAtxid,u
     cJSON *json,*obj,*offerjson,*commentobj;
     struct NXT_tx *offertx;
     double vol,price,amountB;
-    uint64_t qtyB,assetB,fee,feeA,feetxid;
+    uint64_t qtyB,assetB,fee,feeA,feetxid = 0;
     char *jsonstr,*parsed,hopNXTaddr[64],buf[MAX_JSON_FIELD],calchash[MAX_JSON_FIELD],NXTaddr[64],responseutx[MAX_JSON_FIELD],signedtx[MAX_JSON_FIELD],otherNXTaddr[64];
     printf("PROCESSUTX.(%s) sig.%s full.%s from (%s)\n",utx,sig,full,sender);
     jsonstr = issue_calculateFullHash(0,utx,sig);
@@ -548,7 +548,7 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
     struct NXT_acct *othernp;
     long i,n;
     int32_t createdflag;
-    uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB,fee,feetxid;
+    uint64_t nxt64bits,other64bits,assetoshisA,assetoshisB,fee,feetxid = 0;
     hopNXTaddr[0] = 0;
     find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     nxt64bits = calc_nxt64bits(verifiedNXTaddr);

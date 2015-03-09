@@ -714,8 +714,8 @@ double _pairave(float valA,float valB)
 #include "mgw.h"
 
 #include "feeds.h"
-#include "orders.h"
 #include "bars.h"
+#include "orders.h"
 #include "tradebot.h"
 #include "lotto.h"
 //#include "NXTservices.c"
