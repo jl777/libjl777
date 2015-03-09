@@ -7,7 +7,7 @@
 
 #ifndef API_H
 #define API_H
-//#include "Python.h"
+#include "Python.h"
 #ifndef _WIN32
 #include "includes/libwebsockets.h"
 #else
@@ -592,79 +592,68 @@ char *remote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
     return(clonestr(origargstr));
 }
 
-void call_python(FILE *fp,char *cmd,char *fname,char *params)
+void call_python(FILE *fp,char *cmd,char *fname)
 {
-    //Py_Initialize();
-    //PyRun_SimpleFile(fp,fname);
-    //Py_Finalize();
+    Py_Initialize();
+    PyRun_SimpleFile(fp,fname);
+    Py_Finalize();
 }
 
-void call_system(FILE *fp,char *cmd,char *fname,char *params)
+void call_system(FILE *fp,char *cmd,char *fname)
 {
     char cmdstr[1024];
-    sprintf(cmdstr,"%s %s %s > /tmp/syscall",cmd,fname,params);
-    fprintf(stderr,"SYSCALL.(%s)\n",cmdstr);
-    if ( system(cmdstr) != 0 )
-        printf("error with system call\n");
+    sprintf(cmdstr,"%s %s",cmd,fname);
+    system(cmdstr);
 }
 
-char *language_func(char *cmd,char *fname,void (*language)(FILE *fp,char *cmd,char *fname,char *params),char *params)
+int file_exist (char *filename)
 {
-    char *buffer = 0;
-    long filesize;
-    //int32_t out_pipe[2],saved_stdout;
+  struct stat   buffer;   
+  return (stat (filename, &buffer) == 0);
+}
+char *language_func(char *cmd,char *fname,void (*language)(FILE *fp,char *cmd,char *fname))
+{
     FILE *fp;
-    //saved_stdout = dup(STDOUT_FILENO);
-    //if ( pipe(out_pipe) != 0 )
-    //    return(clonestr("{\"error\":\"pipe creation error\"}"));
-    //dup2(out_pipe[1],STDOUT_FILENO);
-    //close(out_pipe[1]);
+    char buffer[MAX_LEN+1] = {0};
+    int out_pipe[2];
+    int saved_stdout;
+    saved_stdout = dup(STDOUT_FILENO);
+    if( pipe(out_pipe) != 0 ) {
+        return(clonestr("{\"error\":\"pipe creation error\"}"));
+    }
+    dup2(out_pipe[1], STDOUT_FILENO);
+    close(out_pipe[1]);
     if ( (fp= fopen(fname,"r")) != 0 )
     {
-        (*language)(fp,cmd,fname,params);
+        (*language)(fp,cmd,fname);
         fclose(fp);
     }
-    //fflush(stdout);
-    //if ( (filesize= lseek(out_pipe[0],0,SEEK_END)) > 0 )
-   // {
-   //     buffer = malloc(filesize);
-   //     read(out_pipe[0],buffer,filesize);
-   // }
-   // dup2(saved_stdout,STDOUT_FILENO);
-    if ( (fp= fopen("/tmp/syscall","rb")) != 0 )
-    {
-        fseek(fp,0,SEEK_END);
-        filesize = ftell(fp);
-        rewind(fp);
-        buffer = calloc(1,filesize);
-        if ( fread(buffer,1,filesize,fp) != filesize )
-            printf("fread error in language_function\n");
-        fclose(fp);
-    }
-    return(buffer);
+    fflush(stdout);
+    read(out_pipe[0], buffer, MAX_LEN);
+    dup2(saved_stdout, STDOUT_FILENO);
+    return(clonestr(buffer));
 }
 
 char *python_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char fname[MAX_JSON_FIELD];
-    if ( is_remote_access(previpaddr) == 0 )
+    copy_cJSON(fname,objs[0]);
+    if (file_exist (fname))
     {
-        copy_cJSON(fname,objs[0]);
-        return(language_func("python",fname,call_python,0));
-    } else return(0);
+        return(language_func("python",fname,call_python));
+    }
+    else
+    {
+        return(clonestr("{\"error\":\"file doesn't exist\"}"));
+    }
 }
 
 char *syscall_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char fname[MAX_JSON_FIELD],syscall[MAX_JSON_FIELD],params[MAX_JSON_FIELD];
-    if ( is_remote_access(previpaddr) == 0 )
-    {
-        copy_cJSON(fname,objs[0]);
-        copy_cJSON(syscall,objs[1]);
-        copy_cJSON(params,objs[2]);
-        unstringify(params);
-        return(language_func(syscall,fname,call_system,params));
-    } else return(0);
+    char fname[MAX_JSON_FIELD],syscall[MAX_JSON_FIELD];
+    copy_cJSON(fname,objs[0]);
+    copy_cJSON(syscall,objs[1]);
+    return(language_func(syscall,fname,call_system));
 }
 
 char *ping_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -1997,8 +1986,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", "prizefund", 0 };
 
     // Embedded Langs
-    static char *python[] = { (char *)python_func, "python", "V", "name", 0 };
-    static char *syscall[] = { (char *)syscall_func, "syscall", "V", "name", "cmd", "params", 0 };
+    static char *python[] = { (char *)python_func, "python", "V",  "name", 0 };
+    static char *syscall[] = { (char *)syscall_func, "syscall", "V",  "name", "cmd", 0 };
 
     static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, python, syscall, getpeers, maketelepods, tradebot, respondtx, processutx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, makeoffer, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, pricedb, getquotes, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile, makeoffer2, processjumptrade, allsignals, getsignal, jumptrades, cancelquote, lottostats, tradehistory };
     int32_t i,j;

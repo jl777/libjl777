@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include/python3.4 -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2  
+CFLAGS=-Wall -pedantic -g -fPIC -I includes -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2  
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
@@ -133,7 +133,23 @@ patch2: doesntexist; \
     cp lib/*  ../../libs; \
     cd ../..;
 
+python: doesntexist; \
+    tar xf python.tar.xz; \
+    cd Python-3.4.3; \
+    ./configure; \
+    make libpython3.4m.a; \
+    cp libpython3.4m.a ../libs/; \
+    cp /Users/whit/Downloads/Python-3.4.3/Include/Python.h ../includes; \
+    cd ..;
+
 onetime: doesntexist; \
+    tar xf python.tar.xz; \
+    cd Python-3.4.3; \
+    ./configure; \
+    make libpython3.4m.a; \
+    cp libpython3.4m.a ../libs/; \
+    cp /Users/whit/Downloads/Python-3.4.3/Include/Python.h ../includes; \
+    cd ..; \
     cd miniupnpc; \
     make; \
     cp libminiupnpc.a ../libs; \

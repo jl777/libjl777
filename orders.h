@@ -471,7 +471,7 @@ cJSON *_tradehistory_json(struct tradehistory *asset)
     sprintf(numstr,"%llu",(long long)asset->assetid), cJSON_AddItemToObject(json,"assetid",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(asset->purchased)), cJSON_AddItemToObject(json,"purchased",cJSON_CreateString(numstr));
     sprintf(numstr,"%.8f",dstr(asset->sold)), cJSON_AddItemToObject(json,"sold",cJSON_CreateString(numstr));
-    sprintf(numstr,"%.8f",dstr(asset->purchased - asset->sold)), cJSON_AddItemToObject(json,"net",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(asset->purchased) - dstr(asset->sold)), cJSON_AddItemToObject(json,"net",cJSON_CreateString(numstr));
     return(json);
 }
 
@@ -1965,6 +1965,46 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     return(retstr);
 }
 
+int32_t is_unfunded_order(uint64_t nxt64bits,uint64_t assetid,uint64_t amount)
+{
+    int32_t createdflag;
+    char assetidstr[64],NXTaddr[64],cmd[1024],*jsonstr;
+    struct NXT_asset *ap;
+    int64_t unconfirmed,balance = 0;
+    cJSON *json;
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    if ( assetid == NXT_ASSETID )
+    {
+        sprintf(cmd,"requestType=getAccount&account=%s",NXTaddr);
+        if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
+        {
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                balance = get_API_nxt64bits(cJSON_GetObjectItem(json,"balanceNQT"));
+                free_json(json);
+            }
+            free(jsonstr);
+        }
+        strcpy(assetidstr,"NXT");
+    }
+    else
+    {
+        expand_nxt64bits(assetidstr,assetid);
+        ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+        if ( ap->mult != 0 )
+        {
+            expand_nxt64bits(NXTaddr,nxt64bits);
+            balance = ap->mult * get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
+        }
+    }
+    if ( balance < amount )
+    {
+        printf("balance %.8f < amount %.8f for asset.%s\n",dstr(balance),dstr(amount),assetidstr);
+        return(1);
+    }
+    return(0);
+}
+
 char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *gui)
 {
     uint64_t assetA,amountA,assetB,amountB;
@@ -1992,6 +2032,14 @@ char *auto_makeoffer2(char *NXTaddr,char *NXTACCTSECRET,int32_t dir,uint64_t bas
             {
                 iQ = &quotes[i];
                 expand_nxt64bits(otherNXTaddr,iQ->nxt64bits);
+                if ( iQ->closed != 0 )
+                    continue;
+                if ( is_unfunded_order(iQ->nxt64bits,dir > 0 ? baseid : relid,dir > 0 ? iQ->baseamount : iQ->relamount) != 0 )
+                {
+                    iQ->closed = 1;
+                    printf("found unfunded order!\n");
+                    continue;
+                }
                 printf("matchedflag.%d exchange.(%s) %llu/%llu from (%s)\n",iQ->matched,iQ->exchange,(long long)iQ->baseamount,(long long)iQ->relamount,otherNXTaddr);
                 if ( strcmp(otherNXTaddr,NXTaddr) != 0 && iQ->matched == 0 && strcmp(INSTANTDEX_NAME,iQ->exchange) == 0 )
                 {
