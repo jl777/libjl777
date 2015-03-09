@@ -2310,12 +2310,13 @@ void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
     double price,vol;
     int32_t ind;
     ind = (iQ->timestamp - bars->start) / bars->resolution;
+    price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
     if ( ind >= 0 && ind < bars->width )
     {
-        price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
         update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
-        //printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
+        //printf("ind.%d %u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",ind,iQ->timestamp,dir,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
     }
+    //sleep(1);
 }
 
 cJSON *ohlc_json(float bar[NUM_BARPRICES])
@@ -2334,7 +2335,7 @@ cJSON *ohlc_json(float bar[NUM_BARPRICES])
     }
     if ( bar[BARI_LASTBID] != 0.f && bar[BARI_LASTASK] != 0.f )
         prices[3] = (bar[BARI_LASTBID] + bar[BARI_LASTASK]) / 2.f;
-    printf("ohlc_json %f %f %f %f\n",prices[0],prices[1],prices[2],prices[3]);
+    //printf("ohlc_json %f %f %f %f\n",prices[0],prices[1],prices[2],prices[3]);
     for (i=0; i<4; i++)
         cJSON_AddItemToArray(array,cJSON_CreateNumber(prices[i]));
     return(array);
@@ -2383,12 +2384,13 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     bars = calloc(1,sizeof(*bars));
     bars->baseid = baseid, bars->relid = relid, bars->resolution = resolution, bars->width = width, bars->start = start;
     bars->end = start + width*resolution;
+    printf("now %ld start.%u end.%u res.%d width.%d\n",time(NULL),start,bars->end,resolution,width);
     if ( bars->end > time(NULL)+100*resolution )
         return(clonestr("{\"error\":\"too far in future\"}"));
     strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
     if ( (numbids= scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid)) == 0)
         return(clonestr("{\"error\":\"no data\"}"));
-    if ( 1 || finalize_displaybars(bars) > 0 )
+    if ( finalize_displaybars(bars) > 0 )
     {
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
