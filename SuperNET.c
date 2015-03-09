@@ -846,6 +846,7 @@ bits256 transparent_forging(char *nextgensig,uint32_t height,bits256 *NXTpubkeys
 
 /*
 
+// seconds to forge from last block: hit / ( basetarget * effective balanceNXT)
 var nbst = Math.floor((((blk.baseTarget*accum2)/60)/153722867)*100);
 if(nbst < bst/2) nbst = bst/2;
 if(nbst > bst*2) nbst = bst*2;

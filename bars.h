@@ -271,7 +271,7 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
     struct exchange_quote *qp;
     memset(ptrs,0,sizeof(*ptrs));
     ptrs->jdatetime = jdatetime;
-    op = create_orderbook(0,dp->baseid,0,dp->relid,0);//,orders,numorders);
+    op = create_orderbook(0,dp->baseid,0,dp->relid,0,"bars");//,orders,numorders);
     if ( op != 0 )
     {
         numbids = op->numbids;
