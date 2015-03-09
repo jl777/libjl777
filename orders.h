@@ -444,8 +444,8 @@ struct tradehistory *_update_tradehistory(struct tradehistory *hist,uint64_t ass
     }
     if ( hist[i].assetid == 0 )
     {
-        hist = realloc(hist,(i+1) * sizeof(*hist));
-        memset(&hist[i],0,sizeof(hist[i]));
+        hist = realloc(hist,(i+2) * sizeof(*hist));
+        memset(&hist[i],0,2 * sizeof(hist[i]));
         hist[i].assetid = assetid;
     }
     if ( hist[i].assetid == assetid )
@@ -469,20 +469,32 @@ cJSON *_tradehistory_json(struct tradehistory *asset)
     cJSON *json = cJSON_CreateObject();
     char numstr[64];
     sprintf(numstr,"%llu",(long long)asset->assetid), cJSON_AddItemToObject(json,"assetid",cJSON_CreateString(numstr));
-    sprintf(numstr,"%llu",(long long)asset->purchased), cJSON_AddItemToObject(json,"purchased",cJSON_CreateString(numstr));
-    sprintf(numstr,"%llu",(long long)asset->sold), cJSON_AddItemToObject(json,"sold",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(asset->purchased)), cJSON_AddItemToObject(json,"purchased",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(asset->sold)), cJSON_AddItemToObject(json,"sold",cJSON_CreateString(numstr));
+    sprintf(numstr,"%.8f",dstr(asset->purchased - asset->sold)), cJSON_AddItemToObject(json,"net",cJSON_CreateString(numstr));
     return(json);
 }
 
 cJSON *tradehistory_json(struct tradehistory *hist,cJSON *array)
 {
-    cJSON *assets,*json = cJSON_CreateObject();
+    cJSON *assets,*netpos,*item,*json = cJSON_CreateObject();
     int32_t i;
+    uint64_t mult;
+    char assetname[64],numstr[64];
     cJSON_AddItemToObject(json,"rawtrades",array);
     assets = cJSON_CreateArray();
+    netpos = cJSON_CreateArray();
     for (i=0; hist[i].assetid!=0; i++)
+    {
         cJSON_AddItemToArray(assets,_tradehistory_json(&hist[i]));
+        item = cJSON_CreateObject();
+        set_assetname(&mult,assetname,hist[i].assetid);
+        cJSON_AddItemToObject(item,"net",cJSON_CreateString(numstr));
+        sprintf(numstr,"%.8f",dstr(hist[i].purchased - hist[i].sold)), cJSON_AddItemToObject(item,"net",cJSON_CreateString(numstr));
+        cJSON_AddItemToArray(netpos,item);
+    }
     cJSON_AddItemToObject(json,"assets",assets);
+    cJSON_AddItemToObject(json,"netposition",netpos);
     return(json);
 }
 
