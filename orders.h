@@ -2304,16 +2304,50 @@ void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
     printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
 }
 
+void _update_bar(float bar[NUM_BARPRICES],double bid,double ask)
+{
+    //fprintf(stderr,"_(%f %f) ",bid,ask);
+    //if ( (bid= check_price(bid)) != 0.f )
+    if ( bid != 0. )
+    {
+        bar[BARI_LASTBID] = bid;
+        if ( bar[BARI_FIRSTBID] == 0.f )
+            bar[BARI_HIGHBID] = bar[BARI_LOWBID] = bar[BARI_FIRSTBID] = bid;
+        else
+        {
+            if ( bid > bar[BARI_HIGHBID] )
+                bar[BARI_HIGHBID] = bid;
+            if ( bid < bar[BARI_LOWBID] )
+                bar[BARI_LOWBID] = bid;
+        }
+    }
+    if ( ask != 0. ) //(ask= check_price(ask)) != 0.f )
+    {
+        bar[BARI_LASTASK] = ask;
+        if ( bar[BARI_FIRSTASK] == 0.f )
+            bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
+        else
+        {
+            if ( ask > bar[BARI_HIGHASK] )
+                bar[BARI_HIGHASK] = ask;
+            if ( ask < bar[BARI_LOWASK] )
+                bar[BARI_LOWASK] = ask;
+        }
+        //printf("%d.(%f %f) ",i,exp(bid),exp(ask));
+    }
+}
+
 void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
 {
     struct displaybars *bars = ptr;
     double price,vol;
     int32_t ind;
-    ind = (iQ->timestamp - bars->start) / bars->resolution;
+    ind = (int32_t)((long)iQ->timestamp - bars->start) / bars->resolution;
     price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
     if ( ind >= 0 && ind < bars->width )
     {
-        update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
+        _update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
+        fprintf(stderr,"%d.(%f %f) ",dir,price,vol);
         //printf("ind.%d %u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",ind,iQ->timestamp,dir,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
     }
     //sleep(1);
@@ -2390,12 +2424,14 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
     if ( (numbids= scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(update_displaybars,bars,-1,exchange,rel,base,relid,baseid)) == 0)
         return(clonestr("{\"error\":\"no data\"}"));
-    if ( finalize_displaybars(bars) > 0 )
+    if ( 1 )//finalize_displaybars(bars) > 0 )
     {
+        printf("now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
         for (i=0; i<bars->width; i++)
-            cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
+            if ( bars->bars[i][BARI_FIRSTBID] != 0.f )
+                cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
         cJSON_AddItemToObject(json,"bars",array);
         retstr = cJSON_Print(json);
         free_json(json);
