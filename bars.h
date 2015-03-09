@@ -106,23 +106,30 @@ float check_price(float price)
 
 void update_bar(float bar[NUM_BARPRICES],float bid,float ask)
 {
-    bid = check_price(bid);
-    ask = check_price(ask);
-    if ( bid != 0.f && ask != 0.f )
+    if ( (bid= check_price(bid)) != 0.f )
     {
         bar[BARI_LASTBID] = bid;
-        bar[BARI_LASTASK] = ask;
-        if ( bar[BARI_FIRSTBID] == 0 )
-        {
+        if ( bar[BARI_FIRSTBID] == 0.f )
             bar[BARI_HIGHBID] = bar[BARI_LOWBID] = bar[BARI_FIRSTBID] = bid;
-            bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
-        }
         else
         {
-            if ( bid > bar[BARI_HIGHBID] ) bar[BARI_HIGHBID] = bid;
-            if ( bid < bar[BARI_LOWBID] ) bar[BARI_LOWBID] = bid;
-            if ( ask > bar[BARI_HIGHASK] ) bar[BARI_HIGHASK] = ask;
-            if ( ask < bar[BARI_LOWASK] ) bar[BARI_LOWASK] = ask;
+            if ( bid > bar[BARI_HIGHBID] )
+                bar[BARI_HIGHBID] = bid;
+            if ( bid < bar[BARI_LOWBID] )
+                bar[BARI_LOWBID] = bid;
+        }
+    }
+    if ( (ask= check_price(ask)) != 0.f )
+    {
+        bar[BARI_LASTASK] = ask;
+        if ( bar[BARI_FIRSTASK] == 0.f )
+            bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
+        else
+        {
+            if ( ask > bar[BARI_HIGHASK] )
+                bar[BARI_HIGHASK] = ask;
+            if ( ask < bar[BARI_LOWASK] )
+                bar[BARI_LOWASK] = ask;
         }
         //printf("%d.(%f %f) ",i,exp(bid),exp(ask));
     }
@@ -143,29 +150,29 @@ void calc_barprice_aves(float bar[NUM_BARPRICES])
 	double bidsum,asksum;
 	//printf("calc_barprice_aves\n");
 	bar[BARI_FIRSTBID] = check_price(bar[BARI_FIRSTBID]);
-	if ( (max= bar[BARI_FIRSTBID]) != 0 )
+	if ( (max= bar[BARI_FIRSTBID]) != 0.f )
 	{
 		bidsum = max;
 		n = 1;
-		if ( (price= bar[BARI_LASTBID]) != 0 ) { n++, bidsum += price; if ( price > max ) max = price; }
-		if ( (price= bar[BARI_HIGHBID]) != 0 ) { n++, bidsum += price; if ( price > max ) max = price; }
-		if ( (price= bar[BARI_LOWBID]) != 0 ) { n++, bidsum += price; if ( price > max ) max = price; }
-		if ( (price= bar[BARI_ARBBID]) != 0 ) { n++, bidsum += price; if ( price > max ) max = price; }
-		if ( (price= bar[BARI_VIRTBID]) != 0 ) { n++, bidsum += price; if ( price > max ) max = price; }
+		if ( (price= bar[BARI_LASTBID]) != 0.f ) { n++, bidsum += price; if ( price > max ) max = price; }
+		if ( (price= bar[BARI_HIGHBID]) != 0.f ) { n++, bidsum += price; if ( price > max ) max = price; }
+		if ( (price= bar[BARI_LOWBID]) != 0.f ) { n++, bidsum += price; if ( price > max ) max = price; }
+		if ( (price= bar[BARI_ARBBID]) != 0.f ) { n++, bidsum += price; if ( price > max ) max = price; }
+		if ( (price= bar[BARI_VIRTBID]) != 0.f ) { n++, bidsum += price; if ( price > max ) max = price; }
 		bidsum /= n;
 		if ( bar[BARI_AVEBID] != bidsum )
 			bar[BARI_AVEBID] = bidsum;
 	} else bidsum = 0.;
 	bar[BARI_FIRSTASK] = check_price(bar[BARI_FIRSTASK]);
-	if ( (min= bar[BARI_FIRSTASK]) != 0 )
+	if ( (min= bar[BARI_FIRSTASK]) != 0.f )
 	{
 		asksum = min;
 		n = 1;
-		if ( (price= bar[BARI_LASTASK]) != 0 ) { n++, asksum += price; if ( price < min ) min = price; }
-		if ( (price= bar[BARI_HIGHASK]) != 0 ) { n++, asksum += price; if ( price < min ) min = price; }
-		if ( (price= bar[BARI_LOWASK]) != 0 ) { n++, asksum += price; if ( price < min ) min = price; }
-		if ( (price= bar[BARI_ARBASK]) != 0 ) { n++, asksum += price; if ( price < min ) min = price; }
-		if ( (price= bar[BARI_VIRTASK]) != 0 ) { n++, asksum += price; if ( price < min ) min = price; }
+		if ( (price= bar[BARI_LASTASK]) != 0.f ) { n++, asksum += price; if ( price < min ) min = price; }
+		if ( (price= bar[BARI_HIGHASK]) != 0.f ) { n++, asksum += price; if ( price < min ) min = price; }
+		if ( (price= bar[BARI_LOWASK]) != 0.f ) { n++, asksum += price; if ( price < min ) min = price; }
+		if ( (price= bar[BARI_ARBASK]) != 0.f ) { n++, asksum += price; if ( price < min ) min = price; }
+		if ( (price= bar[BARI_VIRTASK]) != 0.f ) { n++, asksum += price; if ( price < min ) min = price; }
 		asksum /= n;
 		if ( bar[BARI_AVEASK] != asksum )
 			bar[BARI_AVEASK] = asksum;

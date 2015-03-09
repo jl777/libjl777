@@ -59,6 +59,15 @@ char *assetmap[][3] =
     { "275548135983837356", "VIA", "4" },
 };
 
+int32_t is_cryptocoin(char *name)
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
+        if ( strcmp(assetmap[i][1],name) == 0 )
+            return(1);
+    return(0);
+}
+
 void clear_InstantDEX_quoteflags(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 0; }
 void cancel_InstantDEX_quote(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 1; }
 
@@ -87,85 +96,6 @@ uint64_t stringbits(char *str)
             break;
     memcpy(&bits,buf,sizeof(bits));
     return(bits);
-}
-
-void set_exchange_fname(char *fname,char *exchangestr,char *base,char *rel)
-{
-    char exchange[16];
-    if ( strcmp(exchange,"iDEX") == 0 )
-        strcpy(exchange,"InstantDEX");
-    else strcpy(exchange,exchangestr);
-    ensure_dir(PRICEDIR);
-    sprintf(fname,"%s/%s",PRICEDIR,exchange);
-    ensure_dir(fname);
-    sprintf(fname,"%s/%s/%s_%s",PRICEDIR,exchange,base,rel);
-}
-
-struct exchange_info *find_exchange(char *exchangestr,int32_t createflag)
-{
-    int32_t exchangeid;
-    struct exchange_info *exchange = 0;
-    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
-    {
-        exchange = &Exchanges[exchangeid];
-        if ( exchange->name[0] == 0 )
-        {
-            if ( createflag == 0 )
-                return(0);
-            strcpy(exchange->name,exchangestr);
-            exchange->exchangeid = exchangeid;
-            exchange->nxt64bits = stringbits(exchangestr);
-            printf("CREATE EXCHANGE.(%s) id.%d %llu\n",exchangestr,exchangeid,(long long)exchange->nxt64bits);
-            break;
-        }
-        if ( strcmp(exchangestr,exchange->name) == 0 )
-            break;
-    }
-    return(exchange);
-}
-
-int32_t is_exchange_nxt64bits(uint64_t nxt64bits)
-{
-    int32_t exchangeid;
-    struct exchange_info *exchange = 0;
-    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
-    {
-        exchange = &Exchanges[exchangeid];
-        printf("(%s).(%llu vs %llu) ",exchange->name,(long long)exchange->nxt64bits,(long long)nxt64bits);
-        if ( exchange->name[0] == 0 )
-            return(0);
-        if ( exchange->nxt64bits == nxt64bits )
-            return(1);
-    }
-    printf("no exchangebits match\n");
-    return(0);
-}
-
-void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
-{
-    char fname[1024];
-    long offset = 0;
-    double price,vol;
-    uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
-    if ( rb->fp == 0 )
-    {
-        set_exchange_fname(fname,rb->exchange,rb->base,rb->rel);
-        if ( (rb->fp= fopen(fname,"rb+")) != 0 )
-            fseek(rb->fp,0,SEEK_SET);
-        else rb->fp = fopen(fname,"wb+");
-        printf("opened.(%s) fpos.%ld\n",fname,ftell(rb->fp));
-    }
-    if ( rb->fp != 0 )
-    {
-        offset = 0;
-        memcpy(&data[offset],&iQ->baseamount,sizeof(iQ->baseamount)), offset += sizeof(iQ->baseamount);
-        memcpy(&data[offset],&iQ->relamount,sizeof(iQ->relamount)), offset += sizeof(iQ->relamount);
-        memcpy(&data[offset],&iQ->timestamp,sizeof(iQ->timestamp)), offset += sizeof(iQ->timestamp);
-        fwrite(data,1,offset,rb->fp);
-        fflush(rb->fp);
-        price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
-        //printf("emit.(%s) %12.8f %12.8f %s_%s %16llu %16llu\n",rb->exchange,price,vol,rb->base,rb->rel,(long long)iQ->baseamount,(long long)iQ->relamount);
-    }
 }
 
 uint64_t _calc_decimals_mult(int32_t decimals)
@@ -216,7 +146,7 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
     }
     if ( (jsonstr= issue_getAsset(0,assetstr)) != 0 )
     {
-      //  printf("set assetname for (%s)\n",jsonstr);
+        //  printf("set assetname for (%s)\n",jsonstr);
         if ( _set_assetname(multp,buf,jsonstr) < 0 )
         {
             if ( (jsonstr2= issue_getAsset(1,assetstr)) != 0 )
@@ -239,6 +169,117 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         free(jsonstr);
     }
     return(retval);
+}
+
+void set_exchange_fname(char *fname,char *exchangestr,char *base,char *rel,uint64_t baseid,uint64_t relid)
+{
+    char exchange[16],basestr[64],relstr[64];
+    uint64_t mult;
+    if ( strcmp(exchange,"iDEX") == 0 )
+        strcpy(exchange,"InstantDEX");
+    else strcpy(exchange,exchangestr);
+    ensure_dir(PRICEDIR);
+    sprintf(fname,"%s/%s",PRICEDIR,exchange);
+    ensure_dir(fname);
+    if ( is_cryptocoin(base) != 0 )
+        strcpy(basestr,base);
+    else set_assetname(&mult,basestr,baseid);
+    if ( is_cryptocoin(rel) != 0 )
+        strcpy(relstr,rel);
+    else set_assetname(&mult,relstr,relid);
+    sprintf(fname,"%s/%s/%s_%s",PRICEDIR,exchange,basestr,relstr);
+}
+
+struct exchange_info *find_exchange(char *exchangestr,int32_t createflag)
+{
+    int32_t exchangeid;
+    struct exchange_info *exchange = 0;
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
+    {
+        exchange = &Exchanges[exchangeid];
+        if ( exchange->name[0] == 0 )
+        {
+            if ( createflag == 0 )
+                return(0);
+            strcpy(exchange->name,exchangestr);
+            exchange->exchangeid = exchangeid;
+            exchange->nxt64bits = stringbits(exchangestr);
+            printf("CREATE EXCHANGE.(%s) id.%d %llu\n",exchangestr,exchangeid,(long long)exchange->nxt64bits);
+            break;
+        }
+        if ( strcmp(exchangestr,exchange->name) == 0 )
+            break;
+    }
+    return(exchange);
+}
+
+int32_t is_exchange_nxt64bits(uint64_t nxt64bits)
+{
+    int32_t exchangeid;
+    struct exchange_info *exchange = 0;
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
+    {
+        exchange = &Exchanges[exchangeid];
+        printf("(%s).(%llu vs %llu) ",exchange->name,(long long)exchange->nxt64bits,(long long)nxt64bits);
+        if ( exchange->name[0] == 0 )
+            return(0);
+        if ( exchange->nxt64bits == nxt64bits )
+            return(1);
+    }
+    printf("no exchangebits match\n");
+    return(0);
+}
+
+void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
+{
+    char fname[1024];
+    long offset = 0;
+    double price,vol;
+    uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
+    if ( rb->fp == 0 )
+    {
+        set_exchange_fname(fname,rb->exchange,rb->base,rb->rel,rb->assetids[0],rb->assetids[1]);
+        if ( (rb->fp= fopen(fname,"rb+")) != 0 )
+            fseek(rb->fp,0,SEEK_SET);
+        else rb->fp = fopen(fname,"wb+");
+        printf("opened.(%s) fpos.%ld\n",fname,ftell(rb->fp));
+    }
+    if ( rb->fp != 0 )
+    {
+        offset = 0;
+        memcpy(&data[offset],&iQ->baseamount,sizeof(iQ->baseamount)), offset += sizeof(iQ->baseamount);
+        memcpy(&data[offset],&iQ->relamount,sizeof(iQ->relamount)), offset += sizeof(iQ->relamount);
+        memcpy(&data[offset],&iQ->timestamp,sizeof(iQ->timestamp)), offset += sizeof(iQ->timestamp);
+        fwrite(data,1,offset,rb->fp);
+        fflush(rb->fp);
+        price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+        //printf("emit.(%s) %12.8f %12.8f %s_%s %16llu %16llu\n",rb->exchange,price,vol,rb->base,rb->rel,(long long)iQ->baseamount,(long long)iQ->relamount);
+    }
+}
+
+int32_t scan_exchange_prices(void (*process_quote)(void *ptr,int32_t arg,struct InstantDEX_quote *iQ),void *ptr,int32_t arg,char *exchange,char *base,char *rel,uint64_t baseid,uint64_t relid)
+{
+    FILE *fp;
+    long offset = 0;
+    char fname[1024];
+    int32_t n = 0;
+    struct InstantDEX_quote iQ;
+    uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
+    set_exchange_fname(fname,exchange,base,rel,baseid,relid);
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        while ( fread(data,1,sizeof(data),fp) == sizeof(data) )
+        {
+            memset(&iQ,0,sizeof(iQ));
+            memcpy(&iQ.baseamount,&data[offset],sizeof(iQ.baseamount)), offset += sizeof(iQ.baseamount);
+            memcpy(&iQ.relamount,&data[offset],sizeof(iQ.relamount)), offset += sizeof(iQ.relamount);
+            memcpy(&iQ.timestamp,&data[offset],sizeof(iQ.timestamp)), offset += sizeof(iQ.timestamp);
+            process_quote(ptr,arg,&iQ);
+            n++;
+        }
+        fclose(fp);
+    }
+    return(n);
 }
 
 cJSON *rambook_json(struct rambook_info *rb)
@@ -2252,14 +2293,23 @@ char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
 
 char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(clonestr("{\"signals\":[{\"name\":\"SMA\",\"scale\":\"price\"},{\"name\":\"slope\",\"scale\":\"auto\"}]}"));
+    return(clonestr("{\"signals\":[{\"name\":\"ohlc\",\"scale\":\"price\"},{\"name\":\"SMA\",\"scale\":\"price\"},{\"name\":\"slope\",\"scale\":\"auto\"}]}"));
+}
+
+void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
+{
+    double price,vol;
+    price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+    printf("%u: %12.8f %12.8f\n",iQ->timestamp,price,vol);
 }
 
 char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD];
     uint32_t start,end,resolution;
+    int32_t numbids,numasks;
     uint64_t baseid,relid;
+    cJSON *json;
     copy_cJSON(sigstr,objs[0]);
     start = (uint32_t)get_API_int(objs[1],0);
     end = (uint32_t)get_API_int(objs[2],(uint32_t)time(NULL));
@@ -2269,14 +2319,10 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     copy_cJSON(base,objs[6]);
     copy_cJSON(rel,objs[7]);
     copy_cJSON(exchange,objs[8]);
-    if ( strcmp(sigstr,"SMA") == 0 )
-    {
-        return(clonestr("{\"SMA\":\"[[300000000, 1.234567, 1.234777, 1.234666, 1.234570], [300000060, 1.234577, 1.234777, 1.234656, 1.234560]]\"}"));
-    }
-    else if ( strcmp(sigstr,"slope") == 0 )
-    {
-        return(clonestr("{\"slope\":\"[[300000000, 0.00000001234567, 0.00000001234567, -0.00000001234567, 0.00000001234567], [300000000, 0.00000001234567, 0.00000001234567, -0.00000001234567, 0.00000001234567]]\"}"));
-    } else return(clonestr("{\"error\":\"unknown signal\"}"));
+    json = cJSON_CreateObject();
+    if ( (numbids= scan_exchange_prices(disp_quote,&json,1,exchange,base,rel,baseid,relid)) == 0 && (numasks= scan_exchange_prices(disp_quote,&json,-1,exchange,rel,base,relid,baseid)) == 0)
+        return(clonestr("{\"error\":\"no data\"}"));
+    return(clonestr("{\"result\":\"test\"}"));
 }
 
 
