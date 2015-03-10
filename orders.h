@@ -2304,39 +2304,6 @@ void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
     printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
 }
 
-void _update_bar(float bar[NUM_BARPRICES],double bid,double ask)
-{
-    //fprintf(stderr,"_(%f %f) ",bid,ask);
-    //if ( (bid= check_price(bid)) != 0.f )
-    if ( bid != 0. )
-    {
-        bar[BARI_LASTBID] = bid;
-        if ( bar[BARI_FIRSTBID] == 0.f )
-            bar[BARI_HIGHBID] = bar[BARI_LOWBID] = bar[BARI_FIRSTBID] = bid;
-        else
-        {
-            if ( bid > bar[BARI_HIGHBID] )
-                bar[BARI_HIGHBID] = bid;
-            if ( bid < bar[BARI_LOWBID] )
-                bar[BARI_LOWBID] = bid;
-        }
-    }
-    if ( ask != 0. ) //(ask= check_price(ask)) != 0.f )
-    {
-        bar[BARI_LASTASK] = ask;
-        if ( bar[BARI_FIRSTASK] == 0.f )
-            bar[BARI_HIGHASK] = bar[BARI_LOWASK] = bar[BARI_FIRSTASK] = ask;
-        else
-        {
-            if ( ask > bar[BARI_HIGHASK] )
-                bar[BARI_HIGHASK] = ask;
-            if ( ask < bar[BARI_LOWASK] )
-                bar[BARI_LOWASK] = ask;
-        }
-        //printf("%d.(%f %f) ",i,exp(bid),exp(ask));
-    }
-}
-
 void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
 {
     struct displaybars *bars = ptr;
@@ -2344,14 +2311,11 @@ void update_displaybars(void *ptr,int32_t dir,struct InstantDEX_quote *iQ)
     int32_t ind;
     ind = (int32_t)((long)iQ->timestamp - bars->start) / bars->resolution;
     price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
-   // if ( dir < 0 )
-   //     fprintf(stderr,"%d.(%f %f).%d ",dir,price,vol,ind);
     if ( ind >= 0 && ind < bars->width )
     {
-        _update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
+        update_bar(bars->bars[ind],dir > 0 ? price : 0,dir < 0 ? price : 0);
         //printf("ind.%d %u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",ind,iQ->timestamp,dir,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
     }
-    //sleep(1);
 }
 
 cJSON *ohlc_json(float bar[NUM_BARPRICES])
@@ -2394,11 +2358,22 @@ int32_t finalize_displaybars(struct displaybars *bars)
     return(nonz);
 }
 
+int32_t conv_sigstr(char *sigstr)
+{
+    int32_t bari;
+    if ( strcmp(sigstr,"ohlc") == 0 )
+        return(NUM_BARPRICES);
+    for (bari=0; bari<NUM_BARPRICES; bari++)
+        if ( strcmp(barinames[bari],sigstr) == 0 )
+            return(bari);
+    return(-1);
+}
+
 char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD],*retstr;
     uint32_t width,resolution,now = (uint32_t)time(NULL);
-    int32_t i,start,numbids,numasks = 0;
+    int32_t i,start,sigid,numbids,numasks = 0;
     uint64_t baseid,relid;
     struct displaybars *bars;
     cJSON *json,*array;
@@ -2426,15 +2401,18 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,base,rel,baseid,relid);
     if ( numbids == 0 && numasks == 0)
         return(clonestr("{\"error\":\"no data\"}"));
-    if ( finalize_displaybars(bars) > 0 )
+    if ( finalize_displaybars(bars) > 0 && (sigid= conv_sigstr(sigstr)) >= 0 )
     {
-        printf("now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
+        printf("sigid.%d now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",sigid,time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
         for (i=0; i<bars->width; i++)
-            if ( bars->bars[i][BARI_FIRSTBID] != 0.f )
-                cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
-        cJSON_AddItemToObject(json,"ohlc",array);
+        {
+            if ( sigid < NUM_BARPRICES )
+                cJSON_AddItemToArray(array,cJSON_CreateNumber(bars->bars[i][sigid]));
+            else cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
+        }
+        cJSON_AddItemToObject(json,sigstr,array);
         retstr = cJSON_Print(json);
         free_json(json);
         free(bars);

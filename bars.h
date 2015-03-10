@@ -9,6 +9,23 @@
 #ifndef xcode_bars_h
 #define xcode_bars_h
 
+#define BARI_FIRSTBID 0
+#define BARI_FIRSTASK 1
+#define BARI_LOWBID 2
+#define BARI_HIGHASK 3
+#define BARI_HIGHBID 4
+#define BARI_LOWASK 5
+#define BARI_LASTBID 6
+#define BARI_LASTASK 7
+
+#define BARI_ARBBID 8
+#define BARI_ARBASK 9
+#define BARI_VIRTBID 10
+#define BARI_VIRTASK 11
+#define BARI_AVEBID 12
+#define BARI_AVEASK 13
+#define BARI_MEDIAN 14
+#define BARI_AVEPRICE 15
 
 #define TRADEVALS_FIFOSIZE (60+(2*((HARDCODED_CONTAMINATION_PIXELS+1) * 180))) //TRADEVALS_MAXPRIME)))
 #define HARDCODED_CONTAMINATION_PIXELS 6
@@ -20,6 +37,11 @@
 #define ADD_ZFLOATS(dest,src) (dest).bar.V += (src).bar.V, (dest).nonz.V += (src).nonz.V
 #define invert_price(x) (((x) == 0.) ? 0. : (1. / (x)))
 
+char *barinames[NUM_BARPRICES] =
+{
+    "firstbid", "firstask", "lowbid", "highask", "highbid", "lowask", "lowbid", "lastask",
+    "arbbid", "arbask", "virtbid", "virtask", "avebid", "aveask", "median", "aveprice"
+};
 
 void invert_bar(float invbar[NUM_BARPRICES],float bar[NUM_BARPRICES])
 {

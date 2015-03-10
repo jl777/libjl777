@@ -49,8 +49,6 @@ void Initjl777vars()
 \
 #define BARI_ARBBID 8\n\
 #define BARI_ARBASK 9\n\
-#define BARI_MINBID 10\n\
-#define BARI_MAXASK 11\n\
 #define BARI_VIRTBID 10\n\
 #define BARI_VIRTASK 11\n\
 #define BARI_AVEBID 12\n\

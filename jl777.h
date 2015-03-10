@@ -46,8 +46,6 @@
 
 #define BARI_ARBBID 8
 #define BARI_ARBASK 9
-#define BARI_MINBID 10
-#define BARI_MAXASK 11
 #define BARI_VIRTBID 10
 #define BARI_VIRTASK 11
 #define BARI_AVEBID 12
