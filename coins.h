@@ -740,8 +740,10 @@ int32_t is_enabled_command(char *command)
             copy_cJSON(str,cJSON_GetArrayItem(array,i));
             if ( strcmp(str,command) == 0 )
                 return(i+1);
+            //fprintf(stderr,"%s ",str);
         }
     }
+    //fprintf(stderr,"%s not in commands[]\n",command);
     return(0);
 }
 
