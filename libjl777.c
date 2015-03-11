@@ -585,16 +585,18 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
     char *block_on_SuperNET(int32_t blockflag,char *JSONstr);
     static char password[512],pin[64],*filebuf=0;
     static int64_t filelen=0,allocsize=0;
-	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],mediatype[MAX_JSON_FIELD],*retstr,*str,*filestr;
+	char buf[MAX_JSON_FIELD],fname[MAX_JSON_FIELD],mediatype[MAX_JSON_FIELD],client_name[1024],client_ip[1024],*retstr,*str,*filestr;
     cJSON *json,*array,*map;
     struct coin_info *cp;
     uint64_t URL64;
-    //if ( len != 0 )
-    //printf("reason.%d len.%ld\n",reason,len);
+    if ( 0 && len != 0 )
+        printf("LWS_CALLBACK_FILTER_NETWORK_CONNECTION.%d reason.%d len.%ld\n",LWS_CALLBACK_FILTER_NETWORK_CONNECTION,reason,len);
     strcpy(mediatype,"text/html");
     switch ( reason )
     {
         case LWS_CALLBACK_HTTP:
+            //if ( SOFTWALL != 0 || Debuglevel < 2 )
+            //    return(-1);
             if ( len < 1 )
             {
                 //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_BAD_REQUEST, NULL);
@@ -713,11 +715,13 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
              * connection continue.
              */
         case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-#if 0
+//#if 0
             libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
             fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
-#endif
+//#endif
             // if we returned non-zero from here, we kill the connection
+            if ( strcmp("127.0.0.1",client_ip) != 0 )
+                return(-1);
             break;
         case LWS_CALLBACK_GET_THREAD_ID:
             /*

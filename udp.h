@@ -238,8 +238,8 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( addr != 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
-        if ( SOFTWALL != 0 )
-            printf("SOFTWALL: is_whitelisted.%d %s\n",is_whitelisted(ipaddr),ipaddr);
+        //if ( SOFTWALL != 0 )
+        //    printf("SOFTWALL: is_whitelisted.%d %s nread.%ld\n",is_whitelisted(ipaddr),ipaddr,nread);
         if ( SOFTWALL != 0 && is_whitelisted(ipaddr) <= 0 )
         {
             printf("SOFTWALL: blocks %s:%d %ld bytes\n",ipaddr,supernet_port,nread);
@@ -248,7 +248,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
         if ( notlocalip(ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-    } else printf("_on_udprecv without addr?\n");
+    } else if ( nread > 0 ) printf("_on_udprecv without addr? nread.%ld internal.%d queue.%d\n",nread,internalflag,queueflag);
     if ( cp != 0 && nread > 0 )
     {
         
