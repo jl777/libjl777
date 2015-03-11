@@ -607,8 +607,8 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             memcpy(str,(void *)((long)in + 1),len-1);
             str[len-1] = 0;
             convert_percent22(str);
-            if ( Debuglevel > 3 )
-                printf("RPC GOT.(%s)\n",str);
+            if ( Debuglevel > 1 )
+                printf("RPC GOT.(%s) from user.(%s)\n",str,user);
             if ( str[0] == 0 || (str[0] != '[' && str[0] != '{') )
             {
                 URL64 = 0;

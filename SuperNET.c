@@ -854,6 +854,200 @@ var rbst = Math.floor((((blk.baseTarget*lasttime)/60)/153722867)*100);
 
 */
 
+/*A * B is calculated as A0*B0 + A1*B1
+
+come-from-beyond [11:30 PM]
+|A|*|B| is calculated as sqrt(A0*A0+A1*A1)*sqrt(B0*B0+B1*B1)
+
+come-from-beyond [11:30 PM]
+so, cosine = A*B / (|A|*|B|)*/
+
+double cos64bits(uint64_t x,uint64_t y)
+{
+    static double sqrts[65],sqrtsB[64*64+1];
+    int32_t i,wta,wtb,dot;
+    if ( sqrts[1] == 0. )
+    {
+        for (i=1; i<=64; i++)
+            sqrts[i] = sqrt(i);
+        for (i=1; i<=64*64; i++)
+            sqrtsB[i] = sqrt(i);
+    }
+    for (i=wta=wtb=dot=0; i<64; i++,x>>=1,y>>=1)
+    {
+        if ( (x & 1) != 0 )
+        {
+            wta++;
+            if ( (y & 1) != 0 )
+                wtb++, dot++;
+        }
+        else if ( (y & 1) != 0 )
+            wtb++;
+    }
+    if ( wta != 0 && wtb != 0 )
+    {
+        static double errsum,errcount;
+        double cosA,cosB;
+        errcount += 1.;
+        cosA = ((double)dot / (sqrts[wta] * sqrts[wtb]));
+        cosB = ((double)dot / (sqrtsB[wta * wtb]));
+        errsum += fabs(cosA - cosB);
+        if ( fabs(cosA - cosB) > SMALLVAL )
+            printf("cosA %f vs %f [%.20f] ave error [%.20f]\n",cosA,cosB,cosA-cosB,errsum/errcount);
+        return(cosB);
+    }
+    return(0.);
+}
+
+
+#define MAXTESTPEERS 32
+#define NETWORKSIZE 10000
+long numxmit,foundcount;
+uint64_t currentsearch;
+int32_t updateroutingstats(int32_t hops,uint64_t vectors[NETWORKSIZE][MAXTESTPEERS],uint64_t *peers,int32_t numpeers,uint64_t dest);
+
+int32_t _updateroutingstats(int32_t hops,uint64_t vectors[NETWORKSIZE][MAXTESTPEERS],uint64_t *peers,int32_t numpeers,uint64_t dest)
+{
+    int32_t i,hishops,besthops = -1;
+    for (i=0; i<numpeers; i++)
+    {
+        hishops = updateroutingstats(hops,vectors,vectors[peers[i]],numpeers,dest);
+        if ( besthops < 0 || hishops < besthops )
+            besthops = hishops;
+    }
+    return(besthops);
+}
+
+int32_t updateroutingstats(int32_t hops,uint64_t vectors[NETWORKSIZE][MAXTESTPEERS],uint64_t *peers,int32_t numpeers,uint64_t dest)
+{
+    int32_t i,hishops,besthops,maxi = -1;
+    double myval,cosval,maxval = 0.;
+    uint64_t x;
+    hops++;
+    numxmit++;
+    besthops = -1;
+    if ( hops == 1 )
+    {
+        currentsearch = dest;
+        for (i=0; i<numpeers; i++)
+        {break;
+            hishops = _updateroutingstats(hops,vectors,vectors[peers[i]],numpeers,dest);
+            if ( besthops < 0 || hishops < besthops )
+                besthops = hishops;
+        }
+    }
+    else if ( (hops % 10) == 0 )
+        return(-1);
+    if ( peers[numpeers] == dest )
+    {
+        if ( currentsearch == dest )
+        {
+            currentsearch = 0;
+            foundcount++;
+        }
+        printf("%d ",hops);
+        return(hops);
+    }
+    //myval = (64 - bitweight(peers[numpeers] ^ dest));
+    myval = cos64bits(peers[numpeers],dest);
+    for (i=0; i<numpeers; i++)
+    {
+        x = vectors[peers[i]][numpeers];
+        cosval = cos64bits(x,dest);
+        //cosval = (64 - bitweight(x ^ dest));
+        //printf("%.5f ",cosval);
+        if ( cosval > maxval )
+        {
+            maxval = cosval;
+            maxi = i;
+        }
+        if ( 1 && hops <= 1 )//0 && cosval > myval && cosval > .7 )//.65 )
+        {
+            hishops = updateroutingstats(hops,vectors,vectors[peers[i]],numpeers,dest);
+            if ( besthops < 0 || hishops < besthops )
+                besthops = hishops;
+            if ( hishops >= 0 )
+                break;
+        }
+    }
+    // printf("maxi.%-2d %.3f | hops.%d %llu vs %llu\n",maxi,maxval,hops,maxi>=0?(long long)vectors[peers[maxi]][numpeers]:0,(long long)dest);
+    if ( 1 && besthops < 0 && maxi >= 0 && maxval > 0.05 )
+    {
+        hishops = updateroutingstats(hops,vectors,vectors[peers[maxi]],numpeers,dest);
+        if ( besthops < 0 || hishops < besthops )
+            besthops = hishops;
+    }
+    return(besthops);
+}
+
+void sim()
+{
+    static uint64_t vectors[NETWORKSIZE][MAXTESTPEERS];
+    void randombytes(uint8_t *x,uint64_t xlen);
+    int32_t hist[100],i,j,n,hops,maxhops,sumhops,numpeers = (MAXTESTPEERS - 1);
+    uint64_t x,y;
+    memset(hist,0,sizeof(hist));
+    double cosval,sum,total,minval = 0,maxval = 0.;
+    n = (int)(sizeof(vectors)/sizeof(vectors[0]));
+    for (i=0; i<n; i++)
+    {
+        randombytes((uint8_t *)&vectors[i][numpeers],sizeof(vectors[i][numpeers]));
+        //cos64bits(vectors[i][numpeers],vectors[i][numpeers] ^ (1L<<(rand()%64)));
+    }
+    for (i=0; i<n; i++)
+    {
+        for (j=0; j<numpeers; j++)
+            while ( (vectors[i][j]= (rand() % n)) == i )
+                ;
+    }
+    for (i=sumhops=maxhops=0; i<1000; i++)
+    {
+        //randombytes((uint8_t *)&x,sizeof(x));
+        x = vectors[rand() % n][numpeers];
+        if ( (hops= updateroutingstats(0,vectors,vectors[rand() % n],numpeers,x)) >= 0 )
+        {
+            sumhops += hops;
+            if ( hops > maxhops )
+                maxhops = hops;
+        }
+    }
+    printf("avehops %.1f maxhops.%d | numxmit.%ld ave %.1f | foundcount.%ld %.2f%%\n",(double)sumhops/foundcount,maxhops,numxmit,(double)numxmit/i,foundcount,100.*(double)foundcount/i);
+    getchar();
+    for (total=i=0; i<n; i++)
+    {
+        x = vectors[i][numpeers];
+        for (sum=j=0; j<n; j++)
+        {
+            if ( i == j )
+                continue;
+            y = vectors[j][numpeers];
+            cosval = cos64bits(x,y);
+            sum += cosval;
+            total += cosval;
+            hist[(int)(cosval * 100)]++;
+            if ( cosval > maxval )
+            {
+                maxval = cosval;
+                fprintf(stderr,"[%.6f> ",cosval);
+            }
+            if ( minval == 0. || cosval < minval )
+            {
+                minval = cosval;
+                fprintf(stderr,"<%.6f] ",cosval);
+            }
+        }
+        fprintf(stderr,"%.3f ",sum/n);
+    }
+    printf("\nn.%d numpeers.%d minval %.8f maxval %.8f total %f\n",n,numpeers,minval,maxval,total/(n*n));
+    for (i=0; i<100; i++)
+    {
+        printf("%.6f ",(double)hist[i]/(n*n));
+        if ( (i % 10) == 9 )
+            printf("i.%d\n",i);
+    }
+    printf("histogram\n");
+}
+
 int main(int argc,const char *argv[])
 {
     FILE *fp;
@@ -861,15 +1055,7 @@ int main(int argc,const char *argv[])
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
 #ifdef __APPLE__
-   /* unscript();
- int32_t _convert_to_bitcoinhex(char *scriptasm);
-    char buf[512];
-    strcpy(buf,"OP_RETURN 00");
-    //_convert_to_bitcoinhex(buf);
-    printf("(%s) -> (%s)\n","OP_RETURN 00",buf);
-    luatest("hello world","..");
-    regexptest();
-    getchar();*/
+    sim(), getchar();
 #else
     if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
 #endif

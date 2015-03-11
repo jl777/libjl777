@@ -1962,33 +1962,33 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
         } else toNXT = fromNXT = toBTC = fromBTC = toBTCD = fromBTCD = toJLH = fromJLH = 0;
         if ( n > 0 )
         {
+            json = cJSON_CreateObject();
+            bids = cJSON_CreateArray();
+            asks = cJSON_CreateArray();
             if ( op->numbids != 0 || op->numasks != 0 )
             {
-                json = cJSON_CreateObject();
-                bids = cJSON_CreateArray();
                 for (i=0; i<op->numbids; i++)
                 {
                     if ( (item= gen_orderbook_item(&op->bids[i],allflag,baseid,relid)) != 0 )
                         cJSON_AddItemToArray(bids,item);
                 }
-                asks = cJSON_CreateArray();
                 for (i=0; i<op->numasks; i++)
                 {
                     if ( (item= gen_orderbook_item(&op->asks[i],allflag,baseid,relid)) != 0 )
                         cJSON_AddItemToArray(asks,item);
                 }
-                expand_nxt64bits(assetA,op->baseid);
-                expand_nxt64bits(assetB,op->relid);
-                sprintf(baserel,"%s/%s",op->base,op->rel);
-                cJSON_AddItemToObject(json,"pair",cJSON_CreateString(baserel));
-                cJSON_AddItemToObject(json,"obookid",cJSON_CreateString(obook));
-                cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(assetA));
-                cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
-                cJSON_AddItemToObject(json,"bids",bids);
-                cJSON_AddItemToObject(json,"asks",asks);
-                cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-                retstr = cJSON_Print(json);
             }
+            expand_nxt64bits(assetA,op->baseid);
+            expand_nxt64bits(assetB,op->relid);
+            sprintf(baserel,"%s/%s",op->base,op->rel);
+            cJSON_AddItemToObject(json,"pair",cJSON_CreateString(baserel));
+            cJSON_AddItemToObject(json,"obookid",cJSON_CreateString(obook));
+            cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(assetA));
+            cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
+            cJSON_AddItemToObject(json,"bids",bids);
+            cJSON_AddItemToObject(json,"asks",asks);
+            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+            retstr = cJSON_Print(json);
             if ( op != books[0] )
                 free_orderbook(op);
             free_orderbook(toNXT), free_orderbook(fromNXT);
@@ -2344,17 +2344,12 @@ int32_t finalize_displaybars(struct displaybars *bars)
 {
     int32_t ind,nonz = 0;
     float *bar,aveprice;
-    printf("finalize.%d\n",bars->width);
     for (ind=0; ind<bars->width; ind++)
     {
         bar = bars->bars[ind];
         if ( (aveprice= calc_barprice_aves(bar)) != 0.f )
-        {
-            fprintf(stderr,"%f ",aveprice);
             nonz++;
-        }
     }
-    printf("finalize nonz.%d\n",nonz);
     return(nonz);
 }
 

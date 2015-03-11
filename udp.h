@@ -238,6 +238,8 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
     if ( addr != 0 )
     {
         supernet_port = extract_nameport(ipaddr,sizeof(ipaddr),(struct sockaddr_in *)addr);
+        if ( SOFTWALL != 0 )
+            printf("SOFTWALL: is_whitelisted.%d %s\n",is_whitelisted(ipaddr),ipaddr);
         if ( SOFTWALL != 0 && is_whitelisted(ipaddr) <= 0 )
         {
             printf("SOFTWALL: blocks %s:%d %ld bytes\n",ipaddr,supernet_port,nread);
@@ -246,7 +248,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
         if ( notlocalip(ipaddr) == 0 )
             strcpy(ipaddr,cp->myipaddr);
         pserver = get_pserver(&createdflag,ipaddr,supernet_port,0);
-    }
+    } else printf("_on_udprecv without addr?\n");
     if ( cp != 0 && nread > 0 )
     {
         
@@ -1106,33 +1108,36 @@ void SaM_PrepareIndices()
 		SAM_INDICES[currentIndex] = nextIndex;
 		currentIndex = nextIndex;
 	}
-    /*
-     TRIT SAMANY[3][3],SAMSUM[3][3];
-     #define SAM_ANY(a,b) SAMANY[a+1][b+1]
-     #define SAM_SUM(a,b) SAMSUM[a+1][b+1]
-     for (i=0; i<3; i++)
-        for (j=0; j<3; j++)
+    if ( 0 )
+    {
+        int j;
+        TRIT SAMANY[3][3],SAMSUM[3][3];
+#define SAM_ANY(a,b) SAMANY[a+1][b+1]
+#define SAM_SUM(a,b) SAMSUM[a+1][b+1]
+        for (i=0; i<3; i++)
+            for (j=0; j<3; j++)
+            {
+                SAMANY[i][j] = SaM_Any(i-1,j-1);
+                SAMSUM[i][j] = SaM_Sum(i-1,j-1);
+            }
+        for (i=0; i<3; i++)
         {
-            SAMANY[i][j] = SaM_Any(i-1,j-1);
-            SAMSUM[i][j] = SaM_Sum(i-1,j-1);
+            printf("{ ");
+            for (j=0; j<3; j++)
+                printf("%d, ",SAMANY[i][j]);
+            printf("}, ");
         }
-    for (i=0; i<3; i++)
-    {
-        printf("{ ");
-        for (j=0; j<3; j++)
-            printf("%d, ",SAMANY[i][j]);
-        printf("}, ");
+        printf(" SAMANY\n");
+        for (i=0; i<3; i++)
+        {
+            printf("{ ");
+            for (j=0; j<3; j++)
+                printf("%d, ",SAMSUM[i][j]);
+            printf("}, ");
+        }
+        printf(" SAMSUM\n");
+        getchar();
     }
-    printf(" SAMANY\n");
-    for (i=0; i<3; i++)
-    {
-        printf("{ ");
-        for (j=0; j<3; j++)
-            printf("%d, ",SAMSUM[i][j]);
-        printf("}, ");
-    }
-    printf(" SAMSUM\n");
-    getchar();*/
 }
 
 void SaM_SplitAndMerge(struct SAM_STATE *state,int32_t numrounds)
@@ -1196,9 +1201,9 @@ void SaM_Absorb(struct SAM_STATE *state,const TRIT *input,uint32_t inputSize,int
 
 void SaM_Squeeze(struct SAM_STATE *state,TRIT *output,int32_t numrounds)
 {
-	SaM_SplitAndMerge(state,numrounds);
+	SaM_SplitAndMerge(state,(numrounds < SAM_MAGIC_NUMBER) ? 1 : numrounds);
 	memcpy(output,state->trits,SAM_HASH_SIZE * sizeof(TRIT));
-	SaM_SplitAndMerge(state,numrounds);
+	SaM_SplitAndMerge(state,(numrounds < SAM_MAGIC_NUMBER) ? 1 : numrounds);
 }
 
 uint64_t Hit(const uint8_t *input,int32_t inputSize,int32_t numrounds)
@@ -1210,36 +1215,12 @@ uint64_t Hit(const uint8_t *input,int32_t inputSize,int32_t numrounds)
     int32_t i,numtrits;
     if ( inputSize > MAX_INPUT_SIZE )
         inputSize = MAX_INPUT_SIZE;
-    //memset(inputTrits,0,sizeof(inputTrits));
-    //memset(hash,0,sizeof(hash));
 	numtrits = ConvertToTrits(input,inputSize,inputTrits);
-    if ( 0 )
-    {
-        uint8_t checkbuf[SAM_HASH_SIZE];
-        int32_t n;
-        n = ConvertToBytes(inputTrits,numtrits,checkbuf);
-        if ( n != inputSize )
-            printf("ConvertToBytes error to bytes.%d vs input.%d\n",n,inputSize);
-        else if ( memcmp(input,checkbuf,n) != 0 )
-            printf("memcmp error after converts\n");
-    }
 	SaM_Initialize(&state);
 	SaM_Absorb(&state,inputTrits,inputSize << 3,numrounds);
 	SaM_Squeeze(&state,hash,numrounds);
 	for (i=0; i<27; i++)
-    {
-        /*if ( (trit= hash[i]) < -1 )
-        {
-            printf("hash[%d] underflow %d\n",i,hash[i]);
-            //trit = -1;
-        }
-        else if ( trit > 1 )
-        {
-            printf("hash[%d] overflow %d\n",i,hash[i]);
-            //trit = 1;
-        }*/
  		hit = (hit * 3 + hash[i] + 1);
-    }
 	return(hit);
 }
 
