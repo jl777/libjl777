@@ -717,11 +717,14 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
         case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 //#if 0
             libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
-            fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
 //#endif
             // if we returned non-zero from here, we kill the connection
             if ( strcmp("127.0.0.1",client_ip) != 0 )
+            {
+                if ( Debuglevel > 0 )
+                    fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
                 return(-1);
+            }
             break;
         case LWS_CALLBACK_GET_THREAD_ID:
             /*
