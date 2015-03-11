@@ -827,6 +827,8 @@ char *getdb_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender
 {
     char dirstr[MAX_JSON_FIELD],contact[MAX_JSON_FIELD],key[MAX_JSON_FIELD],destip[MAX_JSON_FIELD],*retstr = 0;
     int32_t sequenceid,dir;
+    if ( is_remote_access(previpaddr) != 0 )
+        return(0);
     copy_cJSON(contact,objs[0]);
     sequenceid = get_API_int(objs[1],0);
     copy_cJSON(key,objs[2]);

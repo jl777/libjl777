@@ -595,8 +595,6 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
     switch ( reason )
     {
         case LWS_CALLBACK_HTTP:
-            //if ( SOFTWALL != 0 || Debuglevel < 2 )
-            //    return(-1);
             if ( len < 1 )
             {
                 //libwebsockets_return_http_status(context, wsi,HTTP_STATUS_BAD_REQUEST, NULL);
