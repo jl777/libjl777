@@ -724,6 +724,27 @@ int32_t is_active_coin(char *coinstr)
     return(0);
 }
 
+int32_t is_enabled_command(char *command)
+{
+    int32_t i,n;
+    cJSON *array;
+    char str[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"commands");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( strcmp(str,command) == 0 )
+                return(i+1);
+        }
+    }
+    return(0);
+}
+
 void init_Specialaddrs()
 {
     cJSON *array,*item;

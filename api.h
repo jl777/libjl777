@@ -2010,6 +2010,8 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
         secretobj = cJSON_GetObjectItem(argjson,"secret");
         copy_cJSON(NXTaddr,nxtobj);
         copy_cJSON(command,obj);
+        if ( is_enabled_command(command) == 0 )
+            return(clonestr("{\"error\":\"command disabled\"}"));
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
         {
