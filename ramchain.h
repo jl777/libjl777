@@ -1045,7 +1045,7 @@ long _stripwhite(char *buf,int accept)
     for (i=j=0; buf[i]!=0; i++)
     {
         buf[j] = c = buf[i];
-        if ( c == accept || (c != ' ' && c != '\n' && c != '\r' && c != '\t') )
+        if ( c == accept || (c != ' ' && c != '\n' && c != '\r' && c != '\t' && c != '\b') )
             j++;
     }
     buf[j] = 0;
@@ -2828,7 +2828,10 @@ char *_calc_withdrawaddr(char *withdrawaddr,struct ramchain_info *ram,struct NXT
             tp->minconvrate = get_API_float(cJSON_GetObjectItem(argjson,"rate"));
             tp->convexpiration = (int32_t)get_API_int(cJSON_GetObjectItem(argjson,"expiration"),0);
             if ( withdrawaddr[0] != 0 ) // no address means to create user credit
+            {
+                _stripwhite(withdrawaddr,0);
                 tp->convwithdrawaddr = clonestr(withdrawaddr);
+            }
         }
         else withdrawaddr[0] = autoconvert[0] = 0;
     }

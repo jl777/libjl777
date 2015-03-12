@@ -237,7 +237,7 @@ int32_t add_random_onionlayers(char *hopNXTaddr,int32_t numlayers,uint8_t *maxbu
     {
         if ( numlayers > MAX_ONION_LAYERS )
             numlayers = MAX_ONION_LAYERS;
-        if ( Debuglevel > 1 )
+        if ( Debuglevel > 2 )
             printf("add_random_onionlayers %d of %d *srcp %p\n",numlayers,Global_mp->Lfactor,*srcp);
         memset(dest,0,sizeof(dest));
         memcpy(srcbuf,*srcp,len);
