@@ -2294,7 +2294,32 @@ char *tradehistory_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
 
 char *allsignals_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    return(clonestr("{\"signals\":[{\"name\":\"ohlc\",\"scale\":\"price\"},{\"name\":\"SMA\",\"scale\":\"price\"},{\"name\":\"slope\",\"scale\":\"auto\"}]}"));
+    cJSON *array,*item,*json = cJSON_CreateObject();
+    char *retstr;
+    int32_t i;
+    array = cJSON_CreateArray();
+    for (i=0; i<NUM_BARPRICES; i++)
+    {
+        item = cJSON_CreateObject();
+        cJSON_AddItemToObject(item,"signal",cJSON_CreateString(barinames[i]));
+        cJSON_AddItemToObject(item,"scale",cJSON_CreateString("price"));
+        cJSON_AddItemToArray(array,item);
+    }
+    item = cJSON_CreateObject();
+    cJSON_AddItemToObject(item,"signal",cJSON_CreateString("ohlc"));
+    cJSON_AddItemToObject(item,"scale",cJSON_CreateString("price"));
+    cJSON_AddItemToObject(item,"n",cJSON_CreateNumber(4));
+    cJSON_AddItemToArray(array,item);
+  
+    item = cJSON_CreateObject();
+    cJSON_AddItemToObject(item,"signal",cJSON_CreateString("volume"));
+    cJSON_AddItemToObject(item,"scale",cJSON_CreateString("positive"));
+    cJSON_AddItemToArray(array,item);
+
+    cJSON_AddItemToObject(json,"signals",array);
+    retstr = cJSON_Print(json);
+    free_json(json);
+    return(retstr);
 }
 
 void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
@@ -2370,8 +2395,8 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     uint32_t width,resolution,now = (uint32_t)time(NULL);
     int32_t i,start,sigid,numbids,numasks = 0;
     uint64_t baseid,relid;
-    struct displaybars *bars;
-    cJSON *json,*array;
+    struct displaybars *bars = 0;
+    cJSON *json=0,*array=0;
     copy_cJSON(sigstr,objs[0]);
     start = (int32_t)get_API_int(objs[1],0);
     if ( start < 0 )
@@ -2385,34 +2410,48 @@ char *getsignal_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     copy_cJSON(base,objs[6]), base[15] = 0;
     copy_cJSON(rel,objs[7]), rel[15] = 0;
     copy_cJSON(exchange,objs[8]), exchange[15] = 0;
-    bars = calloc(1,sizeof(*bars));
-    bars->baseid = baseid, bars->relid = relid, bars->resolution = resolution, bars->width = width, bars->start = start;
-    bars->end = start + width*resolution;
-    printf("now %ld start.%u end.%u res.%d width.%d\n",time(NULL),start,bars->end,resolution,width);
-    if ( bars->end > time(NULL)+100*resolution )
-        return(clonestr("{\"error\":\"too far in future\"}"));
-    strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
-    numbids = scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid);
-    numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,base,rel,baseid,relid);
-    if ( numbids == 0 && numasks == 0)
-        return(clonestr("{\"error\":\"no data\"}"));
-    if ( finalize_displaybars(bars) > 0 && (sigid= conv_sigstr(sigstr)) >= 0 )
+    if ( strcmp(sigstr,"volume") == 0 )
     {
-        printf("sigid.%d now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",sigid,time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
         json = cJSON_CreateObject();
         array = cJSON_CreateArray();
-        for (i=0; i<bars->width; i++)
+        for (i=0; i<width; i++)
+            cJSON_AddItemToArray(array,cJSON_CreateNumber(rand() % 100000));
+    }
+    else
+    {
+        bars = calloc(1,sizeof(*bars));
+        bars->baseid = baseid, bars->relid = relid, bars->resolution = resolution, bars->width = width, bars->start = start;
+        bars->end = start + width*resolution;
+        printf("now %ld start.%u end.%u res.%d width.%d\n",time(NULL),start,bars->end,resolution,width);
+        if ( bars->end > time(NULL)+100*resolution )
+            return(clonestr("{\"error\":\"too far in future\"}"));
+        strcpy(bars->base,base), strcpy(bars->rel,rel), strcpy(bars->exchange,exchange);
+        numbids = scan_exchange_prices(update_displaybars,bars,1,exchange,base,rel,baseid,relid);
+        numasks = scan_exchange_prices(update_displaybars,bars,-1,exchange,base,rel,baseid,relid);
+        if ( numbids == 0 && numasks == 0)
+            return(clonestr("{\"error\":\"no data\"}"));
+        if ( finalize_displaybars(bars) > 0 && (sigid= conv_sigstr(sigstr)) >= 0 )
         {
-            if ( sigid < NUM_BARPRICES )
-                cJSON_AddItemToArray(array,cJSON_CreateNumber(bars->bars[i][sigid]));
-            else cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
-        }
+            printf("sigid.%d now %ld start.%u end.%u res.%d width.%d | numbids.%d numasks.%d\n",sigid,time(NULL),bars->start,bars->end,bars->resolution,bars->width,numbids,numasks);
+            json = cJSON_CreateObject();
+            array = cJSON_CreateArray();
+            for (i=0; i<bars->width; i++)
+            {
+                if ( sigid < NUM_BARPRICES )
+                    cJSON_AddItemToArray(array,cJSON_CreateNumber(bars->bars[i][sigid]));
+                else cJSON_AddItemToArray(array,ohlc_json(bars->bars[i]));
+            }
+        } else free(bars);
+    }
+    if ( json != 0 && array != 0 )
+    {
         cJSON_AddItemToObject(json,sigstr,array);
         retstr = cJSON_Print(json);
         free_json(json);
-        free(bars);
+        if ( bars != 0 )
+            free(bars);
         return(retstr);
-    } else free(bars);
+    }
     return(clonestr("{\"error\":\"no data\"}"));
 }
 

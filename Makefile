@@ -70,6 +70,9 @@ chess:  doesntexist; \
 chessjs:  doesntexist; \
     git clone https://github.com/exoticorn/stockfish-js
 
+nanomsg:  doesntexist; \
+    git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make; make check; sudo make install; cd ..
+
 patch: doesntexist; \
     #sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
     #git clone http://git.linbit.com/csync2.git; \

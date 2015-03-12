@@ -1189,6 +1189,8 @@ void init_SuperNET_settings(char *userdir)
     EXCHANGE_SLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"EXCHANGE_SLEEP"),5);
     APISLEEP = get_API_int(cJSON_GetObjectItem(MGWconf,"APISLEEP"),10);
     NORAMCHAINS = get_API_int(cJSON_GetObjectItem(MGWconf,"NORAMCHAINS"),1);
+    ENABLE_EXTERNALACCESS = get_API_int(cJSON_GetObjectItem(MGWconf,"EXTERNALACCESS"),0);
+    
     /*#ifndef HUFF_GENMODE
      DBSLEEP *= 10;
      APISLEEP *= 10;
