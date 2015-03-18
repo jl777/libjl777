@@ -131,8 +131,11 @@ int32_t prevent_queueing(char *cmd)
 
 void set_handler_fname(char *fname,char *handler,char *name)
 {
-    if ( strstr("../",name) == 0 || strstr("..\\",name) == 0 || name[0] == '/' || name[0] == '\\' || strcmp(name,"..") == 0  || strcmp(name,"*") == 0 )
+    if ( strstr("../",name) != 0 || strstr("..\\",name) != 0 || name[0] == '/' || name[0] == '\\' || strcmp(name,"..") == 0  || strcmp(name,"*") == 0 )
+    {
+        //printf("(%s) invalid_filename.(%s) %p %p %d %d %d %d\n",handler,name,strstr("../",name),strstr("..\\",name),name[0] == '/',name[0] == '\\',strcmp(name,".."),strcmp(name,"*"));
         name = "invalid_filename";
+    }
     sprintf(fname,"%s/%s/%s",DATADIR,handler,name);
 }
 
