@@ -3072,7 +3072,8 @@ int32_t ram_MGW_ready(struct ramchain_info *ram,uint32_t blocknum,uint32_t NXThe
     int32_t retval = 0;
     if ( ram->S.gatewayid >= 0 && ram->S.gatewayid < 3 && strcmp(ram->srvNXTADDR,ram->special_NXTaddrs[ram->S.gatewayid]) != 0 )
     {
-        printf("mismatched gatewayid.%d\n",ram->S.gatewayid);
+        if ( Debuglevel > 2 )
+            printf("mismatched gatewayid.%d\n",ram->S.gatewayid);
         return(0);
     }
     if ( ram->S.gatewayid < 0 || (nxt64bits != 0 && (nxt64bits % NUM_GATEWAYS) != ram->S.gatewayid) || ram->S.MGWbalance < 0 )

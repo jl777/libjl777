@@ -272,7 +272,11 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
                 up->addr = *addr;
             queue_enqueue("UDP_Q",&UDP_Q,up);
         }
-        else process_packet(internalflag,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
+        else
+        {
+            process_packet(internalflag,retjsonstr,(unsigned char *)rcvbuf->base,(int32_t)nread,udp,(struct sockaddr *)addr,ipaddr,supernet_port);
+            free(rcvbuf->base);
+        }
     }
     else if ( rcvbuf->base != 0 )
         free(rcvbuf->base);
