@@ -1877,7 +1877,9 @@ int32_t issue_createmultisig(struct coin_info *cp,struct multisig_addr *msig)
                 {
                     if ( (msigobj= cJSON_GetObjectItem(json,"address")) != 0 )
                     {
-                        if ( (redeemobj= cJSON_GetObjectItem(json,"redeemScript")) != 0 )
+                        if ( (redeemobj= cJSON_GetObjectItem(json,"redeemScript")) == 0 )
+                            redeemobj = cJSON_GetObjectItem(json,"scriptPubKey");
+                        if ( redeemobj != 0 )
                         {
                             copy_cJSON(msig->multisigaddr,msigobj);
                             copy_cJSON(msig->redeemScript,redeemobj);

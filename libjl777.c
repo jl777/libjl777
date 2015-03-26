@@ -763,29 +763,22 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 {
 	int n,opts = 0;
 	const char *iface = NULL;
-	struct lws_context_creation_info info;
+	static struct lws_context_creation_info infos[2];
+    struct lws_context_creation_info *info;
     struct libwebsocket_context *context;
-    
-	memset(&info,0,sizeof info);
-	info.port = port;
-    /*#if !defined(LWS_NO_DAEMONIZE) && !defined(WIN32)
-     if ( lws_daemonize("/tmp/.SuperNET-lock") != 0 )
-     {
-     fprintf(stderr,"Failed to daemonize\n");
-     return(-1);
-     }
-     #endif
-     signal(SIGINT, sighandler);*/
+    info = &infos[use_ssl];
+	memset(info,0,sizeof(*info));
+	info->port = port;
 	lwsl_notice("libwebsockets test server - (C) Copyright 2010-2013 Andy Green <andy@warmcat.com> -  licensed under LGPL2.1\n");
-	info.iface = iface;
-	info.protocols = protocols;
- 	info.gid = -1;
-	info.uid = -1;
-	info.options = opts;
+	info->iface = iface;
+	info->protocols = protocols;
+ 	info->gid = -1;
+	info->uid = -1;
+	info->options = opts;
 	if ( use_ssl == 0 )
     {
-		info.ssl_cert_filepath = NULL;
-		info.ssl_private_key_filepath = NULL;
+		info->ssl_cert_filepath = NULL;
+		info->ssl_private_key_filepath = NULL;
 	}
     else
     {
@@ -798,10 +791,10 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 			return -1;
 		}
 		sprintf(key_path,"SuperNET.key.pem");
-		info.ssl_cert_filepath = cert_path;
-		info.ssl_private_key_filepath = key_path;
+		info->ssl_cert_filepath = cert_path;
+		info->ssl_private_key_filepath = key_path;
 	}
-	context = libwebsocket_create_context(&info);
+	context = libwebsocket_create_context(info);
 	if ( context == NULL )
     {
 		lwsl_err("libwebsocket init failed\n");
@@ -929,27 +922,22 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     }
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
-//#ifndef __APPLE__
-//    Coinloop(0);
-//#else
     if ( IS_LIBTEST > 1 && portable_thread_create((void *)Coinloop,0) == 0 && IS_LIBTEST != 7 )
         printf("ERROR hist Coinloop SSL\n");
-//#endif
     Finished_loading = 1;
     if ( Debuglevel > 0 )
         printf("run_UVloop\n");
-    if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
-        printf("ERROR hist process_hashtablequeues\n");
+    sleep(3);
     if ( IS_LIBTEST != 7 )
     {
-		#ifndef _WIN32
+#ifndef _WIN32
         if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
             printf("ERROR hist run_libwebsockets SSL\n");
         while ( SSL_done == 0 )
             usleep(100000);
-		#else
+#else
 		SSL_done = 1;
-		#endif
+#endif
         if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
             printf("ERROR hist run_libwebsockets\n");
         sleep(3);
@@ -966,10 +954,12 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         if ( IS_LIBTEST > 0 )//&& IS_LIBTEST < 7 )
         {
             void *process_ramchains(void *_argcoinstr);
-            init_SuperNET_storage(cp->backupdir);
+            //init_SuperNET_storage(cp->backupdir);
             if ( IS_LIBTEST > 0 && IS_LIBTEST < 7 && NORAMCHAINS == 0 && portable_thread_create((void *)process_ramchains,0) == 0 )
                 printf("ERROR hist run_libwebsockets\n");
         }
+        if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
+            printf("ERROR hist process_hashtablequeues\n");
     }
     return(myipaddr);
 }

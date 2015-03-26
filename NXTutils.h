@@ -460,7 +460,7 @@ cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *
     return(json);
 }
 
-uint64_t _get_bestassetprice(char *assetcmd,char *arrayfield,uint64_t assetid)
+uint64_t _get_bestassetprice(uint64_t *volp,char *assetcmd,char *arrayfield,uint64_t assetid)
 {
     char cmd[4096],*jsonstr;
     cJSON *array,*json;
@@ -473,7 +473,11 @@ uint64_t _get_bestassetprice(char *assetcmd,char *arrayfield,uint64_t assetid)
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,arrayfield)) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) == 1 )
+            {
                 price = get_API_nxt64bits(cJSON_GetObjectItem(cJSON_GetArrayItem(array,0),"priceNQT"));
+                if ( volp != 0 )
+                    *volp = get_API_nxt64bits(cJSON_GetObjectItem(cJSON_GetArrayItem(array,0),"quantityQNT"));
+            }
             free_json(json);
         }
         free(jsonstr);
@@ -481,9 +485,9 @@ uint64_t _get_bestassetprice(char *assetcmd,char *arrayfield,uint64_t assetid)
     return(price);
 }
 
-uint64_t get_nxtlowask(uint64_t assetid) { return(_get_bestassetprice("getAskOrders","askOrders",assetid)); }
-uint64_t get_nxthighbid(uint64_t assetid) { return(_get_bestassetprice("getBidOrders","bidOrders",assetid)); }
-uint64_t get_nxtlastprice(uint64_t assetid) { return(_get_bestassetprice("getTrades","trades",assetid)); }
+uint64_t get_nxtlowask(uint64_t *sellvolp,uint64_t assetid) { return(_get_bestassetprice(sellvolp,"getAskOrders","askOrders",assetid)); }
+uint64_t get_nxthighbid(uint64_t *buyvolp,uint64_t assetid) { return(_get_bestassetprice(buyvolp,"getBidOrders","bidOrders",assetid)); }
+uint64_t get_nxtlastprice(uint64_t assetid) { return(_get_bestassetprice(0,"getTrades","trades",assetid)); }
 
 char *issue_getAsset(int32_t isMScoin,char *assetidstr)
 {

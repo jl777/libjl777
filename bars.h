@@ -344,9 +344,9 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
         }
     }
     for (i=0; i<numbids; i++)
-        ptrs->bidnxt[i] = op->bids[i].nxt64bits;
+        ptrs->bidnxt[i] = op->bids[i].U.normal.nxt64bits;
     for (i=0; i<numasks; i++)
-        ptrs->asknxt[i] = op->asks[i].nxt64bits;
+        ptrs->asknxt[i] = op->asks[i].U.normal.nxt64bits;
     /*if ( dp->polarity > 0 )
     {
         strcpy(ptrs->base,dp->base);

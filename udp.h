@@ -397,7 +397,9 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         return(-1);
     }
     r = uv_udp_send(&wr->U.ureq,pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
-    if ( r != 0 )
+    //r = uv_udp_try_send(pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr);
+    //printf("send to.(%s:%d) retval.%d\n",ipaddr,supernet_port,r);
+    if ( r < 0 )
         printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->U.ureq,wr->buf.base,wr->buf.len);
     if ( THROTTLE != 0 )
         usleep(THROTTLE * 1000);

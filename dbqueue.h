@@ -193,7 +193,7 @@ DB *open_database(int32_t selector,struct SuperNET_db *sdb,char *fname,uint32_t 
          return(0);
          } else printf("set_dup_compare %s\n",fname);*/
     }
-    if ( (ret= sdb->dbp->open(sdb->dbp,NULL,fname,NULL,type,flags,0)) != 0 )
+    if ( sdb->dbp != 0 && (ret= sdb->dbp->open(sdb->dbp,NULL,fname,NULL,type,flags,0)) != 0 )
     {
         fprintf(stderr,"open_database error.%d opening %s database\n",ret,fname);
         exit(-2);

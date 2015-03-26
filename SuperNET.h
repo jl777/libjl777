@@ -117,7 +117,9 @@ struct displaybars
     float bars[4096][NUM_BARPRICES];
 };
 
-struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount,type; uint32_t timestamp; char exchange[9],gui[5]; uint8_t closed:1,sent:1,matched:1,isask:1; };
+struct combined_amounts { uint64_t frombase,fromrel,tobase,torel; }; struct normal_fields { uint64_t nxt64bits,type; char exchange[16]; };
+union quotefields { struct combined_amounts combo; struct normal_fields normal; };
+struct InstantDEX_quote { union quotefields U; uint64_t baseamount,relamount;  uint32_t timestamp; uint8_t pad0:8,pad1:8,combined:1,closed:1,sent:1,matched:1,isask:1; char gui[9]; };
 
 struct orderbook_info { uint64_t baseid,relid,obookid; };
 

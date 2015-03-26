@@ -3573,6 +3573,8 @@ cJSON *_process_MGW_message(struct ramchain_info *ram,uint32_t height,int32_t fu
     uint64_t nxt64bits = _calc_nxt64bits(sender);
     struct multisig_addr *msig;
     // we can ignore height as the sender is validated or it is non-money get_coindeposit_address request
+    if ( _calc_nxt64bits(receiver) != ram->MGWbits && _calc_nxt64bits(sender) != ram->MGWbits )
+        return(0);
     if ( argjson != 0 )
     {
         //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
