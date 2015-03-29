@@ -32,8 +32,8 @@ union _NXT_tx_num { int64_t amountNQT; int64_t quantityQNT; };
 
 struct NXT_tx
 {
-    unsigned char refhash[32],sighash[32],fullhash[32];
-    uint64_t senderbits,recipientbits,assetidbits,txid;
+    bits256 refhash,sighash,fullhash;
+    uint64_t senderbits,recipientbits,assetidbits,txid,priceNQT;
     int64_t feeNQT;
     union _NXT_tx_num U;
     int32_t deadline,type,subtype,verify,number;
@@ -141,10 +141,11 @@ double make_jumpquote(uint64_t *baseamountp,uint64_t *relamountp,uint64_t *fromb
             ratio = (p0 * v0) / (p1 * v1);
             *frombasep *= ratio, *fromrelp *= ratio;
         }
-        *baseamountp *= ratio, *relamountp *= ratio;
-        //printf("price %f (p1 %f / p0 %f), vol %f = (v0 %f * p0 %f) / p1 %f ratio %f\n",price,p1,p0,vol,v0,p0,p1,ratio);
+        //*baseamountp *= ratio, *relamountp *= ratio;
+        printf("[%llu/%llu] price %f (p1 %f / p0 %f), vol %f = (v0 %f * p0 %f) / p1 %f ratio %f\n",(long long)*baseamountp,(long long)*relamountp,price,p1,p0,vol,v0,p0,p1,ratio);
         checkprice = calc_price_volume(&checkvol,*baseamountp,*relamountp);
-        printf("from.(%llu/%llu) to.(%llu %llu) -> (%llu/%llu) ratio %f price %f vol %f (%f %f)\n",(long long)*frombasep,(long long)*fromrelp,(long long)*tobasep,(long long)*torelp,(long long)*baseamountp,(long long)*relamountp,ratio,price,vol,checkprice,checkvol);
+        if ( Debuglevel > 2 )
+            printf("from.(%llu/%llu) to.(%llu %llu) -> (%llu/%llu) ratio %f price %f vol %f (%f %f)\n",(long long)*frombasep,(long long)*fromrelp,(long long)*tobasep,(long long)*torelp,(long long)*baseamountp,(long long)*relamountp,ratio,price,vol,checkprice,checkvol);
         //*baseamountp = vol * SATOSHIDEN;
         // *relamountp = ((price * vol) * SATOSHIDEN);
         //printf("make_jumpquote: v0 %f * %f p0 = %f, %f = v1 %f * p1 %f -> %f %f %llu/%llu = %f\n",v0,p0,v0*p0,v1*p1,v1,p1,p,v,(long long)*baseamountp,(long long)*relamountp,1./p);
@@ -290,10 +291,10 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
 {
     long size;
     int32_t n = 0;
-    uint64_t assetidbits,quantity;
+    uint64_t assetidbits,quantity,price;
     cJSON *attachmentobj;
     struct NXT_tx *utx = 0;
-    char sender[1024],recipient[1024],deadline[1024],feeNQT[1024],amountNQT[1024],type[1024],subtype[1024],verify[1024],referencedTransaction[1024],quantityQNT[1024],comment[1024],assetidstr[1024],sighash[1024],fullhash[1024],timestamp[1024],transaction[1024];
+    char sender[1024],recipient[1024],deadline[1024],feeNQT[1024],amountNQT[1024],type[1024],subtype[1024],verify[1024],referencedTransaction[1024],quantityQNT[1024],priceNQT[1024],comment[1024],assetidstr[1024],sighash[1024],fullhash[1024],timestamp[1024],transaction[1024];
     if ( json == 0 )
         return(0);
     if ( extract_cJSON_str(sender,sizeof(sender),json,"sender") > 0 ) n++;
@@ -311,9 +312,9 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     if ( extract_cJSON_str(transaction,sizeof(transaction),json,"transaction") > 0 ) n++;
     comment[0] = 0;
     assetidbits = NXT_ASSETID;
-    quantity = 0;
+    quantity = price = 0;
     size = sizeof(*utx);
-    if ( (strcmp(type,"2") == 0 && strcmp(subtype,"1") == 0) || (strcmp(type,"5") == 0 && strcmp(subtype,"3") == 0) )
+    if ( strcmp(type,"2") == 0 || strcmp(type,"5") == 0 )//&& strcmp(subtype,"3") == 0) )
     {
         attachmentobj = cJSON_GetObjectItem(json,"attachment");
         if ( attachmentobj != 0 )
@@ -328,16 +329,18 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
                 quantity = calc_nxt64bits(quantityQNT);
             else if ( extract_cJSON_str(quantityQNT,sizeof(quantityQNT),attachmentobj,"units") > 0 )
                 quantity = calc_nxt64bits(quantityQNT);
+            if ( extract_cJSON_str(priceNQT,sizeof(priceNQT),attachmentobj,"priceNQT") > 0 )
+                price = calc_nxt64bits(priceNQT);
         }
     }
     utx = malloc(size);
     memset(utx,0,size);
     if ( strlen(referencedTransaction) == 64 )
-        decode_hex(utx->refhash,32,referencedTransaction);
+        decode_hex(utx->refhash.bytes,32,referencedTransaction);
     if ( strlen(fullhash) == 64 )
-        decode_hex(utx->fullhash,32,fullhash);
+        decode_hex(utx->fullhash.bytes,32,fullhash);
     if ( strlen(sighash) == 64 )
-        decode_hex(utx->sighash,32,sighash);
+        decode_hex(utx->sighash.bytes,32,sighash);
     utx->txid = calc_nxt64bits(transaction);
     utx->senderbits = calc_nxt64bits(sender);
     utx->recipientbits = calc_nxt64bits(recipient);
@@ -346,6 +349,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     if ( quantity != 0 )
         utx->U.quantityQNT = quantity;
     else utx->U.amountNQT = calc_nxt64bits(amountNQT);
+    utx->priceNQT = price;
     utx->deadline = atoi(deadline);
     utx->type = atoi(type);
     utx->subtype = atoi(subtype);
@@ -466,7 +470,7 @@ char *respondtx(char *sender,char *signedtx,uint64_t feeB,char *feetxidstr,uint6
             pendingtx = conv_txbytes(pendingtxbytes);
             if ( pendingtx != 0 && pendingtx->senderbits == recvtx->recipientbits && pendingtx->recipientbits == recvtx->senderbits )
             {
-                if ( recvtx->verify != 0 && memcmp(pendingtx->fullhash,recvtx->refhash,sizeof(pendingtx->fullhash)) == 0 )
+                if ( recvtx->verify != 0 && memcmp(pendingtx->fullhash.bytes,recvtx->refhash.bytes,sizeof(pendingtx->fullhash)) == 0 )
                 {
                     if ( equiv_NXT_tx(recvtx,pendingtx->comment) == 0 && equiv_NXT_tx(pendingtx,recvtx->comment) == 0 )
                     {
@@ -671,8 +675,8 @@ char *makeoffer(char *verifiedNXTaddr,char *NXTACCTSECRET,char *otherNXTaddr,uin
     tx = sign_NXT_tx(utxbytes,signedtx,NXTACCTSECRET,nxt64bits,&T,0,1.);
     if ( tx != 0 )
     {
-        init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
-        init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
+        init_hexbytes_noT(sighash,tx->sighash.bytes,sizeof(tx->sighash));
+        init_hexbytes_noT(fullhash,tx->fullhash.bytes,sizeof(tx->fullhash));
         //feetxid = send_feetx(assetA,fee,fullhash);
         sprintf(buf,"{\"requestType\":\"processutx\",\"NXT\":\"%s\",\"utx\":\"%s\",\"sig\":\"%s\",\"full\":\"%s\",\"timestamp\":%ld,\"feeA\":\"%llu\",\"feeAtxid\":\"%llu\",\"quoteid\":\"%llu\"}",verifiedNXTaddr,utxbytes,sighash,fullhash,time(NULL),(long long)INSTANTDEX_FEE,(long long)feetxid,(long long)quoteid);
         feetxid = send_feetx(NXT_ASSETID,INSTANTDEX_FEE,fullhash,buf);
@@ -804,8 +808,8 @@ struct jumptrades *get_jumptrade()
 
 void get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
 {
-    init_hexbytes_noT(sighash,tx->sighash,sizeof(tx->sighash));
-    init_hexbytes_noT(fullhash,tx->fullhash,sizeof(tx->fullhash));
+    init_hexbytes_noT(sighash,tx->sighash.bytes,sizeof(tx->sighash));
+    init_hexbytes_noT(fullhash,tx->fullhash.bytes,sizeof(tx->fullhash));
 }
 
 uint64_t calc_nxtmedianprice(uint64_t assetid)
@@ -1271,17 +1275,20 @@ int32_t tweak_orders(struct NXT_tx *txptrs[],int32_t numtx,uint64_t sellid,uint6
     return(retval);
 }
 
-char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,int32_t flip,uint64_t srcqty,uint64_t baseid,uint64_t relid,uint64_t frombase,uint64_t fromrel,uint64_t tobase,uint64_t torel,uint64_t quoteid)
+char *oldmakeoffer3(char *NXTaddr,char *NXTACCTSECRET,int32_t flip,uint64_t srcqty,uint64_t baseid,uint64_t relid,cJSON *baseobj,cJSON *relobj,uint64_t quoteid)
 {
     int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t baseid,uint64_t relid);
     char comment[MAX_JSON_FIELD],assetidstr[64],feeutxbytes[2048],feesignedtx[2048],triggerhash[65],feesighash[65],buf[MAX_JSON_FIELD],*jsonstr = 0;
     uint64_t nxt64bits,qtyA,qtyB,priceNQTA,priceNQTB,feetxid,availA,availB,asktxid,bidtxid,tmp,srcarg,srcamount=0,fee = INSTANTDEX_FEE;
+    uint64_t frombase,fromrel,tobase,torel;
     struct NXT_tx T,*txptrs[1000],*feetx;
     int32_t i,errcode,numtx,matched,createdflag;
     struct NXT_asset *ap;
     double endmilli,priceA,priceB,volA,volB,ratio = 1.;
     memset(txptrs,0,sizeof(txptrs));
     nxt64bits = calc_nxt64bits(NXTaddr);
+    frombase = get_API_nxt64bits(cJSON_GetObjectItem(baseobj,"frombase")), fromrel = get_API_nxt64bits(cJSON_GetObjectItem(baseobj,"fromrel"));
+    tobase = get_API_nxt64bits(cJSON_GetObjectItem(relobj,"tobase")), torel = get_API_nxt64bits(cJSON_GetObjectItem(relobj,"torel"));
     if ( flip == 0 )
         srcarg = frombase, expand_nxt64bits(assetidstr,baseid);
     else srcarg = tobase, expand_nxt64bits(assetidstr,relid);
@@ -1317,17 +1324,6 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,int32_t flip,uint64_t srcqty,
         sprintf(buf,"{\"error\":\"%s\",\"descr\":\"NXT.%llu makeoffer3 srcamount.%.8f qtyA %.8f assetA.%llu price %.8f for qtyB %.8f assetB.%llu price.%.8f\"}\n","illegal parameter",(long long)nxt64bits,dstr(srcamount),dstr(qtyA),(long long)baseid,dstr(priceNQTA),dstr(qtyB),(long long)relid,dstr(priceNQTB));
         return(clonestr(buf));
     }
-   /* numtx = update_iQ_flags(txptrs,sizeof(txptrs)/sizeof(*txptrs),baseid,relid);
-    if ( (tweak_orders(txptrs,numtx,baseid,availA,&qtyA,&priceNQTA,relid,&qtyB,&priceNQTB) & 3) != 0 )
-    {
-        for (i=0; i<numtx; i++)
-            if ( txptrs[i] != 0 )
-                free(txptrs[i]);
-        return(clonestr("{\"error\":\"out of band bid or ask\"}"));
-    }
-    for (i=0; i<numtx; i++)
-        if ( txptrs[i] != 0 )
-            free(txptrs[i]);*/
     feetxid = bidtxid = asktxid = 0;
     sprintf(comment,"{\"requestType\":\"makeoffer3\",\"NXT\":\"%llu\",\"ratio\":\"%.8f\",\"srcqty\":\"%llu\",\"baseid\":\"%llu\",\"relid\":\"%llu\",\"frombase\":\"%llu\",\"fromrel\":\"%llu\",\"tobase\":\"%llu\",\"torel\":%llu,\"qtyA\":\"%llu\",\"priceNQTA\":\"%llu\",\"qtyB\":\"%llu\",\"priceNQTB\":\"%llu\",\"fee\":\"%llu\",\"quoteid\":\"%llu\"}",(long long)nxt64bits,ratio,(long long)srcqty,(long long)baseid,(long long)relid,(long long)frombase,(long long)fromrel,(long long)tobase,(long long)torel,(long long)qtyA,(long long)priceNQTA,(long long)qtyB,(long long)priceNQTB,(long long)fee,(long long)quoteid);
     printf("(%s) create fee tx %llu vs %llu\n",comment,(long long)calc_nxt64bits(Global_mp->myNXTADDR),(long long)nxt64bits);
@@ -1613,6 +1609,115 @@ char *jumptrades_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
     retstr = cJSON_Print(json);
     free_json(json);
     return(retstr);
+}
+
+// phasing! https://nxtforum.org/index.php?topic=6490.msg171048#msg171048
+
+char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,int32_t flip,uint64_t srcqty,uint64_t baseid,uint64_t relid,cJSON *baseobj,cJSON *relobj,uint64_t quoteid,int32_t askoffer)
+{
+    int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t baseid,uint64_t relid);
+    char comment[MAX_JSON_FIELD],assetidstr[64],feeutxbytes[2048],feesignedtx[2048],triggerhash[65],feesighash[65],buf[MAX_JSON_FIELD],*jsonstr = 0;
+    uint64_t nxt64bits,qtyA,qtyB,priceNQTA,priceNQTB,feetxid,availA,availB,asktxid,bidtxid,tmp,srcarg,srcamount=0,fee = INSTANTDEX_FEE;
+    uint64_t frombase,fromrel,tobase,torel;
+    struct NXT_tx T,*txptrs[1000],*feetx;
+    int32_t i,errcode,numtx,matched,createdflag;
+    struct NXT_asset *ap;
+    double endmilli,priceA,priceB,volA,volB,ratio = 1.;
+    memset(txptrs,0,sizeof(txptrs));
+    nxt64bits = calc_nxt64bits(NXTaddr);
+    frombase = get_API_nxt64bits(cJSON_GetObjectItem(baseobj,"baseamount")), fromrel = get_API_nxt64bits(cJSON_GetObjectItem(baseobj,"relamount"));
+    tobase = get_API_nxt64bits(cJSON_GetObjectItem(relobj,"baseamount")), torel = get_API_nxt64bits(cJSON_GetObjectItem(relobj,"relamount"));
+    if ( flip != 0 )
+        askoffer = 1;
+    if ( askoffer == 0 )
+        srcarg = frombase, expand_nxt64bits(assetidstr,baseid);
+    else srcarg = tobase, expand_nxt64bits(assetidstr,relid);
+    ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+    printf("askoffer.%d flip.%d srcarg %llu  srcmult.%llu\n",askoffer,flip,(long long)srcarg,(long long)ap->mult);
+    if ( ap->mult != 0 && srcarg != 0 )
+    {
+        tmp = (srcarg / ap->mult);
+        if ( srcqty != 0 && srcqty < tmp )
+            srcamount = ap->mult * srcqty, printf("srcamount path0: %.8f tmp %.8f\n",dstr(srcamount),dstr(tmp));
+        else srcamount = (tmp * ap->mult), printf("srcamount path1: %.8f tmp %.8f\n",dstr(srcamount),dstr(tmp));
+    } else return(clonestr("{\"error\":\"asset without mult or trading below decimals resolution\"}"));
+    if ( srcamount != 0 )
+    {
+        if ( srcamount < srcarg )
+        {
+            ratio = ((double)srcamount / srcarg);
+            priceA = calc_price_volume(&volA,askoffer == 0 ? srcamount : ratio * frombase,ratio * fromrel);
+            priceB = calc_price_volume(&volB,askoffer != 0 ? srcamount : ratio * tobase,ratio * torel);
+        }
+        else
+        {
+            priceA = calc_price_volume(&volA,frombase,fromrel);
+            priceB = calc_price_volume(&volB,tobase,torel);
+        }
+        qtyA = calc_asset_qty(&availA,&priceNQTA,NXTaddr,askoffer==0,baseid,priceA,volA);
+        qtyB = calc_asset_qty(&availB,&priceNQTB,NXTaddr,askoffer!=0,relid,priceB,volB);
+        printf("ratio %f, srcamount %.8f srcarg %.8f srcqty %.8f -> (%f %f) (%f %f)\n",ratio,dstr(srcamount),dstr(srcarg),dstr(srcqty),priceA,volA,priceB,volB);
+    } else priceB = priceA = qtyA = qtyB = priceNQTA = priceNQTB = availA = availB = 0;
+    printf("qtyA %llu priceA %f volA %f, qtyB %lld priceB %f volB %f\n",(long long)qtyA,priceA,volA,(long long)qtyB,priceB,volB);
+    if ( srcamount == 0 || qtyA == 0 || qtyB == 0 || priceNQTA == 0 || priceNQTB == 0 )
+    {
+        sprintf(buf,"{\"error\":\"%s\",\"descr\":\"NXT.%llu makeoffer3 srcamount.%.8f qtyA %.8f assetA.%llu price %.8f for qtyB %.8f assetB.%llu price.%.8f\"}\n","illegal parameter",(long long)nxt64bits,dstr(srcamount),dstr(qtyA),(long long)baseid,dstr(priceNQTA),dstr(qtyB),(long long)relid,dstr(priceNQTB));
+        return(clonestr(buf));
+    }
+    feetxid = bidtxid = asktxid = 0;
+    sprintf(comment,"{\"requestType\":\"makeoffer3\",\"NXT\":\"%llu\",\"ratio\":\"%.8f\",\"srcqty\":\"%llu\",\"baseid\":\"%llu\",\"relid\":\"%llu\",\"frombase\":\"%llu\",\"fromrel\":\"%llu\",\"tobase\":\"%llu\",\"torel\":%llu,\"qtyA\":\"%llu\",\"priceNQTA\":\"%llu\",\"qtyB\":\"%llu\",\"priceNQTB\":\"%llu\",\"fee\":\"%llu\",\"quoteid\":\"%llu\"}",(long long)nxt64bits,ratio,(long long)srcqty,(long long)baseid,(long long)relid,(long long)frombase,(long long)fromrel,(long long)tobase,(long long)torel,(long long)qtyA,(long long)priceNQTA,(long long)qtyB,(long long)priceNQTB,(long long)fee,(long long)quoteid);
+    printf("(%s) create fee tx %llu vs %llu\n",comment,(long long)calc_nxt64bits(Global_mp->myNXTADDR),(long long)nxt64bits);
+    set_NXTtx(nxt64bits,&T,NXT_ASSETID,fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
+    strcpy(T.comment,comment);
+    if ( (feetx= sign_NXT_tx(feeutxbytes,feesignedtx,NXTACCTSECRET,nxt64bits,&T,0,1.)) != 0 )
+    {
+        get_txhashes(feesighash,triggerhash,feetx);
+        sprintf(comment + strlen(comment) - 1,",\"feetxid\":\"%llu\",\"triggerhash\":\"%s\"}",(long long)feetx->txid,triggerhash);
+        strcpy(buf,comment);
+        if ( strlen(triggerhash) == 64 )
+        {
+            if ( (asktxid= submit_triggered_bidask(&jsonstr,(askoffer == 0) ? "placeAskOrder" : "placeBidOrder",nxt64bits,NXTACCTSECRET,baseid,qtyA,priceNQTA,triggerhash,comment)) == 0 )
+                sprintf(buf+strlen(buf)-1,",\"error\":[%s]}",jsonstr!=0?jsonstr:"first order failed");
+            else if ( (bidtxid= submit_triggered_bidask(&jsonstr,(askoffer == 0) ? "placeBidOrder" : "placeAskOrder",nxt64bits,NXTACCTSECRET,relid,qtyB,priceNQTB,triggerhash,comment)) == 0 )
+                sprintf(buf+strlen(buf)-1,",\"asktxid\":\"%llu\",\"placeorder\":\"%llu\",\"error\":[%s]}",(long long)asktxid,(long long)relid,jsonstr!=0?jsonstr:"second order failed");
+            else
+            {
+                endmilli = milliseconds() + 2. * JUMPTRADE_SECONDS * 1000;
+                matched = 0;
+                while ( milliseconds() < endmilli )
+                {
+                    if ( (numtx= update_iQ_flags(txptrs,sizeof(txptrs)/sizeof(*txptrs),baseid,relid)) > 0 )
+                    {
+                        for (i=matched=0; i<numtx; i++)
+                        {
+                            if ( txptrs[i]->txid == asktxid )
+                                matched++;
+                            else if ( txptrs[i]->txid == bidtxid )
+                                matched++;
+                            free(txptrs[i]), txptrs[i] = 0;
+                        }
+                        if ( matched == 2 )
+                        {
+                            if ( (feetxid= issue_broadcastTransaction(&errcode,0,feesignedtx,NXTACCTSECRET)) != feetx->txid )
+                            {
+                                printf("Jump trades triggered! feetxid.%llu but unexpected should have been %llu\n",(long long)feetxid,(long long)feetx->txid);
+                                sprintf(buf+strlen(buf)-1,",\"asktxid\":\"%llu\",\"bidtxid\":\"%llu\",\"actualfeetxid\":\"%llu\",\"error\":[%s]}",(long long)asktxid,(long long)bidtxid,(long long)feetxid,"unexpected feetxid");
+                            } else sprintf(buf+strlen(buf)-1,",\"asktxid\":\"%llu\",\"bidtxid\":\"%llu\"}",(long long)asktxid,(long long)bidtxid);
+                            break;
+                        }
+                    }
+                    sleep(1);
+                }
+                if ( matched < 2 )
+                    printf("only found %d matched, aborting\n",matched);
+            }
+        } else printf("invalid triggerhash.(%s).%ld\n",triggerhash,strlen(triggerhash));
+        free(feetx);
+        if ( jsonstr != 0 )
+            free(jsonstr);
+        return(clonestr(buf));
+    }
+    return(clonestr("{\"error\":\"couldnt submit fee tx\"}"));
 }
 
 #endif

@@ -766,6 +766,8 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 	static struct lws_context_creation_info infos[2];
     struct lws_context_creation_info *info;
     struct libwebsocket_context *context;
+    while ( Finished_init == 0 )
+        fprintf(stderr,"."), sleep(1);
     info = &infos[use_ssl];
 	memset(info,0,sizeof(*info));
 	info->port = port;
@@ -814,7 +816,7 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 void run_libwebsockets(void *arg)
 {
     int32_t usessl = *(int32_t *)arg;
-    init_API_port(USESSL,APIPORT+!usessl,APISLEEP);
+    init_API_port(USESSL,APIPORT+!usessl*0,APISLEEP);
 }
 
 void init_NXThashtables(struct NXThandler_info *mp)
@@ -888,7 +890,7 @@ void *init_SuperNET_globals()
 
 char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 {
-    static int32_t zero,one = 1;
+    //static int32_t zero;//,one = 1;
     struct coin_info *cp;
     struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
     if ( Debuglevel > 0 )
@@ -927,22 +929,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     Finished_loading = 1;
     if ( Debuglevel > 0 )
         printf("run_UVloop\n");
-    sleep(3);
-    if ( IS_LIBTEST != 7 )
-    {
-#ifndef _WIN32
-        if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
-            printf("ERROR hist run_libwebsockets SSL\n");
-        while ( SSL_done == 0 )
-            usleep(100000);
-#else
-		SSL_done = 1;
-#endif
-        if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
-            printf("ERROR hist run_libwebsockets\n");
-        sleep(3);
-    }
-    {
+    //sleep(3);
+     {
         struct coin_info *cp;
         while ( (cp= get_coin_info("BTCD")) == 0 )
         {
@@ -1258,7 +1246,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     //if ( IS_LIBTEST < 7 )
     {
-        uint64_t pendingtxid; ready_to_xferassets(&pendingtxid);
+        uint64_t pendingtxid;
+        if ( Global_mp->gatewayid >= 0 )
+            ready_to_xferassets(&pendingtxid);
         //if ( Debuglevel > 0 )
         //    printf("back from init_NXTservices (%s) NXTheight.%d\n",myipaddr,get_NXTheight());
         p2p_publishpacket(0,0);
@@ -1286,6 +1276,25 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
                 cp->RAM.ap = get_NXTasset(&creatededflag,Global_mp,cp->assetid);
             }
         }
+    }
+    find_exchange(INSTANTDEX_NAME,1);
+    find_exchange(INSTANTDEX_NXTAENAME,1);
+    if ( find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0)->exchangeid != INSTANTDEX_EXCHANGEID )
+        printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0)->exchangeid);
+    if ( IS_LIBTEST != 7 )
+    {
+        /*#ifndef _WIN32
+         if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
+         printf("ERROR hist run_libwebsockets SSL\n");
+         while ( SSL_done == 0 )
+         usleep(100000);
+         #else
+         SSL_done = 1;
+         #endif*/
+        static int32_t zero;
+        if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
+            printf("ERROR hist run_libwebsockets\n");
+        sleep(3);
     }
     return((SUPERNET_PORT << 1) | (USESSL&1));
 }

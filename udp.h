@@ -633,7 +633,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
     int32_t len,createdflag;
     struct NXT_acct *np;
     struct coin_info *cp = get_coin_info("BTCD");
-    if ( cp != 0 )
+    if ( cp != 0 && Finished_init != 0 )
     {
         if ( Debuglevel > 1 )
             fprintf(stderr,"p2p_publishpacket.%p (%s)\n",pserver,cmd);
@@ -651,7 +651,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
             printf("len.%d (%s)\n",len,packet);
         return(call_SuperNET_broadcast(pserver,packet,len,PUBADDRS_MSGDURATION));
     }
-    printf("ERROR: broadcast_publishpacket null cp\n");
+    printf("ERROR: broadcast_publishpacket null cp.%p or not finished init.%d\n",cp,Finished_init);
     return(0);
 }
 

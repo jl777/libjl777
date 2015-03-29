@@ -244,7 +244,8 @@ char *process_commandline_json(cJSON *json)
         for (i=0; i<3; i++)
         {
             sp = &S[i];
-            sprintf(fname,"%s/MGW/status/%s.%s",MGWROOT,coin,Server_ipaddrs[i]);
+            //sprintf(fname,"%s/MGW/status/%s.%s",MGWROOT,coin,Server_ipaddrs[i]);
+            sprintf(fname,"%s/MGW/status/%s.%d",MGWROOT,coin,i);
             if ( (fp= fopen(fname,"rb")) != 0 )
             {
                 fseek(fp,0,SEEK_END);

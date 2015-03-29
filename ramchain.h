@@ -3025,6 +3025,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
             printf("[%s] parse.(%s)\n",coinstr,pingstr);
         if ( ram != 0 )
         {
+            cJSON_DeleteItemFromObject(json,"ipaddr");
             if ( (gatewayid= (int32_t)get_API_int(cJSON_GetObjectItem(json,"gatewayid"),-1)) >= 0 && gatewayid < ram->numgateways )
             {
                 if ( strcmp(ram->special_NXTaddrs[gatewayid],sender) == 0 )
@@ -3041,7 +3042,8 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
             if ( gatewayid >= 0 && gatewayid < 3 && strcmp(ram->mgwstrs[gatewayid],jsonstr) != 0 )
             {
                 safecopy(ram->mgwstrs[gatewayid],jsonstr,sizeof(ram->mgwstrs[gatewayid]));
-                sprintf(name,"%s.%s",ram->name,Server_ipaddrs[gatewayid]);
+                //sprintf(name,"%s.%s",ram->name,Server_ipaddrs[gatewayid]);
+                sprintf(name,"%s.%d",ram->name,gatewayid);
                 //printf("name is (%s) + (%s) -> (%s)\n",ram->name,Server_ipaddrs[gatewayid],name);
                 save_MGW_status(name,jsonstr);
             }

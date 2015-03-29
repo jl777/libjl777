@@ -1168,6 +1168,25 @@ uint32_t get_NXTtimestamp(char *blockstr,uint32_t blocknum)
     return(timestamp);
 }
 
+uint32_t get_blockutime(uint32_t blocknum)
+{
+    cJSON *json;
+    uint32_t timestamp = 0;
+    char cmd[4096],*jsonstr;
+    sprintf(cmd,"%s=getBlock&height=%u",NXTSERVER,blocknum);
+    if ( (jsonstr= issue_curl(0,cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( (timestamp= (uint32_t)get_API_int(cJSON_GetObjectItem(json,"timestamp"),0)) != 0 )
+                timestamp += NXT_GENESISTIME;
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(timestamp);
+}
+
 void set_next_NXTblock(CURL *curl_handle,int32_t *timestamp,char *nextblock,char *blockidstr)
 {
     union NXTtype retval;
