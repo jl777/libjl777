@@ -738,7 +738,7 @@ void ensure_SuperNET_dirs(char *backupdir)
     //struct coin_info *cp;
     array = cJSON_GetObjectItem(MGWconf,"active");
     printf("ensure_SuperNET_dirs backupdir.%s MGWROOT.%s\n",backupdir,MGWROOT);
-	#ifndef _WIN32
+#ifndef _WIN32
     sprintf(dirname,"%s/%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",MGWROOT,"MGW/msig"), ensure_directory(dirname);
     if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
@@ -773,7 +773,7 @@ void ensure_SuperNET_dirs(char *backupdir)
     sprintf(dirname,"%s/%s",backupdir,"backups/telepods"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive"), ensure_directory(dirname);
     sprintf(dirname,"%s/%s",backupdir,"archive/telepods"), ensure_directory(dirname);
-	#else
+#else
     sprintf(dirname,"%s\\%s",MGWROOT,"MGW"), ensure_directory(dirname);
     sprintf(dirname,"%s\\%s",MGWROOT,"MGW\\msig"), ensure_directory(dirname);
     if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
@@ -808,7 +808,7 @@ void ensure_SuperNET_dirs(char *backupdir)
     sprintf(dirname,"%s\\%s",backupdir,"backups\\telepods"), ensure_directory(dirname);
     sprintf(dirname,"%s\\%s",backupdir,"archive"), ensure_directory(dirname);
     sprintf(dirname,"%s\\%s",backupdir,"archive\\telepods"), ensure_directory(dirname);
-	#endif
+#endif
 }
 
 void init_rambases()
