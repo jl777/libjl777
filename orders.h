@@ -1482,11 +1482,14 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
     cJSON *relobj=0,*baseobj=0;
     struct InstantDEX_quote *baseiQ,*reliQ;
     uint64_t mult;
-    baseamount = iQ->baseamount, relamount = iQ->relamount, baseiQ = iQ->baseiQ, reliQ = iQ->reliQ;
+    if ( iQ->isask == 0 )
+        baseamount = iQ->baseamount, relamount = iQ->relamount;
+    else relamount = iQ->baseamount, baseamount = iQ->relamount;
+    baseiQ = iQ->baseiQ, reliQ = iQ->reliQ;
+    if ( depth == 0 )
+        *baseamountp = baseamount, *relamountp = relamount;
     if ( baseiQ != 0 && reliQ != 0 )
     {
-        if ( depth == 0 )
-            *baseamountp = baseamount, *relamountp = relamount;
         if ( baseiQ->isask == 0 )
             frombase = baseiQ->baseamount, fromrel = baseiQ->relamount;
         else fromrel = baseiQ->baseamount, frombase = baseiQ->relamount;
