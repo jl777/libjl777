@@ -124,7 +124,7 @@ double estimate_completion(char *coinstr,double startmilli,int32_t processed,int
 char *SuperNET_url()
 {
     static char urls[2][64];
-    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1);
+    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1*0);
     sprintf(urls[1],"https://127.0.0.1:%d",SUPERNET_PORT);
     return(urls[USESSL]);
 }

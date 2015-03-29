@@ -1406,10 +1406,10 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
 int32_t iQ_exchangestr(char *exchange,struct InstantDEX_quote *iQ)
 {
     if ( iQ->baseiQ != 0 && iQ->reliQ != 0 )
-        sprintf(exchange,"%s_%s",Exchanges[iQ->baseiQ->exchangeid].name,Exchanges[iQ->reliQ->exchangeid].name);
+        sprintf(exchange,"%s_%s",Exchanges[(int32_t)iQ->baseiQ->exchangeid].name,Exchanges[(int32_t)iQ->reliQ->exchangeid].name);
     else if ( iQ->exchangeid == INSTANTDEX_NXTAEID && iQ->timestamp > time(NULL) )
         strcpy(exchange,"unconf");
-    else strcpy(exchange,Exchanges[iQ->exchangeid].name);
+    else strcpy(exchange,Exchanges[(int32_t)iQ->exchangeid].name);
     return(0);
 }
 
@@ -1417,7 +1417,7 @@ cJSON *makeoffer_legjson(char *baserelstr,struct InstantDEX_quote *iQ,char *fiel
 {
     char numstr[64];
     cJSON *obj = cJSON_CreateObject();
-    cJSON_AddItemToObject(obj,baserelstr,cJSON_CreateString(Exchanges[iQ->exchangeid].name));
+    cJSON_AddItemToObject(obj,baserelstr,cJSON_CreateString(Exchanges[(int32_t)iQ->exchangeid].name));
     if ( iQ->nxt64bits != 0 )
         sprintf(numstr,"%llu",(long long)iQ->nxt64bits), cJSON_AddItemToObject(obj,"NXT",cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)calc_quoteid(iQ)), cJSON_AddItemToObject(obj,"quoteid",cJSON_CreateString(numstr));
@@ -1887,7 +1887,8 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
             bid->isask = 0;
             //if ( quoteid != 0 )
             //    bid->quoteid = quoteid;
-            p = calc_price_volume(&v,iQ->baseamount,iQ->relamount), printf("B.(%f %f) ",p,v);
+            if ( Debuglevel > 2 )
+                p = calc_price_volume(&v,iQ->baseamount,iQ->relamount), printf("B.(%f %f) ",p,v);
         }
         else
         {
@@ -1898,7 +1899,8 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
             //    ask->quoteid = quoteid;
             //ask->baseamount = iQ->relamount;
             //ask->relamount = iQ->baseamount;
-            p = calc_price_volume(&v,ask->baseamount,ask->relamount), printf("A.(%f %f) ",1./p,p*v);
+            if ( Debuglevel > 2 )
+                p = calc_price_volume(&v,ask->baseamount,ask->relamount), printf("A.(%f %f) ",1./p,p*v);
         }
     }
 }
@@ -2124,11 +2126,14 @@ void ensure_rambook(uint64_t baseid,uint64_t relid)
 void debug_json(cJSON *item)
 {
     char *str,*str2;
-    str = cJSON_Print(item);
-    stripwhite_ns(str,strlen(str));
-    str2 = stringifyM(str);
-    printf("%s\n",str2);
-    free(str), free(str2);
+    if ( Debuglevel > 1 )
+    {
+        str = cJSON_Print(item);
+        stripwhite_ns(str,strlen(str));
+        str2 = stringifyM(str);
+        printf("%s\n",str2);
+        free(str), free(str2);
+    }
 }
 
 char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
