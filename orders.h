@@ -676,7 +676,7 @@ int32_t get_top_MMaker(struct pserver_info **pserverp)
     return(-1);
 }
 
-int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,int32_t isask,uint64_t quoteid,double price,double volume,uint64_t baseamount,uint64_t relamount,char *exchange,uint64_t nxt64bits,char *gui,struct InstantDEX_quote *baseiQ,struct InstantDEX_quote *reliQ)
+int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,int32_t isask,uint64_t quoteid,double price,double volume,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *exchange,uint64_t nxt64bits,char *gui,struct InstantDEX_quote *baseiQ,struct InstantDEX_quote *reliQ)
 {
     struct exchange_info *xchg;
     memset(iQ,0,sizeof(*iQ));
@@ -689,8 +689,8 @@ int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,i
     iQ->nxt64bits = nxt64bits;
     iQ->baseiQ = baseiQ;
     iQ->reliQ = reliQ;
-    iQ->baseamount = baseamount;
-    iQ->relamount = relamount;
+    iQ->baseid = baseid, iQ->baseamount = baseamount;
+    iQ->relid = relid, iQ->relamount = relamount;
     //printf("(%s) %f %f\n",exchange,dstr(baseamount),dstr(relamount));
     strncpy(iQ->gui,gui,sizeof(iQ->gui)-1);
     if ( baseiQ == 0 && reliQ == 0 )
@@ -748,17 +748,17 @@ void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     np->openorders++;
 }
 
-struct rambook_info *_add_rambook_quote(struct InstantDEX_quote *iQ,struct rambook_info *rb,uint64_t nxt64bits,uint32_t timestamp,int32_t dir,double price,double volume,uint64_t baseamount,uint64_t relamount,char *gui,uint64_t quoteid)
+struct rambook_info *_add_rambook_quote(struct InstantDEX_quote *iQ,struct rambook_info *rb,uint64_t nxt64bits,uint32_t timestamp,int32_t dir,double price,double volume,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *gui,uint64_t quoteid)
 {
     if ( timestamp == 0 )
         timestamp = (uint32_t)time(NULL);
     if ( dir > 0 )
-        create_InstantDEX_quote(iQ,timestamp,0,quoteid,price,volume,baseamount,relamount,rb->exchange,nxt64bits,gui,0,0);
+        create_InstantDEX_quote(iQ,timestamp,0,quoteid,price,volume,baseid,baseamount,relid,relamount,rb->exchange,nxt64bits,gui,0,0);
     else
     {
         if ( baseamount == 0 || relamount == 0 )
             set_best_amounts(&baseamount,&relamount,price,volume);
-        create_InstantDEX_quote(iQ,timestamp,1,quoteid,0,0,relamount,baseamount,rb->exchange,nxt64bits,gui,0,0);
+        create_InstantDEX_quote(iQ,timestamp,1,quoteid,0,0,relid,relamount,baseid,baseamount,rb->exchange,nxt64bits,gui,0,0);
     }
     return(rb);
 }
@@ -772,12 +772,12 @@ struct rambook_info *add_rambook_quote(char *exchange,struct InstantDEX_quote *i
     if ( dir > 0 )
     {
         rb = get_rambook(0,baseid,0,relid,exchange);
-        _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseamount,relamount,gui,quoteid);
+        _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseid,baseamount,relid,relamount,gui,quoteid);
     }
     else
     {
         rb = get_rambook(0,relid,0,baseid,exchange);
-        _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseamount,relamount,gui,quoteid);
+        _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseid,baseamount,relid,relamount,gui,quoteid);
     }
     save_InstantDEX_quote(rb,iQ);
     emit_iQ(rb,iQ);
@@ -822,7 +822,7 @@ int32_t parseram_json_quotes(int32_t dir,struct rambook_info *rb,cJSON *array,in
             timestamp = reftimestamp;
         if ( Debuglevel > 1 )
             printf("%-8s %s %5s/%-5s %13.8f vol %13.8f | invert %13.8f vol %13.8f | timestmp.%u quoteid.%llu\n",rb->exchange,dir>0?"bid":"ask",rb->base,rb->rel,price,volume,1./price,volume*price,timestamp,(long long)quoteid);
-        if ( _add_rambook_quote(&iQ,rb,nxt64bits,timestamp,dir,price,volume,0,0,gui,quoteid) != rb )
+        if ( _add_rambook_quote(&iQ,rb,nxt64bits,timestamp,dir,price,volume,rb->assetids[0],0,rb->assetids[1],0,gui,quoteid) != rb )
             printf("ERROR: rambook mismatch for %s/%s dir.%d price %.8f vol %.8f\n",rb->base,rb->rel,dir,price,volume);
         add_user_order(rb,&iQ);
     }
@@ -1179,7 +1179,7 @@ int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t baseid,ui
 
 void ramparse_NXT(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
 {
-    struct NXT_tx *txptrs[1000];
+    struct NXT_tx *txptrs[MAX_TXPTRS];
     cJSON *json,*bidobj,*askobj;
     char *buystr,*sellstr;
     struct NXT_asset *ap;
@@ -2049,7 +2049,7 @@ int32_t make_jumpiQ(uint64_t refbaseid,uint64_t refrelid,int32_t flip,struct Ins
     if ( (timestamp= toiQ->timestamp) > fromiQ->timestamp )
         timestamp = fromiQ->timestamp;
     iQ_exchangestr(exchange,iQ);
-    create_InstantDEX_quote(iQ,timestamp,0,calc_quoteid(fromiQ) ^ calc_quoteid(toiQ),0.,0.,baseamount,relamount,exchange,0,gui,fromiQ,toiQ);
+    create_InstantDEX_quote(iQ,timestamp,0,calc_quoteid(fromiQ) ^ calc_quoteid(toiQ),0.,0.,refbaseid,baseamount,refrelid,relamount,exchange,0,gui,fromiQ,toiQ);
     if ( Debuglevel > 2 )
         printf("%p jumpASK: %f (%llu/%llu) %llu %llu %llu %llu\n",iQ,calc_price_volume(&vol,iQ->baseamount,iQ->relamount),(long long)baseamount,(long long)relamount,(long long)frombase,(long long)fromrel,(long long)tobase,(long long)torel);
     iQ->askoffer = flip;

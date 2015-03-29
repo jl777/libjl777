@@ -7,6 +7,7 @@
 //
 
 #include "jl777.h"
+struct pingpong_queue Pending_tradesQ;
 
 #ifdef _WIN32
 #include "pton.h"
@@ -1278,6 +1279,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             }
         }
     }
+    init_pingpong_queue(&Pending_tradesQ,"Pending_trades",process_Pending_tradesQ,0,0);
     find_exchange(INSTANTDEX_NAME,1);
     find_exchange(INSTANTDEX_NXTAENAME,1);
     if ( find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0)->exchangeid != INSTANTDEX_EXCHANGEID )
