@@ -499,19 +499,12 @@ struct price_data
     //uint64_t nxt64bits,baseamount,relamount;
 };*/
 
-struct orderbook_tx
+/*struct orderbook_tx
 {
     uint64_t baseid,relid;
     struct InstantDEX_quote iQ;
-};
+};*/
 
-struct orderbook
-{
-    uint64_t baseid,relid;
-    char base[16],rel[16],jumper[16];
-    struct InstantDEX_quote *bids,*asks;
-    int32_t numbids,numasks;
-};
 
 /*struct raw_orders
 {
@@ -581,7 +574,7 @@ char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *
 #define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
 
 extern uv_loop_t *UV_loop;
-extern struct pingpong_queue Pending_tradesQ;
+extern struct pingpong_queue Pending_offersQ;
 
 char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
@@ -709,13 +702,13 @@ double _pairave(float valA,float valB)
 #include "telepathy.h"
 //#include "NXTsock.h"
 #include "bitcoind.h"
-#include "atomic.h"
+//#include "atomic.h"
+
+//#include "feeds.h"
+//#include "bars.h"
+#include "InstantDEX.h"
 #include "teleport.h"
 #include "mgw.h"
-
-#include "feeds.h"
-#include "bars.h"
-#include "orders.h"
 #include "tradebot.h"
 #include "lotto.h"
 //#include "NXTservices.c"

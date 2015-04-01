@@ -63,28 +63,6 @@ uint64_t ensure_orderbook(uint64_t *baseidp,uint64_t *relidp,char *base,char *re
     return(*baseidp ^ *relidp);
 }
 
-uint64_t PTL_placebid(char *base,char *rel,double price,double volume)
-{
-    uint64_t baseid,relid,obookid;
-    obookid = ensure_orderbook(&baseid,&relid,base,rel);
-    printf("placebid(%s/%s %.8f vol %.6f) obookid.%llx\n",base,rel,price,volume,(long long)obookid);
-    return(obookid);
-}
-
-uint64_t PTL_placeask(char *base,char *rel,double price,double volume)
-{
-    uint64_t baseid,relid,obookid;
-    obookid = ensure_orderbook(&baseid,&relid,base,rel);
-    printf("placeask(%s/%s %.8f vol %.6f) obookid.%llx\n",base,rel,price,volume,(long long)obookid);
-    return(obookid);
-}
-
-int32_t PTL_makeoffer(char *base,char *rel,double price,double volume,uint64_t nxtaddr)
-{
-    printf("makeoffer(%s/%s %.8f vol %.6f to NXT.%llu\n",base,rel,price,volume,(long long)nxtaddr);
-    return(0);
-}
-
 void add_exchange_quote(char *name,char *base,char *rel,int32_t recalcflag,struct price_data *dp,struct exchange_quote *qp)
 {
     if ( qp->highbid == 0 || qp->lowask == 0 || qp->lowask < qp->highbid )
@@ -963,20 +941,5 @@ char *getquotes(char *exchange,char *base,char *rel,uint32_t oldest)
     return(jsonstr);
 }
 
-double get_current_rate(char *base,char *rel)
-{
-    struct coin_info *cp;
-    if ( strcmp(rel,"NXT") == 0 )
-    {
-        if ( (cp= get_coin_info(base)) != 0 )
-        {
-            if ( cp->RAM.NXTconvrate != 0. )
-                return(cp->RAM.NXTconvrate);
-            if ( cp->NXTfee_equiv != 0 && cp->txfee != 0 )
-                return(cp->NXTfee_equiv / cp->txfee);
-        }
-    }
-    return(1.);
-}
 
 #endif

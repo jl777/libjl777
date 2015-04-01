@@ -569,6 +569,16 @@ struct NXT_asset *get_NXTasset(int32_t *createdp,struct NXThandler_info *mp,char
     return(ap);
 }
 
+uint64_t get_assetmult(uint64_t assetid)
+{
+    struct NXT_asset *ap;
+    char assetidstr[64];
+    int32_t createdflag;
+    expand_nxt64bits(assetidstr,assetid);
+    ap = MTadd_hashtable(&createdflag,Global_mp->NXTassets_tablep,assetidstr);
+    return(ap->mult);
+}
+
 struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr)
 {
     struct NXT_acct *np;
@@ -973,15 +983,6 @@ int32_t get_NXTtxid_confirmations(CURL *curl_handle,char *txid)
     return((int32_t)get_cJSON_int(json,"confirmations"));
    // ret = extract_NXTfield(0,cmd,"confirmations",sizeof(int32_t));
     //return(ret.val);
-}
-
-uint64_t issue_getBalance(CURL *curl_handle,char *NXTaddr)
-{
-    char cmd[4096];
-    union NXTtype ret;
-    sprintf(cmd,"%s=getBalance&account=%s",_NXTSERVER,NXTaddr);
-    ret = extract_NXTfield(curl_handle,0,cmd,"balanceNQT",64);
-    return(ret.nxt64bits);
 }
 
 int32_t issue_decodeToken(CURL *curl_handle,char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN])
@@ -2299,46 +2300,6 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
     else fclose(fp);
 }
 
-int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
-{
-    char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
-    union NXTtype retval;
-    int32_t i,n,iter;
-    cJSON *array,*item,*obj;
-    int64_t quantity,qty;
-    quantity = *unconfirmedp = 0;
-    sprintf(cmd,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
-    retval = extract_NXTfield(0,0,cmd,0,0);
-    if ( retval.json != 0 )
-    {
-        for (iter=0; iter<2; iter++)
-        {
-            qty = 0;
-            array = cJSON_GetObjectItem(retval.json,iter==0?"assetBalances":"unconfirmedAssetBalances");
-            if ( is_cJSON_Array(array) != 0 )
-            {
-                n = cJSON_GetArraySize(array);
-                for (i=0; i<n; i++)
-                {
-                    item = cJSON_GetArrayItem(array,i);
-                    obj = cJSON_GetObjectItem(item,"asset");
-                    copy_cJSON(assetid,obj);
-                    //printf("i.%d of %d: %s(%s)\n",i,n,assetid,cJSON_Print(item));
-                    if ( strcmp(assetid,assetidstr) == 0 )
-                    {
-                        qty = get_cJSON_int(item,iter==0?"balanceQNT":"unconfirmedBalanceQNT");
-                        break;
-                    }
-                }
-            }
-            if ( iter == 0 )
-                quantity = qty;
-            else *unconfirmedp = qty;
-        }
-    }
-    return(quantity);
-}
-
 #ifdef oldway
 
 
@@ -2630,5 +2591,59 @@ cJSON *http_search(char *destip,char *type,char *file)
     }
     return(json);
 }
+
+uint64_t calc_nxtmedianprice(uint64_t assetid)
+{
+    uint64_t highbid,lowask;
+    highbid = get_nxthighbid(0,assetid);
+    lowask = get_nxtlowask(0,assetid);
+    if ( highbid != 0 && lowask != 0 )
+        return((highbid + lowask) >> 1);
+    return(get_nxtlastprice(assetid));
+}
+/*
+uint64_t calc_nxtprice(struct jumptrades *jtrades,uint64_t assetid,uint64_t amount)
+{
+    uint64_t *ptr = 0,nxtprice,nxtamount = 0;
+    printf("calc_nxtprice\n");
+    if ( jtrades->baseid == assetid )
+    {
+        if ( (nxtamount= jtrades->basenxtamount) != 0 )
+            return(nxtamount);
+        ptr = &jtrades->basenxtamount;
+    }
+    else if ( jtrades->relid == assetid )
+    {
+        if ( (nxtamount= jtrades->relnxtamount) != 0 )
+            return(nxtamount);
+        ptr = &jtrades->relnxtamount;
+    }
+    else
+    {
+        printf("calc_nxtprice: illegal assetid.%llu\n",(long long)assetid);
+        return(0);
+    }
+    nxtprice = calc_nxtmedianprice(assetid);
+    nxtamount = (nxtprice * amount); // already adjusted for decimals
+    printf("nxtprice %.8f nxtamount %.8f -> (*%p)\n",dstr(nxtprice),dstr(nxtamount),ptr);
+    *ptr = nxtamount;
+    return(nxtprice);
+}
+
+uint64_t calc_NXTprice(uint64_t *qtyp,struct _tradeleg *src,uint64_t srcqty,struct _tradeleg *dest,uint64_t destqty)
+{
+    printf("calc_NXTprice dest.%.8f src.%8f\n",dstr(destqty),dstr(srcqty));
+    if ( src->assetid == NXT_ASSETID )
+    {
+        *qtyp = destqty;
+        return(src->amount / destqty);
+    }
+    else if ( dest->assetid == NXT_ASSETID )
+    {
+        *qtyp = srcqty;
+        return(dest->amount / srcqty);
+    }
+    return(0);
+}*/
 
 #endif

@@ -13,7 +13,7 @@
 
 #define MAX_KADEMLIA_STORAGE (1024L * 1024L * 1024L)
 
-
+/*
 int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
 {
     struct SuperNET_db *sdb;
@@ -85,7 +85,7 @@ int dbreplace_iQ(int32_t selector,char *keystr,struct InstantDEX_quote *refiQ)
     }
     //fprintf(stderr,"done dbreplace_iQ.%d\n",selector);
     return(ret);
-}
+}*/
 
 void _set_address_key(DBT *key,char *coinaddr,char *coin,char *addr)
 {
@@ -582,7 +582,7 @@ int32_t complete_dbput(struct SuperNET_db *sdb,char *keystr,void *databuf,int32_
     return(dbsync(sdb,0));
 }
 
-void add_pricedb(char *exchange,char *base,char *rel)
+/*void add_pricedb(char *exchange,char *base,char *rel)
 {
     char dbname[MAX_JSON_FIELD];
     struct exchange_pair P;
@@ -604,7 +604,7 @@ void add_pricedb(char *exchange,char *base,char *rel)
         sdb->storage->err(sdb->storage,ret,"Database put failed.");
     else if ( complete_dbput(sdb,dbname,&P,sizeof(P),0) == 0 && Debuglevel > 2 )
         fprintf(stderr,"updated.(%s)\n",dbname);
-}
+}*/
 
 int32_t stop_pricedb(char *exchange,char *base,char *rel)
 {

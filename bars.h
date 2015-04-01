@@ -295,7 +295,7 @@ float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_
     return(0);
 }
 
-void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
+/*void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
 {
     static int32_t periods[] = { 60, 60*2, 60*3, 60*4, 60*5, 60*10, 60*15, 60*30, 60*60 };
     int32_t maxbars,i,j,ind,numbids,numasks,period,timedist,maxtimedist;
@@ -347,7 +347,7 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
         ptrs->bidnxt[i] = op->bids[i].nxt64bits;
     for (i=0; i<numasks; i++)
         ptrs->asknxt[i] = op->asks[i].nxt64bits;
-    /*if ( dp->polarity > 0 )
+    if ( dp->polarity > 0 )
     {
         strcpy(ptrs->base,dp->base);
         strcpy(ptrs->rel,dp->rel);
@@ -400,9 +400,9 @@ void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx
             //printf("(%f %f) ",ptrs->bids[i],ptrs->inv_bids[i]);
         }
         //printf("%d invbids\n",numbids);
-    }*/
+    }
     if ( op != 0 )
         free_orderbook(op);
-}
+}*/
 
 #endif

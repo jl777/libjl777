@@ -7,7 +7,7 @@
 //
 
 #include "jl777.h"
-struct pingpong_queue Pending_tradesQ;
+struct pingpong_queue Pending_offersQ;
 
 #ifdef _WIN32
 #include "pton.h"
@@ -326,8 +326,8 @@ void SuperNET_idler(uv_idle_t *handle)
         process_udpentry(up);
     if ( millis > (lastclock + 1000) )
     {
-        poll_jumptrades(Global_mp->myNXTADDR,Global_mp->srvNXTACCTSECRET);
-        poll_pricedbs();
+        poll_pending_offers(Global_mp->myNXTADDR,Global_mp->srvNXTACCTSECRET);
+        //poll_pricedbs();
         every_second(counter);
         retstr = findaddress(0,0,0,0,0,0,0,0,0,0);
         if ( retstr != 0 )
@@ -718,7 +718,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             {
                 libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
                 // if we returned non-zero from here, we kill the connection
-                if ( strcmp("127.0.0.1",client_ip) != 0 )
+                if ( strcmp("127.0.0.1",client_ip) != 0  && strncmp("192.168.",client_ip,strlen("192.168.")) != 0 )
                 {
                     if ( Debuglevel > 0 )
                         fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
@@ -1279,8 +1279,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             }
         }
     }
-    init_pingpong_queue(&Pending_tradesQ,"Pending_trades",process_Pending_tradesQ,0,0);
+    init_pingpong_queue(&Pending_offersQ,"pending_offers",process_Pending_offersQ,0,0);
     find_exchange(INSTANTDEX_NAME,1);
+    find_exchange(INSTANTDEX_NXTAEUNCONF,1);
     find_exchange(INSTANTDEX_NXTAENAME,1);
     if ( find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0)->exchangeid != INSTANTDEX_EXCHANGEID )
         printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0)->exchangeid);
@@ -1299,6 +1300,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             printf("ERROR hist run_libwebsockets\n");
         sleep(3);
     }
-    return((SUPERNET_PORT << 1) | (USESSL&1));
+    int32_t tmp = 0;
+    if ( Global_mp->gatewayid >= 1 || Global_mp->iambridge != 0 )
+        tmp = 1;
+    return((tmp << 17) | ((SUPERNET_PORT & 0xffff) << 1) | (USESSL&1));
 }
 

@@ -1130,12 +1130,12 @@ void init_legacyMGW(char *myipaddr)
 
 void init_tradebots_conf(cJSON *MGWconf)
 {
-    int32_t writeflag = 1;
+   /* int32_t writeflag = 1;
     void start_polling_exchanges(int32_t exchangeflag);
     int32_t init_exchanges(cJSON *confobj,int32_t exchangeflag);
     if ( init_exchanges(MGWconf,writeflag) > 0 )
         start_polling_exchanges(writeflag);
-    /*int32_t init_tradebots(cJSON *languagesobj);
+    int32_t init_tradebots(cJSON *languagesobj);
      if ( didinit == 0 )
      {
      languagesobj = cJSON_GetObjectItem(MGWconf,"tradebot_languages");
