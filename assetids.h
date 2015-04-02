@@ -186,7 +186,7 @@ int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
     int32_t i,n,iter;
     cJSON *array,*item,*obj,*json;
     uint64_t assetidbits = calc_nxt64bits(assetidstr);
-    int64_t quantity,qty;
+    int64_t quantity,qty = 0;
     quantity = *unconfirmedp = 0;
     if ( assetidbits == NXT_ASSETID )
     {

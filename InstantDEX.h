@@ -175,7 +175,7 @@ char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *s
 char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *json;
-    uint64_t type,basetmp,reltmp,baseamount,relamount,nxt64bits,baseid,relid,quoteid = 0;
+    uint64_t basetmp,reltmp,baseamount,relamount,nxt64bits,baseid,relid,quoteid = 0;
     double price,volume;
     uint32_t timestamp;
     uint8_t minperc;
@@ -207,7 +207,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     automatch = (int32_t)get_API_int(objs[8],0);
     minperc = (int32_t)get_API_int(objs[9],INSTANTDEX_MINVOL);
     ensure_rambook(baseid,relid);
-    printf("NXT.%s t.%u placequote type.%llu dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,(long long)type,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
+    printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     /*if ( automatch != 0 && remoteflag == 0 && (retstr= auto_makeoffer2(NXTaddr,NXTACCTSECRET,dir,baseid,baseamount,relid,relamount,gui)) != 0 )
      {
      fprintf(stderr,"got (%s) from auto_makeoffer2\n",retstr);
