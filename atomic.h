@@ -120,6 +120,7 @@ double calc_asset_QNT(struct pendinghalf *half,uint64_t nxt64bits,int32_t checkf
             half->price = calc_price_volume(&half->vol,half->baseamount,half->relamount);
         balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
         printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | (%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)half->T.priceNQT,(long long)half->T.qty,assetidstr,half->vol,half->price,SATOSHIDEN,(long long)ap->mult);
+       // getchar();
         if ( checkflag != 0 && (balance < half->T.qty || unconfirmed < half->T.qty) )
             return(0);
     } else printf("%llu null apmult\n",(long long)half->T.assetid);
@@ -228,11 +229,12 @@ int32_t pendinghalf_is_complete(struct pending_offer *pt,struct pendinghalf *hal
     int32_t i;
     bits256 refhash;
     struct NXT_tx *tx;
+    printf("check for complete asset.%llu unconf.%d closed.%d needsubmit.%d sent.%d sell.%d exchange.%d\n",(long long)half->T.assetid,half->T.unconf,half->T.closed,half->T.needsubmit,half->T.sent,half->T.sell,half->T.exchangeid);
     if ( half->T.error != 0 )
         return(0);
     if ( half->T.assetid == 0 || (half->T.unconf != 0 && half->T.txid != 0) || half->T.closed != 0 )
         return(1);
-    if ( half->T.needsubmit == 0 && half->T.txid != 0 && (tx= search_txptrs(txptrs,half->T.txid,0,0,0)) != 0 )
+    if ( half->T.txid != 0 && (tx= search_txptrs(txptrs,half->T.txid,0,0,0)) != 0 )
     {
         half->T.unconf = 1;
         return(1);
@@ -269,17 +271,21 @@ int32_t pendinghalf_is_complete(struct pending_offer *pt,struct pendinghalf *hal
     return(0);
 }
 
-uint64_t need_to_requesthalf(struct pendinghalf *half,int32_t dir,struct pending_offer *pt)
+uint64_t need_to_submithalf(struct pendinghalf *half,int32_t dir,struct pending_offer *pt)
 {
     printf("dir.%d exch.%d T.sell.%d %llu/%llu %llu\n",dir,half->T.exchangeid,half->T.sell,(long long)half->T.assetid,(long long)half->T.relid,(long long)otherasset(half));
     if ( half->T.exchangeid == INSTANTDEX_EXCHANGEID )
         return(otherNXT(pt,half));
     else if ( half->T.exchangeid == INSTANTDEX_NXTAEID || half->T.exchangeid == INSTANTDEX_UNCONFID )
     {
-        if ( ((dir > 0 && half->T.sell == 0) || (dir < 0 && half->T.sell != 0)) && otherasset(half) == NXT_ASSETID )
+        if ( (dir > 0 && half->T.sell == 0) || (dir < 0 && half->T.sell != 0) )
+        {
+            if ( myasset(half) == NXT_ASSETID )
+                half->T.closed = 1;
             return(1);
+        }
         half->T.closed = 1;
-        printf("close half dir.%d\n",dir);
+        printf("%p close half dir.%d\n",half,dir);
     }
     return(0);
 }
@@ -299,8 +305,8 @@ int32_t set_pendinghalf(struct pending_offer *pt,int32_t dir,struct pendinghalf 
         if ( dir < 0 )
             half->T.sell = 1;
         half->T.exchangeid = exchange->exchangeid;
-        half->T.needsubmit = need_to_requesthalf(half,dir,pt);
-        printf("%s exchange.%d sethalf other.%llu asset.%llu | myasset.%llu tradedasset.%llu | closed.%d\n",exchangestr,half->T.exchangeid,(long long)otherNXT(pt,half),(long long)otherasset(half),(long long)myasset(half),(long long)tradedasset(half),half->T.closed);
+        half->T.needsubmit = need_to_submithalf(half,dir,pt);
+        printf("%s exchange.%d sethalf other.%llu asset.%llu | myasset.%llu tradedasset.%llu | closed.%d needsubmit.%d\n",exchangestr,half->T.exchangeid,(long long)otherNXT(pt,half),(long long)otherasset(half),(long long)myasset(half),(long long)tradedasset(half),half->T.closed,half->T.needsubmit);
         if ( otherNXT(pt,half) != 0 && half->baseamount != 0 && half->relamount != 0 )
             return(half->T.exchangeid == INSTANTDEX_EXCHANGEID);
     }
@@ -324,6 +330,14 @@ int32_t extract_pendinghalf(struct pending_offer *pt,int32_t dir,struct pendingh
     }
     return(-1);
 }
+
+/*
+InstantDEX is already able to automatically combine orderbooks
+so this is the hard part about conversion
+just make N fiat markets against NXT and automatically there is N*N virtual currency conversion orderbooks
+place an order to convert
+and I can add an extra functionality so you can convert and specify a different destination account, basically you buy the destination fiat asset you want the recipient to receive
+Alice has USD, wants to send EUR to Bob*/
 
 int32_t process_Pending_offersQ(struct pending_offer **ptp,void **ptrs)
 {
@@ -394,10 +408,12 @@ int32_t submit_trade(int32_t dir,struct pendinghalf *half,struct pendinghalf *ot
     uint64_t offerNXT; int32_t len;
     struct nodestats *stats;
     struct pserver_info *pserver;
+    if ( half->T.closed != 0 )
+        return(0);
     half->T.sent = 1;
-    if ( half->T.needsubmit == 0 )
+    if ( half->T.needsubmit != 0 )
     {
-        printf("submit sell.%d dir.%d\n",half->T.sell,dir);
+        printf("%p SUBMIT sell.%d dir.%d closed.%d\n",half,half->T.sell,dir,half->T.closed);
         if ( (half->T.txid= submit_to_exchange(half->T.exchangeid,&jsonstr,half->T.assetid,half->T.qty,half->T.priceNQT,dir,pt->nxt64bits,NXTACCTSECRET,pt->triggerhash,pt->comment)) == 0 )
         {
             if ( jsonstr != 0 )
@@ -406,9 +422,9 @@ int32_t submit_trade(int32_t dir,struct pendinghalf *half,struct pendinghalf *ot
             half->T.error = 1;
         }
     }
-    else if ( half->T.closed == 0 )
+    else
     {
-        printf("send sell.%d dir.%d\n",half->T.sell,dir);
+        printf("%p send sell.%d dir.%d closed.%d\n",half,half->T.sell,dir,half->T.closed);
         stats = get_nodestats(offerNXT);
         if ( stats != 0 && stats->ipbits != 0 )
         {
@@ -521,8 +537,17 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
     else
     {
         pt->fee = INSTANTDEX_FEE;
-        set_pendinghalf(pt,-dir,base,baseid,baseamount,relid,relamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(base,pt->nxt64bits,1,pt->srcqty);
-        set_pendinghalf(pt,dir,rel,baseid,baseamount,relid,relamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(rel,pt->nxt64bits,1,pt->srcqty);
+        if ( baseid == NXT_ASSETID )
+        {
+            dir = -dir;
+            set_pendinghalf(pt,-dir,base,relid,relamount,baseid,baseamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(base,pt->nxt64bits,1,pt->srcqty);
+            set_pendinghalf(pt,dir,rel,relid,relamount,baseid,baseamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(rel,pt->nxt64bits,1,pt->srcqty);
+        }
+        else
+        {
+            set_pendinghalf(pt,-dir,base,baseid,baseamount,relid,relamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(base,pt->nxt64bits,1,pt->srcqty);
+            set_pendinghalf(pt,dir,rel,baseid,baseamount,relid,relamount,quoteid,pt->nxt64bits,offerNXT,exchange), pt->ratio = calc_asset_QNT(rel,pt->nxt64bits,1,pt->srcqty);
+        }
     }
     if ( (pt->ratio * 100.) < minperc && (base->T.exchangeid == INSTANTDEX_EXCHANGEID || rel->T.exchangeid == INSTANTDEX_EXCHANGEID) )
     {
@@ -540,7 +565,7 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
         strcpy(buf,pt->comment);
         if ( strlen(pt->triggerhash) == 64 )
         {
-            if ( pt->sell == 0 )
+            if ( dir > 0 )
                 seller = &pt->base, buyer = &pt->rel;
             else seller = &pt->rel, buyer = &pt->base;
             if ( submit_trade(-1,seller,buyer,pt,NXTACCTSECRET) < 0 )

@@ -576,6 +576,7 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
     {
         if ( assetid != NXT_ASSETID && qty != 0 && priceNQT != 0 )
         {
+            printf("submit to exchange dir.%d\n",dir);
             txid = submit_triggered_bidask(jsonstrp,(dir > 0) ? "placeBidOrder" : "placeAskOrder",nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment);
             if ( *jsonstrp != 0 )
                 txid = 0;

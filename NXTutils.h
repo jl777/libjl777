@@ -511,6 +511,16 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr,int32_t isMSc
     uint64_t mult = 1;
     char *jsonstr,buf[4096];
     int32_t i;
+    if ( calc_nxt64bits(assetidstr) == NXT_ASSETID )
+    {
+        ap->decimals = 8;
+        ap->mult = 1;
+        ap->issued = (uint64_t)SATOSHIDEN * 1000000000;
+        ap->issuer = NXT_ASSETID;
+        ap->description = clonestr("NXT");
+        ap->name = clonestr("NXT");
+        return(ap);
+    }
     jsonstr = issue_getAsset(isMScoin,assetidstr);
     if ( jsonstr != 0 )
     {

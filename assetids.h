@@ -91,6 +91,12 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
     char assetstr[64],buf[MAX_JSON_FIELD],*jsonstr,*jsonstr2;
     uint32_t i,retval = INSTANTDEX_UNKNOWN;
     *multp = 1;
+    if ( assetbits == NXT_ASSETID )
+    {
+        *multp = 1;
+        strcpy(name,"NXT");
+        return(INSTANTDEX_NATIVE); // native crypto type
+    }
     expand_nxt64bits(assetstr,assetbits);
     strcpy(name,"unknown");
     for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
@@ -130,15 +136,6 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
     return(retval);
 }
 
-uint64_t issue_getBalance(CURL *curl_handle,char *NXTaddr)
-{
-    char cmd[4096];
-    union NXTtype ret;
-    sprintf(cmd,"%s=getBalance&account=%s",_NXTSERVER,NXTaddr);
-    ret = extract_NXTfield(curl_handle,0,cmd,"balanceNQT",64);
-    return(ret.nxt64bits);
-}
-
 uint64_t min_asset_amount(uint64_t assetid)
 {
     struct NXT_asset *ap;
@@ -173,14 +170,40 @@ uint64_t calc_assetoshis(uint64_t assetidbits,uint64_t amount)
     return(assetoshis);
 }
 
+uint64_t issue_getBalance(CURL *curl_handle,char *NXTaddr)
+{
+    char cmd[4096];
+    union NXTtype ret;
+    sprintf(cmd,"%s=getBalance&account=%s",_NXTSERVER,NXTaddr);
+    ret = extract_NXTfield(curl_handle,0,cmd,"balanceNQT",64);
+    return(ret.nxt64bits);
+}
+
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
-    char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD];
+    char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD],*jsonstr;
     union NXTtype retval;
     int32_t i,n,iter;
-    cJSON *array,*item,*obj;
+    cJSON *array,*item,*obj,*json;
+    uint64_t assetidbits = calc_nxt64bits(assetidstr);
     int64_t quantity,qty;
     quantity = *unconfirmedp = 0;
+    if ( assetidbits == NXT_ASSETID )
+    {
+        sprintf(cmd,"requestType=getBalance&account=%s",NXTaddr);
+        if ( (jsonstr= issue_NXTPOST(0,cmd)) != 0 )
+        {
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                qty = get_API_nxt64bits(cJSON_GetObjectItem(json,"balanceNQT"));
+                *unconfirmedp = get_API_nxt64bits(cJSON_GetObjectItem(json,"unconfirmedBalanceNQT"));
+                printf("(%s)\n",jsonstr);
+                free_json(json);
+            }
+            free(jsonstr);
+        }
+        return(qty);
+    }
     sprintf(cmd,"%s=getAccount&account=%s",_NXTSERVER,NXTaddr);
     retval = extract_NXTfield(0,0,cmd,0,0);
     if ( retval.json != 0 )
@@ -232,7 +255,8 @@ uint64_t calc_asset_qty(uint64_t *availp,uint64_t *priceNQTp,char *NXTaddr,int32
             priceNQT = (price * ap->mult);
             quantityQNT = (vol * SATOSHIDEN) / ap->mult;
             balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
-            printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | (%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,vol,price,SATOSHIDEN,(long long)ap->mult);
+            printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | price_vol.(%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,vol,price,SATOSHIDEN,(long long)ap->mult);
+            //getchar();
             if ( checkflag != 0 && (balance < quantityQNT || unconfirmed < quantityQNT) )
                 return(0);
             *priceNQTp = priceNQT;
