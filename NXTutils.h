@@ -2221,7 +2221,10 @@ char *verify_tokenized_json(unsigned char *pubkey,char *sender,int32_t *validp,c
         else
         {
             if ( sender[0] != 0 && strcmp(sender,NXTaddr) != 0 )
+            {
+                //printf("sender.(%s) vs (%s) valid.%d website.(%s) encoded.(%s) len.%ld\n",sender,NXTaddr,*validp,parmstxt,encoded,strlen((char *)encoded));
                 *validp = -1;
+            }
             if ( pubkey != 0 && *validp > 0 && (pubkeyobj=cJSON_GetObjectItem(parmsobj,"pubkey")) != 0 )
             {
                 copy_cJSON(pubkeystr,pubkeyobj);

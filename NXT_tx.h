@@ -47,7 +47,9 @@ struct NXT_tx *search_txptrs(struct NXT_tx *txptrs[],uint64_t txid,uint64_t quot
     {
         if ( (tx= txptrs[i]) == 0 )
             return(0);
-        if ( tx->txid == txid || tx->quoteid == quoteid || tx->assetidbits == baseid || tx->assetidbits == relid )
+        if ( quoteid != 0 )
+            printf("Q.%llu ",(long long)tx->quoteid);
+        if ( (txid != 0 && tx->txid == txid) || (quoteid != 0 && tx->quoteid == quoteid) || (baseid != 0 && tx->assetidbits == baseid) || (relid != 0 && tx->assetidbits == relid) )
             return(tx);
     }
     return(0);
@@ -178,7 +180,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     uint64_t assetidbits,quantity,price;
     cJSON *attachmentobj;
     struct NXT_tx *utx = 0;
-    char sender[1024],recipient[1024],deadline[1024],feeNQT[1024],amountNQT[1024],type[1024],subtype[1024],verify[1024],referencedTransaction[1024],quantityQNT[1024],priceNQT[1024],comment[1024],assetidstr[1024],sighash[1024],fullhash[1024],timestamp[1024],transaction[1024];
+    char sender[MAX_JSON_FIELD],recipient[MAX_JSON_FIELD],deadline[MAX_JSON_FIELD],feeNQT[MAX_JSON_FIELD],amountNQT[MAX_JSON_FIELD],type[MAX_JSON_FIELD],subtype[MAX_JSON_FIELD],verify[MAX_JSON_FIELD],referencedTransaction[MAX_JSON_FIELD],quantityQNT[MAX_JSON_FIELD],priceNQT[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],assetidstr[MAX_JSON_FIELD],sighash[MAX_JSON_FIELD],fullhash[MAX_JSON_FIELD],timestamp[MAX_JSON_FIELD],transaction[MAX_JSON_FIELD];
     if ( json == 0 )
         return(0);
     if ( extract_cJSON_str(sender,sizeof(sender),json,"sender") > 0 ) n++;
@@ -198,7 +200,7 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     assetidbits = NXT_ASSETID;
     quantity = price = 0;
     size = sizeof(*utx);
-    if ( strcmp(type,"2") == 0 || strcmp(type,"5") == 0 )//&& strcmp(subtype,"3") == 0) )
+    //if ( strcmp(type,"2") == 0 || strcmp(type,"5") == 0 )//&& strcmp(subtype,"3") == 0) )
     {
         attachmentobj = cJSON_GetObjectItem(json,"attachment");
         if ( attachmentobj != 0 )

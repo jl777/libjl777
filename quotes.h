@@ -165,7 +165,7 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
             cJSON_AddItemToObject(json,"closed",cJSON_CreateNumber(1));
         iQ_exchangestr(exchange,iQ), cJSON_AddItemToObject(json,"exchange",cJSON_CreateString(exchange));
         if ( iQ->nxt64bits != 0 )
-            sprintf(numstr,"%llu",(long long)iQ->nxt64bits), cJSON_AddItemToObject(json,"offerNXT",cJSON_CreateString(numstr));
+            sprintf(numstr,"%llu",(long long)iQ->nxt64bits), cJSON_AddItemToObject(json,"offerNXT",cJSON_CreateString(numstr)), cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(numstr));
         sprintf(numstr,"%llu",(long long)refbaseid), cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(numstr));
         sprintf(numstr,"%llu",(long long)refrelid), cJSON_AddItemToObject(json,"relid",cJSON_CreateString(numstr));
         if ( jumpasset != 0 )
@@ -195,7 +195,7 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
             cJSON_AddItemToObject(json,"baseiQ",baseobj);
         if ( relobj != 0 )
             cJSON_AddItemToObject(json,"reliQ",relobj);
-        cJSON_AddItemToObject(json,"minperc",cJSON_CreateNumber(iQ->minperc));
+        cJSON_AddItemToObject(json,"minperc",cJSON_CreateNumber(iQ->minperc!=0?iQ->minperc:INSTANTDEX_MINVOL));
     }
     else
     {

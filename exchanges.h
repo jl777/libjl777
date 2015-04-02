@@ -276,11 +276,12 @@ void convram_NXT_quotejson(struct NXT_tx *txptrs[],int32_t numptrs,uint64_t asse
 
 int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t refassetid)
 {
-    uint64_t quoteid,assetid,amount,qty;
+    uint64_t quoteid,assetid,amount,qty,priceNQT;
     char cmd[1024],txidstr[MAX_JSON_FIELD],account[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],*jsonstr;
     cJSON *json,*array,*txobj,*attachment,*msgobj,*commentobj;
     int32_t i,n,numbooks,type,subtype,m = 0;
     struct rambook_info **obooks;
+    txptrs[0] = 0;
     if ( (obooks= get_allrambooks(&numbooks)) == 0 )
         return(0);
     sprintf(cmd,"requestType=getUnconfirmedTransactions");
@@ -299,26 +300,26 @@ int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t refasseti
                     if ( account[0] == 0 )
                         copy_cJSON(account,cJSON_GetObjectItem(txobj,"sender"));
                     qty = amount = assetid = quoteid = 0;
-                    type = subtype = -1;
+                    amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
+                    type = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"type"),-1);
+                    subtype = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"subtype"),-1);
                     if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 )
                     {
                         assetid = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"asset"));
-                        amount = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"amountNQT"));
-                        type = (int32_t)get_API_int(cJSON_GetObjectItem(attachment,"type"),-1);
-                        subtype = (int32_t)get_API_int(cJSON_GetObjectItem(attachment,"subtype"),-1);
                         comment[0] = 0;
                         if ( (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                         {
+                            qty = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"quantityQNT"));
+                            priceNQT = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"priceNQT"));
                             copy_cJSON(comment,msgobj);
                             if ( comment[0] != 0 )
                             {
                                 unstringify(comment);
                                 if ( (commentobj= cJSON_Parse(comment)) != 0 )
                                 {
-                                    qty = get_API_nxt64bits(cJSON_GetObjectItem(commentobj,"quantityQNT"));
                                     quoteid = get_API_nxt64bits(cJSON_GetObjectItem(commentobj,"quoteid"));
                                     if ( Debuglevel > 2 )
-                                        printf("acct.(%s) pending quoteid.%llu asset.%llu qty.%llu\n",account,(long long)quoteid,(long long)assetid,(long long)qty);
+                                        printf("acct.(%s) pending quoteid.%llu asset.%llu qty.%llu %.8f amount %.8f %d:%d tx.%s\n",account,(long long)quoteid,(long long)assetid,(long long)qty,dstr(priceNQT),dstr(amount),type,subtype,txidstr);
                                     if ( quoteid != 0 )
                                         match_unconfirmed(obooks,numbooks,account,quoteid);
                                     free_json(commentobj);
@@ -339,6 +340,7 @@ int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t refasseti
             } free_json(json);
         } free(jsonstr);
     } free(obooks);
+    txptrs[m] = 0;
     return(m);
 }
 

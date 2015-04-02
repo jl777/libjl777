@@ -1300,9 +1300,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             printf("ERROR hist run_libwebsockets\n");
         sleep(3);
     }
-    int32_t tmp = 0;
-    if ( Global_mp->gatewayid >= 1 || Global_mp->iambridge != 0 )
-        tmp = 1;
+    int32_t tmp = 1;
+    if ( strncmp(Global_mp->ipaddr,"209",3) != 0 && (Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0) )
+        tmp = 0;
     return((tmp << 17) | ((SUPERNET_PORT & 0xffff) << 1) | (USESSL&1));
 }
 

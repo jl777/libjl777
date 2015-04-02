@@ -362,8 +362,8 @@ char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     char cmdstr[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],utx[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
     uint64_t quoteid,assetid,qty,priceNQT;
     int32_t minperc;
-    if ( is_remote_access(previpaddr) == 0 )
-        return(0);
+    //if ( is_remote_access(previpaddr) == 0 )
+    //    return(0);
     copy_cJSON(cmdstr,objs[0]);
     assetid = get_API_nxt64bits(objs[1]);
     qty = get_API_nxt64bits(objs[2]);
@@ -373,6 +373,8 @@ char *respondtx_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     copy_cJSON(sig,objs[6]);
     copy_cJSON(utx,objs[7]);
     minperc = (int32_t)get_API_int(objs[8],INSTANTDEX_MINVOL);
+    if ( is_remote_access(previpaddr) == 0 )
+        copy_cJSON(sender,objs[9]);
     if ( sender[0] != 0 && valid > 0 && triggerhash[0] != 0 )
         retstr = respondtx(NXTaddr,NXTACCTSECRET,sender,cmdstr,assetid,qty,priceNQT,triggerhash,quoteid,sig,utx,minperc);
     else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
@@ -1998,17 +2000,17 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *allorderbooks[] = { (char *)allorderbooks_func, "allorderbooks", "V", 0 };
     static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "baseid", "relid", "allfields", "oldest", "maxdepth", "base", "rel", "gui", 0 };
     static char *lottostats[] = { (char *)lottostats_func, "lottostats", "V", "timestamp", 0 };
-    static char *jumptrades[] = { (char *)jumptrades_func, "jumptrades", "V", 0 };
-    static char *tradehistory[] = { (char *)tradehistory_func, "tradehistory", "V", "timestamp", 0 };
-    static char *openorders[] = { (char *)openorders_func, "openorders", "V", 0 };
     static char *cancelquote[] = { (char *)cancelquote_func, "cancelquote", "V", "quoteid", 0 };
+    static char *openorders[] = { (char *)openorders_func, "openorders", "V", 0 };
     static char *placebid[] = { (char *)placebid_func, "placebid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", 0 };
     static char *placeask[] = { (char *)placeask_func, "placeask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", ",gui", "automatch", "minperc", 0 };
     static char *bid[] = { (char *)bid_func, "bid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", 0 };
     static char *ask[] = { (char *)ask_func, "ask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", 0 };
     static char *makeoffer3[] = { (char *)makeoffer3_func, "makeoffer3", "V", "baseid", "relid", "quoteid", "srcqty", "flip", "baseiQ", "reliQ", "askoffer", "price", "volume", "exchange", "baseamount", "relamount", "offerNXT", "minperc", "jumpasset", 0 };
-    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "cmd", "assetid", "quantityQNT", "priceNQT", "triggerhash", "quoteid", "sig", "utx", "minperc", 0 };
-    //static char *processjumptrade[] = { (char *)processjumptrade_func, "processjumptrade", "V", "assetA", "amountA", "other", "assetB", "amountB", "feeA", "feeAtxid", "triggerhash", "jumper", "jumpasset", "jumpamount", "balancing", "balancetxid", "gui", "quoteid", 0 };
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "cmd", "assetid", "quantityQNT", "priceNQT", "triggerhash", "quoteid", "sig", "utx", "minperc", "offerNXT", 0 };
+    static char *jumptrades[] = { (char *)jumptrades_func, "jumptrades", "V", 0 };
+    static char *tradehistory[] = { (char *)tradehistory_func, "tradehistory", "V", "timestamp", 0 };
+  //static char *processjumptrade[] = { (char *)processjumptrade_func, "processjumptrade", "V", "assetA", "amountA", "other", "assetB", "amountB", "feeA", "feeAtxid", "triggerhash", "jumper", "jumpasset", "jumpamount", "balancing", "balancetxid", "gui", "quoteid", 0 };
     //static char *processutx[] = { (char *)processutx_func, "processutx", "V", "utx", "sig", "full", "feeAtxid", "quoteid", 0 };
     //static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "baseid", "relid", "baseamount", "relamount", "other", "type", "quoteid", 0 };
     //static char *makeoffer2[] = { (char *)makeoffer2_func, "makeoffer2", "V", "baseid", "baseamount", "jumpaddr", "jumpasset", "jumpamount", "other", "relid", "relamount", "gui", "quoteid", 0 };
@@ -2045,6 +2047,13 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
         nxtobj = cJSON_GetObjectItem(argjson,"NXT");
         secretobj = cJSON_GetObjectItem(argjson,"secret");
         copy_cJSON(NXTaddr,nxtobj);
+        if ( is_remote_access(previpaddr) == 0 && strcmp(NXTaddr,Global_mp->myNXTADDR) != 0 )// && strcmp(NXTaddr,Global_mp->privateNXTADDR) != 0 )
+        {
+            strcpy(NXTaddr,Global_mp->myNXTADDR);
+            ensure_jsonitem(argjson,"NXT",NXTaddr);
+            valid = 1;
+            printf("subsititute NXT.%s\n",NXTaddr);
+        }
         copy_cJSON(command,obj);
         if ( is_enabled_command(command) == 0 )
             return(clonestr("{\"error\":\"command disabled\"}"));
