@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  */
 
-#include "marketmaker.h"
+#define SHA512_DIGEST_SIZE (512 / 8)
 #include <string.h>
 
 #define SHA512_BLOCK_SIZE  (1024 / 8)
