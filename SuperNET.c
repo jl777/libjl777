@@ -862,7 +862,15 @@ int main(int argc,const char *argv[])
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
 #ifdef __APPLE__
-    //
+#define BTCe_GETINFO 3
+    if ( 0 )
+    {
+        char *issue_BTCe(int cmd,char *arg,double price,double amount);
+        char *init_MGWconf(char *JSON_or_fname,char *myipaddr);
+        init_MGWconf("SuperNET.conf",0);
+        printf("%s\n",issue_BTCe(BTCe_GETINFO,"",0,0)); getchar();
+    }
+    
 #else
     if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
 #endif

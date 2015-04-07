@@ -233,7 +233,7 @@ struct ramchain_info
     FILE *permfp;
     char name[64],permfname[512],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*marker2,*opreturnmarker;
     uint32_t next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
-    uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,marker2_rawind,lastdisp,maxind,numgateways,nummsigs;
+    uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,marker2_rawind,lastdisp,maxind,numgateways,nummsigs,oldtx;
     uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv,minoutput;
     struct rawblock *R,*R2,*R3;
     struct syncstate *verified;
@@ -1728,13 +1728,21 @@ int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normala
     if ( (msig= find_msigaddr(msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
+        printf("cant find_msigaddr.(%s)\n",msigaddr);
         return(0);
+    }
+    if ( msig->redeemScript[0] != 0 && ram->S.gatewayid >= 0 && ram->S.gatewayid < NUM_GATEWAYS )
+    {
+        strcpy(normaladdr,msig->pubkeys[ram->S.gatewayid].coinaddr);
+        strcpy(redeemScript,msig->redeemScript);
+        printf("_map_msigaddr.(%s) -> return (%s) redeem.(%s)\n",msigaddr,normaladdr,redeemScript);
+        return(1);
     }
     sprintf(args,"\"%s\"",msig->multisigaddr);
     retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"validateaddress",args);
     if ( retstr != 0 )
     {
-        //printf("got retstr.(%s)\n",retstr);
+        printf("got retstr.(%s)\n",retstr);
         if ( (json = cJSON_Parse(retstr)) != 0 )
         {
             if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
@@ -2255,14 +2263,15 @@ void disp_cointx(struct cointx_info *cointx)
     printf("\n");
 }
 
-int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx)
+int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx)
 {
     uint8_t *data;
     long offset = 0;
     int32_t i;
     data = calloc(1,len);
     offset = _emit_uint32(data,offset,cointx->version);
-    offset = _emit_uint32(data,offset,cointx->timestamp);
+    if ( oldtx == 0 )
+        offset = _emit_uint32(data,offset,cointx->timestamp);
     offset += hcalc_varint(&data[offset],cointx->numinputs);
     for (i=0; i<cointx->numinputs; i++)
         offset = _emit_cointx_input(data,offset,&cointx->inputs[i]);
@@ -2275,7 +2284,7 @@ int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx)
     return((int32_t)offset);
 }
 
-int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx)
+int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx,int32_t oldtx)
 {
     char *checkstr;
     long len;
@@ -2283,7 +2292,7 @@ int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx)
     len = strlen(hexstr) * 2;
     //disp_cointx(cointx);
     checkstr = calloc(1,len + 1);
-    _emit_cointx(checkstr,len,cointx);
+    _emit_cointx(checkstr,len,cointx,oldtx);
     if ( (retval= strcmp(checkstr,hexstr)) != 0 )
     {
         disp_cointx(cointx);
@@ -2295,7 +2304,7 @@ int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx)
     return(retval);
 }
 
-struct cointx_info *_decode_rawtransaction(char *hexstr)
+struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx)
 {
     uint8_t data[8192];
     long len,offset = 0;
@@ -2307,15 +2316,21 @@ struct cointx_info *_decode_rawtransaction(char *hexstr)
         printf("_decode_rawtransaction: hexstr too long %ld vs %ld || is_hexstr.%d || oddlen.%ld\n",strlen(hexstr),sizeof(data)*2-1,is_hexstr(hexstr),(len & 1));
         return(0);
     }
+    //_decode_rawtransaction("0100000001a131c270d541c9d2be98b6f7a88c6cbea5d5a395ec82c9954083675226f399ee0300000000ffffffff042f7500000000000017a9140cc0def37d9682c292d18b3f579b7432adf4703187a0f70300000000001976a914e8bf7b6c41702de3451d189db054c985fe6fbbdb88ac01000000000000001976a914f9fab825f93c5f0ddcf90c4c96c371dc3dbca95788ac10eb09000000000017a914309924e8dad854d4cb8e3d6b839a932aea22590c8700000000"); getchar();
     len >>= 1;
+    //printf("(%s).%ld\n",hexstr,len);
     decode_hex(data,(int32_t)len,hexstr);
+    //for (int i=0; i<len; i++)
+    //    printf("%02x ",data[i]);
+    //printf("converted\n");
     cointx = calloc(1,sizeof(*cointx));
     offset = _decode_uint32(&cointx->version,data,offset,len);
-    offset = _decode_uint32(&cointx->timestamp,data,offset,len);
+    if ( oldtx == 0 )
+        offset = _decode_uint32(&cointx->timestamp,data,offset,len);
     offset = hdecode_varint(&numinputs,data,offset,len);
     if ( numinputs > MAX_COINTX_INPUTS )
     {
-        printf("_decode_rawtransaction: numinputs %lld > %d MAX_COINTX_INPUTS\n",(long long)numinputs,MAX_COINTX_INPUTS);
+        printf("_decode_rawtransaction: numinputs %lld > %d MAX_COINTX_INPUTS version.%d timestamp.%u %ld offset.%ld [%x]\n",(long long)numinputs,MAX_COINTX_INPUTS,cointx->version,cointx->timestamp,time(NULL),offset,*(int *)&data[offset]);
         return(0);
     }
     for (vin=0; vin<numinputs; vin++)
@@ -2345,17 +2360,17 @@ struct cointx_info *_decode_rawtransaction(char *hexstr)
     cointx->numoutputs = (uint32_t)numoutputs;
     if ( offset != len )
         printf("_decode_rawtransaction warning: offset.%ld vs len.%ld for (%s)\n",offset,len,hexstr);
-    _validate_decoderawtransaction(hexstr,cointx);
+    _validate_decoderawtransaction(hexstr,cointx,oldtx);
     return(cointx);
 }
 
-char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32_t numredeems)
+char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32_t numredeems,int32_t oldtx)
 {
     char scriptstr[1024],str40[41],*retstr = 0;
     long len,i;
     struct rawvout *vout;
     struct cointx_info *cointx;
-    if ( _make_OP_RETURN(scriptstr,redeems,numredeems) > 0 && (cointx= _decode_rawtransaction(rawtx)) != 0 )
+    if ( _make_OP_RETURN(scriptstr,redeems,numredeems) > 0 && (cointx= _decode_rawtransaction(rawtx,oldtx)) != 0 )
     {
         //if ( replace_vout == cointx->numoutputs-1 )
         //    cointx->outputs[cointx->numoutputs] = cointx->outputs[cointx->numoutputs-1];
@@ -2374,7 +2389,7 @@ char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32
         len = strlen(rawtx) * 2;
         retstr = calloc(1,len + 1);
         disp_cointx(cointx);
-        if ( _emit_cointx(retstr,len,cointx) < 0 )
+        if ( _emit_cointx(retstr,len,cointx,oldtx) < 0 )
             free(retstr), retstr = 0;
         free(cointx);
     }
@@ -2481,7 +2496,7 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                     if (retstr != 0 && retstr[0] != 0 )
                     {
                         fprintf(stderr,"len.%ld calc_rawtransaction retstr.(%s)\n",strlen(retstr),retstr);
-                        if ( (with_op_return= _insert_OP_RETURN(retstr,opreturn_output,&redeemtxid,1)) != 0 )
+                        if ( (with_op_return= _insert_OP_RETURN(retstr,opreturn_output,&redeemtxid,1,ram->oldtx)) != 0 )
                         {
                             if ( (signedtx= _sign_localtx(ram,cointx,with_op_return)) != 0 )
                             {
@@ -3047,7 +3062,7 @@ void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr)
                 //printf("name is (%s) + (%s) -> (%s)\n",ram->name,Server_ipaddrs[gatewayid],name);
                 save_MGW_status(name,jsonstr);
             }
-        } else if ( Debuglevel > 1 && NORAMCHAINS == 0 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
+        } else if ( Debuglevel > 1 && NORAMCHAINS == 0 && coinstr[0] != 0 ) printf("dont have ramchain_info for (%s) (%s)\n",coinstr,pingstr);
         if ( jsonstr != 0 )
             free(jsonstr);
         free_json(array);
@@ -9575,6 +9590,7 @@ void *process_ramchains(void *_argcoinstr)
     while ( IS_LIBTEST != 7 && Finished_init == 0 )
         sleep(1);
     ensure_SuperNET_dirs("ramchains");
+
     startmilli = ram_millis();
     if ( _argcoinstr != 0 && ((long *)_argcoinstr)[1] != 0 && ((long *)_argcoinstr)[2] != 0 )
     {

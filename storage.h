@@ -871,10 +871,10 @@ int32_t init_multisigDB()
                 if ( is_active_coin(msigs[i]->coinstr) == 0 )
                     continue;
                 msigram = ram_add_msigaddr(msigs[i]->multisigaddr,msigs[i]->n,msigs[i]->NXTaddr,msigs[i]->NXTpubkey,msigs[i]->buyNXT);//MTadd_hashtable(&createdflag,&sdb->ramtable,msigs[i]->multisigaddr);
-                printf("%d of %d: %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",i,n,msigs[i]->coinstr,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey);
+                printf("%d of %d: %s.(%s) NXT.(%s) NXTpubkey.(%s) coinaddr.(%s) redeem.(%s)\n",i,n,msigs[i]->coinstr,msigs[i]->multisigaddr,msigs[i]->NXTaddr,msigs[i]->NXTpubkey,msigs[i]->pubkeys[0].coinaddr,msigs[i]->redeemScript);
                 //if ( createdflag != 0 )
-                *msigram = *msigs[i], m++;
-                //else printf("unexpected duplicate.(%s)\n",msigram->multisigaddr);
+                memcpy(msigram,msigs[i],sizeof(*msigram) + (msigs[i]->n*sizeof(msigs[i]->pubkeys[0])));
+                m++;
                 free(msigs[i]);
             }
             free(msigs);
@@ -896,7 +896,7 @@ int32_t init_multisigDB()
                         {
                             if ( is_active_coin(msigram->coinstr) != 0 && find_msigaddr(msigram->multisigaddr) == 0 )
                             {
-                                printf("ADD.%d %s.(%s) NXT.(%s) NXTpubkey.(%s)\n",added,msigram->coinstr,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey);
+                                printf("ADD.%d %s.(%s) NXT.(%s) NXTpubkey.(%s) (%s)\n",added,msigram->coinstr,msigram->multisigaddr,msigram->NXTaddr,msigram->NXTpubkey,msigram->pubkeys[0].coinaddr);
                                 if ( is_zeroes(msigram->NXTpubkey) != 0 )
                                 {
                                     set_NXTpubkey(msigram->NXTpubkey,msigram->NXTaddr);
@@ -912,6 +912,14 @@ int32_t init_multisigDB()
             }
         }
         printf("added.%d multisig addrs\n",added);
+        if ( 0 )
+        {
+            int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normaladdr,char *msigaddr);
+            char normaladdr[1024],redeemScript[4096];
+            _map_msigaddr(redeemScript,get_ramchain_info("BTC"),normaladdr,"367ypPuDkxbKXoboXiBLxak4kV7GhQDAi5");
+            getchar();
+            
+        }
         if ( added > 3 )
         {
             printf("too many msig addrs added, need to RESTART MGW, risk of miscalculating pending deposits\n");

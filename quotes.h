@@ -12,9 +12,9 @@ struct normal_fields { uint64_t nxt64bits,quoteid; struct InstantDEX_quote *base
 union quotefields { struct normal_fields normal; };
 struct InstantDEX_quote
 {
-    struct InstantDEX_quote *baseiQ,*reliQ;
     uint64_t quoteid,baseid,baseamount,relid,relamount,nxt64bits;
-    uint32_t timestamp;
+    struct InstantDEX_quote *baseiQ,*reliQ;
+    uint32_t timestamp,duration;
     uint8_t closed:1,sent:1,matched:1,isask:1,pad2:4,minperc:7;
     char exchangeid,gui[9];
 };
@@ -25,11 +25,21 @@ void cancel_InstantDEX_quote(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sen
 uint64_t calc_quoteid(struct InstantDEX_quote *iQ)
 {
     struct InstantDEX_quote Q;
+    if ( iQ == 0 )
+        return(0);
     if ( iQ->quoteid == 0 )
     {
         Q = *iQ;
+        Q.baseiQ = (struct InstantDEX_quote *)calc_quoteid(iQ->baseiQ);
+        Q.reliQ = (struct InstantDEX_quote *)calc_quoteid(iQ->reliQ);
         clear_InstantDEX_quoteflags(&Q);
-        return(calc_txid((uint8_t *)&Q,sizeof(Q)));
+        if ( Q.isask != 0 )
+        {
+            Q.baseid = iQ->relid, Q.baseamount = iQ->relamount;
+            Q.relid = iQ->baseid, Q.relamount = iQ->baseamount;
+            Q.isask = Q.minperc = 0;
+        }
+        return(calc_txid((uint8_t *)&Q+sizeof(Q.quoteid),sizeof(Q)-sizeof(Q.quoteid)));
     } return(iQ->quoteid);
 }
 
@@ -38,8 +48,8 @@ int _decreasing_quotes(const void *a,const void *b)
 #define iQ_a ((struct InstantDEX_quote *)a)
 #define iQ_b ((struct InstantDEX_quote *)b)
     double vala,valb,volume;
-    vala = iQ_a->isask == 0 ? calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount) : calc_price_volume(&volume,iQ_a->relamount,iQ_a->baseamount);
-    valb = iQ_b->isask == 0 ? calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount) : calc_price_volume(&volume,iQ_b->relamount,iQ_b->baseamount);
+    vala = calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount);//iQ_a->isask == 0 ? calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount) : calc_price_volume(&volume,iQ_a->relamount,iQ_a->baseamount);
+    valb = calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount);//iQ_b->isask == 0 ? calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount) : calc_price_volume(&volume,iQ_b->relamount,iQ_b->baseamount);
 	if ( valb > vala )
 		return(1);
 	else if ( valb < vala )
@@ -54,8 +64,8 @@ int _increasing_quotes(const void *a,const void *b)
 #define iQ_a ((struct InstantDEX_quote *)a)
 #define iQ_b ((struct InstantDEX_quote *)b)
     double vala,valb,volume;
-    vala = iQ_a->isask == 0 ? calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount) : calc_price_volume(&volume,iQ_a->relamount,iQ_a->baseamount);
-    valb = iQ_b->isask == 0 ? calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount) : calc_price_volume(&volume,iQ_b->relamount,iQ_b->baseamount);
+    vala = calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount);//iQ_a->isask == 0 ? calc_price_volume(&volume,iQ_a->baseamount,iQ_a->relamount) : calc_price_volume(&volume,iQ_a->relamount,iQ_a->baseamount);
+    valb = calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount);//iQ_b->isask == 0 ? calc_price_volume(&volume,iQ_b->baseamount,iQ_b->relamount) : calc_price_volume(&volume,iQ_b->relamount,iQ_b->baseamount);
     // printf("(%f %f) ",vala,valb);
 	if ( valb > vala )
 		return(-1);
@@ -92,20 +102,24 @@ void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
     printf("%u: arg.%d %-6ld %12.8f %12.8f %llu/%llu\n",iQ->timestamp,arg,iQ->timestamp-time(NULL),price,vol,(long long)iQ->baseamount,(long long)iQ->relamount);
 }
 
-int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,int32_t isask,uint64_t quoteid,double price,double volume,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *exchange,uint64_t nxt64bits,char *gui,struct InstantDEX_quote *baseiQ,struct InstantDEX_quote *reliQ)
+int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,int32_t isask,uint64_t quoteid,double price,double volume,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *exchange,uint64_t nxt64bits,char *gui,struct InstantDEX_quote *baseiQ,struct InstantDEX_quote *reliQ,int32_t duration)
 {
     struct exchange_info *xchg;
     memset(iQ,0,sizeof(*iQ));
     if ( baseamount == 0 && relamount == 0 )
         set_best_amounts(&baseamount,&relamount,price,volume);
     iQ->timestamp = timestamp;
+    if ( duration < 0 || duration > ORDERBOOK_EXPIRATION )
+        duration = ORDERBOOK_EXPIRATION;
+    iQ->duration = duration;
     iQ->isask = isask;
     iQ->nxt64bits = nxt64bits;
     iQ->baseiQ = baseiQ;
     iQ->reliQ = reliQ;
     iQ->baseid = baseid, iQ->baseamount = baseamount;
     iQ->relid = relid, iQ->relamount = relamount;
-    //printf("(%s) %f %f\n",exchange,dstr(baseamount),dstr(relamount));
+    if ( Debuglevel > 2 )
+        printf("%s.(%s) %f %f\n",iQ->isask==0?"BID":"ASK",exchange,dstr(baseamount),dstr(relamount));
     strncpy(iQ->gui,gui,sizeof(iQ->gui)-1);
     if ( baseiQ == 0 && reliQ == 0 )
     {
@@ -121,37 +135,27 @@ int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,i
 
 cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t depth,int32_t flip,struct InstantDEX_quote *iQ,uint64_t refbaseid,uint64_t refrelid,uint64_t jumpasset)
 {
-    cJSON *json = cJSON_CreateObject();
+    cJSON *relobj=0,*baseobj=0,*json = cJSON_CreateObject();
     char numstr[64],base[64],rel[64],exchange[64];
-    uint64_t baseamount,relamount,frombase,fromrel,tobase,torel;
-    double price,volume,ratio;
-    cJSON *relobj=0,*baseobj=0;
     struct InstantDEX_quote *baseiQ,*reliQ;
-    uint64_t mult;
-    if ( iQ->isask == 0 )
-        baseamount = iQ->baseamount, relamount = iQ->relamount;
-    else relamount = iQ->baseamount, baseamount = iQ->relamount;
+    uint64_t baseamount,relamount,frombase,fromrel,tobase,torel,mult;
+    double price,volume,ratio;
+    baseamount = iQ->baseamount, relamount = iQ->relamount;
     baseiQ = iQ->baseiQ, reliQ = iQ->reliQ;
     if ( depth == 0 )
         *baseamountp = baseamount, *relamountp = relamount;
     if ( baseiQ != 0 && reliQ != 0 )
     {
-        if ( baseiQ->isask == 0 )
-            frombase = baseiQ->baseamount, fromrel = baseiQ->relamount;
-        else fromrel = baseiQ->baseamount, frombase = baseiQ->relamount;
-        if ( reliQ->isask == 0 )
-            tobase = reliQ->baseamount, torel = reliQ->relamount;
-        else torel = reliQ->baseamount, tobase = reliQ->relamount;
+        frombase = baseiQ->baseamount, fromrel = baseiQ->relamount;
+        tobase = reliQ->baseamount, torel = reliQ->relamount;
         make_jumpquote(baseamountp,relamountp,&frombase,&fromrel,&tobase,&torel);
     } else frombase = fromrel = tobase = torel = 0;
     if ( Debuglevel > 2 )
         printf("%p depth.%d %p %p %.8f %.8f: %.8f %.8f %.8f %.8f\n",iQ,depth,baseiQ,reliQ,dstr(*baseamountp),dstr(*relamountp),dstr(frombase),dstr(fromrel),dstr(tobase),dstr(torel));
+    cJSON_AddItemToObject(json,"askoffer",cJSON_CreateNumber(flip));
     if ( depth == 0 )
     {
         cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("makeoffer3"));
-        //cJSON_AddItemToObject(json,"flip",cJSON_CreateNumber(flip));
-        if ( iQ->isask != 0 ) //iQ->askoffer != 0 ||
-            cJSON_AddItemToObject(json,"askoffer",cJSON_CreateNumber(1));
         set_assetname(&mult,base,refbaseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(base));
         set_assetname(&mult,rel,refrelid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(rel));
         
@@ -173,12 +177,12 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
         if ( iQ->baseiQ != 0 && iQ->reliQ != 0 )
         {
             baseamount = frombase, relamount = fromrel;
-            baseobj = gen_InstantDEX_json(&baseamount,&relamount,depth+1,0,iQ->baseiQ,refbaseid,jumpasset,0);
+            baseobj = gen_InstantDEX_json(&baseamount,&relamount,depth+1,iQ->isask,iQ->baseiQ,refbaseid,jumpasset,0);
             *baseamountp = baseamount;
             if ( (ratio= check_ratios(baseamount,relamount,frombase,fromrel)) < .999 || ratio > 1.001 )
                 printf("WARNING: baseiQ ratio %f (%llu/%llu) -> (%llu/%llu)\n",ratio,(long long)baseamount,(long long)relamount,(long long)frombase,(long long)fromrel);
             baseamount = tobase, relamount = torel;
-            relobj = gen_InstantDEX_json(&baseamount,&relamount,depth+1,0,iQ->reliQ,refrelid,jumpasset,0);
+            relobj = gen_InstantDEX_json(&baseamount,&relamount,depth+1,!iQ->isask,iQ->reliQ,refrelid,jumpasset,0);
             *relamountp = baseamount;
             if ( (ratio= check_ratios(baseamount,relamount,tobase,torel)) < .999 || ratio > 1.001 )
                 printf("WARNING: reliQ ratio %f (%llu/%llu) -> (%llu/%llu)\n",ratio,(long long)baseamount,(long long)relamount,(long long)tobase,(long long)torel);
@@ -207,6 +211,7 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
         sprintf(numstr,"%llu",(long long)calc_quoteid(iQ)), cJSON_AddItemToObject(json,"quoteid",cJSON_CreateString(numstr));
         sprintf(numstr,"%llu",(long long)*baseamountp), cJSON_AddItemToObject(json,"baseamount",cJSON_CreateString(numstr));
         sprintf(numstr,"%llu",(long long)*relamountp), cJSON_AddItemToObject(json,"relamount",cJSON_CreateString(numstr));
+        cJSON_AddItemToObject(json,"price",cJSON_CreateNumber(price)), cJSON_AddItemToObject(json,"volume",cJSON_CreateNumber(volume));
     }
     if ( *baseamountp < min_asset_amount(refbaseid) || *relamountp < min_asset_amount(refrelid) )
     {
@@ -227,13 +232,16 @@ cJSON *gen_orderbook_item(struct InstantDEX_quote *iQ,int32_t allflag,uint64_t b
     double price,volume;
     cJSON *json = 0;
     baseamount = iQ->baseamount, relamount = iQ->relamount;
-    if ( (iQ->isask == 0 && (baseid != iQ->baseid || relid != iQ->relid)) || (iQ->isask != 0 && (baseid != iQ->relid || relid != iQ->baseid)) )
-        printf("gen_orderbook_item: isask.%d %llu/%llu != %llu/%llu\n",iQ->isask,(long long)iQ->baseid,(long long)iQ->relid,(long long)baseid,(long long)relid), getchar();
+    if ( (iQ->isask == 0 && (baseid != iQ->baseid || relid != iQ->relid)) )//|| (iQ->isask != 0 && (baseid != iQ->relid || relid != iQ->baseid)) )
+    {
+        printf("gen_orderbook_item: isask.%d %llu/%llu != %llu/%llu\n",iQ->isask,(long long)iQ->baseid,(long long)iQ->relid,(long long)baseid,(long long)relid);//, getchar();
+        return(0);
+    }
     if ( (json= gen_InstantDEX_json(&baseamount,&relamount,0,iQ->isask,iQ,baseid,relid,jumpasset)) != 0 )
     {
         if ( cJSON_GetObjectItem(json,"minbase_error") != 0 || cJSON_GetObjectItem(json,"minrel_error") != 0 )
         {
-            //printf("gen_orderbook_item has error\n");
+            printf("gen_orderbook_item has error (%s)\n",cJSON_Print(json));
             free_json(json);
             return(0);
         }
@@ -244,29 +252,25 @@ cJSON *gen_orderbook_item(struct InstantDEX_quote *iQ,int32_t allflag,uint64_t b
             free_json(json);
             return(cJSON_Parse(offerstr));
         }
-    }
+    } else printf("error generating InstantDEX_json\n");
     return(json);
 }
 
-int32_t make_jumpiQ(uint64_t refbaseid,uint64_t refrelid,int32_t flip,struct InstantDEX_quote *iQ,struct InstantDEX_quote *fromiQ,struct InstantDEX_quote *toiQ,char *gui)
+int32_t make_jumpiQ(uint64_t refbaseid,uint64_t refrelid,int32_t flip,struct InstantDEX_quote *iQ,struct InstantDEX_quote *fromiQ,struct InstantDEX_quote *toiQ,char *gui,int32_t duration)
 {
     uint64_t baseamount,relamount,frombase,fromrel,tobase,torel;
     double vol;
     char exchange[64];
     uint32_t timestamp;
-    if ( fromiQ->isask == 0 )
-        frombase = fromiQ->baseamount, fromrel = fromiQ->relamount;
-    else fromrel = fromiQ->baseamount, frombase = fromiQ->relamount;
-    if ( toiQ->isask == 0 )
-        tobase = toiQ->baseamount, torel = toiQ->relamount;
-    else torel = toiQ->baseamount, tobase = toiQ->relamount;
+    frombase = fromiQ->baseamount, fromrel = fromiQ->relamount;
+    tobase = toiQ->baseamount, torel = toiQ->relamount;
     make_jumpquote(&baseamount,&relamount,&frombase,&fromrel,&tobase,&torel);
     if ( (timestamp= toiQ->timestamp) > fromiQ->timestamp )
         timestamp = fromiQ->timestamp;
     iQ_exchangestr(exchange,iQ);
-    create_InstantDEX_quote(iQ,timestamp,0,calc_quoteid(fromiQ) ^ calc_quoteid(toiQ),0.,0.,refbaseid,baseamount,refrelid,relamount,exchange,0,gui,fromiQ,toiQ);
+    create_InstantDEX_quote(iQ,timestamp,0,calc_quoteid(fromiQ) ^ calc_quoteid(toiQ),0.,0.,refbaseid,baseamount,refrelid,relamount,exchange,0,gui,fromiQ,toiQ,duration);
     if ( Debuglevel > 2 )
-        printf("%p jumpASK: %f (%llu/%llu) %llu %llu %llu %llu\n",iQ,calc_price_volume(&vol,iQ->baseamount,iQ->relamount),(long long)baseamount,(long long)relamount,(long long)frombase,(long long)fromrel,(long long)tobase,(long long)torel);
+        printf("jump%s: %f (%llu/%llu) %llu %llu (%f %f) %llu %llu\n",flip==0?"BID":"ASK",calc_price_volume(&vol,iQ->baseamount,iQ->relamount),(long long)baseamount,(long long)relamount,(long long)frombase,(long long)fromrel,calc_price_volume(&vol,frombase,fromrel),calc_price_volume(&vol,tobase,torel),(long long)tobase,(long long)torel);
     iQ->isask = flip;
     //iQ->askoffer = flip;
     return(1);

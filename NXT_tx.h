@@ -24,7 +24,7 @@ struct NXT_tx
 
 uint32_t calc_expiration(struct NXT_tx *tx)
 {
-    if ( tx->timestamp == 0 )
+    if ( tx == 0 || tx->timestamp == 0 )
         return(0);
     return((NXT_GENESISTIME + tx->timestamp) + 60*tx->deadline);
 }
@@ -107,7 +107,7 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
             sprintf(cmd+strlen(cmd),"&deadline=%u&feeNQT=%lld&secretPhrase=%s&recipient=%s&broadcast=false",utx->deadline,(long long)utx->feeNQT,NXTACCTSECRET,destNXTaddr);
             if ( reftxid != 0 && reftxid[0] != 0 )
                 sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",reftxid);
-            printf("generated cmd.(%s) reftxid.(%s)\n",cmd,reftxid);
+            //printf("generated cmd.(%s) reftxid.(%s)\n",cmd,reftxid);
             retstr = issue_NXTPOST(0,cmd);
             if ( retstr != 0 )
             {
@@ -334,13 +334,14 @@ struct NXT_tx *conv_txbytes(char *txbytes)
     return(tx);
 }
 
-void get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
+uint32_t get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
 {
     init_hexbytes_noT(sighash,tx->sighash.bytes,sizeof(tx->sighash));
     init_hexbytes_noT(fullhash,tx->fullhash.bytes,sizeof(tx->fullhash));
+    return(calc_expiration(tx));
 }
 
-uint64_t submit_triggered_bidask(char **retjsonstrp,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment)
+uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT)
 {
     int32_t deadline = 1 + time_to_nextblock(2)/60;
     uint64_t txid = 0;
@@ -348,7 +349,16 @@ uint64_t submit_triggered_bidask(char **retjsonstrp,char *bidask,uint64_t nxt64b
     cJSON *json;
     if ( retjsonstrp != 0 )
         *retjsonstrp = 0;
-    sprintf(cmd,"%s=%s&asset=%llu&secretPhrase=%s&feeNQT=%llu&quantityQNT=%llu&priceNQT=%llu&deadline=%d",_NXTSERVER,bidask,(long long)assetid,NXTACCTSECRET,(long long)MIN_NQTFEE,(long long)qty,(long long)NXTprice,deadline);
+    sprintf(cmd,"%s=%s&secretPhrase=%s&feeNQT=%llu&deadline=%d",_NXTSERVER,bidask,NXTACCTSECRET,(long long)MIN_NQTFEE,deadline);
+    sprintf(cmd+strlen(cmd),"&%s=%llu&%s=%llu",is_MS!=0?"units":"quantityQNT",(long long)qty,is_MS!=0?"currency":"asset",(long long)assetid);
+    if ( NXTprice != 0 )
+    {
+        if ( is_MS != 0 )
+            sprintf(cmd+strlen(cmd),"&rateNQT=%llu",(long long)NXTprice);
+        else sprintf(cmd+strlen(cmd),"&priceNQT=%llu",(long long)NXTprice);
+    }
+    if ( otherNXT != 0 )
+        sprintf(cmd+strlen(cmd),"&recipient=%llu",(long long)otherNXT);
     if ( triggerhash != 0 && triggerhash[0] != 0 )
         sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",triggerhash);
     if ( comment != 0 && comment[0] != 0 )

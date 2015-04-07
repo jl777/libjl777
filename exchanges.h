@@ -254,7 +254,7 @@ void convram_NXT_quotejson(struct NXT_tx *txptrs[],int32_t numptrs,uint64_t asse
             printf("i.%d: assetid.%llu type.%d subtype.%d time.%u\n",i,(long long)tx->assetidbits,tx->type,tx->subtype,tx->timestamp);
             baseamount = (tx->U.quantityQNT * ap_mult);
             relamount = (tx->U.quantityQNT * tx->priceNQT);
-            add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,tx->senderbits,tx->timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,gui,0);
+            add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,tx->senderbits,tx->timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,gui,0,0);
         }
     }
     srcobj = cJSON_GetObjectItem(json,fieldname);
@@ -268,7 +268,7 @@ void convram_NXT_quotejson(struct NXT_tx *txptrs[],int32_t numptrs,uint64_t asse
                 baseamount = (get_satoshi_obj(srcitem,"quantityQNT") * ap_mult);
                 relamount = (get_satoshi_obj(srcitem,"quantityQNT") * get_satoshi_obj(srcitem,"priceNQT"));
                 timestamp = get_blockutime((uint32_t)get_API_int(cJSON_GetObjectItem(srcitem,"height"),0));
-                add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"account")),timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,gui,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"order")));
+                add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"account")),timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,gui,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"order")),0);
             }
         }
     }
@@ -506,80 +506,424 @@ int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid)
     return(n);
 }
 
-/*void *poll_exchange(void *_exchangeidp)
+void update_NXTAE_books(uint64_t baseid,uint64_t relid,int32_t maxdepth,char *gui)
 {
-    int32_t maxdepth = 13;
-    uint32_t i,n,blocknum,sleeptime,exchangeid = *(int32_t *)_exchangeidp;
-    struct rambook_info *bids,*asks;
+    int32_t i;
     struct orderpair *pair;
     struct exchange_info *exchange;
-    if ( exchangeid >= MAX_EXCHANGES )
+    if ( (exchange= find_exchange(INSTANTDEX_NXTAENAME,0)) != 0 )
     {
-        printf("exchangeid.%d >= MAX_EXCHANGES\n",exchangeid);
-        exit(-1);
-    }
-    exchange = &Exchanges[exchangeid];
-    sleeptime = EXCHANGE_SLEEP;
-    printf("poll_exchange.(%s).%d\n",exchange->name,exchangeid);
-    while ( 1 )
-    {
-        n = 0;
-        if ( exchange->lastmilli == 0. || milliseconds() > (exchange->lastmilli + 1000.*EXCHANGE_SLEEP) )
+        for (i=0; i<exchange->num; i++)
         {
-            //printf("%.3f Last %.3f: check %s\n",milliseconds(),Lastmillis[j],ep->name);
-            for (i=0; i<exchange->num; i++)
+            pair = &exchange->orderpairs[i];
+            if ( pair->bids->assetids[0] == baseid || pair->bids->assetids[0] == relid || pair->bids->assetids[1] == baseid || pair->bids->assetids[1] == relid || pair->asks->assetids[0] == baseid || pair->asks->assetids[0] == relid || pair->asks->assetids[1] == baseid || pair->asks->assetids[1] == relid )
             {
-                pair = &exchange->orderpairs[i];
-                bids = pair->bids, asks = pair->asks;
-                if ( pair->lastmilli == 0. || milliseconds() > (pair->lastmilli + 1000.*QUOTE_SLEEP) )
-                {
-                    //printf("%.3f lastmilli %.3f: %s: %s %s\n",milliseconds(),pair->lastmilli,exchange->name,bids->base,bids->rel);
-                    (*pair->ramparse)(bids,asks,maxdepth,"feed");
-                    //fprintf(stderr,"%s:%s_%s.(%d %d)\n",exchange->name,bids->base,bids->rel,bids->numquotes,asks->numquotes);
-                    pair->lastmilli = exchange->lastmilli = milliseconds();
-                    if ( (bids->updated + asks->updated) != 0 )
-                    {
-                        n++;
-                        if ( bids->updated != 0 )
-                            bids->lastmilli = pair->lastmilli;
-                        if ( asks->updated != 0 )
-                            asks->lastmilli = pair->lastmilli;
-                        //if ( _search_list(ep->obookid,obooks,n) < 0 )
-                        //    obooks[n] = ep->obookid;
-                        //tradebot_event_processor(actual_gmt_jdatetime(),0,&ep,1,ep->obookid,0,1L << j);
-                        //changedmasks[(starti + i) % Numactivefiles] |= (1 << j);
-                        //n++;
-                    }
-                }
+                ramparse_NXT(pair->bids,pair->asks,maxdepth*3,gui);
             }
         }
-        if ( strcmp(exchange->name,INSTANTDEX_NXTAENAME) == 0 )
-        {
-            while ( (blocknum= _get_NXTheight(0)) == exchange->lastblock )
-                sleep(1);
-            exchange->lastblock = blocknum;
-        }
-        if ( n == 0 )
-        {
-            sleep(sleeptime++);
-            if ( sleeptime > EXCHANGE_SLEEP*60 )
-                sleeptime = EXCHANGE_SLEEP*60;
-        } else sleeptime = EXCHANGE_SLEEP;
-        
     }
-    return(0);
-}*/
+}
 
-uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment)
+#define GET_INFO_FROM_BTC_E "method=getInfo&nonce="
+#define GET_ORDERS_FROM_BTC_E "method=OrderList&nonce="
+#define GET_HISTORY_FROM_BTC_E "method=TransHistory&nonce="
+#define OPEN_TRADE_BTC_E "method=Trade&nonce="
+#define CANCEL_ORDER_BTC_E "method=CancelOrder&nonce="
+#define ADD_HEADER_KEY  "Key:"
+#define ADD_HEADER_SIGN "Sign:"
+#define TAPI_URL "https://btc-e.com/tapi"
+#define FILE_OF_SECRET "/Users/jimbolaptop/Desktop/src/bot/bot/secret"
+#define SECRET_LEN 64
+#define FILE_OF_KEY "/Users/jimbolaptop/Desktop/src/bot/bot/key"
+#define KEY_LEN 44
+#if SECRET_LEN > KEY_LEN
+#define KEY_SECRET_SIZE (SECRET_LEN + 4)
+#else
+#define KEY_SECRET_SIZE (KEY_LEN + 4)
+#endif
+#define BTCe_DEPTH 0
+#define BTCe_TRADES 1
+#define BTCe_TICKER 2
+#define BTCe_GETINFO 3
+#define BTCe_GETORDERS 4
+#define BTCe_GETHISTORY 5
+#define BTCe_TRADE 6
+#define BTCe_CANCEL 7
+#define userAgent "Mozilla/4.0 (compatible; )"  //BTC-E Total funds calculator)"
+#define SHA512_DIGEST_SIZE (512 / 8)
+
+
+char *hmac_sha512_str(const char *key, unsigned int key_size, const char *message)
+{
+    void hmac_sha512(const unsigned char *key, unsigned int key_size, const unsigned char *message, unsigned int message_len,unsigned char *mac, unsigned mac_size);
+	static char sign[SHA512_DIGEST_SIZE*2 + 1];
+	unsigned char mac[SHA512_DIGEST_SIZE];
+	int i;
+    
+	hmac_sha512((const unsigned char *)key, key_size,
+                (const unsigned char *)message, (int)strlen(message),
+                mac, SHA512_DIGEST_SIZE);
+	for (i = 0; i < SHA512_DIGEST_SIZE; i++)
+    {
+ 		sprintf(&sign[i*2], "%02x", mac[i]);
+    }
+	sign[2 * SHA512_DIGEST_SIZE] = '\0';
+	return sign;
+}
+
+void ShowEnd (void)
+{
+	printf ("\n</body>\n</html>\n");
+}
+
+void ShowError (const char *fmt, ...)
+{
+    va_list p;
+    
+    puts ("<h1>Error</h1>");
+    va_start(p, fmt);
+    vprintf(fmt, p);
+    va_end(p);
+    ShowEnd ();
+    exit (1);
+}
+
+void *xmalloc(size_t size)
+{
+	void *p;
+    
+	if ((p = malloc(size)) == NULL)
+		ShowError ("Memory exchausted.");
+	return p;
+}
+
+void *xrealloc(void *p, size_t size)
+{
+	void *r;
+    
+	if ((r = realloc(p, size)) == NULL)
+		ShowError ("Memory exchausted.");
+	return r;
+}
+
+static CURL *cHandle;
+void *curl_init_for_post(const char *url, const char *ua,const char *postfields, ...)
+{
+	va_list p;
+	struct curl_slist *headerlist = NULL;
+	char *h;
+    
+	if(cHandle == NULL) {
+		curl_global_init(CURL_GLOBAL_ALL);
+		cHandle = curl_easy_init();
+	}
+#ifdef DEBUG
+	curl_easy_setopt(cHandle, CURLOPT_VERBOSE, 1);
+#endif
+	curl_easy_setopt(cHandle, CURLOPT_USERAGENT, ua);
+	curl_easy_setopt(cHandle, CURLOPT_SSL_VERIFYPEER, 0);
+	curl_easy_setopt(cHandle, CURLOPT_URL, url);
+	if ( postfields != NULL )
+		curl_easy_setopt(cHandle, CURLOPT_POSTFIELDS, postfields);
+    
+	va_start(p, postfields);
+	while((h = va_arg (p, char *)) != NULL)
+		headerlist = curl_slist_append(headerlist, h);
+	va_end(p);
+	if(headerlist != NULL)
+		curl_easy_setopt(cHandle, CURLOPT_HTTPHEADER, headerlist);
+    
+	return cHandle;
+}
+
+struct MemoryStruct {
+    char *memory;
+    size_t size;
+};
+
+static void *myrealloc(void *ptr, size_t size)
+{
+    /* There might be a xrealloc() out there that doesn't like reallocing
+     NULL pointers, so we take care of it here */
+    if(ptr)
+        return xrealloc(ptr, size);
+    else
+        return xmalloc(size);
+}
+
+static size_t
+WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data)
+{
+    size_t realsize = size * nmemb;
+    struct MemoryStruct *mem = (struct MemoryStruct *)data;
+    
+    mem->memory = myrealloc(mem->memory, mem->size + realsize + 1);
+    if (mem->memory) {
+        memcpy(&(mem->memory[mem->size]), ptr, realsize);
+        mem->size += realsize;
+        mem->memory[mem->size] = 0;
+    }
+    return realsize;
+}
+
+void *curl_get(const char *url,char *ua,char *hdr)
+{
+    struct MemoryStruct chunk;
+    long code;
+    struct curl_slist *headers = 0;
+    int32_t res;
+	if ( cHandle == NULL )
+		curl_global_init(CURL_GLOBAL_ALL), cHandle = curl_easy_init();
+#ifdef DEBUG
+	curl_easy_setopt(cHandle,CURLOPT_VERBOSE, 1);
+#endif
+	curl_easy_setopt(cHandle,CURLOPT_USERAGENT,ua);
+	curl_easy_setopt(cHandle,CURLOPT_SSL_VERIFYPEER,0);
+	curl_easy_setopt(cHandle,CURLOPT_URL,url);
+	if ( hdr != NULL )
+    {
+        headers = curl_slist_append(0,hdr);
+		curl_easy_setopt(cHandle,CURLOPT_HTTPHEADER,headers);
+    }
+    res = curl_easy_perform(cHandle);
+    memset(&chunk,0,sizeof(chunk));
+    curl_easy_setopt(cHandle,CURLOPT_WRITEFUNCTION,WriteMemoryCallback);
+    curl_easy_setopt(cHandle,CURLOPT_WRITEDATA,(void *)&chunk);
+    curl_easy_perform(cHandle);
+    curl_easy_reset(cHandle);
+    curl_easy_getinfo(cHandle,CURLINFO_RESPONSE_CODE,&code);
+    if ( code != 200 )
+        ShowError("error: server responded with code %ld\n",code);
+    curl_slist_free_all(headers);
+    return chunk.memory;
+}
+
+char *load_url_into_memory(void *cHandle)
+{
+    struct MemoryStruct chunk;
+    long code;
+    chunk.memory = NULL; /* we expect xrealloc(NULL, size) to work */
+    chunk.size = 0;    /* no data at this point */
+    curl_easy_setopt(cHandle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(cHandle, CURLOPT_WRITEDATA, (void *)&chunk);
+    curl_easy_perform(cHandle);
+    //  curl_easy_cleanup(cHandle);
+    curl_easy_reset(cHandle);
+    curl_easy_getinfo(cHandle, CURLINFO_RESPONSE_CODE, &code);
+    if(code != 200)
+        ShowError("error: server responded with code %ld\n", code);
+    //  curl_global_cleanup();
+    return chunk.memory;
+}
+
+char *bb_xasprintf(const char *fmt, ...)
+{
+	/* Guess we need no more than 100 bytes. */
+	int n, size = 10000;
+	char *p, *np;
+	va_list ap;
+    
+	p = xmalloc(size);
+    
+	while (1) {
+		/* Try to print in the allocated space. */
+		va_start(ap, fmt);
+		n = vsnprintf(p, size, fmt, ap);
+		va_end(ap);
+		/* If that worked, return the string. */
+		if (n > -1 && n < size)
+			return p;
+		/* Else try again with more space. */
+		if (n > -1)    /* glibc 2.1 */
+			size = n+1; /* precisely what is needed */
+        else           /* glibc 2.0 */
+			size *= 2;  /* twice the old size */
+		if ((np = xrealloc (p, size)) == NULL) {
+			free(p);
+			ShowError ("Memory exchausted.");
+		} else {
+			p = np;
+		}
+	}
+}
+
+char *issue_BTCe(int cmd,char *arg,double price,double amount)
+{
+	//static char key[KEY_SECRET_SIZE] = {  };
+	//static char secret[KEY_SECRET_SIZE] = {  };
+	char *ask_buf,*h1,*h2,*h3,*data,url[512],*precisionstr,floatbuf[100];
+    int count;
+	void *cHandle;
+    //printf("issue_BTCe(%s price %f amount %f\n",arg,price,amount);
+    ask_buf = h1 = h2 = h3 = data = cHandle = 0;
+    if ( cmd < 3 )
+    {
+        sprintf(url,"https://btc-e.com/api/2/%s/",arg);
+        switch ( cmd )
+        {
+            case BTCe_DEPTH:
+                //test_parse_BTCe(); getchar();
+                //printf("get depth.(%s) %s\n",arg,url);
+                strcat(url,"depth");
+                break;
+            case BTCe_TICKER:
+                strcat(url,"ticker");
+                break;
+            case BTCe_TRADES:
+                strcat(url,"trades");
+                break;
+        }
+        cHandle = curl_init_for_post(url,userAgent,0,0,0,NULL);
+    }
+    else
+    {
+        switch ( cmd )
+        {
+            case BTCe_GETINFO:
+                ask_buf = bb_xasprintf("%s%ld", GET_INFO_FROM_BTC_E, (long)time(NULL));
+                break;
+            case BTCe_GETORDERS:
+                ask_buf = bb_xasprintf("%s%ld", GET_ORDERS_FROM_BTC_E, (long)time(NULL));
+                break;
+            case BTCe_GETHISTORY:
+                if ( arg != 0 )
+                {
+                    if ( (count= price) > 0 && count < 1000 )
+                        ask_buf = bb_xasprintf("%s%ld&from=%s&count=%d", GET_HISTORY_FROM_BTC_E, (long)time(NULL),count);
+                    else
+                        ask_buf = bb_xasprintf("%s%ld&from=%s", GET_HISTORY_FROM_BTC_E, (long)time(NULL),arg);
+                }
+                else
+                    ask_buf = bb_xasprintf("%s%ld", GET_HISTORY_FROM_BTC_E, (long)time(NULL));
+                break;
+            case BTCe_TRADE:
+                //switch ( econtract )
+                {
+                    //case NMCBTC: precisionstr = "%.5f"; break;
+                    //default: precisionstr = "%.6f"; break;
+                }
+                precisionstr = "%.6f";
+                sprintf(floatbuf,precisionstr,price);
+                //printf("amount %f, price %f\n",amount,price);
+                ask_buf = bb_xasprintf("%s%ld&pair=%s&type=%s&rate=%s&amount=%.6f", OPEN_TRADE_BTC_E, (long)time(NULL),arg,amount>0?"buy":"sell",floatbuf,fabs(amount));
+                break;
+            case BTCe_CANCEL:
+                ask_buf = bb_xasprintf("%s%ld&order_id=%s", CANCEL_ORDER_BTC_E, (long)time(NULL),arg);
+                break;
+            default:
+                printf("unknown BTCe cmd.%d\n",cmd);
+                ask_buf = "illegal BTCe command";
+                break;
+        }
+    }
+    if ( 0 && ask_buf != 0 )
+    {
+        if ( cmd != BTCe_DEPTH )
+            printf("ASKBUF[%s]\n",ask_buf);
+        h1 = bb_xasprintf("%s%s",ADD_HEADER_KEY,APIKEY_BTCE);
+        h3 = hmac_sha512_str(APISECRET_BTCE,(int32_t)strlen(APISECRET_BTCE),ask_buf);
+        h2 = bb_xasprintf("%s%s",ADD_HEADER_SIGN,h3);
+        cHandle = curl_init_for_post(TAPI_URL,userAgent,ask_buf,h1,h2,NULL);
+        data = load_url_into_memory(cHandle);
+        if ( data != 0 )
+        {
+            //if ( cmd != BTCe_DEPTH )
+            printf("cmd.%d [%s]\n",cmd,data);
+            //orderid = parse_BTCe(btce_processor,books,cmd,data,eCONTRACTS[conv_econtractstr(arg)]);
+            //if ( orderid != 0 )
+            //    printf("parser returns (%s)\n",orderid);
+            //free(data);
+            //data = 0;
+        }
+    }
+    else if ( 0 )
+    {
+        char urlbuf[512];
+        sprintf(urlbuf,"https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%ld",APIKEY_BITTREX,time(NULL));
+        h3 = hmac_sha512_str(APISECRET_BITTREX,(int32_t)strlen(APISECRET_BITTREX),urlbuf);
+        h2 = bb_xasprintf("%s%s","apisign:",h3);
+        cHandle = curl_get(urlbuf,userAgent,h2);
+    }
+    else
+    {
+        char hdrbuf[512],cmdbuf[512];
+        sprintf(cmdbuf,"command=returnBalances&nonce=%ld",time(NULL));
+        h3 = hmac_sha512_str(APISECRET_POLONIEX,(int32_t)strlen(APISECRET_POLONIEX),cmdbuf);
+        sprintf(hdrbuf,"[{\"Sign\":\"%s\",\"Key\":\"%s\"}]",h3,APIKEY_POLONIEX);
+        h1 = bb_xasprintf("%s%s","Key:",APIKEY_POLONIEX);
+        h2 = bb_xasprintf("%s%s","Sign:",h3);
+        cHandle = curl_init_for_post("https://poloniex.com/tradingApi",userAgent,cmdbuf,h2,h1);
+        data = load_url_into_memory(cHandle);
+        if ( data != 0 )
+             printf("cmd.%d [%s]\n",cmd,data);
+    }
+    /*
+     req['command'] = command
+    req['nonce'] = int(time.time()*1000)
+    post_data = urllib.urlencode(req)
+    
+    sign = hmac.new(self.Secret, post_data, hashlib.sha512).hexdigest()
+    headers = {
+        'Sign': sign,
+        'Key': self.APIKey
+    }
+    
+    ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/tradingApi', post_data, headers))*/
+   /* {
+        $apikey='xxx';
+        $apisecret='xxx';
+        $nonce=time();
+        $uri='https://bittrex.com/api/v1.1/market/getopenorders?apikey='.$apikey.'&nonce='.$nonce;
+        $sign=hash_hmac('sha512',$uri,$apisecret);
+        $ch = curl_init($uri);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('apisign:'.$sign));
+        $execResult = curl_exec($ch);
+        $obj = json_decode($execResult);
+        
+        nonce = str(int(time.time() * 1000))
+        base_url = 'https://bittrex.com/api/v1.1/%s/'
+        request_url = ''
+        
+        if method in self.public_set:
+            request_url = (base_url % 'public') + method + '?'
+            elif method in self.market_set:
+            request_url = (base_url % 'market') + method + '?apikey=' + self.api_key + "&nonce=" + nonce + '&'
+            elif method in self.account_set:
+            request_url = (base_url % 'account') + method + '?apikey=' + self.api_key + "&nonce=" + nonce + '&'
+            
+            request_url += urllib.urlencode(options)
+            
+            signature = hmac.new(self.api_secret, request_url, hashlib.sha512).hexdigest()
+            
+            headers = {"apisign": signature}
+    }*/
+    if ( h1 != 0 )
+        free(h1);
+    if ( h2 != 0 )
+        free(h2);
+    if ( ask_buf != 0 )
+        free(ask_buf);
+    return(data);
+}
+
+uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT)
 {
     uint64_t txid = 0;
+    char assetidstr[64],*cmd;
+    struct NXT_asset *ap;
+    int32_t createdflag;
     *jsonstrp = 0;
+    expand_nxt64bits(assetidstr,assetid);
+    ap = get_NXTasset(&createdflag,Global_mp,assetidstr);
+    if ( dir == 0 || priceNQT == 0 )
+        cmd = (ap->type == 2 ? "transferAsset" : "transferCurrency"), priceNQT = 0;
+    else cmd = ((dir > 0) ? (ap->type == 2 ? "placeBidOrder" : "currencyBuy") : (ap->type == 2 ? "placeAskOrder" : "currencySell")), otherNXT = 0;
     if ( exchangeid == INSTANTDEX_NXTAEID || exchangeid == INSTANTDEX_UNCONFID )
     {
-        if ( assetid != NXT_ASSETID && qty != 0 && priceNQT != 0 )
+        if ( assetid != NXT_ASSETID && qty != 0 && (dir == 0 || priceNQT != 0) )
         {
             printf("submit to exchange dir.%d\n",dir);
-            txid = submit_triggered_bidask(jsonstrp,(dir > 0) ? "placeBidOrder" : "placeAskOrder",nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment);
+            txid = submit_triggered_nxtae(jsonstrp,ap->type == 5,cmd,nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment,otherNXT);
             if ( *jsonstrp != 0 )
                 txid = 0;
         }

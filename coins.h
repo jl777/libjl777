@@ -873,7 +873,7 @@ struct ramchain_info *get_ramchain_info(char *coinstr)
 
 void activate_ramchain(struct ramchain_info *ram,char *name);
 uint32_t get_blockheight(struct coin_info *cp);
-void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t DEPOSIT_XFER_DURATION)
+void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t DEPOSIT_XFER_DURATION,int32_t oldtx)
 {
     //struct NXT_asset *ap = 0;
     struct coin_info *refcp = get_coin_info("BTCD");
@@ -884,6 +884,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         strcpy(ram->myipaddr,refcp->myipaddr);
     strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
     strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
+    ram->oldtx = oldtx;
     ram->S.nxt64bits = calc_nxt64bits(refcp->srvNXTADDR);
     if ( cp->marker == 0 )
         cp->marker = clonestr(get_marker(cp->name));
@@ -1029,7 +1030,7 @@ void init_coinsarray(char *userdir,char *myipaddr)
                     //addcontact("mypublic",cp->srvNXTADDR);
                 }
                 if ( NORAMCHAINS == 0 )
-                    init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10));
+                    init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10),get_API_int(cJSON_GetObjectItem(cp->json,"OLDTX"),strcmp(cp->name,"BTC")));
             }
         }
     } else printf("no coins array.%p ?\n",array);
@@ -1171,6 +1172,12 @@ void init_SuperNET_settings(char *userdir)
             printf("NXTISSUERACCT.(%s) -> %llu\n",NXTISSUERACCT,(long long)nxt64bits);
         expand_nxt64bits(NXTISSUERACCT,nxt64bits);
     }
+    extract_cJSON_str(APIKEY_BTCE,sizeof(APIKEY_BTCE),MGWconf,"APIKEY_BTCE");
+    extract_cJSON_str(APISECRET_BTCE,sizeof(APISECRET_BTCE),MGWconf,"APISECRET_BTCE");
+    extract_cJSON_str(APIKEY_BITTREX,sizeof(APIKEY_BITTREX),MGWconf,"APIKEY_BITTREX");
+    extract_cJSON_str(APISECRET_BITTREX,sizeof(APISECRET_BITTREX),MGWconf,"APISECRET_BITTREX");
+    extract_cJSON_str(APIKEY_POLONIEX,sizeof(APIKEY_POLONIEX),MGWconf,"APIKEY_POLONIEX");
+    extract_cJSON_str(APISECRET_POLONIEX,sizeof(APISECRET_POLONIEX),MGWconf,"APISECRET_POLONIEX");
     extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
     extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
     if ( IS_LIBTEST >= 0 )

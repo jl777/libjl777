@@ -4,16 +4,6 @@
 //  Created by jl777 2014, refactored MGW
 //  Copyright (c) 2014 jl777. MIT License.
 //
-// tighten security
-// missing some data? need to sync missing data between servers, maybe make generic API for this
-// "ecBlockId":"10516864215908046020"
-
-// BTC, BTCD, DOGE, VRC, OPAL, BITS, VPN
-// wrong status on withdrawn: 		http://jnxt.org/init/?requestType=status&NXT=NXT-HTB8-GGJG-ZDRK-6N3LC&coin=BTCD&convertNXT=10
-// "redeemtxid":	"9666141869701832622",
-//"value":	"5.00000000",
-//"timestamp":	25943545,
-//"status":	"pending"
 
 #ifndef mgw_h
 #define mgw_h
@@ -1785,7 +1775,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
                     msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
                     copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
-                    if ( Debuglevel > 3 )
+                    if ( Debuglevel > 1 )
                         fprintf(stderr,"{(%s) (%s) %llu ip.(%s)}.%d ",msig->pubkeys[j].coinaddr,msig->pubkeys[j].pubkey,(long long)msig->pubkeys[j].nxt64bits,ipaddr,j);
                     if ( ipaddr[0] == 0 && j < 3 )
                         strcpy(ipaddr,Server_ipaddrs[j]);

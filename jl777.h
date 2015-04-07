@@ -1,4 +1,4 @@
-
+    
 //  Created by jl777
 //  MIT License
 //
@@ -156,7 +156,6 @@ void usleep(int32_t);
 #endif
 
 #endif
-
 
 
 void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
@@ -579,9 +578,10 @@ extern struct pingpong_queue Pending_offersQ;
 char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
+char APIKEY_BTCE[512],APISECRET_BTCE[512],APIKEY_BITTREX[512],APISECRET_BITTREX[512],APIKEY_POLONIEX[512],APISECRET_POLONIEX[512];
 cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
-int32_t PERMUTE_RAWINDS,SOFTWALL,MAP_HUFF,SUPERNET_PORT = 7777;
+int32_t PERMUTE_RAWINDS,SOFTWALL,MAP_HUFF,OLDTX,SUPERNET_PORT = 7777;
 int32_t FASTMODE,SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP,UPNP,MULTIPORT,QUOTE_SLEEP,EXCHANGE_SLEEP,ENABLE_EXTERNALACCESS;   // 3134975738 = 0xbadbeefa;
 int32_t MULTITHREADS,DGSBLOCK = 213000;

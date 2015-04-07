@@ -901,21 +901,28 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     {
         //uint32_t before,after;
         //int32_t numinputs;
-        struct cointx_info *_decode_rawtransaction(char *hexstr);
+        struct cointx_info *_decode_rawtransaction(char *hexstr,int oldtx);
         struct cointx_info *cointx;
         char *rawtx = clonestr("0100000074fc77540156a5b19aaada0496780b1fbce72f7647da5f940883da7ee5d5774f673c6703c401000000fdfd0000483045022100f0b26a43136af6c28d381f461a9fcd30309788456cb81784dbc68ee85ae4151d022036fc96c4edd7b87e762bb139d5d34838a88054c37173236236f72940b2e5309801473044022068ae115a397d9a6f462b78416d58582736fa38ecc4eab2c26759e1e58d6326bc02204e148ab84d49b0f1c8aab1033819ad90c536c604ce24dab419013a5914d39d8a014c695221035827b3c432eb5a528a21657d36a1b61dd85078a6ba5f328bed2d928c173a46c421024ae5e013fda966cf8544025534012156f84a40a5672a894c42e144b0664202502102acdb9c782d499de9b98e8b166fc22bd68895e2293cb49e4a2e071f1254d1a7aa53aeffffffff0340420f00000000001976a9148466f34f39c23547abf922d422e3e5322fdf156588ac20cd8800020000001976a914cd073e0a5d4225f2577113400c3abf9ac1ad2cc488ac60c791e50600000017a914194a1499c343beefe3127e041f480ee4aef058408700000000");
         //before = extract_sequenceid(&numinputs,get_coin_info("BTCD"),rawtx,0);
         // replace_bitcoin_sequenceid(get_coin_info("BTCD"),rawtx,12345678);
         //after = extract_sequenceid(&numinputs,get_coin_info("BTCD"),rawtx,0);
         //printf("newtx.(%s) before.%u after.%u\n",rawtx,before,after); getchar();
-        if ( (cointx= _decode_rawtransaction(rawtx)) != 0 )
+        if ( (cointx= _decode_rawtransaction(rawtx,0)) != 0 )
         {
             free(cointx);
         }
         //getchar();
     }
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
-    //if ( IS_LIBTEST == 7 )
+    if ( 1 )
+    {
+        struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
+        void *ret = _decode_rawtransaction("0100000001a131c270d541c9d2be98b6f7a88c6cbea5d5a395ec82c9954083675226f399ee0300000000ffffffff042f7500000000000017a9140cc0def37d9682c292d18b3f579b7432adf4703187a0f70300000000001976a914e8bf7b6c41702de3451d189db054c985fe6fbbdb88ac01000000000000001976a914f9fab825f93c5f0ddcf90c4c96c371dc3dbca95788ac10eb09000000000017a914309924e8dad854d4cb8e3d6b839a932aea22590c8700000000",1);
+        printf(">>>>>>>>>>>>>>>>>>>>> ret = %p\n",ret);
+        getchar();
+    }
+ //if ( IS_LIBTEST == 7 )
     //    return(myipaddr);
     if ( IS_LIBTEST != 7 )
     {
@@ -1279,12 +1286,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             }
         }
     }
-    init_pingpong_queue(&Pending_offersQ,"pending_offers",process_Pending_offersQ,0,0);
-    find_exchange(INSTANTDEX_NAME,1);
-    find_exchange(INSTANTDEX_NXTAEUNCONF,1);
-    find_exchange(INSTANTDEX_NXTAENAME,1);
-    if ( find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0)->exchangeid != INSTANTDEX_EXCHANGEID )
-        printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0)->exchangeid);
+    init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     if ( IS_LIBTEST != 7 )
     {
         /*#ifndef _WIN32
