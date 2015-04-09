@@ -238,6 +238,8 @@ struct rambook_info *_add_rambook_quote(struct InstantDEX_quote *iQ,struct rambo
         }
     }
     create_InstantDEX_quote(iQ,timestamp,dir < 0,quoteid,0,0,baseid,baseamount,relid,relamount,rb->exchange,nxt64bits,gui,0,0,duration);
+    if ( iQ->exchangeid != INSTANTDEX_EXCHANGEID )
+        iQ->minperc = 1;
     if ( rb->assetids[0] != baseid || rb->assetids[1] != relid || iQ->baseid != baseid || iQ->relid != relid )
         printf("_add_rambook_quote mismatch: %llu %llu %llu | %llu %llu %llu\n",(long long)rb->assetids[0],(long long)iQ->baseid,(long long)baseid,(long long)relid,(long long)iQ->relid,(long long)rb->assetids[1]);
     return(rb);

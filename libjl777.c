@@ -932,8 +932,8 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     }
     if ( myipaddr != 0 )
         strcpy(mp->ipaddr,myipaddr);
-    if ( IS_LIBTEST > 1 && portable_thread_create((void *)Coinloop,0) == 0 && IS_LIBTEST != 7 )
-        printf("ERROR hist Coinloop SSL\n");
+    //if ( IS_LIBTEST > 1 && portable_thread_create((void *)Coinloop,0) == 0 && IS_LIBTEST != 7 )
+     //   printf("ERROR hist Coinloop SSL\n");
     Finished_loading = 1;
     if ( Debuglevel > 0 )
         printf("run_UVloop\n");

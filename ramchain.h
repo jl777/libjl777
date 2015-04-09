@@ -5,12 +5,11 @@
 //  by jl777 on 12/29/14.
 //  MIT license
 
-// check http backups for money sent to prevent doublesend in rare cases
-// other holes: TBD
-
 #ifdef INCLUDE_DEFINES
 #ifndef ramchain_h
 #define ramchain_h
+#include "nn.h"
+#include "bus.h"
 
 #ifdef _WIN32
 #include "mman-win.h"

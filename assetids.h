@@ -378,13 +378,13 @@ double check_ratios(uint64_t baseamount,uint64_t relamount,uint64_t baseamount2,
     } return(1.);
 }
 
-double make_jumpquote(uint64_t *baseamountp,uint64_t *relamountp,uint64_t *frombasep,uint64_t *fromrelp,uint64_t *tobasep,uint64_t *torelp)
+double make_jumpquote(uint64_t baseid,uint64_t relid,uint64_t *baseamountp,uint64_t *relamountp,uint64_t *frombasep,uint64_t *fromrelp,uint64_t *tobasep,uint64_t *torelp)
 {
     double p0,v0,p1,v1,price,vol,checkprice,checkvol,ratio;
     *baseamountp = *relamountp = 0;
     p0 = calc_price_volume(&v0,*tobasep,*torelp);
     p1 = calc_price_volume(&v1,*frombasep,*fromrelp);
-    if ( p0 > 0. )
+    if ( p0 > 0. && p1 > 0. && v0 >= get_minvolume(baseid) && v1 >= get_minvolume(relid) )
     {
         price = (p1 / p0);
         vol = ((v0 * p0) / p1);
@@ -412,7 +412,7 @@ double make_jumpquote(uint64_t *baseamountp,uint64_t *relamountp,uint64_t *fromb
         //set_best_amounts(baseamountp,relamountp,price,vol);
         //printf("make_jumpquote2: v0 * p0 = %f, %f = v1 * p1 -> %f %f %llu/%llu = %f\n",v0*p0,v1*p1,p,v,(long long)*baseamountp,(long long)*relamountp,1./p);
         return(price);
-    } else return(0);
+    } else return(0.);
 }
 
 int32_t is_unfunded_order(uint64_t nxt64bits,uint64_t assetid,uint64_t amount)

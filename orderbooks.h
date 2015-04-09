@@ -162,7 +162,7 @@ struct orderbook *make_jumpbook(char *base,uint64_t baseid,char *jumper,char *re
                 {
                     for (i=0; i<to->numasks&&i<m; i++)
                         for (j=0; j<from->numbids&&j<m; j++)
-                            make_jumpiQ(baseid,relid,0,&op->bids[n++],&from->bids[j],&to->asks[i],gui,0);
+                            n += make_jumpiQ(baseid,relid,0,&op->bids[n],&from->bids[j],&to->asks[i],gui,0);
                 }
                 if ( rawop != 0 && rawop->numbids > 0 )
                     for (i=0; i<rawop->numbids; i++)
@@ -179,7 +179,7 @@ struct orderbook *make_jumpbook(char *base,uint64_t baseid,char *jumper,char *re
                 {
                     for (i=0; i<from->numasks&&i<m; i++)
                         for (j=0; j<to->numbids&&j<m; j++)
-                            make_jumpiQ(baseid,relid,1,&op->asks[n++],&from->asks[i],&to->bids[j],gui,0);
+                            n += make_jumpiQ(baseid,relid,1,&op->asks[n],&from->asks[i],&to->bids[j],gui,0);
                 }
                 if ( rawop != 0 && rawop->numasks > 0 )
                     for (i=0; i<rawop->numasks; i++)
@@ -321,7 +321,7 @@ struct orderbook *make_orderbook(struct orderbook *obooks[3],char *base,uint64_t
         rawop = create_orderbook(0,baseid,0,relid,oldest,gui);  // base/rel
         fromNXT = create_orderbook(0,baseid,0,NXT_ASSETID,oldest,gui);  // base/jump
         toNXT = create_orderbook(0,relid,0,NXT_ASSETID,oldest,gui); // rel/jump
-        op = make_jumpbook(base,baseid,"NXT",rel,relid,toNXT,fromNXT,gui,rawop,sqrt(maxdepth)+1);
+        op = make_jumpbook(base,baseid,"NXT",rel,relid,toNXT,fromNXT,gui,rawop,maxdepth);
     }
     else op = create_orderbook(0,baseid,0,relid,oldest,gui);
     obooks[0] = toNXT, obooks[1] = fromNXT, obooks[2] = rawop;

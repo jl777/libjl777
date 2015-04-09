@@ -356,7 +356,7 @@ void ramparse_NXT(struct rambook_info *bids,struct rambook_info *asks,int32_t ma
     if ( NXT_ASSETID != stringbits("NXT") )
         printf("NXT_ASSETID.%llu != %llu stringbits\n",(long long)NXT_ASSETID,(long long)stringbits("NXT"));
     struct InstantDEX_quote *prevbids,*prevasks;
-    if ( (bids->assetids[1] != NXT_ASSETID && bids->assetids[0] != NXT_ASSETID) || time(NULL) == bids->lastaccess || time(NULL) == asks->lastaccess )
+    if ( (bids->assetids[1] != NXT_ASSETID && bids->assetids[0] != NXT_ASSETID) || time(NULL) < bids->lastaccess+10 || time(NULL) < asks->lastaccess+10 )
     {
         //printf("NXT only supports trading against NXT not %llu %llu\n",(long long)bids->assetids[0],(long long)bids->assetids[1]);
         return;
