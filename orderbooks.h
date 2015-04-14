@@ -112,7 +112,7 @@ int32_t nonz_and_lesser(int32_t a,int32_t b)
     return(0);
 }
 
-struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t m)
+struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t m,int32_t showall)
 {
     struct orderbook *op = 0;
     int32_t i,j,n;
@@ -197,7 +197,7 @@ int32_t baserelcmp(char *base,uint64_t *baseequivs,int32_t numbase,char *rel,uin
 
 uint64_t _obookid(uint64_t baseid,uint64_t relid) { return(baseid ^ relid); }
 
-struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui)
+struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui,int32_t showall)
 {
     int32_t i,j,iter,numbids,numasks,numbooks,polarity,numbase,numrel;
     char obookstr[64],_base[16],_rel[16];
@@ -362,23 +362,23 @@ struct orderbook *merge_books(char *base,uint64_t refbaseid,char *rel,uint64_t r
     return(op);
 }
 
-struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t baseid,char *rel,uint64_t relid,int32_t maxdepth,uint32_t oldest,char *gui)
+struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t baseid,char *rel,uint64_t relid,int32_t maxdepth,uint32_t oldest,char *gui,int32_t showall)
 {
     uint64_t jumpassets[] = { NXT_ASSETID, BTC_ASSETID, BTCD_ASSETID, USD_ASSETID, CNY_ASSETID };
     struct orderbook *op=0,*baseop,*relop,*rawop,*jumpop,*jumpbooks[sizeof(jumpassets)/sizeof(*jumpassets) + 1];
     int32_t i,m = 0,n = 0;
     memset(jumpbooks,0,sizeof(jumpbooks));
-    if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui)) != 0 )
+    if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui,showall)) != 0 )
         jumpbooks[m++] = obooks[n++] = rawop;
     for (i=0; i<(int32_t)(sizeof(jumpassets)/sizeof(*jumpassets)); i++)
     {
         if ( baseid != jumpassets[i] && relid != jumpassets[i] )
         {
-            if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui)) != 0 )
+            if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui,showall)) != 0 )
                 obooks[n++] = baseop;
-            if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui)) != 0 )
+            if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui,showall)) != 0 )
                 obooks[n++] = relop;
-            if ( (jumpop= make_jumpbook(base,baseid,jumpassets[i],rel,relid,relop,baseop,gui,0,maxdepth)) != 0 )
+            if ( (jumpop= make_jumpbook(base,baseid,jumpassets[i],rel,relid,relop,baseop,gui,0,maxdepth,showall)) != 0 )
                 jumpbooks[m++] = obooks[n++] = jumpop;
         }
     }
@@ -443,7 +443,7 @@ struct InstantDEX_quote *clone_quotes(int32_t *nump,struct rambook_info *rb)
     return(quotes);
 }
 
-void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char *gui)
+void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char *gui,int32_t showall)
 {
     uint64_t assetids[8192];
     struct rambook_info *bids,*asks;
@@ -479,11 +479,11 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
 {
     struct InstantDEX_quote *iQ = 0;
     struct orderbook *op,*obooks[1024];
-    int32_t allflag,maxdepth; uint32_t oldest;
+    int32_t allflag,maxdepth,showall; uint32_t oldest;
     uint64_t mult,baseid,relid,nxt64bits = calc_nxt64bits(NXTaddr);
     char gui[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],*retstr = 0;
     baseid = get_API_nxt64bits(objs[0]), relid = get_API_nxt64bits(objs[1]), allflag = get_API_int(objs[2],0), oldest = get_API_int(objs[3],0);
-    maxdepth = get_API_int(objs[4],DEFAULT_MAXDEPTH), copy_cJSON(base,objs[5]), copy_cJSON(rel,objs[6]), copy_cJSON(gui,objs[7]), gui[sizeof(iQ->gui)-1] = 0;
+    maxdepth = get_API_int(objs[4],DEFAULT_MAXDEPTH), copy_cJSON(base,objs[5]), copy_cJSON(rel,objs[6]), copy_cJSON(gui,objs[7]), gui[sizeof(iQ->gui)-1] = 0, showall = get_API_int(objs[8],1);
     retstr = 0;
     if ( baseid == 0 && base[0] != 0 )
         baseid = stringbits(base);
@@ -493,8 +493,8 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     else set_assetname(&mult,rel,relid);
     if ( baseid != 0 && relid != 0 )
     {
-        update_rambooks(baseid,relid,maxdepth,gui);
-        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui);
+        update_rambooks(baseid,relid,maxdepth,gui,showall);
+        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,showall);
         retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag);
         free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
     }

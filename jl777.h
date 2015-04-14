@@ -608,6 +608,7 @@ int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL,POLLG
 uint32_t *SuperNET_whitelist;
 int32_t Historical_done,MGW_initdone,THROTTLE;
 struct NXThandler_info *Global_mp;
+struct libwebsocket_context *LWScontext;
 
 double picoc(int argc,char **argv,char *codestr);
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);

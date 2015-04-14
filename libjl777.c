@@ -590,8 +590,8 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
     cJSON *json,*array,*map;
     struct coin_info *cp;
     uint64_t URL64;
-    if ( 0 && len != 0 )
-        printf("LWS_CALLBACK_FILTER_NETWORK_CONNECTION.%d reason.%d len.%ld\n",LWS_CALLBACK_FILTER_NETWORK_CONNECTION,reason,len);
+    if ( 1 && len != 0 )
+        printf("LWS_CALLBACK_HTTP.%d reason.%d len.%ld\n",LWS_CALLBACK_HTTP,reason,len);
     strcpy(mediatype,"text/html");
     switch ( reason )
     {
@@ -662,6 +662,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             str = malloc(len+1);
             memcpy(str,in,len);
             str[len] = 0;
+            printf("(%s)\n",str);
             //if ( wsi != 0 )
             //dump_handshake_info(wsi);
             if ( Debuglevel > 3 && strcmp("{\"requestType\":\"BTCDpoll\"}",str) != 0 )
@@ -766,7 +767,6 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 	const char *iface = NULL;
 	static struct lws_context_creation_info infos[2];
     struct lws_context_creation_info *info;
-    struct libwebsocket_context *context;
     while ( Finished_init == 0 )
         fprintf(stderr,"."), sleep(1);
     info = &infos[use_ssl];
@@ -797,8 +797,8 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 		info->ssl_cert_filepath = cert_path;
 		info->ssl_private_key_filepath = key_path;
 	}
-	context = libwebsocket_create_context(info);
-	if ( context == NULL )
+	LWScontext = libwebsocket_create_context(info);
+	if ( LWScontext == NULL )
     {
 		lwsl_err("libwebsocket init failed\n");
 		return -1;
@@ -807,9 +807,9 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
     SSL_done |= (1 << use_ssl);
 	while ( n >= 0 && !force_exit )
     {
-		n = libwebsocket_service(context,millis);
+		n = libwebsocket_service(LWScontext,millis);
 	}
-	libwebsocket_context_destroy(context);
+	libwebsocket_context_destroy(LWScontext);
 	lwsl_notice("libwebsockets-test-server exited cleanly\n");
 	return 0;
 }
@@ -1286,22 +1286,14 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             }
         }
     }
-    init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     if ( IS_LIBTEST != 7 )
     {
-        /*#ifndef _WIN32
-         if ( portable_thread_create((void *)run_libwebsockets,&one) == 0 )
-         printf("ERROR hist run_libwebsockets SSL\n");
-         while ( SSL_done == 0 )
-         usleep(100000);
-         #else
-         SSL_done = 1;
-         #endif*/
         static int32_t zero;
         if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
             printf("ERROR hist run_libwebsockets\n");
         sleep(3);
     }
+    init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     int32_t tmp = 1;
     if ( strncmp(Global_mp->ipaddr,"209",3) != 0 && (Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0) )
         tmp = 0;
