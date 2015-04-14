@@ -132,8 +132,11 @@ try_again:
     curl_easy_setopt(curl_handle,CURLOPT_WRITEDATA,		&s); 			// we pass our 's' struct to the callback
     curl_easy_setopt(curl_handle,CURLOPT_NOSIGNAL,		1L);   			// supposed to fix "Alarm clock" and long jump crash
 	curl_easy_setopt(curl_handle,CURLOPT_NOPROGRESS,	1L);			// no progress callback
-    curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYPEER,0);
-    curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYHOST,0);
+    if ( strncmp(url,"https",5) == 0 )
+    {
+        curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYPEER,0);
+        curl_easy_setopt(curl_handle,CURLOPT_SSL_VERIFYHOST,0);
+    }
     if ( userpass != 0 )
         curl_easy_setopt(curl_handle,CURLOPT_USERPWD,	userpass);
     databuf = 0;

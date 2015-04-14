@@ -1172,12 +1172,6 @@ void init_SuperNET_settings(char *userdir)
             printf("NXTISSUERACCT.(%s) -> %llu\n",NXTISSUERACCT,(long long)nxt64bits);
         expand_nxt64bits(NXTISSUERACCT,nxt64bits);
     }
-    extract_cJSON_str(APIKEY_BTCE,sizeof(APIKEY_BTCE),MGWconf,"APIKEY_BTCE");
-    extract_cJSON_str(APISECRET_BTCE,sizeof(APISECRET_BTCE),MGWconf,"APISECRET_BTCE");
-    extract_cJSON_str(APIKEY_BITTREX,sizeof(APIKEY_BITTREX),MGWconf,"APIKEY_BITTREX");
-    extract_cJSON_str(APISECRET_BITTREX,sizeof(APISECRET_BITTREX),MGWconf,"APISECRET_BITTREX");
-    extract_cJSON_str(APIKEY_POLONIEX,sizeof(APIKEY_POLONIEX),MGWconf,"APIKEY_POLONIEX");
-    extract_cJSON_str(APISECRET_POLONIEX,sizeof(APISECRET_POLONIEX),MGWconf,"APISECRET_POLONIEX");
     extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
     extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
     if ( IS_LIBTEST >= 0 )
@@ -1209,6 +1203,164 @@ void init_SuperNET_settings(char *userdir)
     ENABLE_GUIPOLL = get_API_int(cJSON_GetObjectItem(MGWconf,"GUIPOLL"),1);
     if ( Debuglevel >= 0 )
         Debuglevel = get_API_int(cJSON_GetObjectItem(MGWconf,"debug"),Debuglevel);
+}
+
+#ifdef __APPLE__
+#include "nn.h"
+#include "bus.h"
+#else
+#include "includes/nn.h"
+#include "includes/bus.h"
+#endif
+
+int32_t nano_socket(char *ipaddr,int32_t port)
+{
+    int32_t sock,err,to = 1;
+    char tcpaddr[64];
+    sprintf(tcpaddr,"tcp://%s:%d",ipaddr,port);
+    if ( (sock= nn_socket(AF_SP,NN_BUS)) < 0 )
+    {
+        printf("error %d nn_socket err.%s\n",sock,nn_strerror(nn_errno()));
+        return(0);
+    }
+    printf("got sock.%d\n",sock);
+    if ( (err= nn_bind(sock,tcpaddr)) < 0 )
+    {
+        printf("error %d nn_bind.%d (%s) | %s\n",err,sock,tcpaddr,nn_strerror(nn_errno()));
+        return(0);
+    }
+    assert (nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&to,sizeof (to)) >= 0);
+    printf("bound\n");
+    return(sock);
+}
+
+void broadcastfile(char *NXTaddr,char *NXTACCTSECRET,char *fname)
+{
+    FILE *fp;
+    char *buf;
+    int32_t len,n;
+    if ( Global_mp->bussock >= 0 && (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        len = (int32_t)ftell(fp);
+        rewind(fp);
+        if ( len > 0 )
+        {
+            buf = malloc(len + strlen(fname) + 1);
+            strcpy(buf,fname);
+            if ( (n= (int32_t)fread(buf + strlen(fname) + 1,1,len,fp)) == len )
+            {
+                nn_send(Global_mp->bussock,buf,len + strlen(fname) + 1,0);
+                printf("send (%s).%d to bus\n",fname,len);
+            } else printf("read error (%s) got %d vs %d\n",fname,n,len);
+            free(buf);
+        }
+        fclose(fp);
+    }
+}
+
+void poll_nanomsg()
+{
+    FILE *fp;
+    char fname[1024];
+    int32_t recv,filelen,i,n,len,sameflag = 0;
+    char *buf,*filebuf;
+    if ( Global_mp->bussock < 0 )
+        return;
+    if ( (recv= nn_recv(Global_mp->bussock,&buf,NN_MSG,0)) >= 0 )
+    {
+        sprintf(fname,"%s",buf);
+        len = (int32_t)strlen(buf) + 1;
+        if ( len < recv )
+        {
+            filebuf = &buf[len];
+            filelen = (recv - len);
+            if ( (fp= fopen(fname,"rb")) != 0 )
+            {
+                fseek(fp,0,SEEK_END);
+                if ( ftell(fp) == filelen )
+                {
+                    rewind(fp);
+                    for (i=0; i<filelen; i++)
+                        if ( (fgetc(fp) & 0xff) != (filebuf[i] & 0xff) )
+                            break;
+                    if ( i == filelen )
+                        sameflag = 1;
+                }
+                fclose(fp);
+            }
+            if ( sameflag == 0 && (fp= fopen(fname,"wb")) != 0 )
+            {
+                if ( (n= (int32_t)fwrite(filebuf,1,filelen,fp)) != filelen )
+                    printf("error writing (%s) only %d written vs %d\n",fname,n,filelen);
+                fclose(fp);
+            }
+        }
+        printf ("RECEIVED (%s).%d FROM BUS -> (%s) sameflag.%d\n",buf,recv,fname,sameflag);
+        nn_freemsg(buf);
+    }
+}
+/*
+int sz_n = strlen(argv[1]) + 1; // '\0' too
+printf ("%s: SENDING '%s' ONTO BUS\n", argv[1], argv[1]);
+int send = nn_send (sock, argv[1], sz_n, 0);
+assert (send == sz_n);
+while (1)
+{
+    // RECV
+    char *buf = NULL;
+    int recv = nn_recv (sock, &buf, NN_MSG, 0);
+    if (recv >= 0)
+    {
+        printf ("%s: RECEIVED '%s' FROM BUS\n", argv[1], buf);
+        nn_freemsg (buf);
+    }
+}
+*/
+int32_t nano_connect(int32_t sock,char *ipaddr,int32_t port)
+{
+    int32_t err;
+    char tcpaddr[64];
+    sprintf(tcpaddr,"tcp://%s:%d",ipaddr,port);
+    if ( (err= nn_connect(sock,tcpaddr)) < 0 )
+        printf("error %d nn_connect.%d (%s) | %s\n",err,sock,tcpaddr,nn_strerror(nn_errno()));
+    else printf("connected to (%s) err.%d\n",tcpaddr,err);
+    return(err);
+}
+
+int32_t init_nanobus(char *myipaddr)
+{
+    cJSON *array,*item;
+    int32_t i,n,err = 0;
+    char ipaddr[MAX_JSON_FIELD];
+    if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 )
+    {
+        printf("call nano_socket\n");
+        if ( (Global_mp->bussock= nano_socket(myipaddr,SUPERNET_PORT-1)) < 0 )
+        {
+            printf("err %d nano_socket\n",Global_mp->bussock);
+            return(err);
+        }
+        array = cJSON_GetObjectItem(MGWconf,"whitelist");
+        if ( array != 0 && is_cJSON_Array(array) != 0 )
+        {
+            n = cJSON_GetArraySize(array);
+            for (i=0; i<n; i++)
+            {
+                if ( array == 0 || n == 0 )
+                    break;
+                item = cJSON_GetArrayItem(array,i);
+                copy_cJSON(ipaddr,item);
+                printf("call connect(%d) -> (%s)\n",Global_mp->bussock,ipaddr);
+                if ( (err= nano_connect(Global_mp->bussock,ipaddr,SUPERNET_PORT)) < 0 )
+                {
+                    printf("err %d nano_connect i.%d of %d\n",err,i,n);
+                    return(err);
+                }
+            }
+        }
+    } else Global_mp->bussock = -1;
+    return(err);
 }
 
 char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
@@ -1261,6 +1413,7 @@ char *init_MGWconf(char *JSON_or_fname,char *myipaddr)
         free(jsonstr);
     }
     //init_tradebots_conf(MGWconf);
+    init_nanobus(myipaddr);
     didinit = 1;
     if ( Debuglevel > 1 )
         printf("gatewayid.%d MGWROOT.(%s)\n",Global_mp->gatewayid,MGWROOT);

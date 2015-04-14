@@ -506,19 +506,22 @@ char *issue_getAsset(int32_t isMScoin,char *assetidstr)
 
 struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr,int32_t isMScoin)
 {
+    int32_t is_native_crypto(char *name,uint64_t bits);
     int32_t is_active_coin(char *str);
     cJSON *json;
     uint64_t mult = 1;
     char *jsonstr,buf[4096];
+    uint64_t assetidbits;
     int32_t i;
-    if ( calc_nxt64bits(assetidstr) == NXT_ASSETID )
+    assetidbits = calc_nxt64bits(assetidstr);
+    if ( is_native_crypto(buf,assetidbits) > 0 )
     {
         ap->decimals = 8;
         ap->mult = 1;
         ap->issued = (uint64_t)SATOSHIDEN * 1000000000;
-        ap->issuer = NXT_ASSETID;
-        ap->description = clonestr("NXT");
-        ap->name = clonestr("NXT");
+        ap->issuer = 0;
+        ap->description = clonestr(buf);
+        ap->name = clonestr(buf);
         return(ap);
     }
     jsonstr = issue_getAsset(isMScoin,assetidstr);
@@ -528,7 +531,7 @@ struct NXT_asset *init_asset(struct NXT_asset *ap,char *assetidstr,int32_t isMSc
         {
             if ( get_cJSON_int(json,"errorCode") != 0 )
             {
-                printf("error init_asset(%s) for assetidstr.%s\n",jsonstr,assetidstr);
+                printf("error init_asset(%s) for assetidstr.%s\n",jsonstr,assetidstr); getchar();
                 return(0);
             }
             ap->decimals = (int32_t)get_cJSON_int(json,"decimals");

@@ -28,11 +28,32 @@
 #define INSTANTDEX_NXTAEID 2
 #define MAX_EXCHANGES 64
 
-struct orderpair { struct rambook_info *bids,*asks; void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui); float lastmilli; };
-struct exchange_info { uint64_t nxt64bits; char name[16]; struct orderpair orderpairs[4096]; uint32_t num,exchangeid,lastblock; float lastmilli; } Exchanges[MAX_EXCHANGES];
-struct exchange_info *find_exchange(char *exchangestr,int32_t createflag);
-int32_t is_exchange_nxt64bits(uint64_t nxt64bits);
-int32_t init_rambooks(char *base,char *rel,uint64_t baseid,uint64_t relid);
+
+struct rambook_info
+{
+    UT_hash_handle hh;
+    FILE *fp;
+    char url[128],base[16],rel[16],lbase[16],lrel[16],exchange[32];
+    struct InstantDEX_quote *quotes;
+    uint64_t assetids[3];
+    uint32_t lastaccess;
+    int32_t numquotes,maxquotes;
+    float lastmilli;
+    uint8_t updated;
+} *Rambooks;
+
+struct exchange_info
+{
+    void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui);
+    int32_t (*ramsupports)(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid);
+    uint64_t (*trade)(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
+    uint64_t nxt64bits;
+    char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD];
+    uint32_t num,exchangeid,lastblock,lastaccess,pollgap;
+    float lastmilli;
+} Exchanges[MAX_EXCHANGES];
+
+struct exchange_info *find_exchange(char *exchangestr,void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui),int32_t (*ramparse_supports)(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid));
 
 uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char *refNXTaddr,uint32_t timestamp)
 {
@@ -119,16 +140,9 @@ int32_t get_top_MMaker(struct pserver_info **pserverp)
     return(-1);
 }
 
-int32_t time_to_nextblock(int32_t lookahead)
+void ramparse_stub(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
 {
-    /*
-     sha256(lastblockgensig+publickey)[0-7] / basetarget * effective balance
-     first 8 bytes of sha256 to make a long
-     that gives you seconds to forge block
-     or you can just look if base target is below 90% and adjust accordingly
-     */
-    // http://jnxt.org/forge/forgers.json
-    return(lookahead * 600); // clearly need to do some calcs
+    printf("unexpected call to ramparse_stub gui.%s maxdepth.%d\n",gui,maxdepth);
 }
 
 void submit_quote(char *quotestr)
@@ -159,9 +173,42 @@ void submit_respondtx(char *respondtxstr,uint64_t nxt64bits,char *NXTACCTSECRET,
         free(retstr);
 }
 
+int32_t calc_users_maxopentrades(uint64_t nxt64bits)
+{
+    int32_t is_exchange_nxt64bits(uint64_t nxt64bits);
+    if ( is_exchange_nxt64bits(nxt64bits) != 0 )
+        return(1000);
+    return(13);
+}
+
+int32_t time_to_nextblock(int32_t lookahead)
+{
+    /*
+     sha256(lastblockgensig+publickey)[0-7] / basetarget * effective balance
+     first 8 bytes of sha256 to make a long
+     that gives you seconds to forge block
+     or you can just look if base target is below 90% and adjust accordingly
+     */
+    // http://jnxt.org/forge/forgers.json
+    return(lookahead * 600); // clearly need to do some calcs
+}
+
 #include "assetids.h"
 #include "NXT_tx.h"
 #include "quotes.h"
+
+void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx *txptrs[],int32_t updateNXT) // from poll_pending_offers via main
+{
+    //printf("update_openorder iQ.%llu with tx.%llu\n",(long long)iQ->quoteid,(long long)tx->txid);
+    // regen orderbook and see if it crosses
+    // updatestats
+}
+
+char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *iQ,char *submitstr) // called by placequote, should autofill
+{
+    return(submitstr);
+}
+
 #include "rambooks.h"
 #include "exchanges.h"
 #include "orderbooks.h"
@@ -220,7 +267,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     int32_t remoteflag,automatch,duration;
     struct rambook_info *rb;
     char buf[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],*jsonstr,*retstr = 0;
-    if ( (xchg= find_exchange(INSTANTDEX_NAME,1)) == 0 || xchg->exchangeid != INSTANTDEX_EXCHANGEID )
+    if ( (xchg= find_exchange(INSTANTDEX_NAME,0,0)) == 0 || xchg->exchangeid != INSTANTDEX_EXCHANGEID )
         return(clonestr("{\"error\":\"unexpected InstantDEX exchangeid\"}"));
     remoteflag = (is_remote_access(previpaddr) != 0);
     nxt64bits = calc_nxt64bits(sender);
@@ -246,7 +293,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     duration = (int32_t)get_API_int(objs[10],ORDERBOOK_EXPIRATION);
     if ( duration < 0 || duration > ORDERBOOK_EXPIRATION )
         duration = ORDERBOOK_EXPIRATION;
-    ensure_rambook(baseid,relid);
+    update_rambooks(baseid,relid,0,0);
     printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     minbasevol = get_minvolume(baseid), minrelvol = get_minvolume(relid);
     if ( volume < minbasevol || (volume * price) < minrelvol )
@@ -438,6 +485,24 @@ double get_median(uint64_t assetid)
     else return(((double)lowask * .999) / SATOSHIDEN);
 }
 
+cJSON *orderbook_json(uint64_t nxt64bits,char *base,uint64_t baseid,char *rel,uint64_t relid,int32_t maxdepth,int32_t allflag,char *gui)
+{
+    cJSON *json = 0;
+    char *retstr;
+    uint32_t oldest = 0;
+    struct orderbook *op,*obooks[1024];
+    if ( (op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui)) != 0 )
+    {
+        if ( (retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag)) != 0 )
+        {
+            json = cJSON_Parse(retstr);
+            free(retstr);
+        }
+        free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
+    }
+    return(json);
+}
+
 int32_t orderbook_testpair(cJSON **items,uint64_t quoteid,uint64_t nxt64bits,char *base,uint64_t baseid,char *rel,uint64_t relid,char *gui,int32_t maxdepth)
 {
     cJSON *json;
@@ -446,14 +511,16 @@ int32_t orderbook_testpair(cJSON **items,uint64_t quoteid,uint64_t nxt64bits,cha
     {
         if ( (items[0]= detach_orderbook_item(json,quoteid,baseid,relid)) == 0 )
             printf("couldnt find quoteid.%llu\n",(long long)quoteid);
+       // printf("bids.(%s)\n",cJSON_Print(json));
         free_json(json);
-    }
+    } else printf("cant get orderbook.(%s/%s)\n",base,rel);
     if ( (json= orderbook_json(nxt64bits,rel,relid,base,baseid,maxdepth,1,gui)) != 0 )
     {
         if ( (items[1]= detach_orderbook_item(json,quoteid,relid,baseid)) == 0 )
             printf("couldnt find quoteid.%llu\n",(long long)quoteid);
+        //printf("asks.(%s)\n",cJSON_Print(json));
         free_json(json);
-    }
+    } else printf("cant get orderbook.(%s/%s)\n",rel,base);
     if ( items[0] != 0 && items[1] != 0 )
         return(0);
     if ( items[0] != 0 )
@@ -514,7 +581,7 @@ int32_t orderbook_verifymatch(int32_t dir,uint64_t baseid,uint64_t relid,double 
     }
     else
     {
-        if ( (dir < 0 && strcmp(buyerstr,"transmit") == 0 && strcmp(sellerstr,"nxtae") == 0 && assetidB == baseid && assetid == relid) || (dir > 0 && strcmp(buyerstr,"nxtae") == 0 && strcmp(sellerstr,"transmit") == 0 && assetidB == baseid && assetid == relid) )
+        if ( assetidB == baseid && assetid == relid && ((dir < 0 && strcmp(buyerstr,"transmit") == 0 && strcmp(sellerstr,"nxtae") == 0) || (dir > 0 && strcmp(buyerstr,"nxtae") == 0 && strcmp(sellerstr,"transmit") == 0) || (dir == 0 && strcmp(buyerstr,"InstantDEX") == 0 && strcmp(sellerstr,"transmit") == 0)) )
         {
             buyprice = sellprice = ((double)buyerqty * get_assetmult(assetid)) / (sellerqty * get_assetmult(assetidB));
             if ( fabs(buyprice - price)/price < calc_precision(assetid,assetidB) || fabs(buyprice - price)/price < 0.005 )
@@ -583,7 +650,7 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
         return;
     }
     price = (baseprice / relprice);
-    ensure_rambook(refbaseid,refrelid);
+    update_rambooks(refbaseid,refrelid,maxdepth,gui);
     baseid = refbaseid, relid = refrelid;
     volume = 1.;
     printf("price %f = (%f / %f) vol %f\n",price,baseprice,relprice,volume);
@@ -591,12 +658,12 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
     {
         set_assetname(&mult,base,baseid);
         set_assetname(&mult,rel,relid);
-        update_NXTAE_books(baseid,relid,maxdepth,gui);
+        update_rambooks(baseid,relid,maxdepth,gui);
         minbasevol = get_minvolume(baseid);
         minrelvol = get_minvolume(relid);
         printf("base.(%s %.8f) rel.(%s %.8f)\n",base,minbasevol,rel,minrelvol);
         for (dir=1; dir>=-1; dir-=2)
-        for (j=1; j<100; j++)
+        for (j=1; j<=1; j++)
         {
             testprice = (price * (1. - .01*dir*j));
             volume = .5;
@@ -618,7 +685,7 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
                     {
                         if ( orderbook_verifymatch(dir,baseid,relid,testprice,volume,items[0],items[1],cJSON_GetObjectItem(json,"buyer"),cJSON_GetObjectItem(json,"seller")) < 0 )
                         {
-                            printf("orderbook_verifymatch failed dir.%d %s/%s testprice %f %llu %f || %llu %f\n",dir,base,rel,testprice,(long long)refbaseid,baseprice,(long long)refrelid,relprice);//, getchar();
+                            printf("orderbook_verifymatch failed dir.%d %s/%s testprice %f %llu %f || %llu %f\n(%s)",dir,base,rel,testprice,(long long)refbaseid,baseprice,(long long)refrelid,relprice,retstr);//, getchar();
                             getchar();
                         } else printf("VERIFIED <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< iter.%d dir.%d %s/%s price %f vol %f\n",iter,dir,base,rel,price,volume);
                         free_json(json);
@@ -653,16 +720,75 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
     printf("--------------------------\n\n");
 }
 
+void init_exchange(cJSON *json)
+{
+    static void *exchangeptrs[][4] =
+    {
+        { "poloniex", ramparse_poloniex, poloniex_supports, poloniex_trade },
+        { "bittrex", ramparse_bittrex, bittrex_supports, bittrex_trade },
+        { "bter", ramparse_bter, bter_supports, bter_trade },
+        { "btce", ramparse_btce, btce_supports, btce_trade },
+        { "bitfinex", ramparse_bitfinex, bitfinex_supports, 0 },
+        { "bitstamp", ramparse_bitstamp, bitstamp_supports, 0 },
+        { "okcoin", ramparse_okcoin, okcoin_supports, 0 },
+        { "huobi", ramparse_huobi, huobi_supports, 0 },
+        { "bityes", ramparse_bityes, bityes_supports, 0 },
+        { "lakebtc", ramparse_lakebtc, lakebtc_supports, 0 },
+        { "exmo", ramparse_exmo, exmo_supports, 0 },
+        { "btc38", ramparse_btc38, btc38_supports, 0 },
+    };
+    struct exchange_info *exchange;
+    char name[MAX_JSON_FIELD];
+    void *parse=0,*supports=0,*trade=0;
+    int32_t i;
+    extract_cJSON_str(name,sizeof(name),json,"name");
+    if ( name[0] != 0 && strlen(name) < 16 )
+    {
+        for (i=0; i<(int32_t)(sizeof(exchangeptrs)/sizeof(*exchangeptrs)); i++)
+        {
+            if ( strcmp(exchangeptrs[i][0],name) == 0 )
+            {
+                parse = exchangeptrs[i][1];
+                supports = exchangeptrs[i][2];
+                trade = exchangeptrs[i][3];
+                break;
+            }
+        }
+        if ( parse != 0 && (exchange= find_exchange(name,parse,supports)) != 0 )
+        {
+            exchange->pollgap = get_API_int(cJSON_GetObjectItem(json,"pollgap"),POLLGAP);
+            extract_cJSON_str(exchange->apikey,sizeof(exchange->apikey),json,"key");
+            extract_cJSON_str(exchange->apisecret,sizeof(exchange->apisecret),json,"secret");
+            exchange->trade = trade;
+        }
+    }
+}
+
+void init_exchanges()
+{
+    cJSON *exchanges;
+    int32_t i,n;
+    find_exchange(INSTANTDEX_NAME,ramparse_stub,0);
+    find_exchange(INSTANTDEX_NXTAEUNCONF,ramparse_stub,0);
+    find_exchange(INSTANTDEX_NXTAENAME,ramparse_NXT,NXT_supports);
+    POLLGAP = get_API_int(cJSON_GetObjectItem(MGWconf,"POLLGAP"),10);
+    DEFAULT_MAXDEPTH = get_API_int(cJSON_GetObjectItem(MGWconf,"DEFAULT_MAXDEPTH"),DEFAULT_MAXDEPTH);
+    if ( (exchanges= cJSON_GetObjectItem(MGWconf,"exchanges")) != 0 && (n= cJSON_GetArraySize(exchanges)) > 0 )
+    {
+        for (i=0; i<n; i++)
+            init_exchange(cJSON_GetArrayItem(exchanges,i));
+    }
+}
+                          
 void init_InstantDEX(uint64_t nxt64bits,int32_t testflag)
 {
+    //printf("NXT-> %llu BTC -> %llu\n",(long long)stringbits("NXT"),(long long)stringbits("BTC")); getchar();
     init_pingpong_queue(&Pending_offersQ,"pending_offers",process_Pending_offersQ,0,0);
-    find_exchange(INSTANTDEX_NAME,1);
-    find_exchange(INSTANTDEX_NXTAEUNCONF,1);
-    find_exchange(INSTANTDEX_NXTAENAME,1);
-    if ( find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0)->exchangeid != INSTANTDEX_EXCHANGEID )
-        printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0)->exchangeid);
+    init_exchanges();
+    if ( find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0,0)->exchangeid != INSTANTDEX_EXCHANGEID )
+        printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0,0)->exchangeid);
 #ifdef __APPLE__
-    if ( testflag != 0 )
+    if ( 1 && testflag != 0 )
     {
         static char *testids[] = { "6932037131189568014", "6854596569382794790", "17554243582654188572", "15344649963748848799", "8688289798928624137", "12071612744977229797" };
         long i,j;
@@ -676,10 +802,10 @@ void init_InstantDEX(uint64_t nxt64bits,int32_t testflag)
             {
                 assetB = calc_nxt64bits(testids[j]);
                 printf("assetA.%llu assetB.%llu\n",(long long)assetA,(long long)assetB);
-                //getchar();
                 if ( i != j )
                     orderbook_test(nxt64bits,assetA,assetB,13), orderbook_test(nxt64bits,assetB,assetA,13);
                 else orderbook_test(nxt64bits,assetA,NXT_ASSETID,13), orderbook_test(nxt64bits,NXT_ASSETID,assetA,13);
+                //getchar();
             }
         }
         printf("FINISHED tests\n");

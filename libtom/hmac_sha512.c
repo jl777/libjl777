@@ -459,3 +459,17 @@ void hmac_sha512(const unsigned char *key, unsigned int key_size,
    hmac_sha512_update(&ctx, message, message_len);
    hmac_sha512_final(&ctx, mac, mac_size);
 }
+
+char *hmac_sha512_str(char dest[SHA512_DIGEST_SIZE*2 + 1],char *key,unsigned int key_size,char *message)
+{
+    int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+	unsigned char mac[SHA512_DIGEST_SIZE];
+	//int i;
+	hmac_sha512((const unsigned char *)key,key_size,(const unsigned char *)message,(int32_t)strlen(message),mac,SHA512_DIGEST_SIZE);
+	//for (i=0; i<SHA512_DIGEST_SIZE; i++)
+ 	//	sprintf(&dest[i*2],"%02x", mac[i]);
+	//dest[2 * SHA512_DIGEST_SIZE] = '\0';
+    init_hexbytes_noT(dest,mac,SHA512_DIGEST_SIZE);
+	return(dest);
+}
+

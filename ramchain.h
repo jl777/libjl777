@@ -8,8 +8,6 @@
 #ifdef INCLUDE_DEFINES
 #ifndef ramchain_h
 #define ramchain_h
-#include "nn.h"
-#include "bus.h"
 
 #ifdef _WIN32
 #include "mman-win.h"
@@ -241,6 +239,7 @@ struct ramchain_info
     uint64_t minval,maxval,minval2,maxval2,minval4,maxval4,minval8,maxval8;
     struct ramsnapshot *snapshots; bits256 *permhash4096;
     struct NXT_asset *ap;
+    int32_t sock;
     uint64_t MGWbits,*limboarray;
     struct cointx_input *MGWunspents;
     uint32_t min_NXTconfirms,NXTtimestamp,MGWnumunspents,MGWmaxunspents,numspecials,depositconfirms,firsttime,firstblock,numpendingsends,pendingticks,remotemode;
@@ -9695,7 +9694,11 @@ void *process_ramchains(void *_argcoinstr)
                 ram_update_disp(ram);
         }
         if ( processed == 0 )
-            sleep(30);
+        {
+            void poll_nanomsg();
+            poll_nanomsg();
+            sleep(1);
+        }
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");

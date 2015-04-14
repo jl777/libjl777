@@ -1775,7 +1775,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
                     copy_cJSON(msig->pubkeys[j].pubkey,cJSON_GetObjectItem(pobj,"pubkey"));
                     msig->pubkeys[j].nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(pobj,"srv"));
                     copy_cJSON(ipaddr,cJSON_GetObjectItem(pobj,"ipaddr"));
-                    if ( Debuglevel > 1 )
+                    if ( Debuglevel > 2 )
                         fprintf(stderr,"{(%s) (%s) %llu ip.(%s)}.%d ",msig->pubkeys[j].coinaddr,msig->pubkeys[j].pubkey,(long long)msig->pubkeys[j].nxt64bits,ipaddr,j);
                     if ( ipaddr[0] == 0 && j < 3 )
                         strcpy(ipaddr,Server_ipaddrs[j]);

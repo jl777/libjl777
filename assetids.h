@@ -34,26 +34,71 @@ char *assetmap[][3] =
     { "275548135983837356", "VIA", "4" },
 };
 
-int32_t is_cryptocoin(char *name)
+uint64_t is_cryptocoin(char *name)
 {
     int32_t i;
     for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
         if ( strcmp(assetmap[i][1],name) == 0 )
-            return(1);
+            return(calc_nxt64bits(assetmap[i][0]));
     return(0);
+}
+
+int32_t unstringbits(char *buf,uint64_t bits)
+{
+    int32_t i;
+    for (i=0; i<8; i++,bits>>=8)
+        if ( (buf[i]= (char)(bits & 0xff)) == 0 )
+            break;
+    buf[i] = 0;
+    return(i);
 }
 
 uint64_t stringbits(char *str)
 {
     uint64_t bits = 0;
-    char buf[9];
-    int32_t i;
-    memset(buf,0,sizeof(buf));
-    for (i=0; i<8; i++)
-        if ( (buf[i]= str[i]) == 0 )
-            break;
-    memcpy(&bits,buf,sizeof(bits));
+    int32_t i,n = (int32_t)strlen(str);
+    if ( n > 8 )
+        n = 8;
+    for (i=n-1; i>=0; i--)
+        bits = (bits << 8) | (str[i] & 0xff);
+    //printf("(%s) -> %llx %llu\n",str,(long long)bits,(long long)bits);
     return(bits);
+}
+
+int32_t is_native_crypto(char *name,uint64_t bits)
+{
+    int32_t i,n;
+    if ( (n= unstringbits(name,bits)) <= 5 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( (name[i] >= '0' && name[i] <= '9') || (name[i] >= 'A' && name[i] <= 'Z') )// || (name[i] >= '0' && name[i] <= '9') )
+                continue;
+            //printf("(%s) is not native crypto\n",name);
+            return(0);
+        }
+        //printf("(%s) is native crypto\n",name);
+        return(1);
+    }
+    return(0);
+}
+
+int32_t get_equivalent_assetids(uint64_t *equivids,uint64_t bits)
+{
+    char name[64];
+    int i,n = 0;
+    if ( is_native_crypto(name,bits) > 0 )
+    {
+        for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
+            if ( strcmp(assetmap[i][1],name) == 0 )
+                equivids[n++] = calc_nxt64bits(assetmap[i][0]);
+    }
+    else if ( bits == calc_nxt64bits("6220108297598959542") || bits == calc_nxt64bits("7474435909229872610") ) // coinomat
+    {
+        equivids[n++] = calc_nxt64bits("6220108297598959542");
+        equivids[n++] = calc_nxt64bits("7474435909229872610");
+    }
+    return(n);
 }
 
 uint64_t _calc_decimals_mult(int32_t decimals)
@@ -97,6 +142,8 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         strcpy(name,"NXT");
         return(INSTANTDEX_NATIVE); // native crypto type
     }
+    else if ( is_native_crypto(name,assetbits) > 0 )
+        return(INSTANTDEX_NATIVE); // native crypto type
     expand_nxt64bits(assetstr,assetbits);
     strcpy(name,"unknown");
     for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)

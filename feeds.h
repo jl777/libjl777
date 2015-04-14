@@ -827,7 +827,7 @@ struct exchange_state *add_activefile(int32_t writeflag,char *exchange,char *bas
     return(ep);
 }
 
-int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
+/*int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
 {
     int32_t i,j,n;
     cJSON *array,*item;
@@ -857,7 +857,7 @@ int32_t init_exchanges(cJSON *confobj,int32_t writeflag)
         //exit(0);
     }
     return(Numactivefiles);
-}
+}*/
 
 int32_t poll_pricedbs()
 {

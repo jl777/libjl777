@@ -1,4 +1,4 @@
-    
+
 //  Created by jl777
 //  MIT License
 //
@@ -19,7 +19,7 @@
 #define MAX_UDPLEN 1400
 #define PUBADDRS_MSGDURATION (3600 * 24)
 #define MAX_ONION_LAYERS 7
-#define pNXT_SIG 0x99999999
+//#define pNXT_SIG 0x99999999
 #define MAX_DROPPED_PACKETS 4
 #define MAX_MULTISIG_OUTPUTS 16
 #define MAX_MULTISIG_INPUTS 256
@@ -27,6 +27,18 @@
 #define MULTIGATEWAY_SYNCWITHDRAW 0
 
 #define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
+#define BTC_ASSETID ('B' + ((uint64_t)'T'<<8) + ((uint64_t)'C'<<16))    // 4412482
+#define LTC_ASSETID ('L' + ((uint64_t)'T'<<8) + ((uint64_t)'C'<<16))
+#define PPC_ASSETID ('P' + ((uint64_t)'P'<<8) + ((uint64_t)'C'<<16))
+#define NMC_ASSETID ('N' + ((uint64_t)'M'<<8) + ((uint64_t)'C'<<16))
+#define DASH_ASSETID ('D' + ((uint64_t)'A'<<8) + ((uint64_t)'S'<<16) + ((uint64_t)'H'<<24))
+#define BTCD_ASSETID ('B' + ((uint64_t)'T'<<8) + ((uint64_t)'C'<<16) + ((uint64_t)'D'<<24))
+
+#define USD_ASSETID ('U' + ((uint64_t)'S'<<8) + ((uint64_t)'D'<<16))
+#define CNY_ASSETID ('C' + ((uint64_t)'N'<<8) + ((uint64_t)'Y'<<16))
+#define EUR_ASSETID ('E' + ((uint64_t)'U'<<8) + ((uint64_t)'R'<<16))
+#define RUR_ASSETID ('R' + ((uint64_t)'U'<<8) + ((uint64_t)'R'<<16))    
+
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
 #define rand16() ((uint16_t)((rand() >> 8) & 0xffff))
 #define rand32() (((uint32_t)rand16()<<16) | rand16())
@@ -259,7 +271,7 @@ struct NXThandler_info
     char pubkeystr[crypto_box_PUBLICKEYBYTES*2+1],myhandle[64],*myNXTADDR,*srvNXTACCTSECRET;
     bits256 mypubkey,myprivkey;
     uint64_t nxt64bits,puzzlethreshold,*neighbors;//,coins[4];
-    int32_t initassets,Lfactor,gatewayid,gensocks[256];
+    int32_t initassets,Lfactor,gatewayid,gensocks[256],bussock;
     int32_t height,extraconfirms,maxpopdepth,maxpopheight,lastchanged,GLEFU,numblocks,timestamps[1000 * 365 * 10];
     int32_t isudpserver,istcpserver,numPrivacyServers,isMM,iambridge,insmallworld;
     uint32_t puzzletime;
@@ -578,10 +590,9 @@ extern struct pingpong_queue Pending_offersQ;
 char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
-char APIKEY_BTCE[512],APISECRET_BTCE[512],APIKEY_BITTREX[512],APISECRET_BITTREX[512],APIKEY_POLONIEX[512],APISECRET_POLONIEX[512];
 cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
-int32_t PERMUTE_RAWINDS,SOFTWALL,MAP_HUFF,OLDTX,SUPERNET_PORT = 7777;
+int32_t PERMUTE_RAWINDS,SOFTWALL,MAP_HUFF,OLDTX,DEFAULT_MAXDEPTH = 10,SUPERNET_PORT = 7777;
 int32_t FASTMODE,SERVER_PORT,MIN_NXTCONFIRMS = 10;
 uint32_t GATEWAY_SIG,FIRST_NXTBLOCK,FIRST_NXTTIMESTAMP,UPNP,MULTIPORT,QUOTE_SLEEP,EXCHANGE_SLEEP,ENABLE_EXTERNALACCESS;   // 3134975738 = 0xbadbeefa;
 int32_t MULTITHREADS,DGSBLOCK = 213000;
@@ -593,7 +604,7 @@ uv_loop_t *UV_loop;
 static long server_xferred;
 int Servers_started;
 queue_t P2P_Q,sendQ,JSON_Q,udp_JSON,storageQ,cacheQ,BroadcastQ,NarrowQ,ResultsQ,UDP_Q,DepositQ,WithdrawQ;
-int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL,LOG2_MAX_XFERPACKETS = 3;
+int32_t Num_in_whitelist,IS_LIBTEST,APIPORT,APISLEEP,USESSL,ENABLE_GUIPOLL,POLLGAP,LOG2_MAX_XFERPACKETS = 3;
 uint32_t *SuperNET_whitelist;
 int32_t Historical_done,MGW_initdone,THROTTLE;
 struct NXThandler_info *Global_mp;
