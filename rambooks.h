@@ -20,7 +20,7 @@ uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
 {
     char NXTaddr[64];
     struct NXT_acct *np;
-    int32_t age,oldi,createdflag;
+    int32_t age,oldi,createdflag,duration;
     uint64_t nxt64bits = 0;
     uint32_t now,i,oldest = 0;
     if ( rb->numquotes == 0 )
@@ -29,8 +29,11 @@ uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     now = (uint32_t)time(NULL);
     for (i=0; i<rb->numquotes; i++)
     {
+        duration = rb->quotes[i].duration;
+        if ( duration <= 0 || duration > ORDERBOOK_EXPIRATION )
+            duration = ORDERBOOK_EXPIRATION;
         age = (now - rb->quotes[i].timestamp);
-        if ( rb->quotes[i].exchangeid == INSTANTDEX_EXCHANGEID && (age >= ORDERBOOK_EXPIRATION || age >= rb->quotes[i].duration) )
+        if ( rb->quotes[i].exchangeid == INSTANTDEX_EXCHANGEID && (age >= ORDERBOOK_EXPIRATION || age >= duration) )
         {
             if ( (iQ == 0 || rb->quotes[i].nxt64bits == iQ->nxt64bits) && (oldest == 0 || rb->quotes[i].timestamp < oldest) )
             {
@@ -93,7 +96,6 @@ struct rambook_info *get_rambook(char *_base,uint64_t baseid,char *_rel,uint64_t
             printf("CREATE RAMBOOK.(%llu -> %llu).%d %s (%s) (%s)\n",(long long)baseid,(long long)relid,(int)exchangebits,Exchanges[exchangeid].name,rb->base,rb->rel);
         HASH_ADD(hh,Rambooks,assetids,sizeof(rb->assetids),rb);
     }
-    purge_oldest_order(rb,0);
     return(rb);
 }
 
@@ -123,6 +125,7 @@ cJSON *rambook_json(struct rambook_info *rb)
     sprintf(numstr,"%llu",(long long)rb->assetids[1]), cJSON_AddItemToObject(json,"relid",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(json,"numquotes",cJSON_CreateNumber(rb->numquotes));
     cJSON_AddItemToObject(json,"exchange",cJSON_CreateString(rb->exchange));
+    cJSON_AddItemToObject(json,"type",cJSON_CreateString((rb->assetids[2]&1) == 0 ? "bids" : "asks"));
     return(json);
 }
 
@@ -212,8 +215,8 @@ void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     maxallowed = calc_users_maxopentrades(iQ->nxt64bits);
     expand_nxt64bits(NXTaddr,iQ->nxt64bits);
     np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    if ( np->openorders >= maxallowed )
-        purge_oldest_order(rb,iQ);
+    //if ( np->openorders >= maxallowed )
+    //    purge_oldest_order(rb,iQ);
     purge_oldest_order(rb,0);
     add_user_order(rb,iQ);
     np->openorders++;
@@ -253,7 +256,7 @@ struct rambook_info *add_rambook_quote(char *exchangestr,struct InstantDEX_quote
 {
     void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ);
     struct exchange_info *exchange;
-    struct rambook_info *rb;
+    struct rambook_info *rb = 0;
     memset(iQ,0,sizeof(*iQ));
     if ( (exchange= find_exchange(exchangestr,0,0)) != 0 )
     {

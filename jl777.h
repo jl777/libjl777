@@ -587,7 +587,7 @@ char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *
 extern uv_loop_t *UV_loop;
 extern struct pingpong_queue Pending_offersQ;
 
-char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD];
+char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD],PYTHONPATH[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;

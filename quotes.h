@@ -109,7 +109,7 @@ int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,i
     if ( baseamount == 0 && relamount == 0 )
         set_best_amounts(&baseamount,&relamount,price,volume);
     iQ->timestamp = timestamp;
-    if ( duration < 0 || duration > ORDERBOOK_EXPIRATION )
+    if ( duration <= 0 || duration > ORDERBOOK_EXPIRATION )
         duration = ORDERBOOK_EXPIRATION;
     iQ->duration = duration;
     iQ->isask = isask;
@@ -163,6 +163,7 @@ cJSON *gen_InstantDEX_json(uint64_t *baseamountp,uint64_t *relamountp,int32_t de
         set_assetname(&mult,base,refbaseid), cJSON_AddItemToObject(json,"base",cJSON_CreateString(base));
         set_assetname(&mult,rel,refrelid), cJSON_AddItemToObject(json,"rel",cJSON_CreateString(rel));
         cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(iQ->timestamp));
+        cJSON_AddItemToObject(json,"duration",cJSON_CreateNumber(iQ->duration));
         cJSON_AddItemToObject(json,"age",cJSON_CreateNumber((uint32_t)time(NULL) - iQ->timestamp));
         if ( iQ->matched != 0 )
             cJSON_AddItemToObject(json,"matched",cJSON_CreateNumber(1));

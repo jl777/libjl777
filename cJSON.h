@@ -176,7 +176,8 @@ void copy_cJSON(char *dest,cJSON *obj);
     double get_API_float(cJSON *obj);
     char *get_cJSON_fieldname(cJSON *obj);
     void ensure_jsonitem(cJSON *json,char *field,char *value);
-    
+    int32_t in_jsonarray(cJSON *array,char *value);
+
     char *stringifyM(char *str);
 #define replace_backslashquotes unstringify
     char *unstringify(char *str);

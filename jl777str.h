@@ -162,7 +162,7 @@ char *clonestr(char *str)
     {
         printf("warning cloning nullstr.%p\n",str);
 #ifdef __APPLE__
-        //while ( 1 ) sleep(1);
+        while ( 1 ) sleep(1);
 #endif
         str = (char *)"<nullstr>";
     }

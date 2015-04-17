@@ -175,7 +175,7 @@ int32_t flip_for_exchange(char *pairstr,char *fmt,char *refstr,int32_t dir,doubl
     return(dir);
 }
 
-uint64_t bittrex_trade(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
  	char *sig,*data,urlbuf[2048],hdr[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1],uuidstr[512];
@@ -189,7 +189,7 @@ uint64_t bittrex_trade(struct exchange_info *exchange,char *base,char *rel,int32
         sprintf(hdr,"apisign:%s",sig);
     else hdr[0] = 0;
     printf("cmdbuf.(%s) h1.(%s)\n",urlbuf,hdr);
-    if ( (data= curl_getorpost(&cHandle,urlbuf,hdr,0)) != 0 )
+    if ( (data= curl_post(&cHandle,urlbuf,0,hdr,0,0)) != 0 )
     {
         printf("cmd.(%s) [%s]\n",urlbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
@@ -213,12 +213,15 @@ uint64_t bittrex_trade(struct exchange_info *exchange,char *base,char *rel,int32
             }
             free_json(json);
         }
-        free(data);
     }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
     return(txid);
 }
 
-uint64_t poloniex_trade(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t poloniex_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
  	char *sig,*data,cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t txid = 0;
@@ -228,8 +231,8 @@ uint64_t poloniex_trade(struct exchange_info *exchange,char *base,char *rel,int3
         sprintf(hdr2,"Sign:%s",sig);
     else hdr2[0] = 0;
     sprintf(hdr1,"Key:%s",exchange->apikey);
-    printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
-    if ( (data= curl_getorpost(&cHandle,"https://poloniex.com/tradingApi",cmdbuf,hdr2,hdr1)) != 0 )
+    //printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
+    if ( (data= curl_post(&cHandle,"https://poloniex.com/tradingApi",cmdbuf,hdr2,hdr1,0)) != 0 )
     {
         printf("cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
@@ -237,12 +240,15 @@ uint64_t poloniex_trade(struct exchange_info *exchange,char *base,char *rel,int3
             txid = (get_API_nxt64bits(cJSON_GetObjectItem(json,"orderNumber")) << 32) | get_API_nxt64bits(cJSON_GetObjectItem(json,"tradeID"));
             free_json(json);
         }
-        free(data);
     }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
     return(txid);
 }
 
-uint64_t bter_trade(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t bter_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
  	char *sig,*data,buf[512],cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1],lbase[16],lrel[16];
@@ -258,7 +264,7 @@ uint64_t bter_trade(struct exchange_info *exchange,char *base,char *rel,int32_t 
     else hdr2[0] = 0;
     sprintf(hdr1,"KEY:%s",exchange->apikey);
     printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
-    if ( (data= curl_getorpost(&cHandle,"https://bter.com/api/1/private/placeorder",cmdbuf,hdr2,hdr1)) != 0 )
+    if ( (data= curl_post(&cHandle,"https://bter.com/api/1/private/placeorder",cmdbuf,hdr2,hdr1,0)) != 0 )
     {
         printf("cmd.(%s) [%s]\n",cmdbuf,data);
         //{ "result":"true", "order_id":"123456", "msg":"Success" }
@@ -273,12 +279,15 @@ uint64_t bter_trade(struct exchange_info *exchange,char *base,char *rel,int32_t 
             }
             free_json(json);
         }
-        free(data);
     }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
     return(txid);
 }
 
-uint64_t btce_trade(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
  	char *sig,*data,cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json,*resultobj; uint64_t txid = 0;
@@ -289,7 +298,7 @@ uint64_t btce_trade(struct exchange_info *exchange,char *base,char *rel,int32_t 
     else hdr2[0] = 0;
     sprintf(cmdbuf,"method=Trade&nonce=%ld&pair=%s&type=%s&rate=%.6f&amount=%.6f",time(NULL),pairstr,dir>0?"buy":"sell",price,volume);
     printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
-    if ( (data= curl_getorpost(&cHandle,"https://btc-e.com/tapi",cmdbuf,hdr2,hdr1)) != 0 )
+    if ( (data= curl_post(&cHandle,"https://btc-e.com/tapi",cmdbuf,hdr2,hdr1,0)) != 0 )
     {
         printf("cmd.(%s) [%s]\n",cmdbuf,data);
         //{ "success":1, "return":{ "received":0.1, "remains":0, "order_id":0, "funds":{ "usd":325, "btc":2.498,  } } }
@@ -305,15 +314,18 @@ uint64_t btce_trade(struct exchange_info *exchange,char *base,char *rel,int32_t 
             }
             free_json(json);
         }
-        free(data);
     }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
     return(txid);
 }
 
 uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT,char *base,char *rel,double price,double volume)
 {
     uint64_t txid = 0;
-    char assetidstr[64],*cmd;
+    char assetidstr[64],*cmd,*retstr = 0;
     struct NXT_asset *ap;
     int32_t createdflag;
     struct exchange_info *exchange;
@@ -336,8 +348,8 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
     else if ( exchangeid < MAX_EXCHANGES && (exchange= &Exchanges[exchangeid]) != 0 && exchange->exchangeid == exchangeid && exchange->trade != 0 )
     {
         printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f\n",exchangeid,dir,price,volume,1./price,price*volume);
-        if ( (txid= (*exchange->trade)(exchange,base,rel,dir,price,volume)) == 0 )
-            printf("illegal combo (%s/%s)\n",base,rel);
+        if ( (txid= (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume)) == 0 )
+            printf("illegal combo (%s/%s) ret.(%s)\n",base,rel,retstr!=0?retstr:"");
     }
     return(txid);
 }

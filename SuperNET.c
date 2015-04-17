@@ -854,6 +854,7 @@ if(nbst > bst*2) nbst = bst*2;
 var rbst = Math.floor((((blk.baseTarget*lasttime)/60)/153722867)*100);
 
 */
+//#include <stdlib.h>
 
 int main(int argc,const char *argv[])
 {
@@ -861,6 +862,7 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
+    
 #ifdef __APPLE__
 #define BTCe_GETINFO 3
     if ( 0 )

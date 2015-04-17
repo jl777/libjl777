@@ -1165,6 +1165,7 @@ void init_SuperNET_settings(char *userdir)
     if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
         FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
     extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
+    extract_cJSON_str(PYTHONPATH,sizeof(PYTHONPATH),MGWconf,"PYTHONPATH");
     if ( NXTISSUERACCT[0] == 'N' && NXTISSUERACCT[1] == 'X' && NXTISSUERACCT[2] == 'T' )
     {
         nxt64bits = conv_rsacctstr(NXTISSUERACCT,0);

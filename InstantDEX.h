@@ -46,7 +46,7 @@ struct exchange_info
 {
     void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui);
     int32_t (*ramsupports)(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid);
-    uint64_t (*trade)(struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
+    uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
     uint64_t nxt64bits;
     struct libwebsocket *wsi;
     char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD];
@@ -205,11 +205,6 @@ void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx
     // updatestats
 }
 
-char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *iQ,char *submitstr) // called by placequote, should autofill
-{
-    return(submitstr);
-}
-
 #include "rambooks.h"
 #include "exchanges.h"
 #include "orderbooks.h"
@@ -217,6 +212,11 @@ char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote
 #include "atomic.h"
 #include "bars.h"
 #include "signals.h"
+
+char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *iQ,char *submitstr) // called by placequote, should autofill
+{
+    return(submitstr);
+}
 
 char *lottostats_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
@@ -265,9 +265,10 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     uint8_t minperc;
     struct exchange_info *xchg;
     struct InstantDEX_quote iQ;
+    struct exchange_info *exchange;
     int32_t remoteflag,automatch,duration;
     struct rambook_info *rb;
-    char buf[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],*jsonstr,*retstr = 0;
+    char buf[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],exchangestr[MAX_JSON_FIELD],base[16],rel[16],*jsonstr,*retstr = 0;
     if ( (xchg= find_exchange(INSTANTDEX_NAME,0,0)) == 0 || xchg->exchangeid != INSTANTDEX_EXCHANGEID )
         return(clonestr("{\"error\":\"unexpected InstantDEX exchangeid\"}"));
     remoteflag = (is_remote_access(previpaddr) != 0);
@@ -292,8 +293,35 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
     automatch = (int32_t)get_API_int(objs[8],0);
     minperc = (int32_t)get_API_int(objs[9],0);
     duration = (int32_t)get_API_int(objs[10],ORDERBOOK_EXPIRATION);
-    if ( duration < 0 || duration > ORDERBOOK_EXPIRATION )
+    if ( duration <= 0 || duration > ORDERBOOK_EXPIRATION )
         duration = ORDERBOOK_EXPIRATION;
+    copy_cJSON(exchangestr,objs[11]);
+    if ( exchangestr[0] == 0 )
+        strcpy(exchangestr,INSTANTDEX_NAME);
+    else
+    {
+        if ( remoteflag != 0 )
+        {
+            printf("remote node (%s) (%s) trying to place quote to exchange (%s)\n",previpaddr,sender,exchangestr);
+            return(clonestr("{\"error\":\"no remote exchange orders\"}"));
+        }
+        else if ( strcmp(exchangestr,"nxtae") != 0 && strcmp(exchangestr,"unconf") != 0 && strcmp(exchangestr,"InstantDEX") != 0 )
+        {
+            if ( is_native_crypto(base,baseid) > 0 && is_native_crypto(rel,relid) > 0 && price > 0 && volume > 0 && dir != 0 )
+            {
+                if ( (exchange= find_exchange(exchangestr,0,0)) != 0 )
+                {
+                    if ( exchange->trade != 0 )
+                    {
+                        printf(" issue dir.%d %s/%s price %f vol %f -> %s\n",dir,base,rel,price,volume,exchangestr);
+                        (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume);
+                        return(retstr);
+                    }
+                    else return(clonestr("{\"error\":\"no trade function for exchange\"}\n"));
+                } else return(clonestr("{\"error\":\"exchange not active, check SuperNET.conf exchanges array\"}\n"));
+            } else return(clonestr("{\"error\":\"illegal parameter baseid or relid not crypto or invalid price\"}\n"));
+        }
+    }
     update_rambooks(baseid,relid,0,0,0);
     printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     minbasevol = get_minvolume(baseid), minrelvol = get_minvolume(relid);
@@ -492,7 +520,7 @@ cJSON *orderbook_json(uint64_t nxt64bits,char *base,uint64_t baseid,char *rel,ui
     char *retstr;
     uint32_t oldest = 0;
     struct orderbook *op,*obooks[1024];
-    if ( (op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,0)) != 0 )
+    if ( (op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui)) != 0 )
     {
         if ( (retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag)) != 0 )
         {
@@ -735,18 +763,18 @@ void init_exchange(cJSON *json)
 {
     static void *exchangeptrs[][5] =
     {
-        { "poloniex", ramparse_poloniex, poloniex_supports, poloniex_trade, "echo.websocket.org" },
-        { "bittrex", ramparse_bittrex, bittrex_supports, bittrex_trade },
-        { "bter", ramparse_bter, bter_supports, bter_trade },
-        { "btce", ramparse_btce, btce_supports, btce_trade },
-        { "bitfinex", ramparse_bitfinex, bitfinex_supports, 0 },
-        { "bitstamp", ramparse_bitstamp, bitstamp_supports, 0 },
-        { "okcoin", ramparse_okcoin, okcoin_supports, 0 },
-        { "huobi", ramparse_huobi, huobi_supports, 0 },
-        { "bityes", ramparse_bityes, bityes_supports, 0 },
-        { "lakebtc", ramparse_lakebtc, lakebtc_supports, 0 },
-        { "exmo", ramparse_exmo, exmo_supports, 0 },
-        { "btc38", ramparse_btc38, btc38_supports, 0 },
+        { (void *)"poloniex", (void *)ramparse_poloniex, (void *)poloniex_supports, (void *)poloniex_trade, },
+        { (void *)"bittrex", (void *)ramparse_bittrex, (void *)bittrex_supports, (void *)bittrex_trade },
+        { (void *)"bter", (void *)ramparse_bter, (void *)bter_supports, (void *)bter_trade },
+        { (void *)"btce", (void *)ramparse_btce, (void *)btce_supports, (void *)btce_trade },
+        { (void *)"bitfinex", (void *)ramparse_bitfinex, (void *)bitfinex_supports, 0 },
+        { (void *)"bitstamp", (void *)ramparse_bitstamp, (void *)bitstamp_supports, 0 },
+        { (void *)"okcoin", (void *)ramparse_okcoin, (void *)okcoin_supports, 0 },
+        { (void *)"huobi", (void *)ramparse_huobi, (void *)huobi_supports, 0 },
+        { (void *)"bityes", (void *)ramparse_bityes, (void *)bityes_supports, 0 },
+        { (void *)"lakebtc", (void *)ramparse_lakebtc, (void *)lakebtc_supports, 0 },
+        { (void *)"exmo", (void *)ramparse_exmo, (void *)exmo_supports, 0 },
+        { (void *)"btc38", (void *)ramparse_btc38, (void *)btc38_supports, 0 },
     };
     struct exchange_info *exchange;
     char name[MAX_JSON_FIELD];
@@ -759,19 +787,19 @@ void init_exchange(cJSON *json)
         {
             if ( strcmp(exchangeptrs[i][0],name) == 0 )
             {
-                parse = exchangeptrs[i][1];
-                supports = exchangeptrs[i][2];
-                trade = exchangeptrs[i][3];
+                *(void **)&parse = exchangeptrs[i][1];
+                *(void **)&supports = exchangeptrs[i][2];
+                *(void **)&trade = exchangeptrs[i][3];
                 break;
             }
         }
-        if ( parse != 0 && (exchange= find_exchange(name,parse,supports)) != 0 )
+        if ( parse != 0 && (exchange= find_exchange(name,(void (*)(struct rambook_info *, struct rambook_info *, int32_t, char *))parse,(int32_t (*)(int32_t, uint64_t *, int32_t, uint64_t, uint64_t))supports)) != 0 )
         {
             exchange->pollgap = get_API_int(cJSON_GetObjectItem(json,"pollgap"),POLLGAP);
             extract_cJSON_str(exchange->apikey,sizeof(exchange->apikey),json,"key");
             extract_cJSON_str(exchange->apisecret,sizeof(exchange->apisecret),json,"secret");
-            exchange->trade = trade;
-            if ( exchangeptrs[i][4] != 0 )
+            *(void **)&exchange->trade = trade;
+            /*if ( exchangeptrs[i][4] != 0 )
             {
                 int libwebsocket_rx_flow_control(struct libwebsocket *wsi,int enable);
                 int err;
@@ -780,7 +808,7 @@ void init_exchange(cJSON *json)
                     err = libwebsocket_rx_flow_control(exchange->wsi,1);
                 }
                 printf("got wsi.%p | err.%d\n",exchange->wsi,err); getchar();
-            }
+            }*/
         }
     }
 }
@@ -800,7 +828,14 @@ void init_exchanges()
             init_exchange(cJSON_GetArrayItem(exchanges,i));
     }
 }
-                          
+
+char *trollbox_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    if ( (rand() & 1) == 0 )
+        return(clonestr("{\"result\":\"buy it will go to the moon\",\"user\":\"troll\",\"whaleindex\":\"0\"}"));
+    else return(clonestr("{\"result\":\"sell it will be dumped\",\"user\":\"troll\",\"whaleindex\":\"0\"}"));
+}
+
 void init_InstantDEX(uint64_t nxt64bits,int32_t testflag)
 {
     //printf("NXT-> %llu BTC -> %llu\n",(long long)stringbits("NXT"),(long long)stringbits("BTC")); getchar();

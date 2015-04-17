@@ -119,17 +119,6 @@ int32_t Task_mindmeld(void *_args,int32_t argsize)
     return(0);
 }
 
-/*if ( retstr != 0 )
- free(retstr);
- memset(&args,0,sizeof(args));
- args.mytxid = myhash.txid;
- args.othertxid = otherhash.txid;
- args.refaddr = cp->privatebits;
- args.numrefs = scan_nodes(args.refaddrs,sizeof(args.refaddrs)/sizeof(*args.refaddrs),NXTACCTSECRET);
- start_task(Task_mindmeld,"telepathy",1000000,(void *)&args,sizeof(args));
- retstr = clonestr(retbuf);*/
-
-
 double calc_address_metric(int32_t dispflag,uint64_t refaddr,uint64_t *list,int32_t n,uint64_t calcaddr,double targetdist)
 {
     int32_t i,numabove,numbelow,exact,flag = 0;

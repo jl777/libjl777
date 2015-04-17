@@ -110,8 +110,20 @@ int32_t NXT_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t ba
 
 int32_t poloniex_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid)
 {
-    static char *symbolmap[][8] = { { "UNITY", "12071612744977229797" },  { "JLH", "6932037131189568014" },  { "XUSD", "12982485703607823902" },  { "LQD", "4630752101777892988" },  { "NXTI", "14273984620270850703" }, { "CNMT", "7474435909229872610", "6220108297598959542" } };
-    return(add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,symbolmap,(int32_t)(sizeof(symbolmap)/sizeof(*symbolmap))));
+    return(add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,poloassets,(int32_t)(sizeof(poloassets)/sizeof(*poloassets))));
+}
+
+int32_t bter_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid)
+{
+    uint64_t unityid = calc_nxt64bits("12071612744977229797");
+    n = add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,bterassets,(int32_t)(sizeof(bterassets)/sizeof(*bterassets)));
+    if ( baseid == unityid || relid == unityid )
+    {
+        n = add_exchange_assetid(assetids,n,unityid,BTC_ASSETID,exchangeid);
+        n = add_exchange_assetid(assetids,n,unityid,NXT_ASSETID,exchangeid);
+        n = add_exchange_assetid(assetids,n,unityid,CNY_ASSETID,exchangeid);
+    }
+    return(n);
 }
 
 int32_t bittrex_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid)
@@ -123,20 +135,6 @@ int32_t btc38_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t 
 {
     return(add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,0,0));
     return(add_exchange_assetids(assetids,n,CNY_ASSETID,baseid,relid,exchangeid,0,0));
-}
-
-int32_t bter_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid)
-{
-    static char *symbolmap[][8] = { { "UNITY", "12071612744977229797" },  { "ATOMIC", "11694807213441909013" },  { "DICE", "18184274154437352348" },  { "MRKT", "134138275353332190" },  { "MGW", "10524562908394749924" } };
-    uint64_t unityid = calc_nxt64bits("12071612744977229797");
-    n = add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,symbolmap,(int32_t)(sizeof(symbolmap)/sizeof(*symbolmap)));
-    if ( baseid == unityid || relid == unityid )
-    {
-        n = add_exchange_assetid(assetids,n,unityid,BTC_ASSETID,exchangeid);
-        n = add_exchange_assetid(assetids,n,unityid,NXT_ASSETID,exchangeid);
-        n = add_exchange_assetid(assetids,n,unityid,CNY_ASSETID,exchangeid);
-    }
-    return(n);
 }
 
 int32_t okcoin_supports(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid)

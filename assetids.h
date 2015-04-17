@@ -13,10 +13,9 @@
 #define INSTANTDEX_MSCOIN 2
 #define INSTANTDEX_UNKNOWN 3
 
-char *assetmap[][3] =
+char *MGWassets[][3] =
 {
-    { "5527630", "NXT", "8" },
-    { "17554243582654188572", "BTC", "8" },
+    { "17554243582654188572", "BTC", "8" }, // assetid, name, decimals
     { "4551058913252105307", "BTC", "8" },
     { "12659653638116877017", "BTC", "8" },
     { "11060861818140490423", "BTCD", "4" },
@@ -32,16 +31,14 @@ char *assetmap[][3] =
     { "2881764795164526882", "LTC", "8" },
     { "7117580438310874759", "BC", "4" },
     { "275548135983837356", "VIA", "4" },
+    { "6220108297598959542", "CNMT", "0" },
+    { "7474435909229872610", "CNMT", "0" },
 };
 
-uint64_t is_cryptocoin(char *name)
-{
-    int32_t i;
-    for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
-        if ( strcmp(assetmap[i][1],name) == 0 )
-            return(calc_nxt64bits(assetmap[i][0]));
-    return(0);
-}
+char *identicalassets[][8] = { { "7474435909229872610", "6220108297598959542" } };
+
+char *bterassets[][8] = { { "UNITY", "12071612744977229797" },  { "ATOMIC", "11694807213441909013" },  { "DICE", "18184274154437352348" },  { "MRKT", "134138275353332190" },  { "MGW", "10524562908394749924" } };
+char *poloassets[][8] = { { "UNITY", "12071612744977229797" },  { "JLH", "6932037131189568014" },  { "XUSD", "12982485703607823902" },  { "LQD", "4630752101777892988" },  { "NXTI", "14273984620270850703" }, { "CNMT", "7474435909229872610", "6220108297598959542" } };
 
 int32_t unstringbits(char *buf,uint64_t bits)
 {
@@ -52,6 +49,67 @@ int32_t unstringbits(char *buf,uint64_t bits)
     buf[i] = 0;
     return(i);
 }
+
+int32_t get_equivalent_assetids(uint64_t *equivids,uint64_t bits)
+{
+    char name[16],str[64];
+    int i,j,matchi,n = 0;
+    memset(name,0,sizeof(name));
+    unstringbits(name,bits);
+    expand_nxt64bits(str,bits);
+    for (matchi=-1,i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+    {
+        if ( strcmp(MGWassets[i][1],name) == 0 )
+            equivids[n++] = calc_nxt64bits(MGWassets[i][0]);
+        if ( strcmp(MGWassets[i][0],str) == 0 )
+            matchi = i;
+    }
+    if ( matchi >= 0 )
+    {
+        strcpy(name,MGWassets[matchi][1]);
+        for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+            if ( strcmp(MGWassets[i][1],name) == 0 )
+                equivids[n++] = calc_nxt64bits(MGWassets[i][0]);
+    }
+    for (matchi=-1,i=0; i<(int32_t)(sizeof(identicalassets)/sizeof(*identicalassets)); i++)
+    {
+        for (matchi=-1,j=0; j<(int32_t)(sizeof(identicalassets[0])/sizeof(*identicalassets[0]))&&identicalassets[i][j]!=0 ; j++)
+        {
+            if ( strcmp(identicalassets[i][j],str) == 0 )
+            {
+                matchi = j;
+                break;
+            }
+        }
+        if ( matchi >= 0 )
+        {
+            for (j=0; j<(int32_t)(sizeof(identicalassets[0])/sizeof(*identicalassets[0]))&&identicalassets[i][j]!=0 ; j++)
+            {
+                if ( j != matchi )
+                    equivids[n++] = calc_nxt64bits(identicalassets[i][j]);
+            }
+            break;
+        }
+    }
+    /*if ( bits == calc_nxt64bits("6220108297598959542") || bits == calc_nxt64bits("7474435909229872610") ) // coinomat
+    {
+        equivids[n++] = calc_nxt64bits("6220108297598959542");
+        equivids[n++] = calc_nxt64bits("7474435909229872610");
+    }*/
+    if ( n == 0 )
+        equivids[n++] = bits;
+    return(n);
+}
+
+uint64_t is_cryptocoin(char *name)
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+        if ( strcmp(MGWassets[i][1],name) == 0 )
+            return(calc_nxt64bits(MGWassets[i][0]));
+    return(0);
+}
+
 
 uint64_t stringbits(char *str)
 {
@@ -81,24 +139,6 @@ int32_t is_native_crypto(char *name,uint64_t bits)
         return(1);
     }
     return(0);
-}
-
-int32_t get_equivalent_assetids(uint64_t *equivids,uint64_t bits)
-{
-    char name[64];
-    int i,n = 0;
-    if ( is_native_crypto(name,bits) > 0 )
-    {
-        for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
-            if ( strcmp(assetmap[i][1],name) == 0 )
-                equivids[n++] = calc_nxt64bits(assetmap[i][0]);
-    }
-    else if ( bits == calc_nxt64bits("6220108297598959542") || bits == calc_nxt64bits("7474435909229872610") ) // coinomat
-    {
-        equivids[n++] = calc_nxt64bits("6220108297598959542");
-        equivids[n++] = calc_nxt64bits("7474435909229872610");
-    }
-    return(n);
 }
 
 uint64_t _calc_decimals_mult(int32_t decimals)
@@ -146,12 +186,12 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         return(INSTANTDEX_NATIVE); // native crypto type
     expand_nxt64bits(assetstr,assetbits);
     strcpy(name,"unknown");
-    for (i=0; i<(int32_t)(sizeof(assetmap)/sizeof(*assetmap)); i++)
+    for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
     {
-        if ( strcmp(assetmap[i][0],assetstr) == 0 )
+        if ( strcmp(MGWassets[i][0],assetstr) == 0 )
         {
-            strcpy(name,assetmap[i][1]);
-            *multp = _calc_decimals_mult(atoi(assetmap[i][2]));
+            strcpy(name,MGWassets[i][1]);
+            *multp = _calc_decimals_mult(atoi(MGWassets[i][2]));
             //printf("SETASSETNAME.(%s) <- %s mult.%llu\n",name,assetstr,(long long)*multp);
             return(INSTANTDEX_NATIVE); // native crypto type
         }

@@ -246,11 +246,14 @@ void SuperNET_idler(uv_idle_t *handle)
     void *up;
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
-    int32_t flag;
+    int32_t i,flag;
     char *jsonstr,*retstr,**ptrs;
     if ( Finished_init == 0 || IS_LIBTEST == 7 )
         return;
     millis = milliseconds();//((double)uv_hrtime() / 1000000);
+    for (i=0; i<10; i++)
+        if ( poll_daemons() <= 0 )
+            break;
     if ( millis > (lastattempt + APISLEEP) )
     {
         lastattempt = millis;
@@ -590,7 +593,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
     cJSON *json,*array,*map;
     struct coin_info *cp;
     uint64_t URL64;
-    if ( 1 && len != 0 )
+    if ( 0 && len != 0 )
         printf("LWS_CALLBACK_HTTP.%d reason.%d len.%ld\n",LWS_CALLBACK_HTTP,reason,len);
     strcpy(mediatype,"text/html");
     switch ( reason )
@@ -659,10 +662,8 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             return(-1);
             break;
         case LWS_CALLBACK_HTTP_BODY:
-            str = malloc(len+1);
-            memcpy(str,in,len);
-            str[len] = 0;
-            printf("(%s)\n",str);
+            str = malloc(len+1), memcpy(str,in,len), str[len] = 0;
+            //printf("(%s)\n",str);
             //if ( wsi != 0 )
             //dump_handshake_info(wsi);
             if ( Debuglevel > 3 && strcmp("{\"requestType\":\"BTCDpoll\"}",str) != 0 )
@@ -719,7 +720,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
             {
                 libwebsockets_get_peer_addresses(context, wsi, (int)(long)in, client_name,sizeof(client_name), client_ip, sizeof(client_ip));
                 // if we returned non-zero from here, we kill the connection
-                if ( strcmp("127.0.0.1",client_ip) != 0  && strncmp("192.168.",client_ip,strlen("192.168.")) != 0 )
+                if ( strcmp("127.0.0.1",client_ip) != 0  && strncmp("192.168.",client_ip,strlen("192.168.")) != 0 && (is_whitelisted(client_ip) == 0 && (Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0)) )
                 {
                     if ( Debuglevel > 0 )
                         fprintf(stderr, "Received network connect from %s (%s)\n",client_name, client_ip);
@@ -752,7 +753,13 @@ static struct libwebsocket_protocols protocols[] =
 		sizeof (struct per_session_data__http),	// per_session_data_size
 		0,			// max frame size / rx buffer
 	},
-	{ NULL, NULL, 0, 0 } // terminator
+    /*{
+		"websocket",
+		callback_websockets,
+		sizeof(struct per_session_data),
+		8192,
+	},*/
+    { NULL, NULL, 0, 0 } // terminator
 };
 
 void sighandler(int sig)
@@ -807,7 +814,9 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
     SSL_done |= (1 << use_ssl);
 	while ( n >= 0 && !force_exit )
     {
-		n = libwebsocket_service(LWScontext,millis);
+        //libwebsocket_callback_on_writable_all_protocol(&protocols[1]);
+        n = libwebsocket_service(LWScontext,millis);
+        usleep(1000);
 	}
 	libwebsocket_context_destroy(LWScontext);
 	lwsl_notice("libwebsockets-test-server exited cleanly\n");
@@ -915,6 +924,9 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         //getchar();
     }
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
+    setenv("PYTHONHOME",PYTHONPATH,1);
+    strcat(PYTHONPATH,"/Lib");
+    setenv("PYTHONPATH",PYTHONPATH,1);
     if ( 0 )
     {
         struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);

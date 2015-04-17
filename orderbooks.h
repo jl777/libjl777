@@ -63,7 +63,7 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
             quote->baseid = iQ->relid, quote->baseamount = iQ->relamount, quote->relid = iQ->baseid, quote->relamount = iQ->baseamount;
         if ( calc_quoteid(quote) != calc_quoteid(iQ) )
             printf("quoteid mismatch %llu vs %llu\n",(long long)calc_quoteid(quote),(long long)calc_quoteid(iQ)), getchar();
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
         {
             double p,v;
             p = calc_price_volume(&v,quote->baseamount,quote->relamount), printf("%c.(%f %f).%d ",'B'-quote->isask,p,v,polarity);
@@ -112,7 +112,7 @@ int32_t nonz_and_lesser(int32_t a,int32_t b)
     return(0);
 }
 
-struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t m,int32_t showall)
+struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t m)
 {
     struct orderbook *op = 0;
     int32_t i,j,n;
@@ -168,8 +168,6 @@ struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,ch
                     for (i=0; i<rawop->numasks; i++)
                         op->asks[n++] = rawop->asks[i];
                 op->numasks = n;
-                if ( Debuglevel > 2 )
-                    printf("rawop.%p numasks.%d n.%d\n",rawop,rawop!=0?rawop->numasks:0,n);
             }
         }
     } else op = rawop;
@@ -190,21 +188,21 @@ int32_t baserelcmp(char *base,uint64_t *baseequivs,int32_t numbase,char *rel,uin
 {
     if ( in_list64(baseequivs,numbase,rb->assetids[0]) >= 0 && in_list64(relequivs,numrel,rb->assetids[1]) >= 0 )
         return(0);
-    else if ( strcmp(base,rb->base) == 0 && strcmp(rel,rb->rel) == 0 )
+    else if ( strcasecmp(base,rb->base) == 0 && strcasecmp(rel,rb->rel) == 0 )
         return(0);
     return(-1);
 }
 
 uint64_t _obookid(uint64_t baseid,uint64_t relid) { return(baseid ^ relid); }
 
-struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui,int32_t showall)
+struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui)
 {
     int32_t i,j,iter,numbids,numasks,numbooks,polarity,numbase,numrel;
     char obookstr[64],_base[16],_rel[16];
     struct rambook_info **obooks,*rb;
     struct orderbook *op = 0;
     uint64_t basemult,relmult,baseequivs[512],relequivs[512];
-    if ( Debuglevel > 1 )
+    if ( Debuglevel > 2 )
         printf("create_orderbook %llu/%llu\n",(long long)refbaseid,(long long)refrelid);
     if ( refbaseid == 0 || refrelid == 0 )
         getchar();
@@ -225,9 +223,9 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
         printf("create_orderbook: illegal assetids %llu/%llu\n",(long long)refbaseid,(long long)refrelid);
         return(0);
     }
-    if ( (numbase= get_equivalent_assetids(baseequivs,refbaseid)) <= 0 )
+    //if ( (numbase= get_equivalent_assetids(baseequivs,refbaseid)) <= 0 )
         baseequivs[0] = refbaseid, numbase = 1;
-    if ( (numrel= get_equivalent_assetids(relequivs,refrelid)) <= 0 )
+    //if ( (numrel= get_equivalent_assetids(relequivs,refrelid)) <= 0 )
         relequivs[0] = refrelid, numrel = 1;
     op = (struct orderbook *)calloc(1,sizeof(*op));
     strcpy(op->base,base), strcpy(op->rel,rel);
@@ -245,18 +243,22 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
             {
                 rb = obooks[i];
                 if ( Debuglevel > 2 )
-                    printf("%s numquotes.%d: (%s).%llu (%s).%llu | (%s).%llu (%s).%llu\n",rb->exchange,rb->numquotes,rb->base,(long long)rb->assetids[0],rb->rel,(long long)rb->assetids[1],op->base,(long long)op->baseid,op->rel,(long long)op->relid);
+                    printf("%s numquotes.%d: (%s).%llu (%s).%llu | (%s).%llu (%s).%llu | equiv.(%d %d) match.%d %d\n",rb->exchange,rb->numquotes,rb->base,(long long)rb->assetids[0],rb->rel,(long long)rb->assetids[1],op->base,(long long)op->baseid,op->rel,(long long)op->relid,numbase,numrel,op->baseid == rb->assetids[0] && op->relid == rb->assetids[1],op->baseid == rb->assetids[1] && op->relid == rb->assetids[0]);
                 if ( rb->numquotes == 0 )
                 {
                     continue;
                 }
-                if ( baserelcmp(op->base,baseequivs,numbase,op->rel,relequivs,numrel,rb) == 0 )
+                /*if ( baserelcmp(op->base,baseequivs,numbase,op->rel,relequivs,numrel,rb) == 0 )
                     polarity = 1;
                 else if ( baserelcmp(op->rel,relequivs,numrel,op->base,baseequivs,numbase,rb) == 0 )
+                    polarity = -1;*/
+                if ( op->baseid == rb->assetids[0] && op->relid == rb->assetids[1] )
+                    polarity = 1;
+                else if ( op->baseid == rb->assetids[1] && op->relid == rb->assetids[0] )
                     polarity = -1;
                 else continue;
                 if ( Debuglevel > 1 )
-                    printf("%s numquotes.%d: (%s).%llu (%s).%llu | (%s).%llu (%s).%llu\n",rb->exchange,rb->numquotes,rb->base,(long long)rb->assetids[0],rb->rel,(long long)rb->assetids[1],op->base,(long long)op->baseid,op->rel,(long long)op->relid);
+                    printf(">>>>>> %s numquotes.%d: (%s).%llu (%s).%llu | (%s).%llu (%s).%llu\n",rb->exchange,rb->numquotes,rb->base,(long long)rb->assetids[0],rb->rel,(long long)rb->assetids[1],op->base,(long long)op->baseid,op->rel,(long long)op->relid);
                 if ( 0 && rb->numquotes == 1 )
                 {
                     double vol;
@@ -275,7 +277,8 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
                 op->asks = (struct InstantDEX_quote *)calloc(op->numasks,sizeof(*op->asks));
         } else sort_orderbook(op);
     }
-    //printf("(%f %f %llu %u)\n",quotes->price,quotes->vol,(long long)quotes->nxt64bits,quotes->timestamp);
+    if ( Debuglevel > 2 || op->numbids+op->numasks > 0 )
+        printf("(%s/%s) %llu/%llu numbids.%d numasks.%d\n",op->base,op->rel,(long long)op->baseid,(long long)op->relid,op->numbids,op->numasks);
     if ( op != 0 && (op->numbids + op->numasks) == 0 )
         free_orderbook(op), op = 0;
     return(op);
@@ -362,24 +365,36 @@ struct orderbook *merge_books(char *base,uint64_t refbaseid,char *rel,uint64_t r
     return(op);
 }
 
-struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t baseid,char *rel,uint64_t relid,int32_t maxdepth,uint32_t oldest,char *gui,int32_t showall)
+struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,int32_t maxdepth,uint32_t oldest,char *gui)
 {
     uint64_t jumpassets[] = { NXT_ASSETID, BTC_ASSETID, BTCD_ASSETID, USD_ASSETID, CNY_ASSETID };
     struct orderbook *op=0,*baseop,*relop,*rawop,*jumpop,*jumpbooks[sizeof(jumpassets)/sizeof(*jumpassets) + 1];
-    int32_t i,m = 0,n = 0;
+    uint64_t baseid,relid,baseequivs[16],relequivs[16];
+    int32_t numbase,numrel,b,r,i,m = 0,n = 0;
     memset(jumpbooks,0,sizeof(jumpbooks));
-    if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui,showall)) != 0 )
-        jumpbooks[m++] = obooks[n++] = rawop;
-    for (i=0; i<(int32_t)(sizeof(jumpassets)/sizeof(*jumpassets)); i++)
+    if ( (numbase= get_equivalent_assetids(baseequivs,refbaseid)) <= 0 )
+        return(0);
+    if ( (numrel= get_equivalent_assetids(relequivs,refrelid)) <= 0 )
+        return(0);
+    for (b=0; b<numbase; b++)
     {
-        if ( baseid != jumpassets[i] && relid != jumpassets[i] )
+        for (r=0; r<numrel; r++)
         {
-            if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui,showall)) != 0 )
-                obooks[n++] = baseop;
-            if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui,showall)) != 0 )
-                obooks[n++] = relop;
-            if ( (jumpop= make_jumpbook(base,baseid,jumpassets[i],rel,relid,relop,baseop,gui,0,maxdepth,showall)) != 0 )
-                jumpbooks[m++] = obooks[n++] = jumpop;
+            baseid = baseequivs[b], relid = relequivs[r];
+            if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui)) != 0 )
+                jumpbooks[m++] = obooks[n++] = rawop;
+            for (i=0; i<(int32_t)(sizeof(jumpassets)/sizeof(*jumpassets)); i++)
+            {
+                if ( baseid != jumpassets[i] && relid != jumpassets[i] )
+                {
+                    if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui)) != 0 )
+                        obooks[n++] = baseop;
+                    if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui)) != 0 )
+                        obooks[n++] = relop;
+                    if ( baseop != 0 && relop != 0 && (jumpop= make_jumpbook(base,baseid,jumpassets[i],rel,relid,relop,baseop,gui,0,maxdepth)) != 0 )
+                        jumpbooks[m++] = obooks[n++] = jumpop;
+                }
+            }
         }
     }
     if ( n > max )
@@ -389,8 +404,11 @@ struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,
     }
     obooks[n] = 0;
     if ( m > 1 )
-        op = merge_books(base,baseid,rel,relid,jumpbooks,m);
-    else op = rawop;
+    {
+        printf("num jumpbooks.%d\n",m);
+        op = merge_books(base,refbaseid,rel,refrelid,jumpbooks,m);
+    }
+    else op = jumpbooks[0];
     return(op);
 }
 
@@ -456,22 +474,29 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
     for (i=0; i<n; i++)
     {
         baseid = assetids[i*3], relid = assetids[i*3+1], exchangeid = (int32_t)assetids[i*3+2];
-        bids = get_rambook(0,baseid,0,relid,(exchangeid<<1));
-        asks = get_rambook(0,baseid,0,relid,(exchangeid<<1) | 1);
-        //fprintf(stderr,"(%llu %llu).%s ",(long long)baseid,(long long)relid,Exchanges[exchangeid].name);
-        if ( (exchange= &Exchanges[exchangeid]) != 0 && bids != 0 && asks != 0 && maxdepth > 0 && exchangeid < MAX_EXCHANGES && exchange->exchangeid == exchangeid )
+        if ( (exchange= &Exchanges[exchangeid]) != 0 && exchangeid < MAX_EXCHANGES )
         {
-            if ( exchange->pollgap != 0 )
-                pollgap = exchange->pollgap;
-            if ( now >= (bids->lastaccess + pollgap) && now >= (asks->lastaccess + pollgap) )
+            int32_t cleared_with_nxtae(int32_t);
+            if ( showall != 0 || (exchange->trade != 0 || cleared_with_nxtae(exchangeid) != 0) )
             {
-                prevbids = clone_quotes(&numoldbids,bids), prevasks = clone_quotes(&numoldasks,asks);
-                if ( exchange->ramparse != 0 && exchange->ramparse != ramparse_stub )
-                    (*exchange->ramparse)(bids,asks,maxdepth,gui);
-                emit_orderbook_changes(bids,prevbids,numoldbids), emit_orderbook_changes(asks,prevasks,numoldasks);
-                exchange->lastaccess = now = (uint32_t)time(NULL);
-            } else printf("wait %u vs %u %u %u\n",now,exchange->lastaccess,bids->lastaccess,asks->lastaccess);
-        } else printf("unexpected %p %p %d %d %d\n",bids,asks,maxdepth,exchangeid,exchange->exchangeid);
+                bids = get_rambook(0,baseid,0,relid,(exchangeid<<1));
+                asks = get_rambook(0,baseid,0,relid,(exchangeid<<1) | 1);
+                //fprintf(stderr,"(%llu %llu).%s ",(long long)baseid,(long long)relid,Exchanges[exchangeid].name);
+                if ( exchangeid != INSTANTDEX_EXCHANGEID && bids != 0 && asks != 0 && maxdepth > 0 && exchange->exchangeid == exchangeid )
+                {
+                    if ( exchange->pollgap != 0 )
+                        pollgap = exchange->pollgap;
+                    if ( now >= (bids->lastaccess + pollgap) && now >= (asks->lastaccess + pollgap) )
+                    {
+                        prevbids = clone_quotes(&numoldbids,bids), prevasks = clone_quotes(&numoldasks,asks);
+                        if ( exchange->ramparse != 0 && exchange->ramparse != ramparse_stub )
+                            (*exchange->ramparse)(bids,asks,maxdepth,gui);
+                        emit_orderbook_changes(bids,prevbids,numoldbids), emit_orderbook_changes(asks,prevasks,numoldasks);
+                        exchange->lastaccess = now = (uint32_t)time(NULL);
+                    } else printf("wait %u vs %u %u %u\n",now,exchange->lastaccess,bids->lastaccess,asks->lastaccess);
+                } else printf("unexpected %p %p %d %d %d\n",bids,asks,maxdepth,exchangeid,exchange->exchangeid);
+            }
+        }
     }
 }
 
@@ -494,7 +519,7 @@ char *orderbook_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *se
     if ( baseid != 0 && relid != 0 )
     {
         update_rambooks(baseid,relid,maxdepth,gui,showall);
-        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,showall);
+        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui);
         retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag);
         free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
     }
