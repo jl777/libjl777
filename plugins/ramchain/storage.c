@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include "uthash.h"
 #include "cJSON.h"
 #include "bits777.c"
 #include "system777.c"
@@ -484,25 +485,12 @@ int32_t update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*
     return(appendflag);
 }
 
-/*struct NXT_asset *get_NXTasset(int32_t *createdp,struct NXThandler_info *mp,char *assetidstr)
-{
-    struct NXT_asset *ap;
-    ap = MTadd_hashtable(createdp,mp->NXTassets_tablep,assetidstr);
-    if ( *createdp != 0 )
-    {
-        if ( init_asset(ap,assetidstr,0) == 0 && init_asset(ap,assetidstr,1) == 0 )
-            ap->mult = 1, ap->decimals = 8;
-        ap->assetbits = ap->H.nxt64bits = calc_nxt64bits(assetidstr);
-    }
-    return(ap);
-}
-
-struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr)
+struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXT_acct **rootp,char *NXTaddr)
 {
     struct NXT_acct *np;
     //printf("NXTaccts hash %p\n",mp->NXTaccts_tablep);
     //printf("get_NXTacct.(%s)\n",NXTaddr);
-    np = MTadd_hashtable(createdp,mp->NXTaccts_tablep,NXTaddr);
+    np = MTadd_hashtable(createdp,rootp,NXTaddr);
     if ( *createdp != 0 )
     {
         //queue_enqueue(&np->incoming,clonestr("testmessage"));
@@ -510,16 +498,15 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
         //portable_set_illegaludp(&np->Usock);//np->Usock = -1;
     }
     return(np);
-}*/
+}
 
 struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,char *coinstr)
 {
-    struct NXT_acct *get_NXTacct(int32_t *createdp,void *mp,char *NXTaddr);
     char NXTaddr[64];
     struct NXT_acct *np;
     int32_t i,createdflag;
     expand_nxt64bits(NXTaddr,nxt64bits);
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = get_NXTacct(&createdflag,&NXT_accts,NXTaddr);
     if ( npp != 0 )
         (*npp) = np;
     if ( np->numcoins > 0 )

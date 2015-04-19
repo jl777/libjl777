@@ -46,19 +46,23 @@ clean: doesntexist
 
 PINCLUDES := -Iincludes -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
-makeMGW :=    gcc -o lib/MGW $(PINCLUDES) mgw/mgw.c mgw/state.c mgw/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c ramchain/storage.c ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c utils/huffstream.c utils/ramcoder.c -lcurl $(PLIBS);
+makeMGW :=    gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c ramchain/storage.c ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c utils/huffstream.c utils/ramcoder.c utils/sha256.c utils/crypt_argchk.c -lcurl $(PLIBS)
+
+makestockfish := cd stockfish; make build ARCH=x86-64-modern; cp stockfish ../lib; cd ..
 
 plugins: lib/echo lib/MGW; lib/DB; \
 	cd plugins; \
     gcc -o lib/echo $(PINCLUDES) example.c utils/cJSON.c  utils/system777.c $(PLIBS); \
+    $(makestockfish); \
     gcc -o lib/DB -c sophia/sophia.c -g -O2 -std=c99 -pedantic -Wextra -Wall -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden; $(PLIBS); \
-    $(makeMGW) \
+    $(makeMGW); \
     cd ..
 
-rtMGW: plugins/rtMGW; \
-	cd plugins; \
-    $(makeMGW) \
-    cd ..
+stockfish: lib/stockfish; \
+ 	cd plugins; $(makestockfish); cd ..
+
+MGW: lib/MGW; \
+	cd plugins; $(makeMGW); cd ..
 
 SuperNET: $(TARGET); \
     pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
@@ -94,9 +98,6 @@ getramchain0:  doesntexist; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.addr /var/www/html/ramchains/BTCD/BTCD.addr; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.txid /var/www/html/ramchains/BTCD/BTCD.txid; \
     rsync -rtv guest@209.126.70.170::ramchains/BTCD.script /var/www/html/ramchains/BTCD/BTCD.script
-
-chess:  doesntexist; \
-    git clone https://github.com/official-stockfish/Stockfish; cd Stockfish/src; make build ARCH=x86-64; cd ../..
 
 chessjs:  doesntexist; \
     git clone https://github.com/exoticorn/stockfish-js
@@ -258,6 +259,7 @@ cstdlib/errno.o: cstdlib/errno.c interpreter.h platform.h
 cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
+lib/stockfish: plugins/stockfish/main.cpp
 lib/DB: plugins/sophia/sophia.c
 lib/echo: plugins/example.c
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c plugins/utils/bits777.c plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/files777.c plugins/utils/utils777.c plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c

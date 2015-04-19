@@ -23,7 +23,17 @@
 #include "cJSON.h"
 #define DEFINES_ONLY
 #include "system777.c"
+#include "NXT777.c"
 #undef DEFINES_ONLY
+
+int Numramchains; struct ramchain_info *Ramchains[100];
+int32_t MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MULTITHREADS,NORAMCHAINS,Gatewayid,MIN_NQTFEE,MAX_BUYNXT;
+char Server_ipaddrs[256][MAX_JSON_FIELD],NXT_ASSETIDSTR[64],MGWROOT[256],NXTAPIURL[MAX_JSON_FIELD],*MGW_whitelist[256],DATADIR[512],NXT_ASSETIDSTR[64];
+cJSON *MGWconf;
+
+struct NXT_asset *NXT_assets;
+struct NXT_assettxid NXT_assettxids;
+struct NXT_acct *NXT_accts;
 
 int32_t getline777(char *line,int32_t max); // should return right away if no user input
 
@@ -146,8 +156,10 @@ void process_json(char *jsonargs)
     printf("%s\n",line), fflush(stdout);
 }
 
+
 int main(int argc,const char *argv[])
 {
+    void init_NXTtables();
     uint64_t daemonid,myid;
     int32_t permanentflag,sock,len,timeout,ppid,counter = 0;
     char line[8192],retbuf[8192],*jsonargs;

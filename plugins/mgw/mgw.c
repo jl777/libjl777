@@ -32,16 +32,22 @@
 //#define DEPOSIT_XFER_DURATION 5
 #define MIN_DEPOSIT_FACTOR 5
 
-int32_t is_trusted_issuer(char *issuer);
-struct multisig_addr *find_msigaddr(char *msigaddr);
-int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
 
-int Numramchains; struct ramchain_info *Ramchains[100];
-int32_t MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MULTITHREADS,NORAMCHAINS,Gatewayid,MIN_NQTFEE,MAX_BUYNXT;
-char Server_ipaddrs[256][MAX_JSON_FIELD],NXT_ASSETIDSTR[64],MGWROOT[256],NXTAPIURL[MAX_JSON_FIELD],*MGW_whitelist[256];
-cJSON *MGWconf;
-void *Global_mp;
-//expand_nxt64bits(NXT_ASSETIDSTR,NXT_ASSETID);
+double get_current_rate(char *base,char *rel)
+{
+    struct ramchain_info *ram;
+    if ( strcmp(rel,"NXT") == 0 )
+    {
+        if ( (ram= get_ramchain_info(base)) != 0 )
+        {
+            if ( ram->NXTconvrate != 0. )
+                return(ram->NXTconvrate);
+            if ( ram->NXTfee_equiv != 0 && ram->txfee != 0 )
+                return(ram->NXTfee_equiv / ram->txfee);
+        }
+    }
+    return(1.);
+}
 
 int32_t is_trusted_issuer(char *issuer)
 {
@@ -246,9 +252,48 @@ int32_t cointxcmp(struct cointx_info *txA,struct cointx_info *txB)
     return(-1);
 }
 
+int32_t prevent_queueing(char *cmd)
+{
+    if ( strcmp("ping",cmd) == 0 || strcmp("pong",cmd) == 0 || strcmp("getdb",cmd) == 0 ||
+        strcmp("sendfrag",cmd) == 0 || strcmp("gotfrag",cmd) == 0 || strcmp("ramchain",cmd) == 0 ||
+        strcmp("genmultisig",cmd) == 0 || strcmp("getmsigpubkey",cmd) == 0 || strcmp("setmsigpubkey",cmd) == 0 ||
+        0 )
+        return(1);
+    return(0);
+}
+
+void set_handler_fname(char *fname,char *handler,char *name)
+{
+    if ( strstr("../",name) != 0 || strstr("..\\",name) != 0 || name[0] == '/' || name[0] == '\\' || strcmp(name,"..") == 0  || strcmp(name,"*") == 0 )
+    {
+        //printf("(%s) invalid_filename.(%s) %p %p %d %d %d %d\n",handler,name,strstr("../",name),strstr("..\\",name),name[0] == '/',name[0] == '\\',strcmp(name,".."),strcmp(name,"*"));
+        name = "invalid_filename";
+    }
+    sprintf(fname,"%s/%s/%s",DATADIR,handler,name);
+}
+
+int32_t load_handler_fname(void *dest,int32_t len,char *handler,char *name)
+{
+    FILE *fp;
+    int32_t retval = -1;
+    char fname[1024];
+    set_handler_fname(fname,handler,name);
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        if ( ftell(fp) == len )
+        {
+            rewind(fp);
+            if ( fread(dest,1,len,fp) == len )
+                retval = len;
+        }
+        fclose(fp);
+    }
+    return(retval);
+}
+
 void _set_RTmgwname(char *RTmgwname,char *name,char *coinstr,int32_t gatewayid,uint64_t redeemtxid)
 {
-    void set_handler_fname(char *fname,char *handler,char *name);
     sprintf(name,"%s.%llu.g%d",coinstr,(long long)redeemtxid,gatewayid);
     set_handler_fname(RTmgwname,"RTmgw",name);
 }
@@ -894,13 +939,13 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
 
 uint32_t ram_update_disp(struct ramchain_info *ram)
 {
-    int32_t pingall(char *coinstr,char *srvNXTACCTSECRET);
+    //int32_t pingall(char *coinstr,char *srvNXTACCTSECRET);
     if ( ram_update_RTblock(ram) > ram->lastdisp )
     {
         ram->blocks.blocknum = ram->blocks.contiguous = ram_setcontiguous(&ram->blocks);
         ram_disp_status(ram);
         ram->lastdisp = ram_update_RTblock(ram);
-        pingall(ram->name,ram->srvNXTACCTSECRET);
+        //pingall(ram->name,ram->srvNXTACCTSECRET);
         return(ram->lastdisp);
     }
     return(0);
@@ -992,13 +1037,13 @@ void activate_ramchain(struct ramchain_info *ram,char *name)
 void *process_ramchains(void *_argcoinstr)
 {
     extern int32_t MULTITHREADS;
-    void ensure_SuperNET_dirs(char *backupdir);
+    //void ensure_SuperNET_dirs(char *backupdir);
     char *argcoinstr = (_argcoinstr != 0) ? ((char **)_argcoinstr)[0] : 0;
     int32_t iter,gatewayid,modval,numinterleaves;
     double startmilli;
     struct ramchain_info *ram;
     int32_t i,pass,processed = 0;
-    ensure_SuperNET_dirs("ramchains");
+    //ensure_SuperNET_dirs("ramchains");
     startmilli = milliseconds();
     if ( _argcoinstr != 0 && ((long *)_argcoinstr)[1] != 0 && ((long *)_argcoinstr)[2] != 0 )
     {
@@ -1103,12 +1148,12 @@ void *process_ramchains(void *_argcoinstr)
             if ( argcoinstr == 0 || strcmp(argcoinstr,ram->name) == 0 )
                 ram_update_disp(ram);
         }
-        if ( processed == 0 )
+        /*if ( processed == 0 )
         {
             void poll_nanomsg();
             poll_nanomsg();
             portable_sleep(1);
-        }
+        }*/
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");

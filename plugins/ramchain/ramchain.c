@@ -50,7 +50,7 @@ struct transfer_args
 };
 
 extern int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid;
-extern char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD];
+extern char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
 extern int Numramchains; extern struct ramchain_info *Ramchains[100];
 extern cJSON *MGWconf;
 extern void *Global_mp;
@@ -83,6 +83,7 @@ struct acct_coin { uint64_t *srvbits; char name[16],**acctcoinaddrs,**pubkeys; i
 
 struct NXT_acct
 {
+    UT_hash_handle hh;
     struct NXT_str H;
     struct NXT_asset **assets;
     uint64_t *quantities,bestbits,quantity;
@@ -94,6 +95,7 @@ struct NXT_acct
     struct nodestats stats;
     char *signedtx;
 };
+extern struct NXT_acct *NXT_accts;
 
 struct SuperNET_db
 {
@@ -278,6 +280,25 @@ int32_t ram_huffencode(uint64_t *outbitsp,struct ramchain_info *ram,struct ramch
     *outbitsp = 0;
     return(outbits);
 }
+
+struct nodestats *get_nodestats(uint64_t nxt64bits)
+{
+    struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXT_acct **rootp,char *NXTaddr);
+    struct nodestats *stats = 0;
+    int32_t createdflag;
+    struct NXT_acct *np;
+    char NXTaddr[64];
+    if ( nxt64bits != 0 )
+    {
+        expand_nxt64bits(NXTaddr,nxt64bits);
+        np = get_NXTacct(&createdflag,&NXT_accts,NXTaddr);
+        stats = &np->stats;
+        if ( stats->nxt64bits == 0 )
+            stats->nxt64bits = nxt64bits;
+    }
+    return(stats);
+}
+
 void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
 {
     static uint8_t zerokey[256>>3];

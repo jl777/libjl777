@@ -20,6 +20,7 @@
 #else
 #include "curve25519-donna-c64.c"
 #endif
+#include "uthash.h"
 #include "bits777.c"
 #include "utils777.c"
 
@@ -42,6 +43,7 @@ union _asset_price { uint64_t assetoshis,price; };
 
 struct NXT_assettxid
 {
+    UT_hash_handle hh;
     struct NXT_str H;
     uint64_t AMtxidbits,redeemtxid,assetbits,senderbits,receiverbits,quantity,convassetid;
     double minconvrate;
@@ -57,6 +59,7 @@ struct NXT_assettxid
 struct NXT_assettxid_list { struct NXT_assettxid **txids; int32_t num,max; };
 struct NXT_asset
 {
+    UT_hash_handle hh;
     struct NXT_str H;
     uint64_t issued,mult,assetbits,issuer;
     char *description,*name;
@@ -64,7 +67,6 @@ struct NXT_asset
     int32_t max,num,decimals;
     uint16_t type,subtype;
 };
-
 struct NXT_AMhdr { uint32_t sig; int32_t size; uint64_t nxt64bits; };
 struct compressed_json { uint32_t complen,sublen,origlen,jsonlen; unsigned char encoded[128]; };
 union _json_AM_data { unsigned char binarydata[sizeof(struct compressed_json)]; char jsonstr[sizeof(struct compressed_json)]; struct compressed_json jsn; };
@@ -87,6 +89,8 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
 void set_NXTpubkey(char *NXTpubkey,char *NXTacct);
 uint64_t get_sender(uint64_t *amountp,char *txidstr);
 
+extern struct NXT_asset *NXT_assets;
+extern struct NXT_assettxid NXT_assettxids;
 
 #endif
 #else

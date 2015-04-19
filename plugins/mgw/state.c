@@ -25,6 +25,8 @@
 #define BIND_DEPOSIT_ADDRESS 'b'
 #define DEPOSIT_CONFIRMED 'd'
 #define MONEY_SENT 'm'
+#define NXT_ASSETLIST_INCR 100
+extern char NXT_ASSETIDSTR[];
 
 #endif
 #else
@@ -341,6 +343,32 @@ void ram_addunspent(struct ramchain_info *ram,char *coinaddr,struct rampayload *
              }*/
         }
     }
+}
+
+struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset *ap,char *txid)
+{
+    int32_t createdflag;
+    struct NXT_assettxid *tp;
+    if ( createdflagp == 0 )
+        createdflagp = &createdflag;
+    tp = MTadd_hashtable(createdflagp,&NXT_assettxids,txid);
+    if ( *createdflagp != 0 )
+    {
+        //tp->assetbits = ap->assetbits;
+        // tp->redeemtxid = calc_nxt64bits(txid);
+        // tp->timestamp = timestamp;
+        //printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
+        if ( ap != 0 )
+        {
+            if ( ap->num >= ap->max )
+            {
+                ap->max = ap->num + NXT_ASSETLIST_INCR;
+                ap->txids = realloc(ap->txids,sizeof(*ap->txids) * ap->max);
+            }
+            ap->txids[ap->num++] = tp;
+        }
+    }
+    return(tp);
 }
 
 int32_t _ram_update_redeembits(struct ramchain_info *ram,uint64_t redeembits,uint64_t AMtxidbits,char *cointxid,struct address_entry *bp)
