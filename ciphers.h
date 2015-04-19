@@ -868,7 +868,7 @@ int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
     struct coin_info *cp = get_coin_info("BTCD");
     if ( encoded != 0 )
     {
-        if ( (fp= fopen(fname,"wb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
         {
             if ( fwrite(encoded,1,len,fp) != len )
             {
@@ -880,7 +880,7 @@ int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
             else
             {
                 fclose(fp);
-                if ( (fp= fopen(fname,"rb")) != 0 )
+                if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
                 {
                     retstr = mofn_savefile(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,cp->srvNXTADDR,pin,fp,0,M,N,0,cp->privateNXTACCTSECRET,fname);
                     if ( retstr != 0 )
@@ -934,7 +934,7 @@ uint8_t *load_encrypted(int32_t *lenp,char *fname,struct coin_info *cp)
     int32_t *cipherids,newlen;
     *lenp = 0;
     //printf("load_encrypted.(%s)\n",fname);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         fsize = ftell(fp);

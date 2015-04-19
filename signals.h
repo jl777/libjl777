@@ -17,9 +17,9 @@ void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     if ( rb->fp == 0 )
     {
         set_exchange_fname(fname,rb->exchange,rb->base,rb->rel,rb->assetids[0],rb->assetids[1]);
-        if ( (rb->fp= fopen(fname,"rb+")) != 0 )
+        if ( (rb->fp= fopen(os_compatible_path(fname),"rb+")) != 0 )
             fseek(rb->fp,0,SEEK_SET);
-        else rb->fp = fopen(fname,"wb+");
+        else rb->fp = fopen(os_compatible_path(fname),"wb+");
         printf("opened.(%s) fpos.%ld\n",fname,ftell(rb->fp));
     }
     if ( rb->fp != 0 )
@@ -44,7 +44,7 @@ int32_t scan_exchange_prices(void (*process_quote)(void *ptr,int32_t arg,struct 
     struct InstantDEX_quote iQ;
     uint8_t data[sizeof(uint64_t) * 2 + sizeof(uint32_t)];
     set_exchange_fname(fname,exchange,base,rel,baseid,relid);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         while ( fread(data,1,sizeof(data),fp) == sizeof(data) )
         {

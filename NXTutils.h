@@ -16,7 +16,7 @@ void *loadfile(int32_t *allocsizep,char *fname)
     long  filesize;
     char *buf = 0;
     *allocsizep = 0;
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         filesize = ftell(fp);
@@ -50,7 +50,7 @@ char *load_file(char *fname,char **bufp,int64_t  *lenp,int64_t  *allocsizep)
     int64_t  filesize,buflen = *allocsizep;
     char *buf = *bufp;
     *lenp = 0;
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         filesize = ftell(fp);
@@ -1071,7 +1071,7 @@ char *submit_AM(int32_t deadline,char *recipient,struct NXT_AMhdr *ap,char *reft
             if ( errjson != 0 )
             {
                 fprintf(stderr,"ERROR submitting AM.(%s)\n",jsonstr);
-                sleep(60);
+                portable_sleep(60);
                 exit(-1);
             }
             txjson = cJSON_GetObjectItem(json,"transaction");
@@ -1358,7 +1358,7 @@ int32_t gen_randomacct(CURL *curl_handle,uint32_t randchars,char *NXTaddr,char *
     for (iter=0; iter<=8; iter++)
     {
         sprintf(fname,"%s.%d",randfilename,iter);
-        fp = fopen(fname,"rb");
+        fp = fopen(os_compatible_path(fname),"rb");
         if ( fp == 0 )
         {
             randombytes(bits,sizeof(bits));
@@ -1369,14 +1369,14 @@ int32_t gen_randomacct(CURL *curl_handle,uint32_t randchars,char *NXTaddr,char *
             //printf("cmd.(%s)\n",buf);
             //if ( system(buf) != 0 )
             //    printf("error issuing system(%s)\n",buf);
-            fp = fopen(fname,"wb");
+            fp = fopen(os_compatible_path(fname),"wb");
             if ( fp != 0 )
             {
                 fwrite(bits,1,sizeof(bits),fp);
                 fclose(fp);
             }
-            sleep(3);
-            fp = fopen(fname,"rb");
+            portable_sleep(3);
+            fp = fopen(os_compatible_path(fname),"rb");
         }
         if ( fp != 0 )
         {
@@ -1415,7 +1415,7 @@ int32_t init_NXTAPI(CURL *curl_handle)
         while ( (jsonstr= issue_NXTPOST(curl_handle,cmd)) == 0 )
         {
             printf("error communicating to NXT network\n");
-            sleep(3);
+            portable_sleep(3);
         }
         timestamp = 0;
         json = cJSON_Parse(jsonstr);
@@ -1439,7 +1439,7 @@ int32_t init_NXTAPI(CURL *curl_handle)
         }
         printf("no time found (%s)\n",jsonstr);
         free(jsonstr);
-        sleep(3);
+        portable_sleep(3);
     }
 }
 
@@ -1910,7 +1910,7 @@ void launch_app_in_new_terminal(char *appname,int argc,char **argv)
     FILE *fp;
     int i;
     char cmd[2048];
-    if ( (fp= fopen("/tmp/launchit","w")) != 0 )
+    if ( (fp= fopen(os_compatible_path(clonestr("/tmp/launchit")),"w")) != 0 )
     {
         fprintf(fp,"osascript <<END\n");
         fprintf(fp,"tell application \"Terminal\"\n");
@@ -1924,7 +1924,7 @@ void launch_app_in_new_terminal(char *appname,int argc,char **argv)
             sprintf(cmd+strlen(cmd),"%s ",argv[i]);
         strcat(cmd,"\"");
         printf("cmd.(%s)\n",cmd);
-        system(cmd);
+        system(os_compatible_path(cmd));
     }
 #else
     //void *punch_client_glue(void *argv);
@@ -1946,15 +1946,15 @@ int search_uint32_ts(int32_t *ints,int32_t val)
 #ifdef __MINGW32__
 #elif __MINGW64__
 #else
-void usleep(int utimeout)
+void msleep(int millis)
 {
-    utimeout /= 1000;
-    if ( utimeout == 0 )
-        utimeout = 1;
-    Sleep(utimeout);
+    //utimeout /= 1000;
+    if ( millis == 0 )
+        millis = 1;
+    Sleep(millis);
 }
 
-void sleep(int seconds)
+void portable_sleep(int seconds)
 {
     Sleep(seconds * 1000);
 }
@@ -1978,7 +1978,7 @@ uint32_t calc_file_crc(uint64_t *filesizep,char *fname)
 #ifdef WIN32
     FILE *fp;
     *filesizep = 0;
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         *filesizep = ftell(fp);
@@ -2289,12 +2289,12 @@ void ensure_directory(char *dirname) // jl777: does this work in windows?
     FILE *fp;
     char fname[512],cmd[512];
     sprintf(fname,"%s/tmp",dirname);
-    if ( (fp= fopen(fname,"rb")) == 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
     {
         sprintf(cmd,"mkdir %s",dirname);
-        if ( system(cmd) != 0 )
+        if ( system(os_compatible_path(cmd)) != 0 )
             printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
-        fp = fopen(fname,"wb");
+        fp = fopen(os_compatible_path(fname),"wb");
         if ( fp != 0 )
             fclose(fp);
     }
@@ -2546,7 +2546,7 @@ long force_fpos(char *fname,FILE **fpp,long setfpos)
     long fpos,startfpos;
     if ( fp == 0 )
     {
-        fp = fopen(fname,"wb");
+        fp = fopen(os_compatible_path(fname),"wb");
         if ( fp == 0 )
         {
             printf("couldnt create %s\n",fname);
@@ -2572,7 +2572,7 @@ long force_fpos(char *fname,FILE **fpp,long setfpos)
         else
         {
             printf("FATAL error: couldnt reposition.(%s) from %ld to %ld, ended up beyond?? %ld\n",fname,startfpos,setfpos,fpos);
-            while ( 1 ) sleep(1);
+            while ( 1 ) portable_sleep(1);
             exit(-1);
         }
         return(ftell(fp));

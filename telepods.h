@@ -68,7 +68,7 @@ int32_t update_telepod_file(struct coin_info *cp,int32_t filenum,struct telepod 
     int32_t iter,podlen,retval = -1;
     char fname[512];
     set_telepod_fname(1,fname,cp->name,filenum);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fclose(fp);
         iter = 1;
@@ -192,7 +192,7 @@ int32_t find_telepod_slot(char *name,int32_t filenum,char *refcipher)
         set_telepod_fname(0,fname,name,filenum);
         printf("check (%s)\n",fname);
     }
-    while ( (fp= fopen(fname,"rb")) != 0 );
+    while ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 );
     return(filenum);
 }
 

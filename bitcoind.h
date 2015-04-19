@@ -271,7 +271,7 @@ int32_t establish_connection(char *ipaddr,char *NXTADDR,char *NXTACCTSECRET,uint
                         free(retstr);
                     break;
             }
-            sleep(1);
+            portable_sleep(1);
             if ( pserver->lastcontact > start )
                 break;
             fprintf(stderr,"%u ",pserver->lastcontact);

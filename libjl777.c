@@ -13,85 +13,6 @@ struct pingpong_queue Pending_offersQ;
 #include "pton.h"
 #endif
 
-uv_async_t Tasks_async;
-uv_work_t Tasks;
-struct task_info
-{
-    char name[64];
-    int32_t sleepmicros,argsize;
-    tfunc func;
-    uint8_t args[];
-};
-
-void aftertask(uv_work_t *req,int status)
-{
-    struct task_info *task = (struct task_info *)req->data;
-    if ( task != 0 )
-    {
-        fprintf(stderr,"req.%p task.%s complete status.%d\n",req,task->name,status);
-        free(task);
-        req->data = 0;
-    } else fprintf(stderr,"task.%p complete\n",req);
-    free(req);
-    //uv_close((uv_handle_t *)&Tasks_async,NULL);
-    //uv_close((uv_handle_t *)req,NULL);
-}
-
-void Task_handler(uv_work_t *req)
-{
-    struct task_info *task = (struct task_info *)req->data;
-    while ( task != 0 )
-    {
-        //fprintf(stderr,"Task.(%s) sleep.%d\n",task->name,task->sleepmicros);
-        if ( task->func != 0 )
-        {
-            //printf("Task_handler.(%p)\n",*(void **)task->args);
-            if ( (*task->func)(task->args,task->argsize) < 0 )
-                break;
-            if ( task->sleepmicros != 0 )
-                usleep(task->sleepmicros);
-        }
-        else break;
-    }
-}
-
-uv_work_t *start_task(tfunc func,char *name,int32_t sleepmicros,void *args,int32_t argsize)
-{
-    uv_work_t *work;
-    struct task_info *task;
-    task = calloc(1,sizeof(*task) + argsize);
-    memcpy(task->args,args,argsize);
-    //printf("start_tasks copy %p %p\n",*(void **)args,*(void **)task->args);
-    task->func = func;
-    task->argsize = argsize;
-    safecopy(task->name,name,sizeof(task->name));
-    task->sleepmicros = sleepmicros;
-    work = calloc(1,sizeof(*work));
-    work->data = task;
-    uv_queue_work(UV_loop,work,Task_handler,aftertask);
-    return(work);
-}
-
-/*
-void async_handler(uv_async_t *handle)
-{
-    char *jsonstr = (char *)handle->data;
-    if ( jsonstr != 0 )
-    {
-        fprintf(stderr,"ASYNC(%s)\n",jsonstr);
-        free(jsonstr);
-        handle->data = 0;
-    } else fprintf(stderr,"ASYNC called\n");
-}
-
-void send_async_message(char *msg)
-{
-    while ( Tasks_async.data != 0 )
-        usleep(1000);
-    Tasks_async.data = clonestr(msg);
-    uv_async_send(&Tasks_async);
-}*/
-
 void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc)
 {
     void _RTmgw_handler(struct transfer_args *args);
@@ -112,7 +33,7 @@ void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint
     if ( strcmp(args->handler,"mgw") == 0 || strcmp(args->handler,"RTmgw") == 0 )
     {
         set_handler_fname(buf,args->handler,args->name);
-        if ( (fp= fopen(buf,"wb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(buf),"wb")) != 0 )
         {
             printf("handler_gotfile created.(%s).%d\n",buf,args->totallen);
             fwrite(args->data,1,args->totallen,fp);
@@ -247,18 +168,19 @@ void SuperNET_idler(uv_idle_t *handle)
     struct udp_queuecmd *qp;
     struct write_req_t *wr,*firstwr = 0;
     int32_t i,flag;
-    char *jsonstr,*retstr,**ptrs;
+    char *jsonstr,*retstr;
+    struct resultsitem *rp;
     if ( Finished_init == 0 || IS_LIBTEST == 7 )
         return;
     millis = milliseconds();//((double)uv_hrtime() / 1000000);
-    for (i=0; i<10; i++)
+    for (i=0; i<10000; i++)
         if ( poll_daemons() <= 0 )
             break;
     if ( millis > (lastattempt + APISLEEP) )
     {
         lastattempt = millis;
 #ifdef TIMESCRAMBLE
-        while ( (wr= queue_dequeue(&sendQ)) != 0 )
+        while ( (wr= queue_dequeue(&sendQ,0)) != 0 )
         {
             if ( wr == firstwr )
             {
@@ -276,7 +198,7 @@ void SuperNET_idler(uv_idle_t *handle)
             }
             if ( firstwr == 0 )
                 firstwr = wr;
-            queue_enqueue("sendQ",&sendQ,wr);
+            queue_enqueue("sendQ",&sendQ,&wr->DL);
         }
         if ( Debuglevel > 2 && queue_size(&sendQ) != 0 )
             printf("sendQ size.%d\n",queue_size(&sendQ));
@@ -286,7 +208,7 @@ void SuperNET_idler(uv_idle_t *handle)
         while ( flag != 0 )
         {
             flag = 0;
-            if ( (qp= queue_dequeue(&udp_JSON)) != 0 )
+            if ( (qp= queue_dequeue(&udp_JSON,0)) != 0 )
             {
                 //printf("process qp argjson.%p\n",qp->argjson);
                 char previpaddr[64];
@@ -300,16 +222,16 @@ void SuperNET_idler(uv_idle_t *handle)
                 free(qp);
                 flag++;
             }
-            else if ( (ptrs= queue_dequeue(&JSON_Q)) != 0 )
+            else if ( (rp= queue_dequeue(&JSON_Q,0)) != 0 )
             {
-                jsonstr = ptrs[0];
+                jsonstr = rp->argstr;
                 if ( Debuglevel > 3 )
                     printf("dequeue JSON_Q.(%s)\n",jsonstr);
                 if ( (retstr= call_SuperNET_JSON(jsonstr)) == 0 )
                     retstr = clonestr("{\"result\":null}");
-                ptrs[1] = retstr;
-                if ( ptrs[2] != 0 )
-                    queue_GUIpoll(ptrs);
+                rp->retstr = retstr;
+                if ( rp->txid != 0 )
+                    queue_GUIpoll(rp);
                 flag++;
             }
         }
@@ -319,13 +241,13 @@ void SuperNET_idler(uv_idle_t *handle)
         }
     }
 #ifndef TIMESCRAMBLE
-    while ( (wr= queue_dequeue(&sendQ)) != 0 )
+    while ( (wr= queue_dequeue(&sendQ,0)) != 0 )
     {
         //printf("sendQ size.%d\n",queue_size(&sendQ));
         process_sendQ_item(wr);
     }
 #endif
-    while ( (up= queue_dequeue(&UDP_Q)) != 0 )
+    while ( (up= queue_dequeue(&UDP_Q,0)) != 0 )
         process_udpentry(up);
     if ( millis > (lastclock + 1000) )
     {
@@ -348,7 +270,7 @@ void SuperNET_idler(uv_idle_t *handle)
         counter++;
         lastclock = millis;
     }
-    usleep(APISLEEP * 1000);
+    msleep(APISLEEP);
 }
 
 void run_UVloop(void *arg)
@@ -775,7 +697,7 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
 	static struct lws_context_creation_info infos[2];
     struct lws_context_creation_info *info;
     while ( Finished_init == 0 )
-        fprintf(stderr,"."), sleep(1);
+        fprintf(stderr,"."), portable_sleep(1);
     info = &infos[use_ssl];
 	memset(info,0,sizeof(*info));
 	info->port = port;
@@ -816,7 +738,7 @@ int32_t init_API_port(int32_t use_ssl,uint16_t port,uint32_t millis)
     {
         //libwebsocket_callback_on_writable_all_protocol(&protocols[1]);
         n = libwebsocket_service(LWScontext,millis);
-        usleep(1000);
+        msleep(1);
 	}
 	libwebsocket_context_destroy(LWScontext);
 	lwsl_notice("libwebsockets-test-server exited cleanly\n");
@@ -924,16 +846,16 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
         //getchar();
     }
     myipaddr = init_MGWconf(JSON_or_fname,myipaddr);
-    setenv("PYTHONHOME",PYTHONPATH,1);
-    strcat(PYTHONPATH,"/Lib");
-    setenv("PYTHONPATH",PYTHONPATH,1);
-    if ( 0 )
+    //setenv("PYTHONHOME",PYTHONPATH,1);
+    //strcat(PYTHONPATH,"/Lib");
+    //setenv("PYTHONPATH",PYTHONPATH,1);
+    /*if ( 0 )
     {
         struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
         void *ret = _decode_rawtransaction("0100000001a131c270d541c9d2be98b6f7a88c6cbea5d5a395ec82c9954083675226f399ee0300000000ffffffff042f7500000000000017a9140cc0def37d9682c292d18b3f579b7432adf4703187a0f70300000000001976a914e8bf7b6c41702de3451d189db054c985fe6fbbdb88ac01000000000000001976a914f9fab825f93c5f0ddcf90c4c96c371dc3dbca95788ac10eb09000000000017a914309924e8dad854d4cb8e3d6b839a932aea22590c8700000000",1);
         printf(">>>>>>>>>>>>>>>>>>>>> ret = %p\n",ret);
         getchar();
-    }
+    }*/
  //if ( IS_LIBTEST == 7 )
     //    return(myipaddr);
     if ( IS_LIBTEST != 7 )
@@ -949,13 +871,13 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
     Finished_loading = 1;
     if ( Debuglevel > 0 )
         printf("run_UVloop\n");
-    //sleep(3);
+    //portable_sleep(3);
      {
         struct coin_info *cp;
         while ( (cp= get_coin_info("BTCD")) == 0 )
         {
             printf("no BTCD coin info\n");
-            sleep(10);
+            portable_sleep(10);
         }
         parse_ipaddr(cp->myipaddr,myipaddr);
         bind_NXT_ipaddr(cp->srvpubnxtbits,myipaddr);
@@ -1026,22 +948,24 @@ char *block_on_SuperNET(int32_t blockflag,char *JSONstr)
 {
     char **ptrs,*retstr,retbuf[1024];
     uint64_t txid = 0;
-    ptrs = calloc(3,sizeof(*ptrs));
-    ptrs[0] = clonestr(JSONstr);
+    ptrs = calloc(5,sizeof(*ptrs));
+    if ( sizeof(struct queueitem) != 2*sizeof(ptrs[0]) )
+        fatal("unexpected queueitem size");
+    ptrs[2] = clonestr(JSONstr);
     if ( blockflag == 0 )
     {
         txid = calc_txid((uint8_t *)JSONstr,(int32_t)strlen(JSONstr));
-        ptrs[2] = (char *)txid;
+        ptrs[4] = (char *)txid;
     }
     if ( Debuglevel > 3 )
         printf("block.%d QUEUE.(%s)\n",blockflag,JSONstr);
-    queue_enqueue("JSON_Q",&JSON_Q,ptrs);
+    queue_enqueue("JSON_Q",&JSON_Q,(void *)ptrs);
     if ( blockflag != 0 )
     {
-        while ( (retstr= ptrs[1]) == 0 )
+        while ( (retstr= ptrs[3]) == 0 )
             usleep(1000);
-        if ( ptrs[0] != 0 )
-            free(ptrs[0]);
+        if ( ptrs[2] != 0 )
+            free(ptrs[2]);
         free(ptrs);
         //printf("block.%d returned.(%s)\n",blockflag,retstr);
         return(retstr);
@@ -1106,11 +1030,11 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
             debugstr[32] = 0;
             fprintf(stderr,"%s NARROWCAST.(%s) txid.%llu (%s) %llu\n",pserver->ipaddr,debugstr,(long long)txid,ip_port,(long long)pserver->nxt64bits);
         }
-        ptr = calloc(1,64 + sizeof(len) + len + 1);
-        memcpy(ptr,&len,sizeof(len));
-        memcpy(&ptr[sizeof(len)],ip_port,strlen(ip_port));
-        memcpy(&ptr[sizeof(len) + 64],msg,len);
-        queue_enqueue("NarrowQ",&NarrowQ,ptr);
+        ptr = calloc(1,sizeof(struct queueitem) + 64 + sizeof(len) + len + 1);
+        memcpy(&ptr[sizeof(struct queueitem)],&len,sizeof(len));
+        memcpy(&ptr[sizeof(struct queueitem) + sizeof(len)],ip_port,strlen(ip_port));
+        memcpy(&ptr[sizeof(struct queueitem) + sizeof(len) + 64],msg,len);
+        queue_enqueue("NarrowQ",&NarrowQ,(void *)ptr);
         return(txid);
     }
     else
@@ -1132,12 +1056,12 @@ uint64_t call_SuperNET_broadcast(struct pserver_info *pserver,char *msg,int32_t 
                 debugstr[32] = 0;
                 printf("BROADCAST parms.(%s) valid.%d duration.%d txid.%llu len.%d\n",debugstr,valid,duration,(long long)txid,len);
             }
-            ptr = calloc(1,sizeof(len) + sizeof(duration) + len + 1);
-            memcpy(ptr,&len,sizeof(len));
-            memcpy(&ptr[sizeof(len)],&duration,sizeof(duration));
-            memcpy(&ptr[sizeof(len) + sizeof(duration)],msg,len);
+            ptr = calloc(1,sizeof(struct queueitem) + sizeof(len) + sizeof(duration) + len + 1);
+            memcpy(&ptr[sizeof(struct queueitem)],&len,sizeof(len));
+            memcpy(&ptr[sizeof(struct queueitem) + sizeof(len)],&duration,sizeof(duration));
+            memcpy(&ptr[sizeof(struct queueitem) + sizeof(len) + sizeof(duration)],msg,len);
             ptr[sizeof(len) + sizeof(duration) + len] = 0;
-            queue_enqueue("BroadcastQ",&BroadcastQ,ptr);
+            queue_enqueue("BroadcastQ",&BroadcastQ,(void *)ptr);
             update_Allnodes(msg,len);
             return(txid);
         } else printf("cant broadcast non-JSON.(%s)\n",msg);
@@ -1256,7 +1180,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     printf("SuperNET_start(%s) %p ipaddr.(%s)\n",JSON_or_fname,myipaddr,myipaddr);
     if ( JSON_or_fname != 0 && JSON_or_fname[0] != '{' )
     {
-        fp = fopen(JSON_or_fname,"rb");
+        fp = fopen(os_compatible_path(JSON_or_fname),"rb");
         if ( fp == 0 )
             return(-1);
         fclose(fp);
@@ -1303,7 +1227,7 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         static int32_t zero;
         if ( portable_thread_create((void *)run_libwebsockets,&zero) == 0 )
             printf("ERROR hist run_libwebsockets\n");
-        sleep(3);
+        portable_sleep(3);
     }
     init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     int32_t tmp = 1;

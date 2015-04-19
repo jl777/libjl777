@@ -24,7 +24,20 @@ void init_string(struct return_string *s);
 double milliseconds();
 //char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr);
 //char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *params);
-
+void portable_sleep(int32_t n)
+{
+    sleep(n);
+}
+void msleep(int32_t n)
+{
+    usleep(n * 1000);
+}
+void sleepmillis(int32_t n)
+{
+    usleep(n * 1000);
+}
+char *os_compatible_path(char *str) { return(str); }
+char *OS_rmstr() { return("rm"); }
 
 /************************************************************************
  *
@@ -190,7 +203,7 @@ try_again:
         }
         fprintf(stderr, "curl_easy_perform() failed: %s %s.(%s %s), retries: %d\n",curl_easy_strerror(res),debugstr,url,command,numretries);
         free(s.ptr);
-        usleep((1<<numretries) * 750000);
+        portable_sleep((1<<numretries));
         goto try_again;
         
     }

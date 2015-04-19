@@ -66,7 +66,7 @@ void create_ignorelist(struct coincache_info *cache,char *name,int32_t lastblock
     if ( padding < 100 )
         padding = 100;
     sprintf(fname,"backups/ignorelist.%s",name);
-    if ( (fp= fopen(fname,"wb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
     {
         lastblock -= padding;
         if ( lastblock < 0 )
@@ -133,7 +133,7 @@ int32_t load_ignorelist(struct coincache_info *cache,char *name)
     int32_t lastblock = 0;
     char fname[512];
     sprintf(fname,"backups/ignorelist.%s",name);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         endpos = ftell(fp) - sizeof(lastblock);
@@ -159,15 +159,15 @@ int32_t load_ignorelist(struct coincache_info *cache,char *name)
 
 long get_cachesize(FILE **fpp,char *dirname,char *name,char *suffix)
 {
-    char buf[512];
+    char fname[512];
     long endpos;
     if ( (*fpp) == 0 )
     {
-        sprintf(buf,"%s/%s.%s",dirname,name,suffix);
-        (*fpp) = fopen(buf,"rb+");
+        sprintf(fname,"%s/%s.%s",dirname,name,suffix);
+        (*fpp) = fopen(os_compatible_path(fname),"rb+");
         if ( (*fpp) == 0 )
         {
-            (*fpp) = fopen(buf,"wb");
+            (*fpp) = fopen(os_compatible_path(fname),"wb");
             return(0);
         }
     }

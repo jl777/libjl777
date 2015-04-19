@@ -44,6 +44,7 @@ union writeU { uv_udp_send_t ureq; uv_write_t req; };
 
 struct write_req_t
 {
+    struct queueitem DL;
     union writeU U;
     struct sockaddr addr;
     uv_udp_t *udp;
@@ -54,6 +55,7 @@ struct write_req_t
 
 struct udp_entry
 {
+    struct queueitem DL;
     struct sockaddr addr;
     void *buf;
     uv_udp_t *udp;
@@ -62,6 +64,7 @@ struct udp_entry
 
 struct udp_queuecmd
 {
+    struct queueitem DL;
     cJSON *argjson;
     struct NXT_acct *tokenized_np;
     char *decoded;
@@ -145,7 +148,7 @@ int32_t load_handler_fname(void *dest,int32_t len,char *handler,char *name)
     int32_t retval = -1;
     char fname[1024];
     set_handler_fname(fname,handler,name);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         if ( ftell(fp) == len )
@@ -211,7 +214,7 @@ void after_write(uv_write_t *req,int status)
         free(wr->buf.base);
     }
     //printf("after write %p\n",wr);
-    free(wr);
+    free_queueitem(wr);
     if ( status == 0 )
         return;
     fprintf(stderr, "uv_write error: %d %s\n",status,uv_err_name(status));
@@ -272,7 +275,7 @@ void _on_udprecv(int32_t queueflag,int32_t internalflag,uv_udp_t *udp,ssize_t nr
             up->len = (int32_t)nread;
             if ( addr != 0 )
                 up->addr = *addr;
-            queue_enqueue("UDP_Q",&UDP_Q,up);
+            queue_enqueue("UDP_Q",&UDP_Q,&up->DL);
         }
         else
         {
@@ -404,7 +407,7 @@ int32_t process_sendQ_item(struct write_req_t *wr)
     if ( r < 0 )
         printf("uv_udp_send error.%d %s wr.%p wreq.%p %p len.%ld\n",r,uv_err_name(r),wr,&wr->U.ureq,wr->buf.base,wr->buf.len);
     if ( THROTTLE != 0 )
-        usleep(THROTTLE * 1000);
+        msleep(THROTTLE);
     return(r);
 }
 
@@ -419,7 +422,7 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     if ( Global_mp->isMM == 0 && FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
     {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
-        queue_enqueue("sendQ",&sendQ,wr);
+        queue_enqueue("sendQ",&sendQ,&wr->DL);
     }
     else r = process_sendQ_item(wr);
     return(r);
@@ -1483,7 +1486,7 @@ void enter_smallworld(int32_t duration,uint64_t threshold)
         expand_nxt64bits(destNXTaddr,Identities[i].nxt64bits);
         if ( (str= send_tokenized_cmd(!prevent_queueing("puzzles"),hopNXTaddr,0,Global_mp->myNXTADDR,Global_mp->srvNXTACCTSECRET,jsonstr,destNXTaddr)) != 0 )
             free(str);
-        usleep(25000); // prevent saturating UDP output
+        msleep(25); // prevent saturating UDP output
     }
     Global_mp->endpuzzles = milliseconds() + (duration + 3) * 1000;
     printf("sent puzzles to %d nodes\n",i);
@@ -1544,10 +1547,10 @@ void every_second(int32_t counter)
         firstmilli = milliseconds();
     if ( milliseconds() < firstmilli+5000 )
         return;
-    if ( (ip_port= queue_dequeue(&P2P_Q)) != 0 )
+    if ( (ip_port= queue_dequeue(&P2P_Q,1)) != 0 )
     {
         add_SuperNET_peer(ip_port);
-        free(ip_port);
+        free_queueitem(ip_port);
     }
     if ( (counter % 10) == 0 && Global_mp->gatewayid >= 0 )
     {

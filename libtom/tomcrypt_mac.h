@@ -18,7 +18,7 @@ int hmac_memory_multi(int hash,
                 const unsigned char *key,  unsigned long keylen,
                       unsigned char *out,  unsigned long *outlen,
                 const unsigned char *in,   unsigned long inlen, ...);
-int hmac_file(int hash, const char *fname, const unsigned char *key,
+int hmac_file(int hash,  char *fname, const unsigned char *key,
               unsigned long keylen, 
               unsigned char *dst, unsigned long *dstlen);
 #endif

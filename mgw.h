@@ -73,7 +73,7 @@ void save_MGW_file(char *fname,char *jsonstr)
 {
     FILE *fp;
     //char cmd[1024];
-    if ( (fp= fopen(fname,"wb+")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
     {
         fwrite(jsonstr,1,strlen(jsonstr),fp);
         fclose(fp);
@@ -86,7 +86,7 @@ void save_MGW_file(char *fname,char *jsonstr)
 void save_MGW_status(char *NXTaddr,char *jsonstr)
 {
     char fname[1024];
-    set_MGW_statusfname(fname,NXTaddr);
+    set_MGW_statusfname(os_compatible_path(fname),NXTaddr);
     //printf("save_MGW_status.(%s) -> (%s)\n",NXTaddr,fname);
     save_MGW_file(fname,jsonstr);
 }
@@ -104,9 +104,9 @@ cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
         printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
         return(0);
     }
-    if ( (fp= fopen(fname,"rb+")) == 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb+")) == 0 )
     {
-        fp = fopen(fname,"wb+");
+        fp = fopen(os_compatible_path(fname),"wb+");
         if ( fp != 0 )
         {
             if ( (json = cJSON_CreateArray()) != 0 )
@@ -120,7 +120,7 @@ cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
             fclose(fp);
 #ifndef WIN32
             sprintf(cmd,"chmod +r %s",fname);
-            if ( system(cmd) != 0 )
+            if ( system(os_compatible_path(cmd)) != 0 )
                 printf("update_MGW_file chmod error\n");
 #endif
         } else printf("couldnt open (%s)\n",fname);
@@ -610,7 +610,7 @@ int32_t init_deposit(char **specialNXTaddrs,struct coin_info *cp)
     char fname[512],depositidstr[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],receiver[MAX_JSON_FIELD],*buf;
     ap = get_NXTasset(&createdflag,Global_mp,cp->assetid);
     set_MGW_moneysentfname(fname,0);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         len = ftell(fp);
@@ -653,7 +653,7 @@ int32_t init_moneysent(char **specialNXTaddrs,struct coin_info *cp)
     uint64_t AMtxidbits;
     char fname[512],AMtxidstr[MAX_JSON_FIELD],*buf;
     set_MGW_moneysentfname(fname,0);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         len = ftell(fp);
@@ -693,7 +693,7 @@ int32_t init_multisig(char **specialNXTaddrs,struct coin_info *cp)
     cJSON *json;
     char fname[512],*buf;
     set_MGW_msigfname(fname,0);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         len = ftell(fp);
@@ -902,7 +902,7 @@ int32_t add_address_entry(int32_t numvins,uint64_t inputsum,int32_t numvouts,uin
                 if ( (msig= find_msigaddr(addr)) != 0 && msig->NXTaddr[0] != 0 )
                 {
                     printf("queue DepositQ for NXT.(%s) %s %.8f\n",msig->NXTaddr,addr,dstr(value));
-                    queue_enqueue("DepositQ",&DepositQ,clonestr(addr));
+                    queue_enqueue("DepositQ",&DepositQ,queueitem(addr));
                 }
             }
             return(0);
@@ -2252,7 +2252,7 @@ void publish_withdraw_info(struct coin_info *cp,struct batch_info *wp)
     safecopy(wp->W.coinstr,cp->name,sizeof(wp->W.coinstr));
     set_batchname(batchname,cp->name,Global_mp->gatewayid);
     set_handler_fname(fname,"mgw",batchname);
-    if ( (fp= fopen(fname,"wb+")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
     {
         fwrite(wp,1,sizeof(*wp),fp);
         fclose(fp);
@@ -3812,7 +3812,7 @@ return(0);
         height = get_NXTheight();
         timestamp = (uint32_t)time(NULL);
         set_MGW_statusfname(fname,userNXTaddr);
-        if ( (fp= fopen(fname,"rb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
         {
             fseek(fp,0,SEEK_END);
             fsize = ftell(fp);
@@ -4083,7 +4083,7 @@ void *Coinloop(void *ptr)
     char *retstr,*msigaddr;
     double startmilli;
     while ( Finished_init == 0 || IS_LIBTEST == 7 )
-        sleep(1);
+        portable_sleep(1);
     printf("Coinloop numcoins.%d\n",Numcoins);
     init_Contacts();
     printf("Coinloop numcoins.%d\n",Numcoins);
@@ -4140,7 +4140,7 @@ void *Coinloop(void *ptr)
         {
             if ( Debuglevel > 2 )
                 printf("Coinloop: no work, sleep\n");
-            if ( (msigaddr= queue_dequeue(&DepositQ)) != 0 )
+            if ( (msigaddr= queue_dequeue(&DepositQ,1)) != 0 )
             {
                 if ( (msig= find_msigaddr(msigaddr)) != 0 )
                 {
@@ -4148,9 +4148,9 @@ void *Coinloop(void *ptr)
                     if ( (retstr= invoke_MGW(MGW_whitelist,cp,msig,1)) != 0 )
                         free(retstr);
                 }
-                free(msigaddr);
+                free_queueitem(msigaddr);
             }
-            else sleep(10);
+            else portable_sleep(10);
         }
     }
     return(0);

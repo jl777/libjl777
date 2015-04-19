@@ -159,7 +159,7 @@ int32_t init_jsoncodec(char *jsontext,int32_t origlen)
     FILE *fp;
     int32_t n;
     char line[512],*word;
-    if ( (fp= fopen("/tmp/words","r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
+    if ( (fp= fopen(os_compatible_path(clonestr("/tmp/words")),"r")) != 0 ) // grep all NXT .java files for response.put and req.getParameter > /tmp/words
     {
         n = 0;
         fprintf(stderr,"struct jsonwords _JSONlist[] = { ");

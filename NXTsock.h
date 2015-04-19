@@ -164,7 +164,7 @@ int32_t server_request(int32_t *sdp,char *destserver,struct server_request_heade
         req->retsize = sizeof(struct server_response);
     retsize = req->retsize;
     printf("server requests variant.%d funcid.%d ind.%d argsize.%d retsize.%d\n",variant,funcid,ind,req->argsize,req->retsize);
-    usleep(1000);
+    msleep(1);
  	//static pthread_mutex_t mutex;
  	//portable_mutex_lock(&mutex);
     if ( *sdp < 0 )
@@ -217,7 +217,7 @@ int32_t server_request(int32_t *sdp,char *destserver,struct server_request_heade
             perror("connect() failed");
             close(*sdp);
             *sdp = -1;
-            sleep(1);
+            portable_sleep(1);
             //portable_mutex_unlock(&mutex);
             return(-1);
         }
@@ -234,14 +234,13 @@ int32_t server_request(int32_t *sdp,char *destserver,struct server_request_heade
         //portable_mutex_unlock(&mutex);
         return(-1);
     }
-    //usleep(1);
     rc = 0;
   //  printf("ind.%d retsize %d req->retsize.%d (variant.%d funcid.%d)\n",ind,retsize,req->retsize,variant,funcid);
     if ( retsize > 0 )
     {
         if ( (rc= wait_for_serverdata(sdp,(unsigned char *)req,retsize)) != retsize )
             printf("GATEWAY_RETSIZE error retsize.%d rc.%d\n",retsize,rc);
-        //else usleep(1000);
+        //else msleep(1);
     }
    // printf("finished ind.%d retsize %d req->retsize.%d (variant.%d funcid.%d)\n",ind,retsize,req->retsize,variant,funcid);
     close(*sdp);
@@ -282,7 +281,7 @@ int32_t wait_for_client(int32_t *sdp,char str[INET6_ADDRSTRLEN],int32_t variant)
             exit(1);
 			close(*sdp);
 			*sdp = -1;
-			sleep(30);
+			portable_sleep(30);
 			continue;
 		}
 		if ( listen(*sdp, 3000) < 0 )
@@ -330,7 +329,7 @@ void *_server_loop(void *_args)
 	printf("Start server_loop.%ld on port.%d\n",(long)variant,SERVER_PORT+(int)variant);
 	while ( 1 )
 	{
-		//usleep(10000);
+		//msleep(10);
 		if ( (sdconn= wait_for_client(&sd,clientip,(int)variant)) >= 0 )
 		{
 			//printf("wait for req %d bytes from variant.%d\n",expected,(int)variant);

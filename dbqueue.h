@@ -26,7 +26,7 @@ struct SuperNET_db
     uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
 };
 
-struct dbreq { struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
+struct dbreq { struct queueitem DL; struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
 struct SuperNET_db SuperNET_dbs[NUM_SUPERNET_DBS],Price_dbs[MAX_PRICEDBS];
 long Total_stored,Num_pricedbs;
 
@@ -220,7 +220,7 @@ int32_t close_SuperNET_db(struct SuperNET_db *sdb,int32_t selector)
         while ( sdb->active == 0 )
         {
             fprintf(stderr,".");
-            usleep(DBSLEEP * 1000);
+            msleep(DBSLEEP);
             fprintf(stderr," %s selector.%d shutdown\n",sdb->name,selector);
             sdb->active = -1;
         }
@@ -236,7 +236,7 @@ int32_t _process_dbiter(struct SuperNET_db *sdb)
     if ( sdb == 0 || sdb->dbp == 0 )
         return(0);
     n = 0;
-    if ( (req= queue_dequeue(&sdb->queue)) != 0 )
+    if ( (req= queue_dequeue(&sdb->queue,0)) != 0 )
     {
         memset(&data,0,sizeof(data));
         if ( req->data != 0 )
@@ -308,7 +308,7 @@ void *_process_SuperNET_dbqueue(void *unused) // serialize dbreq functions
             for (i=0; i<Num_pricedbs; i++)
                 n += _process_dbiter(&Price_dbs[i]);
             if ( n == 0 )
-                usleep(10 * DBSLEEP);
+                msleep(DBSLEEP);
         }
     }
     for (selector=0; selector<NUM_SUPERNET_DBS; selector++)
@@ -337,7 +337,7 @@ int32_t _block_on_dbreq(struct dbreq *req)
     if ( sdb->overlap_write == 0 )
     {
         while ( req->doneflag == 0 )
-            usleep(10 * DBSLEEP); // if not done after the first context switch, likely to take a while
+            msleep(DBSLEEP); // if not done after the first context switch, likely to take a while
         retval = req->retval;
         free(req);
         sdb->busy--;
@@ -372,8 +372,8 @@ struct dbreq *_queue_dbreq(int32_t funcid,struct SuperNET_db *sdb,DB_TXN *txn,DB
         req->flags = flags;
         req->cursor = cursor;
         sdb->busy++;
-        queue_enqueue(sdb->name,&sdb->queue,req);
-        usleep(DBSLEEP); // allow context switch so request has a chance of completing
+        queue_enqueue(sdb->name,&sdb->queue,&req->DL);
+        msleep(DBSLEEP); // allow context switch so request has a chance of completing
     }
     return(req);
 }

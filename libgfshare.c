@@ -147,7 +147,7 @@ unsigned char ctx_exps[510] = {
     for (i=0; i<count; i++)
         buffer[i] = (random() & 0xff00) >> 8; // apparently the bottom 8 aren't very random but the middles ones are
 }*/
-extern void randombytes(unsigned char *,unsigned long long);
+void randombytes(unsigned char *x,long xlen);
 
 //gfshare_rand_func_t gfshare_fill_rand = _gfshare_fill_rand_using_random;
 gfshare_rand_func_t gfshare_fill_rand = randombytes;

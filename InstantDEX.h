@@ -300,10 +300,10 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,int32_t
         strcpy(exchangestr,INSTANTDEX_NAME);
     else
     {
-        if ( remoteflag != 0 )
+        if ( remoteflag != 0 && strcmp("InstantDEX",exchangestr) != 0 )
         {
             printf("remote node (%s) (%s) trying to place quote to exchange (%s)\n",previpaddr,sender,exchangestr);
-            return(clonestr("{\"error\":\"no remote exchange orders\"}"));
+            return(clonestr("{\"error\":\"no remote exchange orders: you cannot submit an order from a remote node\"}"));
         }
         else if ( strcmp(exchangestr,"nxtae") != 0 && strcmp(exchangestr,"unconf") != 0 && strcmp(exchangestr,"InstantDEX") != 0 )
         {
@@ -840,6 +840,7 @@ void init_InstantDEX(uint64_t nxt64bits,int32_t testflag)
 {
     //printf("NXT-> %llu BTC -> %llu\n",(long long)stringbits("NXT"),(long long)stringbits("BTC")); getchar();
     init_pingpong_queue(&Pending_offersQ,"pending_offers",process_Pending_offersQ,0,0);
+    Pending_offersQ.offset = 0;
     init_exchanges();
     if ( find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0,0)->exchangeid != INSTANTDEX_EXCHANGEID )
         printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0,0)->exchangeid);

@@ -25,6 +25,6 @@ void *portable_thread_create(void *funcp,void *argp)
     } else return(ptr);
 }
 
-void fatal(char *str) { printf("FATAL: (%s)\n",str); while ( 1 ) sleep(10); }
+void fatal(char *str) { printf("FATAL: (%s)\n",str); while ( 1 ) portable_sleep(10); }
 
 #endif

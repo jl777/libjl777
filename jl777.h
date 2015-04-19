@@ -143,7 +143,10 @@
 //#include "utils/pthread.h"
 #include "includes/gettimeofday.h"
 
-FILE *jl777fopen(char *fname,char *mode)
+char *os_compatible_path(char *fname);
+void sleepmillis(uint32_t milliseconds);
+
+/*FILE *jl777fopen(char *fname,char *mode)
 {
     char *clonestr(char *);
     FILE *fp;
@@ -156,22 +159,24 @@ FILE *jl777fopen(char *fname,char *mode)
     free(name);
     return(fp);
 }
-#define fopen jl777fopen
+#define fopen jl777fopen*/
 
 
 #ifdef __MINGW32__
 #elif __MINGW64__
 #else
 #define STDIN_FILENO 0
-void sleep(int32_t);
-void usleep(int32_t);
+//void usleep(int32_t);
+void msleep(int32_t);
 #endif
 
 #endif
 
+void portable_sleep(int32_t);
 
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) sleep(60); } return(ptr); }
-void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) sleep(60); } return(ptr); }
+
+void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) portable_sleep(60); } return(ptr); }
+void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) portable_sleep(60); } return(ptr); }
 long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NULL)??\n"); return(0); } return(strlen(str)); }
 #define malloc jl777malloc
 #define calloc jl777calloc
@@ -214,9 +219,20 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "jsoncodec.h"
 #include "mappedptr.h"
 #include "ramchain.h"
+#include "includes/utlist.h"
 
 #define portable_mutex_t uv_mutex_t
+struct queueitem { struct queueitem *next,*prev; };
+
 typedef struct queue
+{
+	struct queueitem *list;
+	portable_mutex_t mutex;
+    char name[31],initflag;
+} queue_t;
+
+struct resultsitem { struct queueitem DL; char *argstr,*retstr; uint64_t txid; char retbuf[]; };
+/*typedef struct queue
 {
 #ifdef oldqueue
 	void **buffer;
@@ -229,9 +245,9 @@ typedef struct queue
 	//pthread_cond_t cond_full;
 	//pthread_cond_t cond_empty;
 } queue_t;
-//#define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
-void *queue_dequeue(queue_t *queue);
-void queue_enqueue(char *name,queue_t *queue,void *ptr);
+//#define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }*/
+void *queue_dequeue(queue_t *queue,int32_t offsetflag);
+void queue_enqueue(char *name,queue_t *queue,struct queueitem *ptr);
 
 
 struct pingpong_queue
@@ -239,6 +255,7 @@ struct pingpong_queue
     char *name;
     queue_t pingpong[2],*destqueue,*errorqueue;
     int32_t (*action)();
+    int offset;
 };
 
 union NXTtype { uint64_t nxt64bits; uint32_t uval; int32_t val; int64_t lval; double dval; char *str; cJSON *json; };
@@ -587,7 +604,7 @@ char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *
 extern uv_loop_t *UV_loop;
 extern struct pingpong_queue Pending_offersQ;
 
-char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD],PYTHONPATH[MAX_JSON_FIELD];
+char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD];
 char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;

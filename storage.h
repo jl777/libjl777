@@ -912,14 +912,14 @@ int32_t init_multisigDB()
             }
         }
         printf("added.%d multisig addrs\n",added);
-        if ( 0 )
+        /*if ( 0 )
         {
             int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normaladdr,char *msigaddr);
             char normaladdr[1024],redeemScript[4096];
             _map_msigaddr(redeemScript,get_ramchain_info("BTC"),normaladdr,"367ypPuDkxbKXoboXiBLxak4kV7GhQDAi5");
             getchar();
             
-        }
+        }*/
         if ( added > 3 )
         {
             printf("too many msig addrs added, need to RESTART MGW, risk of miscalculating pending deposits\n");

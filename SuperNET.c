@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #endif
 #include <sys/time.h>
-#include "uthash.h"
+#include "includes/uthash.h"
 
 //Miniupnp code for supernet by chanc3r
 #include <time.h>
@@ -58,68 +58,14 @@ int32_t safecopy(char *dest,char *src,long len);
 double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft);
 
 
-//uint32_t conv_rawind(uint32_t huffid,uint32_t rawind) { return((rawind << 4) | (huffid&0xf)); }
-
-
 #define INCLUDE_CODE
 #include "ramchain.h"
 #undef INCLUDE_CODE
 
-
-/*cJSON *gen_blockjson(struct compressionvars *V,uint32_t blocknum)
-{
-    cJSON *array,*item,*json = cJSON_CreateObject();
-    char *txidstr,*addr,*script;
-    struct blockinfo *block,*next;
-    struct address_entry *vin;
-    struct voutinfo *vout;
-    int32_t ind;
-    if ( (block= get_blockinfo(V,blocknum)) != 0 && (next= get_blockinfo(V,blocknum+1)) != 0 )
-    {
-        printf("block.%d: (%d %d) next.(%d %d)\n",blocknum,block->firstvin,block->firstvout,next->firstvout,next->firstvout);
-        if ( block->firstvin <= next->firstvin && block->firstvout <= next->firstvout )
-        {
-            if ( next->firstvin > block->firstvin )
-            {
-                array = cJSON_CreateArray();
-                for (ind= block->firstvin; ind<next->firstvin; ind++)
-                {
-                    if ( (vin= get_vininfo(V,ind)) != 0 )
-                    {
-                        item = cJSON_CreateObject();
-                        cJSON_AddItemToObject(item,"block",cJSON_CreateNumber(vin->blocknum));
-                        cJSON_AddItemToObject(item,"txind",cJSON_CreateNumber(vin->txind));
-                        cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(vin->v));
-                        cJSON_AddItemToArray(array,item);
-                    }
-                }
-                cJSON_AddItemToObject(json,"vins",array);
-            }
-            if ( next->firstvout > block->firstvout )
-            {
-                array = cJSON_CreateArray();
-                for (ind= block->firstvout; ind<next->firstvout; ind++)
-                {
-                    if ( (vout= get_voutinfo(V,ind)) != 0 )
-                    {
-                        item = cJSON_CreateObject();
-                        if ( (txidstr= conv_txidind(V,vout->tp_ind)) != 0 )
-                            cJSON_AddItemToObject(item,"txid",cJSON_CreateString(txidstr));
-                        cJSON_AddItemToObject(item,"vout",cJSON_CreateNumber(vout->vout));
-                        cJSON_AddItemToObject(item,"value",cJSON_CreateNumber(dstr(vout->value)));
-                        if ( (addr= conv_addrind(V,vout->addr_ind)) != 0 )
-                            cJSON_AddItemToObject(item,"addr",cJSON_CreateString(addr));
-                        if ( (script= conv_scriptind(V,vout->sp_ind)) != 0 )
-                            cJSON_AddItemToObject(item,"script",cJSON_CreateString(script));
-                        cJSON_AddItemToArray(array,item);
-                    }
-                }
-                cJSON_AddItemToObject(json,"vouts",array);
-            }
-        } else cJSON_AddItemToObject(json,"error",cJSON_CreateString("block firstvin or firstvout violation"));
-    }
-    return(json);
-}*/
+char *os_compatible_path(char *fname);
+void sleepmillis(uint32_t milliseconds);
+#define portable_sleep(n) sleepmillis((n) * 1000)
+#define msleep(n) sleepmillis(n)
 
 char *SuperNET_url()
 {
@@ -246,7 +192,7 @@ char *process_commandline_json(cJSON *json)
             sp = &S[i];
             //sprintf(fname,"%s/MGW/status/%s.%s",MGWROOT,coin,Server_ipaddrs[i]);
             sprintf(fname,"%s/MGW/status/%s.%d",MGWROOT,coin,i);
-            if ( (fp= fopen(fname,"rb")) != 0 )
+            if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
             {
                 fseek(fp,0,SEEK_END);
                 fpos = ftell(fp);
@@ -324,10 +270,10 @@ char *process_commandline_json(cJSON *json)
                             if ( coinstr[0] != 0 )
                             {
                                 issue_genmultisig(coinstr,userNXTaddr,userpubkey,email,buyNXT);
-                                sleep(1);
+                                portable_sleep(1);
                             }
                         }
-                        sleep(3);
+                        portable_sleep(3);
                     }
                 }
             }
@@ -336,7 +282,7 @@ char *process_commandline_json(cJSON *json)
                 for (iter=0; iter<3; iter++) // give chance for servers to consensus
                 {
                     issue_genmultisig(coin,userNXTaddr,userpubkey,email,buyNXT);
-                    sleep(3);
+                    portable_sleep(3);
                 }
             }
         }
@@ -374,7 +320,7 @@ char *process_commandline_json(cJSON *json)
                 }
                 //fprintf(stderr,"(%p) %s\n",retjson,retstr);
                 free(retstr),retstr = 0;
-            } else usleep(3000);
+            } else msleep(3);
         }
     }
     for (i=0; i<3; i++)
@@ -466,7 +412,7 @@ char *load_filestr(char *userNXTaddr,int32_t gatewayid)
     FILE *fp;
     char fname[1024],*buf=0,*retstr = 0;
     sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,userNXTaddr);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         fpos = ftell(fp);
@@ -494,12 +440,12 @@ void bridge_handler(struct transfer_args *args)
         gatewayid = (name[3] - '0');
         name += 5;
         sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,name);
-        if ( (fp= fopen(fname,"wb+")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
         {
             fwrite(args->data,1,args->totallen,fp);
             fclose(fp);
             sprintf(cmd,"chmod +r %s",fname);
-            system(cmd);
+            system(os_compatible_path(cmd));
         }
     }
     printf("bridge_handler.gateway%d/(%s).%d\n",gatewayid,name,args->totallen);
@@ -532,7 +478,7 @@ void *GUIpoll_loop(void *arg)
             free(retstr);
         }
         if ( sleeptime != 0 )
-            sleep(sleeptime);
+            portable_sleep(sleeptime);
     }
     return(0);
 }
@@ -682,123 +628,6 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     freeUPNPDevlist(devlist);
     return 1; //ok - we are mapped:)
 }
-/*
-#include "regex/lua-regex.h"
-
-void luatest(char *str,char *pattern)
-{
-    LuaMatchState ms;
-    int i,init = 0;
-    printf("str.(%s) pattern.(%s): ",str,pattern);
-    while ( (init= lua_find(&ms,str,strlen(str),pattern,strlen(pattern),init,0)) != 0 )
-    {
-        for (i=0; i<ms.level; i++)
-        {
-            if ( ms.capture[i].len == CAP_POSITION )
-                printf("(pos %d:%d l.%d)\t",i,(int)ms.capture[i].init,ms.level);
-            else
-            {
-                printf("[%d:%s].%ld\t",i,ms.capture[i].init,ms.capture[i].len);
-            }
-        }
-    }
-    printf("init.%d\n",init);
-}
-#include <regex.h>
-
-// The following is the size of a buffer to contain any error messages encountered when the regular expression is compiled.
-
-#define MAX_ERROR_MSG 0x1000
-
-// Compile the regular expression described by "regex_text" into "r".
-
-static int compile_regex (regex_t * r, const char * regex_text)
-{
-    int status = regcomp (r, regex_text, REG_EXTENDED|REG_NEWLINE);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror (status, r, error_message, MAX_ERROR_MSG);
-        printf ("Regex error compiling '%s': %s\n",
-                regex_text, error_message);
-        return 1;
-    }
-    return 0;
-}
-
-// Match the string in "to_match" against the compiled regular expression in "r".
- 
-
-static int match_regex (regex_t * r, const char * to_match)
-{
-    // "P" is a pointer into the string which points to the end of the previous match.
-    const char * p = to_match;
-    // "N_matches" is the maximum number of matches allowed.
-    const int n_matches = 10;
-    // "M" contains the matches found.
-    regmatch_t m[n_matches];
-    
-    while (1)
-    {
-        int i = 0;
-        int nomatch = regexec (r, p, n_matches, m, 0);
-        if (nomatch) {
-            printf ("No more matches.\n");
-            return nomatch;
-        }
-        for (i = 0; i < n_matches; i++) {
-            int start;
-            int finish;
-            if (m[i].rm_so == -1) {
-                break;
-            }
-            start = (int)(m[i].rm_so + (p - to_match));
-            finish = (int)(m[i].rm_eo + (p - to_match));
-            if (i == 0) {
-                printf ("$& is ");
-            }
-            else {
-                printf ("$%d is ", i);
-            }
-            printf ("'%.*s' (bytes %d:%d)\n", (finish - start),
-                    to_match + start, start, finish);
-        }
-        if ( m[0].rm_eo == 0 )
-            break;
-        else p += m[0].rm_eo;
-    }
-    return 0;
-}
-
-int regexptest()
-{
-    regex_t r;
-    const char * regex_text;
-    const char * find_text;
-    //regex_text = "([[:digit:]]+)[^[:digit:]]+([[:digit:]]+)";
-    regex_text = "ni.*";
-    find_text = "This 1 is nice 2 so 33 for 4254";
-    printf ("Trying to find '%s' in '%s'\n", regex_text, find_text);
-    compile_regex(& r, regex_text);
-    match_regex(& r, find_text);
-    regfree (& r);
-    return 0;
-}
-
-
-int32_t bitcoin_assembler(char *script);
-
-void unscript()
-{
-    char r,i,buf[1024],*teststrs[16] = { "OP_DUP OP_HASH160 375e874aea7f0c8438282396ad09e212eed746b6 OP_EQUALVERIFY OP_CHECKSIG","OP_RETURN 0", "1 02860cc9b85cfc7f16ca855a6847aca6511c63e11c1e3c9ddbbb460e186652be6e 02c3eee9c06cd7ffa3ca45451fa65feb87914d43fbdeca7d94549a109bbc6979ac 2 OP_CHECKMULTISIG", "1 0210f4b684bdd114f4ac57bb3ab405cb0f5d6d32fc129fa24d9635dc8c010f92f8 02403fb3e7e4e8884ffcc39fd5b6d8d91fe24001f83d363fc2defe2058776759e0 02bbd5514ca46ca80b71720c5683720b9895a5d81fd3410111a8c2af4d52c034c0 3 OP_CHECKMULTISIG", "OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 197bf68fb520e8d3419dc1d4ac1eb89e7dfd7cfe561c19abf7611d7626d9f02c OP_EQUALVERIFY OP_SWAP OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 f531f3041d3136701ea09067c53e7159c8f9b2746a56c3d82966c54bbc553226 OP_EQUALVERIFY OP_ROT OP_SIZE OP_TUCK 32 35 OP_WITHIN OP_VERIFY OP_SHA256 527ccdd755dcccf03192383624e0a7d0263815ce2ecf1f69cb0423ab7e6f0f3e OP_EQUALVERIFY OP_ADD OP_ADD 96 OP_SUB OP_DUP 2 OP_GREATERTHAN OP_IF 3 OP_SUB OP_ENDIF OP_DUP 2 OP_GREATERTHAN OP_IF 3 OP_SUB OP_ENDIF 04d4bf4642f56fc7af0d2382e2cac34fa16ed3321633f91d06128f0e5c0d17479778cc1f2cc7e4a0c6f1e72d905532e8e127a031bb9794b3ef9b68b657f51cc691 04208a50909284aede02ad107bb1f52175b025cdf0453537b686433bcade6d3e210b6c82bcbdf8676b2161687e232f5d9afdaa4ed7b3e3bf9608d41b40ebde6ed4 04c9ce67ff2df2cd6be5f58345b4e311c5f10aab49d3cf3f73e8dcac1f9cd0de966e924be091e7bc854aef0d0baafa80fe5f2d6af56b1788e1e8ec8d241b41c40d 3 OP_ROLL OP_ROLL 3 OP_ROLL OP_SWAP OP_CHECKSIGVERIFY" };
-    for (i=0; i<5; i++)
-    {
-        strcpy(buf,teststrs[i]);
-        printf("(%s) ",teststrs[i]);
-        r = bitcoin_assembler(buf);
-        printf("i.%d r.%d {%s}\n",i,r,buf);
-    }
-    getchar();
-}*/
 
 uint64_t get_NXT_forginginfo(char *gensig,uint32_t height)
 {
@@ -844,122 +673,28 @@ bits256 transparent_forging(char *nextgensig,uint32_t height,bits256 *NXTpubkeys
     return(NXTpubkeys[winner]);
 }
 
-
-/*
-
-// seconds to forge from last block: hit / ( basetarget * effective balanceNXT)
-var nbst = Math.floor((((blk.baseTarget*accum2)/60)/153722867)*100);
-if(nbst < bst/2) nbst = bst/2;
-if(nbst > bst*2) nbst = bst*2;
-var rbst = Math.floor((((blk.baseTarget*lasttime)/60)/153722867)*100);
-
-*/
-//#include <stdlib.h>
-
 int main(int argc,const char *argv[])
 {
     FILE *fp;
     cJSON *json = 0;
     int32_t retval = -666;
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
-    
-#ifdef __APPLE__
-#define BTCe_GETINFO 3
-    if ( 0 )
-    {
-        char *issue_BTCe(int cmd,char *arg,double price,double amount);
-        char *init_MGWconf(char *JSON_or_fname,char *myipaddr);
-        init_MGWconf("SuperNET.conf",0);
-        printf("%s\n",issue_BTCe(BTCe_GETINFO,"",0,0)); getchar();
-    }
-    
-#else
-    if ( 1 && argc > 1 && strcmp(argv[1],"genfiles") == 0 )
-#endif
-    {
-        void *process_ramchains(void *argcoinstr);
-        void *args[4];
-        retval = SuperNET_start("SuperNET.conf","127.0.0.1");
-        memset(args,0,sizeof(args));
-#ifdef __APPLE__
-        args[0] = "BTCD";
-        *(long *)&args[1] = 0;
-        *(long *)&args[2] = 2;
-#else
-        if ( argc > 2 )
-             args[0] = (char *)argv[2];
-        else args[0] = 0;
-        if ( argc > 4 )
-        {
-            *(long *)&args[1] = atol(argv[3]);
-            *(long *)&args[2] = atol(argv[4]);
-        }
-#endif
-        if ( IS_LIBTEST == 7 )
-        {
-            printf(">>>>>>>>>>>>> process coinblocks.(%s)\n",(char *)args[0]);
-            process_ramchains(args);
-            printf("finished genfiles.(%s)\n",(char *)(args[0]!=0?args[0]:""));
-            getchar();
-        }
-    }
-#ifdef fortesting
-    if ( 0 )
-    {
-        void huff_iteminit(struct huffitem *hip,void *ptr,int32_t size,int32_t isptr,int32_t ishex);
-        char *p,buff[1024];//,*str = "this is an example for huffman encoding";
-        int i,c,n,numinds = 256;
-        int probs[256];
-        //struct huffcode *huff;
-        struct huffitem *items = calloc(numinds,sizeof(*items));
-        int testhuffcode(char *str,struct huffitem *freqs,int32_t numinds);
-        for (i=0; i<numinds; i++)
-            huff_iteminit(&items[i],&i,1,0,0);
-        while ( 1 )
-        {
-            for (i=0; i<256; i++)
-                probs[i] = ((rand()>>8) % 1000);
-            for (i=n=0; i<128; i++)
-            {
-                c = (rand() >> 8) & 0xff;
-                while ( c > 0 && ((rand()>>8) % 1000) > probs[c] )
-                {
-                    buff[n++] = (c % 64) + ' ';
-                    if ( n >= sizeof(buff)-1 )
-                        break;
-                }
-            }
-            buff[n] = 0;
-            for (i=0; i<numinds; i++)
-                items[i].freq = 0;
-            p = buff;
-            while ( *p != '\0' )
-                items[*p++].freq++;
-            testhuffcode(0,items,numinds);
-            fprintf(stderr,"*");
-        }
-        //getchar();
-    }
-#endif
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 )
     {
         char *init_MGWconf(char *JSON_or_fname,char *myipaddr);
         //printf("ARGV1.(%s)\n",argv[1]);
-        if ( (argv[1][0] == '{' || argv[1][0] == '[') )
+        if ( (json= cJSON_Parse(argv[1])) != 0 )
         {
-            if ( (json= cJSON_Parse(argv[1])) != 0 )
+            Debuglevel = IS_LIBTEST = -1;
+            init_MGWconf(argv[2] != 0 ? (char *)argv[2] : "SuperNET.conf",0);
+            if ( (retstr= process_commandline_json(json)) != 0 )
             {
-                Debuglevel = IS_LIBTEST = -1;
-                init_MGWconf(argv[2] != 0 ? (char *)argv[2] : "SuperNET.conf",0);
-                if ( (retstr= process_commandline_json(json)) != 0 )
-                {
-                    printf("%s\n",retstr);
-                    free(retstr);
-                }
-                free_json(json);
-                return(0);
+                printf("%s\n",retstr);
+                free(retstr);
             }
+            free_json(json);
+            return(0);
         }
         else strcpy(ipaddr,argv[1]);
     }
@@ -970,10 +705,6 @@ int main(int argc,const char *argv[])
     oldport = newport = portstr;
     if ( UPNP != 0 && upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
-    //sprintf(portstr,"%d",SUPERNET_PORT+1);
-    //oldport = newport = portstr;
-    //if ( upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
-    //    printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
     printf("saving retval.%x (%d usessl.%d) UPNP.%d MULTIPORT.%d\n",retval,retval>>1,retval&1,UPNP,MULTIPORT);
     if ( (fp= fopen("horrible.hack","wb+")) != 0 )
     {
@@ -983,20 +714,11 @@ int main(int argc,const char *argv[])
     if ( Debuglevel > 0 )
         system("git log | head -n 1");
     if ( retval >= 0 && ENABLE_GUIPOLL != 0 )
-    {
         GUIpoll_loop(ipaddr);
-        //if ( portable_thread_create((void *)GUIpoll_loop,ipaddr) == 0 )
-        //    printf("ERROR hist process_hashtablequeues\n");
-    }
-    while ( 1 )
-    {
-        //extern void do_bridge_things();
-        //do_bridge_things();
-        sleep(20);
-    }
+    while ( 1 ) portable_sleep(20);
     return(0);
 }
-
+//#include "child.h"
 
 // stubs
 int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }

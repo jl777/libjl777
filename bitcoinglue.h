@@ -344,7 +344,7 @@ char *submit_withdraw(struct coin_info *cp,struct batch_info *wp,struct batch_in
             if ( cointxid[0] != 0 )
             {
                 sprintf(fname,"%s/%s",cp->backupdir,cointxid);
-                if ( (fp= fopen(fname,"w")) != 0 )
+                if ( (fp= fopen(os_compatible_path(fname),"w")) != 0 )
                 {
                     fprintf(fp,"%s\n",signed2transaction);
                     fclose(fp);
@@ -688,7 +688,7 @@ uint64_t get_unspent_value(char *script,struct coin_info *cp,struct telepod *pod
     while ( cp->initdone < 2 )
     {
         printf(" get_unspent_value %s initdone.%d\n",cp->name,cp->initdone);
-        sleep(10);
+        portable_sleep(10);
     }
     tp = MTadd_hashtable(&createdflag,&cp->CACHE.coin_txids,pod->txid);
     printf("tp.numvouts.%d tp->vouts[] %p\n",tp->numvouts,tp->vouts!=0?tp->vouts[pod->vout]:0);

@@ -30,7 +30,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 
-#include "uthash.h"
+#include "includes/uthash.h"
 #ifndef _WIN32
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -151,7 +151,9 @@ struct ramchain_hashtable
     uint32_t ind,numalloc;
     uint8_t type;
 };
-
+char *os_compatible_path(char *fname);
+void portable_sleep(int32_t);
+void msleep(int32_t);
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };
@@ -366,7 +368,7 @@ void *alloc_aligned_buffer(uint64_t allocsize)
 {
 	extern int posix_memalign (void **__memptr, size_t __alignment, size_t __size);
 	if ( allocsize > ((uint64_t)192L)*1024*1024*1024 )
-    { printf("%llu negative allocsize\n",(long long)allocsize); while ( 1 ) sleep(666); }
+    { printf("%llu negative allocsize\n",(long long)allocsize); while ( 1 ) portable_sleep(666); }
 	void *ptr;
 	allocsize = _align16(allocsize);
 
@@ -555,7 +557,7 @@ void ensure_filesize(char *fname,long filesize)
     char *zeroes;
     long i,n,allocsize = 0;
     //printf("ensure_filesize.(%s) %ld\n",fname,filesize);
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         allocsize = ftell(fp);
@@ -565,13 +567,13 @@ void ensure_filesize(char *fname,long filesize)
     else
     {
         //printf("try to create.(%s)\n",fname);
-        if ( (fp= fopen(fname,"wb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
             fclose(fp);
     }
     if ( allocsize < filesize )
     {
         //printf("filesize.%ld is less than %ld\n",filesize,allocsize);
-        if ( (fp=fopen(fname,"ab")) != 0 )
+        if ( (fp=fopen(os_compatible_path(fname),"ab")) != 0 )
         {
 #ifndef _WIN32
             zeroes = valloc(16*1024*1024);
@@ -666,16 +668,16 @@ void ensure_dir(char *dirname) // jl777: does this work in windows?
     sprintf(fname,"%s/tmp",dirname);
     fix_windows_insanity(fname);
     //printf("ensure.(%s)\n",fname);
-    if ( (fp= fopen(fname,"rb")) == 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
     {
         sprintf(cmd,"mkdir %s",dirname);
         fix_windows_insanity(cmd);
         if ( system(cmd) != 0 )
             printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
-        fp = fopen(fname,"wb");
+        fp = fopen(os_compatible_path(fname),"wb");
         if ( fp != 0 )
             fclose(fp);
-        if ( (fp= fopen(fname,"rb")) == 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
         {
             printf("failed to create.(%s) in (%s)\n",fname,dirname);
             exit(-1);
@@ -690,9 +692,9 @@ int32_t compare_files(char *fname,char *fname2) // OS portable
     long len,len2;
     char buf[8192],buf2[8192];
     FILE *fp,*fp2;
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
-        if ( (fp2= fopen(fname2,"rb")) != 0 )
+        if ( (fp2= fopen(os_compatible_path(fname2),"rb")) != 0 )
         {
             while ( (len= fread(buf,1,sizeof(buf),fp)) > 0 && (len2= fread(buf2,1,sizeof(buf2),fp2)) == len )
                 if ( (offset= memcmp(buf,buf2,len)) != 0 )
@@ -711,9 +713,9 @@ long copy_file(char *src,char *dest) // OS portable
     long len = -1;
     char buf[8192];
     FILE *srcfp,*destfp;
-    if ( (srcfp= fopen(src,"rb")) != 0 )
+    if ( (srcfp= fopen(os_compatible_path(src),"rb")) != 0 )
     {
-        if ( (destfp= fopen(dest,"wb")) != 0 )
+        if ( (destfp= fopen(os_compatible_path(dest),"wb")) != 0 )
         {
             while ( (len= fread(buf,1,sizeof(buf),srcfp)) > 0 )
                 if ( fwrite(buf,1,len,destfp) != len )
@@ -729,22 +731,13 @@ long copy_file(char *src,char *dest) // OS portable
         printf("Error copying files (%s) -> (%s)\n",src,dest), len = -1;
     return(len);
 }
-
+char *OS_rmstr();
 void delete_file(char *fname,int32_t scrubflag)
 {
     FILE *fp;
-    char cmdstr[1024],*OS_rmstr;
+    char cmdstr[1024];
     long i,fpos;
-#ifdef WIN32
-    char _fname[1024];
-    OS_rmstr = "del";
-    strcpy(_fname,fname);
-    fix_windows_insanity(_fname);
-    fname = _fname;
-#else
-    OS_rmstr = "rm";
-#endif
-    if ( (fp= fopen(fname,"rb+")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb+")) != 0 )
     {
         printf("delete(%s)\n",fname);
         if ( scrubflag != 0 )
@@ -757,9 +750,9 @@ void delete_file(char *fname,int32_t scrubflag)
             fflush(fp);
         }
         fclose(fp);
-        sprintf(cmdstr,"%s %s",OS_rmstr,fname);
+        sprintf(cmdstr,"%s %s",OS_rmstr(),fname);
         fix_windows_insanity(cmdstr);
-        system(cmdstr);
+        system(os_compatible_path(cmdstr));
     }
 }
 
@@ -808,7 +801,7 @@ void *memalloc(struct alloc_space *mem,long size)
     {
         printf("alloc: (mem->used %ld + %ld size) %ld > %ld mem->size\n",mem->used,size,(mem->used + size),mem->size);
         while ( 1 )
-            sleep(1);
+            portable_sleep(1);
     }
     ptr = (void *)((long)mem->ptr + mem->used);
     mem->used += size;
@@ -1002,7 +995,7 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
     {
         bytes[0] = unhex(hex[0]);
         printf("decode_hex n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
-        //while ( 1 ) sleep(1);
+        //while ( 1 ) portable_sleep(1);
         bytes++;
         hex++;
         adjust = 1;
@@ -1934,7 +1927,7 @@ char *_submit_withdraw(struct ramchain_info *ram,struct cointx_info *cointx,char
             if ( cointxid[0] != 0 )
             {
                 sprintf(fname,"%s/%s.%s",ram->backups,cointxid,ram->name);
-                if ( (fp= fopen(fname,"w")) != 0 )
+                if ( (fp= fopen(os_compatible_path(fname),"w")) != 0 )
                 {
                     fprintf(fp,"%s\n",signed2transaction);
                     fclose(fp);
@@ -2579,7 +2572,10 @@ uint64_t _calc_nxt64bits(const char *NXTaddr)
     uint64_t lastval,mult,nxt64bits = 0;
     if ( NXTaddr == 0 )
     {
-        printf("calling calc_nxt64bits with null ptr!\n"); while ( 1 ) sleep(1);
+        printf("calling calc_nxt64bits with null ptr!\n");
+#ifdef __APPLE__
+        while ( 1 ) portable_sleep(1);
+#endif
         return(0);
     }
     n = strlen(NXTaddr);
@@ -2601,7 +2597,7 @@ uint64_t _calc_nxt64bits(const char *NXTaddr)
 #ifdef __APPLE__
             while ( 1 )
             {
-                sleep(60);
+                portable_sleep(60);
                 printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
             }
 #endif
@@ -3257,7 +3253,7 @@ void ram_send_cointx(struct ramchain_info *ram,struct cointx_info *cointx)
     FILE *fp;
     _set_RTmgwname(RTmgwname,name,cointx->coinstr,cointx->gatewayid,cointx->redeemtxid);
     cointx->crc = _crc32(0,(uint8_t *)((long)cointx+sizeof(cointx->crc)),(int32_t)(cointx->allocsize - sizeof(cointx->crc)));
-    if ( (fp= fopen(RTmgwname,"wb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(RTmgwname),"wb")) != 0 )
     {
         printf("save to (%s).%d crc.%x | batchcrc %x\n",RTmgwname,cointx->allocsize,cointx->crc,cointx->batchcrc);
         fwrite(cointx,1,cointx->allocsize,fp);
@@ -3903,7 +3899,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
     struct NXT_asset *ap;
     uint32_t i,j,n,height,iter,timestamp,oldest;
     while ( (ap= ram->ap) == 0 )
-        sleep(1);
+        portable_sleep(1);
     if ( ram->MGWbits == 0 )
     {
         printf("no MGWbits for %s\n",ram->name);
@@ -3985,7 +3981,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
             {
                 if ( iter == 0 )
                 {
-                    if ( (fp= fopen(fname,"rb")) == 0 )
+                    if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
                         continue;
                     fread(&timestamp,1,sizeof(timestamp),fp);
                     jsonstr = _ram_loadfp(fp);
@@ -3995,7 +3991,7 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
                 {
                     sprintf(cmd,"requestType=getAccountTransactions&account=%s&timestamp=%u",ram->special_NXTaddrs[j],timestamp);
                     jsonstr = _issue_NXTPOST(cmd);
-                    if ( fp == 0 && (fp= fopen(fname,"wb")) != 0 )
+                    if ( fp == 0 && (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
                     {
                         fwrite(&oldest,1,sizeof(oldest),fp);
                         fwrite(jsonstr,1,strlen(jsonstr)+1,fp);
@@ -4024,14 +4020,14 @@ uint32_t _update_ramMGW(uint32_t *firsttimep,struct ramchain_info *ram,uint32_t 
         }
         sprintf(fname,"%s/ramchains/NXTasset.%llu",MGWROOT,(long long)ap->assetbits);
         fp = 0;
-        if ( 1 || (fp= fopen(fname,"rb")) == 0 )
+        if ( 1 || (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
         {
             sprintf(cmd,"requestType=getAssetTransfers&asset=%llu",(long long)ap->assetbits);
             jsonstr = _issue_NXTPOST(cmd);
         } else jsonstr = _ram_loadfp(fp), fclose(fp);
         if ( jsonstr != 0 )
         {
-            if ( fp == 0 && (fp= fopen(fname,"wb")) != 0 )
+            if ( fp == 0 && (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
             {
                 fwrite(jsonstr,1,strlen(jsonstr)+1,fp);
                 fclose(fp);
@@ -4111,7 +4107,7 @@ int32_t hgetbit(HUFF *hp)
         }
         return(bit);
     }
-    printf("hgetbit past EOF: %d >= %d\n",hp->bitoffset,hp->endpos); while ( 1 ) sleep(1);
+    printf("hgetbit past EOF: %d >= %d\n",hp->bitoffset,hp->endpos); while ( 1 ) portable_sleep(1);
     return(-1);
 }
 
@@ -4372,7 +4368,7 @@ int32_t hmemcpy(void *dest,void *src,HUFF *hp,int32_t datalen)
     if ( (hp->bitoffset & 7) != 0 || ((hp->bitoffset>>3) + datalen) > hp->allocsize )
     {
         printf("misaligned hmemcpy bitoffset.%d or overflow allocsize %d vs %d\n",hp->bitoffset,hp->allocsize,((hp->bitoffset>>3) + datalen));
-        while ( 1 ) sleep(1);
+        while ( 1 ) portable_sleep(1);
         return(-1);
     }
     if ( dest != 0 && src == 0 )
@@ -4462,7 +4458,7 @@ HUFF *hload(struct ramchain_info *ram,long *offsetp,FILE *fp,char *fname)
     if ( offsetp != 0 )
         *offsetp = -1;
     if ( fp == 0 )
-        fp = fopen(fname,"rb"), flag = 1;
+        fp = fopen(os_compatible_path(fname),"rb"), flag = 1;
     if ( hload_varint(&endbitpos,fp) > 0 )
     {
         len = hconv_bitlen(endbitpos);
@@ -4862,7 +4858,7 @@ int32_t huffpair_gencode(struct ramchain_info *ram,struct huffpair *pair,int32_t
         //fprintf(stderr,"%s n.%d: ",pair->name,n);
         pair->code = huff_create(0,items,n,frequi,pair->wt);
         huff_compressionvars_fname(0,fname,ram->name,pair->name,-1);
-        if ( pair->code != 0 )//&& (fp= fopen(fname,"wb")) != 0 )
+        if ( pair->code != 0 )//&& (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
         {
             ram->totalbits += pair->code->totalbits;
             ram->totalbytes += pair->code->totalbytes;
@@ -5450,7 +5446,7 @@ int32_t raw_blockcmp(struct rawblock *ref,struct rawblock *raw)
         {
             printf("flag.%d numtx.%d\n",flag,ref->numtx);
             //while ( 1 )
-            //    sleep(1);
+            //    portable_sleep(1);
             return(-4);
         }
     }
@@ -5697,7 +5693,7 @@ struct ramchain_hashptr *ram_hashdata_search(char *coinstr,struct alloc_space *m
             if ( hash->newfp == 0 )
             {
                 ram_sethashname(fname,hash,0);
-                hash->newfp = fopen(fname,"wb");
+                hash->newfp = fopen(os_compatible_path(fname),"wb");
                 if ( hash->newfp != 0 )
                 {
                     printf("couldnt create (%s)\n",fname);
@@ -6494,7 +6490,7 @@ int32_t ram_rawvin_huffscan(struct ramchain_info *ram,struct ramchain_token **to
         {
             printf("numrawvins.%d: txid_rawind.%d (%s) vout.%d\n",numrawvins,txid_rawind,txidstr,U.val16);
             while ( 1 )
-                sleep(1);
+                portable_sleep(1);
             return(orignumtokens);
         }
     }
@@ -6519,7 +6515,7 @@ int32_t ram_rawvout_huffscan(struct ramchain_info *ram,struct ramchain_token **t
         {
             printf("numrawvouts.%d: scriptind.%d (%s) addrind.%d (%s) value.(%.8f)\n",numrawvouts,scriptind,scriptstr,addrind,coinaddr,dstr(U.val64));
             while ( 1 )
-                sleep(1);
+                portable_sleep(1);
             return(orignumtokens);
         }
     } else numtokens += num_rawvout_tokens(raw);
@@ -6541,7 +6537,7 @@ int32_t ram_rawtx_huffscan(struct ramchain_info *ram,struct ramchain_token **tok
         {
             printf("txind.%d (%d %d) numvins.%d numvouts.%d (%s) txid_rawind.%d (%p %p)\n",txind,*firstvinp,*firstvoutp,numvins,numvouts,txidstr,txid_rawind,tokens[numtokens-1],tokens[numtokens-2]);
             while ( 1 )
-                sleep(1);
+                portable_sleep(1);
             return(orignumtokens);
         }
         if ( (txid_rawind= ram_extractstring(txidstr,'t',ram,'T',(txind<<1),hp,format)) != 0 )
@@ -6598,7 +6594,7 @@ struct ramchain_token **ram_tokenize_bitstream(uint32_t *blocknump,int32_t *numt
     {
         printf("blocknum.%d numt.%d minted %.8f (%p %p %p)\n",*blocknump,numtx,dstr(minted),tokens[numtokens-1],tokens[numtokens-2],tokens[numtokens-3]);
         //while ( 1 )
-        //    sleep(1);
+        //    portable_sleep(1);
         return(ram_purgetokens(numtokensp,tokens,numtokens));
     }
     if ( numtx > 0 )
@@ -7002,7 +6998,7 @@ int32_t ram_save_bitstreams(bits256 *refsha,char *fname,HUFF *bitstreams[],int32
 {
     FILE *fp;
     int32_t i,len = -1;
-    if ( (fp= fopen(fname,"wb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
     {
         if ( ram_calcsha256(refsha,bitstreams,num) < 0 )
         {
@@ -7039,7 +7035,7 @@ long *ram_load_bitstreams(struct ramchain_info *ram,bits256 *sha,char *fname,HUF
     long *offsets = 0;
     bits256 tmp,stored;
     int32_t i,x = -1,len = 0;
-    if ( (fp= fopen(fname,"rb")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         memset(sha,0,sizeof(*sha));
         //fprintf(stderr,"loading %s\n",fname);
@@ -7213,7 +7209,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
     prevhps = ram_get_hpptr(prevblocks,blocknum);
     ram_setfname(fname,ram,blocknum,formatstr);
     //printf("check create.(%s)\n",fname);
-    if ( blocks->format == 'V' && (fp= fopen(fname,"rb")) != 0 )
+    if ( blocks->format == 'V' && (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fclose(fp);
        // if ( verifyflag == 0 )
@@ -7236,7 +7232,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
             }
             if ( (hp= ram_genblock(blocks->tmphp,blocks->R2,ram,blocknum,blocks->format,0)) != 0 )
             {
-                if ( (fp= fopen(fname,"wb")) != 0 )
+                if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
                 {
                     hflush(fp,hp);
                     fclose(fp);
@@ -7258,7 +7254,7 @@ uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct ma
             if ( (hp= ram_genblock(blocks->tmphp,blocks->R,ram,blocknum,blocks->format,prevhps)) != 0 )
             {
                 //printf("block.%d created.%c block.%d numtx.%d minted %.8f\n",blocknum,blocks->format,blocks->R->blocknum,blocks->R->numtx,dstr(blocks->R->minted));
-                if ( (fp= fopen(fname,"wb")) != 0 )
+                if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
                 {
                     hflush(fp,hp);
                     fclose(fp);
@@ -7322,8 +7318,8 @@ FILE *ram_permopen(char *fname,char *coinstr)
     FILE *fp;
     if ( 0 && strcmp(coinstr,"BTC") == 0 )
         return(0);
-    if ( (fp= fopen(fname,"rb+")) == 0 )
-        fp= fopen(fname,"wb+");
+    if ( (fp= fopen(os_compatible_path(fname),"rb+")) == 0 )
+        fp= fopen(os_compatible_path(fname),"wb+");
     if ( fp == 0 )
     {
         printf("ram_permopen couldnt create (%s)\n",fname);
@@ -7355,7 +7351,7 @@ int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchai
     }
     ram_sethashname(fname,hash,0);
     printf("inithashtable.(%s.%d) -> [%s]\n",ram->name,type,fname);
-    if ( deletefile == 0 && (hash->newfp= fopen(fname,"rb+")) != 0 )
+    if ( deletefile == 0 && (hash->newfp= fopen(os_compatible_path(fname),"rb+")) != 0 )
     {
         if ( init_mappedptr(0,&hash->M,0,rwflag,fname) == 0 )
             return(1);
@@ -7403,7 +7399,7 @@ int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchai
         if ( (len= copy_file(fname,destfname)) > 0 )
             printf("copied (%s) -> (%s) %s\n",fname,destfname,_mbstr(len));
         return(0);
-    } else hash->newfp = fopen(fname,"wb");
+    } else hash->newfp = fopen(os_compatible_path(fname),"wb");
     return(1);
 }
 
@@ -8154,7 +8150,7 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
                 if ( ram_rawblock_update(2,ram,hp,blocks->blocknum) < 0 )
                 {
                     printf("FATAL: error updating block.%d %c\n",blocks->blocknum,blocks->format);
-                    while ( 1 ) sleep(1);
+                    while ( 1 ) portable_sleep(1);
                 }
                 if ( ram->permfp != 0 )
                 {
@@ -9190,7 +9186,7 @@ uint32_t ram_find_firstgap(struct ramchain_info *ram,int32_t format)
     for (blocknum=0; blocknum<ram->S.RTblocknum; blocknum++)
     {
         ram_setfname(fname,ram,blocknum,formatstr);
-        if ( (fp= fopen(fname,"rb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
         {
             fclose(fp);
             continue;
@@ -9208,7 +9204,7 @@ int32_t ram_syncblock(struct ramchain_info *ram,struct syncstate *sync,uint32_t 
     while ( (n= ram_getsources(sync->requested,ram,blocknum,numblocks)) == 0 )
     {
         fprintf(stderr,"waiting for peers for block%d.%u of %u | peers.%d\n",numblocks,blocknum,ram->S.RTblocknum,n);
-        sleep(3);
+        portable_sleep(3);
     }
     //for (i=0; i<n; i++)
     ///    printf("%llu ",(long long)sync->requested[i]);
@@ -9287,7 +9283,7 @@ void ram_init_remotemode(struct ramchain_info *ram)
             if ( blocksync->majoritybits == 0 || bitweight(blocksync->majoritybits) < 3 )
                 ram_syncblock(ram,blocksync,blocknum,0);
         }
-        sleep(10);
+        portable_sleep(10);
     }
     for (i=0; i<4096; i++)
     {break;
@@ -9300,7 +9296,7 @@ void ram_init_remotemode(struct ramchain_info *ram)
             }
             ram_syncblocks(ram,blocknum,1,&requested[rand() % n],1,0);
         }
-        usleep(10000);
+        msleep(10);
     }
 }
 
@@ -9456,7 +9452,7 @@ int32_t ram_scanblocks(struct ramchain_info *ram)
                 else
                 {
                     printf("iter.%d error on block.%d purge it\n",iter,blocknum);
-                    while ( 1 ) sleep(1);
+                    while ( 1 ) portable_sleep(1);
                     //ram_purge_badblock(ram,blocknum);
                     errs++;
                     exit(-1);
@@ -9546,7 +9542,7 @@ void *ram_process_blocks_loop(void *_blocks)
     {
         ram_update_RTblock(blocks->ram);
         if ( ram_process_blocks(blocks->ram,blocks,blocks->prevblocks,1000.) == 0 )
-            sleep(sqrt(1 << blocks->shift));
+            portable_sleep(sqrt(1 << blocks->shift));
     }
 }
 
@@ -9563,7 +9559,7 @@ void *ram_process_ramchain(void *_ram)
     while ( 1 )
     {
         ram_update_disp(ram);
-        sleep(1);
+        portable_sleep(1);
     }
     return(0);
 }
@@ -9586,7 +9582,7 @@ void *process_ramchains(void *_argcoinstr)
     struct ramchain_info *ram;
     int32_t i,pass,processed = 0;
     while ( IS_LIBTEST != 7 && Finished_init == 0 )
-        sleep(1);
+        portable_sleep(1);
     ensure_SuperNET_dirs("ramchains");
 
     startmilli = ram_millis();
@@ -9697,13 +9693,13 @@ void *process_ramchains(void *_argcoinstr)
         {
             void poll_nanomsg();
             poll_nanomsg();
-            sleep(1);
+            portable_sleep(1);
         }
         MGW_initdone++;
     }
     printf("process_ramchains: finished launching\n");
     while ( 1 )
-        sleep(60);
+        portable_sleep(60);
 }
 
 
@@ -9724,5 +9720,6 @@ int32_t set_bridge_dispbuf(char *dispbuf,char *coinstr)
     }
     return(0);
 }
+
 #endif
 #endif

@@ -149,7 +149,7 @@ struct exchange_state *init_exchange_state(int32_t writeflag,char *name,char *ba
     {
         ensure_directory("exchangedata");
         sprintf(fname,"exchangedata/%s_%s_%s",name,base,rel);
-        ep->fp = fopen(fname,ep->writeflag!=0?"rb+":"rb");
+        ep->fp = fopen(os_compatible_path(fname),ep->writeflag!=0?"rb+":"rb");
         if ( ep->fp != 0 )
         {
             fseek(ep->fp,0,SEEK_END);
@@ -298,8 +298,8 @@ struct orderbook_tx **parse_json_orderbook(struct exchange_state *ep,int32_t max
         if ( (askobj= cJSON_GetObjectItem(obj,askfield)) != 0 && is_cJSON_Array(askobj) != 0 )
             ep->numasks = parse_json_quotes(ep->askminmax,asks,askobj,maxdepth,pricefield,volfield);
         orders = conv_quotes(&ep->numbidasks,ep->type,ep->feedid,ep->baseid,ep->relid,bids,ep->numbids,asks,ep->numasks);
-        if ( orders != 0 )
-            queue_enqueue(ep->name,&ep->ordersQ,orders);
+        //if ( orders != 0 )
+        //    queue_enqueue(ep->name,&ep->ordersQ,orders);
         free(bids);
         free(asks);
         generate_quote_entry(ep);
@@ -758,13 +758,13 @@ void *poll_exchanges(void *flagp)
                     free(orders);
                 }
             }
-            sleep(1);
+            portable_sleep(1);
         }
     }
     while ( Numactivefiles > 0 )
     {
         poll_exchange_iter(maxdepth,exchangeid);
-        sleep(1);
+        portable_sleep(1);
     }
     return(0);
 }

@@ -19,7 +19,7 @@ struct tradeinfo
 
 struct pendinghalf
 {
-    char exchange[16];
+    char exchange[32];
     uint64_t buyer,seller,baseamount,relamount,avail,feetxid;
     double price,vol;
     struct tradeinfo T;
@@ -35,25 +35,32 @@ struct pendingpair
 
 struct pending_offer
 {
+    struct queueitem DL;
     char comment[MAX_JSON_FIELD],feeutxbytes[MAX_JSON_FIELD],feesignedtx[MAX_JSON_FIELD],exchange[64],triggerhash[65],feesighash[65],base[16],rel[16];
     struct NXT_tx *feetx;
-    uint64_t actual_feetxid,fee,nxt64bits,baseid,relid,quoteid,baseamount,relamount,srcarg,srcamount;
+    uint64_t actual_feetxid,fee,nxt64bits,baseid,relid,quoteid,baseamount,relamount,srcarg,srcamount,jumpasset;
     double ratio,endmilli,price,volume;
-    int32_t errcode,sell,numhalves,perc;
+    int32_t errcode,sell,numhalves,perc,minperc;
     uint32_t expiration;
     struct pendingpair A,B;
     struct pendinghalf halves[4];
 };
 
-char *pending_offer_error(struct pending_offer *pt,cJSON *json)
+void free_pending_offer(struct pending_offer *offer)
+{
+    if ( offer->feetx != 0 )
+        free(offer->feetx);
+    free(offer);
+}
+
+char *pending_offer_error(struct pending_offer *offer,cJSON *json)
 {
     char *jsonstr;
+    if ( offer->errcode == 0 )
+        offer->errcode = -10;
     if ( json != 0 )
         jsonstr = cJSON_Print(json), free_json(json);
-    else jsonstr = clonestr(pt->comment);
-    if ( pt->feetx != 0 )
-        free(pt->feetx);
-    free(pt);
+    else jsonstr = clonestr(offer->comment);
     return(jsonstr);
 }
 
@@ -172,35 +179,43 @@ int32_t pendinghalf_is_complete(struct pendinghalf *half,char *triggerhash,struc
     return(0);
 }
 
-int32_t process_Pending_offersQ(struct pending_offer **ptp,void **ptrs)
+int32_t process_Pending_offersQ(struct pending_offer **offerp,void **ptrs)
 {
-    char *NXTACCTSECRET; struct NXT_tx **txptrs; struct pending_offer *pt = *ptp;
+    char *NXTACCTSECRET; struct NXT_tx **txptrs; struct pending_offer *offer = *offerp;
     int32_t i;
     NXTACCTSECRET = ptrs[0], txptrs = ptrs[1];
-    for (i=0; i<pt->numhalves; i++)
-        if ( pt->halves[i].T.error != 0 )
+    for (i=0; i<offer->numhalves; i++)
+        if ( offer->halves[i].T.error != 0 )
             break;
-    if ( milliseconds() > pt->endmilli || i != pt->numhalves )
+    if ( milliseconds() > offer->endmilli || i != offer->numhalves )
     {
-        pt->errcode = -1;
-        printf("(%f > %f) expired pending trade.(%s) || errors: seller.%d buyer.%d seller2.%d buyer2.%d\n",milliseconds(),pt->endmilli,pt->comment,pt->halves[0].T.error,pt->halves[1].T.error,pt->halves[2].T.error,pt->halves[3].T.error);
+        offer->errcode = -1 - (i != offer->numhalves);
+        for (i=0; i<offer->numhalves; i++)
+            offer->halves[i].T.closed = 1;
+        printf("err.%d (%f > %f) expired pending trade.(%s) || errors: seller.%d buyer.%d seller2.%d buyer2.%d\n",offer->errcode,milliseconds(),offer->endmilli,offer->comment,offer->halves[0].T.error,offer->halves[1].T.error,offer->halves[2].T.error,offer->halves[3].T.error);
+        free_pending_offer(offer);
+        *offerp = 0;
         return(-1);
     }
-    for (i=0; i<pt->numhalves; i++)
-        if ( pendinghalf_is_complete(&pt->halves[i],pt->triggerhash,txptrs) == 0 )
+    for (i=0; i<offer->numhalves; i++)
+        if ( pendinghalf_is_complete(&offer->halves[i],offer->triggerhash,txptrs) == 0 )
             break;
-    if ( i == pt->numhalves )
+    if ( i == offer->numhalves )
     {
-        if ( pt->feetx != 0 && (pt->actual_feetxid= issue_broadcastTransaction(&pt->errcode,0,pt->feesignedtx,NXTACCTSECRET)) != pt->feetx->txid )
+        if ( offer->feetx != 0 && (offer->actual_feetxid= issue_broadcastTransaction(&offer->errcode,0,offer->feesignedtx,NXTACCTSECRET)) != offer->feetx->txid )
         {
-            printf("Jump trades triggered! feetxid.%llu but unexpected should have been %llu\n",(long long)pt->actual_feetxid,(long long)pt->feetx->txid);
-            for (i=0; i<pt->numhalves; i++)
-                pt->halves[i].T.closed = 1;
+            printf("Jump trades triggered! feetxid.%llu but unexpected should have been %llu\n",(long long)offer->actual_feetxid,(long long)offer->feetx->txid);
+            for (i=0; i<offer->numhalves; i++)
+                offer->halves[i].T.closed = 1;
+            free_pending_offer(offer);
+            *offerp = 0;
             return(-1);
         }
         else
         {
-            printf("Jump trades triggered! feetxid.%llu\n",(long long)pt->actual_feetxid);
+            printf("Jump trades triggered! feetxid.%llu\n",(long long)offer->actual_feetxid);
+            free_pending_offer(offer);
+            *offerp = 0;
             return(1);
         }
     }
@@ -320,7 +335,7 @@ uint64_t need_to_submithalf(struct pendinghalf *half,int32_t dir,struct pendingp
     }
 }
 
-int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *half,struct pendinghalf *other,struct pending_offer *pt,char *NXTACCTSECRET,char *base,char *rel,double price,double volume)
+int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *half,struct pendinghalf *other,struct pending_offer *offer,char *NXTACCTSECRET,char *base,char *rel,double price,double volume)
 {
     char cmdstr[4096],numstr[64],*jsonstr;
     cJSON *item = 0;
@@ -333,7 +348,7 @@ int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *
         sprintf(numstr,"%llu",(long long)half->T.assetid), cJSON_AddItemToObject(item,"assetid",cJSON_CreateString(numstr));
         sprintf(numstr,"%lld",(long long)(dir != 0 ? dir : 1) * half->T.qty), cJSON_AddItemToObject(item,"qty",cJSON_CreateString(numstr));
         sprintf(numstr,"%llu",(long long)half->T.priceNQT), cJSON_AddItemToObject(item,"priceNQT",cJSON_CreateString(numstr));
-        printf("%s SUBMIT %llu sell.%d dir.%d closed.%d | qty %llu price %llu\n",half->exchange,(long long)half->T.assetid,half->T.sell,dir,half->T.closed,(long long)half->T.qty,(long long)half->T.priceNQT);
+        printf("%s SUBMIT %llu sell.%d dir.%d closed.%d | qty %llu price %llu (%s)\n",half->exchange,(long long)half->T.assetid,half->T.sell,dir,half->T.closed,(long long)half->T.qty,(long long)half->T.priceNQT,offer->comment);
         if ( NXTACCTSECRET == 0  || NXTACCTSECRET[0] == 0 )
             half->T.closed = 1;
         if ( half->T.myflag != 0 )
@@ -341,29 +356,35 @@ int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *
             cJSON_AddItemToObject(item,"action",cJSON_CreateString(Exchanges[half->T.exchangeid].name));
             if ( half->T.closed == 0 )
             {
-                if ( (half->T.txid= submit_to_exchange(half->T.exchangeid,&jsonstr,half->T.assetid,half->T.qty,half->T.priceNQT,dir,pt->nxt64bits,NXTACCTSECRET,pt->triggerhash,pt->comment,otherNXT(half),base,rel,price,volume)) == 0 )
+                if ( (half->T.txid= submit_to_exchange(half->T.exchangeid,&jsonstr,half->T.assetid,half->T.qty,half->T.priceNQT,dir,offer->nxt64bits,NXTACCTSECRET,offer->triggerhash,offer->comment,otherNXT(half),base,rel,price,volume)) == 0 )
                 {
                     if ( jsonstr != 0 )
-                        sprintf(pt->comment+strlen(pt->comment)-1,",\"error\":[\"%s\"]}",jsonstr!=0?jsonstr:"submit_trade failed");
+                        sprintf(offer->comment+strlen(offer->comment)-1,",\"error\":[\"%s\"]}",jsonstr!=0?jsonstr:"submit_trade failed");
                     free(jsonstr);
                     half->T.error = 1;
+                    printf("failed to submit (%s) %llu sell.%d dir.%d closed.%d | qty %llu price %llu\n",half->exchange,(long long)half->T.assetid,half->T.sell,dir,half->T.closed,(long long)half->T.qty,(long long)half->T.priceNQT);
                     return(-1);
+                }
+                else
+                {
+                    sprintf(numstr,"%llu",(long long)half->T.txid), cJSON_AddItemToObject(item,"txid",cJSON_CreateString(numstr));
+                    cJSON_AddItemToObject(item,"order",cJSON_CreateString(dir>0?"buy":"sell"));
                 }
             }
         }
         else
         {
             cJSON_AddItemToObject(item,"action",cJSON_CreateString("transmit"));
-            sprintf(cmdstr,"{\"requestType\":\"respondtx\",\"offerNXT\":\"%llu\",\"NXT\":\"%llu\",\"assetid\":\"%llu\",\"quantityQNT\":\"%llu\",\"triggerhash\":\"%s\",\"quoteid\":\"%llu\",\"sig\":\"%s\",\"data\":\"%s\"",(long long)pt->nxt64bits,(long long)pt->nxt64bits,(long long)half->T.assetid,(long long)half->T.qty,pt->triggerhash,(long long)pt->quoteid,pt->feesighash,pt->feeutxbytes);
+            sprintf(cmdstr,"{\"requestType\":\"respondtx\",\"offerNXT\":\"%llu\",\"NXT\":\"%llu\",\"assetid\":\"%llu\",\"quantityQNT\":\"%llu\",\"triggerhash\":\"%s\",\"quoteid\":\"%llu\",\"sig\":\"%s\",\"data\":\"%s\"",(long long)offer->nxt64bits,(long long)offer->nxt64bits,(long long)half->T.assetid,(long long)half->T.qty,offer->triggerhash,(long long)offer->quoteid,offer->feesighash,offer->feeutxbytes);
             if ( half->T.transfer != 0 )
             {
                 if ( half->T.sell == 0 )
                     sprintf(cmdstr+strlen(cmdstr),",\"cmd\":\"transfer\",\"otherassetid\":\"%llu\",\"otherqty\":\"%llu\"}",(long long)other->T.assetid,(long long)other->T.qty);
-                else { printf("unexpected request for transfer with dir.%d sell.%d notxfer.%d:%d\n",dir,half->T.sell,pt->A.notxfer,pt->B.notxfer); return(-1); }
+                else { printf("unexpected request for transfer with dir.%d sell.%d notxfer.%d:%d\n",dir,half->T.sell,offer->A.notxfer,offer->B.notxfer); return(-1); }
             } else sprintf(cmdstr+strlen(cmdstr),",\"cmd\":\"%s\",\"priceNQT\":\"%llu\"}",(dir > 0) ? "buy" : "sell",(long long)half->T.priceNQT);
-            printf("submit_trade.(%s) to offerNXT.%llu\n",cmdstr,(long long)otherNXT(half));
+            printf("submit_trade.(%s) to offerNXT.%llu (%s)\n",cmdstr,(long long)otherNXT(half),offer->comment);
             if ( half->T.closed == 0 )
-                submit_respondtx(cmdstr,pt->nxt64bits,NXTACCTSECRET,otherNXT(half));
+                submit_respondtx(cmdstr,offer->nxt64bits,NXTACCTSECRET,otherNXT(half));
         }
     }
     if ( jsonp != 0 && *jsonp != 0 && item != 0 )
@@ -392,7 +413,12 @@ int32_t set_pendinghalf(struct pendingpair *pt,int32_t dir,struct pendinghalf *h
         if ( otherNXT(half) != 0 && half->baseamount != 0 && half->relamount != 0 )
             return(half->T.exchangeid == INSTANTDEX_EXCHANGEID);
     }
-    half->T.error = 1;
+    if ( half->T.closed == 0 )
+    {
+        printf("SETERROR (%s).(%s) -> dir.%d sethalf %llu/%llu buyer.%llu seller.%llu\n",half->exchange,Exchanges[(int32_t)half->T.exchangeid].name,dir,(long long)assetid,(long long)relid,(long long)buyer,(long long)seller);
+        half->T.error = 1;
+        half->T.closed = 1;
+    }
     return(-1);
 }
 
@@ -405,7 +431,7 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
     if ( pt->baseid == NXT_ASSETID )
     {
         pt->notxfer = 1;
-        set_pendinghalf(pt,-dir,seller,pt->relid,pt->relamount,pt->baseid,pt->baseamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
+        set_pendinghalf(pt,-dir,seller,pt->relid,pt->relamount,pt->baseid,pt->baseamount,pt->quoteid,pt->offerNXT,pt->nxt64bits,pt->exchange,1);
         calc_asset_QNT(seller,pt->nxt64bits,0);
         printf("base (%llu -> %llu) ratio.%f\n",(long long)seller->T.qty,(long long)buyer->T.qty,pt->ratio);
         set_pendinghalf(pt,dir,buyer,pt->relid,pt->relamount,pt->baseid,pt->baseamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
@@ -415,7 +441,7 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
     else if ( pt->relid == NXT_ASSETID )
     {
         pt->notxfer = 1;
-        set_pendinghalf(pt,-dir,seller,pt->baseid,pt->baseamount,pt->relid,pt->relamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
+        set_pendinghalf(pt,-dir,seller,pt->baseid,pt->baseamount,pt->relid,pt->relamount,pt->quoteid,pt->offerNXT,pt->nxt64bits,pt->exchange,1);
         calc_asset_QNT(seller,pt->nxt64bits,1);
         printf("base (%llu -> %llu) ratio.%f\n",(long long)seller->T.qty,(long long)buyer->T.qty,pt->ratio);
         set_pendinghalf(pt,dir,buyer,pt->baseid,pt->baseamount,pt->relid,pt->relamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
@@ -425,7 +451,7 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
     else if ( strcmp(pt->exchange,INSTANTDEX_NAME) == 0 )
     {
         pt->notxfer = 0;
-        set_pendinghalf(pt,dir,seller,pt->baseid,pt->baseamount,pt->relid,pt->relamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
+        set_pendinghalf(pt,dir,seller,pt->baseid,pt->baseamount,pt->relid,pt->relamount,pt->quoteid,pt->offerNXT,pt->nxt64bits,pt->exchange,1);
         set_pendinghalf(pt,-dir,buyer,pt->relid,pt->relamount,pt->baseid,pt->baseamount,pt->quoteid,pt->nxt64bits,pt->offerNXT,pt->exchange,1);
         seller->T.transfer = buyer->T.transfer = 1;
         seller->T.qty = pt->baseamount / basemult, buyer->T.qty = pt->relamount / relmult;
@@ -474,25 +500,40 @@ char *submit_trades(struct pending_offer *offer,char *NXTACCTSECRET)
     cJSON *json;
     char whostr[64],*retstr;
     struct pendingpair *pt;
-    int32_t i,polarity = 1;
+    int32_t i,dir,dir2,polarity = 1;
     json = cJSON_Parse(offer->comment);
     pt = &offer->A;
     for (i=0; i<offer->numhalves; i+=2)
     {
-        sprintf(whostr,"%s%s",(-polarity < 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
-        if ( submit_trade(&json,whostr,-polarity * pt->notxfer,&offer->halves[i],&offer->halves[i+1],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
+        dir = -2 * offer->halves[i].T.sell + 1;
+        dir2 = -2 * offer->halves[i+1].T.sell + 1;
+        printf("i.%d polarity.%d T.sells: %d %d | dirs: %d %d\n",i,polarity,offer->halves[i].T.sell,offer->halves[i+1].T.sell,dir,dir2);
+        if ( dir*dir2 > 0 )
+        {
+            cJSON_AddItemToObject(json,"error",cJSON_CreateString("both sides same direction"));
             return(pending_offer_error(offer,json));
-        sprintf(whostr,"%s%s",(polarity < 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
-        if ( submit_trade(&json,whostr,polarity * pt->notxfer,&offer->halves[i+1],&offer->halves[i],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
+        }
+        sprintf(whostr,"%s%s",(polarity*dir < 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
+        if ( submit_trade(&json,whostr,polarity*dir * pt->notxfer,&offer->halves[i],&offer->halves[i+1],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
+            return(pending_offer_error(offer,json));
+        printf("second quarter:\n");
+        sprintf(whostr,"%s%s",(polarity*dir2 < 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
+        if ( submit_trade(&json,whostr,polarity*dir2 * pt->notxfer,&offer->halves[i+1],&offer->halves[i],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
             return(pending_offer_error(offer,json));
         polarity = -polarity;
         pt = &offer->B;
     }
     offer->endmilli = milliseconds() + 2. * JUMPTRADE_SECONDS * 1000;
-    queue_enqueue("pending_offer",&Pending_offersQ.pingpong[0],offer);
     retstr = cJSON_Print(json);
+    printf("endmilli %f vs %f: offer.%p (%s)\n",offer->endmilli,milliseconds(),offer,retstr);
+    queue_enqueue("pending_offer",&Pending_offersQ.pingpong[0],&offer->DL);
     free_json(json);
     return(retstr);
+}
+
+void create_offer_comment(struct pending_offer *offer)
+{
+    sprintf(offer->comment,"{\"requestType\":\"makeoffer3\",\"askoffer\":\"%d\",\"NXT\":\"%llu\",\"ratio\":\"%.8f\",\"perc\":\"%d\",\"baseid\":\"%llu\",\"relid\":\"%llu\",\"baseamount\":\"%llu\",\"relamount\":\"%llu\",\"fee\":\"%llu\",\"quoteid\":\"%llu\",\"minperc\":\"%u\",\"jumpasset\":\"%llu\"}",offer->sell,(long long)offer->nxt64bits,offer->ratio,offer->perc,(long long)offer->baseid,(long long)offer->relid,(long long)offer->baseamount,(long long)offer->relamount,(long long)offer->fee,(long long)offer->quoteid,offer->minperc,(long long)offer->jumpasset);
 }
 
 char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,int32_t deprecated,int32_t perc,uint64_t baseid,uint64_t relid,cJSON *baseobj,cJSON *relobj,uint64_t quoteid,int32_t askoffer,char *exchange,uint64_t baseamount,uint64_t relamount,uint64_t offerNXT,int32_t minperc,uint64_t jumpasset)
@@ -505,6 +546,8 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
     else if ( perc < minperc )
         return(clonestr("{\"error\":\"perc < minperc\"}"));
     offer = calloc(1,sizeof(*offer));
+    offer->minperc = minperc;
+    offer->jumpasset = jumpasset;
     set_assetname(&mult,offer->base,baseid);
     set_assetname(&mult,offer->rel,relid);
     offer->nxt64bits = calc_nxt64bits(NXTaddr);
@@ -549,12 +592,13 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
             offer->fee = INSTANTDEX_FEE;
         else
         {
+            create_offer_comment(offer);
             if ( (retstr= submit_trades(offer,NXTACCTSECRET)) != 0 )
                 return(retstr);
             else return(pending_offer_error(offer,cJSON_Parse("{\"error\":\"couldnt submit trade\"}")));
         }
     }
-    sprintf(offer->comment,"{\"requestType\":\"makeoffer3\",\"askoffer\":\"%d\",\"NXT\":\"%llu\",\"ratio\":\"%.8f\",\"perc\":\"%d\",\"baseid\":\"%llu\",\"relid\":\"%llu\",\"baseamount\":\"%llu\",\"relamount\":\"%llu\",\"fee\":\"%llu\",\"quoteid\":\"%llu\",\"minperc\":\"%u\",\"jumpasset\":\"%llu\"}",askoffer,(long long)calc_nxt64bits(NXTaddr),offer->ratio,offer->perc,(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount,(long long)offer->fee,(long long)quoteid,minperc,(long long)jumpasset);
+    create_offer_comment(offer);
     printf("GOT.(%s)\n",offer->comment);
     set_NXTtx(offer->nxt64bits,&T,NXT_ASSETID,offer->fee,calc_nxt64bits(INSTANTDEX_ACCT),-1);
     strcpy(T.comment,offer->comment);

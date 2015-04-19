@@ -301,7 +301,7 @@ char *findaddress(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,cha
         for (i=0; i<numthreads; i++)
         {
             while ( args[i]->abortflag != -1 )
-                sleep(1);
+                portable_sleep(1);
             free(args[i]);
         }
         free(args);

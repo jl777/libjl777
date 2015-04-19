@@ -50,9 +50,11 @@ struct exchange_info *find_exchange(char *exchangestr,void (*ramparse)(struct ra
 {
     int32_t exchangeid;
     struct exchange_info *exchange = 0;
+    //printf("FIND.(%s)\n",exchangestr);
     for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
         exchange = &Exchanges[exchangeid];
+        //printf("(%s v %s) ",exchangestr,exchange->name);
         if ( exchange->name[0] == 0 )
         {
             if ( ramparse == 0 )
@@ -339,7 +341,7 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
     {
         if ( assetid != NXT_ASSETID && qty != 0 && (dir == 0 || priceNQT != 0) )
         {
-            printf("submit to exchange dir.%d\n",dir);
+            printf("submit to exchange.%s (%s) dir.%d\n",Exchanges[exchangeid].name,comment,dir);
             txid = submit_triggered_nxtae(jsonstrp,ap->type == 5,cmd,nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment,otherNXT);
             if ( *jsonstrp != 0 )
                 txid = 0;
@@ -347,7 +349,7 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
     }
     else if ( exchangeid < MAX_EXCHANGES && (exchange= &Exchanges[exchangeid]) != 0 && exchange->exchangeid == exchangeid && exchange->trade != 0 )
     {
-        printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f\n",exchangeid,dir,price,volume,1./price,price*volume);
+        printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f (%s)\n",exchangeid,dir,price,volume,1./price,price*volume,comment);
         if ( (txid= (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume)) == 0 )
             printf("illegal combo (%s/%s) ret.(%s)\n",base,rel,retstr!=0?retstr:"");
     }

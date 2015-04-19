@@ -287,52 +287,13 @@ cJSON *cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int32
 /* Default options for cJSON_Parse */
 cJSON *cJSON_Parse(const char *value)
 {
-    static int depth;
-    cJSON *retval;
-    /*    int i;
-     for (i=0; value[i]!=0; i++)
-        if ( value[i] != ' ' && value[i] != '\n' && value[i] != '\r' && value[i] != '\t' )
-        {
-            if ( value[i] != '[' && value[i] != '{' )
-            {
-                printf("CJSON REJECT.(%s)\n",value);
-                return(0);
-            }
-            break;
-        }
-    for (i=0; value[i]!=0; i++)
-        if ( (unsigned int)value[i] >= 128 )
-            break;
-    if ( value[i] != 0 )
-    {
-        printf("CJSON REJECT2.(%s)\n",value);
-        return(0);
-    }*/
-    if ( depth > 0 )
-    {
-        while ( depth > 0 )
-            usleep(1000);
-    }
-    depth++;
-    retval = cJSON_ParseWithOpts(value,0,0);
-    depth--;
-    return(retval);
+    return(cJSON_ParseWithOpts(value,0,0));
 }
 
 /* Render a cJSON item/entity/structure to text. */
 char *cJSON_Print(cJSON *item)
 {
-    static int depth;
-    char *retval;
-    if ( depth > 0 )
-    {
-        while ( depth > 0 )
-            usleep(1000);
-    }
-    depth++;
-    retval = print_value(item,0,1);
-    depth--;
-    return(retval);
+    return(print_value(item,0,1));
 }
 char *cJSON_PrintUnformatted(cJSON *item)	{return print_value(item,0,0);}
 
@@ -733,7 +694,10 @@ int32_t safecopy(char *dest,char *src,long len)
             dest[i] = src[i];
         if ( i == len )
         {
-            printf("safecopy: %s too long %ld\n",src,len); while ( 1 ) sleep(1);
+            printf("safecopy: %s too long %ld\n",src,len);
+#ifdef __APPLE__
+            while ( 1 ) portable_sleep(1);
+#endif
             return(-1);
         }
         dest[i] = 0;
@@ -824,7 +788,7 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
 #ifdef __APPLE__
             while ( 1 )
             {
-                sleep(60);
+                portable_sleep(60);
                 printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
             }
 #endif

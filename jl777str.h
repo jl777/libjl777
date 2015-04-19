@@ -62,7 +62,7 @@ void myfree(void *ptr,char *str)
         }
     }
     printf("couldn't find %p in PTRS[%ld]??\n",ptr,NUM_ALLOCATED);
-    while ( 1 ) sleep(1);
+    while ( 1 ) portable_sleep(1);
     free(ptr);
 }
 
@@ -162,7 +162,7 @@ char *clonestr(char *str)
     {
         printf("warning cloning nullstr.%p\n",str);
 #ifdef __APPLE__
-        while ( 1 ) sleep(1);
+        while ( 1 ) portable_sleep(1);
 #endif
         str = (char *)"<nullstr>";
     }

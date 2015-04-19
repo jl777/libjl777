@@ -396,7 +396,7 @@ char *extract_userpass(struct coin_info *cp,char *serverport,char *userpass,char
         return(serverport);
     }
     userpass[0] = 0;
-    if ( (fp= fopen(fname,"r")) != 0 )
+    if ( (fp= fopen(os_compatible_path(fname),"r")) != 0 )
     {
         if ( Debuglevel > 0 )
             printf("extract_userpass from (%s)\n",fname);
@@ -798,6 +798,55 @@ void init_Specialaddrs()
     MGW_blacklist[n++] = "";
 }
 
+int32_t is_trusted_issuer(char *issuer)
+{
+    int32_t i,n;
+    cJSON *array;
+    uint64_t nxt64bits;
+    char str[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"issuers");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            copy_cJSON(str,cJSON_GetArrayItem(array,i));
+            if ( str[0] == 'N' && str[1] == 'X' && str[2] == 'T' )
+            {
+                nxt64bits = conv_rsacctstr(str,0);
+                printf("str.(%s) -> %llu\n",str,(long long)nxt64bits);
+                expand_nxt64bits(str,nxt64bits);
+            }
+            if ( strcmp(str,issuer) == 0 )
+                return(1);
+        }
+    }
+    return(0);
+}
+
+void init_SuperNET_whitelist()
+{
+    cJSON *array,*item;
+    int32_t i,n;
+    char ipaddr[MAX_JSON_FIELD];
+    array = cJSON_GetObjectItem(MGWconf,"whitelist");
+    if ( array != 0 && is_cJSON_Array(array) != 0 )
+    {
+        int32_t add_SuperNET_whitelist(char *ipaddr);
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( array == 0 || n == 0 )
+                break;
+            item = cJSON_GetArrayItem(array,i);
+            copy_cJSON(ipaddr,item);
+            add_SuperNET_whitelist(ipaddr);
+        }
+    }
+}
+
 void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemption,struct NXT_asset *ap)
 {
     cJSON *array,*item;
@@ -934,57 +983,9 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
     } //else printf("skip activate ramchains\n");
 }
 
-int32_t is_trusted_issuer(char *issuer)
-{
-    int32_t i,n;
-    cJSON *array;
-    uint64_t nxt64bits;
-    char str[MAX_JSON_FIELD];
-    array = cJSON_GetObjectItem(MGWconf,"issuers");
-    if ( array != 0 && is_cJSON_Array(array) != 0 )
-    {
-        n = cJSON_GetArraySize(array);
-        for (i=0; i<n; i++)
-        {
-            if ( array == 0 || n == 0 )
-                break;
-            copy_cJSON(str,cJSON_GetArrayItem(array,i));
-            if ( str[0] == 'N' && str[1] == 'X' && str[2] == 'T' )
-            {
-                nxt64bits = conv_rsacctstr(str,0);
-                printf("str.(%s) -> %llu\n",str,(long long)nxt64bits);
-                expand_nxt64bits(str,nxt64bits);
-            }
-            if ( strcmp(str,issuer) == 0 )
-                return(1);
-        }
-    }
-    return(0);
-}
-
-void init_SuperNET_whitelist()
-{
-    cJSON *array,*item;
-    int32_t i,n;
-    char ipaddr[MAX_JSON_FIELD];
-    array = cJSON_GetObjectItem(MGWconf,"whitelist");
-    if ( array != 0 && is_cJSON_Array(array) != 0 )
-    {
-        int32_t add_SuperNET_whitelist(char *ipaddr);
-        n = cJSON_GetArraySize(array);
-        for (i=0; i<n; i++)
-        {
-            if ( array == 0 || n == 0 )
-                break;
-            item = cJSON_GetArrayItem(array,i);
-            copy_cJSON(ipaddr,item);
-            add_SuperNET_whitelist(ipaddr);
-        }
-    }
-}
-
 void init_coinsarray(char *userdir,char *myipaddr)
 {
+    uint32_t get_blockheight(struct coin_info *cp);
     char *pubNXT,*BTCDaddr,*BTCaddr;
     cJSON *array,*item;
     char coinstr[MAX_JSON_FIELD];
@@ -1165,7 +1166,9 @@ void init_SuperNET_settings(char *userdir)
     if ( ORIGBLOCK[0] != 0 || FIRST_NXTBLOCK != 0 )
         FIRST_NXTTIMESTAMP = get_NXTtimestamp(ORIGBLOCK,FIRST_NXTBLOCK);
     extract_cJSON_str(NXTISSUERACCT,sizeof(NXTISSUERACCT),MGWconf,"NXTISSUERACCT");
-    extract_cJSON_str(PYTHONPATH,sizeof(PYTHONPATH),MGWconf,"PYTHONPATH");
+    extract_cJSON_str(WEBSOCKETD,sizeof(WEBSOCKETD),MGWconf,"WEBSOCKETD");
+    if ( WEBSOCKETD[0] == 0 )
+        strcpy(WEBSOCKETD,"/usr/bin/websocketd");
     if ( NXTISSUERACCT[0] == 'N' && NXTISSUERACCT[1] == 'X' && NXTISSUERACCT[2] == 'T' )
     {
         nxt64bits = conv_rsacctstr(NXTISSUERACCT,0);
@@ -1240,7 +1243,7 @@ void broadcastfile(char *NXTaddr,char *NXTACCTSECRET,char *fname)
     FILE *fp;
     char *buf;
     int32_t len,n;
-    if ( Global_mp->bussock >= 0 && (fp= fopen(fname,"rb")) != 0 )
+    if ( Global_mp->bussock >= 0 && (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
         len = (int32_t)ftell(fp);
@@ -1276,7 +1279,7 @@ void poll_nanomsg()
         {
             filebuf = &buf[len];
             filelen = (recv - len);
-            if ( (fp= fopen(fname,"rb")) != 0 )
+            if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
             {
                 fseek(fp,0,SEEK_END);
                 if ( ftell(fp) == filelen )
@@ -1290,7 +1293,7 @@ void poll_nanomsg()
                 }
                 fclose(fp);
             }
-            if ( sameflag == 0 && (fp= fopen(fname,"wb")) != 0 )
+            if ( sameflag == 0 && (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
             {
                 if ( (n= (int32_t)fwrite(filebuf,1,filelen,fp)) != filelen )
                     printf("error writing (%s) only %d written vs %d\n",fname,n,filelen);

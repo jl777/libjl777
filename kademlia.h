@@ -20,7 +20,7 @@
 #define KADEMLIA_NUMBUCKETS ((int)(sizeof(K_buckets)/sizeof(K_buckets[0])))
 #define KADEMLIA_NUMK ((int)(sizeof(K_buckets[0])/sizeof(K_buckets[0][0])))
 
-struct storage_queue_entry { uint64_t keyhash,destbits; int32_t selector; };
+struct storage_queue_entry { struct queueitem DL; uint64_t keyhash,destbits; int32_t selector; };
 
 struct nodestats *K_buckets[64+1][7];
 long Kbucket_updated[KADEMLIA_NUMBUCKETS];
@@ -664,7 +664,7 @@ int32_t kademlia_pushstore(int32_t selector,uint64_t refbits,uint64_t newbits)
             ptr->selector = selector;
             ptr->keyhash = key;
             //printf("%p queue.%d to %llu\n",ptr,n,(long long)newbits);
-            queue_enqueue("storageQ",&storageQ,ptr);
+            queue_enqueue("storageQ",&storageQ,&ptr->DL);
         }
         //printf("free sps.%p\n",sps);
         free(keys);
@@ -682,7 +682,7 @@ uint64_t process_storageQ()
     struct SuperNET_storage *sp;
     struct coin_info *cp = get_coin_info("BTCD");
     //fprintf(stderr,"process_storageQ\n");
-    if ( (ptr= queue_dequeue(&storageQ)) != 0 )
+    if ( (ptr= queue_dequeue(&storageQ,0)) != 0 )
     {
         //fprintf(stderr,"dequeue StorageQ %p key.(%llu) dest.(%llu) selector.%d\n",ptr,(long long)ptr->keyhash,(long long)ptr->destbits,ptr->selector);
         expand_nxt64bits(key,ptr->keyhash);

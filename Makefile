@@ -1,3 +1,18 @@
+ifneq (,$(findstring /cygdrive/,$(PATH)))
+    OS := win
+    PLIBS := nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+else
+ifneq (,$(findstring WINDOWS,$(PATH)))
+    OS := win
+    PLIBS := nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+else
+    OS := $(shell uname -s)
+    #PLIBS := nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    PLIBS := nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lm
+endif
+endif
+
+
 CC=clang
 CFLAGS=-Wall -pedantic -g -fPIC -Iincludes -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 LIBS=-lm -lreadline 
@@ -29,8 +44,21 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
-plugins: doesntexist; \
-	cd plugins; gcc -o echo plugin.c -I includes libs/libnanomsg.a -lpthread -lanl -lm; cd ..
+PINCLUDES := -Iincludes -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
+
+makeMGW :=    gcc -o lib/MGW $(PINCLUDES) mgw/mgw.c mgw/state.c mgw/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c ramchain/storage.c ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c utils/huffstream.c utils/ramcoder.c -lcurl $(PLIBS);
+
+plugins: lib/echo lib/MGW; lib/DB; \
+	cd plugins; \
+    gcc -o lib/echo $(PINCLUDES) example.c utils/cJSON.c  utils/system777.c $(PLIBS); \
+    gcc -o lib/DB -c sophia/sophia.c -g -O2 -std=c99 -pedantic -Wextra -Wall -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden; $(PLIBS); \
+    $(makeMGW) \
+    cd ..
+
+rtMGW: plugins/rtMGW; \
+	cd plugins; \
+    $(makeMGW) \
+    cd ..
 
 SuperNET: $(TARGET); \
     pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
@@ -76,8 +104,8 @@ chessjs:  doesntexist; \
 nanomsg:  doesntexist; \
     git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..
 
-#python: doesntexist; \
-#    tar -xvf Python-3.4.3.tgz; cd Python-3.4.3; ./configure; make all; cp libpython3.so libpython3.4m.a ../libs; cp pyconfig.h Include; ln ./build/lib.linux-x86_64-3.4/_sysconfigdata.py Lib; cd ..;
+python: doesntexist; \
+    tar -xvf Python-3.4.3.tgz; cd Python-3.4.3; ./configure; make all; cp libpython3.so libpython3.4m.a ../libs; cp pyconfig.h Include; ln ./build/lib.linux-x86_64-3.4/_sysconfigdata.py Lib; cd ..;
 
 patch: doesntexist; \
     #sudo apt-get install csync-owncloud librsync-dev libsmbclient-dev liblog4c-dev flex libsqlite3-dev bison csync2; \
@@ -142,23 +170,8 @@ patch2: doesntexist; \
     cp lib/*  ../../libs; \
     cd ../..;
 
-oldpython: doesntexist; \
-    tar xf python.tar.xz; \
-    cd Python-3.4.3; \
-    ./configure; \
-    make libpython3.4m.a; \
-    cp libpython3.4m.a ../libs/; \
-    cp /Users/whit/Downloads/Python-3.4.3/Include/Python.h ../includes; \
-    cd ..;
-
 onetime: doesntexist; \
-    tar xf python.tar.xz; \
-    cd Python-3.4.3; \
-    ./configure; \
-    make libpython3.4m.a; \
-    cp libpython3.4m.a ../libs/; \
-    cp /Users/whit/Downloads/Python-3.4.3/Include/Python.h ../includes; \
-    cd ..; \
+    git clone https://github.com/joewalnes/websocketd; git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..; \
     cd miniupnpc; \
     make; \
     cp libminiupnpc.a ../libs; \
@@ -245,5 +258,7 @@ cstdlib/errno.o: cstdlib/errno.c interpreter.h platform.h
 cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
-
+lib/DB: plugins/sophia/sophia.c
+lib/echo: plugins/example.c
+lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c plugins/utils/bits777.c plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/files777.c plugins/utils/utils777.c plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 

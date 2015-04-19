@@ -10,7 +10,7 @@ typedef unsigned long long u64;
 typedef long long i64;
 typedef i64 gf[16];
 //extern void randombytes(u8 *,u64);
-void randombytes(uint8_t *x,uint64_t xlen);
+void randombytes(unsigned char *x,long xlen);
 
 static const u8
 _0[16],
@@ -822,21 +822,21 @@ int crypto_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
 
 static int fd = -1;
 
-void randombytes(uint8_t *x,uint64_t xlen)
+void randombytes(unsigned char *x,long xlen)
 {
     int32_t i;
     if (fd == -1) {
         for (;;) {
             fd = open("/dev/urandom",O_RDONLY);
             if (fd != -1) break;
-            sleep(1);
+            portable_sleep(1);
         }
     }
     while (xlen > 0) {
         if (xlen < 1048576) i = (int32_t)xlen; else i = 1048576;
         i = (int32_t)read(fd,x,i);
         if (i < 1) {
-            sleep(1);
+            portable_sleep(1);
             continue;
         }
         x += i;
@@ -847,7 +847,7 @@ void randombytes(uint8_t *x,uint64_t xlen)
 #include <windows.h>
 #include <wincrypt.h>
 
-void randombytes(uint8_t *x,uint64_t xlen)
+void randombytes(unsigned char *x,long xlen)
 {
     HCRYPTPROV prov = 0;
     

@@ -83,7 +83,7 @@ uint64_t mofn_calcdatastr(char *usbdir,char *datastr,char **privkeys,int32_t *ci
     if ( usbdir != 0 && usbdir[0] != 0 )
     {
         sprintf(fragname,"%s/%llu",usbdir,(long long)keyhash);
-        if ( (fp= fopen(fragname,"wb")) != 0 )
+        if ( (fp= fopen(os_compatible_path(fragname),"wb")) != 0 )
         {
             if ( fwrite(final,1,newlen,fp) != newlen )
                 printf("fwrite len.%d error for %llu\n",newlen,(long long)keyhash);
@@ -103,7 +103,7 @@ int32_t verify_fragment(char *usbdir,uint64_t txid,unsigned char *fragment,int32
     unsigned char buf[4096];
     char fragname[512];
     sprintf(fragname,"%s/%llu",usbdir,(long long)txid);
-    if ( (checkfp= fopen(fragname,"rb")) != 0 )
+    if ( (checkfp= fopen(os_compatible_path(fragname),"rb")) != 0 )
     {
         memset(buf,0,len);
         if ( (val= fread(buf,1,len,checkfp)) != len )
@@ -287,7 +287,7 @@ char *mofn_restorefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRE
             }
             break;
         }
-        sleep(3);
+        portable_sleep(3);
         printf("restorefile.(%s): have %d of %d fragments | %.2f seconds left\n",filename,good,n/N,(endmilli - milliseconds())/1000.);
     }
     status = (hwmgood - n/N);
@@ -399,7 +399,7 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
     if ( usbdir != 0 )
     {
         sprintf(savefname,"%s/%s",usbdir,filename);
-        if ( (savefp= fopen(savefname,"wb")) != 0 )
+        if ( (savefp= fopen(os_compatible_path(savefname),"wb")) != 0 )
         {
             fprintf(savefp,"%s\n",retstr);
             fclose(savefp);
@@ -416,7 +416,7 @@ char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
         char cmdstr[512];
         printf("\n*****************\ncompare (%s) vs (%s)\n",filename,"foo.txt.restore");
         sprintf(cmdstr,"cmp %s %s",filename,"foo.txt.restore");
-        if ( system(cmdstr) != 0 )
+        if ( system(os_compatible_path(cmdstr)) != 0 )
             printf("error with system call\n");
         printf("done\n\n");
     }
@@ -465,14 +465,14 @@ char *_restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
         strcpy(destfname,fname), strcat(destfname,".restore");
     if ( 0 )
     {
-        fp = fopen(destfname,"rb");
+        fp = fopen(os_compatible_path(destfname),"rb");
         if ( fp != 0 )
         {
             fclose(fp);
             return(clonestr("{\"error\":\"destfilename is already exists\"}"));
         }
     }
-    fp = fopen(destfname,"wb");
+    fp = fopen(os_compatible_path(destfname),"wb");
     if ( fp != 0 && sender[0] != 0 && valid > 0 && destfname[0] != 0  )
         retstr = mofn_restorefile(previpaddr,NXTaddr,NXTACCTSECRET,sender,pin,fp,L,M,N,usbname,password,fname,sharenrs,txids);
     else retstr = clonestr("{\"error\":\"invalid savefile_func arguments\"}");
@@ -484,7 +484,7 @@ char *_restorefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char 
         char cmdstr[512];
         printf("\n*****************\ncompare (%s) vs (%s)\n",fname,destfname);
         sprintf(cmdstr,"cmp %s %s",fname,destfname);
-        if ( system(cmdstr) != 0 )
+        if ( system(os_compatible_path(cmdstr)) != 0 )
             printf("error with system call\n");
         printf("done\n\n");
     }
@@ -513,7 +513,7 @@ char *savefile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     copy_cJSON(usbname,objs[4]);
     copy_cJSON(password,objs[5]);
     copy_cJSON(pin,objs[6]);
-    fp = fopen(fname,"rb");
+    fp = fopen(os_compatible_path(fname),"rb");
     if ( fp == 0 )
         printf("cant find file (%s)\n",fname);
     if ( fp != 0 && sender[0] != 0 && valid > 0 )
@@ -603,7 +603,7 @@ char *publish_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
                 copy_cJSON(mediatype,cJSON_GetArrayItem(item,1));
             if ( mediatype[0] == 0 )
                 strcpy(mediatype,"text/html");
-            fp = fopen(fname,"rb");
+            fp = fopen(os_compatible_path(fname),"rb");
             if ( fp == 0 )
             {
                 printf("cant find file (%s)\n",fname);
@@ -617,7 +617,7 @@ char *publish_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
                 {
                     char savefname[512];
                     sprintf(savefname,"/tmp/fname.%d",rand());
-                    if ( (savefp= fopen(savefname,"wb")) != 0 )
+                    if ( (savefp= fopen(os_compatible_path(savefname),"wb")) != 0 )
                     {
                         if ( fwrite(savestr,1,len,savefp) == len )
                         {

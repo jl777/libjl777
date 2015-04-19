@@ -58,8 +58,9 @@ void PlatformPutc(unsigned char OutCh, union OutputStreamInfo *Stream)
 }
 
 /* read a file into memory */
-char *PlatformReadFile(const char *FileName)
+char *PlatformReadFile(char *FileName)
 {
+    char *os_compatible_path(char *fname);
     struct stat FileInfo;
     char *ReadText;
     FILE *InFile;
@@ -72,7 +73,7 @@ char *PlatformReadFile(const char *FileName)
     if (ReadText == NULL)
         ProgramFail(NULL, "out of memory\n");
         
-    InFile = fopen(FileName, "r");
+    InFile = fopen(os_compatible_path(FileName), "r");
     if (InFile == NULL)
         ProgramFail(NULL, "can't read file %s\n", FileName);
     
@@ -87,7 +88,7 @@ char *PlatformReadFile(const char *FileName)
 }
 
 /* read and scan a file for definitions */
-void PicocPlatformScanFile(const char *FileName)
+void PicocPlatformScanFile(char *FileName)
 {
     char *SourceStr = PlatformReadFile(FileName);
 
