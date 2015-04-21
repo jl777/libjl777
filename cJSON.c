@@ -696,8 +696,9 @@ int32_t safecopy(char *dest,char *src,long len)
         {
             printf("safecopy: %s too long %ld\n",src,len);
 #ifdef __APPLE__
-            while ( 1 ) portable_sleep(1);
+            while ( 1 ) sleep(1);
 #endif
+
             return(-1);
         }
         dest[i] = 0;
@@ -788,7 +789,7 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
 #ifdef __APPLE__
             while ( 1 )
             {
-                portable_sleep(60);
+sleep(60);
                 printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
             }
 #endif

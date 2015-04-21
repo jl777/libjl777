@@ -793,8 +793,8 @@ uint32_t _process_NXTtransaction(int32_t confirmed,struct ramchain_info *ram,cJS
 void ram_setdispstr(char *buf,struct ramchain_info *ram,double startmilli)
 {
     double estimatedV,estimatedB,estsizeV,estsizeB;
-    estimatedV = estimate_completion(ram->name,startmilli,ram->Vblocks.processed,(int32_t)ram->S.RTblocknum-ram->Vblocks.blocknum)/60000;
-    estimatedB = estimate_completion(ram->name,startmilli,ram->Bblocks.processed,(int32_t)ram->S.RTblocknum-ram->Bblocks.blocknum)/60000;
+    estimatedV = estimate_completion(startmilli,ram->Vblocks.processed,(int32_t)ram->S.RTblocknum-ram->Vblocks.blocknum)/60000;
+    estimatedB = estimate_completion(startmilli,ram->Bblocks.processed,(int32_t)ram->S.RTblocknum-ram->Bblocks.blocknum)/60000;
     estsizeV = (ram->Vblocks.sum / (1 + ram->Vblocks.count)) * ram->S.RTblocknum;
     estsizeB = (ram->Bblocks.sum / (1 + ram->Bblocks.count)) * ram->S.RTblocknum;
     sprintf(buf,"%-5s: RT.%d nonz.%d V.%d B.%d B64.%d B4096.%d | %s %s R%.2f | minutes: V%.1f B%.1f | outputs.%llu %.8f spends.%llu %.8f -> balance: %llu %.8f ave %.8f",ram->name,ram->S.RTblocknum,ram->nonzblocks,ram->Vblocks.blocknum,ram->Bblocks.blocknum,ram->blocks64.blocknum,ram->blocks4096.blocknum,_mbstr(estsizeV),_mbstr2(estsizeB),estsizeV/(estsizeB+1),estimatedV,estimatedB,(long long)ram->S.numoutputs,dstr(ram->S.totaloutputs),(long long)ram->S.numspends,dstr(ram->S.totalspends),(long long)(ram->S.numoutputs - ram->S.numspends),dstr(ram->S.totaloutputs - ram->S.totalspends),dstr(ram->S.totaloutputs - ram->S.totalspends)/(ram->S.numoutputs - ram->S.numspends));

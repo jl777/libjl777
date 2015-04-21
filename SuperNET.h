@@ -11,7 +11,10 @@
 
 #include <stdint.h>
 #include "includes/uv.h"
-#define portable_mutex_t uv_mutex_t
+
+#define DEFINES_ONLY
+#include "plugins/utils/system777.c"
+#undef DEFINES_ONLY
 
 #define MAX_PUBADDR_TIME (24 * 60 * 60)
 #define PUBLIC_DATA 0
@@ -25,7 +28,6 @@
 #define ADDRESS_DATA 8
 #define PRICE_DATA 9
 #define NUM_SUPERNET_DBS (PRICE_DATA+1)
-#define SMALLVAL .000000000000001
 #define _SUPERNET_PORT 7777
 
 #define MAX_COINTXID_LEN 128
@@ -36,11 +38,6 @@
 #define MAX_TRANSFER_SIZE (65536 * 16)
 #define TRANSFER_BLOCKSIZE 512
 #define MAX_TRANSFER_BLOCKS (MAX_TRANSFER_SIZE / TRANSFER_BLOCKSIZE)
-
-union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
-union _bits64 { uint8_t bytes[8]; uint16_t ushorts[4]; uint32_t uints[2]; uint64_t txid; };
-typedef union _bits64 bits64;
-typedef union _bits256 bits256;
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
 struct transfer_args
@@ -181,6 +178,17 @@ struct NXT_asset
     int32_t max,num,decimals;
     uint16_t type,subtype;
 };
+
+int32_t portable_truncate(char *fname,long filesize);
+void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite);
+int32_t os_supports_mappedfiles();
+char *os_compatible_path(char *str);
+char *OS_rmstr();
+int32_t OS_launch_process(char *args[]);
+int32_t OS_getppid();
+int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
+int32_t is_bundled_plugin(char *plugin);
+typedef int32_t (*ptm)(int32_t,char *args[]);
 
 #define INCLUDE_DEFINES
 #include "ramchain.h"

@@ -44,7 +44,7 @@ union writeU { uv_udp_send_t ureq; uv_write_t req; };
 
 struct write_req_t
 {
-    struct queueitem DL;
+    //struct queueitem DL;
     union writeU U;
     struct sockaddr addr;
     uv_udp_t *udp;
@@ -214,7 +214,7 @@ void after_write(uv_write_t *req,int status)
         free(wr->buf.base);
     }
     //printf("after write %p\n",wr);
-    free_queueitem(wr);
+    free(wr);
     if ( status == 0 )
         return;
     fprintf(stderr, "uv_write error: %d %s\n",status,uv_err_name(status));
@@ -419,12 +419,12 @@ int32_t portable_udpwrite(int32_t queueflag,const struct sockaddr *addr,int32_t 
     ASSERT(wr != NULL);
     wr->addr = *addr;
     wr->isbridge = isbridge;
-    if ( Global_mp->isMM == 0 && FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
+   /* if ( 0 && Global_mp->isMM == 0 && FASTMODE == 0 && queueflag != 0 ) // support oversized packets?
     {
         wr->queuetime = (uint32_t)(milliseconds() + (rand() % MAX_UDPQUEUE_MILLIS));
         queue_enqueue("sendQ",&sendQ,&wr->DL);
     }
-    else r = process_sendQ_item(wr);
+    else*/ r = process_sendQ_item(wr);
     return(r);
 }
 

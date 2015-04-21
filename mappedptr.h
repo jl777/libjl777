@@ -14,7 +14,7 @@
 #include "mman-win.h"
 #endif
 
-void *portable_thread_create(void *funcp,void *argp)
+/*void *portable_thread_create(void *funcp,void *argp)
 {
     portable_thread_t *ptr;
     ptr = (uv_thread_t *)malloc(sizeof(portable_thread_t));
@@ -23,7 +23,7 @@ void *portable_thread_create(void *funcp,void *argp)
         free(ptr);
         return(0);
     } else return(ptr);
-}
+}*/
 
 void fatal(char *str) { printf("FATAL: (%s)\n",str); while ( 1 ) portable_sleep(10); }
 

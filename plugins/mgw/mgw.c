@@ -990,7 +990,7 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
         } //else printf("ram_process_blocks: hpptr.%p hp.%p\n",hpptr,hp);
         blocks->processed += (1 << blocks->shift);
         blocks->blocknum += (1 << blocks->shift);
-        estimated = estimate_completion(ram->name,startmilli,blocks->processed,(int32_t)ram->S.RTblocknum-blocks->blocknum) / 60000.;
+        estimated = estimate_completion(startmilli,blocks->processed,(int32_t)ram->S.RTblocknum-blocks->blocknum) / 60000.;
         //break;
     }
     //printf("(%d >> %d) < (%d >> %d)\n",blocks->blocknum,blocks->shift,prev->blocknum,blocks->shift);
@@ -1203,8 +1203,8 @@ void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid)
         printf("update_coinacct_addresses.(%s)\n",NXTaddr);
     for (i=0; i<Numcoins; i++)
     {
-        cp = Daemons[i];
-        if ( (cp= Daemons[i]) != 0 && is_active_coin(cp->name) >= 0 )
+        cp = Coin_daemons[i];
+        if ( (cp= Coin_daemons[i]) != 0 && is_active_coin(cp->name) >= 0 )
         {
             coinjson = cJSON_GetObjectItem(json,cp->name);
             if ( coinjson == 0 )

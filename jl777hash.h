@@ -24,7 +24,7 @@ struct hashpacket
 };
 
 extern int32_t Historical_done;
-
+#ifdef portig
 struct queueitem *queueitem(char *str)
 {
     struct queueitem *item = calloc(1,sizeof(struct queueitem) + strlen(str) + 1);
@@ -49,7 +49,9 @@ void lock_queue(queue_t *queue)
 
 void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
 {
-    if ( queue->list == 0 )
+    if ( Debuglevel > 2 )
+        fprintf(stderr,"name.(%s) append.%p list.%p (next.%p prev.%p)\n",name,item,queue->list,item->next,item->prev);
+    if ( queue->list == 0 && name != 0 && name[0] != 0 )
         safecopy(queue->name,name,sizeof(queue->name));
     if ( item == 0 )
     {
@@ -59,20 +61,20 @@ void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
     lock_queue(queue);
     DL_APPEND(queue->list,item);
     portable_mutex_unlock(&queue->mutex);
-    if ( Debuglevel > 2 )
-        printf("name.(%s) append.%p list.%p (next.%p prev.%p)\n",name,item,queue->list,item->next,item->prev);
 }
 
 void *queue_dequeue(queue_t *queue,int32_t offsetflag)
 {
     struct queueitem *item = 0;
     lock_queue(queue);
+    if ( Debuglevel > 2 )
+        fprintf(stderr,"queue_dequeue name.(%s) dequeue.%p\n",queue->name,queue->list);
     if ( queue->list != 0 )
     {
         item = queue->list;
         DL_DELETE(queue->list,item);
         if ( Debuglevel > 2 )
-            printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
+            fprintf(stderr,"name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
     }
 	portable_mutex_unlock(&queue->mutex);
     if ( item != 0 && offsetflag != 0 )
@@ -89,6 +91,7 @@ int32_t queue_size(queue_t *queue)
     portable_mutex_unlock(&queue->mutex);
 	return count;
 }
+#endif
 
 int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*action)(),queue_t *destq,queue_t *errorq)
 {
@@ -387,9 +390,9 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     ptr->funcid = 'A';
     Global_mp->hashprocessing++;
     queue_enqueue("hashtableQ1",&Global_mp->hashtable_queue[1],&ptr->DL);
-    msleep(APISLEEP);
+    msleep(10*APISLEEP);
     while ( ptr->doneflag == 0 )
-        msleep(APISLEEP);
+        msleep(10*APISLEEP);
     result = ptr->U.result;
     free(ptr);
     Global_mp->hashprocessing--;
@@ -406,9 +409,9 @@ uint64_t MTsearch_hashtable(struct hashtable **hp_ptr,char *key)
     ptr->funcid = 'S';
     Global_mp->hashprocessing++;
     queue_enqueue("hashtableQ0",&Global_mp->hashtable_queue[0],&ptr->DL);
-    msleep(APISLEEP);
+    msleep(10*APISLEEP);
     while ( ptr->doneflag == 0 )
-        msleep(APISLEEP);
+        msleep(10*APISLEEP);
     hashval = ptr->U.hashval;
     free(ptr);
     Global_mp->hashprocessing--;
@@ -427,7 +430,7 @@ void *process_hashtablequeues(void *_p) // serialize hashtable functions
         {
             while ( (ptr= queue_dequeue(&Global_mp->hashtable_queue[iter],0)) != 0 )
             {
-                //printf("numitems.%ld process.%p hp %p\n",(long)(*ptr->hp_ptr)->hashsize,ptr,ptr->hp_ptr);
+               // printf("numitems.%ld process.%p hp %p\n",(long)(*ptr->hp_ptr)->hashsize,ptr,ptr->hp_ptr);
                 //printf(">>>>> Processs %p\n",ptr);
                 if ( ptr->funcid == 'A' )
                     ptr->U.result = add_hashtable(ptr->createdflagp,ptr->hp_ptr,ptr->key);

@@ -7,8 +7,8 @@
 #ifndef gateway_jl777_h
 #define gateway_jl777_h
 
-#define HARDCODED_VERSION "0.599"
-#define TIMESCRAMBLE
+#define HARDCODED_VERSION "0.707"
+//#define TIMESCRAMBLE
 
 #define MGW0_IPADDR "209.126.70.170"
 #define MGW1_IPADDR "209.126.70.156"
@@ -145,7 +145,14 @@
 
 char *os_compatible_path(char *fname);
 void sleepmillis(uint32_t milliseconds);
-
+void portable_sleep(int32_t n)
+{
+    sleep(n);
+}
+void msleep(int32_t n)
+{
+    usleep(n * 1000);
+}
 /*FILE *jl777fopen(char *fname,char *mode)
 {
     char *clonestr(char *);
@@ -172,15 +179,15 @@ void msleep(int32_t);
 
 #endif
 
-void portable_sleep(int32_t);
+//void portable_sleep(int32_t);
 
 
-void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) portable_sleep(60); } return(ptr); }
+/*void *jl777malloc(size_t allocsize) { void *ptr = malloc(allocsize); if ( ptr == 0 ) { fprintf(stderr,"malloc(%ld) failed\n",allocsize); while ( 1 ) portable_sleep(60); } return(ptr); }
 void *jl777calloc(size_t num,size_t allocsize) { void *ptr = calloc(num,allocsize); if ( ptr == 0 ) { fprintf(stderr,"calloc(%ld,%ld) failed\n",num,allocsize); while ( 1 ) portable_sleep(60); } return(ptr); }
 long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NULL)??\n"); return(0); } return(strlen(str)); }
 #define malloc jl777malloc
 #define calloc jl777calloc
-#define strlen jl777strlen
+#define strlen jl777strlen*/
 
 #ifdef UDP_OLDWAY
 #define portable_udp_t int32_t
@@ -191,9 +198,7 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #define portable_tcp_t uv_tcp_t
 
 //#define portable_mutex_t pthread_mutex_t
-#define portable_thread_t uv_thread_t
 
-#define portable_mutex_t uv_mutex_t
 
 // includes that include actual code
 //#include "includes/crypto_box.h"
@@ -220,8 +225,9 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "mappedptr.h"
 #include "ramchain.h"
 #include "includes/utlist.h"
+struct resultsitem { struct queueitem DL; char *argstr,*retstr; uint64_t txid; char retbuf[]; };
 
-#define portable_mutex_t uv_mutex_t
+/*#define portable_mutex_t uv_mutex_t
 struct queueitem { struct queueitem *next,*prev; };
 
 typedef struct queue
@@ -231,8 +237,7 @@ typedef struct queue
     char name[31],initflag;
 } queue_t;
 
-struct resultsitem { struct queueitem DL; char *argstr,*retstr; uint64_t txid; char retbuf[]; };
-/*typedef struct queue
+typedef struct queue
 {
 #ifdef oldqueue
 	void **buffer;
@@ -713,6 +718,9 @@ double _pairave(float valA,float valB)
 	else if ( valA != 0.f ) return(valA);
 	else return(valB);
 }
+int32_t queue_size(queue_t *queue);
+struct queueitem *queueitem(char *str);
+void free_queueitem(void *itemptr);
 
 #include "NXTservices.h"
 #include "jl777hash.h"

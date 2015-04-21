@@ -14,12 +14,14 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include "utlist.h"
 #include "utils777.c"
 #include "mutex.h"
 #include "utlist.h"
 
+typedef int32_t (*ptm)(int32_t,char *args[]);
+
 // nonportable functions needed in the OS specific directory
+ptm get_bundled_plugin(char *plugin);
 int32_t portable_truncate(char *fname,long filesize);
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite);
 int32_t os_supports_mappedfiles();
@@ -27,6 +29,7 @@ char *os_compatible_path(char *str);
 char *OS_rmstr();
 int32_t OS_launch_process(char *args[]);
 int32_t OS_getppid();
+int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
 
 // only OS portable functions in this file
 #define portable_mutex_t struct nn_mutex
@@ -61,6 +64,7 @@ void sleepmillis(uint32_t milliseconds);
 
 int32_t getline777(char *line,int32_t max);
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *args);
+uint16_t wait_for_myipaddr(char *ipaddr);
 
 #endif
 #else
@@ -135,7 +139,7 @@ void lock_queue(queue_t *queue)
 
 void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
 {
-    if ( queue->list == 0 )
+    if ( queue->list == 0 && name != 0 && name[0] != 0 )
         safecopy(queue->name,name,sizeof(queue->name));
     if ( item == 0 )
     {
@@ -174,7 +178,7 @@ int32_t queue_size(queue_t *queue)
 	return count;
 }
 
-uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
+static uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
 
 void *aligned_alloc(uint64_t allocsize)
 {
@@ -197,7 +201,7 @@ int32_t aligned_free(void *ptr)
     }
     memcpy(&realptr,(void *)((long)ptr - sizeof(realptr)),sizeof(realptr));
     diff = ((long)ptr - (long)realptr);
-    if ( diff < sizeof(ptr) || diff > 32 )
+    if ( diff < (long)sizeof(ptr) || diff > 32 )
     {
         printf("ptr %p and realptr %p too far apart %ld\n",ptr,realptr,diff);
         return(-2);
@@ -220,7 +224,15 @@ int32_t getline777(char *line,int32_t max)
         fprintf(stderr,"wait_for_input: error select s.%d\n",s);
     else if ( FD_ISSET(STDIN_FILENO,&fdset) == 0 || fgets(line,max,stdin) != 0 )
         return(-1);//sprintf(retbuf,"{\"result\":\"no messages\",\"myid\":\"%llu\",\"counter\":%d}",(long long)myid,counter), retbuf[0] = 0;
-    return(strlen(line));
+    return((int32_t)strlen(line));
+}
+
+uint16_t wait_for_myipaddr(char *ipaddr)
+{
+    uint16_t port = 0;
+    printf("need a portable way to find IP addr\n");
+    getchar();
+    return(port);
 }
 
 #endif

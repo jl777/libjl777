@@ -126,7 +126,7 @@ long copy_file(char *src,char *dest)
         if ( (destfp= fopen(os_compatible_path(dest),"wb")) != 0 )
         {
             while ( (len= fread(buf,1,sizeof(buf),srcfp)) > 0 )
-                if ( fwrite(buf,1,len,destfp) != len )
+                if ( (long)fwrite(buf,1,len,destfp) != len )
                     printf("write error at (%s) src.%ld vs. (%s) dest.%ld\n",src,ftell(srcfp),dest,ftell(destfp));
             len = ftell(destfp);
             fclose(destfp);

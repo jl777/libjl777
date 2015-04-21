@@ -312,7 +312,7 @@ void set_coin_blockheight(char *coin,uint32_t blocknum)
         return;
     for (i=0; i<Numcoins; i++)
     {
-        if ( (cp= Daemons[i]) != 0 && strcmp(coin,cp->name) == 0 )
+        if ( (cp= Coin_daemons[i]) != 0 && strcmp(coin,cp->name) == 0 )
         {
             if ( blocknum > cp->blockheight )
             {

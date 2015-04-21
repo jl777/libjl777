@@ -103,14 +103,14 @@
 #define VPN_MARKER "Vaw75Sz2YeHbiGygjgGu6LrhP7TJTP5tG8"
 
 int32_t Numcoins;
-struct coin_info **Daemons;
+struct coin_info **Coin_daemons;
 
 struct coin_info *get_coin_info(char *coinstr)
 {
     int32_t i;
     for (i=0; i<Numcoins; i++)
-        if ( strcmp(coinstr,Daemons[i]->name) == 0 )
-            return(Daemons[i]);
+        if ( strcmp(coinstr,Coin_daemons[i]->name) == 0 )
+            return(Coin_daemons[i]);
     return(0);
 }
 
@@ -333,8 +333,8 @@ struct coin_info *conv_assetid(char *assetid)
 {
     int32_t i;
     for (i=0; i<Numcoins; i++)
-        if ( strcmp(Daemons[i]->assetid,assetid) == 0 )
-            return(Daemons[i]);
+        if ( strcmp(Coin_daemons[i]->assetid,assetid) == 0 )
+            return(Coin_daemons[i]);
     return(0);
 }
 
@@ -1006,13 +1006,13 @@ void init_coinsarray(char *userdir,char *myipaddr)
             {
                 if ( Debuglevel > 0 )
                     printf("coinstr.(%s) myip.(%s)\n",coinstr,myipaddr);
-                Daemons = realloc(Daemons,sizeof(*Daemons) * (Numcoins+1));
+                Coin_daemons = realloc(Coin_daemons,sizeof(*Coin_daemons) * (Numcoins+1));
                 MGWcoins = realloc(MGWcoins,sizeof(*MGWcoins) * (Numcoins+1));
                 MGWcoins[Numcoins] = item;
-                Daemons[Numcoins] = cp;
+                Coin_daemons[Numcoins] = cp;
                 cp->RTblockheight = get_blockheight(cp);
                 if ( Debuglevel > 0 )
-                    printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
+                    printf("i.%d coinid.%d %s asset.%s RTheight.%u\n",i,Numcoins,coinstr,Coin_daemons[Numcoins]->assetid,(uint32_t)cp->RTblockheight);
                 Numcoins++;
                 cp->json = item;
                 parse_ipaddr(cp->myipaddr,myipaddr);

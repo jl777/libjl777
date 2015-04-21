@@ -14,7 +14,7 @@
 #include <libwebsockets.h>
 #endif
 #define MAX_LEN 40
-#include "plugins.h"
+#include "plugins/plugins.h"
 
 int32_t is_BTCD_command(cJSON *json)
 {
@@ -68,7 +68,7 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     retbuf[0] = 0;
     if ( (ptr= queue_dequeue(&BroadcastQ,1)) != 0 )
     {
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             printf("Got BroadcastQ\n");
         memcpy(&len,ptr,sizeof(len));
         str = &ptr[sizeof(len) + sizeof(duration)];
@@ -88,7 +88,8 @@ char *BTCDpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     {
         if ( (ptr= queue_dequeue(&NarrowQ,1)) != 0 )
         {
-            //printf("Got NarrowQ\n");
+            if ( Debuglevel > 1 )
+printf("Got NarrowQ\n");
             memcpy(&len,ptr,sizeof(len));
             if ( len < 4096 && len > 0 )
             {
@@ -127,7 +128,7 @@ void queue_GUIpoll(struct resultsitem *_rp)
     }
     else sprintf(rp->retbuf,"{\"result\":%s,\"txid\":\"%llu\"}",str,(long long)txid);
     free(str); free(args);
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("QUEUED for GUI: (%s) -> (%s) ptrs %p %p\n",rp->argstr,rp->retbuf,rp->argstr,rp->retstr);
     queue_enqueue("resultsQ",&ResultsQ,&rp->DL);
 }
@@ -145,7 +146,7 @@ char *GUIpoll_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     {
         if ( (rp= queue_dequeue(&ResultsQ,0)) != 0 )
         {
-            if ( Debuglevel > 2 )
+            if ( Debuglevel > 1 )
                 fprintf(stderr,"Got GUI ResultsQ.(%s) ptrs.%p %p %p\n",rp->retbuf,rp,rp->argstr,rp->retstr);
             if ( rp->argstr != 0 )
                 free(rp->argstr);
@@ -1754,13 +1755,15 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", "prizefund", 0 };
 
     // plugins
-    static char *passthru[] = { (char *)passthru_func, "passthru", "V", "coin", "method", "params", "tag", "daemonid", 0 };
+    static char *passthru[] = { (char *)passthru_func, "passthru", "V", "coin", "method", "params", "tag", "plugin", "daemonid", "instanceid", 0 };
+    static char *plugin[] = { (char *)plugin_func, "plugin", "V", "plugin", "daemonid", "instanceid", "method", 0 };
+    static char *registerplugin[] = { (char *)register_func, "register", "V", "plugin", "daemonid", "instanceid", "methods", 0 };
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
     //static char *python[] = { (char *)python_func, "python", "V",  "name", "launch", "websocket", 0 };
-    static char *syscall[] = { (char *)syscall_func, "syscall", "V", "name", "daemonize", "websocket", "jsonargs", 0 };
+    static char *syscall[] = { (char *)syscall_func, "syscall", "V", "name", "daemonize", "websocket", "jsonargs", "plugin", "ipaddr", "port", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "daemonid", 0 };
 
-    static char **commands[] = { stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, syscall, getpeers, maketelepods, tradebot, respondtx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile, allsignals, getsignal, jumptrades, cancelquote, lottostats, tradehistory, makeoffer3, trollbox };
+    static char **commands[] = { registerplugin, plugin, stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, syscall, getpeers, maketelepods, tradebot, respondtx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile, allsignals, getsignal, jumptrades, cancelquote, lottostats, tradehistory, makeoffer3, trollbox };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];

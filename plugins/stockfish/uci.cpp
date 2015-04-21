@@ -146,9 +146,9 @@ void UCI::loop(int argc, char* argv[]) {
   Position pos(StartFEN, false, Threads.main()); // The root position
   string token, cmd;
 
-  for (int i = 1; i < argc; ++i)
-      cmd += std::string(argv[i]) + " ";
-
+  //for (int i = 1; i < argc; ++i)
+  //    cmd += std::string(argv[i]) + " ";
+    argc = 1;
   do {
       if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input or EOF
           cmd = "quit";

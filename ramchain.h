@@ -78,10 +78,6 @@ char *ramrichlist(char *origargstr,char *sender,char *previpaddr,char *coin,int3
 char *rambalances(char *origargstr,char *sender,char *previpaddr,char *coin,char **coins,double *rates,char ***coinaddrs,int32_t numcoins);
 char *ramaddrlist(char *origargstr,char *sender,char *previpaddr,char *coin);
 
-int32_t portable_mutex_init(portable_mutex_t *mutex);
-void portable_mutex_lock(portable_mutex_t *mutex);
-void portable_mutex_unlock(portable_mutex_t *mutex);
-
 #define HUFF_NUMFREQS 1
 #define SETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
 #define GETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
@@ -151,9 +147,6 @@ struct ramchain_hashtable
     uint32_t ind,numalloc;
     uint8_t type;
 };
-char *os_compatible_path(char *fname);
-void portable_sleep(int32_t);
-void msleep(int32_t);
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };
@@ -221,7 +214,6 @@ struct syncstate
     uint16_t format,pending,majoritybits,minoritybits;
 };
 
-struct alloc_space { void *ptr; long used,size; };
 struct ramchain_info
 {
     struct mappedblocks blocks,Vblocks,Bblocks,blocks64,blocks4096,*mappedblocks[8];
@@ -320,6 +312,8 @@ void *ram_gethashdata(struct ramchain_info *ram,char type,uint32_t rawind);
 struct rampayload *ram_payloads(struct ramchain_hashptr **ptrp,int32_t *numpayloadsp,struct ramchain_info *ram,char *hashstr,char type);
 struct rampayload *ram_getpayloadi(struct ramchain_hashptr **ptrp,struct ramchain_info *ram,char type,uint32_t rawind,uint32_t i);
 
+#define ram_millis milliseconds
+
 int32_t _valid_txamount(struct ramchain_info *ram,uint64_t value,char *coinaddr)
 {
     if ( value >= MIN_DEPOSIT_FACTOR * (ram->txfee + ram->NXTfee_equiv) )
@@ -362,7 +356,7 @@ char *_mbstr2(double n)
 	return(str);
 }
 
-uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
+static uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
 
 void *alloc_aligned_buffer(uint64_t allocsize)
 {
@@ -399,7 +393,7 @@ void *alloc_aligned_buffer(uint64_t allocsize)
 	return(ptr);
 }
 
-void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
+/*void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 {
 	void *mmap64(void *addr,size_t len,int32_t prot,int32_t flags,int32_t fildes,off_t off);
 	int32_t fd,rwflags,flags = MAP_FILE|MAP_SHARED;
@@ -449,7 +443,7 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	//	printf("MAPPED(%s).rw%d %lx %ld %.1fmb    | ",fname,enablewrite,filesize,filesize,(double)filesize/1000000);
 	*filesizep = filesize;
 	return(ptr);
-}
+}*/
 
 int32_t release_map_file(void *ptr,uint64_t filesize)
 {
@@ -755,7 +749,7 @@ void delete_file(char *fname,int32_t scrubflag)
         system(os_compatible_path(cmdstr));
     }
 }
-
+/*
 int32_t portable_mutex_init(portable_mutex_t *mutex)
 {
     return(uv_mutex_init(mutex)); //pthread_mutex_init(mutex,NULL);
@@ -775,7 +769,14 @@ void portable_mutex_unlock(portable_mutex_t *mutex)
 
 #define ram_millis milliseconds
 
-double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft)
+
+
+void ram_clear_alloc_space(struct alloc_space *mem)
+{
+    memset(mem->ptr,0,mem->size);
+    mem->used = 0;
+}*/
+double estimate_completion(double startmilli,int32_t processed,int32_t numleft)
 {
     double elapsed,rate;
     if ( processed <= 0 )
@@ -786,12 +787,6 @@ double estimate_completion(char *coinstr,double startmilli,int32_t processed,int
         return(0.);
     //printf("numleft %d rate %f\n",numleft,rate);
     return(numleft * rate);
-}
-
-void ram_clear_alloc_space(struct alloc_space *mem)
-{
-    memset(mem->ptr,0,mem->size);
-    mem->used = 0;
 }
 
 void *memalloc(struct alloc_space *mem,long size)
@@ -809,6 +804,12 @@ void *memalloc(struct alloc_space *mem,long size)
     if ( (mem->used & 0xf) != 0 )
         mem->used += 0x10 - (mem->used & 0xf);
     return(ptr);
+}
+
+static void ram_clear_alloc_space(struct alloc_space *mem)
+{
+    memset(mem->ptr,0,mem->size);
+    mem->used = 0;
 }
 
 void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector)
@@ -852,13 +853,6 @@ void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector
     return(memalloc(mem,size));
 }
 
-void ram_init_tmpspace(struct ramchain_info *ram,long size)
-{
-    ram->Tmp.ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,size,8) : calloc(1,size);
-    // mem->ptr = malloc(size);
-    ram->Tmp.size = size;
-    ram_clear_alloc_space(&ram->Tmp);
-}
 
 // >>>>>>>>>>>>>>  start varint functions
 int32_t hcalc_varint(uint8_t *buf,uint64_t x)
@@ -7420,8 +7414,8 @@ void ram_init_directories(struct ramchain_info *ram)
 void ram_setdispstr(char *buf,struct ramchain_info *ram,double startmilli)
 {
     double estimatedV,estimatedB,estsizeV,estsizeB;
-    estimatedV = estimate_completion(ram->name,startmilli,ram->Vblocks.processed,(int32_t)ram->S.RTblocknum-ram->Vblocks.blocknum)/60000;
-    estimatedB = estimate_completion(ram->name,startmilli,ram->Bblocks.processed,(int32_t)ram->S.RTblocknum-ram->Bblocks.blocknum)/60000;
+    estimatedV = estimate_completion(startmilli,ram->Vblocks.processed,(int32_t)ram->S.RTblocknum-ram->Vblocks.blocknum)/60000;
+    estimatedB = estimate_completion(startmilli,ram->Bblocks.processed,(int32_t)ram->S.RTblocknum-ram->Bblocks.blocknum)/60000;
     estsizeV = (ram->Vblocks.sum / (1 + ram->Vblocks.count)) * ram->S.RTblocknum;
     estsizeB = (ram->Bblocks.sum / (1 + ram->Bblocks.count)) * ram->S.RTblocknum;
     sprintf(buf,"%-5s: RT.%d nonz.%d V.%d B.%d B64.%d B4096.%d | %s %s R%.2f | minutes: V%.1f B%.1f | outputs.%llu %.8f spends.%llu %.8f -> balance: %llu %.8f ave %.8f",ram->name,ram->S.RTblocknum,ram->nonzblocks,ram->Vblocks.blocknum,ram->Bblocks.blocknum,ram->blocks64.blocknum,ram->blocks4096.blocknum,_mbstr(estsizeV),_mbstr2(estsizeB),estsizeV/(estsizeB+1),estimatedV,estimatedB,(long long)ram->S.numoutputs,dstr(ram->S.totaloutputs),(long long)ram->S.numspends,dstr(ram->S.totalspends),(long long)(ram->S.numoutputs - ram->S.numspends),dstr(ram->S.totaloutputs - ram->S.totalspends),dstr(ram->S.totaloutputs - ram->S.totalspends)/(ram->S.numoutputs - ram->S.numspends));
@@ -8162,7 +8156,7 @@ uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *block
         } //else printf("ram_process_blocks: hpptr.%p hp.%p\n",hpptr,hp);
         blocks->processed += (1 << blocks->shift);
         blocks->blocknum += (1 << blocks->shift);
-        estimated = estimate_completion(ram->name,startmilli,blocks->processed,(int32_t)ram->S.RTblocknum-blocks->blocknum) / 60000.;
+        estimated = estimate_completion(startmilli,blocks->processed,(int32_t)ram->S.RTblocknum-blocks->blocknum) / 60000.;
 //break;
     }
     //printf("(%d >> %d) < (%d >> %d)\n",blocks->blocknum,blocks->shift,prev->blocknum,blocks->shift);
@@ -9335,6 +9329,13 @@ void ram_regen(struct ramchain_info *ram)
     }
     printf("FINISHED REGEN\n");
     exit(1);
+}
+void ram_init_tmpspace(struct ramchain_info *ram,long size)
+{
+    ram->Tmp.ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,size,8) : calloc(1,size);
+    // mem->ptr = malloc(size);
+    ram->Tmp.size = size;
+    ram_clear_alloc_space(&ram->Tmp);
 }
 
 void ram_allocs(struct ramchain_info *ram)

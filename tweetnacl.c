@@ -811,14 +811,13 @@ int crypto_sign_open(u8 *m,u64 *mlen,const u8 *sm,u64 n,const u8 *pk)
     return 0;
 }
 #undef u8
-
+/*
 #ifndef _WIN32
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-/* it's really stupid that there isn't a syscall for this */
 
 static int fd = -1;
 
@@ -858,6 +857,6 @@ void randombytes(unsigned char *x,long xlen)
     CryptReleaseContext(prov, 0);
 }
 
-#endif /* _WIN32  */
+#endif*/ /* _WIN32  */
 
 

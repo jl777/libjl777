@@ -25,14 +25,24 @@
 #include "system777.c"
 #undef DEFINES_ONLY
 
+#include "sophia.h"
+
 int32_t getline777(char *line,int32_t max); // should return right away if no user input
 
 void process_daemon_json(char *retbuf,char *jsonstr,cJSON *json) // this is the main function to process things
 {
-    char *str;
-    str = stringifyM(jsonstr);
-    sprintf(retbuf,"{\"args\":%s,\"milliseconds\":%f}\n",str,milliseconds());
-    free(str);
+    char sophia[MAX_JSON_FIELD],*str;
+    copy_cJSON(sophia,cJSON_GetObjectItem(json,"sophia"));
+    if ( sophia[0] != 0 )
+    {
+        
+    }
+    else
+    {
+        str = stringifyM(jsonstr);
+        sprintf(retbuf,"{\"args\":%s,\"milliseconds\":%f}\n",str,milliseconds());
+        free(str);
+    }
 }
 
 int32_t get_socket_status(int32_t sock,int32_t timeoutmillis)

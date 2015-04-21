@@ -21,30 +21,22 @@ struct return_string {
 
 size_t accumulate(void *ptr, size_t size, size_t nmemb, struct return_string *s);
 void init_string(struct return_string *s);
-double milliseconds();
+
+#define DEFINES_ONLY
+#include "plugins/utils/system777.c"
+#undef DEFINES_ONLY
 //char *post_process_bitcoind_RPC(char *debugstr,char *command,char *rpcstr);
 //char *bitcoind_RPC(CURL *curl_handle,char *debugstr,char *url,char *userpass,char *command,char *params);
-void portable_sleep(int32_t n)
-{
-    sleep(n);
-}
-void msleep(int32_t n)
-{
-    usleep(n * 1000);
-}
-void sleepmillis(int32_t n)
-{
-    usleep(n * 1000);
-}
-char *os_compatible_path(char *str) { return(str); }
-char *OS_rmstr() { return("rm"); }
+
+//char *os_compatible_path(char *str) { return(str); }
+//char *OS_rmstr() { return("rm"); }
 
 /************************************************************************
  *
  * return the current system time in milliseconds
  *
  ************************************************************************/
-double milliseconds(void)
+/*double milliseconds(void)
 {
     static struct timeval timeval,first_timeval;
     gettimeofday(&timeval,0);
@@ -54,7 +46,7 @@ double milliseconds(void)
         return(0);
     }
     return((timeval.tv_sec - first_timeval.tv_sec) * 1000. + (timeval.tv_usec - first_timeval.tv_usec)/1000.);
-}
+}*/
 
 #define EXTRACT_BITCOIND_RESULT     // if defined, ensures error is null and returns the "result" field
 #ifdef EXTRACT_BITCOIND_RESULT

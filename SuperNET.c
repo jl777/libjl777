@@ -40,7 +40,6 @@ extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
 extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT,Finished_init;
 extern cJSON *MGWconf;
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
-char *bitcoind_RPC(void *deprecated,char *debugstr,char *url,char *userpass,char *command,char *params);
 void expand_ipbits(char *ipaddr,uint32_t ipbits);
 uint64_t conv_acctstr(char *acctstr);
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
@@ -50,22 +49,20 @@ char *clonestr(char *);
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
 char *_mbstr(double n);
 char *_mbstr2(double n);
-double milliseconds();
 struct coin_info *get_coin_info(char *coinstr);
 uint32_t get_blockheight(struct coin_info *cp);
 long stripwhite_ns(char *buf,long len);
 int32_t safecopy(char *dest,char *src,long len);
-double estimate_completion(char *coinstr,double startmilli,int32_t processed,int32_t numleft);
 
+#define DEFINES_ONLY
+#include "plugins/utils/system777.c"
+#undef DEFINES_ONLY
 
 #define INCLUDE_CODE
 #include "ramchain.h"
 #undef INCLUDE_CODE
 
-char *os_compatible_path(char *fname);
-void sleepmillis(uint32_t milliseconds);
-#define portable_sleep(n) sleepmillis((n) * 1000)
-#define msleep(n) sleepmillis(n)
+
 
 char *SuperNET_url()
 {

@@ -26,7 +26,6 @@ static int inet_ntop6(unsigned char *src, char *dst, size_t size);
 static int inet_pton4(char *src, unsigned char *dst);
 static int inet_pton6(char *src, unsigned char *dst);
 
-
 int32_t portable_ntop(int af, void* src, char* dst, size_t size)
 {
     switch (af) {
