@@ -282,10 +282,10 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
     {
         int32_t echo_main(int32_t,char *args[]);
         int32_t sophia_main(int32_t,char *args[]);
-        if ( strcmp(dp->name,"echo") == 0 )
-            return(echo_main(n,args));
-        else if ( strcmp(dp->name,"sophia") == 0 )
+        if ( strcmp(dp->name,"sophia") == 0 )
             return(sophia_main(n,args));
+        //else if ( strcmp(dp->name,"echo") == 0 )
+        //    return(echo_main(n,args));
         else return(-1);
     }
     else return(OS_launch_process(args));
@@ -293,7 +293,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"echo") == 0 || strcmp(plugin,"sophia") == 0 )
+    if ( strcmp(plugin,"sophia") == 0 ) //strcmp(plugin,"echo") == 0 || 
         return(1);
     else return(0);
 }

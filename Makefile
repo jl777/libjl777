@@ -20,7 +20,7 @@ LIBS=-lm -lreadline
 TARGET	= libjl777.a
 SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
 	variable.c clibrary.c platform.c include.c \
-	plugins/utils/system777.c plugins/utils/utils777.c plugins/sophia/sophia_main.c  plugins/echo.c \
+	plugins/utils/system777.c plugins/utils/utils777.c plugins/sophia/sophia_main.c \
 	platform/platform_unix.c platform/library_unix.c \
 	cstdlib/stdio.c cstdlib/math.c cstdlib/string.c cstdlib/stdlib.c \
 	cstdlib/time.c cstdlib/errno.c cstdlib/ctype.c cstdlib/stdbool.c \
