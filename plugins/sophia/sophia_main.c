@@ -16,7 +16,7 @@ extern char SOPHIA_DIR[];
 
 #include "sophia.h"
 #define DEFINES_ONLY
-#include "plugin777.c"
+#include "../plugin777.c"
 #undef DEFINES_ONLY
 
 STRUCTNAME
@@ -253,7 +253,7 @@ void sophia_setget(char *retbuf,int32_t max,cJSON *json)
             {
                 if ( (err= sp_set(obj,"key",keystr,strlen(keystr))) == 0 )
                 {
-                    if ( valstr != 0 )
+                    if ( (valstr= cJSON_str(cJSON_GetObjectItem(json,"value"))) != 0 )
                     {
                         if ( (err= sp_set(obj,"value",valstr,strlen(valstr))) != 0 )
                             strcpy(retbuf,"{\"error\":\"cant set object value\"}");
@@ -564,4 +564,4 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     }
     return(retcode);
 }
-#include "plugin777.c"
+#include "../plugin777.c"
