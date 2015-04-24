@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include "cJSON.h"
 #include "system777.c"
 #include "NXT777.c"
 #include "bits777.c"
@@ -343,32 +344,6 @@ void ram_addunspent(struct ramchain_info *ram,char *coinaddr,struct rampayload *
              }*/
         }
     }
-}
-
-struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset *ap,char *txid)
-{
-    int32_t createdflag;
-    struct NXT_assettxid *tp;
-    if ( createdflagp == 0 )
-        createdflagp = &createdflag;
-    tp = MTadd_hashtable(createdflagp,&NXT_assettxids,txid);
-    if ( *createdflagp != 0 )
-    {
-        //tp->assetbits = ap->assetbits;
-        // tp->redeemtxid = calc_nxt64bits(txid);
-        // tp->timestamp = timestamp;
-        //printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
-        if ( ap != 0 )
-        {
-            if ( ap->num >= ap->max )
-            {
-                ap->max = ap->num + NXT_ASSETLIST_INCR;
-                ap->txids = realloc(ap->txids,sizeof(*ap->txids) * ap->max);
-            }
-            ap->txids[ap->num++] = tp;
-        }
-    }
-    return(tp);
 }
 
 int32_t _ram_update_redeembits(struct ramchain_info *ram,uint64_t redeembits,uint64_t AMtxidbits,char *cointxid,struct address_entry *bp)
@@ -838,7 +813,7 @@ uint64_t ram_verify_txstillthere(struct ramchain_info *ram,char *txidstr,struct 
     cJSON *txjson,*voutsobj;
     int32_t numvouts;
     uint64_t value = 0;
-    if ( (retstr= _get_transaction(ram,txidstr)) != 0 )
+    if ( (retstr= _get_transaction(ram->name,ram->serverport,ram->userpass,txidstr)) != 0 )
     {
         if ( (txjson= cJSON_Parse(retstr)) != 0 )
         {

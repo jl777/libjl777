@@ -7,9 +7,9 @@
 //
 
 #define BUNDLED
-#define PLUGINSTR "MGW"
-#define PLUGNAME(NAME) MGW ## NAME
-#define STRUCTNAME struct PLUGNAME(_info)
+#define PLUGINSTR "echo"
+#define PLUGNAME(NAME) echo ## NAME
+#define STRUCTNAME struct PLUGNAME(_info) 
 #define STRINGIFY(NAME) #NAME
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
@@ -21,17 +21,12 @@ STRUCTNAME
 {
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 };
-char *PLUGNAME(_methods)[] = { "stats", "echo2" }; // list of supported methods
-
-int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid = -1;
-char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
-int Numramchains,Numgateways = 3;
-struct ramchain_info *Ramchains[100];
+char *PLUGNAME(_methods)[] = { "echo", "echo2" }; // list of supported methods
 
 uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *data)
 {
     uint64_t disableflags = 0;
-    printf("init %s size.%ld\n",plugin->name,sizeof(struct MGW_info));
+    printf("init %s size.%ld\n",plugin->name,sizeof(struct echo_info));
     // runtime specific state can be created and put into *data
     return(disableflags); // set bits corresponding to array position in _methods[]
 }

@@ -30,7 +30,11 @@
 #include "miniupnpc/miniupnpc.h"
 #include "miniupnpc/upnpcommands.h"
 #include "miniupnpc/upnperrors.h"
-
+int32_t recvsock;
+#define DEFINES_ONLY
+#include "plugins/utils/system777.c"
+#include "plugins/utils/utils777.c"
+#undef DEFINES_ONLY
 
 #include "SuperNET.h"
 #include "cJSON.h"
@@ -54,12 +58,8 @@ uint32_t get_blockheight(struct coin_info *cp);
 long stripwhite_ns(char *buf,long len);
 int32_t safecopy(char *dest,char *src,long len);
 
-#define DEFINES_ONLY
-#include "plugins/utils/system777.c"
-#undef DEFINES_ONLY
-
 #define INCLUDE_CODE
-#include "ramchain.h"
+//#include "ramchain.h"
 #undef INCLUDE_CODE
 
 
@@ -148,6 +148,7 @@ char *GUIpoll(char *txidstr,char *senderipaddr,uint16_t *portp)
 
 char *process_commandline_json(cJSON *json)
 {
+#ifdef later
     char *inject_pushtx(char *coinstr,cJSON *json);
     bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct);
     char *issue_ramstatus(char *coinstr);
@@ -401,6 +402,8 @@ char *process_commandline_json(cJSON *json)
         else break;
     }
     return(retstr);
+#endif
+    return(clonestr("later"));
 }
 
 char *load_filestr(char *userNXTaddr,int32_t gatewayid)
@@ -448,12 +451,15 @@ void bridge_handler(struct transfer_args *args)
     printf("bridge_handler.gateway%d/(%s).%d\n",gatewayid,name,args->totallen);
 }
 
+#include "nn.h"
+#include "bus.h"
+
 void *GUIpoll_loop(void *arg)
 {
     cJSON *json;
     uint16_t port;
-    int32_t sleeptime = 0;
-    char txidstr[MAX_JSON_FIELD],buf[MAX_JSON_FIELD],senderipaddr[MAX_JSON_FIELD],*retstr;
+    int32_t n,sleeptime = 0;
+    char txidstr[MAX_JSON_FIELD],buf[MAX_JSON_FIELD],senderipaddr[MAX_JSON_FIELD],*retstr,*msg;
     while ( 1 )
     {
         sleeptime++;
@@ -474,6 +480,11 @@ void *GUIpoll_loop(void *arg)
             }
             free(retstr);
         }
+        while ( 0 && (n= nn_recv(recvsock,&msg,NN_MSG,0)) > 0 )
+        {
+            printf("got inproc msg.(%s)\n",msg);
+            nn_freemsg(msg);
+        }// else printf("no messages\n");
         if ( sleeptime != 0 )
             portable_sleep(sleeptime);
     }
@@ -626,6 +637,7 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     return 1; //ok - we are mapped:)
 }
 
+#define NXTSERVER "https://127.0.0.1:7876/nxt?requestType"
 uint64_t get_NXT_forginginfo(char *gensig,uint32_t height)
 {
     cJSON *json;
@@ -675,7 +687,62 @@ int main(int argc,const char *argv[])
     FILE *fp;
     cJSON *json = 0;
     int32_t retval = -666;
+    if ( 0 )
+    {
+        struct db777 *db777_create(char *path,char *name,char *compression);
+        int32_t db777_close(struct db777 *DB);
+        int32_t db777_add(struct db777 *DB,char *key,char *value);
+        int32_t db777_find(char *retbuf,int32_t max,struct db777 *DB,char *key);
+        struct db777 *db;
+        int i;
+        char buf[16],field[64],retbuf[65536];
+        db = db777_create("/tmp","test",0);
+        for (i=0; i<100000; i++)
+        {
+            sprintf(field,"field.%d",i);
+            db777_find(retbuf,sizeof(retbuf),db,field);
+            printf("%s\n",retbuf);
+            strcpy(buf,field);
+            db777_add(db,field,buf);
+        }
+        db777_close(db);
+        db = db777_create("/tmp","zstd","zstd");
+        for (i=0; i<100000; i++)
+        {
+            sprintf(field,"field.%d",i);
+            strcpy(buf,field);
+            db777_add(db,field,buf);
+        }
+        db777_close(db);
+        
+        db = db777_create("/tmp","lz4","lz4");
+        for (i=0; i<100000; i++)
+        {
+            sprintf(field,"field.%d",i);
+            strcpy(buf,field);
+            db777_add(db,field,buf);
+        }
+        db777_close(db);
+        getchar();
+    }
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
+    {
+        int32_t err,to = 1;
+        char *bindaddr = "inproc://test";
+        printf("create nn_socket.(%s)\n",bindaddr);
+        if ( (recvsock= nn_socket(AF_SP,NN_BUS)) < 0 )
+        {
+            printf("error %d nn_socket err.%s\n",recvsock,nn_strerror(nn_errno()));
+            return(-1);
+        }
+        if ( (err= nn_bind(recvsock,bindaddr)) < 0 )
+        {
+            printf("error %d nn_bind.%d (%s) | %s\n",err,recvsock,bindaddr,nn_strerror(nn_errno()));
+            return(-1);
+        }
+        nn_setsockopt(recvsock,NN_SOL_SOCKET,NN_RCVTIMEO,&to,sizeof(to));
+        printf("%s bound\n",bindaddr);
+    }
     IS_LIBTEST = 1;
     if ( argc > 1 && argv[1] != 0 )
     {

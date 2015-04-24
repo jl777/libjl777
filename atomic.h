@@ -517,7 +517,7 @@ char *submit_trades(struct pending_offer *offer,char *NXTACCTSECRET)
         if ( submit_trade(&json,whostr,polarity*dir * pt->notxfer,&offer->halves[i],&offer->halves[i+1],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
             return(pending_offer_error(offer,json));
         printf("second quarter:\n");
-        sprintf(whostr,"%s%s",(polarity*dir2 < 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
+        sprintf(whostr,"%s%s",(polarity*dir2 > 0) ? "seller" : "buyer",(i == 0) ? "" : "2");
         if ( submit_trade(&json,whostr,polarity*dir2 * pt->notxfer,&offer->halves[i+1],&offer->halves[i],offer,NXTACCTSECRET,offer->base,offer->rel,offer->price,offer->volume) < 0 )
             return(pending_offer_error(offer,json));
         polarity = -polarity;

@@ -223,7 +223,7 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 #include "SuperNET.h"
 #include "jsoncodec.h"
 #include "mappedptr.h"
-#include "ramchain.h"
+//#include "ramchain.h"
 #include "includes/utlist.h"
 struct resultsitem { struct queueitem DL; char *argstr,*retstr; uint64_t txid; char retbuf[]; };
 
@@ -610,7 +610,7 @@ extern uv_loop_t *UV_loop;
 extern struct pingpong_queue Pending_offersQ;
 
 char Server_ipaddrs[256][MAX_JSON_FIELD],DATADIR[MAX_JSON_FIELD],PRICEDIR[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD];
-char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD];
+char Server_NXTaddrs[256][MAX_JSON_FIELD],SERVER_PORTSTR[MAX_JSON_FIELD],SOPHIA_DIR[MAX_JSON_FIELD];
 char *MGW_blacklist[256],*MGW_whitelist[256],ORIGBLOCK[MAX_JSON_FIELD],NXTISSUERACCT[MAX_JSON_FIELD];
 cJSON *MGWconf,**MGWcoins;
 uint64_t MIN_NQTFEE = SATOSHIDEN;
@@ -733,7 +733,7 @@ void free_queueitem(void *itemptr);
 //#include "coincache.h"
 #include "kademlia.h"
 #include "packets.h"
-#include "mofnfs.h"
+//#include "mofnfs.h"
 #include "contacts.h"
 #include "deaddrop.h"
 #include "telepathy.h"
@@ -745,7 +745,7 @@ void free_queueitem(void *itemptr);
 //#include "bars.h"
 #include "InstantDEX.h"
 #include "teleport.h"
-#include "mgw.h"
+//#include "mgw.h"
 #include "tradebot.h"
 #include "lotto.h"
 //#include "NXTservices.c"

@@ -19,6 +19,17 @@
 #include "files777.c"
 #include "huff.c"
 #include "init.c"
+struct rawblock
+{
+    uint32_t blocknum,allocsize;
+    uint16_t format,numtx,numrawvins,numrawvouts;
+    uint64_t minted;
+    struct rawtx txspace[MAX_BLOCKTX];
+    struct rawvin vinspace[MAX_BLOCKTX];
+    struct rawvout voutspace[MAX_BLOCKTX];
+};
+cJSON *ram_rawblock_json(struct rawblock *raw,int32_t allocsize);
+void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 
 #endif
 #else
@@ -30,6 +41,157 @@
 #include __BASE_FILE__
 #undef DEFINES_ONLY
 #endif
+
+void _set_string(char type,char *dest,char *src,long max)
+{
+    if ( src == 0 || src[0] == 0 )
+        sprintf(dest,"ffff");
+    else if ( strlen(src) < max-1)
+        strcpy(dest,src);
+    else sprintf(dest,"nonstandard");
+}
+
+uint64_t _get_txvouts(struct rawblock *raw,struct rawtx *tx,struct ramchain_info *ram,cJSON *voutsobj)
+{
+    cJSON *item;
+    uint64_t value,total = 0;
+    struct rawvout *v;
+    int32_t i,numvouts = 0;
+    char coinaddr[8192],script[8192];
+    tx->firstvout = raw->numrawvouts;
+    if ( voutsobj != 0 && is_cJSON_Array(voutsobj) != 0 && (numvouts= cJSON_GetArraySize(voutsobj)) > 0 && tx->firstvout+numvouts < MAX_BLOCKTX )
+    {
+        for (i=0; i<numvouts; i++,raw->numrawvouts++)
+        {
+            item = cJSON_GetArrayItem(voutsobj,i);
+            value = conv_cJSON_float(item,"value");
+            v = &raw->voutspace[raw->numrawvouts];
+            memset(v,0,sizeof(*v));
+            v->value = value;
+            total += value;
+            _extract_txvals(coinaddr,script,1,item); // default to nohexout
+            _set_string('a',v->coinaddr,coinaddr,sizeof(v->coinaddr));
+            _set_string('s',v->script,script,sizeof(v->script));
+        }
+    } else printf("error with vouts\n");
+    tx->numvouts = numvouts;
+    return(total);
+}
+
+int32_t _get_txvins(struct rawblock *raw,struct rawtx *tx,struct ramchain_info *ram,cJSON *vinsobj)
+{
+    cJSON *item;
+    struct rawvin *v;
+    int32_t i,numvins = 0;
+    char txidstr[8192],coinbase[8192];
+    tx->firstvin = raw->numrawvins;
+    if ( vinsobj != 0 && is_cJSON_Array(vinsobj) != 0 && (numvins= cJSON_GetArraySize(vinsobj)) > 0 && tx->firstvin+numvins < MAX_BLOCKTX )
+    {
+        for (i=0; i<numvins; i++,raw->numrawvins++)
+        {
+            item = cJSON_GetArrayItem(vinsobj,i);
+            if ( numvins == 1  )
+            {
+                copy_cJSON(coinbase,cJSON_GetObjectItem(item,"coinbase"));
+                if ( strlen(coinbase) > 1 )
+                    return(0);
+            }
+            copy_cJSON(txidstr,cJSON_GetObjectItem(item,"txid"));
+            v = &raw->vinspace[raw->numrawvins];
+            memset(v,0,sizeof(*v));
+            v->vout = (int)get_cJSON_int(item,"vout");
+            _set_string('t',v->txidstr,txidstr,sizeof(v->txidstr));
+        }
+    } else printf("error with vins\n");
+    tx->numvins = numvins;
+    return(numvins);
+}
+
+uint64_t _get_txidinfo(struct rawblock *raw,struct rawtx *tx,struct ramchain_info *ram,int32_t txind,char *txidstr)
+{
+    char *retstr = 0;
+    cJSON *txjson;
+    uint64_t total = 0;
+    if ( strlen(txidstr) < sizeof(tx->txidstr)-1 )
+        strcpy(tx->txidstr,txidstr);
+    tx->numvouts = tx->numvins = 0;
+    if ( (retstr= _get_transaction(ram->name,ram->serverport,ram->userpass,txidstr)) != 0 )
+    {
+        if ( (txjson= cJSON_Parse(retstr)) != 0 )
+        {
+            _get_txvins(raw,tx,ram,cJSON_GetObjectItem(txjson,"vin"));
+            total = _get_txvouts(raw,tx,ram,cJSON_GetObjectItem(txjson,"vout"));
+            free_json(txjson);
+        } else printf("update_txid_infos parse error.(%s)\n",retstr);
+        free(retstr);
+    } else printf("error getting.(%s)\n",txidstr);
+    //printf("tx.%d: (%s) numvins.%d numvouts.%d (raw %d %d)\n",txind,tx->txidstr,tx->numvins,tx->numvouts,raw->numrawvins,raw->numrawvouts);
+    return(total);
+}
+
+cJSON *_get_blocktxarray(uint32_t *blockidp,int32_t *numtxp,struct ramchain_info *ram,cJSON *blockjson)
+{
+    cJSON *txarray = 0;
+    if ( blockjson != 0 )
+    {
+        *blockidp = (uint32_t)get_API_int(cJSON_GetObjectItem(blockjson,"height"),0);
+        txarray = cJSON_GetObjectItem(blockjson,"tx");
+        *numtxp = cJSON_GetArraySize(txarray);
+    }
+    return(txarray);
+}
+
+void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag)
+{
+    int32_t i;
+    if ( totalflag != 0 )
+        memset(raw,0,sizeof(*raw));
+    else
+    {
+        raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
+        for (i=0; i<MAX_BLOCKTX; i++)
+        {
+            raw->txspace[i].txidstr[0] = 0;
+            raw->vinspace[i].txidstr[0] = 0;
+            raw->voutspace[i].script[0] = 0;
+            raw->voutspace[i].coinaddr[0] = 0;
+        }
+    }
+}
+
+uint32_t _get_blockinfo(struct rawblock *raw,struct ramchain_info *ram,uint32_t blocknum)
+{
+    char txidstr[8192],mintedstr[8192];
+    cJSON *json,*txobj;
+    uint32_t blockid;
+    int32_t txind,n;
+    uint64_t total = 0;
+    ram_clear_rawblock(raw,1);
+    //raw->blocknum = blocknum;
+    //printf("_get_blockinfo.%d\n",blocknum);
+    raw->minted = raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
+    if ( (json= _get_blockjson(0,ram->name,ram->serverport,ram->userpass,0,blocknum)) != 0 )
+    {
+        raw->blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"height"),0);
+        copy_cJSON(mintedstr,cJSON_GetObjectItem(json,"mint"));
+        if ( mintedstr[0] != 0 )
+            raw->minted = (uint64_t)(atof(mintedstr) * SATOSHIDEN);
+        if ( (txobj= _get_blocktxarray(&blockid,&n,ram,json)) != 0 && blockid == blocknum && n < MAX_BLOCKTX )
+        {
+            for (txind=0; txind<n; txind++)
+            {
+                copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
+                //printf("block.%d txind.%d TXID.(%s)\n",blocknum,txind,txidstr);
+                total += _get_txidinfo(raw,&raw->txspace[raw->numtx++],ram,txind,txidstr);
+            }
+        } else printf("error _get_blocktxarray for block.%d got %d, n.%d vs %d\n",blocknum,blockid,n,MAX_BLOCKTX);
+        if ( raw->minted == 0 )
+            raw->minted = total;
+        free_json(json);
+    } else printf("get_blockjson error parsing.(%s)\n",txidstr);
+    //printf("BLOCK.%d: block.%d numtx.%d minted %.8f rawnumvins.%d rawnumvouts.%d\n",blocknum,raw->blocknum,raw->numtx,dstr(raw->minted),raw->numrawvins,raw->numrawvouts);
+    return(raw->numtx);
+}
 
 int32_t ram_get_blockoffset(struct mappedblocks *blocks,uint32_t blocknum)
 {
@@ -74,6 +236,80 @@ HUFF *ram_makehp(HUFF *tmphp,int32_t format,struct ramchain_info *ram,struct raw
         //printf("ram_emitblock datalen.%d bitoffset.%d endpos.%d\n",datalen,hp->bitoffset,hp->endpos);
     } else printf("error emitblock.%d\n",blocknum);
     return(hp);
+}
+
+cJSON *ram_rawvin_json(struct rawblock *raw,struct rawtx *tx,int32_t vin)
+{
+    struct rawvin *vi = &raw->vinspace[tx->firstvin + vin];
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"txid",cJSON_CreateString(vi->txidstr));
+    cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vi->vout));
+    return(json);
+}
+
+cJSON *ram_rawvout_json(struct rawblock *raw,struct rawtx *tx,int32_t vout)
+{
+    struct rawvout *vo = &raw->voutspace[tx->firstvout + vout];
+    cJSON *item,*array,*json = cJSON_CreateObject();
+    /*"scriptPubKey" : {
+     "asm" : "OP_DUP OP_HASH160 b2098d38dfd1bee61b12c9abc40e988d273d90ae OP_EQUALVERIFY OP_CHECKSIG",
+     "reqSigs" : 1,
+     "type" : "pubkeyhash",
+     "addresses" : [
+     "RRWZoKdmHGDbS5vfj7KwBScK3uSTpt9pHL"
+     ]
+     }*/
+    cJSON_AddItemToObject(json,"value",cJSON_CreateNumber(dstr(vo->value)));
+    cJSON_AddItemToObject(json,"n",cJSON_CreateNumber(vout));
+    item = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"hex",cJSON_CreateString(vo->script));
+    array = cJSON_CreateArray();
+    cJSON_AddItemToArray(array,cJSON_CreateString(vo->coinaddr));
+    cJSON_AddItemToObject(item,"addresses",array);
+    cJSON_AddItemToObject(json,"scriptPubKey",item);
+    return(json);
+}
+
+cJSON *ram_rawtx_json(struct rawblock *raw,int32_t txind)
+{
+    struct rawtx *tx = &raw->txspace[txind];
+    cJSON *array,*json = cJSON_CreateObject();
+    int32_t i,numvins,numvouts;
+    cJSON_AddItemToObject(json,"txid",cJSON_CreateString(tx->txidstr));
+    if ( (numvins= tx->numvins) > 0 )
+    {
+        array = cJSON_CreateArray();
+        for (i=0; i<numvins; i++)
+            cJSON_AddItemToArray(array,ram_rawvin_json(raw,tx,i));
+        cJSON_AddItemToObject(json,"vin",array);
+    }
+    if ( (numvouts= tx->numvouts) > 0 )
+    {
+        array = cJSON_CreateArray();
+        for (i=0; i<numvouts; i++)
+            cJSON_AddItemToArray(array,ram_rawvout_json(raw,tx,i));
+        cJSON_AddItemToObject(json,"vout",array);
+    }
+    return(json);
+}
+
+cJSON *ram_rawblock_json(struct rawblock *raw,int32_t allocsize)
+{
+    int32_t i,n;
+    cJSON *array,*json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"height",cJSON_CreateNumber(raw->blocknum));
+    cJSON_AddItemToObject(json,"numtx",cJSON_CreateNumber(raw->numtx));
+    cJSON_AddItemToObject(json,"mint",cJSON_CreateNumber(dstr(raw->minted)));
+    if ( allocsize != 0 )
+        cJSON_AddItemToObject(json,"rawsize",cJSON_CreateNumber(allocsize));
+    if ( (n= raw->numtx) > 0 )
+    {
+        array = cJSON_CreateArray();
+        for (i=0; i<n; i++)
+            cJSON_AddItemToArray(array,ram_rawtx_json(raw,i));
+        cJSON_AddItemToObject(json,"tx",array);
+    }
+    return(json);
 }
 
 int32_t raw_blockcmp(struct rawblock *ref,struct rawblock *raw)
@@ -150,24 +386,6 @@ int32_t raw_blockcmp(struct rawblock *ref,struct rawblock *raw)
         }
     }
     return(0);
-}
-
-void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag)
-{
-    int32_t i;
-    if ( totalflag != 0 )
-        memset(raw,0,sizeof(*raw));
-    else
-    {
-        raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
-        for (i=0; i<MAX_BLOCKTX; i++)
-        {
-            raw->txspace[i].txidstr[0] = 0;
-            raw->vinspace[i].txidstr[0] = 0;
-            raw->voutspace[i].script[0] = 0;
-            raw->voutspace[i].coinaddr[0] = 0;
-        }
-    }
 }
 
 HUFF *ram_genblock(HUFF *tmphp,struct rawblock *tmp,struct ramchain_info *ram,int32_t blocknum,int32_t format,HUFF **prevhpp)

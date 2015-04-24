@@ -17,6 +17,7 @@
 #include "huffstream.c"
 #include "huff.c"
 #include "init.c"
+#include "blocks.c"
 #include "ramchain.c"
 int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_t checkblocknum);
 int32_t ram_emitblock(HUFF *hp,int32_t destformat,struct ramchain_info *ram,struct rawblock *raw);
@@ -521,7 +522,7 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
     if ( scriptind > 0 && scriptind <= table->ind && (scriptptr= table->ptrs[scriptind]) != 0 )
     {
         ram_script(scriptstr,ram,scriptind);
-        scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram,scriptstr,blocknum);
+        scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram->name,scriptstr,blocknum);
         if ( iter != 1 )
         {
             int32_t _ram_update_redeembits(struct ramchain_info *ram,uint64_t redeembits,uint64_t AMtxidbits,char *cointxid,struct address_entry *bp);

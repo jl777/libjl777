@@ -855,15 +855,17 @@ int32_t init_multisigDB()
     int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
     struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);
     struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n,char *NXTaddr,char *NXTpubkey,int32_t buyNXT);
-    struct multisig_addr **msigs,*msigram;
-    struct SuperNET_db *sdb;
-    char url[1024],*retstr;
-    cJSON *json;
-    int i,m,n,j,added = 0;
-    if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
+    int added = 0;
+     if ( portable_thread_create((void *)_process_SuperNET_dbqueue,0) == 0 )
         printf("ERROR hist process_hashtablequeues\n");
-    {
-        sdb = &SuperNET_dbs[MULTISIG_DATA];
+   {
+#ifdef later
+     struct multisig_addr **msigs,*msigram;
+       struct SuperNET_db *sdb;
+       //char url[1024],*retstr;
+       //cJSON *json;
+       int i,m,n;
+       sdb = &SuperNET_dbs[MULTISIG_DATA];
         if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,MULTISIG_DATA)) != 0 )
         {
             for (i=m=0; i<n; i++)
@@ -912,6 +914,7 @@ int32_t init_multisigDB()
             }
         }
         printf("added.%d multisig addrs\n",added);
+#endif
         /*if ( 0 )
         {
             int32_t _map_msigaddr(char *redeemScript,struct ramchain_info *ram,char *normaladdr,char *msigaddr);

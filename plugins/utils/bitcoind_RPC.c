@@ -11,9 +11,10 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
-#include "cJSON.h"
+#include "../includes/cJSON.h"
 #define DEFINES_ONLY
 #include "system777.c"
+#include "utils777.c"
 #undef DEFINES_ONLY
 
 // return data from the server

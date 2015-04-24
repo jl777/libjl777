@@ -14,6 +14,7 @@
 
 #define DEFINES_ONLY
 #include "plugins/utils/system777.c"
+#include "plugins/utils/utils777.c"
 #undef DEFINES_ONLY
 
 #define MAX_PUBADDR_TIME (24 * 60 * 60)
@@ -188,12 +189,175 @@ int32_t OS_launch_process(char *args[]);
 int32_t OS_getppid();
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
 int32_t is_bundled_plugin(char *plugin);
-typedef int32_t (*ptm)(int32_t,char *args[]);
+//typedef int32_t (*ptm)(int32_t,char *args[]);
 
 #define INCLUDE_DEFINES
-#include "ramchain.h"
+//#include "ramchain.h"
 #undef INCLUDE_DEFINES
 #include "includes/uthash.h"
+#define HUFF_NUMFREQS 1
+#define SETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
+#define GETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
+#define CLEARBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] &= ~(1 << ((bitoffset) & 7)))
+
+struct huffstream { uint8_t *ptr,*buf; uint32_t bitoffset,maski,endpos; uint32_t allocsize:31,allocated:1; };
+typedef struct huffstream HUFF;
+
+struct huffbits { uint64_t numbits:5,rawind:23,bits:20,freq:16; };
+struct huffitem { struct huffbits code; uint32_t freq[HUFF_NUMFREQS]; };
+
+struct huffcode
+{
+    double totalbits,totalbytes,freqsum;
+    int32_t numitems,maxbits,numnodes,depth,allocsize;
+    int32_t tree[];
+};
+
+struct huffpair { struct huffbits *items; struct huffcode *code; int32_t maxind,nonz,count,wt; uint64_t minval,maxval; char name[16]; };
+struct rawtx_huffs { struct huffpair numvins,numvouts,txid; };
+struct rawvin_huffs { struct huffpair txid,vout; };
+struct rawvout_huffs { struct huffpair addr,script,value; };
+struct rawblock_huffs
+{
+    struct huffpair numall,numtx,numrawvins,numrawvouts;
+    // (0) and (1) are the first and second places, (n) is the last one, (i) is everything between
+    struct rawtx_huffs txall,tx0,tx1,txi;
+    struct rawvin_huffs vinall,vin0,vin1,vini;
+    struct rawvout_huffs voutall,vout0,vout1,vout2,vouti,voutn;
+};
+
+struct rawblock_preds
+{
+    struct huffpair *numtx,*numrawvins,*numrawvouts;
+    // (0) and (1) are the first and second places, (n) is the last one, (i) is everything between
+    struct huffpair *tx0_numvins,*tx1_numvins,*txi_numvins;
+    struct huffpair *tx0_numvouts,*tx1_numvouts,*txi_numvouts;
+    struct huffpair *tx0_txid,*tx1_txid,*txi_txid;
+    
+    struct huffpair *vin0_txid,*vin1_txid,*vini_txid;
+    struct huffpair *vin0_vout,*vin1_vout,*vini_vout;
+    
+    struct huffpair *vout0_addr,*vout1_addr,*vout2_addr,*vouti_addr,*voutn_addr;
+    struct huffpair *vout0_script,*vout1_script,*vout2_script,*vouti_script,*voutn_script;
+    struct huffpair *vout0_value,*vout1_value,*vout2_value,*vouti_value,*voutn_value;
+};
+
+struct mappedptr
+{
+	char fname[512];
+	void *fileptr,*pending;
+	uint64_t allocsize,changedsize;
+	int32_t rwflag,actually_allocated;
+};
+
+struct ramsnapshot { bits256 hash; long permoffset,addroffset,txidoffset,scriptoffset; uint32_t addrind,txidind,scriptind; };
+struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind:31,extra:31,pendingdeposit:1,pendingsend:1; };
+struct ramchain_hashptr { int64_t unspent; UT_hash_handle hh; struct rampayload *payloads; uint32_t rawind,permind,numpayloads:29,maxpayloads:29,mine:1,multisig:1,verified:1,nonstandard:1,tbd:2; int32_t numunspent; };
+struct ramchain_hashtable
+{
+    char coinstr[16];
+    struct ramchain_hashptr *table;
+    struct mappedptr M;
+    FILE *newfp,*permfp;
+    struct ramchain_hashptr **ptrs;
+    long endpermpos;
+    uint32_t ind,numalloc;
+    uint8_t type;
+};
+
+#define MAX_BLOCKTX 0xffff
+struct rawvin { char txidstr[128]; uint16_t vout; };
+struct rawvout { char coinaddr[64],script[256]; uint64_t value; };
+struct rawtx { uint16_t firstvin,numvins,firstvout,numvouts; char txidstr[128]; };
+
+#define MAX_COINTX_INPUTS 16
+#define MAX_COINTX_OUTPUTS 8
+struct cointx_input { struct rawvin tx; char coinaddr[64],sigs[1024]; uint64_t value; uint32_t sequence; char used; };
+struct cointx_info
+{
+    uint32_t crc; // MUST be first
+    char coinstr[16];
+    uint64_t inputsum,amount,change,redeemtxid;
+    uint32_t allocsize,batchsize,batchcrc,gatewayid,isallocated;
+    // bitcoin tx order
+    uint32_t version,timestamp,numinputs;
+    uint32_t numoutputs;
+    struct cointx_input inputs[MAX_COINTX_INPUTS];
+    struct rawvout outputs[MAX_COINTX_OUTPUTS];
+    uint32_t nlocktime;
+    // end bitcoin txcalc_nxt64bits
+    char signedtx[];
+};
+
+struct rawblock
+{
+    uint32_t blocknum,allocsize;
+    uint16_t format,numtx,numrawvins,numrawvouts;
+    uint64_t minted;
+    struct rawtx txspace[MAX_BLOCKTX];
+    struct rawvin vinspace[MAX_BLOCKTX];
+    struct rawvout voutspace[MAX_BLOCKTX];
+};
+
+struct mappedblocks
+{
+    struct ramchain_info *ram;
+    struct mappedblocks *prevblocks;
+    struct rawblock *R,*R2,*R3;
+    HUFF **hps,*tmphp;
+    struct mappedptr *M;
+    double sum;
+    uint32_t blocknum,count,firstblock,numblocks,processed,format,shift,contiguous;
+};
+
+struct MGWstate
+{
+    char name[64];
+    uint64_t nxt64bits;
+    int64_t MGWbalance,supply;
+    uint64_t totalspends,numspends,totaloutputs,numoutputs;
+    uint64_t boughtNXT,circulation,sentNXT,MGWpendingredeems,orphans,MGWunspent,MGWpendingdeposits,NXT_ECblock;
+    int32_t gatewayid;
+    uint32_t blocknum,RTblocknum,NXT_RTblocknum,NXTblocknum,is_realtime,NXT_is_realtime,enable_deposits,enable_withdraws,NXT_ECheight,permblocks;
+};
+
+struct syncstate
+{
+    bits256 majority,minority;
+    uint64_t requested[16];
+    struct ramsnapshot snaps[16];
+    struct syncstate *substate;
+    uint32_t blocknum,allocsize;
+    uint16_t format,pending,majoritybits,minoritybits;
+};
+
+struct ramchain_info
+{
+    struct mappedblocks blocks,Vblocks,Bblocks,blocks64,blocks4096,*mappedblocks[8];
+    struct ramchain_hashtable addrhash,txidhash,scripthash;
+    struct MGWstate S,otherS[3],remotesrcs[16];
+    double startmilli;
+    HUFF *tmphp,*tmphp2,*tmphp3;
+    FILE *permfp;
+    char name[64],permfname[512],dirpath[512],myipaddr[64],srvNXTACCTSECRET[2048],srvNXTADDR[64],*userpass,*serverport,*marker,*marker2,*opreturnmarker;
+    uint32_t next_txid_permind,next_addr_permind,next_script_permind,permind_changes,withdrawconfirms,DEPOSIT_XFER_DURATION;
+    uint32_t lastheighttime,min_confirms,estblocktime,firstiter,maxblock,nonzblocks,marker_rawind,marker2_rawind,lastdisp,maxind,numgateways,nummsigs,oldtx;
+    uint64_t totalbits,totalbytes,txfee,dust,NXTfee_equiv,minoutput;
+    struct rawblock *R,*R2,*R3;
+    struct syncstate *verified;
+    struct rawblock_huffs H;
+    struct alloc_space Tmp,Perm;
+    uint64_t minval,maxval,minval2,maxval2,minval4,maxval4,minval8,maxval8;
+    struct ramsnapshot *snapshots; bits256 *permhash4096;
+    struct NXT_asset *ap;
+    int32_t sock;
+    uint64_t MGWbits,*limboarray;
+    struct cointx_input *MGWunspents;
+    uint32_t min_NXTconfirms,NXTtimestamp,MGWnumunspents,MGWmaxunspents,numspecials,depositconfirms,firsttime,firstblock,numpendingsends,pendingticks,remotemode;
+    char multisigchar,**special_NXTaddrs,*MGWredemption,*backups,MGWsmallest[256],MGWsmallestB[256],MGWpingstr[1024],mgwstrs[3][8192];
+    struct NXT_assettxid *pendingsends[512];
+    float lastgetinfo,NXTconvrate;
+};
 
 struct multisig_addr
 {

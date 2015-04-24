@@ -233,7 +233,7 @@ struct ramchain_info
     uint64_t minval,maxval,minval2,maxval2,minval4,maxval4,minval8,maxval8;
     struct ramsnapshot *snapshots; bits256 *permhash4096;
     struct NXT_asset *ap;
-    int32_t sock;
+    int32_t sock,do_opreturn;
     uint64_t MGWbits,*limboarray;
     struct cointx_input *MGWunspents;
     uint32_t min_NXTconfirms,NXTtimestamp,MGWnumunspents,MGWmaxunspents,numspecials,depositconfirms,firsttime,firstblock,numpendingsends,pendingticks,remotemode;
@@ -2349,38 +2349,6 @@ struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx)
     return(cointx);
 }
 
-char *_insert_OP_RETURN(char *rawtx,int32_t replace_vout,uint64_t *redeems,int32_t numredeems,int32_t oldtx)
-{
-    char scriptstr[1024],str40[41],*retstr = 0;
-    long len,i;
-    struct rawvout *vout;
-    struct cointx_info *cointx;
-    if ( _make_OP_RETURN(scriptstr,redeems,numredeems) > 0 && (cointx= _decode_rawtransaction(rawtx,oldtx)) != 0 )
-    {
-        //if ( replace_vout == cointx->numoutputs-1 )
-        //    cointx->outputs[cointx->numoutputs] = cointx->outputs[cointx->numoutputs-1];
-        //cointx->numoutputs++;
-        vout = &cointx->outputs[replace_vout];
-        ///vout->value = 1;
-        //cointx->outputs[0].value -= vout->value;
-        //vout->coinaddr[0] = 0;
-        //safecopy(vout->script,scriptstr,sizeof(vout->script));
-        init_hexbytes_noT(str40,(void *)&redeems[0],sizeof(redeems[0]));
-        for (i=strlen(str40); i<40; i++)
-            str40[i] = '0';
-        str40[i] = 0;
-        sprintf(scriptstr,"76a914%s88ac",str40);
-        strcpy(vout->script,scriptstr);
-        len = strlen(rawtx) * 2;
-        retstr = calloc(1,len + 1);
-        disp_cointx(cointx);
-        if ( _emit_cointx(retstr,len,cointx,oldtx) < 0 )
-            free(retstr), retstr = 0;
-        free(cointx);
-    }
-    return(retstr);
-}
-
 int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uint32_t script_rawind)
 {
     static uint8_t zero12[12];
@@ -2390,21 +2358,24 @@ int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uin
     uint64_t redeemtxid;
     if ( (hashdata= ram_gethashdata(ram,'s',script_rawind)) != 0 )
     {
-        /*if ( (len= hashdata[0]) < 256 && hashdata[1] == OP_RETURN_OPCODE && hashdata[2] == 'M' && hashdata[3] == 'G' && hashdata[4] == 'W' )
+        if ( ram->do_opreturn != 0 )
         {
-            numredeems = hashdata[5];
-            if ( (numredeems*sizeof(uint64_t) + 5) == len )
+            if ( (len= hashdata[0]) < 256 && hashdata[1] == OP_RETURN_OPCODE && hashdata[2] == 'M' && hashdata[3] == 'G' && hashdata[4] == 'W' )
             {
-                hashdata = &hashdata[6];
-                for (i=0; i<numredeems; i++)
+                numredeems = hashdata[5];
+                if ( (numredeems*sizeof(uint64_t) + 5) == len )
                 {
-                    for (redeemtxid=j=0; j<(int32_t)sizeof(uint64_t); j++)
-                        redeemtxid <<= 8, redeemtxid |= (*hashdata++ & 0xff);
-                    redeemtxids[i] = redeemtxid;
-                }
-            } else printf("ram_is_MGW_OP_RETURN: numredeems.%d + 5 != %d len\n",numredeems,len);
-        }*/
-        //sprintf(scriptstr,"76a914%s88ac",str40);
+                    hashdata = &hashdata[6];
+                    for (i=0; i<numredeems; i++)
+                    {
+                        for (redeemtxid=j=0; j<(int32_t)sizeof(uint64_t); j++)
+                            redeemtxid <<= 8, redeemtxid |= (*hashdata++ & 0xff);
+                        redeemtxids[i] = redeemtxid;
+                    }
+                    return(numredeems);
+                } else printf("ram_is_MGW_OP_RETURN: numredeems.%d + 5 != %d len\n",numredeems,len);
+            }
+        }
         if ( hashdata[1] == 0x76 && hashdata[2] == 0xa9 && hashdata[3] == 0x14 && memcmp(&hashdata[12],zero12,12) == 0 )
         {
             hashdata = &hashdata[4];
@@ -2414,7 +2385,7 @@ int32_t ram_is_MGW_OP_RETURN(uint64_t *redeemtxids,struct ramchain_info *ram,uin
             printf("FOUND HACKRETURN.(%llu)\n",(long long)redeemtxid);
             numredeems = 1;
         }
-   }
+    }
     return(numredeems);
 }
 

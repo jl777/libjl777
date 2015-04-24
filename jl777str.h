@@ -156,7 +156,7 @@ int32_t listcmp(char **list,char *str)
     }
     return(1);
 }
-
+/*
 char *clonestr(char *str)
 {
     char *clone;
@@ -174,7 +174,7 @@ char *clonestr(char *str)
     return(clone);
 }
 
-/*int32_t safecopy(char *dest,char *src,long len)
+int32_t safecopy(char *dest,char *src,long len)
 {
     int32_t i = -1;
     if ( dest != 0 )
@@ -298,6 +298,15 @@ void zero_last128(char *dest,char *src)
             dest[i] = '0';
     }
 }
+void freep(void **ptrp)
+{
+	if ( *ptrp != 0 )
+	{
+		free(*ptrp);
+		*ptrp = 0;
+	}
+}
+
 
 void tolowercase(char *str)
 {
@@ -308,15 +317,8 @@ void tolowercase(char *str)
         str[i] = tolower(str[i]);
 }
 
-void freep(void **ptrp)
-{
-	if ( *ptrp != 0 )
-	{
-		free(*ptrp);
-		*ptrp = 0;
-	}
-}
 
+/*
 void touppercase(char *str)
 {
     int32_t i;
@@ -342,22 +344,6 @@ void reverse_hexstr(char *str)
     free(rev);
 }
 
-long stripstr(char *buf,long len)
-{
-    int32_t i,j,c;
-    for (i=j=0; i<len; i++)
-    {
-        c = buf[i];
-        //if ( c == '\\' )
-        //    c = buf[i+1], i++;
-        buf[j] = c;
-        if ( buf[j] != ' ' && buf[j] != '\n' && buf[j] != '\r' && buf[j] != '\t' && buf[j] != '"' )
-            j++;
-    }
-    buf[j] = 0;
-    return(j);
-}
-
 char *replacequotesM(char *str)
 {
     char *newstr;
@@ -381,6 +367,22 @@ char *replacequotesM(char *str)
     }
     newstr[j] = 0;
     return(newstr);
+}*/
+
+long stripstr(char *buf,long len)
+{
+    int32_t i,j,c;
+    for (i=j=0; i<len; i++)
+    {
+        c = buf[i];
+        //if ( c == '\\' )
+        //    c = buf[i+1], i++;
+        buf[j] = c;
+        if ( buf[j] != ' ' && buf[j] != '\n' && buf[j] != '\r' && buf[j] != '\t' && buf[j] != '"' )
+            j++;
+    }
+    buf[j] = 0;
+    return(j);
 }
 
 char *convert_percent22(char *str)

@@ -15,13 +15,17 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include "utils777.c"
-#include "mutex.h"
-#include "utlist.h"
+#include "../../includes/mutex.h"
+#include "../../includes/utlist.h"
+#include "nn.h"
+#include "pubsub.h"
+
+#define OFFSET_ENABLED (bundledflag == 0)
 
 typedef int32_t (*ptm)(int32_t,char *args[]);
-
+extern int32_t Debuglevel;
 // nonportable functions needed in the OS specific directory
-ptm get_bundled_plugin(char *plugin);
+int32_t is_bundled_plugin(char *plugin);
 int32_t portable_truncate(char *fname,long filesize);
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite);
 int32_t os_supports_mappedfiles();
@@ -37,7 +41,7 @@ int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
 #define portable_mutex_lock nn_mutex_lock
 #define portable_mutex_unlock nn_mutex_unlock
 
-struct queueitem { struct queueitem *next,*prev; void *ptr; };
+struct queueitem { struct queueitem *next,*prev; };
 typedef struct queue
 {
 	struct queueitem *list;
@@ -66,6 +70,28 @@ int32_t getline777(char *line,int32_t max);
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *args);
 uint16_t wait_for_myipaddr(char *ipaddr);
 
+struct sendendpoints { int32_t push,rep,pub,survey; };
+struct recvendpoints { int32_t pull,req,sub,respond; };
+struct biendpoints { int32_t bus,pair; };
+struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
+union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
+char *get_localtransport(int32_t bundledflag);
+int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char *_connectaddr,int32_t timeout);
+int32_t shutdown_plugsocks(union endpoints *socks);
+int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len);
+int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis);
+int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_t permanentflag,union endpoints *socks,int32_t timeoutmillis);
+void ensure_directory(char *dirname);
+uint32_t calc_ipbits(char *ipaddr);
+
+
+#define SOPHIA_USERDIR "/user"
+struct db777 { void *env,*ctl,*db,*asyncdb; char dbname[96]; };
+struct db777 *db777_create(char *path,char *name,char *compression);
+int32_t db777_add(struct db777 *DB,char *key,char *value);
+int32_t db777_find(char *retbuf,int32_t max,struct db777 *DB,char *key);
+int32_t db777_close(struct db777 *DB);
+
 #endif
 #else
 #ifndef crypto777_system777_c
@@ -73,7 +99,7 @@ uint16_t wait_for_myipaddr(char *ipaddr);
 
 #ifndef crypto777_system777_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "system777.c"
 #undef DEFINES_ONLY
 #endif
 
@@ -186,7 +212,7 @@ void *aligned_alloc(uint64_t allocsize)
     realptr = calloc(1,allocsize + 16 + sizeof(realptr));
     ptr = (void *)_align16((uint64_t)realptr + sizeof(ptr));
     memcpy((void *)((long)ptr - sizeof(realptr)),&realptr,sizeof(realptr));
-    printf("aligned_alloc(%llu) realptr.%p -> ptr.%p, diff.%ld\n",allocsize,realptr,ptr,((long)ptr - (long)realptr));
+    printf("aligned_alloc(%llu) realptr.%p -> ptr.%p, diff.%ld\n",(long long)allocsize,realptr,ptr,((long)ptr - (long)realptr));
     return(ptr);
 }
 
@@ -233,6 +259,144 @@ uint16_t wait_for_myipaddr(char *ipaddr)
     printf("need a portable way to find IP addr\n");
     getchar();
     return(port);
+}
+
+int32_t report_err(char *typestr,int32_t err,char *nncall,int32_t type,char *bindaddr,char *connectaddr)
+{
+    printf("%s error %d type.%d nn_%s err.%s bind.(%s) connect.(%s)\n",typestr,err,type,nncall,nn_strerror(nn_errno()),bindaddr,connectaddr!=0?connectaddr:"");
+    return(-1);
+}
+
+char *get_localtransport(int32_t bundledflag) { return(OFFSET_ENABLED ? "ipc" : "inproc"); }
+
+int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char *_connectaddr,int32_t timeout)
+{
+    int32_t sock,err = 0;
+    char bindaddr[512],connectaddr[512];
+    printf("%s.%s bind.(%s) connect.(%s)\n",typestr,suffix,_bindaddr,_connectaddr);
+    bindaddr[0] = connectaddr[0] = 0;
+    if ( _bindaddr != 0 && _bindaddr[0] != 0 )
+        strcpy(bindaddr,_bindaddr), strcat(bindaddr,suffix);
+    if ( _connectaddr != 0 && _connectaddr[0] != 0 )
+        strcpy(connectaddr,_connectaddr), strcat(connectaddr,suffix);
+    if ( (sock= nn_socket(AF_SP,type)) < 0 )
+        return(report_err(typestr,sock,"nn_socket",type,bindaddr,connectaddr));
+    if ( bindaddr != 0 && bindaddr[0] != 0 )
+    {
+        printf("bind\n");
+        if ( (err= nn_bind(sock,bindaddr)) < 0 )
+            return(report_err(typestr,err,"nn_bind",type,bindaddr,connectaddr));
+        if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
+            return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
+    }
+    if ( connectaddr != 0 && connectaddr[0] != 0 )
+    {
+        printf("nn_connect\n");
+        if ( (err= nn_connect(sock,connectaddr)) < 0 )
+            return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
+        else if ( type == NN_SUB && (err= nn_setsockopt(sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0)) < 0 )
+            return(report_err(typestr,err,"nn_setsockopt subscribe",type,bindaddr,connectaddr));
+    }
+    printf("%s.%s socket.%d bind.(%s) connect.(%s)\n",typestr,suffix,sock,bindaddr,connectaddr);
+    return(sock);
+}
+
+int32_t shutdown_plugsocks(union endpoints *socks)
+{
+    int32_t i,errs = 0;
+    for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+        if ( socks->all[i] >= 0 && nn_shutdown(socks->all[i],0) != 0 )
+            errs++, printf("error (%s) nn_shutdown.%d\n",nn_strerror(nn_errno()),i);
+    return(errs);
+}
+
+int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len)
+{
+    int32_t i,sock,errs = 0;
+    for (i=0; i<=(sizeof(socks->send)/sizeof(int32_t))+1; i++)
+    {
+        if ( i < 2 )
+            sock = (i == 0) ? socks->both.bus : socks->both.pair;
+        else sock = ((int32_t *)&socks->send)[i - 1];
+        if ( sock >= 0 )
+        {
+            if ( (len= nn_send(sock,(char *)retstr,len,0)) <= 0 )
+                errs++, printf("error %d sending to socket.%d send.%d len.%d (%s)\n",len,sock,i,len,nn_strerror(nn_errno()));
+            //else printf("SENT.(%s) len.%d vs strlen.%ld\n",retstr,len,strlen((char *)retstr));
+        }
+    }
+    return(errs);
+}
+
+int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis)
+{
+    struct nn_pollfd pfd[sizeof(struct allendpoints)/sizeof(int32_t)];
+    int32_t len,sock,processed=0,rc,i,n = 0;
+    char *str,*msg;
+    memset(pfd,0,sizeof(pfd));
+    for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+    {
+        if ( (pfd[i].fd= socks->all[i]) >= 0 )
+        {
+            pfd[i].events = NN_POLLIN | NN_POLLOUT;
+            n++;
+        }
+    }
+    if ( n > 0 )
+    {
+        if ( (rc= nn_poll(pfd,sizeof(socks->all)/sizeof(*socks->all),timeoutmillis)) > 0 )
+        {
+            for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+            {
+                if ( (pfd[i].revents & NN_POLLIN) != 0 && (sock= socks->all[i]) >= 0 && (len= nn_recv(sock,&msg,NN_MSG,0)) > 0 )
+                {
+                    (*numrecvp)++;
+                    str = clonestr(msg);
+                    nn_freemsg(msg);
+                    messages[processed++] = str;
+                    if ( Debuglevel > 2 )
+                        printf("(%d %d) %d %.6f RECEIVED.%d i.%d/%ld (%s)\n",*numrecvp,numsent,processed,milliseconds(),n,i,sizeof(socks->all)/sizeof(*socks->all),str);
+                }
+            }
+        }
+        else if ( rc < 0 )
+            printf("%s Error.%d polling %d daemons [0] == %d\n",nn_strerror(nn_errno()),rc,n,pfd[0].fd);
+    }
+    return(processed);
+}
+
+int32_t get_socket_status(int32_t sock,int32_t timeoutmillis)
+{
+    struct nn_pollfd pfd;
+    int32_t rc;
+    pfd.fd = sock;
+    pfd.events = NN_POLLIN | NN_POLLOUT;
+    if ( (rc= nn_poll(&pfd,1,timeoutmillis)) == 0 )
+        return(pfd.revents);
+    else return(-1);
+}
+
+int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_t permanentflag,union endpoints *socks,int32_t timeoutmillis)
+{
+    char line[8192];
+    int32_t len,n = 0;
+    line[0] = 0;
+    if ( (n= poll_endpoints(messages,numrecvp,numsent,socks,timeoutmillis)) <= 0 && permanentflag == 0 && getline777(line,sizeof(line)-1) > 0 )
+    {
+        len = (int32_t)strlen(line);
+        if ( line[len-1] == '\n' )
+            line[--len] = 0;
+        if ( len > 0 )
+            messages[0] = clonestr(line), n = 1;
+    }
+    return(n);
+}
+
+uint32_t calc_ipbits(char *ipaddr)
+{
+    printf("make portable ipbits for (%s)\n",ipaddr);
+    getchar();
+    return(0);
 }
 
 #endif

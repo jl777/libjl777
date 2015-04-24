@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include "cJSON.h"
 #include "huff.c"
-#include "bitcoind.c"
+#include "blocks.c"
 #include "msig.c"
 #include "ramchain.c"
 
@@ -133,13 +133,13 @@ char *ramaddrlist(char *origargstr,char *sender,char *previpaddr,char *coin)
     struct ramchain_hashtable *addrhash;
     struct ramchain_hashptr *addrptr;
     struct rampayload *payloads;
-    int32_t i,j,k,z,n,m,num,numpayloads,errs,ismine,ismultisig,count = 0;
+    int32_t i,j,k,z,n,m,num,numpayloads,errs,count = 0; // ,ismine,ismultisig
     struct ramchain_info *ram = get_ramchain_info(coin);
     if ( ram == 0 )
         return(clonestr("{\"error\":\"no ramchain info\"}"));
     errs = 0;
     addrhash = ram_gethash(ram,'a');
-    if ( (json= _get_localaddresses(ram)) != 0 )
+    if ( (json= _get_localaddresses(ram->name,ram->serverport,ram->userpass)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
         {
@@ -185,14 +185,14 @@ char *ramaddrlist(char *origargstr,char *sender,char *previpaddr,char *coin)
         {
             if ( (addrptr= addrhash->ptrs[z]) != 0 && (addrptr->multisig != 0 || addrptr->mine != 0) && ram_decode_hashdata(coinaddr,'a',addrptr->hh.key) != 0 )
             {
-                if ( 0 && addrptr->mine == 0 && addrptr->verified == 0 )
+                /*if ( 0 && addrptr->mine == 0 && addrptr->verified == 0 )
                 {
                     addrptr->verified = _verify_coinaddress(account,&ismultisig,&ismine,ram,coinaddr);
                     if ( ismultisig != 0 )
                         addrptr->multisig = 1;
                     if ( ismine != 0 )
                         addrptr->mine = 1;
-                }
+                }*/
                 if ( addrptr->mine != 0 )
                     m++;
                 if ( addrptr->multisig != 0 || addrptr->mine != 0 )
@@ -1144,6 +1144,8 @@ void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblock
 
 void ram_sendresponse(char *origcmd,char *coinstr,char *retstr,char *NXTaddr,char *NXTACCTSECRET,char *destNXTaddr,char *previpaddr)
 {
+    printf("code sendresponse\n");
+    /*
     int32_t len,timeout = 300;
     cJSON *json;
     char fname[MAX_JSON_FIELD],hopNXTaddr[64],*jsonstr,*str = 0;
@@ -1171,7 +1173,7 @@ void ram_sendresponse(char *origcmd,char *coinstr,char *retstr,char *NXTaddr,cha
             free_json(json);
             free(jsonstr);
         }
-    }
+    }*/
 }
 
 char *ramresponse_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)

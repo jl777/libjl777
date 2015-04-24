@@ -14,12 +14,13 @@ endif
 
 
 CC=clang  
-CFLAGS=-Wall -pedantic -g -fPIC -Iincludes -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 LIBS=-lm -lreadline 
 
 TARGET	= libjl777.a
 SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
 	variable.c clibrary.c platform.c include.c \
+	plugins/utils/system777.c plugins/utils/utils777.c plugins/echodemo.c \
 	platform/platform_unix.c platform/library_unix.c \
 	cstdlib/stdio.c cstdlib/math.c cstdlib/string.c cstdlib/stdlib.c \
 	cstdlib/time.c cstdlib/errno.c cstdlib/ctype.c cstdlib/stdbool.c \
@@ -46,7 +47,7 @@ clean: doesntexist
 
 PINCLUDES := -Iincludes -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
-_echo := rm lib/echo; gcc -o lib/echo $(PINCLUDES) echodemo.c $(PLIBS)
+_echo := rm lib/echo; gcc -o lib/echo -Os $(PINCLUDES) echodemo.c $(PLIBS)
 
 _MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c ramchain/storage.c ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c utils/NXT777.c utils/huffstream.c utils/ramcoder.c utils/sha256.c utils/crypt_argchk.c -lcurl $(PLIBS)
 
@@ -75,7 +76,7 @@ MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
 SuperNET: $(TARGET); \
-    pkill SuperNET; rm SuperNET; gcc -o SuperNET SuperNET.c libs/libminiupnpc.a libs/libjl777.a plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
+    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) SuperNET.c plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c  libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
 
 special: /usr/lib/libjl777.so; \
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lcurl -lm -ldl; \

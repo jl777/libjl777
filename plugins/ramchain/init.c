@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include "cJSON.h"
 #include "utils777.c"
 #include "bits777.c"
 #include "NXT777.c"
@@ -891,141 +892,6 @@ void ram_init_ramchain(struct ramchain_info *ram)
     ram_disp_status(ram);
 }
 
-void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemption,struct NXT_asset *ap)
-{
-    cJSON *array,*item;
-    int32_t i,n,hasredemption = 0;
-    char NXTADDR[MAX_JSON_FIELD];
-    if ( (ram->ap= ap) == 0 )
-    {
-        printf("no asset for %s\n",ram->name);
-        return;
-    }
-    ram->MGWbits = calc_nxt64bits(MGWredemption);
-    if ( Debuglevel > 0 )
-        printf("init_ram_MGWconfs.(%s) -> %llu\n",MGWredemption,(long long)ram->MGWbits);
-    array = cJSON_GetObjectItem(confjson,"special_NXTaddrs");
-    if ( array != 0 && is_cJSON_Array(array) != 0 ) // first three must be the gateway's addresses
-    {
-        n = cJSON_GetArraySize(array);
-        ram->special_NXTaddrs = calloc(n+2,sizeof(*ram->special_NXTaddrs));
-        for (i=0; i<n; i++)
-        {
-            if ( array == 0 || n == 0 )
-                break;
-            item = cJSON_GetArrayItem(array,i);
-            copy_cJSON(NXTADDR,item);
-            if ( NXTADDR[0] == 0 )
-            {
-                fprintf(stderr,"Illegal special NXTaddr.%d\n",i);
-                exit(1);
-            }
-            ram->special_NXTaddrs[i] = clonestr(NXTADDR);
-            if ( strcmp(NXTADDR,MGWredemption) == 0 )
-                hasredemption = 1;
-        }
-        if ( Debuglevel > 0 )
-            printf("special_addrs.%d\n",n);
-        if ( hasredemption == 0 )
-            ram->special_NXTaddrs[i++] = clonestr(MGWredemption);
-        ram->special_NXTaddrs[i++] = clonestr(GENESISACCT);
-        n = i;
-    }
-    else
-    {
-        for (n=0; MGW_whitelist[n][0]!=0; n++)
-            ;
-        ram->special_NXTaddrs = calloc(n,sizeof(*ram->special_NXTaddrs));
-        for (i=0; i<n; i++)
-            ram->special_NXTaddrs[i] = clonestr(MGW_whitelist[i]);
-    }
-    ram->numspecials = n;
-    if ( Debuglevel > 0 )
-    {
-        for (i=0; i<n; i++)
-            printf("(%s) ",ram->special_NXTaddrs[i]);
-        printf("numspecials.%d\n",ram->numspecials);
-    }
-    if ( ram->limboarray == 0 )
-        ram->limboarray = calloc(2,sizeof(*ram->limboarray));
-    if ( Debuglevel > 0 )
-    {
-        for (i=0; ram->limboarray[i]!=0&&ram->limboarray[i]!=0; i++)
-            printf("%llu ",(long long)ram->limboarray[i]);
-        printf("limboarray.%d\n",i);
-    }
-}
-
-struct ramchain_info *get_ramchain_info(char *coinstr)
-{
-    //struct coin_info *cp = get_coin_info(coinstr);
-    //if ( NORAMCHAINS == 0 && cp != 0 )
-    //    return(&cp->RAM);
-    //else
-    printf("need to implement get_ramchain_info\n");
-        return(0);
-}
-
-void init_ramchain_info(struct ramchain_info *ram,void *cp,int32_t DEPOSIT_XFER_DURATION,int32_t oldtx)
-{
-    //struct NXT_asset *ap = 0;
-   /* struct coin_info *refcp = get_coin_info("BTCD");
-    int32_t createdflag;
-    strcpy(ram->name,cp->name);
-    strcpy(ram->S.name,ram->name);
-    if ( refcp->myipaddr[0] != 0 )
-        strcpy(ram->myipaddr,refcp->myipaddr);
-    strcpy(ram->srvNXTACCTSECRET,refcp->srvNXTACCTSECRET);
-    strcpy(ram->srvNXTADDR,refcp->srvNXTADDR);
-    ram->oldtx = oldtx;
-    ram->S.nxt64bits = calc_nxt64bits(refcp->srvNXTADDR);
-    if ( cp->marker == 0 )
-        cp->marker = clonestr(get_marker(cp->name));
-    if ( cp->marker != 0 )
-        ram->marker = clonestr(cp->marker);
-    if ( cp->marker2 == 0 )
-        cp->marker2 = clonestr(get_marker(cp->name));
-    if ( cp->marker2 != 0 )
-        ram->marker2 = clonestr(cp->marker2);
-    if ( cp->privateaddr[0] != 0 )
-        ram->opreturnmarker = clonestr(cp->privateaddr);
-    ram->dust = cp->dust;
-    if ( cp->backupdir[0] != 0 )
-        ram->backups = clonestr(cp->backupdir);
-    if ( cp->userpass != 0 )
-        ram->userpass = clonestr(cp->userpass);
-    if ( cp->serverport != 0 )
-        ram->serverport = clonestr(cp->serverport);
-    ram->lastheighttime = (uint32_t)cp->lastheighttime;
-    ram->S.RTblocknum = (uint32_t)cp->RTblockheight;
-    ram->minoutput = get_API_int(cJSON_GetObjectItem(cp->json,"minoutput"),1);
-    ram->min_confirms = cp->min_confirms;
-    ram->depositconfirms = get_API_int(cJSON_GetObjectItem(cp->json,"depositconfirms"),ram->min_confirms);
-    ram->min_NXTconfirms = MIN_NXTCONFIRMS;
-    ram->withdrawconfirms = get_API_int(cJSON_GetObjectItem(cp->json,"withdrawconfirms"),ram->min_NXTconfirms);
-    ram->remotemode = get_API_int(cJSON_GetObjectItem(cp->json,"remote"),0);
-    ram->multisigchar = cp->multisigchar;
-    ram->estblocktime = cp->estblocktime;
-    ram->firstiter = 1;
-    ram->numgateways = NUM_GATEWAYS;
-    if ( ram->numgateways != (sizeof(ram->otherS)/sizeof(*ram->otherS)) )
-    {
-        printf("expected numgateways.%ld instead of %u\n",(sizeof(ram->otherS)/sizeof(*ram->otherS)),ram->numgateways);
-        exit(1);
-    }
-    ram->S.gatewayid = Global_mp->gatewayid;
-    ram->NXTfee_equiv = cp->NXTfee_equiv;
-    ram->txfee = cp->txfee;
-    ram->NXTconvrate = get_API_float(cJSON_GetObjectItem(cp->json,"NXTconv"));//();
-    ram->DEPOSIT_XFER_DURATION = get_API_int(cJSON_GetObjectItem(cp->json,"DEPOSIT_XFER_DURATION"),DEPOSIT_XFER_DURATION);
-    if ( Global_mp->iambridge != 0 || (IS_LIBTEST > 0 && is_active_coin(cp->name) > 0) )
-    {
-        if ( Debuglevel > 0 )
-            printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) confirms.(deposit %d withdraw %d) rate %.8f\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms,ram->withdrawconfirms,ram->NXTconvrate);
-        init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
-        activate_ramchain(ram,cp->name);
-    } //else printf("skip activate ramchains\n");*/
-}
 
 
 #endif

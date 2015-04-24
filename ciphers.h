@@ -863,9 +863,9 @@ int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
     char *mofn_savefile(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,char *sender,char *pin,FILE *fp,int32_t L,int32_t M,int32_t N,char *usbdir,char *password,char *filename);
     FILE *fp;
     cJSON *json,*txidsobj;
-    int M=2,N=3,result;
-    char sharenrs[512],*retstr,*pin = "";
-    struct coin_info *cp = get_coin_info("BTCD");
+    int N=3,result;//M=2,
+    char sharenrs[512],*retstr=0;//,*pin = "";
+    //struct coin_info *cp = get_coin_info("BTCD");
     if ( encoded != 0 )
     {
         if ( (fp= fopen(os_compatible_path(fname),"wb")) != 0 )
@@ -882,7 +882,9 @@ int32_t _save_encrypted(char *fname,uint8_t *encoded,int32_t len)
                 fclose(fp);
                 if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
                 {
+#ifdef later
                     retstr = mofn_savefile(0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,cp->srvNXTADDR,pin,fp,0,M,N,0,cp->privateNXTACCTSECRET,fname);
+#endif
                     if ( retstr != 0 )
                     {
                         if ( (json= cJSON_Parse(retstr)) != 0 )

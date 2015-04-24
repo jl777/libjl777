@@ -12,6 +12,14 @@ char *os_compatible_path(char *str) { return(str); }
 int32_t portable_truncate(char *fname,long filesize) { return(truncate(fname,filesize)); }
 char *OS_rmstr() { return("rm"); }
 
+void ensure_directory(char *dirname)
+{
+    FILE *fp;
+    if ( (fp= fopen(os_compatible_path(dirname),"rb")) == 0 )
+        mkdir(dirname,511);
+    else fclose(fp);
+}
+
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 {
 	void *mmap64(void *addr,size_t len,int32_t prot,int32_t flags,int32_t fildes,off_t off);

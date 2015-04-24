@@ -78,21 +78,23 @@ char *get_telepod_privkey(char **podaddrp,char *pubkey,struct coin_info *cp)
 cJSON *create_privkeys_json_params(struct coin_info *cp,struct rawtransaction *rp,char **privkeys,int32_t numinputs)
 {
     int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,char *msigaddr);
-    int32_t allocflag,i,ret,nonz = 0;
+    int32_t allocflag,i,nonz = 0;//ret
     cJSON *array;
-    char args[1024],normaladdr[1024],redeemScript[4096];
+    //char args[1024],normaladdr[1024],redeemScript[4096];
     printf("create privkeys %p numinputs.%d\n",privkeys,numinputs);
     if ( privkeys == 0 )
     {
         privkeys = calloc(numinputs,sizeof(*privkeys));
         for (i=0; i<numinputs; i++)
         {
+#ifdef later
             if ( (ret= map_msigaddr(redeemScript,cp,normaladdr,rp->inputs[i]->coinaddr)) >= 0 )
             {
                 sprintf(args,"[\"%s\"]",normaladdr);
                 fprintf(stderr,"(%s) -> (%s).%d ",normaladdr,normaladdr,i);
                 privkeys[i] = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"dumpprivkey",args);
             } else fprintf(stderr,"ret.%d for %d (%s)\n",ret,i,normaladdr);
+#endif
         }
         allocflag = 1;
         fprintf(stderr,"allocated\n");
@@ -417,8 +419,10 @@ uint64_t check_txout(uint32_t *createtimep,struct coin_info *cp,int32_t minconfi
             if ( (confirmations= (int32_t)get_cJSON_int(cJSON_GetObjectItem(json,"confirmations"),0)) >= minconfirms )
             {
                 *createtimep = (uint32_t)(time(NULL) - confirmations*cp->estblocktime);
+#ifdef later
                 if ( refscript != 0 )
                     _extract_txvals(coinaddr,refscript,cp->nohexout,json);
+#endif
             }
             free_json(json);
         }

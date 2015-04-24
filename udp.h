@@ -401,7 +401,9 @@ int32_t process_sendQ_item(struct write_req_t *wr)
         printf("SOFTWALL: blocks sending to %s:%d\n",ipaddr,supernet_port);
         return(-1);
     }
-    r = uv_udp_send(&wr->U.ureq,pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
+    if ( pserver->udps[wr->isbridge] != 0 && wr->buf.base != 0 && wr->buf.len > 0 )
+        r = uv_udp_send(&wr->U.ureq,pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr,(uv_udp_send_cb)after_write);
+    else r = -123;
     //r = uv_udp_try_send(pserver->udps[wr->isbridge],&wr->buf,1,&wr->addr);
     //printf("send to.(%s:%d) retval.%d\n",ipaddr,supernet_port,r);
     if ( r < 0 )
@@ -1535,12 +1537,27 @@ int32_t update_routing_probs(char *NXTaddr,int32_t encryptedflag,int32_t p2pflag
 
 void every_second(int32_t counter)
 {
+    static int sendsock = -100;
     uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char *kadcmd,char *NXTACCTSECRET,char *key,char *datastr);
     static double firstmilli;
     char *ip_port;
     struct coin_info *cp = get_coin_info("BTCD");
     struct pserver_info *pserver;
-    int32_t i,gatewayid;
+    int32_t i,gatewayid,err;
+    if ( sendsock == -100 )
+    {
+        char *testaddr = "inproc://test";
+        if ( (sendsock= nn_socket(AF_SP,NN_BUS)) < 0 )
+            printf("error %d nn_socket err.%s\n",sendsock,nn_strerror(nn_errno()));
+        else if ( (err= nn_connect(sendsock,testaddr)) < 0 )
+            printf("error %d nn_connect err.%s (%s)\n",sendsock,nn_strerror(nn_errno()),testaddr);
+        else printf("test >>>>>>>>>>>>>>> %d nn_connect (%s)\n",sendsock,testaddr);
+    }
+    if ( 0 && sendsock >= 0 )
+    {
+        printf("send\n");
+        nn_send(sendsock,"hello",6,0);
+    }
     if ( Finished_init == 0 )
         return;
     if ( firstmilli == 0 )

@@ -540,7 +540,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
             if ( userdir[0] != 0 )
                 sprintf(conf_filename,"%s/%s",userdir,confstr);
             else strcpy(conf_filename,confstr);
-            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,conf_filename,serverip_port,blockheight,marker,marker2,NXTfee_equiv,forkblock,rpcuserpass);
+            cp = create_coin_info(nohexout,useaddmultisig,estblocktime,coinstr,minconfirms,txfee,pollseconds,asset,os_compatible_path(conf_filename),serverip_port,blockheight,marker,marker2,NXTfee_equiv,forkblock,rpcuserpass);
             if ( cp != 0 )
             {
                 portable_mutex_init(&cp->consensus_mutex);
@@ -979,7 +979,9 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
         if ( Debuglevel > 0 )
             printf("gatewayid.%d MGWissuer.(%s) init_ramchain_info(%s) (%s) active.%d (%s %s) multisigchar.(%c) confirms.(deposit %d withdraw %d) rate %.8f\n",ram->S.gatewayid,cp->MGWissuer,ram->name,cp->name,is_active_coin(cp->name),ram->serverport,ram->userpass,ram->multisigchar,ram->depositconfirms,ram->withdrawconfirms,ram->NXTconvrate);
         init_ram_MGWconfs(ram,cp->json,(cp->MGWissuer[0] != 0) ? cp->MGWissuer : NXTISSUERACCT,get_NXTasset(&createdflag,Global_mp,cp->assetid));
+#ifdef later
         activate_ramchain(ram,cp->name);
+#endif
     } //else printf("skip activate ramchains\n");
 }
 
@@ -1026,6 +1028,7 @@ void init_coinsarray(char *userdir,char *myipaddr)
                         if ( Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0 || Global_mp->isMM != 0 )
                             strcpy(MGWROOT,"/var/www");
                         else strcpy(MGWROOT,".");
+                        os_compatible_path(MGWROOT);
                     }
                     //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                     //addcontact("mypublic",cp->srvNXTADDR);
@@ -1156,6 +1159,7 @@ void init_SuperNET_settings(char *userdir)
         strcpy(Global_mp->myhandle,"myhandle");
     if ( extract_cJSON_str(PRICEDIR,sizeof(PRICEDIR),MGWconf,"PRICEDIR") <= 0 )
         strcpy(PRICEDIR,"./prices");
+    os_compatible_path(PRICEDIR);
     init_jdatetime(NXT_GENESISTIME,get_API_int(cJSON_GetObjectItem(MGWconf,"timezone"),0) * 3600);
     MIN_NQTFEE = get_API_int(cJSON_GetObjectItem(MGWconf,"MIN_NQTFEE"),(int32_t)MIN_NQTFEE);
     PERMUTE_RAWINDS = get_API_int(cJSON_GetObjectItem(MGWconf,"PERMUTE"),0);
@@ -1178,6 +1182,10 @@ void init_SuperNET_settings(char *userdir)
     }
     extract_cJSON_str(DATADIR,sizeof(NXTISSUERACCT),MGWconf,"DATADIR");
     extract_cJSON_str(MGWROOT,sizeof(MGWROOT),MGWconf,"MGWROOT");
+    extract_cJSON_str(SOPHIA_DIR,sizeof(SOPHIA_DIR),MGWconf,"SOPHIA_DIR");
+    if ( SOPHIA_DIR[0] == 0 )
+        strcpy(SOPHIA_DIR,"./DB");
+    os_compatible_path(SOPHIA_DIR);
     if ( IS_LIBTEST >= 0 )
         IS_LIBTEST = get_API_int(cJSON_GetObjectItem(MGWconf,"LIBTEST"),1);
     MULTITHREADS = get_API_int(cJSON_GetObjectItem(MGWconf,"MULTITHREADS"),0);

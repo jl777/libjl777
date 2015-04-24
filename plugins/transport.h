@@ -7,8 +7,15 @@
 
 #include "nn.h"
 #include "bus.h"
+#include "pubsub.h"
+#include "pipeline.h"
+#include "reqrep.h"
+#include "survey.h"
 #include "pair.h"
 #include "pubsub.h"
+
+#define LOCALCAST 1
+#define BROADCAST 2
 
 void set_transportaddr(char *addr,char *transportstr,uint64_t daemonid,char *ipaddr,int32_t port,uint64_t selector)
 {
@@ -17,16 +24,14 @@ void set_transportaddr(char *addr,char *transportstr,uint64_t daemonid,char *ipa
     else sprintf(addr,"%s://%llu",transportstr,(long long)(daemonid + selector));
 }
 
-char *get_localtransport(int32_t bundledflag) { return((bundledflag != 0) ? "inproc" : "ipc"); }
-
 void set_bind_transport(char *bindaddr,int32_t bundledflag,int32_t permanentflag,char *ipaddr,uint16_t port,uint64_t daemonid)
 {
-    set_transportaddr(bindaddr,get_localtransport(bundledflag),daemonid,ipaddr,port,2);
+    set_transportaddr(bindaddr,get_localtransport(bundledflag),daemonid,ipaddr,port,2*OFFSET_ENABLED);
 }
 
 void set_connect_transport(char *connectaddr,int32_t bundledflag,int32_t permanentflag,char *ipaddr,uint16_t port,uint64_t daemonid)
 {
-    set_transportaddr(connectaddr,get_localtransport(bundledflag),daemonid,ipaddr,port,1);
+    set_transportaddr(connectaddr,get_localtransport(bundledflag),daemonid,ipaddr,port,1*OFFSET_ENABLED);
 }
 
 void set_pair_bindconnect(char *bindaddr,char *connectaddr,int32_t bundledflag,int32_t permanentflag,uint64_t myid,uint64_t instanceid)
@@ -44,131 +49,112 @@ void set_pair_bindconnect(char *bindaddr,char *connectaddr,int32_t bundledflag,i
     }
 }
 
-int32_t init_permpairsock(int32_t permanentflag,char *bindaddr,char *connectaddr,uint64_t instanceid)
+int32_t iteration_recvsocket(struct daemon_info *dp,int32_t counter)
 {
-    int32_t sock,err,to = 1;
-    printf("<<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",bindaddr,connectaddr);
-    if ( (sock= nn_socket(AF_SP,(permanentflag == 0) ? NN_BUS : NN_BUS)) < 0 )
-    {
-        printf("error %d nn_socket err.%s\n",sock,nn_strerror(nn_errno()));
-        return(-1);
-    }
-    if ( (err= nn_bind(sock,bindaddr)) < 0 )
-    {
-        printf("error %d nn_bind.%d (%s) | %s\n",err,sock,bindaddr,nn_strerror(nn_errno()));
-        return(-1);
-    }
-    //if ( permanentflag != 0 )
-    {
-        if ( (err= nn_connect(sock,connectaddr)) < 0 )
-        {
-            printf("error %d nn_connect err.%s (%s)\n",err,nn_strerror(nn_errno()),connectaddr);
-            return(-1);
-        }
-    }
-    assert(nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&to,sizeof (to)) >= 0);
+    int32_t sock,ind;
+    struct allendpoints *socks;
+    ind = ((counter >> 1) % ((sizeof(dp->perm.socks.recv)/sizeof(int32_t))) + 1);
+    if ( (counter & 1) == 0 )
+        socks = &dp->perm.socks;
+    else socks = &dp->wss.socks;
+    sock = (ind == 0) ? socks->both.bus : ((int32_t *)&socks->recv)[ind - 1];
     return(sock);
 }
 
-int32_t choose_socket(struct daemon_info *dp,int32_t permanentflag,int32_t ind,uint64_t instanceid)
+int32_t init_pluginhostsocks(struct daemon_info *dp,int32_t permanentflag,char *bindaddr,char *connectaddr,uint64_t instanceid)
 {
-    char bindaddr[64],connectaddr[64];
-    int32_t sock,err;
-    if ( instanceid == 0 || ind < 0 )
-        return(dp->permsock);
-    else if ( (sock= dp->pairsocks[ind]) < 0 )
-    {
-        if ( (sock= nn_socket(AF_SP,NN_PAIR)) < 0 )
-        {
-            printf("error %d PAIR.%d nn_socket err.%s\n",sock,ind,nn_strerror(nn_errno()));
-            return(-1);
-        }
-        dp->pairsocks[ind] = sock;
-    }
-    set_pair_bindconnect(bindaddr,connectaddr,dp->main != 0,permanentflag,dp->myid,instanceid);
-    if ( bindaddr[0] != 0 )
-    {
-        if ( (err= nn_bind(sock,bindaddr)) < 0 )
-        {
-            printf("error %d nn_bind.%d (%s) | %s\n",err,sock,bindaddr,nn_strerror(nn_errno()));
-            return(-1);
-        }
-    }
-    if ( connectaddr[0] != 0 )
-    {
-        if ( (err= nn_connect(sock,connectaddr)) < 0 )
-        {
-            printf("error %d nn_connect err.%s (%s)\n",err,nn_strerror(nn_errno()),connectaddr);
-            return(-1);
-        }
-    }
-    return(0);
+    int32_t errs = 0;
+    struct allendpoints *socks;
+    if ( permanentflag != 0 )
+        socks = &dp->perm.socks;
+    else socks = &dp->wss.socks;
+    printf("<<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",bindaddr,connectaddr);
+    //if ( dp->bundledflag != 0 && (socks->both.pair= init_socket("","pair",NN_PAIR,bindaddr,0,1)) < 0 ) errs++;
+    if ( dp->bundledflag != 0 && (socks->both.bus= init_socket("","bus",NN_BUS,bindaddr,0,1)) < 0 ) errs++;
+    //if ( (socks->send.push= init_socket(".pipeline","push",NN_PUSH,bindaddr,0,1)) < 0 ) errs++;
+    //if ( (socks->send.rep= init_socket(".reqrep","rep",NN_REP,0,connectaddr,1)) < 0 ) errs++;
+    //if ( (socks->send.pub= init_socket(".pubsub","pub",NN_PUB,bindaddr,0,1)) < 0 ) errs++;
+    //if ( (socks->send.survey= init_socket(".survey","surveyor",NN_SURVEYOR,bindaddr,0,1)) < 0 ) errs++;
+    //if ( (socks->recv.pull= init_socket(".pipeline","pull",NN_PULL,0,connectaddr,0)) < 0 ) errs++;
+    //if ( (socks->recv.req= init_socket(".reqrep","req",NN_REQ,bindaddr,connectaddr,0)) < 0 ) errs++;
+    //if ( (socks->recv.sub= init_socket(".pubsub","sub",NN_SUB,0,connectaddr,0)) < 0 ) errs++;
+    //if ( (socks->recv.respond= init_socket(".survey","respondent",NN_RESPONDENT,0,connectaddr,0)) < 0 ) errs++;
+    return(errs);
 }
 
-int32_t add_instanceid(struct daemon_info *dp,uint64_t instanceid)
+int32_t connect_instanceid(struct daemon_info *dp,uint64_t instanceid)
+{
+    char addr[64];
+    int32_t err = -1;
+    sprintf(addr,"%s://%llu",get_localtransport(dp->bundledflag),(long long)instanceid);
+    printf("need to connect to (%s) efficiently\n",addr);
+    return(err);
+}
+
+int32_t add_tagstr(struct daemon_info *dp,uint64_t tag,char **dest)
 {
     int32_t i;
-    for (i=0; i<(sizeof(dp->instanceids)/sizeof(*dp->instanceids)); i++)
+    for (i=0; i<NUM_PLUGINTAGS; i++)
     {
-        if ( dp->instanceids[i] == 0 )
+        if ( dp->tags[i][0] == 0 )
         {
-            dp->instanceids[i] = instanceid;
-            return(1);
+            if ( Debuglevel > 2 )
+                printf("slot.%d <- tag.%llu dest.%p\n",i,(long long)tag,dest);
+            dp->tags[i][0] = tag, dp->tags[i][1] = (uint64_t)dest;
+            return(i);
         }
-        if ( dp->instanceids[i] == instanceid )
-            return(0);
     }
-    i = rand() % (sizeof(dp->instanceids)/sizeof(*dp->instanceids));
-    if ( dp->pairsocks[i] >= 0 )
-        nn_shutdown(dp->pairsocks[i],0);
-    dp->instanceids[i] = instanceid;
+    printf("add_tagstr: no place for tag.%llu\n",(long long)tag);
     return(-1);
 }
 
-cJSON *instances_json(struct daemon_info *dp)
+char **get_tagstr(struct daemon_info *dp,uint64_t tag)
 {
-    cJSON *array = cJSON_CreateArray();
-    char numstr[64];
     int32_t i;
-    for (i=0; i<(sizeof(dp->instanceids)/sizeof(*dp->instanceids)); i++)
+    char **dest;
+    for (i=0; i<NUM_PLUGINTAGS; i++)
     {
-        if ( dp->instanceids[i] != 0 )
-            sprintf(numstr,"%llu",(long long)dp->instanceids[i]), cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
-    }
-    return(array);
-}
-
-void connect_instanceid(struct daemon_info *dp,uint64_t instanceid,int32_t permanentflag)
-{
-    int32_t err;
-    cJSON *json;
-    char addr[64],numstr[64],*jsonstr;
-    if ( permanentflag == 0 )
-    {
-        sprintf(addr,"ipc://%llu",(long long)instanceid);
-        if ( (err= nn_connect(dp->permsock,addr)) < 0 )
+        if ( dp->tags[i][0] == tag )
         {
-            printf("error %d nn_connect err.%s (%llu to %s)\n",dp->permsock,nn_strerror(nn_errno()),(long long)dp->daemonid,addr);
-            return;
+            dest = (char **)dp->tags[i][1];
+            dp->tags[i][0] = dp->tags[i][1] = 0;
+            if ( Debuglevel > 2 )
+                printf("slot.%d found tag.%llu dest.%p\n",i,(long long)tag,dest);
+            return(dest);
         }
-        printf("connect_instanceid: %d nn_connect (%llu <-> %s)\n",dp->permsock,(long long)dp->daemonid,addr);
     }
-    json = cJSON_CreateObject();
-    cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("instances"));
-    cJSON_AddItemToObject(json,"instanceids",instances_json(dp));
-    sprintf(numstr,"%llu",(long long)dp->daemonid), cJSON_AddItemToObject(json,"myid",cJSON_CreateString(numstr));
-    jsonstr = cJSON_Print(json);
-    stripwhite(jsonstr,strlen(jsonstr));
-    free_json(json);
-    nn_send(dp->permsock,jsonstr,strlen(jsonstr) + 1,0);
-    free(jsonstr);
+    printf("get_tagstr: cant find tag.%llu\n",(long long)tag);
+    return(0);
 }
 
-int32_t send_to_daemon(char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
+char *wait_for_daemon(char **dest,uint64_t tag)
+{
+    int32_t poll_daemons();
+    static long counter,sum;
+    int32_t i;
+    char *retstr;
+    usleep(5);
+    for (i=0; i<100000; i++)
+    {
+        poll_daemons();
+        if ( (retstr= *dest) != 0 )
+        {
+            sum += i, counter++;
+            if ( (counter % 10000) == 0 )
+                printf("%ld: ave %.1f\n",counter,(double)sum/counter);
+            return(retstr);
+        }
+        //usleep(10);
+    }
+    printf("no tag received\n");
+    return(0);
+}
+
+int32_t send_to_daemon(char **retstrp,uint64_t tag,char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
     struct daemon_info *dp;
-    int32_t len,ind,permanentflag = 1;
+    int32_t len,ind;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -176,7 +162,15 @@ int32_t send_to_daemon(char *name,uint64_t daemonid,uint64_t instanceid,char *js
         if ( (dp= find_daemoninfo(&ind,name,daemonid,instanceid)) != 0 )
         {
             if ( (len= (int32_t)strlen(jsonstr)) > 0 )
-                 return(nn_send(choose_socket(dp,permanentflag,ind,instanceid),jsonstr,len + 1,0));
+            {
+                if ( Debuglevel > 2 )
+                    fprintf(stderr,"HAVETAG.%llu send_to_daemon(%s)\n",(long long)tag,jsonstr);
+                add_tagstr(dp,tag,retstrp);
+                dp->numsent++;
+                if ( nn_broadcast(&dp->perm.socks,instanceid,instanceid != 0 ? 0 : LOCALCAST,(uint8_t *)jsonstr,len + 1) < 0 )
+                    printf("error sending to daemon %s\n",nn_strerror(nn_errno()));
+                else return(0);
+            }
             else printf("send_to_daemon: error jsonstr.(%s)\n",jsonstr);
         }
     }

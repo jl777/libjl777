@@ -63,7 +63,7 @@ int32_t is_remote_access(char *previpaddr);
 
 #ifndef crypto777_util777_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "utils777.c"
 #undef DEFINES_ONLY
 #endif
 

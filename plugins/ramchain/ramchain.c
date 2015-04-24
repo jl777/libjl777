@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "uthash.h"
-#include "db.h"
+#include "cJSON.h"
 #include "huffstream.c"
 #include "utils777.c"
 #include "system777.c"
@@ -34,11 +34,6 @@
 #define TRANSFER_BLOCKSIZE 512
 #define MAX_TRANSFER_BLOCKS (MAX_TRANSFER_SIZE / TRANSFER_BLOCKSIZE)
 #define NUM_GATEWAYS 3
-#define MAX_COINTXID_LEN 128
-#define MAX_COINADDR_LEN 128
-#define MAX_NXT_STRLEN 24
-#define MAX_NXTTXID_LEN MAX_NXT_STRLEN
-#define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 
 struct transfer_args
 {
@@ -53,49 +48,10 @@ extern int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_in
 extern char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
 extern int Numramchains; extern struct ramchain_info *Ramchains[100];
 extern cJSON *MGWconf;
-extern void *Global_mp;
+//extern void *Global_mp;
 
-struct storage_header { uint32_t size,createtime; uint64_t keyhash; };
-struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
-struct multisig_addr
-{
-    struct storage_header H;
-    UT_hash_handle hh;
-    char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
-    uint64_t sender,modified;
-    uint32_t m,n,created,valid,buyNXT;
-    struct pubkey_info pubkeys[];
-};
 
-struct nodestats
-{
-    struct storage_header H;
-    uint8_t pubkey[256>>3];
-    struct nodestats *eviction;
-    uint64_t nxt64bits,coins[4];
-    double pingpongsum;
-    float pingmilli,pongmilli;
-    uint32_t ipbits,lastcontact,numpings,numpongs;
-    uint8_t BTCD_p2p,gotencrypted,modified,expired,isMM;
-};
-
-struct acct_coin { uint64_t *srvbits; char name[16],**acctcoinaddrs,**pubkeys; int32_t numsrvbits; };
-
-struct NXT_acct
-{
-    UT_hash_handle hh;
-    struct NXT_str H;
-    struct NXT_asset **assets;
-    uint64_t *quantities,bestbits,quantity;
-    struct NXT_assettxid_list **txlists;    // one list for each asset in acct
-    int32_t maxassets,numassets,bestdist,numcoins,pendingdeposits,openorders;
-    int64_t buyqty,buysum,sellqty,sellsum;
-    uint32_t timestamp;
-    struct acct_coin *coins[64];
-    struct nodestats stats;
-    char *signedtx;
-};
-extern struct NXT_acct *NXT_accts;
+/*extern struct NXT_acct *NXT_accts;
 
 struct SuperNET_db
 {
@@ -109,7 +65,7 @@ struct SuperNET_db
     uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
 };
 
-struct dbreq { struct queueitem DL; struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };
+struct dbreq { struct queueitem DL; struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };*/
 
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
@@ -198,15 +154,11 @@ struct ramchain_token
     union ramtypes U;
 };
 
-char *_get_transaction(struct ramchain_info *ram,char *txidstr);
 cJSON *_get_blocktxarray(uint32_t *blockidp,int32_t *numtxp,struct ramchain_info *ram,cJSON *blockjson);
-cJSON *_get_blockjson(uint32_t *heightp,struct ramchain_info *ram,char *blockhashstr,uint32_t blocknum);
 uint32_t _get_blockinfo(struct rawblock *raw,struct ramchain_info *ram,uint32_t blocknum);
-char *_get_blockhashstr(struct ramchain_info *ram,uint32_t blocknum);
-cJSON *_get_localaddresses(struct ramchain_info *ram);
 HUFF *ram_conv_permind(HUFF *permhp,struct ramchain_info *ram,HUFF *hp,uint32_t checkblocknum);
 int32_t ram_expand_bitstream(cJSON **jsonp,struct rawblock *raw,struct ramchain_info *ram,HUFF *hp);
-int32_t _verify_coinaddress(char *account,int32_t *ismultisigp,int32_t *isminep,struct ramchain_info *ram,char *coinaddr);
+//int32_t _verify_coinaddress(char *account,int32_t *ismultisigp,int32_t *isminep,struct ramchain_info *ram,char *coinaddr);
 char *ram_searchpermind(char *permstr,struct ramchain_info *ram,char type,uint32_t permind);
 void ram_setdispstr(char *buf,struct ramchain_info *ram,double startmilli);
 HUFF **ram_get_hpptr(struct mappedblocks *blocks,uint32_t blocknum);
@@ -224,10 +176,9 @@ void ram_sethashname(char fname[1024],struct ramchain_hashtable *hash,int32_t ne
 int32_t ram_verify(struct ramchain_info *ram,HUFF *hp,int32_t format);
 void ram_disp_status(struct ramchain_info *ram);
 HUFF *hload(struct ramchain_info *ram,long *offsetp,FILE *fp,char *fname);
-uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,char *script,uint32_t blocknum);
+uint64_t ram_check_redeemcointx(int32_t *unspendablep,char *,char *script,uint32_t blocknum);
 uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ramchain_hashptr **addrptrp,struct ramchain_info *ram,char *addr,int32_t MGWflag);
 //char *_sign_and_sendmoney(char *cointxid,struct ramchain_info *ram,struct cointx_info *cointx,char *othersignedtx,uint64_t *redeems,uint64_t *amounts,int32_t numredeems);
-int32_t _validate_coinaddr(char pubkey[512],struct ramchain_info *ram,char *coinaddr);
 struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destaddr,uint64_t value,uint64_t redeemtxid);
 struct ramchain_info *get_ramchain_info(char *coinstr);
 uint64_t _calc_circulation(int32_t minconfirms,struct NXT_asset *ap,struct ramchain_info *ram);
@@ -253,7 +204,9 @@ void ram_init_ramchain(struct ramchain_info *ram);
 uint32_t _process_NXTtransaction(int32_t confirmed,struct ramchain_info *ram,cJSON *txobj);
 uint64_t ram_calc_MGWunspent(uint64_t *pendingp,struct ramchain_info *ram);
 void ram_set_MGWpingstr(char *pingstr,struct ramchain_info *ram,int32_t selector);
-int32_t _sign_rawtransaction(char *deststr,unsigned long destsize,struct ramchain_info *ram,struct cointx_info *cointx,char *rawbytes,char **privkeys);
+int32_t _sign_rawtransaction(char *deststr,unsigned long destsize,char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys);
+char *_sign_localtx(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes);
+char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx);
 
 
 #endif
@@ -281,22 +234,27 @@ int32_t ram_huffencode(uint64_t *outbitsp,struct ramchain_info *ram,struct ramch
     return(outbits);
 }
 
-struct nodestats *get_nodestats(uint64_t nxt64bits)
+uint32_t _get_RTheight(struct ramchain_info *ram)
 {
-    struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXT_acct **rootp,char *NXTaddr);
-    struct nodestats *stats = 0;
-    int32_t createdflag;
-    struct NXT_acct *np;
-    char NXTaddr[64];
-    if ( nxt64bits != 0 )
+    char *retstr;
+    cJSON *json;
+    uint32_t height = 0;
+    if ( milliseconds() > ram->lastgetinfo+10000 )
     {
-        expand_nxt64bits(NXTaddr,nxt64bits);
-        np = get_NXTacct(&createdflag,&NXT_accts,NXTaddr);
-        stats = &np->stats;
-        if ( stats->nxt64bits == 0 )
-            stats->nxt64bits = nxt64bits;
-    }
-    return(stats);
+        //printf("RTheight.(%s) (%s)\n",ram->name,ram->serverport);
+        retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"getinfo","");
+        if ( retstr != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                height = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocks"),0);
+                free_json(json);
+                ram->lastgetinfo = milliseconds();
+            }
+            free(retstr);
+        }
+    } else height = ram->S.RTblocknum;
+    return(height);
 }
 
 void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
@@ -347,7 +305,7 @@ int32_t ram_expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datale
     return(mode);
 }
 
-uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,char *script,uint32_t blocknum)
+uint64_t ram_check_redeemcointx(int32_t *unspendablep,char *coinstr,char *script,uint32_t blocknum)
 {
     uint64_t redeemtxid = 0;
     int32_t i;
@@ -361,10 +319,10 @@ uint64_t ram_check_redeemcointx(int32_t *unspendablep,struct ramchain_info *ram,
             redeemtxid <<= 8;
             redeemtxid |= (_decode_hex(&script[6 + 14 - i*2]) & 0xff);
         }
-        printf("%s >>>>>>>>>>>>>>> found MGW redeem @blocknum.%u %s -> %llu | unspendable.%d\n",ram->name,blocknum,script,(long long)redeemtxid,*unspendablep);
+        printf("%s >>>>>>>>>>>>>>> found MGW redeem @blocknum.%u %s -> %llu | unspendable.%d\n",coinstr,blocknum,script,(long long)redeemtxid,*unspendablep);
     }
     else if ( *unspendablep != 0 )
-        printf("%s >>>>>>>>>>>>>>> found unspendable %s\n",ram->name,script);
+        printf("%s >>>>>>>>>>>>>>> found unspendable %s\n",coinstr,script);
     
     //else printf("(%s).%d\n",script+22,strcmp(script+16,"00000000000000000000000088ac"));
     return(redeemtxid);

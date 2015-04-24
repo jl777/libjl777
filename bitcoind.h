@@ -108,8 +108,8 @@ int32_t validate_coinaddr(char pubkey[512],struct coin_info *cp,char *coinaddr)
 cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct rawtransaction *rp)
 {
     int32_t map_msigaddr(char *redeemScript,struct coin_info *cp,char *normaladdr,char *msigaddr);
-    int32_t i,ret;
-    char normaladdr[1024],redeemScript[4096],*txid;
+    int32_t i;
+    char *txid;//normaladdr[1024],redeemScript[4096];
     cJSON *json,*array;
     struct coin_txidind *vp;
     array = cJSON_CreateArray();
@@ -130,9 +130,11 @@ cJSON *create_vins_json_params(char **localcoinaddrs,struct coin_info *cp,struct
         cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txid));
         cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vp->entry.v));
         cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vp->script));
+#ifdef later
         if ( (ret= map_msigaddr(redeemScript,cp,normaladdr,vp->coinaddr)) >= 0 )
             cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(redeemScript));
         else printf("ret.%d redeemScript.(%s) (%s) for (%s)\n",ret,redeemScript,normaladdr,vp->coinaddr);
+#endif
         if ( localcoinaddrs != 0 )
             localcoinaddrs[i] = vp->coinaddr;
         cJSON_AddItemToArray(array,json);

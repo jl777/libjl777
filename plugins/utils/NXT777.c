@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
-#include "../cJSON.h"
+#include "cJSON.h"
 #include "tweetnacl.c"
 #if __i686__ || __i386__
 #include "curve25519-donna.c"
@@ -23,6 +23,12 @@
 #include "uthash.h"
 #include "bits777.c"
 #include "utils777.c"
+
+#define MAX_COINTXID_LEN 128
+#define MAX_COINADDR_LEN 128
+#define MAX_NXT_STRLEN 24
+#define MAX_NXTTXID_LEN MAX_NXT_STRLEN
+#define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 
 #define GENESISACCT "1739068987193023818"  // NXT-MRCC-2YLS-8M54-3CMAJ
 #define GENESISBLOCK "2680262203532249785"

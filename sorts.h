@@ -73,7 +73,7 @@
 #undef sortnetwork
 
 // more normal sorting stuff
-
+/*
 int _increasing_unsignedint(const void *a,const void *b)
 {
 #define uint_a (((unsigned int *)a)[0])
@@ -235,7 +235,7 @@ int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size)
 	qsort(buf,num,size,_decreasing_uint64);
 	return(0);
 }
-/*
+
 int32_t _calc_bitsize(uint32_t x)
 {
     uint32_t mask = (1 << 31);

@@ -631,7 +631,7 @@ void copy_cJSON(char *dest,cJSON *obj)
         }
     }
 }
-
+/*
 char *stringifyM(char *str)
 {
     char *newstr;
@@ -712,7 +712,7 @@ int64_t conv_floatstr(char *numstr)
     val = atof(numstr);
     corr = (val < 0.) ? -0.50000000001 : 0.50000000001;
     return((int64_t)(val * SATOSHIDEN + corr));
-}
+}*/
 
 int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
 {

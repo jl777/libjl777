@@ -269,7 +269,9 @@ int32_t gen_pingstr(char *cmdstr,int32_t completeflag,char *coinstr)
     char MGWpingstr[1024];
     if ( cp != 0 )
     {
+#ifdef later
         ram_get_MGWpingstr(coinstr==0?0:get_ramchain_info(coinstr),MGWpingstr,-1);
+#endif
         sprintf(cmdstr,"{\"requestType\":\"ping\",%s\"NXT\":\"%s\",\"timestamp\":%ld,\"MMatrix\":%d,\"pubkey\":\"%s\",\"ipaddr\":\"%s\",\"ver\":\"%s\"",MGWpingstr,cp->srvNXTADDR,(long)time(NULL),Global_mp->isMM,Global_mp->pubkeystr,cp->myipaddr,HARDCODED_VERSION);
         if ( completeflag != 0 )
             strcat(cmdstr,"}");
@@ -561,12 +563,14 @@ char *kademlia_ping(char *previpaddr,char *verifiedNXTaddr,char *NXTACCTSECRET,c
             change_nodeinfo(ipaddr,prevport,calc_nxt64bits(sender),isMM);
             //sprintf(retstr,"{\"error\":\"kademlia_ping from %s doesnt verify (%s) -> new IP (%s:%d)\"}",sender,origargstr,ipaddr,prevport);
         }
+#ifdef later  
         if ( cp->RAM.S.gatewayid >= 0 || Global_mp->iambridge != 0 || cp->RAM.remotemode != 0 )
         {
             void ram_parse_MGWpingstr(struct ramchain_info *ram,char *sender,char *pingstr);
             //printf("parse MGWpingstr.(%s)\n",origargstr);
             ram_parse_MGWpingstr(0,sender,origargstr);
         }
+#endif
         txid = send_kademlia_cmd(0,get_pserver(0,ipaddr,prevport,0),"pong",NXTACCTSECRET,0,0);
         sprintf(retstr,"{\"result\":\"kademlia_pong to (%s/%d)\",\"txid\":\"%llu\"}",ipaddr,prevport,(long long)txid);
     }
@@ -1047,6 +1051,117 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
     //if ( Debuglevel > 0 )
         printf("FIND.(%s)\n",retstr);
     return(clonestr(retstr));
+}
+
+
+#define RESTORE_ARGS "fname", "L", "M", "N", "backup", "password", "dest", "nrs", "txids", "pin"
+char *process_htmldata(cJSON **maparrayp,char *mediatype,char *htmlstr,char **bufp,int64_t *lenp,int64_t *allocsizep,char *password,char *pin)
+{
+    //struct coin_info *cp = get_coin_info("BTCD");
+    static char *filebuf,*restoreargs[] = { RESTORE_ARGS, 0 };
+    static int64_t filelen=0,allocsize=0;
+    cJSON *json,*retjson,*htmljson,*objs[16];
+    int32_t j,depth,len;
+    char destfname[1024],jsonstr[MAX_JSON_FIELD],htmldata[MAX_JSON_FIELD],*restorestr=0,*filestr = 0,*buf = *bufp;
+    printf("process.(%s)\n",htmlstr);
+    if ( (json= cJSON_Parse(htmlstr)) != 0 )
+    {
+        copy_cJSON(htmldata,cJSON_GetObjectItem(json,"html"));
+        copy_cJSON(mediatype,cJSON_GetObjectItem(json,"mt"));
+        *maparrayp = cJSON_GetObjectItem(json,"map");
+        depth = (int32_t)get_API_int(cJSON_GetObjectItem(json,"d"),0);
+        len = (int32_t)strlen(htmldata);
+        if ( len > 1 )
+        {
+            len >>= 1 ;
+            len = decode_hex((uint8_t *)jsonstr,len,htmldata);
+            jsonstr[len] = 0;
+            if ( (htmljson= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( password != 0 && password[0] != 0 )
+                {
+                    if ( pin != 0 && pin[0] != 0 )
+                        ensure_jsonitem(htmljson,"pin",pin);
+                    ensure_jsonitem(htmljson,"password",password);
+                }
+                ensure_jsonitem(htmljson,"requestType","restorefile");
+                for (j=0; restoreargs[j]!=0; j++)
+                    objs[j] = cJSON_GetObjectItem(htmljson,restoreargs[j]);
+#ifdef later
+                restorestr = _restorefile_func(cp->srvNXTADDR,cp->srvNXTACCTSECRET,0,cp->srvNXTADDR,1,objs[0],objs[1],objs[2],objs[3],objs[4],objs[5],objs[6],objs[7],objs[8],objs[9]);
+#endif
+                if ( restorestr != 0 )
+                {
+                    if ( (retjson= cJSON_Parse(restorestr)) != 0 )
+                    {
+                        copy_cJSON(destfname,cJSON_GetObjectItem(retjson,"destfile"));
+                        free(retjson);
+                        filestr = load_file(destfname,&filebuf,&filelen,&allocsize);
+                    }
+                    free(restorestr);
+                }
+                free_json(htmljson);
+            }
+        }
+        if ( maparrayp != 0 )
+            (*maparrayp) = cJSON_DetachItemFromObject(json,"map");
+        free_json(json);
+    }
+    if ( filestr != 0 )
+    {
+        if ( filelen > (*allocsizep - 1) )
+        {
+            *allocsizep = filelen+1;
+            *bufp = buf = realloc(buf,(long)*allocsizep);
+        }
+        if ( filelen > 0 )
+        {
+            memcpy(buf,filestr,filelen);
+            buf[filelen] = 0;
+        }
+        *lenp = filelen;
+    }
+    return(filestr);
+}
+
+char *load_URL64(cJSON **maparrayp,char *mediatype,uint64_t URL64,char **bufp,int64_t *lenp,int64_t *allocsizep,char *password,char *pin)
+{
+    struct coin_info *cp = get_coin_info("BTCD");
+    int64_t  filesize;
+    cJSON *json;
+    char jsonstr[4096],databuf[4096],keystr[64],*retstr,*filestr=0;
+    int32_t finished;
+    double timeout = milliseconds() + 20000; // 20 seconds timeout
+    *lenp = 0;
+    *maparrayp = 0;
+    if ( cp == 0 )
+        return(0);
+    expand_nxt64bits(keystr,URL64);
+    retstr = 0;
+    databuf[0] = mediatype[0] = 0;
+    filesize = finished = 0;
+    while ( milliseconds() < timeout && finished == 0 )
+    {
+        retstr = kademlia_find("findvalue",0,cp->srvNXTADDR,cp->srvNXTACCTSECRET,cp->srvNXTADDR,keystr,0,0);
+        if ( retstr != 0 )
+        {
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                copy_cJSON(databuf,cJSON_GetObjectItem(json,"data"));
+                if ( databuf[0] != 0 && (filesize= strlen(databuf)/2) > 0 )
+                {
+                    finished = 1;
+                    decode_hex((void *)jsonstr,(int32_t)filesize,databuf);
+                    filestr = process_htmldata(maparrayp,mediatype,jsonstr,bufp,lenp,allocsizep,password,pin);
+                }
+                free_json(json);
+            }
+            free(retstr);
+        }
+    }
+    if ( mediatype[0] == 0 )
+        strcpy(mediatype,"text/html");
+    return(filestr);
 }
 
 void update_Kbucket(int32_t bucketid,struct nodestats *buckets[],int32_t n,struct nodestats *stats)

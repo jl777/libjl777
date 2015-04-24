@@ -26,6 +26,27 @@ double get_current_rate(char *base,char *rel)
     }
     return(1.);
 }
+void ensure_dir(char *dirname)
+{
+    FILE *fp;
+    char fname[512],cmd[512];
+    sprintf(fname,"%s/tmp",dirname);
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
+    {
+        sprintf(cmd,"mkdir %s",os_compatible_path(dirname));
+        if ( system(os_compatible_path(cmd)) != 0 )
+            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
+        fp = fopen(os_compatible_path(fname),"wb");
+        if ( fp != 0 )
+            fclose(fp);
+        if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
+        {
+            printf("failed to create.(%s) in (%s)\n",fname,dirname);
+            exit(-1);
+        } else printf("ensure_dir(%s) created.(%s)\n",dirname,fname);
+    }
+    fclose(fp);
+}
 
 void set_exchange_fname(char *fname,char *exchangestr,char *base,char *rel,uint64_t baseid,uint64_t relid)
 {

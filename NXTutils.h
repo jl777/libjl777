@@ -88,7 +88,10 @@ char *_issue_cmd_to_buffer(char *prog,char *arg1,char *arg2,char *arg3)
     char buffer[4096],cmd[512];
     int32_t fd[2];
     unsigned long len;
-	static portable_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    static int didinit;
+	static portable_mutex_t mutex;//= PTHREAD_MUTEX_INITIALIZER;
+    if ( didinit == 0 )
+        portable_mutex_init(&mutex), didinit = 1;
  	portable_mutex_lock(&mutex);
     if ( pipe(fd) != 0 )
         printf("_issue_cmd_to_buffer error doing pipe(fd)\n");
@@ -1698,7 +1701,7 @@ int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRE
     // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
 }
 
-int32_t notlocalip(char *ipaddr)
+/*int32_t notlocalip(char *ipaddr)
 {
     if ( ipaddr == 0 || ipaddr[0] == 0 || strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
         return(0);
@@ -1710,7 +1713,7 @@ int32_t is_remote_access(char *previpaddr)
     if ( notlocalip(previpaddr) != 0 )
         return(1);
     else return(0);
-}
+}*/
 
 void expand_ipbits(char *ipaddr,uint32_t ipbits)
 {
@@ -1971,7 +1974,7 @@ int is_printable(const char *s)
     return 1;
 }
 
-uint32_t calc_file_crc(uint64_t *filesizep,char *fname)
+/*uint32_t calc_file_crc(uint64_t *filesizep,char *fname)
 {
     void *ptr;
     uint32_t totalcrc = 0;
@@ -1998,7 +2001,7 @@ uint32_t calc_file_crc(uint64_t *filesizep,char *fname)
     }
 #endif
     return(totalcrc);
-}
+}*/
 
 cJSON *parse_json_AM(struct json_AM *ap)
 {
@@ -2284,22 +2287,6 @@ long load_varfilestr(int32_t *lenp,char *str,FILE *fp,int32_t maxlen)
     return(-1);
 }*/
 
-void ensure_directory(char *dirname) // jl777: does this work in windows?
-{
-    FILE *fp;
-    char fname[512],cmd[512];
-    sprintf(fname,"%s/tmp",dirname);
-    if ( (fp= fopen(os_compatible_path(fname),"rb")) == 0 )
-    {
-        sprintf(cmd,"mkdir %s",dirname);
-        if ( system(os_compatible_path(cmd)) != 0 )
-            printf("error making subdirectory (%s) %s (%s)\n",cmd,dirname,fname);
-        fp = fopen(os_compatible_path(fname),"wb");
-        if ( fp != 0 )
-            fclose(fp);
-    }
-    else fclose(fp);
-}
 
 #ifdef oldway
 

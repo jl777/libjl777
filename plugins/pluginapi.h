@@ -52,32 +52,6 @@ char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(retstr);
 }
 
-char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
-{
-    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD];
-    struct daemon_info *dp;
-    uint64_t daemonid,instanceid;
-    int32_t ind;
-    copy_cJSON(plugin,objs[0]);
-    daemonid = get_API_nxt64bits(objs[1]);
-    instanceid = get_API_nxt64bits(objs[2]);
-    copy_cJSON(method,objs[3]);
-    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
-    {
-        if ( dp->allowremote == 0 && is_remote_access(previpaddr) != 0 )
-            return(clonestr("{\"error\":\"cant remote call plugins\"}"));
-        else if ( in_jsonarray(dp->methodsjson,method) == 0 )
-            return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
-        else if ( send_to_daemon(dp->name,daemonid,instanceid,origargstr) != 0 )
-        {
-            
-            return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
-        }
-        else return(clonestr("{\"result\":\"message sent to plugin\"}"));
-    }
-    return(clonestr("{\"error\":\"cant find plugin\"}"));
-}
-
 char *register_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char plugin[MAX_JSON_FIELD],retbuf[1024],*methodstr;
@@ -107,11 +81,57 @@ char *register_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     return(clonestr("{\"error\":\"cant register inactive plugin\"}"));
 }
 
+char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],tagstr[MAX_JSON_FIELD],*retstr = 0;
+    struct daemon_info *dp;
+    uint64_t daemonid,instanceid,tag;
+    int32_t ind,i,async,n = 1;
+    copy_cJSON(plugin,objs[0]);
+    daemonid = get_API_nxt64bits(objs[1]);
+    instanceid = get_API_nxt64bits(objs[2]);
+    copy_cJSON(method,objs[3]);
+    copy_cJSON(tagstr,objs[4]);
+    n = get_API_int(objs[5],1);
+    tag = calc_nxt64bits(tagstr);
+    async = get_API_int(objs[6],0);
+    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
+    {
+        if ( dp->allowremote == 0 && is_remote_access(previpaddr) != 0 )
+            return(clonestr("{\"error\":\"cant remote call plugins\"}"));
+        else if ( in_jsonarray(dp->methodsjson,method) == 0 )
+            return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
+        else
+        {
+            double elapsed,startmilli = milliseconds();
+            for (i=0; i<n; i++)
+            {
+                retstr = 0;
+                if ( send_to_daemon(async==0?&retstr:0,tag,dp->name,daemonid,instanceid,origargstr) != 0 )
+                    return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
+                else if ( async != 0 )
+                    return(clonestr("{\"error\":\"request sent to plugin async\"}"));
+                if ( (retstr= wait_for_daemon(&retstr,tag)) == 0 || retstr[0] == 0 )
+                    return(clonestr("{\"error\":\"plugin returned empty string\"}"));
+                else if ( i < n-1 )
+                    free(retstr);
+            }
+            //if ( n > 1 )
+            {
+                elapsed = (milliseconds() - startmilli);
+                printf("elapsed %f millis for %d iterations ave [%.1f micros]\n",elapsed,i,(1000. * elapsed)/i);
+            }
+        }
+        return(retstr);
+    }
+    return(clonestr("{\"error\":\"cant find plugin\"}"));
+}
+
 char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char hopNXTaddr[64],tagstr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],params[MAX_JSON_FIELD],*str2,*cmdstr,*retstr = 0;
     struct coin_info *cp = 0;
-    uint64_t daemonid,instanceid;
+    uint64_t daemonid,instanceid,tag;
     copy_cJSON(coinstr,objs[0]);
     copy_cJSON(method,objs[1]);
     if ( is_remote_access(previpaddr) != 0 )
@@ -122,6 +142,9 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     copy_cJSON(params,objs[2]);
     unstringify(params), stripwhite_ns(params,strlen(params));
     copy_cJSON(tagstr,objs[3]);
+    if ( is_decimalstr(tagstr) != 0 )
+        tag = calc_nxt64bits(tagstr);
+    else tag = rand();
     copy_cJSON(plugin,objs[4]);
     daemonid = get_API_nxt64bits(objs[5]);
     instanceid = get_API_nxt64bits(objs[6]);
@@ -131,8 +154,8 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         if ( daemonid != 0 )
         {
             unstringify(params);
-            send_to_daemon(plugin,daemonid,instanceid,params);
-            return(clonestr("{\"result\":\"unstringified params sent to daemon\"}"));
+            send_to_daemon(&retstr,tag,plugin,daemonid,instanceid,params);
+            return(wait_for_daemon(&retstr,tag));
         }
         else if ( (cp= get_coin_info(coinstr)) != 0 && method[0] != 0 )
             retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,method,params);
@@ -165,10 +188,12 @@ char *syscall_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     int32_t launchflag,websocket;
     uint16_t port;
     copy_cJSON(syscall,objs[0]);
-    launchflag = get_API_int(objs[1],0);
     websocket = get_API_int(objs[2],0);
     copy_cJSON(jsonargs,objs[3]);
     copy_cJSON(plugin,objs[4]);
+    if ( is_bundled_plugin(plugin) != 0 )
+        launchflag = 1;
+    else launchflag = get_API_int(objs[1],0);
     copy_cJSON(ipaddr,objs[5]);
     port = get_API_int(objs[6],0);
     if ( (json= cJSON_Parse(jsonargs)) != 0 )
@@ -181,7 +206,6 @@ char *syscall_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
         free(jsonstr);
         stripwhite_ns(jsonargs,strlen(jsonargs));
     }
-    printf("websocket.%d launchflag.%d syscall.(%s) jsonargs.(%s) json.%p\n",websocket,launchflag,syscall,jsonargs,json);
     if ( is_remote_access(previpaddr) != 0 )
         return(0);
     return(language_func(plugin,ipaddr,port,websocket,launchflag,syscall,jsonargs,call_system));

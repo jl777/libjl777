@@ -17,8 +17,8 @@ void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint
 {
     void _RTmgw_handler(struct transfer_args *args);
     void bridge_handler(struct transfer_args *args);
-    FILE *fp;
-    char buf[512],*str;
+    //FILE *fp;
+    //char buf[512],*str;
     uint32_t now = (uint32_t)time(NULL);
     if ( args->syncmem != 0 )
     {
@@ -30,6 +30,7 @@ void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint
         args->handlercrc = crc;
         args->handlertime = now;
     }
+#ifdef later
     if ( strcmp(args->handler,"mgw") == 0 || strcmp(args->handler,"RTmgw") == 0 )
     {
         set_handler_fname(buf,args->handler,args->name);
@@ -52,6 +53,7 @@ void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint
             free(str);
     }
     else printf("unknown handler.(%s)\n",args->handler);
+#endif
     if ( args->syncmem == 0 )
     {
         memset(args->data,0,args->totallen);
@@ -384,6 +386,8 @@ void return_http_str(struct libwebsocket *wsi,uint8_t *retstr,int32_t retlen,cha
     int32_t len;
     unsigned char buffer[8192];
     len = retlen;
+    if ( retlen == 0 )
+        return;
     if ( insertstr != 0 && insertstr[0] != 0 )
         len += (int32_t)strlen(insertstr);
     sprintf((char *)buffer,
@@ -886,8 +890,10 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
             void *process_ramchains(void *_argcoinstr);
             if ( Global_mp->gatewayid >= 0 )
                 init_SuperNET_storage(cp->backupdir);
+#ifdef later
             if ( IS_LIBTEST > 0 && IS_LIBTEST < 7 && NORAMCHAINS == 0 && portable_thread_create((void *)process_ramchains,0) == 0 )
                 printf("ERROR hist run_libwebsockets\n");
+#endif
         }
         if ( portable_thread_create((void *)run_UVloop,Global_mp) == 0 )
             printf("ERROR hist process_hashtablequeues\n");
@@ -916,6 +922,8 @@ char *call_SuperNET_JSON(char *JSONstr)
             cJSON_AddItemToObject(json,"pubkey",cJSON_CreateString(Global_mp->pubkeystr));
         if ( cJSON_GetObjectItem(json,"timestamp") == 0 )
             cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
+        if ( cJSON_GetObjectItem(json,"tag") == 0 )
+            cJSON_AddItemToObject(json,"tag",cJSON_CreateNumber(rand()));
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
@@ -1191,9 +1199,11 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
     myipaddr = init_NXTservices(JSON_or_fname,myipaddr);
     //if ( IS_LIBTEST < 7 )
     {
+#ifdef later
         uint64_t pendingtxid;
         if ( Global_mp->gatewayid >= 0 )
             ready_to_xferassets(&pendingtxid);
+#endif
         //if ( Debuglevel > 0 )
         //    printf("back from init_NXTservices (%s) NXTheight.%d\n",myipaddr,get_NXTheight());
         p2p_publishpacket(0,0);
@@ -1229,6 +1239,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
             printf("ERROR hist run_libwebsockets\n");
         portable_sleep(3);
     }
+    //char path[1024];
+    ensure_directory(SOPHIA_DIR);
+    //SuperNET_JSON("{\"requestType\":\"syscall\",\"plugin\":\"sophia\"}");
     init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     int32_t tmp = 1;
     if ( strncmp(Global_mp->ipaddr,"209",3) != 0 && (Global_mp->gatewayid >= 0 || Global_mp->iambridge != 0) )

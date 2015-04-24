@@ -68,6 +68,38 @@ void free_privkeys(char **privkeys,int32_t *cipherids)
     }
 }
 
+char **gen_privkeys(int32_t **cipheridsp,char *name,char *password,char *keygen,char *pin)
+{
+    long i,len;
+    bits256 passkey,G;
+    char key[128],**privkeys = 0;
+    *cipheridsp = 0;
+    if ( password == 0 || password[0] == 0 )
+        password = keygen;
+    else if ( strcmp(password,"none") == 0 )
+        return(0);
+    if ( password != 0 && password[0] != 0 )
+    {
+        memset(&G,0,sizeof(G));
+        G.bytes[0] = 9;
+        calc_sha256cat(passkey.bytes,(uint8_t *)name,(int32_t)strlen(name),(uint8_t *)password,(int32_t)strlen(password));
+        len = strlen(pin);
+        privkeys = calloc(len+2,sizeof(*privkeys));
+        (*cipheridsp) = calloc(len+2,sizeof(*cipheridsp));
+        for (i=0; i<=len; i++)
+        {
+            init_hexbytes_noT(key,passkey.bytes,sizeof(passkey));
+            (*cipheridsp)[i] = (pin[i] % NUM_CIPHERS);
+            privkeys[i] = clonestr(key);
+            //printf("(%d %s) ",(*cipheridsp)[i],privkeys[i]);
+            if ( i < len )
+                passkey = curve25519(passkey,G);
+        }
+        //printf("gen_privkeys len.%ld\n",len);
+    }
+    return(privkeys);
+}
+
 int32_t AES_codec(uint8_t *buf,int32_t decryptflag,char *msg,char *AESpasswordstr)
 {
     int32_t *cipherids,len;

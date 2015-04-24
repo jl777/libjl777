@@ -260,37 +260,6 @@ int32_t hdecode_svarbits(uint32_t *valp,HUFF *hp)
     else return(hdecode_varbits(valp,hp));
 }
 
-int32_t hcalc_varint(uint8_t *buf,uint64_t x)
-{
-    uint16_t s; uint32_t i; int32_t len = 0;
-    if ( x < 0xfd )
-        buf[len++] = (uint8_t)(x & 0xff);
-    else
-    {
-        if ( x <= 0xffff )
-        {
-            buf[len++] = 0xfd;
-            s = (uint16_t)x;
-            memcpy(&buf[len],&s,sizeof(s));
-            len += 2;
-        }
-        else if ( x <= 0xffffffffL )
-        {
-            buf[len++] = 0xfe;
-            i = (uint32_t)x;
-            memcpy(&buf[len],&i,sizeof(i));
-            len += 4;
-        }
-        else
-        {
-            buf[len++] = 0xff;
-            memcpy(&buf[len],&x,sizeof(x));
-            len += 8;
-        }
-    }
-    return(len);
-}
-
 long hemit_varint(FILE *fp,uint64_t x)
 {
     uint8_t buf[9];
@@ -301,25 +270,6 @@ long hemit_varint(FILE *fp,uint64_t x)
     if ( (len= hcalc_varint(buf,x)) > 0 )
         retval = fwrite(buf,1,len,fp);
     return(retval);
-}
-
-long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize)
-{
-    uint16_t s; uint32_t i; int32_t c;
-    if ( ptr == 0 )
-        return(-1);
-    *valp = 0;
-    if ( offset < 0 || offset >= mappedsize )
-        return(-1);
-    c = ptr[offset++];
-    switch ( c )
-    {
-        case 0xfd: if ( offset+sizeof(s) > mappedsize ) return(-1); memcpy(&s,&ptr[offset],sizeof(s)), *valp = s, offset += sizeof(s); break;
-        case 0xfe: if ( offset+sizeof(i) > mappedsize ) return(-1); memcpy(&i,&ptr[offset],sizeof(i)), *valp = i, offset += sizeof(i); break;
-        case 0xff: if ( offset+sizeof(*valp) > mappedsize ) return(-1); memcpy(valp,&ptr[offset],sizeof(*valp)), offset += sizeof(*valp); break;
-        default: *valp = c; break;
-    }
-    return(offset);
 }
 
 long hload_varint(uint64_t *valp,FILE *fp)

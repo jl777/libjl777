@@ -794,6 +794,50 @@ char *gotjson_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     return(retstr);
 }
 
+
+int32_t compare_files(char *fname,char *fname2)
+{
+    int32_t offset,errs = 0;
+    long len,len2;
+    char buf[8192],buf2[8192];
+    FILE *fp,*fp2;
+    if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
+    {
+        if ( (fp2= fopen(os_compatible_path(fname2),"rb")) != 0 )
+        {
+            while ( (len= fread(buf,1,sizeof(buf),fp)) > 0 && (len2= fread(buf2,1,sizeof(buf2),fp2)) == len )
+                if ( (offset= memcmp(buf,buf2,len)) != 0 )
+                    printf("compare error at offset.%d: (%s) src.%ld vs. (%s) dest.%ld\n",offset,fname,ftell(fp),fname2,ftell(fp2)), errs++;
+            fclose(fp2);
+        }
+        fclose(fp);
+    }
+    return(errs);
+}
+
+
+long copy_file(char *src,char *dest)
+{
+    long len = -1;
+    char buf[8192];
+    FILE *srcfp,*destfp;
+    if ( (srcfp= fopen(os_compatible_path(src),"rb")) != 0 )
+    {
+        if ( (destfp= fopen(os_compatible_path(dest),"wb")) != 0 )
+        {
+            while ( (len= fread(buf,1,sizeof(buf),srcfp)) > 0 )
+                if ( (long)fwrite(buf,1,len,destfp) != len )
+                    printf("write error at (%s) src.%ld vs. (%s) dest.%ld\n",src,ftell(srcfp),dest,ftell(destfp));
+            len = ftell(destfp);
+            fclose(destfp);
+        }
+        fclose(srcfp);
+    }
+    if ( len == 0 || compare_files(src,dest) != 0 )
+        printf("Error copying files (%s) -> (%s)\n",src,dest), len = -1;
+    return(len);
+}
+
 char *settings_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     static char *buf=0;
@@ -963,6 +1007,7 @@ char *getfile_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *send
     else return(clonestr("{\"error\":\"invalid getfile parameters\"}"));
 }
 
+#ifdef later
 #define RAMAPI_ERRORSTR "{\"error\":\"invalid ramchain parameters\"}"
 #define RAMAPI_ILLEGALREMOTE "{\"error\":\"invalid ramchain remote access\"}"
 char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t valid,char *origargstr,char *NXTaddr,char *NXTACCTSECRET)
@@ -1648,6 +1693,7 @@ char *issue_ramstatus(char *coinstr)
     strcat(retbuf,"]");
     return(clonestr(retbuf));
 }
+#endif
 
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *origargjson,char *sender,int32_t valid,char *origargstr)
 {
@@ -1660,6 +1706,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *stop[] = { (char *)stop_func, "stop", "V", 0 };
     static char *settings[] = { (char *)settings_func, "settings", "V", "field", "value", "reinit", 0 };
     
+#ifdef later
     // remotable ramchains
     static char *rampyramid[] = { (char *)rampyramid_func, "rampyramid", "V", "destip", "port", "coin", "blocknum", "type", 0 };
     static char *ramstatus[] = { (char *)ramstatus_func, "ramstatus", "V", "destip", "port", "coin", 0 };
@@ -1685,14 +1732,20 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     //static char *MGW[] = { (char *)MGW_func, "MGW", "", "NXT0", "NXT1", "NXT2", "ip0", "ip1", "ip2", "coin", "asset", "rescan", "actionflag", "specialNXT", "exclude0", "exclude1", "exclude2", "destip", "destport", "userpubkey", "email", "destNXT", 0 };
     static char *cosign[] = { (char *)cosign_func, "cosign", "V", "otheracct", "seed", "text", 0 };
     static char *cosigned[] = { (char *)cosigned_func, "cosigned", "V", "seed", "result", "privacct", "pubacct", 0 };
-    
-    // IP comms
-    static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", "MMatrix", 0 };
-    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", "MMatrix", 0 };
     static char *sendfrag[] = { (char *)sendfrag_func, "sendfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "data", "totallen", "blocksize", "handler", "syncmem", 0 };
     static char *gotfrag[] = { (char *)gotfrag_func, "gotfrag", "V", "pubkey", "name", "fragi", "numfrags", "ipaddr", "totalcrc", "datacrc", "totallen", "blocksize", "count", "handler", "syncmem", "snapshotcrc", 0 };
     static char *startxfer[] = { (char *)startxfer_func, "startxfer", "V", "fname", "dest", "data", "timeout", "handler", "syncmem", 0 };
-    static char *getfile[] = { (char *)getfile_func, "getfile", "V", "name", "handler", 0 };
+    // MofNfs
+    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "fname", "L", "M", "N", "backup", "password", "pin", 0 };
+    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", RESTORE_ARGS, 0 };
+    static char *publish[] = { (char *)publish_func, "publish", "V", "files", "L", "M", "N", "backup", "password", "pin", 0  };
+    // Privatbet
+    static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", "prizefund", 0 };
+#endif
+    // IP comms
+    static char *ping[] = { (char *)ping_func, "ping", "V", "pubkey", "ipaddr", "port", "destip", "MMatrix", 0 };
+    static char *pong[] = { (char *)pong_func, "pong", "V", "pubkey", "ipaddr", "port", "yourip", "yourport", "tag", "MMatrix", 0 };
+     static char *getfile[] = { (char *)getfile_func, "getfile", "V", "name", "handler", 0 };
 
     // Kademlia DHT
     static char *puzzles[] = { (char *)challenge_func, "puzzles", "V", "reftime", "duration", "threshold", 0 };
@@ -1704,10 +1757,6 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     static char *havenodeB[] = { (char *)havenodeB_func, "havenodeB", "V", "pubkey", "key", "name", "data", 0 };
     static char *findaddress[] = { (char *)findaddress_func, "findaddress", "V", "refaddr", "list", "dist", "duration", "numthreads", 0 };
 
-    // MofNfs
-    static char *savefile[] = { (char *)savefile_func, "savefile", "V", "fname", "L", "M", "N", "backup", "password", "pin", 0 };
-    static char *restorefile[] = { (char *)restorefile_func, "restorefile", "V", RESTORE_ARGS, 0 };
-    static char *publish[] = { (char *)publish_func, "publish", "V", "files", "L", "M", "N", "backup", "password", "pin", 0  };
     
     // Telepathy
     static char *getpeers[] = { (char *)getpeers_func, "getpeers", "V",  "scan", 0 };
@@ -1751,19 +1800,21 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
     //static char *getquotes[] = { (char *)getquotes_func, "getquotes", "V", "exchange", "base", "rel", "oldest", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "code", 0 };
 
-    // Privatbet
-    static char *lotto[] = { (char *)lotto_func, "lotto", "V", "refacct", "asset", "lottoseed", "prizefund", 0 };
 
     // plugins
     static char *passthru[] = { (char *)passthru_func, "passthru", "V", "coin", "method", "params", "tag", "plugin", "daemonid", "instanceid", 0 };
-    static char *plugin[] = { (char *)plugin_func, "plugin", "V", "plugin", "daemonid", "instanceid", "method", 0 };
+    static char *plugin[] = { (char *)plugin_func, "plugin", "V", "plugin", "daemonid", "instanceid", "method", "tag", "iters", "async", 0 };
     static char *registerplugin[] = { (char *)register_func, "register", "V", "plugin", "daemonid", "instanceid", "methods", 0 };
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
     //static char *python[] = { (char *)python_func, "python", "V",  "name", "launch", "websocket", 0 };
     static char *syscall[] = { (char *)syscall_func, "syscall", "V", "name", "daemonize", "websocket", "jsonargs", "plugin", "ipaddr", "port", 0 };
     static char *checkmsg[] = { (char *)checkmsg_func, "checkmessages", "V", "daemonid", 0 };
 
-    static char **commands[] = { registerplugin, plugin, stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, cosign, cosigned, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, publish, syscall, getpeers, maketelepods, tradebot, respondtx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, sendmsg, sendbinary, orderbook, teleport, telepodacct, savefile, restorefile, passthru, remote, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, getfile, allsignals, getsignal, jumptrades, cancelquote, lottostats, tradehistory, makeoffer3, trollbox };
+    static char **commands[] = { registerplugin, plugin, stop, GUIpoll, BTCDpoll, settings, gotjson, gotpacket, gotnewpeer, getdb, telepathy, addcontact, dispcontact, removecontact, findaddress, puzzles, nonces, ping, pong, store, findnode, havenode, havenodeB, findvalue, syscall, getpeers, maketelepods, tradebot, respondtx, checkmsg, openorders, allorderbooks, placebid, bid, placeask, ask, sendmsg, sendbinary, orderbook, teleport, telepodacct, passthru, remote,
+#ifdef later
+         cosign, cosigned, genmultisig, getmsigpubkey, setmsigpubkey, MGWaddr, MGWresponse, sendfrag, gotfrag, startxfer, lotto, ramstring, ramrawind, ramblock, ramcompress, ramexpand, ramscript, ramtxlist, ramrichlist, rambalances, ramstatus, ramaddrlist, rampyramid, ramresponse, publish,  savefile, restorefile, 
+#endif
+        getfile, allsignals, getsignal, jumptrades, cancelquote, lottostats, tradehistory, makeoffer3, trollbox };
     int32_t i,j;
     struct coin_info *cp;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
