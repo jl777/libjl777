@@ -392,12 +392,14 @@ int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_
     return(n);
 }
 
+#ifdef BUNDLED
 uint32_t calc_ipbits(char *ipaddr)
 {
     printf("make portable ipbits for (%s)\n",ipaddr);
     getchar();
     return(0);
 }
+#endif
 
 #endif
 #endif
