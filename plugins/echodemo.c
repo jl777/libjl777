@@ -19,6 +19,7 @@
 
 STRUCTNAME
 {
+    int32_t pad;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 };
 char *PLUGNAME(_methods)[] = { "echo", "echo2" }; // list of supported methods
