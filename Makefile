@@ -76,7 +76,8 @@ MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
 SuperNET: $(TARGET); \
-    pkill SuperNET; cd plugins; $(_sophia); cd ..; rm SuperNET; clang -o SuperNET $(CFLAGS) SuperNET.c libs/sophia.o plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c  libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
+    pkill SuperNET; cd plugins; gcc -c -o ../libs/sophia.o $(PINCLUDES)  -g -O2 -std=c99 -pedantic -Wextra -Wall -Wunused-parameter -Wsign-compare -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden  sophia/sophia.c; \
+     cd ..; rm SuperNET; clang -o SuperNET $(CFLAGS) SuperNET.c libs/sophia.o plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c  libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
 
 special: /usr/lib/libjl777.so; \
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lcurl -lm -ldl; \
