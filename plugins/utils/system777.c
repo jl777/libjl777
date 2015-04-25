@@ -422,7 +422,7 @@ int32_t getline777(char *line,int32_t max)
 uint16_t wait_for_myipaddr(char *ipaddr)
 {
     uint16_t port = 0;
-    printf("need a portable way to find IP addr\n");
+    printf("need a portable way to find IP addr.(%s)\n");
     getchar();
     return(port);
 }
@@ -479,7 +479,7 @@ int32_t shutdown_plugsocks(union endpoints *socks)
 int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len)
 {
     int32_t i,sock,errs = 0;
-    for (i=0; i<=(sizeof(socks->send)/sizeof(int32_t))+1; i++)
+    for (i=0; i<=(int32_t)(sizeof(socks->send)/sizeof(int32_t))+1; i++)
     {
         if ( i < 2 )
             sock = (i == 0) ? socks->both.bus : socks->both.pair;
