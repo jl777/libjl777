@@ -649,7 +649,7 @@ extern char WEBSOCKETD[];
 #include "cJSON.h"
 #include "utils777.c"
 #include "files777.c"
-#include "plugins.h"
+#include "plugins/plugins.h"
 
 int MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,Gatewayid = -1;
 char SOPHIA_DIR[MAX_JSON_FIELD],NXT_ASSETIDSTR[MAX_JSON_FIELD],NXTSERVER[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD],MGWROOT[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
