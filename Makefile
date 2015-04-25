@@ -34,7 +34,8 @@ LIBTOM = libtom/yarrow.c libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.
     libtom/blowfish.c libtom/kasumi.c  libtom/noekeon.c libtom/rmd160.c libtom/sha256.c libtom/hmac_sha512.c libtom/xtea.c
 
 SRCS = plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/utils777.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c \
-       plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c \
+       plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c \
+       plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c \
        SuperNET.c libjl777.c
  
 OBJS	:= $(SRCS:%.c=%.o)
@@ -279,8 +280,8 @@ cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
 lib/stockfish: plugins/stockfish/stockfish.cpp
 lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
 lib/echo: plugins/echodemo.c
-nonportable/$(OS)/files.o: nonportable/$(OS)/files.c
-nonportable/$(OS)/random.o: nonportable/$(OS)/random.c
+#plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
+#plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
 
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c plugins/utils/bits777.c plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/files777.c plugins/utils/utils777.c plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 
