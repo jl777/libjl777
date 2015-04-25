@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 
 int32_t os_supports_mappedfiles() { return(1); }
