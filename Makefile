@@ -44,7 +44,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	ar rcu  libs/libjl777.a  $(OBJS) libs/sophia.o
+	ar rcu  libs/libjl777.a  $(OBJS) #plugins/sophia/sophia.o
 
 test:	all
 	(cd tests; make test)
