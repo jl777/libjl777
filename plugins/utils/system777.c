@@ -621,7 +621,7 @@ char *ipbits_str2(uint64_t ipbits)
     return(ipaddr);
 }
 
-struct sockaddr_in conv_ipbits(uint64_t ipbits)
+/*struct sockaddr_in conv_ipbits(uint64_t ipbits)
 {
     char ipaddr[64];
     uint16_t port;
@@ -636,7 +636,7 @@ struct sockaddr_in conv_ipbits(uint64_t ipbits)
     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
     memset(&(server_addr.sin_zero),0,8);
     return(server_addr);
-}
+}*/
 
 
 #endif
