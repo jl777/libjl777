@@ -235,8 +235,10 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sende
     struct multisig_addr *msigram;
     if ( msig == 0 )
     {
-        //if ( syncflag != 0 && sdb != 0 && sdb->storage != 0 )
-        //    return(dbsync(sdb,0));
+        if ( syncflag != 0 )//&& sdb != 0 && sdb->storage != 0 )
+        {
+            //    return(dbsync(sdb,0));
+        }
         return(0);
     }
     for (i=0; i<msig->n; i++)

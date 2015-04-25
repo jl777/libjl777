@@ -30,7 +30,7 @@ struct multisig_addr
     UT_hash_handle hh;
     char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
     uint64_t sender,modified;
-    uint32_t size,m,n,created,valid,buyNXT;
+    int32_t size,m,n,created,valid,buyNXT;
     struct pubkey_info pubkeys[];
 };
 
