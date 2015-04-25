@@ -1269,9 +1269,9 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 
 #define DEFINES_ONLY
 #define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
-#include "plugin777.c"
-#include "storage.c"
-#include "system777.c"
+#include "plugins/plugin777.c"
+#include "plugins/sophia/storage.c"
+#include "plugins/utils/system777.c"
 #undef DEFINES_ONLY
 
 STRUCTNAME
@@ -1282,7 +1282,7 @@ STRUCTNAME
     //struct ramchain_info *Ramchains[100];
 };
 
-char *PLUGNAME(_methods)[] = { "stats", "echo2" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "install", "plugin" }; // list of supported methods
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
@@ -1328,7 +1328,7 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     }
     return(retcode);
 }
-#include "plugin777.c"
+#include "plugins/plugin777.c"
 
 
 
