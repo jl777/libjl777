@@ -189,36 +189,41 @@ patch2: doesntexist; \
     cp lib/*  ../../libs; \
     cd ../..;
 
+#git clone https://github.com/joewalnes/websocketd;
+#git clone https://github.com/nanomsg/nanomsg; \
+    #unzip lws.zip -d libwebsockets; \
+    #cd libwebsockets/lib; \
+    #cmake ..; \
+    #cp libwebsockets.h lws_config.h ../../includes; \
+    #cp libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
+    #cp libwebsockets-test-server.pem ../../SuperNET.pem; \
+    #make; \
+    #cp lib/*  ../../libs; \
+    #cd ../..; \
+    #unzip db-6.1.19.zip; \
+    #cd db-6.1.19/build_unix; \
+    #../dist/configure; \
+    #cp ../../env_region.c ../src/env; \
+    #make; \
+    #cp libdb.a ../../libs; \
+    #cp *.h ../../includes; \
+    #cd ../..; \
+    #cd libuv; \
+    #sh autogen.sh; \
+    #./configure; \
+    #make; \
+    #cp .libs/libuv.a ../libs; \
+    #cp .libs/libuv.so ../libs; \
+    #cd ..; \
+
 onetime: doesntexist; \
-    git clone https://github.com/joewalnes/websocketd; git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..; \
-    cd miniupnpc; \
-    make; \
-    cp libminiupnpc.a ../libs; \
-    cd ..;\
-    unzip lws.zip -d libwebsockets; \
-    cd libwebsockets/lib; \
-    cmake ..; \
-    cp libwebsockets.h lws_config.h ../../includes; \
-    cp libwebsockets-test-server.key.pem ../../SuperNET.key.pem; \
-    cp libwebsockets-test-server.pem ../../SuperNET.pem; \
-    make; \
-    cp lib/*  ../../libs; \
-    cd ../..; \
-    unzip db-6.1.19.zip; \
-    cd db-6.1.19/build_unix; \
-    ../dist/configure; \
-    cp ../../env_region.c ../src/env; \
-    make; \
-    cp libdb.a ../../libs; \
-    cp *.h ../../includes; \
-    cd ../..; \
-    cd libuv; \
-    sh autogen.sh; \
-    ./configure; \
-    make; \
-    cp .libs/libuv.a ../libs; \
-    cp .libs/libuv.so ../libs; \
-    cd ..; \
+    cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h src/utils/mutex.h ../plugins/includes; cd ..; \
+    cd miniupnpc; make; cp libminiupnpc.a ../libs; cd ..; \
+    git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; \
+    export GOPATH=$BUILD_DIR/go/gocode;  export GOROOT=$BUILD_DIR/go; \
+    go get golang.org/x/tools/cmd; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get golang.org/x/tools;\
+    cd gocode/src; mkdir github.com; cd github.com; mkdir joewalnes; cd joewalnes; git clone https://github.com/joewalnes/websocketd; cd websocketd; go build; cp websocketd ../../../../../../libs; cd ../../../../../..; 
+
 
 winpatch: doesntexist; \
    sh make_windows.sh;

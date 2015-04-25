@@ -720,9 +720,15 @@ char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
 int SuperNET_start(char *jsonstr,char *myip)
 {
     cJSON *json = cJSON_Parse(jsonstr);
+    FILE *fp;
     Debuglevel = 2;
     SUPERNET_PORT = 7777;
-    strcpy(WEBSOCKETD,"websocketd");
+    if ( (fp= fopen("libs/websocketd","rb")) != 0 )
+    {
+        fclose(fp);
+        strcpy(WEBSOCKETD,"libs/websocketd");
+    }
+    else strcpy(WEBSOCKETD,"websocketd");
     strcpy(SOPHIA_DIR,"./DB");
     if ( json != 0 )
     {
