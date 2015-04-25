@@ -256,11 +256,12 @@ libs/libuv.a:
 doesntexist:
 picoc.o: picoc.c picoc.h
 libgfshare.o: libgfshare.c libgfshare.h
-libjl777.o: libjl777.c atomic.h ciphers.h feeds.h jl777hash.h libgfshare.h mofnfs.h packets.h sorts.h tradebot.h \
-            storage.h bars.h cJSON.h jl777str.h NXTservices.h telepathy.h transporter.h \
-            bitcoind.h coincache.h jdatetime.h jsoncodec.h NXTutils.h sortnetworks.h telepods.h \
-            NXT_tx.h assetids.h exchanges.h orderbooks.h quotes.h rambooks.h signals.h trades.h \
-            bitcoinglue.h coins.h jl777.h kademlia.h mappedptr.h InstantDEX.h _sorts.h teleport.h udp.h tweetnacl.h
+libjl777.o: libjl777.c SuperNET.c
+    #atomic.h ciphers.h feeds.h jl777hash.h libgfshare.h mofnfs.h packets.h sorts.h tradebot.h \
+            #storage.h bars.h cJSON.h jl777str.h NXTservices.h telepathy.h transporter.h \
+            #bitcoind.h coincache.h jdatetime.h jsoncodec.h NXTutils.h sortnetworks.h telepods.h \
+            #NXT_tx.h assetids.h exchanges.h orderbooks.h quotes.h rambooks.h signals.h trades.h \
+            #bitcoinglue.h coins.h jl777.h kademlia.h mappedptr.h InstantDEX.h _sorts.h teleport.h udp.h tweetnacl.h
 table.o: table.c interpreter.h platform.h
 lex.o: lex.c interpreter.h platform.h
 parse.o: parse.c picoc.h interpreter.h platform.h
