@@ -34,7 +34,7 @@ LIBTOM = libtom/yarrow.c libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.
     libtom/blowfish.c libtom/kasumi.c  libtom/noekeon.c libtom/rmd160.c libtom/sha256.c libtom/hmac_sha512.c libtom/xtea.c
 
 SRCS = plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/utils777.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c \
-       plugins/utils/inet.c plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c \
+       plugins/utils/inet.c plugins/utils/files777.c plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c \
        plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c \
        SuperNET.c libjl777.c
  
