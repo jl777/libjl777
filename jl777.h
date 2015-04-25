@@ -90,7 +90,7 @@
 #define SATOSHIDEN 100000000L
 #define NXT_TOKEN_LEN 160
 #define POLL_SECONDS 10
-#define NXT_ASSETLIST_INCR 100
+#define NXT_ASSETLIST_INCR 16
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 
@@ -142,6 +142,14 @@
 #include <windows.h>
 //#include "utils/pthread.h"
 #include "includes/gettimeofday.h"
+
+
+#define DEFINES_ONLY
+#include "plugins/ramchain/files777.c"
+#include "plugins/ramchain/system777.c"
+#include "plugins/ramchain/NXT777.c"
+#include "plugins/ramchain/storage.c"
+#undef DEFINES_ONLY
 
 char *os_compatible_path(char *fname);
 void sleepmillis(uint32_t milliseconds);
@@ -199,15 +207,14 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 
 //#define portable_mutex_t pthread_mutex_t
 
-
 // includes that include actual code
 //#include "includes/crypto_box.h"
-#include "tweetnacl.c"
+/*#include "tweetnacl.c"
 #if __i686__ || __i386__
 #include "curve25519-donna.c"
 #else
 #include "curve25519-donna-c64.c"
-#endif
+#endif*/
 //#include "includes/randombytes.h"
 
 //#include "utils/smoothers.h"
@@ -217,12 +224,12 @@ long jl777strlen(const char *str) { if ( str == 0 ) { fprintf(stderr,"strlen(NUL
 //#include "bitmap.h"
 
 #include "cJSON.h"
-#include "jl777str.h"
-#include "cJSON.c"
-#include "bitcoind_RPC.c"
+//#include "jl777str.h"
+//#include "cJSON.c"
+//#include "bitcoind_RPC.c"
 #include "SuperNET.h"
-#include "jsoncodec.h"
-#include "mappedptr.h"
+//#include "jsoncodec.h"
+//#include "mappedptr.h"
 //#include "ramchain.h"
 #include "includes/utlist.h"
 struct resultsitem { struct queueitem DL; char *argstr,*retstr; uint64_t txid; char retbuf[]; };
@@ -276,6 +283,8 @@ struct NXT_protocol_parms
     int64_t assetoshis;
 };
 
+#include "tweetnacl.h"
+
 struct NXThandler_info
 {
     double fractured_prob,endpuzzles;  // probability NXT network is fractured, eg. major fork or attack in progress
@@ -299,7 +308,7 @@ struct NXThandler_info
     uint32_t puzzletime;
     char ipaddr[64],dispname[128],groupname[128];
 };
-struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr);
+struct NXT_acct *get_NXTacct(int32_t *createdp,char *NXTaddr);
 extern struct NXThandler_info *Global_mp;
 
 #define NXTPROTOCOL_INIT -1
@@ -391,10 +400,13 @@ struct batch_info
     struct withdraw_info W;
     struct rawtransaction rawtx;
 };
+extern char MGWROOT[];
 
 struct coin_info
 {
+#ifdef soon
     struct ramchain_info RAM;
+#endif
     int32_t timestamps[100];
     struct batch_info BATCH,withdrawinfos[16];
     struct unspent_info unspent;
@@ -645,6 +657,7 @@ char *addcontact(char *handle,char *acct);
 char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *argjson,char *sender,int32_t valid,char *origargstr);
 void handler_gotfile(char *sender,char *senderip,struct transfer_args *args,uint8_t *data,int32_t len,uint32_t crc);
 char *call_SuperNET_JSON(char *JSONstr);
+int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {
@@ -690,7 +703,8 @@ bits256 gen_password()
     return(pass);
 }
 
-uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *pass)
+uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
+/*uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *pass)
 {
     static uint8_t basepoint[32] = {9};
     uint64_t addr;
@@ -701,7 +715,7 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,char *
     calc_sha256(0,hash,mypublic,32);
     memcpy(&addr,hash,sizeof(addr));
     return(addr);
-}
+}*/
 
 double _pairaved(double valA,double valB)
 {
@@ -721,14 +735,15 @@ double _pairave(float valA,float valB)
 int32_t queue_size(queue_t *queue);
 struct queueitem *queueitem(char *str);
 void free_queueitem(void *itemptr);
+void fatal(char *);
 
-#include "NXTservices.h"
+//#include "NXTservices.h"
 #include "jl777hash.h"
-#include "NXTutils.h"
+//#include "NXTutils.h"
 #include "ciphers.h"
 #include "coins.h"
-#include "dbqueue.h"
-#include "storage.h"
+//#include "dbqueue.h"
+//#include "storage.h"
 #include "udp.h"
 //#include "coincache.h"
 #include "kademlia.h"

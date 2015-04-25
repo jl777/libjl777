@@ -15,11 +15,27 @@
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+#ifdef DEFINES_ONLY
+#ifndef crypto777_inet_h
+#define crypto777_inet_h
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
 #include <netdb.h>
+
+#endif
+#else
+
+#ifndef crypto777_system777_c
+#define crypto777_system777_c
+
+#ifndef crypto777_system777_h
+#define DEFINES_ONLY
+#include "inet.c"
+#undef DEFINES_ONLY
+#endif
 
 static int inet_ntop4(unsigned char *src, char *dst, size_t size);
 static int inet_ntop6(unsigned char *src, char *dst, size_t size);
@@ -298,3 +314,6 @@ static int inet_pton6(char *src, unsigned char *dst) {
     memcpy(dst, tmp, sizeof tmp);
     return 0;
 }
+#endif
+#endif
+

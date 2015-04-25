@@ -15,6 +15,8 @@
 
 #define DEFINES_ONLY
 #include "plugin777.c"
+#include "storage.c"
+#include "system777.c"
 #undef DEFINES_ONLY
 
 STRUCTNAME
@@ -31,8 +33,8 @@ struct ramchain_info *Ramchains[100];
 uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *data)
 {
     uint64_t disableflags = 0;
+    
     printf("init %s size.%ld\n",plugin->name,sizeof(struct MGW_info));
-    // runtime specific state can be created and put into *data
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
@@ -43,7 +45,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
-        // configure settings
+        // configure settings from file
     }
     else
     {
@@ -68,6 +70,9 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
     {
     }
+    db777_close(DB_MSIG);
+    db777_close(DB_NXTaccts);
+    db777_close(DB_NXTassettx);
     return(retcode);
 }
 #include "plugin777.c"

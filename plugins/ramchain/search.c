@@ -43,7 +43,7 @@ char *ram_decode_hashdata(char *strbuf,char type,uint8_t *hashdata);
 
 #ifndef crypto777_ramchainhash_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "search.c"
 #undef DEFINES_ONLY
 #endif
 

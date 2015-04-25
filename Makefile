@@ -1,43 +1,49 @@
 ifneq (,$(findstring /cygdrive/,$(PATH)))
     OS := win
-    PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
 else
 ifneq (,$(findstring WINDOWS,$(PATH)))
     OS := win
-    PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
 else
     OS := $(shell uname -s)
-    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
-    PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/files777.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/files777.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
 endif
 endif
 
+PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
+
+LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lssl -lcrypto -lm
 
 CC=clang  
-CFLAGS=-Wall -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes -I/usr/include -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
-LIBS=-lm -lreadline 
+CFLAGS=-Wall -O2 -std=c99 -Wextra -pedantic -g -fPIC -Iplugins/includes  -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp  -Iplugins/utils -Iincludes -I../includes -I../../includes -I/usr/include -Wunused-parameter -Wsign-compare -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 
 TARGET	= libjl777.a
-SRCS	= picoc.c table.c lex.c parse.c expression.c heap.c type.c \
-	variable.c clibrary.c platform.c include.c \
-	plugins/utils/system777.c plugins/utils/utils777.c plugins/sophia/sophia_main.c \
-	platform/platform_unix.c platform/library_unix.c \
-	cstdlib/stdio.c cstdlib/math.c cstdlib/string.c cstdlib/stdlib.c \
-	cstdlib/time.c cstdlib/errno.c cstdlib/ctype.c cstdlib/stdbool.c \
-	cstdlib/unistd.c libgfshare.c libjl777.c gzip/adler32.c gzip/crc32.c gzip/gzclose.c \
-    gzip/gzread.c gzip/infback.c  gzip/inflate.c   gzip/trees.c gzip/zutil.c gzip/compress.c  gzip/deflate.c \
-    gzip/gzlib.c gzip/gzwrite.c  gzip/inffast.c  gzip/inftrees.c  gzip/uncompr.c libtom/yarrow.c\
-    libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.c libtom/safer.c libtom/skipjack.c \
-    libtom/aes_tab.c libtom/crypt_argchk.c  libtom/kseed.c    libtom/rc5.c     libtom/saferp.c     libtom/twofish.c \
-    libtom/anubis.c libtom/des.c libtom/multi2.c libtom/rc6.c libtom/safer_tab.c libtom/twofish_tab.c \
+
+PICOC	= picoc.c table.c lex.c parse.c expression.c heap.c type.c variable.c clibrary.c platform.c include.c \
+	platform/platform_unix.c platform/library_unix.c  cstdlib/stdio.c cstdlib/math.c cstdlib/string.c cstdlib/stdlib.c \
+	cstdlib/time.c cstdlib/errno.c cstdlib/ctype.c cstdlib/stdbool.c cstdlib/unistd.c
+
+GZIP = gzip/adler32.c gzip/crc32.c gzip/gzclose.c gzip/gzread.c gzip/infback.c gzip/inflate.c gzip/trees.c \
+    gzip/zutil.c gzip/compress.c  gzip/deflate.c gzip/gzlib.c gzip/gzwrite.c gzip/inffast.c gzip/inftrees.c gzip/uncompr.c
+
+LIBTOM = libtom/yarrow.c libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.c libtom/safer.c libtom/skipjack.c \
+    libtom/aes_tab.c libtom/crypt_argchk.c libtom/kseed.c libtom/rc5.c libtom/saferp.c libtom/twofish.c \
+    libtom/anubis.c libtom/des.c libtom/multi2.c libtom/rc6.c libtom/safer_tab.c libtom/twofish_tab.c libgfshare.c \
     libtom/blowfish.c libtom/kasumi.c  libtom/noekeon.c libtom/rmd160.c libtom/sha256.c libtom/hmac_sha512.c libtom/xtea.c
+
+SRCS = plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/utils777.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c \
+       plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c \
+       SuperNET.c libjl777.c
+ 
 OBJS	:= $(SRCS:%.c=%.o)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
   	#$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
-	ar rcu  libs/libjl777.a  $(OBJS) gzip/*.o libtom/*.o #libs/randombytes.o;\
+	ar rcu  libs/libjl777.a  $(OBJS) libs/sophia.o
 
 test:	all
 	(cd tests; make test)
@@ -45,7 +51,7 @@ test:	all
 clean: doesntexist
 	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
-PINCLUDES := -Iincludes -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
+PINCLUDES := -Iincludes -Iincludes/nanomsg -Iincludes/libtom -Iincludes/miniupnp -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
 _echo := rm lib/echo; gcc -o lib/echo -Os $(PINCLUDES) echodemo.c $(PLIBS)
 
@@ -76,8 +82,7 @@ MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
 SuperNET: $(TARGET); \
-    pkill SuperNET; cd plugins; gcc -c -o ../libs/sophia.o $(PINCLUDES)  -g -O2 -std=c99 -pedantic -Wextra -Wall -Wunused-parameter -Wsign-compare -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden  sophia/sophia.c; \
-     cd ..; rm SuperNET; clang -o SuperNET $(CFLAGS) SuperNET.c libs/sophia.o plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c  libs/libminiupnpc.a libs/libjl777.a libs/libnanomsg.a libs/libwebsockets.a libs/libuv.a libs/libdb.a -lssl -lcrypto -lpthread -lcurl -lm -lz -ldl -lutil -lpcre -lexpat -lanl
+    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE SuperNET.c $(LIBS) #-lz -ldl -lutil -lpcre -lexpat
 
 special: /usr/lib/libjl777.so; \
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lcurl -lm -ldl; \
@@ -115,7 +120,7 @@ chessjs:  doesntexist; \
     git clone https://github.com/exoticorn/stockfish-js
 
 nanomsg:  doesntexist; \
-    git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..
+    git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh; ./configure; make -lanl; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..
 
 python: doesntexist; \
     tar -xvf Python-3.4.3.tgz; cd Python-3.4.3; ./configure; make all; cp libpython3.so libpython3.4m.a ../libs; cp pyconfig.h Include; ln ./build/lib.linux-x86_64-3.4/_sysconfigdata.py Lib; cd ..;
@@ -272,7 +277,7 @@ cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
 lib/stockfish: plugins/stockfish/stockfish.cpp
-lib/sophia: plugins/sophia/sophia.c plugins/sophia/main.c
+lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
 lib/echo: plugins/echodemo.c
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c plugins/utils/bits777.c plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/files777.c plugins/utils/utils777.c plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 

@@ -38,7 +38,7 @@ uint32_t ram_update_RTblock(struct ramchain_info *ram);
 
 #ifndef crypto777_raminit_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "init.c"
 #undef DEFINES_ONLY
 #endif
 

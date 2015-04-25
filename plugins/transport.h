@@ -69,8 +69,8 @@ int32_t init_pluginhostsocks(struct daemon_info *dp,int32_t permanentflag,char *
         socks = &dp->perm.socks;
     else socks = &dp->wss.socks;
     printf("<<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",bindaddr,connectaddr);
-    //if ( dp->bundledflag != 0 && (socks->both.pair= init_socket("","pair",NN_PAIR,bindaddr,0,1)) < 0 ) errs++;
-    if ( dp->bundledflag != 0 && (socks->both.bus= init_socket("","bus",NN_BUS,bindaddr,0,1)) < 0 ) errs++;
+    if ( dp->bundledflag != 0 && (socks->both.pair= init_socket(".pair","pair",NN_PAIR,bindaddr,0,1)) < 0 ) errs++;
+    //if ( dp->bundledflag != 0 && (socks->both.bus= init_socket("","bus",NN_BUS,bindaddr,0,1)) < 0 ) errs++;
     //if ( (socks->send.push= init_socket(".pipeline","push",NN_PUSH,bindaddr,0,1)) < 0 ) errs++;
     //if ( (socks->send.rep= init_socket(".reqrep","rep",NN_REP,0,connectaddr,1)) < 0 ) errs++;
     //if ( (socks->send.pub= init_socket(".pubsub","pub",NN_PUB,bindaddr,0,1)) < 0 ) errs++;
@@ -144,7 +144,6 @@ char *wait_for_daemon(char **dest,uint64_t tag)
                 printf("%ld: ave %.1f\n",counter,(double)sum/counter);
             return(retstr);
         }
-        //usleep(10);
     }
     printf("no tag received\n");
     return(0);

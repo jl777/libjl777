@@ -6,6 +6,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+
 
 int32_t os_supports_mappedfiles() { return(1); }
 char *os_compatible_path(char *str) { return(str); }

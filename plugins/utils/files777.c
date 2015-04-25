@@ -49,7 +49,7 @@ void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector
 
 #ifndef crypto777_files777_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "files777.c"
 #undef DEFINES_ONLY
 #endif
 

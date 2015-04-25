@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 jl777. All rights reserved.
 //
 
+#ifdef oldway
 #include "jl777.h"
 struct pingpong_queue Pending_offersQ;
 
@@ -1248,4 +1249,89 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
         tmp = 0;
     return((tmp << 17) | ((SUPERNET_PORT & 0xffff) << 1) | (USESSL&1));
 }
+#else
+
+#include <stdio.h>
+//
+//  echodemo.c
+//  SuperNET API extension example plugin
+//  crypto777
+//
+//  Copyright (c) 2015 jl777. All rights reserved.
+//
+
+#define BUNDLED
+#define PLUGINSTR "SuperNET"
+#define PLUGNAME(NAME) SuperNET ## NAME
+#define STRUCTNAME struct PLUGNAME(_info)
+#define STRINGIFY(NAME) #NAME
+#define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
+
+#define DEFINES_ONLY
+#define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
+#include "plugin777.c"
+#include "storage.c"
+#include "system777.c"
+#undef DEFINES_ONLY
+
+STRUCTNAME
+{
+    int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid;
+    char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512],NXT_ASSETIDSTR[64];
+    int Numgateways;//Numramchains
+    //struct ramchain_info *Ramchains[100];
+};
+
+char *PLUGNAME(_methods)[] = { "stats", "echo2" }; // list of supported methods
+
+int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+{
+    char resultstr[MAX_JSON_FIELD];
+    retbuf[0] = 0;
+    printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+    if ( initflag > 0 )
+    {
+        // configure settings from file
+        strcpy(retbuf,"{\"result\":\"return JSON init\"}");
+    }
+    else
+    {
+        copy_cJSON(resultstr,cJSON_GetObjectItem(json,"result"));
+        if ( strcmp(resultstr,"registered") == 0 )
+        {
+            strcpy(retbuf,"{\"result\":\"return registered\"}");
+        }
+        else
+        {
+            strcpy(retbuf,"{\"result\":\"return JSON result\"}");
+        }
+    }
+    return((int32_t)strlen(retbuf));
+}
+
+uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *Globals)
+{
+    uint64_t disableflags = 0;
+    ensure_directory(SOPHIA_DIR);
+    Globals->Gatewayid = -1, Globals->Numgateways = 3;
+    expand_nxt64bits(Globals->NXT_ASSETIDSTR,NXT_ASSETID);
+    //init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
+    //SaM_PrepareIndices();
+    printf("SuperNET init %s size.%ld\n",plugin->name,sizeof(struct SuperNET_info));
+    return(disableflags); // set bits corresponding to array position in _methods[]
+}
+
+int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
+{
+    if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
+    {
+    }
+    return(retcode);
+}
+#include "plugin777.c"
+
+
+
+
+#endif
 

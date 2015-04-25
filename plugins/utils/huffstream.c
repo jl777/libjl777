@@ -37,7 +37,7 @@ int32_t hcalc_bitsize(uint32_t x);
 
 #ifndef crypto777_huffstream_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "huffstream.c"
 #undef DEFINES_ONLY
 #endif
 

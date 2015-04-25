@@ -85,7 +85,7 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
                         if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
                         {
                             expand_nxt64bits(NXTaddr,senderbits);
-                            np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+                            np = get_NXTacct(&createdflag,NXTaddr);
                             amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
                             if ( np->timestamp != now )
                             {
@@ -109,7 +109,7 @@ uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char
     }
     if ( refNXTaddr != 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
+        np = get_NXTacct(&createdflag,refNXTaddr);
         if ( numticketsp != 0 )
             *numticketsp = (int32_t)(np->quantity / INSTANTDEX_FEE);
     }

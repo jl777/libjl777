@@ -27,7 +27,7 @@ struct other_addr
     char addr[128];
 };
 
-struct acct_coin { uint64_t *srvbits; char name[16],**acctcoinaddrs,**pubkeys; int32_t numsrvbits; };
+/*struct acct_coin { uint64_t *srvbits; char name[16],**acctcoinaddrs,**pubkeys; int32_t numsrvbits; };
 
 struct NXT_acct
 {
@@ -51,7 +51,7 @@ struct NXT_acct
     struct nodestats stats;
     //char NXTACCTSECRET[128]; //
     char *signedtx;
-};
+};*/
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 
 

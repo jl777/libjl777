@@ -14,16 +14,14 @@
 #include <stdint.h>
 #include <math.h>
 #include "cJSON.h"
-#include "tweetnacl.c"
-#if __i686__ || __i386__
-#include "curve25519-donna.c"
-#else
-#include "curve25519-donna-c64.c"
-#endif
 #include "uthash.h"
 #include "bits777.c"
 #include "utils777.c"
 
+#include "tweetnacl.h"
+int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
+
+#define NXT_ASSETLIST_INCR 16
 #define MAX_COINTXID_LEN 128
 #define MAX_COINADDR_LEN 128
 #define MAX_NXT_STRLEN 24
@@ -33,7 +31,7 @@
 #define GENESISACCT "1739068987193023818"  // NXT-MRCC-2YLS-8M54-3CMAJ
 #define GENESISBLOCK "2680262203532249785"
 #define DEFAULT_NXT_DEADLINE 720
-#define NXTSERVER "https://127.0.0.1:7876/nxt?requestType"
+//#define NXTSERVER "https://127.0.0.1:7876/nxt?requestType"
 #define _NXTSERVER "requestType"
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
 #define issue_NXT(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"NXT",cmdstr,0,0,0)
@@ -95,8 +93,9 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
 void set_NXTpubkey(char *NXTpubkey,char *NXTacct);
 uint64_t get_sender(uint64_t *amountp,char *txidstr);
 
-extern struct NXT_asset *NXT_assets;
-extern struct NXT_assettxid NXT_assettxids;
+//extern struct NXT_asset *NXT_assets;
+//extern struct NXT_assettxid NXT_assettxids;
+extern char NXTSERVER[];
 
 #endif
 #else
@@ -105,8 +104,14 @@ extern struct NXT_assettxid NXT_assettxids;
 
 #ifndef crypto777_NXT777_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "NXT777.c"
 #undef DEFINES_ONLY
+#endif
+#include "tweetnacl.c"
+#if __i686__ || __i386__
+#include "curve25519-donna.c"
+#else
+#include "curve25519-donna-c64.c"
 #endif
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)

@@ -38,7 +38,7 @@ void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 
 #ifndef crypto777_ramchainblocks_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "blocks.c"
 #undef DEFINES_ONLY
 #endif
 

@@ -66,7 +66,7 @@ int32_t hdecode_bits(uint32_t *valp,HUFF *hp,int32_t numbits);
 
 #ifndef crypto777_huff_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "huff.c"
 #undef DEFINES_ONLY
 #endif
 

@@ -84,7 +84,7 @@ struct pserver_info
     uint16_t p2pport,firstport,lastport,supernet_port,supernet_altport;
 };
 
-struct nodestats
+/*struct nodestats
 {
     struct storage_header H;
     uint8_t pubkey[256>>3];
@@ -94,7 +94,7 @@ struct nodestats
     float pingmilli,pongmilli;
     uint32_t ipbits,lastcontact,numpings,numpongs;
     uint8_t BTCD_p2p,gotencrypted,modified,expired,isMM;
-};
+};*/
 
 struct contact_info
 {
@@ -121,7 +121,7 @@ struct displaybars
 
 //struct exchange_pair { struct storage_header H; char exchange[64],base[16],rel[16]; };
 
-struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
+/*struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
 
 union _NXT_str_buf { char txid[MAX_NXTTXID_LEN]; char NXTaddr[MAX_NXTADDR_LEN];  char assetid[MAX_NXT_STRLEN]; };
 
@@ -178,7 +178,7 @@ struct NXT_asset
     struct NXT_assettxid **txids;   // all transactions for this asset
     int32_t max,num,decimals;
     uint16_t type,subtype;
-};
+};*/
 
 int32_t portable_truncate(char *fname,long filesize);
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite);
@@ -242,7 +242,7 @@ struct rawblock_preds
     struct huffpair *vout0_value,*vout1_value,*vout2_value,*vouti_value,*voutn_value;
 };
 
-struct mappedptr
+/*struct mappedptr
 {
 	char fname[512];
 	void *fileptr,*pending;
@@ -367,7 +367,7 @@ struct multisig_addr
     uint64_t sender,modified;
     uint32_t m,n,created,valid,buyNXT;
     struct pubkey_info pubkeys[];
-};
+};*/
 
 struct hashtable
 {
@@ -378,7 +378,7 @@ struct hashtable
 };
 
 
-struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
+//struct storage_header **copy_all_DBentries(int32_t *nump,int32_t selector);
 
 void init_jl777(char *myip);
 int SuperNET_start(char *JSON_or_fname,char *myip);

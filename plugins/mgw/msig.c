@@ -22,20 +22,18 @@
 #include "storage.c"
 //#include "ramchain.c"
 
-struct storage_header { uint32_t size,createtime; uint64_t keyhash; };
+//struct storage_header { uint32_t size,createtime; uint64_t keyhash; };
 struct pubkey_info { uint64_t nxt64bits; uint32_t ipbits; char pubkey[256],coinaddr[128]; };
 struct multisig_addr
 {
-    struct storage_header H;
+    //struct storage_header H;
     UT_hash_handle hh;
     char NXTaddr[MAX_NXTADDR_LEN],multisigaddr[MAX_COINADDR_LEN],NXTpubkey[96],redeemScript[2048],coinstr[16],email[128];
     uint64_t sender,modified;
-    uint32_t m,n,created,valid,buyNXT;
+    uint32_t size,m,n,created,valid,buyNXT;
     struct pubkey_info pubkeys[];
 };
 
-struct multisig_addr *find_msigaddr(char *msigaddr);
-struct multisig_addr *ram_add_msigaddr(char *msigaddr,int32_t n,char *NXTaddr,char *NXTpubkey,int32_t buyNXT);
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
 int32_t update_MGWaddr(cJSON *argjson,char *sender);
 int32_t add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr);
@@ -46,6 +44,9 @@ struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,char *c
 void *extract_jsonmsig(cJSON *item,void *arg,void *arg2);
 int32_t update_MGW_msig(struct multisig_addr *msig,char *sender);
 
+int32_t jsonmsigcmp(void *ref,void *item);
+int32_t jsonstrcmp(void *ref,void *item);
+
 extern int32_t Debuglevel,Gatewayid,MGW_initdone,Numgateways;
 
 #endif
@@ -55,7 +56,7 @@ extern int32_t Debuglevel,Gatewayid,MGW_initdone,Numgateways;
 
 #ifndef crypto777_msig_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "msig.c"
 #undef DEFINES_ONLY
 #endif
 
@@ -63,6 +64,38 @@ extern int32_t Debuglevel,Gatewayid,MGW_initdone,Numgateways;
 #define LTC_COINID 2
 #define DOGE_COINID 4
 #define BTCD_COINID 8
+
+
+cJSON *http_search(char *destip,char *type,char *file)
+{
+    cJSON *json = 0;
+    char url[1024],*retstr;
+    sprintf(url,"http://%s/%s/%s",destip,type,file);
+    if ( (retstr= issue_curl(0,url)) != 0 )
+    {
+        json = cJSON_Parse(retstr);
+        free(retstr);
+    }
+    return(json);
+}
+
+struct multisig_addr *http_search_msig(char *external_NXTaddr,char *external_ipaddr,char *NXTaddr)
+{
+    int32_t i,n,len;
+    cJSON *array;
+    struct multisig_addr *msig = 0;
+    if ( (array= http_search(external_ipaddr,"MGW/msig",NXTaddr)) != 0 )
+    {
+        if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        {
+            for (i=0; i<n; i++)
+                if ( (msig= decode_msigjson(0,cJSON_GetArrayItem(array,i),external_NXTaddr)) != 0 && (msig= find_msigaddr(&len,msig->multisigaddr)) != 0 )
+                    break;
+        }
+        free_json(array);
+    }
+    return(msig);
+}
 
 void *extract_jsonkey(cJSON *item,void *arg,void *arg2)
 {
@@ -141,7 +174,7 @@ struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char
     struct multisig_addr *msig;
     int32_t size = (int32_t)(sizeof(*msig) + n*sizeof(struct pubkey_info));
     msig = calloc(1,size);
-    msig->H.size = size;
+    msig->size = size;
     msig->n = n;
     msig->created = (uint32_t)time(NULL);
     if ( sender != 0 && sender[0] != 0 )
@@ -416,12 +449,12 @@ int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig)
 
 int32_t _map_msigaddr(char *redeemScript,char *coinstr,char *serverport,char *userpass,char *normaladdr,char *msigaddr) //could map to rawind, but this is rarely called
 {
-    int32_t i,n,ismine;
+    int32_t i,n,ismine,len;
     cJSON *json,*array,*json2;
     struct multisig_addr *msig;
     char addr[1024],args[1024],*retstr,*retstr2;
     redeemScript[0] = normaladdr[0] = 0;
-    if ( (msig= find_msigaddr(msigaddr)) == 0 )
+    if ( (msig= find_msigaddr(&len,msigaddr)) == 0 )
     {
         strcpy(normaladdr,msigaddr);
         printf("cant find_msigaddr.(%s)\n",msigaddr);

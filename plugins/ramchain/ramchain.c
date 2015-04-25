@@ -48,24 +48,7 @@ extern int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_in
 extern char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
 extern int Numramchains; extern struct ramchain_info *Ramchains[100];
 extern cJSON *MGWconf;
-//extern void *Global_mp;
 
-
-/*extern struct NXT_acct *NXT_accts;
-
-struct SuperNET_db
-{
-    char name[64],**privkeys;
-    queue_t queue;
-    long maxitems,total_stored;
-    DB *dbp;
-    DB_ENV *storage;
-    //struct hashtable *ramtable;
-    int32_t *cipherids,selector,active;
-    uint32_t busy,type,flags,minsize,maxsize,duplicateflag,overlap_write;
-};
-
-struct dbreq { struct queueitem DL; struct SuperNET_db *sdb; void *cursor; DB_TXN *txn; DBT key,*data; int32_t flags,retval,funcid,doneflag; };*/
 
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
@@ -216,7 +199,7 @@ char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,s
 
 #ifndef crypto777_ramchain_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "ramchain.c"
 #undef DEFINES_ONLY
 #endif
 

@@ -242,7 +242,7 @@ char *got_transporter_status(char *NXTACCTSECRET,char *sender,char *coinstr,int3
     sprintf(retbuf,"{\"status\":%d,\"num\":%d,\"totalcrc\":%u,\"value\":%.8f}",status,num,totalcrc,dstr(value));
     verifiedNXTaddr[0] = 0;
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
-    destnp = get_NXTacct(&createdflag,Global_mp,sender);
+    destnp = get_NXTacct(&createdflag,sender);
     cp = get_coin_info(coinstr);
     if ( (log= find_transporter_log(cp,otherpubaddr,totalcrc,TRANSPORTER_SEND)) != 0 )
     {
@@ -334,7 +334,7 @@ char *transporter_received(char *sender,char *NXTACCTSECRET,char *coinstr,uint32
     np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
     sprintf(retbuf,"transporter_received from NXT.%s totalcrc.%u n.%d height.%d %.8f minage.%d M.%d N.%d",sender,totalcrc,num,height,dstr(value),minage,M,N);
     cp = get_coin_info(coinstr);
-    sendernp = get_NXTacct(&createdflag,Global_mp,sender);
+    sendernp = get_NXTacct(&createdflag,sender);
     if ( cp == 0 || totalcrc == 0 || minage <= 0 || height == 0 || value == 0 || num <= 0 )
         sprintf(retbuf+strlen(retbuf)," <<<<< ERROR"), errflag = -1;
     else

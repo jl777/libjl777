@@ -42,7 +42,7 @@ struct ramchain_info *get_ramchain_info(char *coinstr);
 
 #ifndef crypto777_ramchainapi_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "api.c"
 #undef DEFINES_ONLY
 #endif
 
@@ -1047,7 +1047,7 @@ char *preprocess_ram_apiargs(char *coin,char *previpaddr,cJSON **objs,int32_t va
             if ( pserver->nxt64bits != 0 )
             {
                 expand_nxt64bits(destNXTaddr,pserver->nxt64bits);
-                destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                destnp = get_NXTacct(&createdflag,destNXTaddr);
                 if ( (memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 || port != 0) && destip[0] != 0 )
                 {
                     //printf("send to ipaddr.(%s/%d)\n",destip,port);
@@ -1095,7 +1095,7 @@ void ram_request(uint64_t nxt64bits,char *destip,struct ramchain_info *ram,char 
     if ( nxt64bits != 0 && nxt64bits != Global_mp->nxt64bits )
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
-        destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+        destnp = get_NXTacct(&createdflag,destNXTaddr);
         expand_ipbits(ipaddr,destnp->stats.ipbits);
         if ( 1 || memcmp(destnp->stats.pubkey,&zerokey,sizeof(zerokey)) == 0 )
         {

@@ -13,17 +13,24 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
+#include "miniwget.h"
+#include "miniupnpc.h"
+#include "upnpcommands.h"
+#include "upnperrors.h"
 #include "utils777.c"
-#include "../../includes/mutex.h"
-#include "../../includes/utlist.h"
+#include "inet.c"
+#include "mutex.h"
+#include "utlist.h"
 #include "nn.h"
 #include "pubsub.h"
 
 #define OFFSET_ENABLED (bundledflag == 0)
+extern int32_t Debuglevel,SUPERNET_PORT,USESSL,IS_LIBTEST,UPNP,MULTIPORT,ENABLE_GUIPOLL;
+extern char SOPHIA_DIR[],MGWROOT[];
 
 typedef int32_t (*ptm)(int32_t,char *args[]);
-extern int32_t Debuglevel;
 // nonportable functions needed in the OS specific directory
 int32_t is_bundled_plugin(char *plugin);
 int32_t portable_truncate(char *fname,long filesize);
@@ -56,6 +63,8 @@ int32_t queue_size(queue_t *queue);
 struct queueitem *queueitem(char *str);
 void free_queueitem(void *itemptr);
 
+int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description);
+
 void *aligned_alloc(uint64_t allocsize);
 int32_t aligned_free(void *alignedptr);
 
@@ -82,14 +91,20 @@ int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flag
 int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis);
 int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_t permanentflag,union endpoints *socks,int32_t timeoutmillis);
 void ensure_directory(char *dirname);
-uint32_t calc_ipbits(char *ipaddr);
 
+uint64_t calc_ipbits(char *ipaddr);
+void expand_ipbits(char *ipaddr,uint64_t ipbits);
+char *ipbits_str(uint64_t ipbits);
+char *ipbits_str2(uint64_t ipbits);
+struct sockaddr_in conv_ipbits(uint64_t ipbits);
 
 #define SOPHIA_USERDIR "/user"
 struct db777 { void *env,*ctl,*db,*asyncdb; char dbname[96]; };
 struct db777 *db777_create(char *path,char *name,char *compression);
-int32_t db777_add(struct db777 *DB,char *key,char *value);
-int32_t db777_find(char *retbuf,int32_t max,struct db777 *DB,char *key);
+int32_t db777_add(struct db777 *DB,char *key,void *value,int32_t len);
+int32_t db777_addstr(struct db777 *DB,char *key,char *value);
+int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
+void *db777_findM(int32_t *lenp,struct db777 *DB,char *key);
 int32_t db777_close(struct db777 *DB);
 
 #endif
@@ -102,6 +117,8 @@ int32_t db777_close(struct db777 *DB);
 #include "system777.c"
 #undef DEFINES_ONLY
 #endif
+
+int32_t Debuglevel;
 
 struct nn_clock
 {
@@ -202,6 +219,153 @@ int32_t queue_size(queue_t *queue)
     DL_COUNT(queue->list,tmp,count);
     portable_mutex_unlock(&queue->mutex);
 	return count;
+}
+
+// redirect port on external upnp enabled router to port on *this* host
+int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description)
+{
+    
+    //  Discovery parameters
+    struct UPNPDev * devlist = 0;
+    struct UPNPUrls urls;
+    struct IGDdatas data;
+    int i;
+    char lanaddr[64];	// my ip address on the LAN
+    const char* leaseDuration="0";
+    
+    //  Redirect & test parameters
+    char intClient[40];
+    char intPort[6];
+    char externalIPAddress[40];
+    char duration[16];
+    int error=0;
+    
+    //  Find UPNP devices on the network
+    if ((devlist=upnpDiscover(2000, 0, 0,0, 0, &error))) {
+        struct UPNPDev * device = 0;
+        printf("UPNP INIALISED: List of UPNP devices found on the network.\n");
+        for(device = devlist; device; device = device->pNext) {
+            printf("UPNP INFO: dev [%s] \n\t st [%s]\n",
+                   device->descURL, device->st);
+        }
+    } else {
+        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
+        return 0;
+    }
+    
+    //  Output whether we found a good one or not.
+    if((error = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr)))) {
+        switch(error) {
+            case 1:
+                printf("UPNP OK: Found valid IGD : %s\n", urls.controlURL);
+                break;
+            case 2:
+                printf("UPNP WARN: Found a (not connected?) IGD : %s\n", urls.controlURL);
+                break;
+            case 3:
+                printf("UPNP WARN: UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
+                break;
+            default:
+                printf("UPNP WARN: Found device (igd ?) : %s\n", urls.controlURL);
+        }
+        printf("UPNP OK: Local LAN ip address : %s\n", lanaddr);
+    } else {
+        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
+        return 0;
+    }
+    
+    //  Get the external IP address (just because we can really...)
+    if(UPNP_GetExternalIPAddress(urls.controlURL,
+                                 data.first.servicetype,
+                                 externalIPAddress)!=UPNPCOMMAND_SUCCESS)
+        printf("UPNP WARN: GetExternalIPAddress failed.\n");
+    else
+        printf("UPNP OK: ExternalIPAddress = %s\n", externalIPAddress);
+    
+    //  Check for existing supernet mapping - from this host and another host
+    //  In theory I can adapt this so multiple nodes can exist on same lan and choose a different portmap
+    //  for each one :)
+    //  At the moment just delete a conflicting portmap and override with the one requested.
+    i=0;
+    error=0;
+    do {
+        char index[6];
+        char extPort[6];
+        char desc[80];
+        char enabled[6];
+        char rHost[64];
+        char protocol[4];
+        
+        snprintf(index, 6, "%d", i++);
+        
+        if(!(error=UPNP_GetGenericPortMappingEntry(urls.controlURL,
+                                                   data.first.servicetype,
+                                                   index,
+                                                   extPort, intClient, intPort,
+                                                   protocol, desc, enabled,
+                                                   rHost, duration))) {
+            // printf("%2d %s %5s->%s:%-5s '%s' '%s' %s\n",i, protocol, extPort, intClient, intPort,desc, rHost, duration);
+            
+            // check for an existing supernet mapping on this host
+            if(!strcmp(lanaddr, intClient)) { // same host
+                if(!strcmp(protocol,proto)) { //same protocol
+                    if(!strcmp(intPort,iport)) { // same port
+                        printf("UPNP WARN: existing mapping found (%s:%s)\n",lanaddr,iport);
+                        if(!strcmp(extPort,eport)) {
+                            printf("UPNP OK: exact mapping already in place (%s:%s->%s)\n", lanaddr, iport, eport);
+                            FreeUPNPUrls(&urls);
+                            freeUPNPDevlist(devlist);
+                            return 1;
+                            
+                        } else { // delete old mapping
+                            printf("UPNP WARN: deleting existing mapping (%s:%s->%s)\n",lanaddr, iport, extPort);
+                            if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
+                                printf("UPNP WARN: error deleting old mapping (%s:%s->%s) continuing\n", lanaddr, iport, extPort);
+                            else printf("UPNP OK: old mapping deleted (%s:%s->%s)\n",lanaddr, iport, extPort);
+                        }
+                    }
+                }
+            } else { // ipaddr different - check to see if requested port is already mapped
+                if(!strcmp(protocol,proto)) {
+                    if(!strcmp(extPort,eport)) {
+                        printf("UPNP WARN: EXT port conflict mapped to another ip (%s-> %s vs %s)\n", extPort, lanaddr, intClient);
+                        if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
+                            printf("UPNP WARN: error deleting conflict mapping (%s:%s) continuing\n", intClient, extPort);
+                        else printf("UPNP OK: conflict mapping deleted (%s:%s)\n",intClient, extPort);
+                    }
+                }
+            }
+        } else
+            printf("UPNP OK: GetGenericPortMappingEntry() End-of-List (%d entries) \n", i);
+    } while(error==0);
+    
+    //  Set the requested port mapping
+    if((i=UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                              eport, iport, lanaddr, description,
+                              proto, 0, leaseDuration))!=UPNPCOMMAND_SUCCESS) {
+        printf("UPNP ERROR: AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
+               eport, iport, lanaddr, i, strupnperror(i));
+        
+        FreeUPNPUrls(&urls);
+        freeUPNPDevlist(devlist);
+        return 0; //error - adding the port map primary failure
+    }
+    
+    if((i=UPNP_GetSpecificPortMappingEntry(urls.controlURL,
+                                           data.first.servicetype,
+                                           eport, proto, NULL/*remoteHost*/,
+                                           intClient, intPort, NULL/*desc*/,
+                                           NULL/*enabled*/, duration))!=UPNPCOMMAND_SUCCESS) {
+        printf("UPNP ERROR: GetSpecificPortMappingEntry(%s, %s, %s) failed with code %d (%s)\n", eport, iport, lanaddr,
+               i, strupnperror(i));
+        FreeUPNPUrls(&urls);
+        freeUPNPDevlist(devlist);
+        return 0; //error - port map wasnt returned by query so likely failed.
+    }
+    else printf("UPNP OK: EXT (%s:%s) %s redirected to INT (%s:%s) (duration=%s)\n",externalIPAddress, eport, proto, intClient, intPort, duration);
+    FreeUPNPUrls(&urls);
+    freeUPNPDevlist(devlist);
+    return 1; //ok - we are mapped:)
 }
 
 static uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
@@ -322,7 +486,8 @@ int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flag
         {
             if ( (len= nn_send(sock,(char *)retstr,len,0)) <= 0 )
                 errs++, printf("error %d sending to socket.%d send.%d len.%d (%s)\n",len,sock,i,len,nn_strerror(nn_errno()));
-            //else printf("SENT.(%s) len.%d vs strlen.%ld\n",retstr,len,strlen((char *)retstr));
+            else if ( Debuglevel > 2 )
+                printf("SENT.(%s) len.%d vs strlen.%ld\n",retstr,len,strlen((char *)retstr));
         }
     }
     return(errs);
@@ -348,6 +513,9 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
         {
             for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
             {
+                if ( pfd[i].fd < 0 )
+                    continue;
+                //printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
                 if ( (pfd[i].revents & NN_POLLIN) != 0 && (sock= socks->all[i]) >= 0 && (len= nn_recv(sock,&msg,NN_MSG,0)) > 0 )
                 {
                     (*numrecvp)++;
@@ -392,14 +560,84 @@ int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_
     return(n);
 }
 
-#ifdef BUNDLED
-uint32_t calc_ipbits(char *ipaddr)
+int32_t parse_ipaddr(char *ipaddr,char *ip_port)
 {
-    printf("make portable ipbits for (%s)\n",ipaddr);
-    getchar();
-    return(0);
+    int32_t j,port = 0;
+    if ( ip_port != 0 && ip_port[0] != 0 )
+    {
+		strcpy(ipaddr, ip_port);
+        for (j=0; ipaddr[j]!=0&&j<60; j++)
+            if ( ipaddr[j] == ':' )
+            {
+                port = atoi(ipaddr+j+1);
+                break;
+            }
+        ipaddr[j] = 0;
+        printf("(%s) -> (%s:%d)\n",ip_port,ipaddr,port);
+    } else strcpy(ipaddr,"127.0.0.1");
+    return(port);
 }
-#endif
+
+uint64_t calc_ipbits(char *ip_port)
+{
+    int32_t port;
+    char ipaddr[64];
+    struct sockaddr_in addr;
+    port = parse_ipaddr(ipaddr,ip_port);
+    memset(&addr,0,sizeof(addr));
+    portable_pton(ip_port[0] == '[' ? AF_INET6 : AF_INET,ipaddr,&addr);
+    {
+        int i;
+        for (i=0; i<16; i++)
+            printf("%02x ",((uint8_t *)&addr)[i]);
+        printf("<- %s %x\n",ip_port,*(uint32_t *)&addr);
+    }
+    return(*(uint32_t *)&addr | ((uint64_t)port << 32));
+}
+
+void expand_ipbits(char *ipaddr,uint64_t ipbits)
+{
+    uint16_t port;
+    struct sockaddr_in addr;
+    memset(&addr,0,sizeof(addr));
+    *(uint32_t *)&addr = (uint32_t)ipbits;
+    portable_ntop(AF_INET,&addr,ipaddr,64);
+    if ( (port= (uint16_t)(ipbits>>32)) != 0 )
+        sprintf(ipaddr + strlen(ipaddr),":%d",port);
+    //sprintf(ipaddr,"%d.%d.%d.%d",(ipbits>>24)&0xff,(ipbits>>16)&0xff,(ipbits>>8)&0xff,(ipbits&0xff));
+}
+
+char *ipbits_str(uint64_t ipbits)
+{
+    static char ipaddr[64];
+    expand_ipbits(ipaddr,ipbits);
+    return(ipaddr);
+}
+
+char *ipbits_str2(uint64_t ipbits)
+{
+    static char ipaddr[64];
+    expand_ipbits(ipaddr,ipbits);
+    return(ipaddr);
+}
+
+struct sockaddr_in conv_ipbits(uint64_t ipbits)
+{
+    char ipaddr[64];
+    uint16_t port;
+    struct hostent *host;
+    struct sockaddr_in server_addr;
+    port = (uint16_t)(ipbits>>32);
+    ipbits = (uint32_t)ipbits;
+    expand_ipbits(ipaddr,ipbits);
+    host = (struct hostent *)gethostbyname(ipaddr);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+    memset(&(server_addr.sin_zero),0,8);
+    return(server_addr);
+}
+
 
 #endif
 #endif

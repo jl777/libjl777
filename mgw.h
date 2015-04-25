@@ -447,6 +447,7 @@ int32_t update_MGWaddr(cJSON *argjson,char *sender)
             if ( msig->pubkeys[i].nxt64bits == senderbits )
             {
                 update_msig_info(msig,1,sender);
+                update_MGW_msig(msig,sender);
                 retval = 1;
                 break;
             }
@@ -2018,6 +2019,7 @@ struct multisig_addr *find_NXT_msig(int32_t fixflag,char *NXTaddr,char *coinstr,
                     continue;
                 printf("FIXED %llu -> %s\n",(long long)nxt64bits,msigs[i]->multisigaddr);
                 update_msig_info(msigs[i],1,0);
+                update_MGW_msig(msigs[i],0);
             }
             if ( nxt64bits != 0 && strcmp(coinstr,msigs[i]->coinstr) == 0 && strcmp(NXTaddr,msigs[i]->NXTaddr) == 0 )
             {
@@ -2127,6 +2129,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
             safecopy(msig->email,email,sizeof(msig->email));
             msig->buyNXT = buyNXT;
             update_msig_info(msig,1,NXTaddr);
+            update_MGW_msig(msig,NXTaddr);
         }
         //fprintf(stderr,"return valid.%d\n",valid);
     } else valid = N;
@@ -2400,6 +2403,7 @@ void process_MGW_message(char *specialNXTaddrs[],struct json_AM *ap,char *sender
                             fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         if ( update_msig_info(msig,syncflag,sender) > 0 )
                         {
+                            update_MGW_msig(msig,sender);
                             //fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s) JSON.(%s)\n",msig->coinstr,ap->funcid,sender,receiver,txid,ap->U.jsonstr);
                         }
                     }
@@ -2528,7 +2532,7 @@ int32_t update_NXT_transactions(char *specialNXTaddrs[],int32_t txtype,char *ref
     if ( txtype >= 0 )
         sprintf(cmd+strlen(cmd),"&type=%d",txtype);
     coinid = is_active_coin(cp->name);
-    np = get_NXTacct(&createdflag,Global_mp,refNXTaddr);
+    np = get_NXTacct(&createdflag,refNXTaddr);
     //if ( coinid >= 0 && coinid < 64 && np->timestamps[coinid] != 0 )
     //    sprintf(cmd + strlen(cmd),"&timestamp=%d",np->timestamps[coinid]);
     if ( Debuglevel > 2 )
@@ -3075,6 +3079,7 @@ uint64_t process_deposits(cJSON **jsonp,uint64_t *unspentp,struct multisig_addr 
                         {
                             expand_nxt64bits(tmp3,msig->sender);
                             update_msig_info(msig,1,tmp3);
+                            //update_MGW_msig(msig,NXTaddr);
                         }
                     }
                 }
@@ -3364,7 +3369,7 @@ int32_t process_redeem(int32_t *alreadysentp,cJSON **arrayp,char *destaddrs[MAX_
     //double pending;
     if ( is_limbo_redeem(cp,tp->redeemtxid) == 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,sender);
+        np = get_NXTacct(&createdflag,sender);
         *alreadysentp = 0;
         up = &cp->unspent;
         tp->numconfs = get_NXTconfirms(tp->redeemtxid);

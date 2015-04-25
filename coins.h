@@ -8,6 +8,11 @@
 
 #ifndef gateway_coins_h
 #define gateway_coins_h
+#define DEFINES_ONLY
+#include "plugins/includes/cJSON.h"
+#include "plugins/utils/files777.c"
+#include "plugins/sophia/storage.c"
+#undef DEFINES_ONLY
 
 #define NXT_COINID 0
 #define BTC_COINID 1
@@ -585,7 +590,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                         safecopy(cp->privateNXTACCTSECRET,privkey,sizeof(cp->privateNXTACCTSECRET));
                         cp->privatebits = issue_getAccountId(0,privkey);
                         expand_nxt64bits(cp->privateNXTADDR,cp->privatebits);
-                        conv_NXTpassword(Global_mp->myprivkey.bytes,Global_mp->mypubkey.bytes,cp->privateNXTACCTSECRET);
+                        conv_NXTpassword(Global_mp->myprivkey.bytes,Global_mp->mypubkey.bytes,(uint8_t *)cp->privateNXTACCTSECRET,(int32_t)strlen(cp->privateNXTACCTSECRET));
                         if ( Debuglevel > 2 )
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->privateaddr,cp->privateNXTACCTSECRET,(long long)cp->privatebits);
                         free(privkey);
@@ -618,7 +623,7 @@ struct coin_info *init_coin_info(cJSON *json,char *coinstr,char *userdir)
                         expand_nxt64bits(cp->srvNXTADDR,cp->srvpubnxtbits);
                         if ( Debuglevel > 2 )
                             printf("SET ACCTSECRET for %s.%s to %s NXT.%llu\n",cp->name,cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
-                        conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET);
+                        conv_NXTpassword(Global_mp->loopback_privkey,Global_mp->loopback_pubkey,cp->srvNXTACCTSECRET,(int32_t)strlen(cp->srvNXTACCTSECRET));
                         init_hexbytes_noT(Global_mp->pubkeystr,Global_mp->loopback_pubkey,sizeof(Global_mp->loopback_pubkey));
                         //printf("SRV pubaddr.(%s) secret.(%s) -> %llu\n",cp->srvpubaddr,cp->srvNXTACCTSECRET,(long long)cp->srvpubnxtbits);
                         if ( (stats= get_nodestats(cp->srvpubnxtbits)) != 0 )
@@ -847,6 +852,7 @@ void init_SuperNET_whitelist()
     }
 }
 
+#ifdef soon
 void init_ram_MGWconfs(struct ramchain_info *ram,cJSON *confjson,char *MGWredemption,struct NXT_asset *ap)
 {
     cJSON *array,*item;
@@ -984,6 +990,7 @@ void init_ramchain_info(struct ramchain_info *ram,struct coin_info *cp,int32_t D
 #endif
     } //else printf("skip activate ramchains\n");
 }
+#endif
 
 void init_coinsarray(char *userdir,char *myipaddr)
 {
@@ -1033,8 +1040,10 @@ void init_coinsarray(char *userdir,char *myipaddr)
                     //addcontact(Global_mp->myhandle,cp->privateNXTADDR);
                     //addcontact("mypublic",cp->srvNXTADDR);
                 }
+#ifdef soon
                 if ( NORAMCHAINS == 0 )
                     init_ramchain_info(&cp->RAM,cp,get_API_int(cJSON_GetObjectItem(MGWconf,"DEPOSIT_XFER_DURATION"),10),get_API_int(cJSON_GetObjectItem(cp->json,"OLDTX"),strcmp(cp->name,"BTC")));
+#endif
             }
         }
     } else printf("no coins array.%p ?\n",array);

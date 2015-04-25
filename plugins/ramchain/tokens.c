@@ -29,7 +29,7 @@ int32_t ram_emitblock(HUFF *hp,int32_t destformat,struct ramchain_info *ram,stru
 
 #ifndef crypto777_ramtokens_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "tokens.c"
 #undef DEFINES_ONLY
 #endif
 

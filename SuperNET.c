@@ -5,7 +5,7 @@
 //  Created by jl777 on 8/13/14.
 //  Copyright (c) 2014 jl777. MIT License.
 //
-
+#ifdef oldway
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,10 +36,10 @@ int32_t recvsock;
 #include "plugins/utils/utils777.c"
 #undef DEFINES_ONLY
 
-#include "SuperNET.h"
+//#include "SuperNET.h"
 #include "cJSON.h"
 #define NUM_GATEWAYS 3
-extern char Server_names[256][MAX_JSON_FIELD],MGWROOT[];
+/*extern char Server_names[256][MAX_JSON_FIELD],MGWROOT[];
 extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
 extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT,Finished_init;
 extern cJSON *MGWconf;
@@ -56,7 +56,7 @@ char *_mbstr2(double n);
 struct coin_info *get_coin_info(char *coinstr);
 uint32_t get_blockheight(struct coin_info *cp);
 long stripwhite_ns(char *buf,long len);
-int32_t safecopy(char *dest,char *src,long len);
+int32_t safecopy(char *dest,char *src,long len);*/
 
 #define INCLUDE_CODE
 //#include "ramchain.h"
@@ -491,152 +491,6 @@ void *GUIpoll_loop(void *arg)
     return(0);
 }
 
-// redirect port on external upnp enabled router to port on *this* host
-int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description) {
-    
-    //  Discovery parameters
-    struct UPNPDev * devlist = 0;
-    struct UPNPUrls urls;
-    struct IGDdatas data;
-    int i;
-    char lanaddr[64];	// my ip address on the LAN
-    const char* leaseDuration="0";
-    
-    //  Redirect & test parameters
-    char intClient[40];
-    char intPort[6];
-    char externalIPAddress[40];
-    char duration[16];
-    int error=0;
-    
-    //  Find UPNP devices on the network
-    if ((devlist=upnpDiscover(2000, 0, 0,0, 0, &error))) {
-        struct UPNPDev * device = 0;
-        printf("UPNP INIALISED: List of UPNP devices found on the network.\n");
-        for(device = devlist; device; device = device->pNext) {
-            printf("UPNP INFO: dev [%s] \n\t st [%s]\n",
-                   device->descURL, device->st);
-        }
-    } else {
-        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
-        return 0;
-    }
-    
-    //  Output whether we found a good one or not.
-    if((error = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr)))) {
-        switch(error) {
-            case 1:
-                printf("UPNP OK: Found valid IGD : %s\n", urls.controlURL);
-                break;
-            case 2:
-                printf("UPNP WARN: Found a (not connected?) IGD : %s\n", urls.controlURL);
-                break;
-            case 3:
-                printf("UPNP WARN: UPnP device found. Is it an IGD ? : %s\n", urls.controlURL);
-                break;
-            default:
-                printf("UPNP WARN: Found device (igd ?) : %s\n", urls.controlURL);
-        }
-        printf("UPNP OK: Local LAN ip address : %s\n", lanaddr);
-    } else {
-        printf("UPNP ERROR: no device found - MANUAL PORTMAP REQUIRED\n");
-        return 0;
-    }
-    
-    //  Get the external IP address (just because we can really...)
-    if(UPNP_GetExternalIPAddress(urls.controlURL,
-                                 data.first.servicetype,
-                                 externalIPAddress)!=UPNPCOMMAND_SUCCESS)
-        printf("UPNP WARN: GetExternalIPAddress failed.\n");
-    else
-        printf("UPNP OK: ExternalIPAddress = %s\n", externalIPAddress);
-    
-    //  Check for existing supernet mapping - from this host and another host
-    //  In theory I can adapt this so multiple nodes can exist on same lan and choose a different portmap
-    //  for each one :)
-    //  At the moment just delete a conflicting portmap and override with the one requested.
-    i=0;
-    error=0;
-    do {
-        char index[6];
-        char extPort[6];
-        char desc[80];
-        char enabled[6];
-        char rHost[64];
-        char protocol[4];
-        
-        snprintf(index, 6, "%d", i++);
-        
-        if(!(error=UPNP_GetGenericPortMappingEntry(urls.controlURL,
-                                                   data.first.servicetype,
-                                                   index,
-                                                   extPort, intClient, intPort,
-                                                   protocol, desc, enabled,
-                                                   rHost, duration))) {
-            // printf("%2d %s %5s->%s:%-5s '%s' '%s' %s\n",i, protocol, extPort, intClient, intPort,desc, rHost, duration);
-            
-            // check for an existing supernet mapping on this host
-            if(!strcmp(lanaddr, intClient)) { // same host
-                if(!strcmp(protocol,proto)) { //same protocol
-                    if(!strcmp(intPort,iport)) { // same port
-                        printf("UPNP WARN: existing mapping found (%s:%s)\n",lanaddr,iport);
-                        if(!strcmp(extPort,eport)) {
-                            printf("UPNP OK: exact mapping already in place (%s:%s->%s)\n", lanaddr, iport, eport);
-                            FreeUPNPUrls(&urls);
-                            freeUPNPDevlist(devlist);
-                            return 1;
-                            
-                        } else { // delete old mapping
-                            printf("UPNP WARN: deleting existing mapping (%s:%s->%s)\n",lanaddr, iport, extPort);
-                            if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
-                                printf("UPNP WARN: error deleting old mapping (%s:%s->%s) continuing\n", lanaddr, iport, extPort);
-                            else printf("UPNP OK: old mapping deleted (%s:%s->%s)\n",lanaddr, iport, extPort);
-                        }
-                    }
-                }
-            } else { // ipaddr different - check to see if requested port is already mapped
-                if(!strcmp(protocol,proto)) {
-                    if(!strcmp(extPort,eport)) {
-                        printf("UPNP WARN: EXT port conflict mapped to another ip (%s-> %s vs %s)\n", extPort, lanaddr, intClient);
-                        if(UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, extPort, proto, rHost))
-                            printf("UPNP WARN: error deleting conflict mapping (%s:%s) continuing\n", intClient, extPort);
-                        else printf("UPNP OK: conflict mapping deleted (%s:%s)\n",intClient, extPort);
-                    }
-                }
-            }
-        } else
-            printf("UPNP OK: GetGenericPortMappingEntry() End-of-List (%d entries) \n", i);
-    } while(error==0);
-    
-    //  Set the requested port mapping
-    if((i=UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
-                              eport, iport, lanaddr, description,
-                              proto, 0, leaseDuration))!=UPNPCOMMAND_SUCCESS) {
-        printf("UPNP ERROR: AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
-               eport, iport, lanaddr, i, strupnperror(i));
-        
-        FreeUPNPUrls(&urls);
-        freeUPNPDevlist(devlist);
-        return 0; //error - adding the port map primary failure
-    }
-    
-    if((i=UPNP_GetSpecificPortMappingEntry(urls.controlURL,
-                                           data.first.servicetype,
-                                           eport, proto, NULL/*remoteHost*/,
-                                           intClient, intPort, NULL/*desc*/,
-                                           NULL/*enabled*/, duration))!=UPNPCOMMAND_SUCCESS) {
-        printf("UPNP ERROR: GetSpecificPortMappingEntry(%s, %s, %s) failed with code %d (%s)\n", eport, iport, lanaddr,
-               i, strupnperror(i));
-        FreeUPNPUrls(&urls);
-        freeUPNPDevlist(devlist);
-        return 0; //error - port map wasnt returned by query so likely failed.
-    }
-    else printf("UPNP OK: EXT (%s:%s) %s redirected to INT (%s:%s) (duration=%s)\n",externalIPAddress, eport, proto, intClient, intPort, duration);
-    FreeUPNPUrls(&urls);
-    freeUPNPDevlist(devlist);
-    return 1; //ok - we are mapped:)
-}
-
 #define NXTSERVER "https://127.0.0.1:7876/nxt?requestType"
 uint64_t get_NXT_forginginfo(char *gensig,uint32_t height)
 {
@@ -691,8 +545,8 @@ int main(int argc,const char *argv[])
     {
         struct db777 *db777_create(char *path,char *name,char *compression);
         int32_t db777_close(struct db777 *DB);
-        int32_t db777_add(struct db777 *DB,char *key,char *value);
-        int32_t db777_find(char *retbuf,int32_t max,struct db777 *DB,char *key);
+        int32_t db777_addstr(struct db777 *DB,char *key,char *value);
+        int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
         struct db777 *db;
         int i;
         char buf[16],field[64],retbuf[65536];
@@ -700,10 +554,10 @@ int main(int argc,const char *argv[])
         for (i=0; i<100000; i++)
         {
             sprintf(field,"field.%d",i);
-            db777_find(retbuf,sizeof(retbuf),db,field);
+            db777_findstr(retbuf,sizeof(retbuf),db,field);
             printf("%s\n",retbuf);
             strcpy(buf,field);
-            db777_add(db,field,buf);
+            db777_addstr(db,field,buf);
         }
         db777_close(db);
         db = db777_create("/tmp","zstd","zstd");
@@ -711,7 +565,7 @@ int main(int argc,const char *argv[])
         {
             sprintf(field,"field.%d",i);
             strcpy(buf,field);
-            db777_add(db,field,buf);
+            db777_addstr(db,field,buf);
         }
         db777_close(db);
         
@@ -720,7 +574,7 @@ int main(int argc,const char *argv[])
         {
             sprintf(field,"field.%d",i);
             strcpy(buf,field);
-            db777_add(db,field,buf);
+            db777_addstr(db,field,buf);
         }
         db777_close(db);
         getchar();
@@ -787,6 +641,149 @@ int main(int argc,const char *argv[])
 // stubs
 int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
 int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
-
-#ifdef chanc3r
 #endif
+#include <stdio.h>
+extern char WEBSOCKETD[];
+
+#define DEFINES_ONLY
+#include "cJSON.h"
+#include "utils777.c"
+#include "files777.c"
+#include "plugins.h"
+
+int MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,Gatewayid = -1;
+char SOPHIA_DIR[MAX_JSON_FIELD],NXT_ASSETIDSTR[MAX_JSON_FIELD],NXTSERVER[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD],MGWROOT[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
+
+int32_t SuperNET_broadcast(char *msg,int32_t duration) { printf(">>>>>>>>> BROADCAST.(%s)\n",msg); return(0); }
+int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { printf(">>>>>>>>>>> NARROWCAST.(%s) -> (%s)\n",msg,destip);  return(0); }
+
+int32_t got_newpeer(const char *ip_port) { printf("got_newpeer.(%s)\n",ip_port); return(0); }
+
+//static char *plugin[] = { "plugin", "method", "daemonid", "instanceid", "tag",  "async", "iters", 0 };
+//static char *install[] = "requestType":"install"  { "path", "plugin", "daemonize", "websocket", "ipaddr", "port", 0 };
+
+char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
+{
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD];
+    uint64_t daemonid,instanceid,tag;
+    int32_t ind,async,n = 1;
+    uint16_t port,websocket;
+    cJSON *json;
+    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+    {
+        copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
+        copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
+        if ( strcmp(request,"install") == 0 && plugin[0] != 0 )
+        {
+            if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
+                return(clonestr("{\"error\":\"plugin already installed\"}"));
+            copy_cJSON(path,cJSON_GetObjectItem(json,"path"));
+            copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
+            port = get_API_int(cJSON_GetObjectItem(json,"port"),0);
+            async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
+            websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
+            return(language_func(plugin,ipaddr,port,websocket,async,path,jsonstr,call_system));
+        }
+        daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
+        instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
+        copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
+        if ( method[0] == 0 )
+        {
+            strcpy(method,request);
+            if ( plugin[0] == 0 && set_first_plugin(plugin,method) < 0 )
+                return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
+        }
+        n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
+        async = get_API_int(cJSON_GetObjectItem(json,"async"),0);
+        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag,jsonstr,n,async));
+    } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
+}
+
+char *SuperNET_JSON(char *jsonstr) // BTCD's entry point
+{
+    return(process_jl777_msg(0,jsonstr,60));
+}
+
+char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
+{
+    char request[MAX_JSON_FIELD],name[MAX_JSON_FIELD],*retstr = 0;;
+    uint64_t daemonid,instanceid;
+    cJSON *json;
+    if ( (json= cJSON_Parse(JSONstr)) != 0 )
+    {
+        copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
+        copy_cJSON(name,cJSON_GetObjectItem(json,"plugin"));
+        if ( strcmp(request,"register") == 0 )
+        {
+            daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
+            instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
+            retstr = register_daemon(name,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"));
+        }
+        free_json(json);
+    } else retstr = process_jl777_msg(0,JSONstr,60);
+    if ( retstr == 0 )
+        retstr = clonestr("{\"result\":\"call_SuperNET_JSON no response\"}");
+    return(retstr);
+}
+
+int SuperNET_start(char *jsonstr,char *myip)
+{
+    cJSON *json = cJSON_Parse(jsonstr);
+    Debuglevel = 2;
+    strcpy(WEBSOCKETD,"websocketd");
+    strcpy(SOPHIA_DIR,"./DB");
+    if ( json != 0 )
+    {
+        extract_cJSON_str(SOPHIA_DIR,sizeof(SOPHIA_DIR),json,"SOPHIA_DIR");
+    }
+    os_compatible_path(SOPHIA_DIR);
+    language_func("SuperNET","",0,0,1,"SuperNET","{}",call_system);
+    return(0);
+}
+
+#ifdef STANDALONE
+int main(int argc,const char *argv[])
+{
+    char _ipaddr[64],*jsonstr = 0,*ipaddr = "127.0.0.1:7777";//,*ipaddr6 = "[2001:16d8:dd24:0:86c9:681e:f931:256]";
+    int32_t i;
+    cJSON *json = 0;
+    uint64_t ipbits,allocsize;
+    if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
+        jsonstr = clonestr("{}");
+    else if ( (json= cJSON_Parse(jsonstr)) == 0 )
+    {
+        printf("error parsing SuperNET.conf.(%s)\n",jsonstr);
+        free(jsonstr);
+        exit(-1);
+    }
+    else free_json(json);
+    i = 1;
+    if ( argc > 1 )
+    {
+        ipbits = calc_ipbits((char *)argv[1]);
+        expand_ipbits(_ipaddr,ipbits);
+        if ( strcmp(_ipaddr,argv[1]) == 0 )
+            ipaddr = (char *)argv[1], i++;
+    }
+    ipbits = calc_ipbits(ipaddr);
+    expand_ipbits(_ipaddr,ipbits);
+    printf("(%s -> %s)\n",ipaddr,_ipaddr);
+    SuperNET_start("SuperNET.conf",ipaddr);
+    if ( i < argc )
+    {
+        for (; i<argc; i++)
+            if ( is_bundled_plugin((char *)argv[i]) != 0 )
+                language_func((char *)argv[i],"",0,0,1,(char *)argv[i],jsonstr,call_system);
+    }
+    while ( 1 )
+    {
+        for (i=0; i<1000; i++)
+            if ( poll_daemons() <= 0 )
+                break;
+        usleep(10);
+    }
+    free(jsonstr);
+    return(0);
+}
+#endif
+

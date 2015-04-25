@@ -50,7 +50,7 @@ void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,
 
 #ifndef crypto777_bits777_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "bits777.c"
 #undef DEFINES_ONLY
 #endif
 static uint64_t bloomprimes[NUM_BLOOMPRIMES] = { 79559, 79631, 79691, 79697, 79811, 79841, 79901, 79997 };

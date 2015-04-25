@@ -54,6 +54,7 @@ char *checkmsg_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 
 char *register_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
+    char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *methodsjson);
     char plugin[MAX_JSON_FIELD],retbuf[1024],*methodstr;
     uint64_t daemonid,instanceid;
     struct daemon_info *dp;
@@ -63,23 +64,8 @@ char *register_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
     copy_cJSON(plugin,objs[0]);
     daemonid = get_API_nxt64bits(objs[1]);
     instanceid = get_API_nxt64bits(objs[2]);
-    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
-    {
-        if ( plugin[0] == 0 || strcmp(dp->name,plugin) == 0 )
-        {
-            if ( objs[3] != 0 )
-            {
-                dp->methodsjson = cJSON_Duplicate(objs[3],1);
-                methodstr = cJSON_Print(dp->methodsjson);
-            } else methodstr = clonestr("[]");
-            dp->allowremote = get_API_int(objs[4],0);
-            sprintf(retbuf,"{\"result\":\"registered\",\"plugin\":\"%s\",\"daemonid\":%llu,\"instanceid\":%llu,\"allowremote\":%d,\"methods\":%s}",plugin,(long long)daemonid,(long long)instanceid,dp->allowremote,methodstr);
-            free(methodstr);
-            return(clonestr(retbuf));
-        } else return(clonestr("{\"error\":\"plugin name mismatch\"}"));
-    }
-    return(clonestr("{\"error\":\"cant register inactive plugin\"}"));
-}
+    return(register_daemon(plugin,daemonid,instanceid,objs[3]));
+ }
 
 char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
@@ -95,36 +81,7 @@ char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
     n = get_API_int(objs[5],1);
     tag = calc_nxt64bits(tagstr);
     async = get_API_int(objs[6],0);
-    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
-    {
-        if ( dp->allowremote == 0 && is_remote_access(previpaddr) != 0 )
-            return(clonestr("{\"error\":\"cant remote call plugins\"}"));
-        else if ( in_jsonarray(dp->methodsjson,method) == 0 )
-            return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
-        else
-        {
-            double elapsed,startmilli = milliseconds();
-            for (i=0; i<n; i++)
-            {
-                retstr = 0;
-                if ( send_to_daemon(async==0?&retstr:0,tag,dp->name,daemonid,instanceid,origargstr) != 0 )
-                    return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
-                else if ( async != 0 )
-                    return(clonestr("{\"error\":\"request sent to plugin async\"}"));
-                if ( (retstr= wait_for_daemon(&retstr,tag)) == 0 || retstr[0] == 0 )
-                    return(clonestr("{\"error\":\"plugin returned empty string\"}"));
-                else if ( i < n-1 )
-                    free(retstr);
-            }
-            //if ( n > 1 )
-            {
-                elapsed = (milliseconds() - startmilli);
-                printf("elapsed %f millis for %d iterations ave [%.1f micros]\n",elapsed,i,(1000. * elapsed)/i);
-            }
-        }
-        return(retstr);
-    }
-    return(clonestr("{\"error\":\"cant find plugin\"}"));
+    return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag,origargstr,n,async));
 }
 
 char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)

@@ -162,18 +162,6 @@ int32_t load_handler_fname(void *dest,int32_t len,char *handler,char *name)
     return(retval);
 }
 
-void update_nodestats_data(struct nodestats *stats)
-{
-    char NXTaddr[64],ipaddr[64];
-    if ( stats->H.size == 0 )
-        stats->H.size = sizeof(*stats);
-    expand_ipbits(ipaddr,stats->ipbits);
-    expand_nxt64bits(NXTaddr,stats->nxt64bits);
-    if ( Debuglevel > 2 )
-        printf("Update nodestats.%s (%s) lastcontact %u\n",NXTaddr,ipaddr,stats->lastcontact);
-    update_storage(&SuperNET_dbs[NODESTATS_DATA],NXTaddr,&stats->H);
-}
-
 // helper and completion funcs
 void portable_alloc(uv_handle_t *handle,size_t suggested_size,uv_buf_t *buf)
 {
@@ -541,7 +529,7 @@ void route_packet(int32_t queueflag,int32_t encrypted,struct sockaddr *destaddr,
     }
     if ( hopNXTaddr != 0 && hopNXTaddr[0] != 0 )
     {
-        np = get_NXTacct(&createdflag,Global_mp,hopNXTaddr);
+        np = get_NXTacct(&createdflag,hopNXTaddr);
         stats = &np->stats;
     }
     if ( encrypted != 0 )
@@ -644,7 +632,7 @@ uint64_t p2p_publishpacket(struct pserver_info *pserver,char *cmd)
     {
         if ( Debuglevel > 1 )
             fprintf(stderr,"p2p_publishpacket.%p (%s)\n",pserver,cmd);
-        np = get_NXTacct(&createdflag,Global_mp,cp->srvNXTADDR);
+        np = get_NXTacct(&createdflag,cp->srvNXTADDR);
         if ( cmd == 0 )
         {
             int32_t gen_pingstr(char *cmdstr,int32_t completeflag,char *coinstr);

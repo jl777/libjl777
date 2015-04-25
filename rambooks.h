@@ -49,7 +49,7 @@ uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
         rb->quotes[oldi] = rb->quotes[--rb->numquotes];
         memset(&rb->quotes[rb->numquotes],0,sizeof(rb->quotes[rb->numquotes]));
         expand_nxt64bits(NXTaddr,nxt64bits);
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        np = get_NXTacct(&createdflag,NXTaddr);
         if ( np->openorders > 0 )
             np->openorders--;
         fprintf(stderr,"purge_oldest_order from NXT.%llu (openorders.%d) oldi.%d timestamp %u\n",(long long)nxt64bits,np->openorders,oldi,oldest);
@@ -214,7 +214,7 @@ void save_InstantDEX_quote(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     int32_t createdflag,maxallowed;
     maxallowed = calc_users_maxopentrades(iQ->nxt64bits);
     expand_nxt64bits(NXTaddr,iQ->nxt64bits);
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = get_NXTacct(&createdflag,NXTaddr);
     //if ( np->openorders >= maxallowed )
     //    purge_oldest_order(rb,iQ);
     purge_oldest_order(rb,0);

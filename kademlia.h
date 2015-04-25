@@ -363,7 +363,7 @@ uint64_t send_kademlia_cmd(uint64_t nxt64bits,struct pserver_info *pserver,char 
     if ( pserver == 0 )
     {
         expand_nxt64bits(destNXTaddr,nxt64bits);
-        np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+        np = get_NXTacct(&createdflag,destNXTaddr);
         expand_ipbits(ipaddr,np->stats.ipbits);
         pserver = get_pserver(0,ipaddr,0,0);
         if ( pserver->nxt64bits == 0 )
@@ -714,7 +714,7 @@ void do_localstore(uint64_t *txidp,char *keystr,char *datastr,char *NXTACCTSECRE
     struct SuperNET_storage *sp;
     keybits = calc_nxt64bits(keystr);
     fprintf(stderr,"do_localstore(%s) <- (%s)\n",keystr,datastr);
-    keynp = get_NXTacct(&createdflag,Global_mp,keystr);
+    keynp = get_NXTacct(&createdflag,keystr);
     *txidp = 0;
     if ( keynp->bestbits != 0 )
     {
@@ -803,7 +803,7 @@ char *kademlia_havenode(int32_t valueflag,char *previpaddr,char *verifiedNXTaddr
         if ( is_remote_access(previpaddr) != 0 )
             pserver = get_pserver(0,previpaddr,0,0);
         else if ( cp != 0 ) pserver = get_pserver(0,cp->myipaddr,0,0);
-        keynp = get_NXTacct(&createdflag,Global_mp,key);
+        keynp = get_NXTacct(&createdflag,key);
         //printf("parsed value array.%p\n",array);
         if ( is_cJSON_Array(array) != 0 )
         {
@@ -1003,7 +1003,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
             printf("search n.%d sorted mydist.%d remoteflag.%d remoteaccess.%d\n",n,mydist,remoteflag,is_remote_access(previpaddr));
             if ( is_remote_access(previpaddr) == 0 || remoteflag != 0 ) // propagate to closer nodes or final node does local broadcast
             {
-                keynp = get_NXTacct(&createdflag,Global_mp,key);
+                keynp = get_NXTacct(&createdflag,key);
                 keynp->bestdist = 10000;
                 keynp->bestbits = 0;
                 for (iter=z=0; iter<2; iter++)
@@ -1015,7 +1015,7 @@ char *kademlia_find(char *cmd,char *previpaddr,char *verifiedNXTaddr,char *NXTAC
                         if ( ismynxtbits(destbits) == 0 && (dist < mydist || (iter == 1 && dist < KADEMLIA_MINTHRESHOLD)) )
                         {
                             expand_nxt64bits(destNXTaddr,destbits);
-                            np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+                            np = get_NXTacct(&createdflag,destNXTaddr);
                             if ( Debuglevel > 1 )
                                 printf("call %llu (%s) dist.%d mydist.%d ipbits.%x vs %x\n",(long long)destbits,cmd,bitweight(destbits ^ keyhash),mydist,np->stats.ipbits,calc_ipbits(previpaddr));
                             if ( np->stats.ipbits != 0 && np->stats.ipbits != calc_ipbits(previpaddr) )

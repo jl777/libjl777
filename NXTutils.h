@@ -10,6 +10,7 @@
 #define in_addr_t uint32_t
 #endif
 
+/*
 void *loadfile(int32_t *allocsizep,char *fname)
 {
     FILE *fp;
@@ -80,7 +81,7 @@ char *load_file(char *fname,char **bufp,int64_t  *lenp,int64_t  *allocsizep)
         *lenp = filesize;
     }
     return(buf);
-}
+}*/
 
 #ifndef WIN32
 char *_issue_cmd_to_buffer(char *prog,char *arg1,char *arg2,char *arg3)
@@ -316,7 +317,7 @@ uint64_t issue_getAccountId(CURL *curl_handle,char *password)
     char cmd[4096];
     union NXTtype ret;
     bits256 mysecret,mypublic;
-    return(conv_NXTpassword(mysecret.bytes,mypublic.bytes,password));
+    return(conv_NXTpassword(mysecret.bytes,mypublic.bytes,(uint8_t *)password,(int32_t)strlen(password)));
     sprintf(cmd,"%s=getAccountId&secretPhrase=%s",_NXTSERVER,password);
     ret = extract_NXTfield(curl_handle,0,cmd,"accountId",64);
     if ( ret.nxt64bits == 0 )
@@ -374,6 +375,7 @@ char *issue_signTransaction(CURL *curl_handle,char *txbytes,char *NXTACCTSECRET)
     return(issue_NXTPOST(curl_handle,cmd));
 }
 
+/*
 uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey)
 {
     char cmd[4096],numstr[MAX_JSON_FIELD],*jsontxt;
@@ -427,7 +429,7 @@ uint64_t issue_transferAsset(char **retstrp,CURL *curl_handle,char *secret,char 
     if ( *retstrp == 0 && jsontxt != 0 )
         free(jsontxt);
     return(txid);
-}
+}*/
 
 cJSON *issue_getAccountInfo(CURL *curl_handle,int64_t *amountp,char *name,char *username,char *NXTaddr,char *groupname)
 {
@@ -491,6 +493,7 @@ uint64_t _get_bestassetprice(uint64_t *volp,char *assetcmd,char *arrayfield,uint
 uint64_t get_nxtlowask(uint64_t *sellvolp,uint64_t assetid) { return(_get_bestassetprice(sellvolp,"getAskOrders","askOrders",assetid)); }
 uint64_t get_nxthighbid(uint64_t *buyvolp,uint64_t assetid) { return(_get_bestassetprice(buyvolp,"getBidOrders","bidOrders",assetid)); }
 uint64_t get_nxtlastprice(uint64_t assetid) { return(_get_bestassetprice(0,"getTrades","trades",assetid)); }
+
 
 char *issue_getAsset(int32_t isMScoin,char *assetidstr)
 {
@@ -585,6 +588,8 @@ struct NXT_asset *get_NXTasset(int32_t *createdp,struct NXThandler_info *mp,char
     return(ap);
 }
 
+/*
+
 struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *NXTaddr)
 {
     struct NXT_acct *np;
@@ -598,7 +603,7 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,struct NXThandler_info *mp,char *
         //portable_set_illegaludp(&np->Usock);//np->Usock = -1;
     }
     return(np);
-}
+}*/
 
 /*struct NXT_acct *search_addresses(char *addr)
 {
@@ -678,7 +683,7 @@ struct NXT_acct *find_NXTacct(char *NXTaddr,char *NXTACCTSECRET)
         nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
         expand_nxt64bits(NXTaddr,nxt64bits);
     }
-    return(get_NXTacct(&createdflag,Global_mp,NXTaddr));
+    return(get_NXTacct(&createdflag,NXTaddr));
 }
 
 /*#ifdef BTC_COINID
@@ -782,7 +787,7 @@ uint64_t gen_randacct(char *randaddr)
     bits256 priv,pub;
     randombytes((uint8_t *)secret,sizeof(secret));
     secret[sizeof(secret)-1] = 0;
-    randacct = conv_NXTpassword(priv.bytes,pub.bytes,secret);
+    randacct = conv_NXTpassword(priv.bytes,pub.bytes,secret,(int32_t)strlen(secret));
     expand_nxt64bits(randaddr,randacct);
     return(randacct);
 }
@@ -1453,7 +1458,7 @@ struct NXT_acct *add_NXT_acct(char *NXTaddr,struct NXThandler_info *mp,cJSON *ob
     if ( obj != 0 )
     {
         copy_cJSON(NXTaddr,obj);
-        ptr = get_NXTacct(&createdflag,mp,NXTaddr);
+        ptr = get_NXTacct(&createdflag,NXTaddr);
         if ( createdflag != 0 )
             return(ptr);
     }
@@ -1593,7 +1598,7 @@ struct acct_coin *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,cha
     struct NXT_acct *np;
     int32_t i,createdflag;
     expand_nxt64bits(NXTaddr,nxt64bits);
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = get_NXTacct(&createdflag,NXTaddr);
     if ( npp != 0 )
         (*npp) = np;
     if ( np->numcoins > 0 )
@@ -1715,42 +1720,6 @@ int32_t is_remote_access(char *previpaddr)
     else return(0);
 }*/
 
-void expand_ipbits(char *ipaddr,uint32_t ipbits)
-{
-    struct sockaddr_in addr;
-    memcpy(&addr.sin_addr,&ipbits,sizeof(ipbits));
-    strcpy(ipaddr,inet_ntoa(addr.sin_addr));
-    //sprintf(ipaddr,"%d.%d.%d.%d",(ipbits>>24)&0xff,(ipbits>>16)&0xff,(ipbits>>8)&0xff,(ipbits&0xff));
-}
-
-char *ipbits_str(uint32_t ipbits)
-{
-    static char ipaddr[64];
-    expand_ipbits(ipaddr,ipbits);
-    return(ipaddr);
-}
-
-char *ipbits_str2(uint32_t ipbits)
-{
-    static char ipaddr[64];
-    expand_ipbits(ipaddr,ipbits);
-    return(ipaddr);
-}
-
-struct sockaddr_in conv_ipbits(uint32_t ipbits,int32_t port)
-{
-    char ipaddr[64];
-    struct hostent *host;
-    struct sockaddr_in server_addr;
-    expand_ipbits(ipaddr,ipbits);
-    host = (struct hostent *)gethostbyname(ipaddr);
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    server_addr.sin_addr = *((struct in_addr *)host->h_addr);
-    memset(&(server_addr.sin_zero),0,8);
-    return(server_addr);
-}
-
 char *conv_ipv6(char *ipv6addr)
 {
     static unsigned char IPV4CHECK[10]; // 80 ZERO BITS for testing
@@ -1827,7 +1796,7 @@ int32_t is_illegal_ipaddr(char *ipaddr)
     return(strcmp(tmp,ipaddr));
 }
 
-struct nodestats *get_nodestats(uint64_t nxt64bits)
+/*struct nodestats *get_nodestats(uint64_t nxt64bits)
 {
     struct nodestats *stats = 0;
     int32_t createdflag;
@@ -1836,13 +1805,13 @@ struct nodestats *get_nodestats(uint64_t nxt64bits)
     if ( nxt64bits != 0 )
     {
         expand_nxt64bits(NXTaddr,nxt64bits);
-        np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+        np = get_NXTacct(&createdflag,NXTaddr);
         stats = &np->stats;
         if ( stats->nxt64bits == 0 )
             stats->nxt64bits = nxt64bits;
     }
     return(stats);
-}
+}*/
 
 void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
 {
@@ -2082,7 +2051,7 @@ int32_t gen_tokenjson(CURL *curl_handle,char *jsonstr,char *NXTaddr,long nonce,c
     int32_t createdflag;
     struct NXT_acct *np;
     char argstr[1024],pubkey[1024],token[1024];
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
+    np = get_NXTacct(&createdflag,NXTaddr);
     init_hexbytes_noT(pubkey,np->stats.pubkey,sizeof(np->stats.pubkey));
     sprintf(argstr,"{\"NXT\":\"%s\",\"pubkey\":\"%s\",\"timestamp\":%ld,\"yourip\":\"%s\",\"uport\":%d}",NXTaddr,pubkey,nonce,ipaddr,port);
     //printf("got argstr.(%s)\n",argstr);
@@ -2311,14 +2280,14 @@ struct NXT_acct **clear_workingvars(struct NXT_acct **accts,int32_t *nump,char *
     struct NXT_acct *seller,*buyer;
     if ( sender != 0 )
     {
-        seller = get_NXTacct(&createdflag,Global_mp,sender);
+        seller = get_NXTacct(&createdflag,sender);
         seller->quantity = seller->buysum = seller->buyqty = seller->sellsum = seller->sellqty = 0;
         if ( nump != 0 )
             accts = (struct NXT_acct **)addto_listptr(nump,(void **)accts,seller);
     }
     if ( receiver != 0 )
     {
-        buyer = get_NXTacct(&createdflag,Global_mp,receiver);
+        buyer = get_NXTacct(&createdflag,receiver);
         buyer->quantity = buyer->buysum = buyer->buyqty = buyer->sellsum = buyer->sellqty = 0;
         if ( nump != 0 )
             accts = (struct NXT_acct **)addto_listptr(nump,(void **)accts,buyer);
@@ -2446,8 +2415,8 @@ struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimes
                 {
                     expand_nxt64bits(sender,txid->senderbits);
                     expand_nxt64bits(receiver,txid->receiverbits);
-                    seller = get_NXTacct(&createdflag,Global_mp,sender);
-                    buyer = get_NXTacct(&createdflag,Global_mp,receiver);
+                    seller = get_NXTacct(&createdflag,sender);
+                    buyer = get_NXTacct(&createdflag,receiver);
                     if ( iter == 0 )
                         accts = clear_workingvars(accts,&n,sender,receiver);
                     else
@@ -2478,8 +2447,8 @@ struct NXT_assettxid *search_cointxid(int32_t coinid,char *NXTaddr,char *cointxi
         return(0);
     }
     calc_NXTcointxid(NXTcointxid,cointxid,vout);
-    np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
-    ap = get_NXTasset(&createdflag,Global_mp,assetid_str(coinid));
+    np = get_NXTacct(&createdflag,NXTaddr);
+    ap = get_NXTasset(&createdflag,assetid_str(coinid));
     ind = get_asset_in_acct(np,ap,0);
     if ( ind >= 0 )
     {

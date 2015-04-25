@@ -215,7 +215,7 @@ int32_t onionize(char *hopNXTaddr,unsigned char *maxbuf,unsigned char *encoded,c
 #endif
     strcpy(hopNXTaddr,destNXTaddr);
     nxt64bits = calc_nxt64bits(destNXTaddr);
-    np = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    np = get_NXTacct(&createdflag,destNXTaddr);
     return(direct_onionize(nxt64bits,np->stats.pubkey,maxbuf,encoded,payloadp,len));
 }
 
@@ -306,9 +306,9 @@ char *sendmessage(int32_t queueflag,char *hopNXTaddr,int32_t L,char *verifiedNXT
     unsigned char maxbuf[4096],encodedD[4096],encoded[4096],encodedL[4096],encodedF[4096],*outbuf;
     int32_t len,createdflag;
     struct NXT_acct *np,*destnp;
-    np = get_NXTacct(&createdflag,Global_mp,verifiedNXTaddr);
+    np = get_NXTacct(&createdflag,verifiedNXTaddr);
     expand_nxt64bits(srvNXTaddr,np->stats.nxt64bits);
-    destnp = get_NXTacct(&createdflag,Global_mp,destNXTaddr);
+    destnp = get_NXTacct(&createdflag,destNXTaddr);
     if ( hopNXTaddr == 0 )
         hopNXTaddr = _hopNXTaddr, hopNXTaddr[0] = 0;
     if ( np == 0 || destnp == 0 || destnp->stats.nxt64bits == 0 )
@@ -541,7 +541,7 @@ struct NXT_acct *process_packet(int32_t internalflag,char *retjsonstr,unsigned c
                 fprintf(stderr,"senderNXTaddr.(%s) len.%d parmslen.%d datalen.%d (%s) valid.%d\n",senderNXTaddr,len,parmslen,datalen,parmstxt,valid);
             if ( valid > 0 && parmstxt != 0 && parmstxt[0] != 0 )
             {
-                tokenized_np = get_NXTacct(&createdflag,Global_mp,senderNXTaddr);
+                tokenized_np = get_NXTacct(&createdflag,senderNXTaddr);
                 tmpjson = cJSON_Parse(parmstxt);
                 if ( tmpjson != 0 )
                 {

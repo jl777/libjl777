@@ -14,12 +14,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../cJSON.h"
-#include "../includes/uthash.h"
-//#include "../ramchain/ramchain.c"
-#include "../mgw/msig.c"
+#include "cJSON.h"
+#include "uthash.h"
 #include "utils777.c"
-//#include "huffstream.c"
+#include "msig.c"
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };
@@ -59,7 +57,7 @@ char *_insert_OP_RETURN(char *rawtx,int32_t do_opreturn,int32_t replace_vout,uin
 
 #ifndef crypto777_bitcoind_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "bitcoind.c"
 #undef DEFINES_ONLY
 #endif
 

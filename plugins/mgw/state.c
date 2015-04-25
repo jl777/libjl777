@@ -26,7 +26,7 @@
 #define BIND_DEPOSIT_ADDRESS 'b'
 #define DEPOSIT_CONFIRMED 'd'
 #define MONEY_SENT 'm'
-#define NXT_ASSETLIST_INCR 100
+#define NXT_ASSETLIST_INCR 16
 extern char NXT_ASSETIDSTR[];
 
 #endif
@@ -36,7 +36,7 @@ extern char NXT_ASSETIDSTR[];
 
 #ifndef crypto777_mgwstate_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "state.c"
 #undef DEFINES_ONLY
 #endif
 
@@ -309,6 +309,7 @@ void ram_addunspent(struct ramchain_info *ram,char *coinaddr,struct rampayload *
     // ram_addunspent() is called from the rawtx_update that creates the txpayloads, each coinaddr gets a list of addrpayloads initialized
     // it needs to update the corresponding txpayload so exact state can be quickly calculated
     //struct NXT_assettxid *tp;
+    int32_t len;
     struct multisig_addr *msig;
     txpayload->B = addrpayload->B;
     txpayload->value = addrpayload->value;
@@ -322,7 +323,7 @@ void ram_addunspent(struct ramchain_info *ram,char *coinaddr,struct rampayload *
         ram->S.numoutputs++;
         addrptr->unspent += addrpayload->value;
         addrptr->numunspent++;
-        if ( addrptr->multisig != 0 && (msig= find_msigaddr(coinaddr)) != 0 && _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,msig->NXTaddr) == 0 )
+        if ( addrptr->multisig != 0 && (msig= find_msigaddr(&len,coinaddr)) != 0 && _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,msig->NXTaddr) == 0 )
         {
             if ( addrpayload->B.isinternal == 0 ) // all non-internal unspents could be MGW deposit or withdraw
             {
@@ -469,6 +470,7 @@ cJSON *_process_MGW_message(struct ramchain_info *ram,uint32_t height,int32_t fu
     void update_coinacct_addresses(uint64_t nxt64bits,cJSON *json,char *txid);
     uint64_t nxt64bits = calc_nxt64bits(sender);
     struct multisig_addr *msig;
+    int32_t len;
     // we can ignore height as the sender is validated or it is non-money get_coindeposit_address request
     if ( calc_nxt64bits(receiver) != ram->MGWbits && calc_nxt64bits(sender) != ram->MGWbits )
         return(0);
@@ -488,12 +490,13 @@ cJSON *_process_MGW_message(struct ramchain_info *ram,uint32_t height,int32_t fu
                 //fprintf(stderr,"b");
                 if ( _in_specialNXTaddrs(ram->special_NXTaddrs,ram->numspecials,sender) != 0 && (msig= decode_msigjson(0,argjson,sender)) != 0 ) // strcmp(sender,receiver) == 0) &&
                 {
-                    if ( strcmp(msig->coinstr,ram->name) == 0 && find_msigaddr(msig->multisigaddr) == 0 )
+                    if ( strcmp(msig->coinstr,ram->name) == 0 && find_msigaddr(&len,msig->multisigaddr) == 0 )
                     {
                         //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone > 1 )
                         //    fprintf(stderr,"BINDFUNC: %s func.(%c) %s -> %s txid.(%s)\n",msig->coinstr,funcid,sender,receiver,txid);
                         if ( update_msig_info(msig,1,sender) > 0 )
                         {
+                            update_MGW_msig(msig,sender);
                             //fprintf(stderr,"%s func.(%c) %s -> %s txid.(%s)\n",msig->coinstr,funcid,sender,receiver,txid);
                         }
                     }
@@ -877,14 +880,14 @@ uint64_t ram_calc_unspent(uint64_t *pendingp,int32_t *calc_numunspentp,struct ra
     //char redeemScript[8192],normaladdr[8192];
     uint64_t pending,unspent = 0;
     struct multisig_addr *msig;
-    int32_t i,numpayloads,n = 0;
+    int32_t i,len,numpayloads,n = 0;
     struct rampayload *payloads;
     if ( calc_numunspentp != 0 )
         *calc_numunspentp = 0;
     pending = 0;
     if ( (payloads= ram_addrpayloads(addrptrp,&numpayloads,ram,addr)) != 0 && numpayloads > 0 )
     {
-        msig = find_msigaddr(addr);
+        msig = find_msigaddr(&len,addr);
         for (i=0; i<numpayloads; i++)
         {
             /*{
@@ -922,7 +925,7 @@ uint64_t ram_calc_MGWunspent(uint64_t *pendingp,struct ramchain_info *ram)
     ram->MGWnumunspents = 0;
     if ( ram->MGWunspents != 0 )
         memset(ram->MGWunspents,0,sizeof(*ram->MGWunspents) * ram->MGWmaxunspents);
-    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n)) != 0 )
+    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,DB_MSIG)) != 0 )
     {
         ram->nummsigs = n;
         ram->MGWsmallest[0] = ram->MGWsmallestB[0] = 0;

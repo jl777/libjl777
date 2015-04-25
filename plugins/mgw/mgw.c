@@ -12,9 +12,9 @@
 #include <math.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include "cJSON.h"
 
 #define DEFINES_ONLY
+#include "cJSON.h"
 #include "system777.c"
 #include "utils777.c"
 #include "NXT777.c"
@@ -1045,6 +1045,8 @@ uint64_t MGWtransfer_asset(cJSON **transferjsonp,int32_t forceflag,uint64_t nxt6
         }
         if ( flag != 0 )
         {
+            void *extract_jsonints(cJSON *item,void *arg,void *arg2);
+            int32_t jsonstrcmp(void *ref,void *item);
             str = cJSON_Print(pair);
             _stripwhite(str,' ');
             fprintf(stderr,"updatedeposit.ALL (%s)\n",str);

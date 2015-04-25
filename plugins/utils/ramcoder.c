@@ -32,7 +32,7 @@ int32_t ramcoder_encode(struct ramcoder_info *coder,int32_t updateprobs,uint8_t 
 
 #ifndef crypto777_ramcoder_h
 #define DEFINES_ONLY
-#include __BASE_FILE__
+#include "ramcoder.c"
 #undef DEFINES_ONLY
 #endif
 
