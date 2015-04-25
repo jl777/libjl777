@@ -64,14 +64,6 @@ int32_t safecopy(char *dest,char *src,long len);*/
 
 
 
-char *SuperNET_url()
-{
-    static char urls[2][64];
-    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1*0);
-    sprintf(urls[1],"https://127.0.0.1:%d",SUPERNET_PORT);
-    return(urls[USESSL]);
-}
-
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 {
     cJSON *json = 0;
@@ -651,7 +643,7 @@ extern char WEBSOCKETD[];
 #include "files777.c"
 #include "plugins/plugins.h"
 
-int MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,Gatewayid = -1;
+int SuperNET_retval,MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,SUPERNET_PORT,USESSL,Gatewayid = -1;
 char SOPHIA_DIR[MAX_JSON_FIELD],NXT_ASSETIDSTR[MAX_JSON_FIELD],NXTSERVER[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD],MGWROOT[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
 
 int32_t SuperNET_broadcast(char *msg,int32_t duration) { printf(">>>>>>>>> BROADCAST.(%s)\n",msg); return(0); }
@@ -730,6 +722,7 @@ int SuperNET_start(char *jsonstr,char *myip)
 {
     cJSON *json = cJSON_Parse(jsonstr);
     Debuglevel = 2;
+    SUPERNET_PORT = 7777;
     strcpy(WEBSOCKETD,"websocketd");
     strcpy(SOPHIA_DIR,"./DB");
     if ( json != 0 )
@@ -739,6 +732,14 @@ int SuperNET_start(char *jsonstr,char *myip)
     os_compatible_path(SOPHIA_DIR);
     language_func("SuperNET","",0,0,1,"SuperNET","{}",call_system);
     return(0);
+}
+
+char *SuperNET_url()
+{
+    static char urls[2][64];
+    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1*0);
+    sprintf(urls[1],"https://127.0.0.1:%d",SUPERNET_PORT);
+    return(urls[USESSL]);
 }
 
 #ifdef STANDALONE

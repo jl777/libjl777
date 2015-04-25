@@ -422,7 +422,7 @@ int32_t getline777(char *line,int32_t max)
 uint16_t wait_for_myipaddr(char *ipaddr)
 {
     uint16_t port = 0;
-    printf("need a portable way to find IP addr.(%s)\n");
+    printf("need a portable way to find IP addr\n");
     getchar();
     return(port);
 }
