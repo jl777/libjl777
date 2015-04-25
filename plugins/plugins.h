@@ -326,13 +326,21 @@ int32_t is_bundled_plugin(char *plugin)
 void *_daemon_loop(struct daemon_info *dp,int32_t permanentflag)
 {
     char bindaddr[512],connectaddr[512];
-    int32_t childpid,status;
+    int32_t i,childpid,status;
     dp->bundledflag = is_bundled_plugin(dp->name);
     set_bind_transport(bindaddr,dp->bundledflag,permanentflag,dp->ipaddr,dp->port,dp->daemonid);
     set_connect_transport(connectaddr,dp->bundledflag,permanentflag,dp->ipaddr,dp->port,dp->daemonid);
     init_pluginhostsocks(dp,permanentflag,bindaddr,connectaddr,dp->myid);
     printf("<<<<<<<<<<<<<<<<<< %s plugin.(%s) bind.(%s) connect.(%s)\n",permanentflag!=0?"PERMANENT":"WEBSOCKETD",dp->name,bindaddr,connectaddr);
     childpid = (*dp->daemonfunc)(dp,permanentflag,0,0);
+    while ( 1 )
+    {
+        for (i=0; i<1000; i++)
+            if ( poll_daemons() <= 0 )
+                break;
+        msleep(1);
+    }
+
     OS_waitpid(childpid,&status,0);
     printf("daemonid.%llu (%s %s) finished child.%d status.%d\n",(long long)dp->daemonid,dp->cmd,dp->jsonargs!=0?dp->jsonargs:"",childpid,status);
     if ( permanentflag != 0 )

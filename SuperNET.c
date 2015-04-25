@@ -634,6 +634,7 @@ int main(int argc,const char *argv[])
 int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
 int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
 #endif
+
 #include <stdio.h>
 extern char WEBSOCKETD[];
 
@@ -742,6 +743,11 @@ char *SuperNET_url()
     return(urls[USESSL]);
 }
 
+int32_t launch_SuperNET(char *ipaddr)
+{
+    return(SuperNET_start("SuperNET.conf",ipaddr));
+}
+
 #ifdef STANDALONE
 int main(int argc,const char *argv[])
 {
@@ -781,7 +787,7 @@ int main(int argc,const char *argv[])
         for (i=0; i<1000; i++)
             if ( poll_daemons() <= 0 )
                 break;
-        usleep(10);
+        sleep(10);
     }
     free(jsonstr);
     return(0);
