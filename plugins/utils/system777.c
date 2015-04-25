@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include "miniwget.h"
 #include "miniupnpc.h"
 #include "upnpcommands.h"
@@ -469,7 +470,7 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
 int32_t shutdown_plugsocks(union endpoints *socks)
 {
     int32_t i,errs = 0;
-    for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+    for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
         if ( socks->all[i] >= 0 && nn_shutdown(socks->all[i],0) != 0 )
             errs++, printf("error (%s) nn_shutdown.%d\n",nn_strerror(nn_errno()),i);
     return(errs);
@@ -488,7 +489,7 @@ int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flag
             if ( (len= nn_send(sock,(char *)retstr,len,0)) <= 0 )
                 errs++, printf("error %d sending to socket.%d send.%d len.%d (%s)\n",len,sock,i,len,nn_strerror(nn_errno()));
             else if ( Debuglevel > 2 )
-                printf("SENT.(%s) len.%d vs strlen.%ld\n",retstr,len,strlen((char *)retstr));
+                printf("SENT.(%s) len.%d vs strlen.%ld instanceid.%llu\n",retstr,len,strlen((char *)retstr),(long long)instanceid);
         }
     }
     return(errs);
@@ -500,7 +501,7 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
     int32_t len,sock,processed=0,rc,i,n = 0;
     char *str,*msg;
     memset(pfd,0,sizeof(pfd));
-    for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+    for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
     {
         if ( (pfd[i].fd= socks->all[i]) >= 0 )
         {
@@ -512,7 +513,7 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
     {
         if ( (rc= nn_poll(pfd,sizeof(socks->all)/sizeof(*socks->all),timeoutmillis)) > 0 )
         {
-            for (i=0; i<sizeof(socks->all)/sizeof(*socks->all); i++)
+            for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
             {
                 if ( pfd[i].fd < 0 )
                     continue;
