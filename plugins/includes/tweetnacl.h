@@ -1,5 +1,5 @@
 #ifndef TWEETNACL_H
-#define TWEETNACL_H
+#define TWEETNACL_H 
 #define crypto_auth_PRIMITIVE "hmacsha512256"
 #define crypto_auth crypto_auth_hmacsha512256
 #define crypto_auth_verify crypto_auth_hmacsha512256_verify

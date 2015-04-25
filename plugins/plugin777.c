@@ -168,7 +168,7 @@ static void plugin_transportaddr(char *addr,char *transportstr,char *ipaddr,uint
     if ( ipaddr != 0 )
         sprintf(addr,"%s://%s:%llu",transportstr,ipaddr,(long long)num);
     else sprintf(addr,"%s://%llu",transportstr,(long long)num);
-}
+} 
 
 static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,struct plugin_info *plugin,int32_t permanentflag,uint64_t daemonid,uint64_t myid,char *jsonstr)
 {

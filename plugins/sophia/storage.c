@@ -232,7 +232,6 @@ void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *ac
 int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender)
 {
     int32_t i,ret = 0;
-    struct multisig_addr *msigram;
     if ( msig == 0 )
     {
         if ( syncflag != 0 )//&& sdb != 0 && sdb->storage != 0 )
@@ -246,7 +245,7 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sende
             add_NXT_coininfo(msig->pubkeys[i].nxt64bits,calc_nxt64bits(msig->NXTaddr),msig->coinstr,msig->pubkeys[i].coinaddr,msig->pubkeys[i].pubkey);
     if ( msig->size == 0 )
         msig->size = sizeof(*msig) + (msig->n * sizeof(msig->pubkeys[0]));
-    save_msig(msigram,msig->size);
+    save_msig(msig,msig->size);
     if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
         printf("add (%s) NXTpubkey.(%s)\n",msig->multisigaddr,msig->NXTpubkey);
     return(ret);

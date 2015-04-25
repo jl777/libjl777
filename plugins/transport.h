@@ -148,7 +148,7 @@ char *wait_for_daemon(char **dest,uint64_t tag)
     printf("no tag received\n");
     return(0);
 }
-
+ 
 int32_t send_to_daemon(char **retstrp,uint64_t tag,char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);

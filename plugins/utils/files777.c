@@ -390,7 +390,8 @@ void delete_file(char *fname,int32_t scrubflag)
         }
         fclose(fp);
         sprintf(cmdstr,"%s %s",OS_rmstr(),fname);
-        system(os_compatible_path(cmdstr));
+        if ( system(os_compatible_path(cmdstr)) != 0 )
+            printf("error deleting file.(%s)\n",cmdstr);
     }
 }
 

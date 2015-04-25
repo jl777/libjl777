@@ -675,6 +675,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
             websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
             return(language_func(plugin,ipaddr,port,websocket,async,path,jsonstr,call_system));
         }
+        tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
         copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
@@ -686,7 +687,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         async = get_API_int(cJSON_GetObjectItem(json,"async"),0);
-        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag,jsonstr,n,async));
+        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag!=0?tag:rand(),jsonstr,n,async));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 

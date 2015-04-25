@@ -1,6 +1,6 @@
 //
 //  plugins.h
-//
+// 
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 
@@ -270,10 +270,11 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         if ( jsonargs != 0 && jsonargs[0] != 0 )
         {
             sprintf(cmdstr,"%s \"%s\"",cmd,jsonargs);
-            //printf("SYSTEM.(%s)\n",cmdstr);
-            system(os_compatible_path(cmdstr));
+            if ( system(os_compatible_path(cmdstr)) != 0 )
+                printf("error SYSTEM.(%s)\n",cmdstr);
         }
-        else system(os_compatible_path(cmd));
+        else if ( system(os_compatible_path(cmd)) != 0 )
+            printf("error SYSTEM.(%s) cmd\n",cmd);
         return(0);
     } else cmd = dp->cmd;
     memset(args,0,sizeof(args));
@@ -408,7 +409,9 @@ char *language_func(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,in
     close(out_pipe[1]);
     (*daemonfunc)(0,0,cmd,jsonargs);
     fflush(stdout);
-    read(out_pipe[0],buffer,sizeof(buffer)-1), buffer[sizeof(buffer)-1] = 0;
+    if ( read(out_pipe[0],buffer,sizeof(buffer)-1) <= 0 )
+        printf("error reading in language_function\n");
+    buffer[sizeof(buffer)-1] = 0;
     dup2(saved_stdout,STDOUT_FILENO);
     return(clonestr(buffer));
 }
