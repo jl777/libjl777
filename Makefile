@@ -17,7 +17,7 @@ PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
 LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lssl -lcrypto -lm
 
 CC=clang  
-CFLAGS=-Wall -O2 -std=c99 -Wextra -pedantic -g -fPIC -Iplugins/includes  -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp  -Iplugins/utils -Iincludes -I.. -I../includes -I../../includes -I/usr/include -Wunused-parameter -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -O2 -std=c99 -Wextra -pedantic -g -fPIC -Iplugins/includes  -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp  -Iplugins/utils -Iincludes -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 
 TARGET	= libjl777.a
 
