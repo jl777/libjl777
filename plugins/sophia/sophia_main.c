@@ -16,7 +16,7 @@ extern char SOPHIA_DIR[];
 
 #include "sophia.h"
 #define DEFINES_ONLY
-#include "plugin777.c"
+#include "../plugin777.c"
 #undef DEFINES_ONLY
 
 STRUCTNAME
