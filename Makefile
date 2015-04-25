@@ -16,7 +16,7 @@ PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
 
 LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lssl -lcrypto -lm
 
-CC=clang  
+CC=gcc
 CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 
 TARGET	= libjl777.a
@@ -83,7 +83,7 @@ MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
 SuperNET: $(TARGET); \
-    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE SuperNET.c $(LIBS) #-lz -ldl -lutil -lpcre -lexpat
+    pkill SuperNET; rm SuperNET; gcc -o SuperNET $(CFLAGS) -D STANDALONE SuperNET.c $(LIBS) #-lz -ldl -lutil -lpcre -lexpat
 
 special: /usr/lib/libjl777.so; \
     gcc -shared -Wl,-soname,libjl777.so -o libs/libjl777.so $(OBJS) -lstdc++ -lcurl -lm -ldl; \
