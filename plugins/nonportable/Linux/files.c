@@ -10,6 +10,31 @@
 #include <stdlib.h>
 
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <string.h>
+#include <memory.h>
+#include <math.h>
+//#include <time.h>
+#include <ctype.h>
+#include <signal.h>
+#include <errno.h>
+#include <assert.h>
+#include <float.h>
+//#include <limits.h>
+#include <zlib.h>
+#include <pthread.h>
+
+//#include <getopt.h>
+//#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+//#include <sys/socket.h>
+#include <sys/wait.h>
+//#include <sys/time.h>
+
 int32_t os_supports_mappedfiles() { return(1); }
 char *os_compatible_path(char *str) { return(str); }
 int32_t portable_truncate(char *fname,long filesize) { return(truncate(fname,filesize)); }
