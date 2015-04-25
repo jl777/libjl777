@@ -298,10 +298,11 @@ int32_t main
         }
         if ( n == 0 )
         {
-            sleeptime <<= 1;
+            /*sleeptime <<= 1;
             if ( sleeptime > 10000 )
                 sleeptime = 10000;
-            usleep(sleeptime);
+            usleep(sleeptime);*/
+             msleep(10);
         } else sleeptime = 1;
     } fprintf(stderr,"ppid.%d changed to %d\n",plugin->ppid,OS_getppid());
     PLUGNAME(_shutdown)(plugin,len); // rc == 0 -> parent process died

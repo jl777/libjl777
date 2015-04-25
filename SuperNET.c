@@ -748,9 +748,25 @@ char *SuperNET_url()
     return(urls[USESSL]);
 }
 
+void SuperNET_loop(void *ipaddr)
+{
+    int32_t i;
+    printf("start SuperNET.(%s)\n",ipaddr);
+    SuperNET_start("SuperNET.conf",ipaddr);
+    while ( 1 )
+    {
+        for (i=0; i<1000; i++)
+            if ( poll_daemons() <= 0 )
+                break;
+        msleep(100);
+        //fprintf(stderr,".");
+    }
+}
+
 int32_t launch_SuperNET(char *ipaddr)
 {
-    return(SuperNET_start("SuperNET.conf",ipaddr));
+    portable_thread_create((void *)SuperNET_loop,ipaddr);
+    return(0);
 }
 
 #ifdef STANDALONE
