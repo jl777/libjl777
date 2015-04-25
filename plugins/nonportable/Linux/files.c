@@ -2,38 +2,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <stdlib.h>
 
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <string.h>
-#include <memory.h>
-#include <math.h>
-//#include <time.h>
-#include <ctype.h>
-#include <signal.h>
-#include <errno.h>
-#include <assert.h>
-#include <float.h>
-//#include <limits.h>
-#include <zlib.h>
-#include <pthread.h>
-
-//#include <getopt.h>
-//#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-//#include <sys/socket.h>
-#include <sys/wait.h>
-//#include <sys/time.h>
 
 int32_t os_supports_mappedfiles() { return(1); }
 char *os_compatible_path(char *str) { return(str); }
