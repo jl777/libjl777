@@ -17,7 +17,7 @@
 #include "cJSON.h"
 #include "uthash.h"
 #include "utils777.c"
-#include "../mgw/msig.c"
+#include "msig.c"
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };

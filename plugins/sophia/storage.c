@@ -18,7 +18,7 @@
 #include "cJSON.h"
 #include "bits777.c"
 #include "system777.c"
-#include "../mgw/msig.c"
+#include "msig.c"
 
 struct nodestats
 {
