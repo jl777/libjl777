@@ -647,8 +647,6 @@ extern char WEBSOCKETD[];
 int SuperNET_retval,MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,SUPERNET_PORT,USESSL,Gatewayid = -1;
 char SOPHIA_DIR[MAX_JSON_FIELD],NXT_ASSETIDSTR[MAX_JSON_FIELD],NXTSERVER[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD],MGWROOT[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
 
-int32_t SuperNET_broadcast(char *msg,int32_t duration) { printf(">>>>>>>>> BROADCAST.(%s)\n",msg); return(0); }
-int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { printf(">>>>>>>>>>> NARROWCAST.(%s) -> (%s)\n",msg,destip);  return(0); }
 
 int32_t got_newpeer(const char *ip_port) { printf("got_newpeer.(%s)\n",ip_port); return(0); }
 
@@ -749,6 +747,9 @@ int32_t launch_SuperNET(char *ipaddr)
 }
 
 #ifdef STANDALONE
+int32_t SuperNET_broadcast(char *msg,int32_t duration) { printf(">>>>>>>>> BROADCAST.(%s)\n",msg); return(0); }
+int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { printf(">>>>>>>>>>> NARROWCAST.(%s) -> (%s)\n",msg,destip);  return(0); }
+
 int main(int argc,const char *argv[])
 {
     char _ipaddr[64],*jsonstr = 0,*ipaddr = "127.0.0.1:7777";//,*ipaddr6 = "[2001:16d8:dd24:0:86c9:681e:f931:256]";
