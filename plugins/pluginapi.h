@@ -111,11 +111,11 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         if ( daemonid != 0 )
         {
             unstringify(params);
-            send_to_daemon(&retstr,tag,plugin,daemonid,instanceid,params);
+            send_to_daemon(&retstr,plugin,daemonid,instanceid,params);
             return(wait_for_daemon(&retstr,tag));
         }
         else if ( (cp= get_coin_info(coinstr)) != 0 && method[0] != 0 )
-            retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,method,params);
+            retstr = bitcoind_passthru(cp->name,cp->serverport,cp->userpass,method,params);
     }
     else retstr = clonestr("{\"error\":\"invalid passthru_func arguments\"}");
     if ( is_remote_access(previpaddr) != 0 )

@@ -17,6 +17,9 @@
 #include "bits777.c"
 #include "system777.c"
 
+#define SATOSHIDEN 100000000L
+#define dstr(x) ((double)(x) / SATOSHIDEN)
+
 struct alloc_space { void *ptr; long used,size; };
 
 int32_t portable_pton(int32_t af,char *src,void *dst);
@@ -33,12 +36,18 @@ int64_t conv_floatstr(char *numstr);
 void touppercase(char *str);
 void reverse_hexstr(char *str);
 char hexbyte(int32_t c);
+int32_t is_zeroes(char *str);
 int32_t is_hexstr(char *str);
 unsigned char _decode_hex(char *hex);
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
 long _stripwhite(char *buf,int accept);
 char *clonestr(char *str);
+uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr);
+int32_t is_decimalstr(char *str);
+long stripstr(char *buf,long len);
+char safechar64(int32_t x);
+
 char *_mbstr(double n);
 char *_mbstr2(double n);
 int32_t revsortstrs(char *buf,uint32_t num,int32_t size);
@@ -140,6 +149,17 @@ int32_t safecopy(char *dest,char *src,long len)
         dest[i] = 0;
     }
     return(i);
+}
+
+int32_t is_zeroes(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(1);
+    for (i=0; str[i]!=0; i++)
+        if ( str[i] != '0' )
+            return(0);
+    return(1);
 }
 
 int64_t conv_floatstr(char *numstr)
@@ -286,6 +306,68 @@ char *clonestr(char *str)
     clone = (char *)malloc(strlen(str)+16);
     strcpy(clone,str);
     return(clone);
+}
+
+long stripstr(char *buf,long len)
+{
+    int32_t i,j,c;
+    for (i=j=0; i<len; i++)
+    {
+        c = buf[i];
+        //if ( c == '\\' )
+        //    c = buf[i+1], i++;
+        buf[j] = c;
+        if ( buf[j] != ' ' && buf[j] != '\n' && buf[j] != '\r' && buf[j] != '\t' && buf[j] != '"' )
+            j++;
+    }
+    buf[j] = 0;
+    return(j);
+}
+
+char safechar64(int32_t x)
+{
+    x %= 64;
+    if ( x < 26 )
+        return(x + 'a');
+    else if ( x < 52 )
+        return(x + 'A' - 26);
+    else if ( x < 62 )
+        return(x + '0' - 52);
+    else if ( x == 62 )
+        return('_');
+    else
+        return('-');
+}
+
+uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr)
+{
+    int32_t datalen;
+    uint8_t *dataptr;
+    dataptr = 0;
+    datalen = 0;
+    if ( datastr[0] != 0 && is_hexstr(datastr) )
+    {
+        datalen = (int32_t)strlen(datastr);
+        if ( datalen > 1 && (datalen & 1) == 0 )
+        {
+            datalen >>= 1;
+            dataptr = data;
+            decode_hex(data,datalen,datastr);
+        } else datalen = 0;
+    }
+    *datalenp = datalen;
+    return(dataptr);
+}
+
+int32_t is_decimalstr(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(0);
+    for (i=0; str[i]!=0; i++)
+        if ( str[i] < '0' || str[i] > '9' )
+            return(-1);
+    return(i);
 }
 
 double _kb(double n) { return(n / 1024.); }

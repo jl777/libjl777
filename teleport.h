@@ -205,7 +205,7 @@ char *issue_BBRcmd(struct coin_info *cp,char *method,char *basement,char *acctke
             sprintf(withdrawstr,",\"addr\":\"%s\"",withdrawaddr);
         sprintf(params,"{\"tpd\":{\"account_keys_hex\":\"%s\",\"basement_tx_id_hex\":\"%s\"}%s}",acctkeys,basement,withdrawstr);
     }
-    return(bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,method,params));
+    return(bitcoind_passthru(cp->name,cp->serverport,cp->userpass,method,params));
 }
 
 uint64_t BBR_telepodstatus(uint32_t *createtimep,struct coin_info *cp,struct telepod *pod)
@@ -901,7 +901,7 @@ uint64_t scan_telepods(char *coinstr)
     if ( (cp= get_coin_info(coinstr)) != 0 )
     {
         sprintf(params,"%d, 99999999",cp->minconfirms);
-        retstr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"listunspent",params);
+        retstr = bitcoind_passthru(cp->name,cp->serverport,cp->userpass,"listunspent",params);
         if ( retstr != 0 && retstr[0] != 0 )
         {
             //printf("got.(%s)\n",retstr);
@@ -1146,14 +1146,14 @@ char *telepodacct(char *contactstr,char *coinstr,uint64_t amount,char *withdrawa
     numpos = numneg = 0;
     transporteraddr[0] = changeaddr[0] = 0;
     if ( (addr= get_account_unspent(0,&availsend,cp,"funding")) == 0 )
-        addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"funding\"]");
+        addr = bitcoind_passthru(cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"funding\"]");
     if ( addr != 0 )
     {
         strcpy(transporteraddr,addr);
         free(addr);
     }
     if ( (addr= get_account_unspent(0,&change,cp,"changepods")) == 0 )
-        addr = bitcoind_RPC(0,cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"changepods\"]");
+        addr = bitcoind_passthru(cp->name,cp->serverport,cp->userpass,"getnewaddress","[\"changepods\"]");
     if ( addr != 0 )
     {
         strcpy(changeaddr,addr);

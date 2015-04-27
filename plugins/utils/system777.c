@@ -29,7 +29,7 @@
 #include "pubsub.h"
 
 #define OFFSET_ENABLED (bundledflag == 0)
-extern int32_t Debuglevel,SUPERNET_PORT,USESSL,IS_LIBTEST,UPNP,MULTIPORT,ENABLE_GUIPOLL;
+extern int32_t Debuglevel,Finished_init;//SUPERNET_PORT,USESSL,IS_LIBTEST,UPNP,MULTIPORT,ENABLE_GUIPOLL;
 extern char SOPHIA_DIR[],MGWROOT[];
 
 typedef int32_t (*ptm)(int32_t,char *args[]);
@@ -43,6 +43,21 @@ char *OS_rmstr();
 int32_t OS_launch_process(char *args[]);
 int32_t OS_getppid();
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
+
+struct sendendpoints { int32_t push,rep,pub,survey; };
+struct recvendpoints { int32_t pull,req,sub,respond; };
+struct biendpoints { int32_t bus,pair; };
+struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
+union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
+
+struct SuperNET_info
+{
+    union endpoints all; char *Server_ipaddrs[16]; uint64_t srv64bits[16]; int32_t numgateways,gatewayid; uint32_t numrecv,numsent;
+    char SOPHIA_DIR[1024],WEBSOCKETD[1024],MGWROOT[1024],NXTAPIURL[1024],NXTSERVER[1024];
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval;
+    uint16_t port;
+};
+extern struct SuperNET_info SUPERNET;
 
 // only OS portable functions in this file
 #define portable_mutex_t struct nn_mutex
@@ -73,19 +88,13 @@ int32_t aligned_free(void *alignedptr);
 void *portable_thread_create(void *funcp,void *argp);
 void randombytes(unsigned char *x,long xlen);
 double milliseconds(void);
-void sleepmillis(uint32_t milliseconds);
-#define portable_sleep(n) sleepmillis((n) * 1000)
-#define msleep(n) sleepmillis(n)
+void msleep(uint32_t milliseconds);
+#define portable_sleep(n) msleep((n) * 1000)
 
 int32_t getline777(char *line,int32_t max);
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *args);
 uint16_t wait_for_myipaddr(char *ipaddr);
 
-struct sendendpoints { int32_t push,rep,pub,survey; };
-struct recvendpoints { int32_t pull,req,sub,respond; };
-struct biendpoints { int32_t bus,pair; };
-struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
-union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
 char *get_localtransport(int32_t bundledflag);
 int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char *_connectaddr,int32_t timeout);
 int32_t shutdown_plugsocks(union endpoints *socks);
@@ -100,14 +109,7 @@ char *ipbits_str(uint64_t ipbits);
 char *ipbits_str2(uint64_t ipbits);
 struct sockaddr_in conv_ipbits(uint64_t ipbits);
 
-#define SOPHIA_USERDIR "/user"
-struct db777 { void *env,*ctl,*db,*asyncdb; char dbname[96]; };
-struct db777 *db777_create(char *path,char *name,char *compression);
-int32_t db777_add(struct db777 *DB,char *key,void *value,int32_t len);
-int32_t db777_addstr(struct db777 *DB,char *key,char *value);
-int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
-void *db777_findM(int32_t *lenp,struct db777 *DB,char *key);
-int32_t db777_close(struct db777 *DB);
+char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t numiters,int32_t async);
 
 #endif
 #else
@@ -119,8 +121,6 @@ int32_t db777_close(struct db777 *DB);
 #include "system777.c"
 #undef DEFINES_ONLY
 #endif
-
-int32_t Debuglevel;
 
 struct nn_clock
 {
@@ -134,7 +134,7 @@ double milliseconds()
     return(nn_clock_now(&Global_timer));
 }
 
-void sleepmillis(uint32_t milliseconds)
+void msleep(uint32_t milliseconds)
 {
     void nn_sleep (int milliseconds);
     nn_sleep(milliseconds);
@@ -439,7 +439,7 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
 {
     int32_t sock,err = 0;
     char bindaddr[512],connectaddr[512];
-    printf("%s.%s bind.(%s) connect.(%s)\n",typestr,suffix,_bindaddr,_connectaddr);
+    //printf("%s.%s bind.(%s) connect.(%s)\n",typestr,suffix,_bindaddr,_connectaddr);
     bindaddr[0] = connectaddr[0] = 0;
     if ( _bindaddr != 0 && _bindaddr[0] != 0 )
         strcpy(bindaddr,_bindaddr), strcat(bindaddr,suffix);
@@ -449,7 +449,7 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
         return(report_err(typestr,sock,"nn_socket",type,bindaddr,connectaddr));
     if ( bindaddr != 0 && bindaddr[0] != 0 )
     {
-        printf("bind\n");
+        //printf("bind\n");
         if ( (err= nn_bind(sock,bindaddr)) < 0 )
             return(report_err(typestr,err,"nn_bind",type,bindaddr,connectaddr));
         if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
@@ -457,7 +457,7 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
     }
     if ( connectaddr != 0 && connectaddr[0] != 0 )
     {
-        printf("nn_connect\n");
+        //printf("nn_connect\n");
         if ( (err= nn_connect(sock,connectaddr)) < 0 )
             return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
         else if ( type == NN_SUB && (err= nn_setsockopt(sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0)) < 0 )
@@ -498,7 +498,7 @@ int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flag
 int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis)
 {
     struct nn_pollfd pfd[sizeof(struct allendpoints)/sizeof(int32_t)];
-    int32_t len,sock,processed=0,rc,i,n = 0;
+    int32_t len,sock,received=0,rc,i,n = 0;
     char *str,*msg;
     memset(pfd,0,sizeof(pfd));
     for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
@@ -523,16 +523,18 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
                     (*numrecvp)++;
                     str = clonestr(msg);
                     nn_freemsg(msg);
-                    messages[processed++] = str;
-                    if ( Debuglevel > 2 )
-                        printf("(%d %d) %d %.6f RECEIVED.%d i.%d/%ld (%s)\n",*numrecvp,numsent,processed,milliseconds(),n,i,sizeof(socks->all)/sizeof(*socks->all),str);
+                    messages[received++] = str;
+                    if ( Debuglevel > 1 )
+                        printf("(%d %d) %d %.6f RECEIVED.%d i.%d/%ld (%s)\n",*numrecvp,numsent,received,milliseconds(),n,i,sizeof(socks->all)/sizeof(*socks->all),str);
                 }
             }
         }
         else if ( rc < 0 )
             printf("%s Error.%d polling %d daemons [0] == %d\n",nn_strerror(nn_errno()),rc,n,pfd[0].fd);
     }
-    return(processed);
+    if ( received != 0 )
+        printf("received.%d\n",received);
+    return(received);
 }
 
 int32_t get_socket_status(int32_t sock,int32_t timeoutmillis)

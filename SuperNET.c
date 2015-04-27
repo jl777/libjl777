@@ -535,14 +535,14 @@ int main(int argc,const char *argv[])
     int32_t retval = -666;
     if ( 0 )
     {
-        struct db777 *db777_create(char *path,char *name,char *compression);
+        struct db777 *db777_create(char *name,char *compression);
         int32_t db777_close(struct db777 *DB);
         int32_t db777_addstr(struct db777 *DB,char *key,char *value);
         int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
         struct db777 *db;
         int i;
         char buf[16],field[64],retbuf[65536];
-        db = db777_create("/tmp","test",0);
+        db = db777_create("test",0);
         for (i=0; i<100000; i++)
         {
             sprintf(field,"field.%d",i);
@@ -552,7 +552,7 @@ int main(int argc,const char *argv[])
             db777_addstr(db,field,buf);
         }
         db777_close(db);
-        db = db777_create("/tmp","zstd","zstd");
+        db = db777_create("zstd","zstd");
         for (i=0; i<100000; i++)
         {
             sprintf(field,"field.%d",i);
@@ -561,7 +561,7 @@ int main(int argc,const char *argv[])
         }
         db777_close(db);
         
-        db = db777_create("/tmp","lz4","lz4");
+        db = db777_create("lz4","lz4");
         for (i=0; i<100000; i++)
         {
             sprintf(field,"field.%d",i);
@@ -635,23 +635,16 @@ int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
 int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
 #endif
 
-#include <stdio.h>
-extern char WEBSOCKETD[];
 
+#include <stdio.h>
 #define DEFINES_ONLY
 #include "cJSON.h"
 #include "utils777.c"
 #include "files777.c"
 #include "plugins/plugins.h"
-
-int SuperNET_retval,MAP_HUFF,MGW_initdone,Debuglevel,Finished_init,MIN_NQTFEE,SUPERNET_PORT,USESSL,Gatewayid = -1;
-char SOPHIA_DIR[MAX_JSON_FIELD],NXT_ASSETIDSTR[MAX_JSON_FIELD],NXTSERVER[MAX_JSON_FIELD],WEBSOCKETD[MAX_JSON_FIELD],MGWROOT[MAX_JSON_FIELD],NXTAPIURL[MAX_JSON_FIELD];
-
+#undef DEFINES_ONLY
 
 int32_t got_newpeer(const char *ip_port) { printf("got_newpeer.(%s)\n",ip_port); return(0); }
-
-//static char *plugin[] = { "plugin", "method", "daemonid", "instanceid", "tag",  "async", "iters", 0 };
-//static char *install[] = "requestType":"install"  { "path", "plugin", "daemonize", "websocket", "ipaddr", "port", 0 };
 
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
@@ -687,7 +680,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         async = get_API_int(cJSON_GetObjectItem(json,"async"),0);
-        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag!=0?tag:rand(),jsonstr,n,async));
+        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,jsonstr,n,async));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 
@@ -718,54 +711,89 @@ char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
     return(retstr);
 }
 
-int SuperNET_start(char *jsonstr,char *myip)
-{
-    cJSON *json = cJSON_Parse(jsonstr);
-    FILE *fp;
-    Debuglevel = 2;
-    SUPERNET_PORT = 7777;
-    if ( (fp= fopen("libs/websocketd","rb")) != 0 )
-    {
-        fclose(fp);
-        strcpy(WEBSOCKETD,"libs/websocketd");
-    }
-    else strcpy(WEBSOCKETD,"websocketd");
-    strcpy(SOPHIA_DIR,"./DB");
-    if ( json != 0 )
-    {
-        extract_cJSON_str(SOPHIA_DIR,sizeof(SOPHIA_DIR),json,"SOPHIA_DIR");
-    }
-    os_compatible_path(SOPHIA_DIR);
-    language_func("SuperNET","",0,0,1,"SuperNET","{}",call_system);
-    return(0);
-}
-
 char *SuperNET_url()
 {
-    static char urls[2][64];
-    sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1*0);
-    sprintf(urls[1],"https://127.0.0.1:%d",SUPERNET_PORT);
-    return(urls[USESSL]);
+    static char url[64];
+    //sprintf(urls[0],"http://127.0.0.1:%d",SUPERNET_PORT+1*0);
+    sprintf(url,"https://127.0.0.1:%d",SUPERNET.port);
+    return(url);
 }
 
 void SuperNET_loop(void *ipaddr)
 {
-    int32_t i;
-    printf("start SuperNET.(%s)\n",ipaddr);
-    SuperNET_start("SuperNET.conf",ipaddr);
+    char *str,*msg;
+    int32_t i,n;
+    cJSON *json;
+    for (i=0; i<1; i++)
+    {
+        if ( poll_daemons() > 0 )
+            break;
+        msleep(10);
+    }
+    printf(">>>>>>>>> call bundled\n");
+    language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"/tmp/coins.conf\"}",call_system);
+    language_func((char *)"coins","",0,0,1,(char *)"coins","{\"filename\":\"/tmp/coins.conf\"}",call_system);
+    printf(">>>>>>>> addcoin\n");
     while ( 1 )
     {
-        for (i=0; i<1000; i++)
-            if ( poll_daemons() <= 0 )
-                break;
-        msleep(100);
-        //fprintf(stderr,".");
+        poll_daemons();
+        if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\"}",1,0)) != 0 )
+        {
+            printf("got (%s)\n",str);
+            if ( (json= cJSON_Parse(str)) != 0 )
+            {
+                if ( (msg= cJSON_str(cJSON_GetObjectItem(json,"result"))) != 0 && strcmp(msg,"addcoin") == 0 )
+                    break;
+            }
+            free(str);
+            sleep(3);
+        }
+    }
+    printf("start gen\n");
+    for (i=0; i<1; i++)
+    {
+        if ( (str= plugin_method(0,"coins","genmultisig",0,milliseconds(),"{\"refcontact\":\"NXT-F2N7-GHWK-GH6U-8LTJC\",\"plugin\":\"coins\",\"M\":2,\"N\":3,\"method\":\"genmultisig\",\"coin\":\"BTCD\",\"multisigchar\":\"b\",\"rpc\":\"127.0.0.1:14632\",\"path\":\"BitcoinDark\",\"conf\":\"BitcoinDark.conf\"}",1,0)) != 0 )
+        {
+            printf("got (%s)\n",str);
+            free(str);
+        }
+        poll_daemons();
+        if ( (n= nn_recv(SUPERNET.all.socks.both.bus,&msg,NN_MSG,0)) > 0 )
+        {
+            printf("MAIN.(%s) %d\n",msg,n);
+            nn_freemsg(msg);
+        }
+    }
+    printf("sock = %d\n",SUPERNET.all.socks.both.bus);
+    while ( 1 )
+    {
+        int n,timeoutmillis = 10;
+        char *messages[100];
+        poll_daemons();
+        if ( (n= poll_endpoints(messages,&SUPERNET.numrecv,SUPERNET.numsent,&SUPERNET.all,timeoutmillis)) > 0 )
+        {
+            for (i=0; i<n; i++)
+            {
+                msg = SuperNET_JSON(messages[i]);
+                printf("%d of %d: (%s)\n",i,n,msg);
+                free(messages[i]);
+            }
+        }
+        msleep(10);
     }
 }
 
-int32_t launch_SuperNET(char *ipaddr)
+int SuperNET_start(char *fname,char *myip)
 {
-    portable_thread_create((void *)SuperNET_loop,ipaddr);
+    char *jsonstr = 0;
+    uint64_t allocsize;
+    Debuglevel = 2;
+    if ( (jsonstr= loadfile(&allocsize,fname)) == 0 )
+        jsonstr = clonestr("{}");
+    language_func("SuperNET","",0,0,1,"SuperNET",jsonstr,call_system);
+    if ( jsonstr != 0 )
+        free(jsonstr);
+    portable_thread_create((void *)SuperNET_loop,myip);
     return(0);
 }
 
@@ -798,8 +826,9 @@ int main(int argc,const char *argv[])
     }
     ipbits = calc_ipbits(ipaddr);
     expand_ipbits(_ipaddr,ipbits);
-    printf("(%s -> %s)\n",ipaddr,_ipaddr);
+    printf(">>>>>>>>> call SuperNET_start.(%s)\n",ipaddr);
     SuperNET_start("SuperNET.conf",ipaddr);
+    printf("<<<<<<<<< back SuperNET_start\n");
     if ( i < argc )
     {
         for (; i<argc; i++)
@@ -807,14 +836,7 @@ int main(int argc,const char *argv[])
                 language_func((char *)argv[i],"",0,0,1,(char *)argv[i],jsonstr,call_system);
     }
     while ( 1 )
-    {
-        for (i=0; i<1000; i++)
-            if ( poll_daemons() <= 0 )
-                break;
-        sleep(10);
-    }
-    free(jsonstr);
+        sleep(777);
     return(0);
 }
 #endif
-

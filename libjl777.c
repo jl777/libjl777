@@ -1268,38 +1268,58 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
-#define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #include "plugins/plugin777.c"
 #include "plugins/sophia/storage.c"
 #include "plugins/utils/system777.c"
 #undef DEFINES_ONLY
 
-STRUCTNAME
-{
-    int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid;
-    char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512],NXT_ASSETIDSTR[64];
-    int Numgateways;//Numramchains
-    //struct ramchain_info *Ramchains[100];
-};
+STRUCTNAME SUPERNET;
+int32_t Debuglevel;
 
 char *PLUGNAME(_methods)[] = { "install", "plugin" }; // list of supported methods
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char resultstr[MAX_JSON_FIELD];
+    FILE *fp;
     retbuf[0] = 0;
-    printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+    printf("<<<<<<<<<<<< INSIDE PLUGIN! initflag.%d process %s\n",initflag,plugin->name);
     if ( initflag > 0 )
     {
-        // configure settings from file
-        strcpy(retbuf,"{\"result\":\"return JSON init\"}");
+        Debuglevel = 2;
+        SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),7777);
+        SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
+        SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
+        if ( (fp= fopen("libs/websocketd","rb")) != 0 )
+        {
+            fclose(fp);
+            strcpy(SUPERNET.WEBSOCKETD,"libs/websocketd");
+        }
+        else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
+        if ( SUPERNET.SOPHIA_DIR[0] == 0 )
+            strcpy(SUPERNET.SOPHIA_DIR,"./DB");
+        os_compatible_path(SUPERNET.SOPHIA_DIR);
+        if ( SUPERNET.NXTAPIURL[0] == 0 )
+        {
+            if ( SUPERNET.usessl == 0 )
+                strcpy(SUPERNET.NXTAPIURL,"http://127.0.0.1:");
+            else strcpy(SUPERNET.NXTAPIURL,"https://127.0.0.1:");
+            if ( SUPERNET.ismainnet != 0 )
+                strcat(SUPERNET.NXTAPIURL,"7876/nxt");
+            else strcat(SUPERNET.NXTAPIURL,"6876/nxt");
+        }
+        strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
+        strcat(SUPERNET.NXTSERVER,"?requestType");
+        sprintf(retbuf,"{\"result\":\"initialized\",\"USESSL\":%d,\"MAINNET\":%d}",SUPERNET.usessl,SUPERNET.ismainnet);
     }
     else
     {
+        if ( plugin_result(retbuf,json,tag) > 0 )
+            return((int32_t)strlen(retbuf));
         copy_cJSON(resultstr,cJSON_GetObjectItem(json,"result"));
         if ( strcmp(resultstr,"registered") == 0 )
         {
-            strcpy(retbuf,"{\"result\":\"return registered\"}");
+            sprintf(retbuf,"{\"result\":\"return registered\",\"USESSL\":%d,\"MAINNET\":%d,\"port\":%d}",SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.port);
         }
         else
         {
@@ -1309,12 +1329,12 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     return((int32_t)strlen(retbuf));
 }
 
-uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *Globals)
+uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *Globals,cJSON *json)
 {
     uint64_t disableflags = 0;
-    ensure_directory(SOPHIA_DIR);
-    Globals->Gatewayid = -1, Globals->Numgateways = 3;
-    expand_nxt64bits(Globals->NXT_ASSETIDSTR,NXT_ASSETID);
+   //ensure_directory(SOPHIA_DIR);
+    //Globals->Gatewayid = -1, Globals->Numgateways = 3;
+    //expand_nxt64bits(Globals->NXT_ASSETIDSTR,NXT_ASSETID);
     //init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);
     //SaM_PrepareIndices();
     printf("SuperNET init %s size.%ld\n",plugin->name,sizeof(struct SuperNET_info));

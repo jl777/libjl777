@@ -53,16 +53,6 @@ struct contact_info *find_contact_nxt64bits(int32_t autocreate,uint64_t nxt64bit
     return(retcontact);
 }
 
-uint64_t conv_acctstr(char *acctstr)
-{
-    uint64_t nxt64bits = 0;
-    int32_t len;
-    if ( (len= is_decimalstr(acctstr)) > 0 && len < 22 )
-        nxt64bits = calc_nxt64bits(acctstr);
-    else if ( strncmp("NXT-",acctstr,4) == 0 )
-        nxt64bits = conv_rsacctstr(acctstr,0);
-    return(nxt64bits);
-}
 
 void free_contacts(struct contact_info **contacts,int32_t n)
 {

@@ -256,4 +256,57 @@ size_t accumulate(void *ptr,size_t size,size_t nmemb,struct return_string *s)
     return(size * nmemb);
 }
 
+struct MemoryStruct { char *memory; size_t size; };
+
+static size_t WriteMemoryCallback(void *ptr,size_t size,size_t nmemb,void *data)
+{
+    size_t realsize = (size * nmemb);
+    struct MemoryStruct *mem = (struct MemoryStruct *)data;
+    mem->memory = (ptr != 0) ? realloc(mem->memory,mem->size + realsize + 1) : malloc(mem->size + realsize + 1);
+    if ( mem->memory != 0 )
+    {
+        memcpy(&(mem->memory[mem->size]),ptr,realsize);
+        mem->size += realsize;
+        mem->memory[mem->size] = 0;
+    }
+    return(realsize);
+}
+
+void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1,char *hdr2)
+{
+    struct MemoryStruct chunk; CURL *cHandle; long code; struct curl_slist *headers = 0;
+    if ( (cHandle= *cHandlep) == NULL )
+		*cHandlep = cHandle = curl_easy_init();
+    else curl_easy_reset(cHandle);
+#ifdef DEBUG
+	curl_easy_setopt(cHandle,CURLOPT_VERBOSE, 1);
+#endif
+	curl_easy_setopt(cHandle,CURLOPT_USERAGENT,"Mozilla/4.0 (compatible; )");
+	curl_easy_setopt(cHandle,CURLOPT_SSL_VERIFYPEER,0);
+	curl_easy_setopt(cHandle,CURLOPT_URL,url);
+	if ( postfields != NULL )
+		curl_easy_setopt(cHandle,CURLOPT_POSTFIELDS,postfields);
+    if ( hdr0 != NULL )
+    {
+        headers = curl_slist_append(headers,hdr0);
+        if ( hdr1 != 0 )
+            headers = curl_slist_append(headers,hdr1);
+        if ( hdr2 != 0 )
+            headers = curl_slist_append(headers,hdr2);
+        if ( headers != 0 )
+            curl_easy_setopt(cHandle,CURLOPT_HTTPHEADER,headers);
+    }
+    //res = curl_easy_perform(cHandle);
+    memset(&chunk,0,sizeof(chunk));
+    curl_easy_setopt(cHandle,CURLOPT_WRITEFUNCTION,WriteMemoryCallback);
+    curl_easy_setopt(cHandle,CURLOPT_WRITEDATA,(void *)&chunk);
+    curl_easy_perform(cHandle);
+    curl_easy_getinfo(cHandle,CURLINFO_RESPONSE_CODE,&code);
+    if ( code != 200 )
+        printf("error: (%s) server responded with code %ld\n",url,code);
+    if ( headers != 0 )
+        curl_slist_free_all(headers);
+    return(chunk.memory);
+}
+
 #endif

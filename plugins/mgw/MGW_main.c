@@ -25,11 +25,6 @@ STRUCTNAME
 };
 char *PLUGNAME(_methods)[] = { "stats", "echo2" }; // list of supported methods
 
-int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid = -1;
-char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
-int Numramchains,Numgateways = 3;
-struct ramchain_info *Ramchains[100];
-
 uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *data)
 {
     uint64_t disableflags = 0;
@@ -45,10 +40,12 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
-        // configure settings from file
+        strcpy(retbuf,"{\"result\":\"return JSON init\"}");
     }
     else
     {
+        if ( plugin_result(retbuf,json) > 0 )
+            return((int32_t)strlen(retbuf));
         copy_cJSON(resultstr,cJSON_GetObjectItem(json,"result"));
         if ( strcmp(resultstr,"registered") == 0 )
             plugin->registered = 1;
@@ -58,7 +55,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             if ( initflag < 0 )
                 sprintf(onetimestr,",\"onetime\":%d",initflag);
             else onetimestr[0] = 0;
-            sprintf(retbuf,"{\"tag\":%llu,\"args\":%s,\"milliseconds\":%f%s}\n",(long long)tag,str,milliseconds(),onetimestr);
+            sprintf(retbuf,"{\"tag\":\"%llu\",\"args\":%s,\"milliseconds\":%f%s}\n",(long long)tag,str,milliseconds(),onetimestr);
             free(str);
         }
     }
@@ -70,9 +67,6 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
     {
     }
-    db777_close(DB_MSIG);
-    db777_close(DB_NXTaccts);
-    db777_close(DB_NXTassettx);
     return(retcode);
 }
-#include "plugin777.c"
+#include "../plugin777.c"

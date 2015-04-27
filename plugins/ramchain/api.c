@@ -17,7 +17,7 @@
 #include "cJSON.h"
 #include "huff.c"
 #include "blocks.c"
-#include "../mgw/msig.c"
+#include "../coins/msig.c"
 #include "ramchain.c"
 
 char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);

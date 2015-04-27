@@ -43,6 +43,7 @@ struct plugin_info
     uint16_t port;
     uint8_t pluginspace[];
 };
+static int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 
 #endif
 #else
@@ -55,6 +56,19 @@ struct plugin_info
 #undef DEFINES_ONLY
 #endif
 
+
+static int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag)
+{
+    char *error,*result;
+    error = cJSON_str(cJSON_GetObjectItem(json,"error"));
+    result = cJSON_str(cJSON_GetObjectItem(json,"result"));
+    if ( error != 0 || result != 0 )
+    {
+        sprintf(retbuf,"{\"result\":\"completed\",\"tag\":\"%llu\"}",(long long)tag);
+        return(1);
+    }
+    return(0);
+}
 
 static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,char *bindaddr,char *connectaddr,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
@@ -104,9 +118,10 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             }
         }
     }
-    fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
+    //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
         retval = PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,initflag);
+    else printf("error with JSON.(%s)\n",jsonstr), getchar();
     if ( jsonstr != 0 )
         free(jsonstr);
     if ( json != 0 )
@@ -120,13 +135,13 @@ static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin
     char tagstr[128];
     //printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
     if ( tag != 0 )
-        sprintf(tagstr,",\"tag\":%llu",(long long)tag);
+        sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
     else tagstr[0] = 0;
     sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u%s}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv,tagstr);
     //printf("APPEND.(%s)\n",retbuf);
 }
 
-static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin)
+static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,cJSON *argjson)
 {
     cJSON *json,*array;
     char numstr[64],*jsonstr;
@@ -135,7 +150,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin)
     json = cJSON_CreateObject();
     array = cJSON_CreateArray();
     retbuf[0] = 0;
-    disableflags = PLUGNAME(_init)(plugin,(void *)plugin->pluginspace);
+    disableflags = PLUGNAME(_register)(plugin,(void *)plugin->pluginspace,argjson);
     for (i=0; i<(sizeof(PLUGNAME(_methods))/sizeof(*PLUGNAME(_methods))); i++)
     {
         if ( PLUGNAME(_methods)[i] == 0 || PLUGNAME(_methods)[i][0] == 0 )
@@ -158,7 +173,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin)
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-    if ( initflag != 0 )
+    if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 )
         unstringify(jsonargs);
     process_json(retbuf,max,plugin,jsonargs,initflag);
 }
@@ -177,7 +192,8 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     uint64_t tag = 0;
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
-    printf("process_plugin_json.(%s)\n",plugin->name);
+    if ( Debuglevel > 2 )
+        printf("process_plugin_json.(%s)\n",plugin->name);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 )
@@ -214,6 +230,7 @@ int32_t main
 {
     char *retbuf,registerbuf[MAX_JSON_FIELD];
     struct plugin_info *plugin;
+    cJSON *argjson;
     int32_t i,n,bundledflag,max,sendflag,sleeptime=1,len = 0;
     char *messages[16],*line,*jsonargs,*transportstr;
     milliseconds();
@@ -223,6 +240,7 @@ int32_t main
     plugin->extrasize = PLUGIN_EXTRASIZE;
     plugin->ppid = OS_getppid();
     strcpy(plugin->name,PLUGINSTR);
+    if ( 0 )
     {
         int32_t i;
         for (i=0; i<argc; i++)
@@ -260,16 +278,19 @@ int32_t main
     plugin_transportaddr(plugin->connectaddr,transportstr,0,plugin->daemonid+2*OFFSET_ENABLED);
     jsonargs = (argc >= 3) ? (char *)argv[3] : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);
-    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu args.(%s)\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,jsonargs!=0?jsonargs:"");
+    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid);//,jsonargs!=0?jsonargs:"");
     if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->bindaddr,plugin->connectaddr,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
     {
-        if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin)) > 0 )
+        argjson = cJSON_Parse(jsonargs);
+        if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin,argjson)) > 0 )
         {
             if ( Debuglevel > 2 )
                 fprintf(stderr,">>>>>>>>>>>>>>> plugin sends REGISTER SEND.(%s)\n",registerbuf);
             nn_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
             //nn_send(plugin->sock,plugin->registerbuf,len+1,0); // send the null terminator too
         }
+        if ( argjson != 0 )
+            free_json(argjson);
     }
     while ( OS_getppid() == plugin->ppid )
     {
@@ -298,12 +319,12 @@ int32_t main
         }
         if ( n == 0 )
         {
-            /*sleeptime <<= 1;
-            if ( sleeptime > 10000 )
-                sleeptime = 10000;
-            usleep(sleeptime);*/
-             msleep(10);
+            sleeptime++;
+            if ( sleeptime > 10 )
+                sleeptime = 10;
+            msleep(sleeptime);
         } else sleeptime = 1;
+        msleep(10);
     } fprintf(stderr,"ppid.%d changed to %d\n",plugin->ppid,OS_getppid());
     PLUGNAME(_shutdown)(plugin,len); // rc == 0 -> parent process died
     shutdown_plugsocks(&plugin->all);

@@ -44,12 +44,6 @@ struct transfer_args
     uint32_t totalcrc,currentcrc,snapshotcrc,handlercrc,syncmem,totallen,blocksize,numfrags,completed,timeout,handlertime;
 };
 
-extern int MAP_HUFF,MGW_initdone,PERMUTE_RAWINDS,Debuglevel,MAP_HUFF,Finished_init,DBSLEEP,MAX_BUYNXT,MIN_NQTFEE,Gatewayid;
-extern char Server_ipaddrs[256][MAX_JSON_FIELD],MGWROOT[256],*MGW_whitelist[256],NXTAPIURL[MAX_JSON_FIELD],DATADIR[512];
-extern int Numramchains; extern struct ramchain_info *Ramchains[100];
-extern cJSON *MGWconf;
-
-
 struct address_entry { uint64_t blocknum:32,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
 
 struct rampayload { struct address_entry B,spentB; uint64_t value; uint32_t otherind:31,extra:31,pendingdeposit:1,pendingsend:1; };
@@ -151,7 +145,6 @@ char *ram_blockstr(struct rawblock *tmp,struct ramchain_info *ram,struct rawbloc
 uint8_t *ram_encode_hashstr(int32_t *datalenp,uint8_t *data,char type,char *hashstr);
 struct ramchain_hashptr *ram_hashdata_search(char *coinstr,struct alloc_space *mem,int32_t createflag,struct ramchain_hashtable *hash,uint8_t *hashdata,int32_t datalen);
 uint32_t ram_create_block(int32_t verifyflag,struct ramchain_info *ram,struct mappedblocks *blocks,struct mappedblocks *prevblocks,uint32_t blocknum);
-uint32_t _get_RTheight(struct ramchain_info *ram);
 int32_t ram_addhash(struct ramchain_hashtable *hash,struct ramchain_hashptr *hp,void *ptr,int32_t datalen);
 void ram_sethashtype(char *str,int32_t type);
 uint32_t ram_process_blocks(struct ramchain_info *ram,struct mappedblocks *blocks,struct mappedblocks *prev,double timebudget);
@@ -215,52 +208,6 @@ int32_t ram_huffencode(uint64_t *outbitsp,struct ramchain_info *ram,struct ramch
     int32_t outbits;
     *outbitsp = 0;
     return(outbits);
-}
-
-uint32_t _get_RTheight(struct ramchain_info *ram)
-{
-    char *retstr;
-    cJSON *json;
-    uint32_t height = 0;
-    if ( milliseconds() > ram->lastgetinfo+10000 )
-    {
-        //printf("RTheight.(%s) (%s)\n",ram->name,ram->serverport);
-        retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"getinfo","");
-        if ( retstr != 0 )
-        {
-            if ( (json= cJSON_Parse(retstr)) != 0 )
-            {
-                height = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocks"),0);
-                free_json(json);
-                ram->lastgetinfo = milliseconds();
-            }
-            free(retstr);
-        }
-    } else height = ram->S.RTblocknum;
-    return(height);
-}
-
-void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
-{
-    static uint8_t zerokey[256>>3];
-    struct nodestats *stats;
-    bits256 pubkey;
-    if ( NXTpubkey != 0 )
-        NXTpubkey[0] = 0;
-    if ( NXTacct == 0 || NXTacct[0] == 0 )
-        return;
-    stats = get_nodestats(calc_nxt64bits(NXTacct));
-    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
-    {
-        pubkey = issue_getpubkey(0,NXTacct);
-        if ( memcmp(&pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-            memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
-    } else memcpy(&pubkey,stats->pubkey,sizeof(pubkey));
-    if ( NXTpubkey != 0 )
-    {
-        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
-        init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
-    }
 }
 
 int32_t ram_expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datalen)

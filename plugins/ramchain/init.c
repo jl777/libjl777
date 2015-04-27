@@ -425,7 +425,7 @@ struct mappedblocks *ram_init_blocks(int32_t noload,HUFF **copyhps,struct ramcha
 
 uint32_t ram_update_RTblock(struct ramchain_info *ram)
 {
-    ram->S.RTblocknum = _get_RTheight(ram);
+    ram->S.RTblocknum = _get_RTheight(&ram->lastgetinfo,ram->name,ram->serverport,ram->userpass,ram->S.RTblocknum);
     if ( ram->firstblock == 0 )
         ram->firstblock = ram->S.RTblocknum;
     else if ( (ram->S.RTblocknum - ram->firstblock) >= WITHRAW_ENABLE_BLOCKS )
@@ -851,7 +851,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
     char fname[1024];
     startmilli = milliseconds();
     strcpy(ram->dirpath,MGWROOT);
-    ram->S.RTblocknum = _get_RTheight(ram);
+    ram->S.RTblocknum = _get_RTheight(&ram->lastgetinfo,ram->name,ram->serverport,ram->userpass,ram->S.RTblocknum);
     ram->blocks.blocknum = (ram->S.RTblocknum - ram->min_confirms);
     ram->blocks.numblocks = ram->maxblock = (ram->S.RTblocknum + 10000);
     ram_allocs(ram);

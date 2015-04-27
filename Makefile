@@ -17,7 +17,7 @@ PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
 LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lssl -lcrypto -lm
 
 CC=clang
-CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 
 TARGET	= libjl777.a
 
@@ -33,10 +33,16 @@ LIBTOM = libtom/yarrow.c libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.
     libtom/anubis.c libtom/des.c libtom/multi2.c libtom/rc6.c libtom/safer_tab.c libtom/twofish_tab.c libgfshare.c \
     libtom/blowfish.c libtom/kasumi.c  libtom/noekeon.c libtom/rmd160.c libtom/sha256.c libtom/hmac_sha512.c libtom/xtea.c
 
-SRCS = plugins/utils/NXT777.c plugins/utils/system777.c plugins/utils/utils777.c plugins/utils/bitcoind_RPC.c plugins/utils/cJSON.c \
-       plugins/utils/inet.c plugins/utils/files777.c plugins/sophia/sophia.c plugins/sophia/sophia_main.c plugins/sophia/storage.c \
-       plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c \
-       SuperNET.c libjl777.c
+U = plugins/utils
+C = plugins/coins
+S = plugins/sophia
+UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
+SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
+NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
+COINS = $(C)/bitcoind_RPC.c $(C)/gen1.c $(C)/gen1auth.c $(C)/msig.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c
+CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
+
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE)
  
 OBJS	:= $(SRCS:%.c=%.o)
 
@@ -50,13 +56,13 @@ test:	all
 	(cd tests; make test)
 
 clean: doesntexist
-	rm -f libjl777.a libs/libjl777.so $(OBJS) *~
+	rm libs/libjl777.a SuperNET; rm -f libjl777.a libs/libjl777.so $(OBJS) *~
 
 PINCLUDES := -Iincludes -Iincludes/nanomsg -Iincludes/libtom -Iincludes/miniupnp -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
 _echo := rm lib/echo; gcc -o lib/echo -Os $(PINCLUDES) echodemo.c $(PLIBS)
 
-_MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
+_MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c coins/msig.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
 
 _sophia := gcc -c -o ../libs/sophia.o $(PINCLUDES)  -g -O2 -std=c99 -pedantic -Wextra -Wall -Wunused-parameter -Wsign-compare -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden  sophia/sophia.c $(PLIBS)
 
@@ -291,4 +297,4 @@ lib/echo: plugins/echodemo.c
 #plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
 #plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
 
-lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c
+lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/coins/msig.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c

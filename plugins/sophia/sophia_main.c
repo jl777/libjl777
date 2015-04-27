@@ -12,12 +12,13 @@
 #define STRUCTNAME struct PLUGNAME(_info)
 #define STRINGIFY(NAME) #NAME
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
-extern char SOPHIA_DIR[];
 
 #include "sophia.h"
 #define DEFINES_ONLY
 #include "../plugin777.c"
+#include "db777.c"
 #undef DEFINES_ONLY
+
 
 STRUCTNAME
 {
@@ -288,6 +289,24 @@ void sophia_setget(char *retbuf,int32_t max,cJSON *json)
     else strcpy(retbuf,"{\"error\":\"missing key\"}");
 }
 
+int32_t db777_getind(struct db777 *DB)
+{
+    int32_t i;
+    for (i=0; i<SOPHIA.numdbs; i++)
+        if ( SOPHIA.DBS[i] == DB )
+            return(i);
+    return(-1);
+}
+
+struct db777 *db777_getDB(char *dbname)
+{
+    int32_t i;
+    for (i=0; i<SOPHIA.numdbs; i++)
+        if ( strcmp(SOPHIA.DBS[i]->dbname,dbname) == 0 )
+            return(SOPHIA.DBS[i]);
+    return(0);
+}
+
 cJSON *db777_json(struct db777 *DB)
 {
     void *cursor,*ptr,*ctl = sp_ctl(DB->env);
@@ -316,6 +335,12 @@ int32_t db777_free(struct db777 *DB)
     return(errs);
 }
 
+void *db777_abort(struct db777 *DB)
+{
+    db777_free(DB);
+    return(0);
+}
+
 int32_t db777_close(struct db777 *DB)
 {
     int32_t i,errs = 0;
@@ -340,37 +365,43 @@ int32_t db777_close(struct db777 *DB)
     return(-errs);
 }
 
-void *db777_abort(struct db777 *DB)
-{
-    db777_free(DB);
-    return(0);
-}
-
-struct db777 *db777_create(char *path,char *name,char *compression)
+struct db777 *db777_create(char *name,char *compression)
 {
     struct db777 *DB = calloc(1,sizeof(*DB));
-    char compressedname[1024],*str;
+    char path[1024],dbname[1024],*str;
     int32_t err;
     cJSON *json;
     if ( strlen(name) >= sizeof(DB->dbname)-1 )
         name[sizeof(DB->dbname)-1] = 0;
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
+    ensure_directory(SUPERNET.SOPHIA_DIR);
+    if ( SUPERNET.SOPHIA_DIR[0] == '.' && SUPERNET.SOPHIA_DIR[1] == '/' )
+        strcpy(path,SUPERNET.SOPHIA_DIR+2);
+    else strcpy(path,SUPERNET.SOPHIA_DIR);
+    strcat(path,"/"), strcat(path,name), os_compatible_path(path), ensure_directory(path);
+    if ( compression != 0 )
+    {
+        sprintf(dbname,"%s.compression",name);
+        if ( strcmp(compression,"lz4") == 0 )
+            sp_set(DB->ctl,dbname,"lz4");
+        else if ( strcmp(compression,"zstd") == 0 )
+            sp_set(DB->ctl,dbname,"zstd");
+        else printf("compression.(%s) not supported\n",compression), compression = "";
+    } else compression = "";
+    strcpy(dbname,name);
+    printf("create path.(%s).(%s) -> [%s %s].%s\n",name,compression,path,dbname,compression);
     if ( (err= sp_set(DB->ctl,"sophia.path",path)) != 0 )
     {
         printf("err.%d setting path\n",err);
         return(db777_abort(DB));
     }
-    sprintf(DB->dbname,"db.%s",name);
-    if ( compression != 0 && compression[0] != 0 )
+    if ( (err= sp_set(DB->ctl,"scheduler.threads","1")) != 0 )
     {
-        sprintf(compressedname,"%s.compression",DB->dbname);
-        if ( strcmp(compression,"lz4") == 0 )
-            sp_set(DB->ctl,compressedname,"lz4");
-        else if ( strcmp(compression,"zstd") == 0 )
-            sp_set(DB->ctl,compressedname,"zstd");
-        else printf("compression.(%s) not supported\n",compression);
+        printf("err.%d setting scheduler.threads\n",err);
+        return(db777_abort(DB));
     }
+    sprintf(DB->dbname,"db.%s",name);
     if ( (err= sp_set(DB->ctl,"db",name)) != 0 )
     {
         printf("err.%d setting name\n",err);
@@ -395,7 +426,7 @@ struct db777 *db777_create(char *path,char *name,char *compression)
         DB->asyncdb = sp_async(DB->db);
         printf("opened.(%s) env.%p ctl.%p db.%p asyncdb.%p\n",DB->dbname,DB->env,DB->ctl,DB->db,DB->asyncdb);
     }
-    if ( (json= db777_json(DB)) != 0 )
+    if ( 0 && (json= db777_json(DB)) != 0 )
     {
         str = cJSON_Print(json);
         printf("%s\n",str);
@@ -407,120 +438,9 @@ struct db777 *db777_create(char *path,char *name,char *compression)
     return(DB);
 }
 
-int32_t db777_addstr(struct db777 *DB,char *key,char *value)
-{
-    void *obj = sp_object(DB->db);
-    int32_t err;
-    if ( (err= sp_set(obj,"key",key,strlen(key))) != 0 || (err= sp_set(obj,"value",value,strlen(value))) != 0 )
-        return(err);
-    else return(sp_set(DB->db,obj));
-}
-
-int32_t db777_add(struct db777 *DB,char *key,void *value,int32_t len)
-{
-    void *obj = sp_object(DB->db);
-    int32_t err;
-    if ( (err= sp_set(obj,"key",key,strlen(key))) != 0 || (err= sp_set(obj,"value",value,len)) != 0 )
-        return(err);
-    else return(sp_set(DB->db,obj));
-}
-
-int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key)
-{
-    void *value,*result,*obj = sp_object(DB->db);
-    int32_t err,valuesize = -1;
-    if ( (err= sp_set(obj,"key",key,strlen(key))) != 0 )
-        return(err);
-    if ( (result= sp_get(DB->db,obj)) != 0 )
-    {
-        if ( (value= sp_get(result,"value",&valuesize)) != 0 )
-        {
-            if ( valuesize < max )
-                memcpy(retbuf,value,valuesize);
-            sp_destroy(value);
-        }
-        sp_destroy(result);
-    }
-    return(valuesize);
-}
-
-void *db777_findM(int32_t *lenp,struct db777 *DB,char *key)
-{
-    void *ptr=0,*value,*result,*obj = sp_object(DB->db);
-    int32_t err,valuesize = -1;
-    *lenp = 0;
-    if ( (err= sp_set(obj,"key",key,strlen(key))) != 0 )
-        return(0);
-    if ( (result= sp_get(DB->db,obj)) != 0 )
-    {
-        if ( (value= sp_get(result,"value",&valuesize)) != 0 )
-        {
-            ptr = calloc(1,valuesize);
-            memcpy(ptr,value,valuesize);
-            *lenp = valuesize;
-            sp_destroy(value);
-        }
-        sp_destroy(result);
-    }
-    return(ptr);
-}
-
-void **db777_copy_all(int32_t *nump,struct db777 *DB)
-{
-    void *obj,*cursor,*value,*ptr,**ptrs = 0;
-    int32_t len,max,n = 0;
-    *nump = 0;
-    max = 100;
-    if ( DB == 0 || DB->db == 0 )
-        return(0);
-    obj = sp_object(DB->db);
-    if ( (cursor= sp_cursor(DB->db,obj)) != 0 )
-    {
-        while ( (obj= sp_get(cursor,obj)) != 0 )
-        {
-            ptrs = (void **)calloc(sizeof(void *),max+1);
-            value = sp_get(obj,"value",&len);
-            if ( len > 0 )
-            {
-                ptr = malloc(len);
-                memcpy(ptr,value,len);
-                ptrs[n++] = ptr;
-                if ( n >= max )
-                {
-                    max = n + 100;
-                    ptrs = (void **)realloc(ptrs,sizeof(void *)*(max+1));
-                }
-            }
-        }
-        sp_destroy(cursor);
-    }
-    if ( ptrs != 0 )
-        ptrs[n] = 0;
-    *nump = n;
-    return(ptrs);
-}
-
-int32_t db777_getind(struct db777 *DB)
-{
-    int32_t i;
-    for (i=0; i<SOPHIA.numdbs; i++)
-        if ( SOPHIA.DBS[i] == DB )
-            return(i);
-    return(-1);
-}
-
-struct db777 *db777_getDB(char *dbname)
-{
-    int32_t i;
-    for (i=0; i<SOPHIA.numdbs; i++)
-        if ( strcmp(SOPHIA.DBS[i]->dbname,dbname) == 0 )
-            return(SOPHIA.DBS[i]);
-    return(0);
-}
-
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char path[1024],*method,*dbname,*key,*value,*compression;
+    char *method,*dbname,*key,*value,*compression;
     struct db777 *DB;
     int32_t len,offset;
     retbuf[0] = 0;
@@ -528,25 +448,25 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     if ( initflag > 0 )
     {
         // configure settings
+        strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
     }
     else
     {
-        if ( (method= cJSON_str(cJSON_GetObjectItem(json,"method"))) == 0 )
+        if ( plugin_result(retbuf,json,tag) > 0 )
+            return((int32_t)strlen(retbuf));
+        if ( (method= cJSON_str(cJSON_GetObjectItem(json,"method"))) == 0 || (dbname= cJSON_str(cJSON_GetObjectItem(json,"dbname"))) == 0 || dbname[0] == 0 )
+        {
+            printf("(%s) has not method or dbname\n",jsonstr);
             return(0);
-        if ( (dbname= cJSON_str(cJSON_GetObjectItem(json,"dbname"))) == 0 || dbname[0] == 0 )
-            return(0);
+        }
         if ( strcmp(method,"create") == 0 )
         {
             if ( strstr("../",dbname) != 0 || strstr("..\\",dbname) != 0 || dbname[0] == '/' || dbname[0] == '\\' || strcmp(dbname,"..") == 0  || strcmp(dbname,"*") == 0 )
                 strcpy(retbuf,"{\"error\":\"no funny filenames\"}");
             else
             {
-                if ( SOPHIA_DIR[0] == '.' && SOPHIA_DIR[1] == '/' )
-                    strcpy(path,SOPHIA_DIR+2);
-                else strcpy(path,SOPHIA_DIR);
-                strcat(path,"/"), strcat(path,dbname), os_compatible_path(path), ensure_directory(path);
                 compression = cJSON_str(cJSON_GetObjectItem(json,"compression"));
-                if ( (DB= db777_create(path,compression!=0?compression:"data",0)) != 0 )
+                if ( (DB= db777_create(dbname,compression)) != 0 )
                 {
                     strcpy(DB->dbname,dbname);
                     strcpy(retbuf,"{\"result\":\"opened database\"}");
@@ -607,9 +527,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         else if ( strcmp(method,"type") == 0 )
             sophia_type(retbuf,maxlen,json);
 #endif
-        else sprintf(retbuf,"{\"error\":\"invalid sophia method\",\"method\":\"%s\",\"tag\":%llu}",method,(long long)tag);
+        else sprintf(retbuf,"{\"error\":\"invalid sophia method\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
         if ( retbuf[0] == 0 )
-            sprintf(retbuf,"{\"error\":\"null return\",\"method\":\"%s\",\"tag\":%llu}",method,(long long)tag);
+            sprintf(retbuf,"{\"error\":\"null return\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
         else sprintf(retbuf + strlen(retbuf) - 1,",\"tag\":%llu}",(long long)tag);
     }
     return((int32_t)strlen(retbuf));
@@ -620,18 +540,15 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
     {
     }
+    while ( SOPHIA.numdbs > 0 )
+        if ( db777_close(SOPHIA.DBS[0]) != 0 )
+            break;
     return(retcode);
 }
 
-struct db777 *DB_MSIG,*DB_NXTaccts,*DB_NXTassettx,*DB_nodestats;
-
-uint64_t PLUGNAME(_init)(struct plugin_info *plugin,STRUCTNAME *data)
+uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
     uint64_t disableflags = 0;
-    DB_MSIG = db777_create(SOPHIA_DIR,"msigs",0);
-    DB_NXTaccts = db777_create(SOPHIA_DIR,"NXTacct",0);
-    DB_NXTassettx = db777_create(SOPHIA_DIR,"NXTassettxid",0);
-    DB_nodestats = db777_create(SOPHIA_DIR,"nodestats",0);
     // runtime specific state can be created and put into *data
     return(disableflags); // set bits corresponding to array position in _methods[]
 }

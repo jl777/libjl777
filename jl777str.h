@@ -605,35 +605,5 @@ char *strsep(char **stringp,const char *delim)
 }
 #endif
 
-uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr)
-{
-    int32_t datalen;
-    uint8_t *dataptr;
-    dataptr = 0;
-    datalen = 0;
-    if ( datastr[0] != 0 && is_hexstr(datastr) )
-    {
-        datalen = (int32_t)strlen(datastr);
-        if ( datalen > 1 && (datalen & 1) == 0 )
-        {
-            datalen >>= 1;
-            dataptr = data;
-            decode_hex(data,datalen,datastr);
-        } else datalen = 0;
-    }
-    *datalenp = datalen;
-    return(dataptr);
-}
-
-int32_t is_decimalstr(char *str)
-{
-    int32_t i;
-    if ( str == 0 || str[0] == 0 )
-        return(0);
-    for (i=0; str[i]!=0; i++)
-        if ( str[i] < '0' || str[i] > '9' )
-            return(-1);
-    return(i);
-}
 
 #endif

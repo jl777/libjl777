@@ -925,7 +925,7 @@ uint64_t ram_calc_MGWunspent(uint64_t *pendingp,struct ramchain_info *ram)
     ram->MGWnumunspents = 0;
     if ( ram->MGWunspents != 0 )
         memset(ram->MGWunspents,0,sizeof(*ram->MGWunspents) * ram->MGWmaxunspents);
-    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,DB_MSIG)) != 0 )
+    if ( (msigs= (struct multisig_addr **)copy_all_DBentries(&n,DB_msigs)) != 0 )
     {
         ram->nummsigs = n;
         ram->MGWsmallest[0] = ram->MGWsmallestB[0] = 0;

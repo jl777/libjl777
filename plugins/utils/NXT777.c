@@ -17,9 +17,11 @@
 #include "uthash.h"
 #include "bits777.c"
 #include "utils777.c"
+#include "system777.c"
 
 #include "tweetnacl.h"
 int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
+#define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 
 #define NXT_ASSETLIST_INCR 16
 #define MAX_COINTXID_LEN 128
@@ -35,11 +37,10 @@ int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
 #define _NXTSERVER "requestType"
 #define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
 #define issue_NXT(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"NXT",cmdstr,0,0,0)
-#define issue_NXTPOST(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",NXTAPIURL,0,0,cmdstr)
-#define fetch_URL(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"fetch",cmdstr,0,0,0)
-#define _issue_NXTPOST(cmdstr) bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)
+#define issue_NXTPOST(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",SUPERNET.NXTAPIURL,0,0,cmdstr)
+#define fetch_URL(url) bitcoind_RPC(0,"fetch",url,0,0,0)
+#define _issue_NXTPOST(cmdstr) bitcoind_RPC(0,"curl",SUPERNET.NXTAPIURL,0,0,cmdstr)
 #define _issue_curl(cmdstr) bitcoind_RPC(0,"curl",cmdstr,0,0,0)
-extern char NXTAPIURL[];
 
 union _NXT_str_buf { char txid[24]; char NXTaddr[24];  char assetid[24]; };
 struct NXT_str { uint64_t modified,nxt64bits; union _NXT_str_buf U; };
@@ -90,12 +91,10 @@ char *_issue_getTransaction(char *txidstr);
 bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct);
 uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
 uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey);
-void set_NXTpubkey(char *NXTpubkey,char *NXTacct);
 uint64_t get_sender(uint64_t *amountp,char *txidstr);
+uint64_t conv_acctstr(char *acctstr);
+int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename);
 
-//extern struct NXT_asset *NXT_assets;
-//extern struct NXT_assettxid NXT_assettxids;
-extern char NXTSERVER[];
 
 #endif
 #else
@@ -141,7 +140,7 @@ bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
     char cmd[4096],pubkeystr[MAX_JSON_FIELD],*jsonstr;
     //sprintf(cmd,"%s=getTransaction&transaction=%s",_NXTSERVER,txidstr);
     //jsonstr = issue_NXTPOST(curl_handle,cmd);
-    sprintf(cmd,"%s=getAccountPublicKey&account=%s",NXTSERVER,acct);
+    sprintf(cmd,"%s=getAccountPublicKey&account=%s",SUPERNET.NXTSERVER,acct);
     jsonstr = issue_curl(0,cmd);
     pubkeystr[0] = 0;
     if ( haspubkeyp != 0 )
@@ -170,7 +169,7 @@ bits256 issue_getpubkey2(int32_t *haspubkeyp,uint64_t nxt64bits)
     cJSON *json;
     bits256 pubkey;
     char cmd[4096],pubkeystr[MAX_JSON_FIELD],*jsonstr;
-    sprintf(cmd,"%s=getAccountPublicKey&account=%llu",NXTSERVER,(long long)nxt64bits);
+    sprintf(cmd,"%s=getAccountPublicKey&account=%llu",SUPERNET.NXTSERVER,(long long)nxt64bits);
     jsonstr = issue_curl(0,cmd);
     pubkeystr[0] = 0;
     if ( haspubkeyp != 0 )
@@ -219,7 +218,7 @@ char *_issue_getAsset(char *assetidstr)
 {
     char cmd[4096];
     //sprintf(cmd,"requestType=getAsset&asset=%s",assetidstr);
-    sprintf(cmd,"%s=getAsset&asset=%s",NXTSERVER,assetidstr);
+    sprintf(cmd,"%s=getAsset&asset=%s",SUPERNET.NXTSERVER,assetidstr);
     printf("_cmd.(%s)\n",cmd);
     return(_issue_curl(cmd));
 }
@@ -302,13 +301,13 @@ uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
     retstr[0] = 0;
     if ( nxt64bits != 0 )
     {
-        sprintf(cmd,"%s=rsConvert&account=%llu",NXTSERVER,(long long)nxt64bits);
+        sprintf(cmd,"%s=rsConvert&account=%llu",SUPERNET.NXTSERVER,(long long)nxt64bits);
         strcat(field,"RS");
         jsonstr = issue_curl(0,cmd);
     }
     else if ( rsacctstr[0] != 0 )
     {
-        sprintf(cmd,"%s=rsConvert&account=%s",NXTSERVER,rsacctstr);
+        sprintf(cmd,"%s=rsConvert&account=%s",SUPERNET.NXTSERVER,rsacctstr);
         jsonstr = issue_curl(0,cmd);
     }
     else printf("conv_rsacctstr: illegal parms %s %llu\n",rsacctstr,(long long)nxt64bits);
@@ -329,12 +328,12 @@ uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
 
 uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey)
 {
-    extern char NXT_ASSETIDSTR[];
     char cmd[4096],numstr[MAX_JSON_FIELD],*jsontxt;
-    uint64_t txid = 0;
+    uint64_t assetidbits,txid = 0;
     cJSON *json,*errjson,*txidobj;
     *retstrp = 0;
-    if ( strcmp(asset,NXT_ASSETIDSTR) == 0 )
+    assetidbits = calc_nxt64bits(asset);
+    if ( assetidbits == NXT_ASSETID )
         sprintf(cmd,"%s=sendMoney&amountNQT=%lld",_NXTSERVER,(long long)quantity);
     else sprintf(cmd,"%s=transferAsset&asset=%s&quantityQNT=%lld",_NXTSERVER,asset,(long long)quantity);
     sprintf(cmd+strlen(cmd),"&secretPhrase=%s&recipient=%s&feeNQT=%lld&deadline=%d",secret,recipient,(long long)feeNQT,deadline);
@@ -401,6 +400,76 @@ uint64_t get_sender(uint64_t *amountp,char *txidstr)
         free_json(json);
     }
     return(senderbits);
+}
+
+uint64_t conv_acctstr(char *acctstr)
+{
+    uint64_t nxt64bits = 0;
+    int32_t len;
+    if ( (len= is_decimalstr(acctstr)) > 0 && len < 24 )
+        nxt64bits = calc_nxt64bits(acctstr);
+    else if ( strncmp("NXT-",acctstr,4) == 0 )
+        nxt64bits = conv_rsacctstr(acctstr,0);
+    return(nxt64bits);
+}
+
+int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename)
+{
+    uint32_t i,j,x,iter,bitwidth = 6;
+    FILE *fp;
+    char fname[512];
+    uint8_t bits[33],mypublic[32],mysecret[32];
+    NXTaddr[0] = 0;
+    randchars /= 8;
+    if ( randchars > (int32_t)sizeof(bits) )
+        randchars = (int32_t)sizeof(bits);
+    if ( randchars < 3 )
+        randchars = 3;
+    for (iter=0; iter<=8; iter++)
+    {
+        sprintf(fname,"%s.%d",randfilename,iter);
+        fp = fopen(os_compatible_path(fname),"rb");
+        if ( fp == 0 )
+        {
+            randombytes(bits,sizeof(bits));
+            for (i = 0; i < sizeof(bits); i++)
+                printf("%02x ", bits[i]);
+            printf("write\n");
+            //sprintf(buf,"dd if=/dev/random count=%d bs=1 > %s",randchars*8,fname);
+            //printf("cmd.(%s)\n",buf);
+            //if ( system(buf) != 0 )
+            //    printf("error issuing system(%s)\n",buf);
+            fp = fopen(os_compatible_path(fname),"wb");
+            if ( fp != 0 )
+            {
+                fwrite(bits,1,sizeof(bits),fp);
+                fclose(fp);
+            }
+            portable_sleep(3);
+            fp = fopen(os_compatible_path(fname),"rb");
+        }
+        if ( fp != 0 )
+        {
+            if ( fread(bits,1,sizeof(bits),fp) == 0 )
+                printf("gen_random_acct: error reading bits\n");
+            for (i=0; i+bitwidth<(sizeof(bits)*8) && i/bitwidth<randchars; i+=bitwidth)
+            {
+                for (j=x=0; j<6; j++)
+                {
+                    if ( GETBIT(bits,i*bitwidth+j) != 0 )
+                        x |= (1 << j);
+                }
+                //printf("i.%d j.%d x.%d %c\n",i,j,x,1+' '+x);
+                NXTsecret[randchars*iter + i/bitwidth] = safechar64(x);
+            }
+            NXTsecret[randchars*iter + i/bitwidth] = 0;
+            fclose(fp);
+        }
+    }
+    expand_nxt64bits(NXTaddr,conv_NXTpassword(mysecret,mypublic,(uint8_t *)NXTsecret,(int32_t)strlen(NXTsecret)));
+    if ( Debuglevel > 2 )
+        printf("NXT.%s NXTsecret.(%s)\n",NXTaddr,NXTsecret);
+    return(0);
 }
 
 #endif

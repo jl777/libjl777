@@ -13,6 +13,7 @@
 #include "survey.h"
 #include "pair.h"
 #include "pubsub.h"
+#include "system777.c"
 
 #define LOCALCAST 1
 #define BROADCAST 2
@@ -94,6 +95,7 @@ int32_t connect_instanceid(struct daemon_info *dp,uint64_t instanceid)
 int32_t add_tagstr(struct daemon_info *dp,uint64_t tag,char **dest)
 {
     int32_t i;
+   // printf("ADDTAG.%llu <- %p\n",(long long)tag,dest);
     for (i=0; i<NUM_PLUGINTAGS; i++)
     {
         if ( dp->tags[i][0] == 0 )
@@ -123,40 +125,58 @@ char **get_tagstr(struct daemon_info *dp,uint64_t tag)
             return(dest);
         }
     }
-    printf("get_tagstr: cant find tag.%llu\n",(long long)tag);
+    printf("get_tagstr: cant find tag.%llu [0] %llu\n",(long long)tag,(long long)dp->tags[0][0]);
     return(0);
 }
 
-char *wait_for_daemon(char **dest,uint64_t tag)
+char *wait_for_daemon(char **dest,uint64_t tag,int32_t sleepmillis)
 {
     int32_t poll_daemons();
     static long counter,sum;
-    int32_t i;
+    double startmilli = milliseconds();
     char *retstr;
     usleep(5);
-    for (i=0; i<100000; i++)
+    while ( milliseconds() < (startmilli + 10000) )
     {
         poll_daemons();
         if ( (retstr= *dest) != 0 )
         {
-            sum += i, counter++;
+            counter++;
             if ( (counter % 10000) == 0 )
                 printf("%ld: ave %.1f\n",counter,(double)sum/counter);
             return(retstr);
         }
+        if ( sleepmillis != 0 )
+            msleep(sleepmillis);
     }
-    printf("no tag received\n");
+    printf("no tag %llu received after %.2f millis\n",(long long)tag,milliseconds() - startmilli);
     return(0);
 }
  
-int32_t send_to_daemon(char **retstrp,uint64_t tag,char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
+uint64_t send_to_daemon(char **retstrp,char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
     struct daemon_info *dp;
-    int32_t len,ind;
+    char numstr[64];
+    int32_t len,ind,flag = 0;
+    uint64_t tmp,tag = 0;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
+        if ( retstrp != 0 )
+        {
+            if ( (tmp= get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"))) != 0 )
+                tag = tmp, flag = 1;
+            if ( tag == 0 )
+                tag = (((uint64_t)rand() << 32) | rand()), flag = 1;
+            //printf("tag.%llu flag.%d tmp.%llu\n",(long long)tag,flag,(long long)tmp);
+            if ( flag != 0 )
+            {
+                sprintf(numstr,"%llu",(long long)tag), ensure_jsonitem(json,"tag",numstr);
+                jsonstr = cJSON_Print(json);
+                _stripwhite(jsonstr,' ');
+            }
+        }
         free_json(json);
         if ( (dp= find_daemoninfo(&ind,name,daemonid,instanceid)) != 0 )
         {
@@ -164,15 +184,19 @@ int32_t send_to_daemon(char **retstrp,uint64_t tag,char *name,uint64_t daemonid,
             {
                 if ( Debuglevel > 2 )
                     fprintf(stderr,"HAVETAG.%llu send_to_daemon(%s)\n",(long long)tag,jsonstr);
-                add_tagstr(dp,tag,retstrp);
+                if ( tag != 0 )
+                    add_tagstr(dp,tag,retstrp);
                 dp->numsent++;
                 if ( nn_broadcast(&dp->perm.socks,instanceid,instanceid != 0 ? 0 : LOCALCAST,(uint8_t *)jsonstr,len + 1) < 0 )
                     printf("error sending to daemon %s\n",nn_strerror(nn_errno()));
-                else return(0);
+                else return(tag);
             }
             else printf("send_to_daemon: error jsonstr.(%s)\n",jsonstr);
         }
+        if ( flag != 0 )
+            free(jsonstr);
+        return(tag);
     }
     else printf("send_to_daemon: cant parse jsonstr.(%s)\n",jsonstr);
-    return(-1);
+    return(0);
 }

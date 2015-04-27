@@ -68,160 +68,6 @@ void _set_RTmgwname(char *RTmgwname,char *name,char *coinstr,int32_t gatewayid,u
     set_handler_fname(RTmgwname,"RTmgw",name);
 }
 
-void set_MGW_fname(char *fname,char *dirname,char *NXTaddr)
-{
-    if ( NXTaddr == 0 )
-        sprintf(fname,"%s/MGW/%s/ALL",MGWROOT,dirname);
-    else sprintf(fname,"%s/MGW/%s/%s",MGWROOT,dirname,NXTaddr);
-}
-
-void set_MGW_msigfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"msig",NXTaddr); }
-void set_MGW_statusfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"status",NXTaddr); }
-void set_MGW_moneysentfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"sent",NXTaddr); }
-void set_MGW_depositfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"deposit",NXTaddr); }
-
-void save_MGW_file(char *fname,char *jsonstr)
-{
-    FILE *fp;
-    //char cmd[1024];
-    if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
-    {
-        fwrite(jsonstr,1,strlen(jsonstr),fp);
-        fclose(fp);
-        //sprintf(cmd,"chmod +r %s",fname);
-        //system(cmd);
-        //printf("fname.(%s) cmd.(%s)\n",fname,cmd);
-    }
-}
-
-void save_MGW_status(char *NXTaddr,char *jsonstr)
-{
-    char fname[1024];
-    set_MGW_statusfname(fname,NXTaddr);
-    //printf("save_MGW_status.(%s) -> (%s)\n",NXTaddr,fname);
-    save_MGW_file(fname,jsonstr);
-}
-
-cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
-{
-    FILE *fp;
-    long fsize;
-    cJSON *json,*newjson;
-    char cmd[1024],*str;
-    *newjsonp = 0;
-    *fpp = 0;
-    if ( (newjson= cJSON_Parse(jsonstr)) == 0 )
-    {
-        printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
-        return(0);
-    }
-    if ( (fp= fopen(os_compatible_path(fname),"rb+")) == 0 )
-    {
-        fp = fopen(os_compatible_path(fname),"wb+");
-        if ( fp != 0 )
-        {
-            if ( (json = cJSON_CreateArray()) != 0 )
-            {
-                cJSON_AddItemToArray(json,newjson), newjson = 0;
-                str = cJSON_Print(json);
-                fprintf(fp,"%s",str);
-                free(str);
-                free_json(json);
-            }
-            fclose(fp);
-#ifndef WIN32
-            sprintf(cmd,"chmod +r %s",fname);
-            if ( system(os_compatible_path(cmd)) != 0 )
-                printf("update_MGW_file chmod error\n");
-#endif
-        } else printf("couldnt open (%s)\n",fname);
-        if ( newjson != 0 )
-            free_json(newjson);
-        return(0);
-    }
-    else
-    {
-        *fpp = fp;
-        fseek(fp,0,SEEK_END);
-        fsize = ftell(fp);
-        rewind(fp);
-        str = calloc(1,fsize);
-        if ( fread(str,1,fsize,fp) != fsize )
-            printf("error reading %ld from %s\n",fsize,fname);
-        json = cJSON_Parse(str);
-        free(str);
-        *newjsonp = newjson;
-        return(json);
-    }
-}
-
-cJSON *append_MGW_file(char *fname,FILE *fp,cJSON *json,cJSON *newjson)
-{
-    char *str;
-    cJSON_AddItemToArray(json,newjson);//, newjson = 0;
-    str = cJSON_Print(json);
-    rewind(fp);
-    fprintf(fp,"%s",str);
-    free(str);
-    printf("updated (%s)\n",fname);
-    return(0);
-}
-
-int32_t update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*extract_jsondata)(cJSON *item,void *arg,void *arg2),int32_t (*jsoncmp)(void *ref,void *item),char *NXTaddr,char *jsonstr,void *arg,void *arg2)
-{
-    FILE *fp;
-    int32_t i,n,cmpval,appendflag = 0;
-    void *refdata,*itemdata;
-    cJSON *json,*newjson;
-    char fname[1024];
-    (*setfname)(fname,NXTaddr);
-    if ( (json= update_MGW_file(&fp,&newjson,fname,jsonstr)) != 0 && newjson != 0 && fp != 0 )
-    {
-        refdata = (*extract_jsondata)(newjson,arg,arg2);
-        if ( refdata != 0 && is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
-        {
-            for (i=0; i<n; i++)
-            {
-                if ( (itemdata = (*extract_jsondata)(cJSON_GetArrayItem(json,i),arg,arg2)) != 0 )
-                {
-                    cmpval = (*jsoncmp)(refdata,itemdata);
-                    if ( itemdata != 0 ) free(itemdata);
-                    if ( cmpval == 0 )
-                        break;
-                }
-            }
-            if ( i == n )
-                newjson = append_MGW_file(fname,fp,json,newjson), appendflag = 1;
-        }
-        fclose(fp);
-        if ( refdata != 0 ) free(refdata);
-        if ( newjson != 0 ) free_json(newjson);
-        free_json(json);
-    }
-    return(appendflag);
-}
-
-int32_t update_MGW_msig(struct multisig_addr *msig,char *sender)
-{
-    char *jsonstr;
-    int32_t appendflag = 0;
-    if ( msig != 0 )
-    {
-        jsonstr = create_multisig_json(msig,0);
-        if ( jsonstr != 0 )
-        {
-            //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-            //   printf("add_MGWaddr(%s) from (%s)\n",jsonstr,sender!=0?sender:"");
-            //broadcast_bindAM(msig->NXTaddr,msig,origargstr);
-            //update_MGW_msigfile(0,msig,jsonstr);
-            // update_MGW_msigfile(msig->NXTaddr,msig,jsonstr);
-            update_MGW_jsonfile(set_MGW_msigfname,extract_jsonmsig,jsonmsigcmp,0,jsonstr,0,0);
-            appendflag = update_MGW_jsonfile(set_MGW_msigfname,extract_jsonmsig,jsonmsigcmp,msig->NXTaddr,jsonstr,0,0);
-            free(jsonstr);
-        }
-    }
-    return(appendflag);
-}
 
 double get_current_rate(char *base,char *rel)
 {
@@ -369,9 +215,9 @@ char *_parse_withdraw_instructions(char *destaddr,char *NXTaddr,struct ramchain_
                 _complete_assettxid(ram,tp);
                 retstr = 0;
             }
-            else if ( ram != 0 && _validate_coinaddr(pubkey,ram->name,ram->serverport,ram->userpass,withdrawaddr) < 0 )
+            else if ( ram != 0 && get_pubkey(pubkey,ram->name,ram->serverport,ram->userpass,withdrawaddr) < 0 )
             {
-                printf("%llu: invalid address.(%s) for NXT.%s %.8f validate.%d\n",(long long)tp->redeemtxid,withdrawaddr,NXTaddr,dstr(amount),_validate_coinaddr(pubkey,ram->name,ram->serverport,ram->userpass,withdrawaddr));
+                printf("%llu: invalid address.(%s) for NXT.%s %.8f validate.%d\n",(long long)tp->redeemtxid,withdrawaddr,NXTaddr,dstr(amount),get_pubkey(pubkey,ram->name,ram->serverport,ram->userpass,withdrawaddr));
                 _complete_assettxid(ram,tp);
                 retstr = 0;
             }
@@ -445,25 +291,14 @@ int32_t cointxcmp(struct cointx_info *txA,struct cointx_info *txB)
 char *_submit_withdraw(struct ramchain_info *ram,struct cointx_info *cointx,char *othersignedtx)
 {
     FILE *fp;
-    long len;
-    int32_t retval = 0;
-    char fname[512],cointxid[4096],*signed2transaction,*retstr;
-    len = strlen(othersignedtx);
-    fprintf(stderr,"submit_withdraw.(%s) len.%ld sizeof cointx.%ld\n",othersignedtx,len,sizeof(cointx));
-    signed2transaction = calloc(1,2*len);
-    if ( ram->S.gatewayid >= 0 && (retval= _sign_rawtransaction(signed2transaction+2,len+4000,ram->name,ram->serverport,ram->userpass,cointx,othersignedtx,0)) > 0 )
+    char fname[512],*cointxid,*signed2transaction;
+    if ( ram->S.gatewayid < 0 )
+        return(0);
+    if ( cosigntransaction(&cointxid,&signed2transaction,ram->name,ram->serverport,ram->userpass,cointx,othersignedtx) > 0 )
     {
-        signed2transaction[0] = '[';
-        signed2transaction[1] = '"';
-        strcat(signed2transaction,"\"]");
-        //printf("sign2.(%s)\n",signed2transaction);
-        retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"sendrawtransaction",signed2transaction);
-        if ( retstr != 0 )
+        if ( signed2transaction != 0 && signed2transaction[0] != 0 )
         {
-            //printf("got submitraw.(%s)\n",cointxid);
-            safecopy(cointxid,retstr,sizeof(cointxid));
-            free(retstr);
-            if ( cointxid[0] != 0 )
+            if ( cointxid != 0 && cointxid[0] != 0 )
             {
                 sprintf(fname,"%s/%s.%s",ram->backups,cointxid,ram->name);
                 if ( (fp= fopen(os_compatible_path(fname),"w")) != 0 )
@@ -478,8 +313,7 @@ char *_submit_withdraw(struct ramchain_info *ram,struct cointx_info *cointx,char
                 return(clonestr(cointxid));
             } else printf("error null cointxid\n");
         } else printf("error submit raw.%s\n",signed2transaction);
-    } else printf("error 2nd sign.%s retval.%d\n",othersignedtx,retval);
-    free(signed2transaction);
+    }
     return(0);
 }
 
@@ -698,9 +532,9 @@ int64_t _calc_cointx_inputs(struct ramchain_info *ram,struct cointx_info *cointx
 struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destaddr,uint64_t value,uint64_t redeemtxid)
 {
     //int64 nPayFee = nTransactionFee * (1 + (int64)nBytes / 1000);
-    char *rawparams,*signedtx,*changeaddr,*with_op_return=0,*retstr = 0;
+    char *rawparams,*changeaddr;
     int64_t MGWfee,sum,amount;
-    int32_t allocsize,opreturn_output,numoutputs = 0;
+    int32_t opreturn_output,numoutputs = 0;
     struct cointx_info *cointx,TX,*rettx = 0;
     cointx = &TX;
     memset(cointx,0,sizeof(*cointx));
@@ -747,38 +581,13 @@ struct cointx_info *_calc_cointx_withdraw(struct ramchain_info *ram,char *destad
                     cointx->numoutputs++;
                 } else cointx->outputs[0].value += cointx->change;
             }
-            rawparams = _createrawtxid_json_params(ram->name,ram->serverport,ram->userpass,cointx);
-            if ( rawparams != 0 )
+            if ( (rawparams= _createrawtxid_json_params(ram->name,ram->serverport,ram->userpass,cointx)) != 0 )
             {
                 //fprintf(stderr,"len.%ld rawparams.(%s)\n",strlen(rawparams),rawparams);
                 _stripwhite(rawparams,0);
                 if (  ram->S.gatewayid >= 0 )
-                {
-                    retstr = bitcoind_RPC(0,ram->name,ram->serverport,ram->userpass,"createrawtransaction",rawparams);
-                    if (retstr != 0 && retstr[0] != 0 )
-                    {
-                        fprintf(stderr,"len.%ld calc_rawtransaction retstr.(%s)\n",strlen(retstr),retstr);
-                        if ( (with_op_return= _insert_OP_RETURN(retstr,strcmp("BTC",ram->name) == 0,opreturn_output,&redeemtxid,1,ram->oldtx)) != 0 )
-                        {
-                            if ( (signedtx= _sign_localtx(ram->name,ram->serverport,ram->userpass,cointx,with_op_return)) != 0 )
-                            {
-                                allocsize = (int32_t)(sizeof(*rettx) + strlen(signedtx) + 1);
-                                // printf("signedtx returns.(%s) allocsize.%d\n",signedtx,allocsize);
-                                rettx = calloc(1,allocsize);
-                                *rettx = *cointx;
-                                rettx->allocsize = allocsize;
-                                rettx->isallocated = allocsize;
-                                strcpy(rettx->signedtx,signedtx);
-                                free(signedtx);
-                                cointx = 0;
-                            } else printf("error _sign_localtx.(%s)\n",with_op_return);
-                            free(with_op_return);
-                        } else printf("error replacing with OP_RETURN\n");
-                    } else fprintf(stderr,"error creating rawtransaction\n");
-                }
+                    rettx = createrawtransaction(ram->name,ram->serverport,ram->userpass,rawparams,cointx,opreturn_output,redeemtxid);
                 free(rawparams);
-                if ( retstr != 0 )
-                    free(retstr);
             } else fprintf(stderr,"error creating rawparams\n");
         } else fprintf(stderr,"error calculating rawinputs.%.8f or outputs.%.8f | txfee %.8f\n",dstr(sum),dstr(cointx->amount),dstr(ram->txfee));
     } else fprintf(stderr,"not enough %s balance %.8f for withdraw %.8f txfee %.8f\n",ram->name,dstr(ram->S.MGWbalance),dstr(cointx->amount),dstr(ram->txfee));
@@ -1394,7 +1203,7 @@ void *process_ramchains(void *_argcoinstr)
                         printf("ERROR _process_ramchain.%s\n",ram->name);
                     processed--;
                 }
-                else //if ( (ram->S.NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(ram) )
+                else //if ( (ram->S.NXTblocknum+ram->min_NXTconfirms) < _get_NXTheight() || (ram->mappedblocks[1]->blocknum+ram->min_confirms) < _get_RTheight(&ram->lastgetinfo,ram->name,ram->serverport,ram->userpass,ram->S.RTblocknum) )
                 {
                     //if ( strcmp(ram->name,"BTC") != 0 )//ram->S.is_realtime != 0 )
                     {
