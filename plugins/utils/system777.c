@@ -17,10 +17,10 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include "miniwget.h"
-#include "miniupnpc.h"
-#include "upnpcommands.h"
-#include "upnperrors.h"
+#include "../includes/miniupnp/miniwget.h"
+#include "../includes/miniupnp/miniupnpc.h"
+#include "../includes/miniupnp/upnpcommands.h"
+#include "../includes/miniupnp/upnperrors.h"
 #include "cJSON.h"
 #include "utils777.c"
 #include "inet.c"

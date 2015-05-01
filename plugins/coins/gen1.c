@@ -507,7 +507,7 @@ uint8_t *ram_encode_hashstr(int32_t *datalenp,uint8_t *data,char type,char *hash
 {
     uint8_t varbuf[9];
     char buf[8192];
-    int32_t varlen,datalen,scriptmode = 0;
+    int32_t varlen,datalen=0,scriptmode = 0;
     *datalenp = 0;
     if ( type == 's' )
     {
