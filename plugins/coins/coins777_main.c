@@ -243,16 +243,16 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                 strcpy(MGW.PATH,"MGW");
                 ensure_directory(MGW.PATH);
             }
-            SUPERNET.my64bits = conv_acctstr(SUPERNET.myNXTacct), expand_nxt64bits(SUPERNET.myNXTaddr,SUPERNET.my64bits);
             set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
-            if ( 1 && SUPERNET.NXTADDR[0] != 0 && SUPERNET.myNXTaddr[0] != 0 && strcmp(SUPERNET.myNXTaddr,SUPERNET.NXTADDR) != 0 )
+            SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
+            /*if ( 1 && SUPERNET.NXTADDR[0] != 0 && SUPERNET.myNXTaddr[0] != 0 && strcmp(SUPERNET.myNXTaddr,SUPERNET.NXTADDR) != 0 )
             {
                 sprintf(retbuf,"{\"error\":\"mismatched NXT accounts\",\"fromsecret\":\"%s\",\"myNXT\":\"%s\"}",SUPERNET.NXTADDR,SUPERNET.myNXTaddr);
                 printf("ERROR ERROR\n");
                 if ( allocflag != 0 )
                    free_json(json);
                 return((int32_t)strlen(retbuf));
-            }
+            }*/
             COINS.argjson = cJSON_Duplicate(json,1);
             copy_cJSON(MGW.bridgeipaddr,cJSON_GetObjectItem(json,"bridgeipaddr"));
             copy_cJSON(MGW.bridgeacct,cJSON_GetObjectItem(json,"bridgeacct"));
@@ -358,11 +358,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                                 coin->use_addmultisig = get_API_int(cJSON_GetObjectItem(item,"useaddmultisig"),strcmp("BTC",coinstr)!=0);
                                 if ( strcmp(coinstr,"BTCD") == 0 )//&& COINS.NXTACCTSECRET[0] == 0 )
                                     set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,item,coinstr,serverport,userpass);
-                                if ( SUPERNET.myNXTaddr[0] == 0 )
-                                    strcpy(SUPERNET.myNXTaddr,SUPERNET.NXTADDR);
-                                if ( SUPERNET.myNXTacct[0] == 0 )
-                                    strcpy(SUPERNET.myNXTacct,SUPERNET.NXTACCT);
-                            }
+                                }
                         }
                         if ( userpass != 0 )
                             free(userpass);
@@ -370,15 +366,10 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                 }
                 if ( allocflag != 0 )
                     free_json(array);
-                if ( strcmp(SUPERNET.myNXTaddr,SUPERNET.NXTADDR) != 0 )
-                    sprintf(retbuf,"{\"error\":\"mismatched NXT accounts2\",\"fromsecret\":\"%s\",\"fromsecret2\":\"%s\",\"NXT\":\"%s\",\"acct\":\"%s\"}",SUPERNET.NXTADDR,SUPERNET.NXTACCT,SUPERNET.myNXTaddr,SUPERNET.myNXTacct);
-                else
-                {
-                    array = coins777_json();
-                    arraystr = cJSON_Print(array);
-                    sprintf(retbuf,"{\"result\":\"addcoin\",\"added\":%d,\"coins\":%s,\"NXT\":\"%s\"}",j,arraystr,SUPERNET.NXTADDR);
-                    free(arraystr), free_json(array);
-                }
+                array = coins777_json();
+                arraystr = cJSON_Print(array);
+                sprintf(retbuf,"{\"result\":\"addcoin\",\"added\":%d,\"coins\":%s,\"NXT\":\"%s\"}",j,arraystr,SUPERNET.NXTADDR);
+                free(arraystr), free_json(array);
             }
             else if ( strcmp(methodstr,"remove") == 0 )
             {
