@@ -658,9 +658,8 @@ char *SuperNET_url()
 
 void SuperNET_loop(void *ipaddr)
 {
-    char *str,*msg;
-    int32_t i,n;
-    cJSON *json;
+    char *msg;
+    int32_t i;
     for (i=0; i<1; i++)
     {
         if ( poll_daemons() > 0 )
@@ -668,6 +667,9 @@ void SuperNET_loop(void *ipaddr)
         msleep(10);
     }
 #ifdef __APPLE__
+    char *str;
+    int32_t n;
+    cJSON *json;
     printf(">>>>>>>>> call bundled\n");
     sleep(3);
     language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"/tmp/coins.conf\"}",call_system);
