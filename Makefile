@@ -42,7 +42,7 @@ NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random
 COINS = $(C)/bitcoind_RPC.c $(C)/gen1.c $(C)/gen1auth.c $(C)/msig.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE)
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) plugins/mgw/MGW_main.c plugins/echodemo.c plugins/ramchain/ramchain_main.c
  
 OBJS	:= $(SRCS:%.c=%.o)
 
