@@ -224,8 +224,18 @@ cJSON *rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson)
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag)
 {
     int32_t i;
+    long len;
     if ( totalflag != 0 )
-        memset(raw,0,sizeof(*raw));
+    {
+        uint8_t *ptr = (uint8_t *)raw;
+        len = sizeof(*raw);
+        while ( len > 0 )
+        {
+            memset(ptr,0,len < 1024*1024 ? len : 1024*1024);
+            len -= 1024 * 1024;
+            ptr += 1024 * 1024;
+        }
+    }
     else
     {
         raw->numtx = raw->numrawvins = raw->numrawvouts = 0;

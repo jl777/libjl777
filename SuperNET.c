@@ -666,19 +666,20 @@ void SuperNET_loop(void *ipaddr)
             break;
         msleep(10);
     }
-    char *str;
-    int32_t n;
-    cJSON *json;
-    printf(">>>>>>>>> call bundled\n");
-    sleep(3);
+     printf(">>>>>>>>> call bundled\n");
+    //sleep(3);
     language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"SuperNET.conf\"}",call_system);
-    sleep(3);
+    //sleep(3);
     language_func((char *)"coins","",0,0,1,(char *)"coins","{\"filename\":\"SuperNET.conf\"}",call_system);
-    sleep(3);
+   // sleep(3);
     language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"SuperNET.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
 #ifdef __APPLE__
-   while ( 1 )
+    char *str;
+    int32_t n;
+    cJSON *json;
+    sleep(3);
+    while ( 1 )
     {
         poll_daemons();
         if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\",\"coin\":\"BTCD\"}",1,5000)) != 0 )

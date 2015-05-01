@@ -14,7 +14,7 @@ endif
 
 PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
 
-LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lssl -lcrypto -lm
+LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
 
 CC=clang
 CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
@@ -88,7 +88,7 @@ sophia: lib/sophia; \
 MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
-SuperNET: $(TARGET); \
+SuperNET: $(SRCS) $(TARGET); \
     pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE SuperNET.c $(LIBS) 
 
 #-lz -ldl -lutil -lpcre -lexpat
@@ -225,6 +225,7 @@ patch2: doesntexist; \
     #cd ..; \
 
 onetime: doesntexist; \
+    sudo apt-get install make clang-3.5 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev; \
     cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h src/utils/mutex.h ../plugins/includes; cd ..; \
     cd miniupnpc; make; cp libminiupnpc.a ../libs; cd ..; \
     git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \

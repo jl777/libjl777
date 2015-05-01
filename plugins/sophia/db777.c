@@ -61,8 +61,11 @@ void *db777_find(struct db777 *DB,void *key,int32_t keylen)
 int32_t db777_delete(struct db777 *DB,void *key,int32_t keylen)
 {
     void *obj;
-    if ( (obj= db777_find(DB,key,keylen)) != 0 )
+    if ( DB == 0 || DB->db == 0 || (obj= sp_object(DB->db)) == 0 )
+        return(0);
+    if ( sp_set(obj,"key",key,keylen) == 0 )
         return(sp_delete(DB->db,obj));
+    else sp_destroy(obj);
     return(-1);
 }
 
