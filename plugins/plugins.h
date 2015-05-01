@@ -461,7 +461,7 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
     char retbuf[8192],*str,*retstr = 0;
     uint64_t tag;
     int32_t i,ind,async = (timeout == 0);
-    fprintf(stderr,"PLUGINMETHOD.(%s) for (%s)\n",method,plugin);
+    fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d\n",method,plugin,is_bundled_plugin(plugin));
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) == 0 )
     {
        // if ( is_bundled_plugin(plugin) != 0 )
