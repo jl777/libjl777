@@ -667,6 +667,7 @@ void SuperNET_loop(void *ipaddr)
             break;
         msleep(10);
     }
+#ifdef __APPLE__
     printf(">>>>>>>>> call bundled\n");
     sleep(3);
     language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"/tmp/coins.conf\"}",call_system);
@@ -675,6 +676,7 @@ void SuperNET_loop(void *ipaddr)
     sleep(1);
     language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"/tmp/coins.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
+#endif
     while ( 1 )
     {
         poll_daemons();
