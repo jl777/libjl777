@@ -1273,6 +1273,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 #include "plugins/utils/system777.c"
 #undef DEFINES_ONLY
 
+void SuperNET_idle(struct plugin_info *plugin) {}
+
 STRUCTNAME SUPERNET;
 int32_t Debuglevel;
 
@@ -1280,25 +1282,21 @@ char *PLUGNAME(_methods)[] = { "install", "plugin" }; // list of supported metho
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char resultstr[MAX_JSON_FIELD];
+    char *retstr,*resultstr,NXTaddr[64];
     FILE *fp;
+    int32_t i,j,n;
+    uint64_t nxt64bits;
+    cJSON *array;
     retbuf[0] = 0;
-    printf("<<<<<<<<<<<< INSIDE PLUGIN! initflag.%d process %s\n",initflag,plugin->name);
+    printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s)! initflag.%d process %s\n",plugin->name,initflag,plugin->name);
     if ( initflag > 0 )
     {
+        printf("********************** (%s) (%s) (%s)\n",SOPHIA.PATH,MGW.PATH,SUPERNET.NXTSERVER);
         Debuglevel = 2;
         SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),7777);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
-        if ( (fp= fopen("libs/websocketd","rb")) != 0 )
-        {
-            fclose(fp);
-            strcpy(SUPERNET.WEBSOCKETD,"libs/websocketd");
-        }
-        else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
-        if ( SUPERNET.SOPHIA_DIR[0] == 0 )
-            strcpy(SUPERNET.SOPHIA_DIR,"./DB");
-        os_compatible_path(SUPERNET.SOPHIA_DIR);
+        SUPERNET.APISLEEP = get_API_int(cJSON_GetObjectItem(json,"APISLEEP"),DEFAULT_APISLEEP);
         if ( SUPERNET.NXTAPIURL[0] == 0 )
         {
             if ( SUPERNET.usessl == 0 )
@@ -1310,21 +1308,50 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         }
         strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
         strcat(SUPERNET.NXTSERVER,"?requestType");
-        sprintf(retbuf,"{\"result\":\"initialized\",\"USESSL\":%d,\"MAINNET\":%d}",SUPERNET.usessl,SUPERNET.ismainnet);
+        MGW.issuers[MGW.numissuers++] = conv_rsacctstr("NXT-JXRD-GKMR-WD9Y-83CK7",0);
+        MGW.issuers[MGW.numissuers++] = conv_rsacctstr("NXT-3TKA-UH62-478B-DQU6K",0);
+        MGW.issuers[MGW.numissuers++] = conv_rsacctstr("NXT-5294-T9F6-WAWK-9V7WM",0);
+        if ( (array= cJSON_GetObjectItem(json,"issuers")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        {
+            for (i=0; i<n; i++)
+            {
+                copy_cJSON(NXTaddr,cJSON_GetArrayItem(array,i));
+                nxt64bits = conv_rsacctstr(NXTaddr,0);
+                for (j=0; j<MGW.numissuers; j++)
+                    if ( nxt64bits == MGW.issuers[j] )
+                        break;
+                if ( j == MGW.numissuers )
+                    MGW.issuers[MGW.numissuers++] = nxt64bits;
+            }
+        }
+        copy_cJSON(SUPERNET.DATADIR,cJSON_GetObjectItem(json,"DATADIR"));
+        if ( SUPERNET.DATADIR[0] == 0 )
+            strcpy(SUPERNET.DATADIR,"archive");
+        Debuglevel = get_API_int(cJSON_GetObjectItem(json,"debug"),0);
+        if ( (fp= fopen("libs/websocketd","rb")) != 0 )
+        {
+            fclose(fp);
+            strcpy(SUPERNET.WEBSOCKETD,"libs/websocketd");
+        }
+        else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
+        if ( SOPHIA.PATH[0] == 0 )
+            strcpy(SOPHIA.PATH,"./DB");
+        os_compatible_path(SOPHIA.PATH);
+        printf("********************** (%s) (%s) (%s)\n",SOPHIA.PATH,MGW.PATH,SUPERNET.NXTSERVER);
     }
     else
     {
         if ( plugin_result(retbuf,json,tag) > 0 )
             return((int32_t)strlen(retbuf));
-        copy_cJSON(resultstr,cJSON_GetObjectItem(json,"result"));
-        if ( strcmp(resultstr,"registered") == 0 )
+        resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
+        printf("SUPERNET\n");
+        if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
-            sprintf(retbuf,"{\"result\":\"return registered\",\"USESSL\":%d,\"MAINNET\":%d,\"port\":%d}",SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.port);
+            plugin->registered = 1;
+            retstr = "return registered";
         }
-        else
-        {
-            strcpy(retbuf,"{\"result\":\"return JSON result\"}");
-        }
+        else retstr = "return JSON result";
+        sprintf(retbuf,"{\"result\":\"%s\",\"debug\":%d,\"USESSL\":%d,\"MAINNET\":%d,\"DATADIR\":\"%s\",\"NXTAPI\":\"%s\",\"WEBSOCKETD\":\"%s\",\"SUPERNET_PORT\":%d,\"APISLEEP\":%d}",retstr,Debuglevel,SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.DATADIR,SUPERNET.NXTAPIURL,SUPERNET.WEBSOCKETD,SUPERNET.port,SUPERNET.APISLEEP);
     }
     return((int32_t)strlen(retbuf));
 }
@@ -1332,7 +1359,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *Globals,cJSON *json)
 {
     uint64_t disableflags = 0;
-   //ensure_directory(SOPHIA_DIR);
+   //ensure_directory(SUPERNET.SOPHIA_DIR);
     //Globals->Gatewayid = -1, Globals->Numgateways = 3;
     //expand_nxt64bits(Globals->NXT_ASSETIDSTR,NXT_ASSETID);
     //init_InstantDEX(calc_nxt64bits(Global_mp->myNXTADDR),1);

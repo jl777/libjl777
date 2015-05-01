@@ -18,9 +18,6 @@
 #include "huff.c"
 #include "init.c"
 #include "blocks.c"
-#include "ramchain.c"
-int32_t ram_rawblock_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_t checkblocknum);
-int32_t ram_emitblock(HUFF *hp,int32_t destformat,struct ramchain_info *ram,struct rawblock *raw);
 
 #endif
 #else
@@ -78,7 +75,7 @@ uint32_t ram_extractstring(char *hashstr,char type,struct ramchain_info *ram,int
             printf("ram_extractstring.V t.(%c) decode_hashdata error\n",type);
             return(0);
         }
-        rawind = ram_conv_hashstr(0,0,ram,hashstr,type);
+        rawind = ram_conv_hashstr(0,0,ram_gethash(ram,type),hashstr);
     }
     else
     {
@@ -96,8 +93,6 @@ uint32_t ram_extractstring(char *hashstr,char type,struct ramchain_info *ram,int
             rawind = 0;
         //printf("(%d) ramextract string rawind.%d (%c) -> (%s)\n",rawind,format,type,hashstr);
     }
-    //rawind = ram_conv_hashstr(ram,hashstr,type);
-    //printf("ram_extractstring got rawind.%d\n",rawind);
     return(rawind);
 }
 
@@ -176,7 +171,7 @@ struct ramchain_token *ram_set_token_hashdata(struct ramchain_info *ram,char typ
             token = memalloc(&ram->Tmp,sizeof(*token) + datalen - sizeof(token->U));
             memcpy(token->U.hashdata,hashdata,datalen);
             token->numbits = (datalen << 3);
-            if ( (ptr= ram_hashdata_search(ram->name,&ram->Perm,1,ram_gethash(ram,type),hashdata,datalen)) != 0 )
+            if ( (ptr= ram_hashdata_search(1,ram_gethash(ram,type),hashdata,datalen)) != 0 )
                 token->rawind = ptr->rawind;
             // printf(">>>>>> rawind.%d -> %d\n",rawind,token->rawind);
         } else printf("encode_hashstr error for (%c).(%s)\n",type,hashstr);
@@ -187,21 +182,12 @@ struct ramchain_token *ram_set_token_hashdata(struct ramchain_info *ram,char typ
         token->numbits = (sizeof(rawind) << 3);
         if ( hashstr != 0 && hashstr[0] != 0 )
         {
-            rawind = ram_conv_hashstr(0,0,ram,hashstr,type);
+            rawind = ram_conv_hashstr(0,0,ram_gethash(ram,type),hashstr);
             //printf("(%s) -> %d\n",hashstr,rawind);
         }
         token->rawind = rawind;
         //printf("<<<<<<<<<< rawind.%d -> %d\n",rawind,token->rawind);
     }
-    /*else if ( destformat == '*' )
-     {
-     token = memalloc(&ram->Tmp,sizeof(*token));
-     token->ishuffcode = 1;
-     if ( hashstr != 0 && hashstr[0] != 0 )
-     rawind = ram_conv_hashstr(ram,hashstr,type);
-     token->rawind = rawind;
-     token->numbits = ram_huffencode(&token->U.val64,ram,token,&U,sizeof(rawind) << 3);
-     }*/
     return(token);
 }
 
@@ -427,21 +413,6 @@ HUFF *ram_conv_permind(HUFF *permhp,struct ramchain_info *ram,HUFF *hp,uint32_t 
     return(permhp);
 }
 
-char *ram_searchpermind(char *permstr,struct ramchain_info *ram,char type,uint32_t permind)
-{
-    struct ramchain_hashtable *hash = ram_gethash(ram,type);
-    int32_t i;
-    permstr[0] = 0;
-    //printf("(%c) searchpermind.(%d) ind.%d\n",type,permind,hash->ind);
-    for (i=1; i<=hash->ind; i++)
-        if ( hash->ptrs[i] != 0 && hash->ptrs[i]->permind == permind )
-        {
-            ram_script(permstr,ram,i);
-            return(permstr);
-        }
-    return(0);
-}
-
 void ram_write_permentry(struct ramchain_hashtable *table,struct ramchain_hashptr *ptr)
 {
     uint8_t databuf[8192];
@@ -525,7 +496,6 @@ int32_t ram_rawvout_update(int32_t iter,uint32_t *script_rawindp,uint32_t *addr_
         scriptptr->unspent = ram_check_redeemcointx(&unspendable,ram->name,scriptstr,blocknum);
         if ( iter != 1 )
         {
-            int32_t _ram_update_redeembits(struct ramchain_info *ram,uint64_t redeembits,uint64_t AMtxidbits,char *cointxid,struct address_entry *bp);
             if ( scriptptr->unspent != 0 )  // this is MGW redeemtxid
             {
                 ram_txid(txidstr,ram,txid_rawind);
@@ -702,7 +672,7 @@ int32_t ram_rawtx_update(int32_t iter,struct ramchain_info *ram,HUFF *hp,uint32_
                     payload.B.blocknum = blocknum, payload.B.txind = txind;
                     txptr->numpayloads = numvouts;
                     //printf("%p txid_rawind.%d maxpayloads.%d numpayloads.%d (%d %d %d)\n",txptr,txid_rawind,txptr->maxpayloads,txptr->numpayloads,blocknum,txind,numvouts);
-                    txptr->payloads = (MAP_HUFF != 0) ? (struct rampayload *)permalloc(ram->name,&ram->Perm,txptr->numpayloads * sizeof(*txptr->payloads),7) : calloc(1,txptr->numpayloads * sizeof(*txptr->payloads));
+                    txptr->payloads = (SUPERNET.MAP_HUFF != 0) ? (struct rampayload *)permalloc(ram->name,&ram->Perm,txptr->numpayloads * sizeof(*txptr->payloads),7) : calloc(1,txptr->numpayloads * sizeof(*txptr->payloads));
                     for (payload.B.v=0; payload.B.v<numvouts; payload.B.v++)
                         txptr->payloads[payload.B.v] = payload;
                 }

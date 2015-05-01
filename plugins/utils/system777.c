@@ -21,6 +21,7 @@
 #include "miniupnpc.h"
 #include "upnpcommands.h"
 #include "upnperrors.h"
+#include "cJSON.h"
 #include "utils777.c"
 #include "inet.c"
 #include "mutex.h"
@@ -28,10 +29,15 @@
 #include "nn.h"
 #include "pubsub.h"
 
-#define OFFSET_ENABLED (bundledflag == 0)
-extern int32_t Debuglevel,Finished_init;//SUPERNET_PORT,USESSL,IS_LIBTEST,UPNP,MULTIPORT,ENABLE_GUIPOLL;
-extern char SOPHIA_DIR[],MGWROOT[];
+extern int32_t Debuglevel;
 
+#define OFFSET_ENABLED (bundledflag == 0)
+#ifndef MIN
+#define MIN(x,y) (((x)<=(y)) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x,y) (((x)>=(y)) ? (x) : (y))
+#endif
 typedef int32_t (*ptm)(int32_t,char *args[]);
 // nonportable functions needed in the OS specific directory
 int32_t is_bundled_plugin(char *plugin);
@@ -50,14 +56,50 @@ struct biendpoints { int32_t bus,pair; };
 struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
 union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
 
+#define DEFAULT_APISLEEP 50
 struct SuperNET_info
 {
-    union endpoints all; char *Server_ipaddrs[16]; uint64_t srv64bits[16]; int32_t numgateways,gatewayid; uint32_t numrecv,numsent;
-    char SOPHIA_DIR[1024],WEBSOCKETD[1024],MGWROOT[1024],NXTAPIURL[1024],NXTSERVER[1024];
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval;
+    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024];
+    char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512];
+    uint64_t my64bits;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP;
     uint16_t port;
-};
-extern struct SuperNET_info SUPERNET;
+}; extern struct SuperNET_info SUPERNET;
+
+struct coins_info
+{
+    int32_t num;
+    cJSON *argjson;
+    struct coin777 **LIST;
+    // this will be at the end of the plugins structure and will be called with all zeros to _init
+}; extern struct coins_info COINS;
+
+struct sophia_info
+{
+    char PATH[1024];
+    int32_t numdbs;
+    struct db777 *DBS[1024];
+}; extern struct sophia_info SOPHIA;
+
+#define MAX_MGWSERVERS 16
+struct MGW_info
+{
+    char PATH[1024],serverips[MAX_MGWSERVERS][64],bridgeipaddr[64],bridgeacct[64];
+    uint64_t srv64bits[MAX_MGWSERVERS],issuers[64];
+    int32_t M,N,numgateways,gatewayid,numissuers;
+    union endpoints all;
+    uint32_t numrecv,numsent;
+}; extern struct MGW_info MGW;
+
+#define MAX_RAMCHAINS 128
+struct ramchain_info
+{
+    char PATH[1024],coins[MAX_RAMCHAINS][16];
+    double lastupdate[MAX_RAMCHAINS];
+    union endpoints all;
+    int32_t num;
+    // this will be at the end of the plugins structure and will be called with all zeros to _init
+}; extern struct ramchain_info RAMCHAINS;
 
 // only OS portable functions in this file
 #define portable_mutex_t struct nn_mutex
@@ -532,8 +574,8 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
         else if ( rc < 0 )
             printf("%s Error.%d polling %d daemons [0] == %d\n",nn_strerror(nn_errno()),rc,n,pfd[0].fd);
     }
-    if ( received != 0 )
-        printf("received.%d\n",received);
+    //if ( received != 0 )
+    //    printf("received.%d\n",received);
     return(received);
 }
 
@@ -641,6 +683,19 @@ char *ipbits_str2(uint64_t ipbits)
     memset(&(server_addr.sin_zero),0,8);
     return(server_addr);
 }*/
+int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag)
+{
+    char *error,*result;
+    error = cJSON_str(cJSON_GetObjectItem(json,"error"));
+    result = cJSON_str(cJSON_GetObjectItem(json,"result"));
+    if ( error != 0 || result != 0 )
+    {
+        sprintf(retbuf,"{\"result\":\"completed\",\"tag\":\"%llu\"}",(long long)tag);
+        return(1);
+    }
+    return(0);
+}
+
 
 
 #endif

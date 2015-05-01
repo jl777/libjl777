@@ -15,7 +15,7 @@
 #define DEFINES_ONLY
 #include "system777.c"
 #include "utils777.c"
-#undef DEFINES_ONLY
+//#undef DEFINES_ONLY
 
 // return data from the server
 struct return_string {

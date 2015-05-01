@@ -36,33 +36,8 @@ int32_t recvsock;
 #include "plugins/utils/utils777.c"
 #undef DEFINES_ONLY
 
-//#include "SuperNET.h"
 #include "cJSON.h"
 #define NUM_GATEWAYS 3
-/*extern char Server_names[256][MAX_JSON_FIELD],MGWROOT[];
-extern char Server_NXTaddrs[256][MAX_JSON_FIELD];
-extern int32_t IS_LIBTEST,USESSL,SUPERNET_PORT,ENABLE_GUIPOLL,Debuglevel,UPNP,MULTIPORT,Finished_init;
-extern cJSON *MGWconf;
-#define issue_curl(curl_handle,cmdstr) bitcoind_RPC(curl_handle,"curl",cmdstr,0,0,0)
-void expand_ipbits(char *ipaddr,uint32_t ipbits);
-uint64_t conv_acctstr(char *acctstr);
-void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
-int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
-int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits);
-char *clonestr(char *);
-int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
-char *_mbstr(double n);
-char *_mbstr2(double n);
-struct coin_info *get_coin_info(char *coinstr);
-uint32_t get_blockheight(struct coin_info *cp);
-long stripwhite_ns(char *buf,long len);
-int32_t safecopy(char *dest,char *src,long len);*/
-
-#define INCLUDE_CODE
-//#include "ramchain.h"
-#undef INCLUDE_CODE
-
-
 
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
 {
@@ -181,7 +156,7 @@ char *process_commandline_json(cJSON *json)
         {
             sp = &S[i];
             //sprintf(fname,"%s/MGW/status/%s.%s",MGWROOT,coin,Server_ipaddrs[i]);
-            sprintf(fname,"%s/MGW/status/%s.%d",MGWROOT,coin,i);
+            sprintf(fname,"%s/MGW/status/%s.%d",SUPERNET.MGWROOT,coin,i);
             if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
             {
                 fseek(fp,0,SEEK_END);
@@ -403,7 +378,7 @@ char *load_filestr(char *userNXTaddr,int32_t gatewayid)
     long fpos;
     FILE *fp;
     char fname[1024],*buf=0,*retstr = 0;
-    sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,userNXTaddr);
+    sprintf(fname,"%s/gateway%d/%s",SUPERNET.MGWROOT,gatewayid,userNXTaddr);
     if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);
@@ -431,7 +406,7 @@ void bridge_handler(struct transfer_args *args)
     {
         gatewayid = (name[3] - '0');
         name += 5;
-        sprintf(fname,"%s/gateway%d/%s",MGWROOT,gatewayid,name);
+        sprintf(fname,"%s/gateway%d/%s",SUPERNET.MGWROOT,gatewayid,name);
         if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
         {
             fwrite(args->data,1,args->totallen,fp);
@@ -533,44 +508,6 @@ int main(int argc,const char *argv[])
     FILE *fp;
     cJSON *json = 0;
     int32_t retval = -666;
-    if ( 0 )
-    {
-        struct db777 *db777_create(char *name,char *compression);
-        int32_t db777_close(struct db777 *DB);
-        int32_t db777_addstr(struct db777 *DB,char *key,char *value);
-        int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
-        struct db777 *db;
-        int i;
-        char buf[16],field[64],retbuf[65536];
-        db = db777_create("test",0);
-        for (i=0; i<100000; i++)
-        {
-            sprintf(field,"field.%d",i);
-            db777_findstr(retbuf,sizeof(retbuf),db,field);
-            printf("%s\n",retbuf);
-            strcpy(buf,field);
-            db777_addstr(db,field,buf);
-        }
-        db777_close(db);
-        db = db777_create("zstd","zstd");
-        for (i=0; i<100000; i++)
-        {
-            sprintf(field,"field.%d",i);
-            strcpy(buf,field);
-            db777_addstr(db,field,buf);
-        }
-        db777_close(db);
-        
-        db = db777_create("lz4","lz4");
-        for (i=0; i<100000; i++)
-        {
-            sprintf(field,"field.%d",i);
-            strcpy(buf,field);
-            db777_addstr(db,field,buf);
-        }
-        db777_close(db);
-        getchar();
-    }
     char ipaddr[64],*oldport,*newport,portstr[64],*retstr;
     {
         int32_t err,to = 1;
@@ -650,7 +587,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
     char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD];
     uint64_t daemonid,instanceid,tag;
-    int32_t ind,async,n = 1;
+    int32_t ind,async,timeout,n = 1;
     uint16_t port,websocket;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -679,8 +616,8 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
-        async = get_API_int(cJSON_GetObjectItem(json,"async"),0);
-        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,jsonstr,n,async));
+        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),1000);
+        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,jsonstr,n,timeout));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 
@@ -731,13 +668,17 @@ void SuperNET_loop(void *ipaddr)
         msleep(10);
     }
     printf(">>>>>>>>> call bundled\n");
+    sleep(3);
     language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"/tmp/coins.conf\"}",call_system);
+    sleep(2);
     language_func((char *)"coins","",0,0,1,(char *)"coins","{\"filename\":\"/tmp/coins.conf\"}",call_system);
+    sleep(1);
+    language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"/tmp/coins.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
     while ( 1 )
     {
         poll_daemons();
-        if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\"}",1,0)) != 0 )
+        if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\",\"coin\":\"BTCD\"}",1,5000)) != 0 )
         {
             printf("got (%s)\n",str);
             if ( (json= cJSON_Parse(str)) != 0 )
@@ -746,31 +687,32 @@ void SuperNET_loop(void *ipaddr)
                     break;
             }
             free(str);
-            sleep(3);
+            sleep(1);
         }
     }
     printf("start gen\n");
     for (i=0; i<1; i++)
     {
-        if ( (str= plugin_method(0,"coins","genmultisig",0,milliseconds(),"{\"refcontact\":\"NXT-F2N7-GHWK-GH6U-8LTJC\",\"plugin\":\"coins\",\"M\":2,\"N\":3,\"method\":\"genmultisig\",\"coin\":\"BTCD\",\"multisigchar\":\"b\",\"rpc\":\"127.0.0.1:14632\",\"path\":\"BitcoinDark\",\"conf\":\"BitcoinDark.conf\"}",1,0)) != 0 )
+        if ( (str= plugin_method(0,"ramchain","create",0,milliseconds(),"{\"method\":\"create\",\"coin\":\"BTCD\",\"plugin\":\"ramchain\"}",1,1000)) != 0 )
+        //if ( (str= plugin_method(0,"coins","genmultisig",0,milliseconds(),"{\"refcontact\":\"NXT-F2N7-GHWK-GH6U-8LTJC\",\"plugin\":\"coins\",\"M\":2,\"N\":3,\"method\":\"genmultisig\",\"coin\":\"BTCD\",\"multisigchar\":\"b\",\"rpc\":\"127.0.0.1:14632\",\"path\":\"BitcoinDark\",\"conf\":\"BitcoinDark.conf\"}",1,50000)) != 0 )
         {
             printf("got (%s)\n",str);
             free(str);
         }
         poll_daemons();
-        if ( (n= nn_recv(SUPERNET.all.socks.both.bus,&msg,NN_MSG,0)) > 0 )
+        if ( (n= nn_recv(MGW.all.socks.both.bus,&msg,NN_MSG,0)) > 0 )
         {
             printf("MAIN.(%s) %d\n",msg,n);
             nn_freemsg(msg);
         }
     }
-    printf("sock = %d\n",SUPERNET.all.socks.both.bus);
+    printf("sock = %d\n",MGW.all.socks.both.bus);
     while ( 1 )
     {
         int n,timeoutmillis = 10;
         char *messages[100];
         poll_daemons();
-        if ( (n= poll_endpoints(messages,&SUPERNET.numrecv,SUPERNET.numsent,&SUPERNET.all,timeoutmillis)) > 0 )
+        if ( (n= poll_endpoints(messages,&MGW.numrecv,MGW.numsent,&MGW.all,timeoutmillis)) > 0 )
         {
             for (i=0; i<n; i++)
             {
@@ -807,6 +749,7 @@ int main(int argc,const char *argv[])
     int32_t i;
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
+    ///test();
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");
     else if ( (json= cJSON_Parse(jsonstr)) == 0 )

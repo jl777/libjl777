@@ -129,14 +129,14 @@ char **get_tagstr(struct daemon_info *dp,uint64_t tag)
     return(0);
 }
 
-char *wait_for_daemon(char **dest,uint64_t tag,int32_t sleepmillis)
+char *wait_for_daemon(char **dest,uint64_t tag,int32_t timeout,int32_t sleepmillis)
 {
     int32_t poll_daemons();
     static long counter,sum;
     double startmilli = milliseconds();
     char *retstr;
     usleep(5);
-    while ( milliseconds() < (startmilli + 10000) )
+    while ( milliseconds() < (startmilli + timeout) )
     {
         poll_daemons();
         if ( (retstr= *dest) != 0 )

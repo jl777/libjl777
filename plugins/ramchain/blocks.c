@@ -19,6 +19,9 @@
 #include "files777.c"
 #include "huff.c"
 #include "init.c"
+#include "gen1pub.c"
+#include "gen1.c"
+
 struct rawblock
 {
     uint32_t blocknum,allocsize;

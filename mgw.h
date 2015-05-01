@@ -8,13 +8,6 @@
 #ifndef mgw_h
 #define mgw_h
 
-#define DEPOSIT_XFER_DURATION 5
-#define MIN_DEPOSIT_FACTOR 5
-
-#define GET_COINDEPOSIT_ADDRESS 'g'
-#define BIND_DEPOSIT_ADDRESS 'b'
-#define DEPOSIT_CONFIRMED 'd'
-#define MONEY_SENT 'm'
 
 int32_t msigcmp(struct multisig_addr *ref,struct multisig_addr *msig);
 struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender);

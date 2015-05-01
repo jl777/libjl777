@@ -17,10 +17,14 @@
 #include <stdlib.h>
 #include "cJSON.h"
 #include "uthash.h"
+#include "cointx.c"
 #include "utils777.c"
 #include "coins777.c"
 
 int32_t bitcoin_assembler(char *script);
+int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj);
+uint8_t *ram_encode_hashstr(int32_t *datalenp,uint8_t *data,char type,char *hashstr);
+char *ram_decode_hashdata(char *strbuf,char type,uint8_t *hashdata);
 
 #endif
 #else
@@ -391,14 +395,212 @@ int32_t bitcoin_assembler(char *script)
     return((is_hexstr(script) != 0 && (strlen(script) & 1) == 0) ? 0 : -1);
 }
 
+int32_t ram_expand_scriptdata(char *scriptstr,uint8_t *scriptdata,int32_t datalen)
+{
+    char *prefix,*suffix;
+    int32_t mode,n = 0;
+    scriptstr[0] = 0;
+    switch ( (mode= scriptdata[n++]) )
+    {
+        case 0: case 'z': prefix = "ffff", suffix = ""; break;
+        case 'n': prefix = "nonstandard", suffix = ""; break;
+        case 's': prefix = "76a914", suffix = "88ac"; break;
+        case 'm': prefix = "a9", suffix = "ac"; break;
+        case 'r': prefix = "", suffix = "ac"; break;
+        case ' ': prefix = "", suffix = ""; break;
+        default: printf("unexpected scriptmode.(%d) (%c)\n",mode,mode); prefix = "", suffix = ""; return(-1); break;
+    }
+    strcpy(scriptstr,prefix);
+    init_hexbytes_noT(scriptstr+strlen(scriptstr),scriptdata+n,datalen-n);
+    if ( suffix[0] != 0 )
+    {
+        //printf("mode.(%c) suffix.(%s) [%s]\n",mode,suffix,scriptstr);
+        strcat(scriptstr,suffix);
+    }
+    return(mode);
+}
+
+uint64_t ram_check_redeemcointx(int32_t *unspendablep,char *coinstr,char *script,uint32_t blocknum)
+{
+    uint64_t redeemtxid = 0;
+    int32_t i;
+    *unspendablep = 0;
+    if ( strcmp(script,"76a914000000000000000000000000000000000000000088ac") == 0 )
+        *unspendablep = 1;
+    if ( strcmp(script+22,"00000000000000000000000088ac") == 0 )
+    {
+        for (redeemtxid=i=0; i<(int32_t)sizeof(uint64_t); i++)
+        {
+            redeemtxid <<= 8;
+            redeemtxid |= (_decode_hex(&script[6 + 14 - i*2]) & 0xff);
+        }
+        printf("%s >>>>>>>>>>>>>>> found MGW redeem @blocknum.%u %s -> %llu | unspendable.%d\n",coinstr,blocknum,script,(long long)redeemtxid,*unspendablep);
+    }
+    else if ( *unspendablep != 0 )
+        printf("%s >>>>>>>>>>>>>>> found unspendable %s\n",coinstr,script);
+    
+    //else printf("(%s).%d\n",script+22,strcmp(script+16,"00000000000000000000000088ac"));
+    return(redeemtxid);
+}
+
+int32_t ram_calc_scriptmode(int32_t *datalenp,uint8_t scriptdata[4096],char *script,int32_t trimflag)
+{
+    int32_t n=0,len,mode = 0;
+    len = (int32_t)strlen(script);
+    *datalenp = 0;
+    if ( len >= 8191 )
+    {
+        printf("calc_scriptmode overflow len.%d\n",len);
+        return(-1);
+    }
+    if ( strcmp(script,"ffff") == 0 )
+    {
+        mode = 'z';
+        if ( trimflag != 0 )
+            script[0] = 0;
+    }
+    else if ( strcmp(script,"nonstandard") == 0 )
+    {
+        if ( trimflag != 0 )
+            script[0] = 0;
+        mode = 'n';
+    }
+    else if ( strncmp(script,"76a914",6) == 0 && strcmp(script+len-4,"88ac") == 0 )
+    {
+        if ( trimflag != 0 )
+        {
+            script[len-4] = 0;
+            script += 6;
+        }
+        mode = 's';
+    }
+    else if ( strcmp(script+len-2,"ac") == 0 )
+    {
+        if ( strncmp(script,"a9",2) == 0 )
+        {
+            if ( trimflag != 0 )
+            {
+                script[len-2] = 0;
+                script += 2;
+            }
+            mode = 'm';
+        }
+        else
+        {
+            if ( trimflag != 0 )
+                script[len-2] = 0;
+            mode = 'r';
+        }
+    } else mode = ' ';
+    if ( trimflag != 0 )
+    {
+        scriptdata[n++] = mode;
+        if ( (len= (int32_t)(strlen(script) >> 1)) > 0 )
+            decode_hex(scriptdata+n,len,script);
+        (*datalenp) = (len + n);
+        //printf("set pubkey.(%s).%ld <- (%s)\n",pubkeystr,strlen(pubkeystr),script);
+    }
+    return(mode);
+}
+
+uint8_t *ram_encode_hashstr(int32_t *datalenp,uint8_t *data,char type,char *hashstr)
+{
+    uint8_t varbuf[9];
+    char buf[8192];
+    int32_t varlen,datalen,scriptmode = 0;
+    *datalenp = 0;
+    if ( type == 's' )
+    {
+        if ( hashstr[0] == 0 )
+            return(0);
+        strcpy(buf,hashstr);
+        if ( (scriptmode = ram_calc_scriptmode(&datalen,&data[9],buf,1)) < 0 )
+        {
+            printf("encode_hashstr: scriptmode.%d for (%s)\n",scriptmode,hashstr);
+            exit(-1);
+        }
+    }
+    else if ( type == 't' )
+    {
+        datalen = (int32_t)(strlen(hashstr) >> 1);
+        if ( datalen > 4096 )
+        {
+            printf("encode_hashstr: type.%d (%c) datalen.%d > sizeof(data) %d\n",type,type,(int)datalen,4096);
+            getchar();//exit(-1);
+        }
+        decode_hex(&data[9],datalen,hashstr);
+    }
+    else if ( type == 'a' )
+    {
+        datalen = (int32_t)strlen(hashstr) + 1;
+        memcpy(&data[9],hashstr,datalen);
+    }
+    else
+    {
+        printf("encode_hashstr: unsupported type.%d (%c)\n",type,type);
+        getchar();//exit(-1);
+    }
+    if ( datalen > 0 )
+    {
+        varlen = hcalc_varint(varbuf,datalen);
+        memcpy(&data[9-varlen],varbuf,varlen);
+        //HASH_FIND(hh,hash->table,&ptr[-varlen],datalen+varlen,hp);
+        *datalenp = (datalen + varlen);
+        return(&data[9-varlen]);
+    }
+    return(0);
+}
+
+char *ram_decode_hashdata(char *strbuf,char type,uint8_t *hashdata)
+{
+    uint64_t varint;
+    int32_t datalen,scriptmode;
+    strbuf[0] = 0;
+    if ( hashdata == 0 )
+        return(0);
+    hashdata += hdecode_varint(&varint,hashdata,0,9);
+    datalen = (int32_t)varint;
+    if ( type == 's' )
+    {
+        if ( (scriptmode= ram_expand_scriptdata(strbuf,hashdata,(uint32_t)datalen)) < 0 )
+        {
+            printf("decode_hashdata: scriptmode.%d for (%s)\n",scriptmode,strbuf);
+            return(0);
+        }
+        //printf("EXPANDSCRIPT.(%c) -> [%s]\n",scriptmode,strbuf);
+    }
+    else if ( type == 't' )
+    {
+        /*if ( datalen > MAX_RAWTX_SPACE )
+        {
+            init_hexbytes_noT(strbuf,hashdata,64);
+            printf("decode_hashdata: type.%d (%c) datalen.%d > sizeof(data) %d | (%s)\n",type,type,(int)datalen,MAX_RAWTX_SPACE,strbuf);
+            exit(-1);
+        }*/
+        init_hexbytes_noT(strbuf,hashdata,datalen);
+    }
+    else if ( type == 'a' )
+        memcpy(strbuf,hashdata,datalen);
+    else
+    {
+        printf("decode_hashdata: unsupported type.%d (%c)\n",type,type);
+        return(0);
+        getchar();//exit(-1);
+    }
+    return(strbuf);
+}
+
 cJSON *_script_has_address(int32_t *nump,cJSON *scriptobj)
 {
     int32_t i,n;
     cJSON *addresses,*addrobj;
-    if ( scriptobj == 0 )
-        return(0);
-    addresses = cJSON_GetObjectItem(scriptobj,"addresses");
     *nump = 0;
+    if ( scriptobj == 0 )
+    {
+        printf("no scriptobj\n");
+        return(0);
+    }
+    addresses = cJSON_GetObjectItem(scriptobj,"addresses");
     if ( addresses != 0 )
     {
         *nump = n = cJSON_GetArraySize(addresses);
@@ -414,6 +616,7 @@ cJSON *_script_has_address(int32_t *nump,cJSON *scriptobj)
 int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
 {
     int32_t numaddresses;
+    char typestr[MAX_JSON_FIELD];
     cJSON *scriptobj,*addrobj,*hexobj;
     scriptobj = cJSON_GetObjectItem(txobj,"scriptPubKey");
     if ( scriptobj != 0 )
@@ -436,7 +639,14 @@ int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txob
             {
                 //fprintf(stderr,"{%s} ",script);
                 bitcoin_assembler(script);
+                //fprintf(stderr,"-> {%s}\n",script);
             }
+        }
+        if ( coinaddr[0] == 0 )
+        {
+            copy_cJSON(typestr,cJSON_GetObjectItem(scriptobj,"type"));
+            if ( strcmp(typestr,"nonstandard") != 0 )
+                printf("missing addr? (%s)\n",cJSON_Print(txobj)), getchar();
         }
         return(0);
     }

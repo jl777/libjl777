@@ -15,7 +15,6 @@
 #include <memory.h>
 #include "bits777.c"
 #include "huffstream.c"
-#include "ramchain.c"
 #define MAX_PATTERNLEN 30
 #define MAX_HUFFRECURSIONS 1
 
@@ -336,7 +335,7 @@ void hpurge(HUFF *hps[],int32_t num)
 
 HUFF *hopen(char *coinstr,struct alloc_space *mem,uint8_t *bits,int32_t num,int32_t allocated)
 {
-    HUFF *hp = (MAP_HUFF != 0) ? permalloc(coinstr,mem,sizeof(*hp),1) : calloc(1,sizeof(*hp));
+    HUFF *hp = (SUPERNET.MAP_HUFF != 0) ? permalloc(coinstr,mem,sizeof(*hp),1) : calloc(1,sizeof(*hp));
     hp->ptr = hp->buf = bits;
     hp->allocsize = num;
     hp->endpos = (num << 3);
@@ -1434,7 +1433,7 @@ int32_t huffcompress(uint8_t *dest,int32_t maxlen,uint8_t *src,int32_t len,int32
         free(items);
     free(hstats);
     return(newlen);
-}*/
+}
 
 int32_t hwrite(uint64_t codebits,int32_t numbits,HUFF *hp)
 {
@@ -1445,16 +1444,9 @@ int32_t hwrite(uint64_t codebits,int32_t numbits,HUFF *hp)
             return(-1);
     }
     return(numbits);
-}
+}*/
 
-int32_t hconv_bitlen(uint64_t bitlen)
-{
-    int32_t len;
-    len = (int32_t)(bitlen >> 3);
-    if ( ((int32_t)bitlen & 7) != 0 )
-        len++;
-    return(len);
-}
+
 
 int32_t hflush(FILE *fp,HUFF *hp)
 {

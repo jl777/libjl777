@@ -400,7 +400,6 @@ struct batch_info
     struct withdraw_info W;
     struct rawtransaction rawtx;
 };
-extern char MGWROOT[];
 
 struct coin_info
 {

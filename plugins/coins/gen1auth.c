@@ -205,12 +205,9 @@ struct cointx_info *createrawtransaction(char *coinstr,char *serverport,char *us
 
 int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params)
 {
-    //extern int32_t MGW_initdone;
     char addr[1024],*retstr;
     cJSON *json,*redeemobj,*msigobj;
     int32_t flag = 0;
-    //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-        printf("multisig params.(%s)\n",params);
     if ( addmultisig != 0 )
     {
         if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"addmultisigaddress",params)) != 0 )
@@ -252,8 +249,6 @@ int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinst
                         flag = 1;
                     } else printf("missing redeemScript in (%s)\n",retstr);
                 } else printf("multisig missing address in (%s) params.(%s)\n",retstr,params);
-                //if ( (MGW_initdone == 0 && Debuglevel > 2) || MGW_initdone != 0 )
-                    printf("addmultisig.(%s)\n",retstr);
                 free_json(json);
             }
             free(retstr);

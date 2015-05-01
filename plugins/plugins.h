@@ -183,7 +183,7 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         if ( (resultstr= cJSON_str(cJSON_GetObjectItem(json,"result"))) != 0 && strcmp(resultstr,"registered") == 0 )
         {
             dp->readyflag = 1;
-            printf("READY.(%s) >>>>>>>>>>>>>> READY.(%s)\n",dp->name,dp->name);
+            //printf("READY.(%s) >>>>>>>>>>>>>> READY.(%s)\n",dp->name,dp->name);
         }
         permflag = get_API_int(cJSON_GetObjectItem(json,"permanentflag"),0);
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"myid"));
@@ -317,17 +317,23 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
     if ( dp->bundledflag != 0 && permanentflag != 0 && dp->websocket == 0 )
     {
         int32_t echo_main(int32_t,char *args[]);
+        int32_t ramchain_main(int32_t,char *args[]);
+        int32_t MGW_main(int32_t,char *args[]);
         int32_t sophia_main(int32_t,char *args[]);
         int32_t SuperNET_main(int32_t,char *args[]);
         int32_t coins_main(int32_t,char *args[]);
-        if ( strcmp(dp->name,"SuperNET") == 0 )
-            return(SuperNET_main(n,args));
+        if ( strcmp(dp->name,"coins") == 0 )
+            return(coins_main(n,args));
         else if ( strcmp(dp->name,"sophia") == 0 )
             return(sophia_main(n,args));
-        else if ( strcmp(dp->name,"coins") == 0 )
-            return(coins_main(n,args));
-        //else if ( strcmp(dp->name,"echo") == 0 )
-        //    return(echo_main(n,args));
+        else if ( strcmp(dp->name,"ramchain") == 0 )
+            return(ramchain_main(n,args));
+        else if ( strcmp(dp->name,"MGW") == 0 )
+            return(MGW_main(n,args));
+        if ( strcmp(dp->name,"SuperNET") == 0 )
+            return(SuperNET_main(n,args));
+        else if ( strcmp(dp->name,"echo") == 0 )
+            return(echo_main(n,args));
         else return(-1);
     }
     else return(OS_launch_process(args));
@@ -335,7 +341,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"sophia") == 0 || strcmp(plugin,"coins") == 0 )
+    if ( strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"sophia") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 )
         return(1);
     else return(0);
 }
@@ -449,13 +455,13 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
     return(clonestr("{\"error\":\"cant register inactive plugin\"}"));
 }
 
-char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t numiters,int32_t async)
+char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t numiters,int32_t timeout)
 {
     struct daemon_info *dp;
     char retbuf[8192],*str,*retstr = 0;
     uint64_t tag;
-    int32_t i,ind;
-    fprintf(stderr,"PLUGINMETHOD.(%s)\n",method);
+    int32_t i,ind,async = (timeout == 0);
+    fprintf(stderr,"PLUGINMETHOD.(%s) for (%s)\n",method,plugin);
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
     {
         if ( dp->readyflag == 0 )
@@ -465,7 +471,7 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
         else if ( in_jsonarray(dp->methodsjson,method) == 0 )
         {
             fprintf(stderr,"??????????? methods.(%s)\n",cJSON_Print(dp->methodsjson));
-            sprintf(retbuf,"{\"error\":\"method not allowed by plugin\",\"%s\":\"%s\"}",method,cJSON_Print(dp->methodsjson));
+            sprintf(retbuf,"{\"error\":\"method not allowed\",\"plugin\":\"%s\",\"%s\":\"%s\"}",plugin,method,cJSON_Print(dp->methodsjson));
             return(clonestr(retbuf));
             //return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
         }
@@ -478,10 +484,10 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
             {
                 retstr = 0;
                 if ( (tag= send_to_daemon(async==0?&retstr:0,dp->name,daemonid,instanceid,origargstr)) == 0 )
-                    return(clonestr("{\"error\":\"method not allowed by plugin\"}"));
+                    return(clonestr("{\"error\":\"null tag from send_to_daemon\"}"));
                 else if ( async != 0 )
                     return(clonestr("{\"error\":\"request sent to plugin async\"}"));
-                if ( (retstr= wait_for_daemon(&retstr,tag,10)) == 0 || retstr[0] == 0 )
+                if ( (retstr= wait_for_daemon(&retstr,tag,timeout,10)) == 0 || retstr[0] == 0 )
                 {
                     str = stringifyM(origargstr);
                     sprintf(retbuf,"{\"error\":\"\",\"args\":%s}",str);

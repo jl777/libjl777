@@ -1805,7 +1805,7 @@ char *SuperNET_json_commands(struct NXThandler_info *mp,char *previpaddr,cJSON *
 
     // plugins
     static char *passthru[] = { (char *)passthru_func, "passthru", "V", "coin", "method", "params", "tag", "plugin", "daemonid", "instanceid", 0 };
-    static char *plugin[] = { (char *)plugin_func, "plugin", "V", "plugin", "daemonid", "instanceid", "method", "tag", "iters", "async", 0 };
+    static char *plugin[] = { (char *)plugin_func, "plugin", "V", "plugin", "daemonid", "instanceid", "method", "tag", "iters", "timeout", 0 };
     static char *registerplugin[] = { (char *)register_func, "register", "V", "plugin", "daemonid", "instanceid", "methods", 0 };
     static char *remote[] = { (char *)remote_func, "remote", "V",  "coin", "method", "result", "tag", 0 };
     //static char *python[] = { (char *)python_func, "python", "V",  "name", "launch", "websocket", 0 };

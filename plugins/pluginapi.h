@@ -80,8 +80,8 @@ char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
     copy_cJSON(tagstr,objs[4]);
     n = get_API_int(objs[5],1);
     tag = calc_nxt64bits(tagstr);
-    async = get_API_int(objs[6],0);
-    return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag,origargstr,n,async));
+    timeout = get_API_int(objs[6],1000);
+    return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,tag,origargstr,n,timeout));
 }
 
 char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -112,7 +112,7 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         {
             unstringify(params);
             send_to_daemon(&retstr,plugin,daemonid,instanceid,params);
-            return(wait_for_daemon(&retstr,tag));
+            return(wait_for_daemon(&retstr,tag,10,10000));
         }
         else if ( (cp= get_coin_info(coinstr)) != 0 && method[0] != 0 )
             retstr = bitcoind_passthru(cp->name,cp->serverport,cp->userpass,method,params);

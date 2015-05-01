@@ -20,7 +20,7 @@
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 
-struct alloc_space { void *ptr; long used,size; };
+struct alloc_space { void *ptr; long used,size; int32_t alignflag; };
 
 int32_t portable_pton(int32_t af,char *src,void *dst);
 int32_t portable_ntop(int32_t af,void *src,char *dst,size_t size);
@@ -59,7 +59,7 @@ int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size);
 
 double estimate_completion(double startmilli,int32_t processed,int32_t numleft);
 
-void clear_alloc_space(struct alloc_space *mem);
+void clear_alloc_space(struct alloc_space *mem,int32_t alignflag);
 void *memalloc(struct alloc_space *mem,long size);
 
 int32_t notlocalip(char *ipaddr);
@@ -589,10 +589,11 @@ int32_t is_remote_access(char *previpaddr)
     else return(0);
 }
 
-void clear_alloc_space(struct alloc_space *mem)
+void clear_alloc_space(struct alloc_space *mem,int32_t alignflag)
 {
     memset(mem->ptr,0,mem->size);
     mem->used = 0;
+    mem->alignflag = alignflag;
 }
 
 void *memalloc(struct alloc_space *mem,long size)
@@ -607,7 +608,7 @@ void *memalloc(struct alloc_space *mem,long size)
     ptr = (void *)((long)mem->ptr + mem->used);
     mem->used += size;
     memset(ptr,0,size);
-    if ( (mem->used & 0xf) != 0 )
+    if ( mem->alignflag != 0 && (mem->used & 0xf) != 0 )
         mem->used += 0x10 - (mem->used & 0xf);
     return(ptr);
 }

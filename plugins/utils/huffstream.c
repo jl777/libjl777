@@ -22,13 +22,13 @@ int32_t hupdate_internals(HUFF *hp);
 #define hrewind(hp) hseek(hp,0,SEEK_SET)
 int32_t hseek(HUFF *hp,int32_t offset,int32_t mode);
 void hclear(HUFF *hp,int32_t clearbuf);
-int32_t hconv_bitlen(uint64_t bitlen);
 int32_t hputbit(HUFF *hp,int32_t bit);
 int32_t hgetbit(HUFF *hp);
 int32_t hwrite(uint64_t codebits,int32_t numbits,HUFF *hp);
 uint64_t hread(int32_t *numbitsp,int32_t numbits,HUFF *hp);
 int32_t hmemcpy(void *dest,void *src,HUFF *hp,int32_t datalen);
 int32_t hcalc_bitsize(uint32_t x);
+int32_t hconv_bitlen(uint32_t bitlen);
 
 #endif
 #else
@@ -45,6 +45,15 @@ static const uint8_t huffmasks[8] = { (1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1
 static const uint8_t huffoppomasks[8] = { ~(1<<0), ~(1<<1), ~(1<<2), ~(1<<3), ~(1<<4), ~(1<<5), ~(1<<6), (uint8_t)~(1<<7) };
 
 void _init_HUFF(HUFF *hp,int32_t allocsize,void *buf) {  hp->buf = hp->ptr = buf, hp->allocsize = allocsize; }
+
+int32_t hconv_bitlen(uint32_t bitlen)
+{
+    int32_t len;
+    len = (int32_t)(bitlen >> 3);
+    if ( ((int32_t)bitlen & 7) != 0 )
+        len++;
+    return(len);
+}
 
 int32_t hupdate_internals(HUFF *hp)
 {
@@ -106,7 +115,7 @@ int32_t hgetbit(HUFF *hp)
 
 int32_t hputbit(HUFF *hp,int32_t bit)
 {
-    //printf("->%d ",bit);
+   // printf("->%d ",bit);
     if ( bit != 0 )
         *hp->ptr |= huffmasks[hp->maski];
     else *hp->ptr &= huffoppomasks[hp->maski];

@@ -19,17 +19,7 @@
 #include "bits777.c"
 #include "NXT777.c"
 #include "huff.c"
-#include "bitcoind.c"
 #include "tokens.c"
-#include "ramchain.c"
-int32_t ram_calcsha256(bits256 *sha,HUFF *bitstreams[],int32_t num);
-void ram_purge_badblock(struct ramchain_info *ram,uint32_t blocknum);
-void ram_setfname(char *fname,struct ramchain_info *ram,uint32_t blocknum,char *str);
-void ram_setformatstr(char *formatstr,int32_t format);
-long *ram_load_bitstreams(struct ramchain_info *ram,bits256 *sha,char *fname,HUFF *bitstreams[],int32_t *nump);
-int32_t ram_save_bitstreams(bits256 *refsha,char *fname,HUFF *bitstreams[],int32_t num);
-int32_t ram_map_bitstreams(int32_t verifyflag,struct ramchain_info *ram,int32_t blocknum,struct mappedptr *M,bits256 *sha,HUFF *blocks[],int32_t num,char *fname,bits256 *refsha);
-uint32_t ram_update_RTblock(struct ramchain_info *ram);
 
 #endif
 #else
@@ -42,7 +32,7 @@ uint32_t ram_update_RTblock(struct ramchain_info *ram);
 #undef DEFINES_ONLY
 #endif
 
-
+#ifdef oldway
 void ram_setdirA(char *dirA,struct ramchain_info *ram)
 {
 #ifndef _WIN32
@@ -385,13 +375,13 @@ struct mappedblocks *ram_init_blocks(int32_t noload,HUFF **copyhps,struct ramcha
 {
     void *ptr;
     int32_t numblocks,tmpsize = TMPALLOC_SPACE_INCR;
-    blocks->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R),8) : calloc(1,sizeof(*blocks->R));
-    blocks->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R2),8) : calloc(1,sizeof(*blocks->R2));
-    blocks->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R3),8) : calloc(1,sizeof(*blocks->R3));
+    blocks->R = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R),8) : calloc(1,sizeof(*blocks->R));
+    blocks->R2 = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R2),8) : calloc(1,sizeof(*blocks->R2));
+    blocks->R3 = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*blocks->R3),8) : calloc(1,sizeof(*blocks->R3));
     blocks->ram = ram;
     blocks->prevblocks = prevblocks;
     blocks->format = format;
-    ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), blocks->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ptr = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), blocks->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
     if ( (blocks->shift = shift) != 0 )
         firstblock &= ~((1 << shift) - 1);
     blocks->firstblock = firstblock;
@@ -404,10 +394,10 @@ struct mappedblocks *ram_init_blocks(int32_t noload,HUFF **copyhps,struct ramcha
     }
     blocks->numblocks = numblocks;
     if ( blocks->hps == 0 )
-        blocks->hps = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,blocks->numblocks*sizeof(*blocks->hps),8) : calloc(1,blocks->numblocks*sizeof(*blocks->hps));
+        blocks->hps = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,blocks->numblocks*sizeof(*blocks->hps),8) : calloc(1,blocks->numblocks*sizeof(*blocks->hps));
     if ( format != 0 )
     {
-        blocks->M = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M),8) : calloc(1,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M));
+        blocks->M = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M),8) : calloc(1,((blocks->numblocks >> shift) + 1)*sizeof(*blocks->M));
         if ( noload == 0 )
             blocks->blocknum = ram_load_blocks(ram,blocks,firstblock,blocks->numblocks);
     }
@@ -560,96 +550,6 @@ void ram_init_remotemode(struct ramchain_info *ram)
     }
 }
 
-FILE *ram_permopen(char *fname,char *coinstr)
-{
-    FILE *fp;
-    if ( 0 && strcmp(coinstr,"BTC") == 0 )
-        return(0);
-    if ( (fp= fopen(os_compatible_path(fname),"rb+")) == 0 )
-        fp= fopen(os_compatible_path(fname),"wb+");
-    if ( fp == 0 )
-    {
-        printf("ram_permopen couldnt create (%s)\n",fname);
-        exit(-1);
-    }
-    return(fp);
-}
-
-int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchain_info *ram,char type)
-{
-    long offset,len,fileptr;
-    uint64_t datalen;
-    char fname[1024],destfname[1024],str[64];
-    uint8_t *hashdata;
-    int32_t varsize,num,rwflag = 0;
-    struct ramchain_hashtable *hash;
-    struct ramchain_hashptr *ptr;
-    hash = ram_gethash(ram,type);
-    if ( deletefile != 0 )
-        memset(hash,0,sizeof(*hash));
-    strcpy(hash->coinstr,ram->name);
-    hash->type = type;
-    num = 0;
-    //if ( ram->remotemode == 0 )
-    {
-        ram_sethashname(fname,hash,0);
-        strcat(fname,".perm");
-        hash->permfp = ram_permopen(fname,ram->name);
-    }
-    ram_sethashname(fname,hash,0);
-    printf("inithashtable.(%s.%d) -> [%s]\n",ram->name,type,fname);
-    if ( deletefile == 0 && (hash->newfp= fopen(os_compatible_path(fname),"rb+")) != 0 )
-    {
-        if ( init_mappedptr(0,&hash->M,0,rwflag,fname) == 0 )
-            return(1);
-        if ( hash->M.allocsize == 0 )
-            return(1);
-        fileptr = (long)hash->M.fileptr;
-        offset = 0;
-        while ( (varsize= (int32_t)hload_varint(&datalen,hash->newfp)) > 0 && (offset + datalen) <= hash->M.allocsize )
-        {
-            hashdata = (uint8_t *)(fileptr + offset);
-            if ( num < 10 )
-            {
-                char hexbytes[8192];
-                struct ramchain_hashptr *checkptr;
-                init_hexbytes_noT(hexbytes,hashdata,varsize+datalen);
-                HASH_FIND(hh,hash->table,hashdata,varsize + datalen,checkptr);
-                fprintf(stderr,"%s offset %ld: varsize.%d datalen.%d created.(%s) ind.%d | checkptr.%p\n",ram->name,offset,(int)varsize,(int)datalen,(type != 'a') ? hexbytes :(char *)((long)hashdata+varsize),hash->ind+1,checkptr);
-            }
-            HASH_FIND(hh,hash->table,hashdata,varsize + datalen,ptr);
-            if ( ptr != 0 )
-            {
-                printf("corrupted hashtable %s: offset.%ld\n",fname,offset);
-                exit(-1);
-            }
-            ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,sizeof(*ptr),6) : calloc(1,sizeof(*ptr));
-            ram_addhash(hash,ptr,hashdata,(int32_t)(varsize+datalen));
-            offset += (varsize + datalen);
-            fseek(hash->newfp,offset,SEEK_SET);
-            num++;
-        }
-        printf("%s: loaded %d strings, ind.%d, offset.%ld allocsize.%llu %s\n",fname,num,hash->ind,offset,(long long)hash->M.allocsize,((sizeof(uint64_t)+offset) != hash->M.allocsize && offset != hash->M.allocsize) ? "ERROR":"OK");
-        if ( offset != hash->M.allocsize && offset != (hash->M.allocsize-sizeof(uint64_t)) )
-        {
-            //*blocknump = ram_load_blockcheck(hash->newfp);
-            if ( (offset+sizeof(uint64_t)) != hash->M.allocsize )
-            {
-                printf("offset.%ld + 8 %ld != %ld allocsize\n",offset,(offset+sizeof(uint64_t)),(long)hash->M.allocsize);
-                exit(-1);
-            }
-        }
-        if ( (hash->ind + 1) > ram->maxind )
-            ram->maxind = (hash->ind + 1);
-        ram_sethashtype(str,hash->type);
-        sprintf(destfname,"%s/ramchains/%s.%s",MGWROOT,ram->name,str);
-        if ( (len= copy_file(fname,destfname)) > 0 )
-            printf("copied (%s) -> (%s) %s\n",fname,destfname,_mbstr(len));
-        return(0);
-    } else hash->newfp = fopen(os_compatible_path(fname),"wb");
-    return(1);
-}
-
 void ram_init_directories(struct ramchain_info *ram)
 {
     char dirA[1024],dirB[1024],dirC[1024];
@@ -663,6 +563,9 @@ void ram_init_directories(struct ramchain_info *ram)
             ram_setdirC(1,dirC,ram,blocknum);
     }
 }
+
+FILE *ram_permopen(char *fname,char *coinstr);
+int32_t ram_init_hashtable(int32_t deletefile,uint32_t *blocknump,struct ramchain_info *ram,char type);
 
 void ram_regen(struct ramchain_info *ram)
 {
@@ -703,7 +606,7 @@ void ram_regen(struct ramchain_info *ram)
 
 void ram_init_tmpspace(struct ramchain_info *ram,long size)
 {
-    ram->Tmp.ptr = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,size,8) : calloc(1,size);
+    ram->Tmp.ptr = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,size,8) : calloc(1,size);
     // mem->ptr = malloc(size);
     ram->Tmp.size = size;
     clear_alloc_space(&ram->Tmp);
@@ -720,12 +623,12 @@ void ram_allocs(struct ramchain_info *ram)
     ram->verified = permalloc(ram->name,&ram->Perm,sizeof(*ram->verified) * (ram->maxblock / 4096),8);
     ram->blocks.hps = permalloc(ram->name,&ram->Perm,ram->maxblock*sizeof(*ram->blocks.hps),8);
     ram_init_tmpspace(ram,tmpsize);
-    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
-    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp2 = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
-    ptr = (MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp3 = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
-    ram->R = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R),8) : calloc(1,sizeof(*ram->R));
-    ram->R2 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R2),8) : calloc(1,sizeof(*ram->R2));
-    ram->R3 = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R3),8) : calloc(1,sizeof(*ram->R3));
+    ptr = (SUPERNET.MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ptr = (SUPERNET.MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp2 = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ptr = (SUPERNET.MAP_HUFF != 0 ) ? permalloc(ram->name,&ram->Perm,tmpsize,8) : calloc(1,tmpsize), ram->tmphp3 = hopen(ram->name,&ram->Perm,ptr,tmpsize,0);
+    ram->R = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R),8) : calloc(1,sizeof(*ram->R));
+    ram->R2 = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R2),8) : calloc(1,sizeof(*ram->R2));
+    ram->R3 = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,sizeof(*ram->R3),8) : calloc(1,sizeof(*ram->R3));
 }
 
 uint32_t ram_loadblocks(struct ramchain_info *ram,double startmilli)
@@ -787,7 +690,7 @@ void ram_convertall(struct ramchain_info *ram)
     {
         if ( (hp= ram->blocks.hps[blocknum]) != 0 )
         {
-            buf = (MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,hp->allocsize*2,9) : calloc(1,hp->allocsize*2);
+            buf = (SUPERNET.MAP_HUFF != 0) ? permalloc(ram->name,&ram->Perm,hp->allocsize*2,9) : calloc(1,hp->allocsize*2);
             permhp = hopen(ram->name,&ram->Perm,buf,hp->allocsize*2,0);
             ram->blocks.hps[blocknum] = ram_conv_permind(permhp,ram,hp,blocknum);
             permhp->allocsize = hconv_bitlen(permhp->endpos);
@@ -796,7 +699,7 @@ void ram_convertall(struct ramchain_info *ram)
         }
         else { printf("unexpected gap at %d\n",blocknum); exit(-1); }
     }
-    sprintf(fname,"%s/ramchains/%s.perm",MGWROOT,ram->name);
+    sprintf(fname,"%s/ramchains/%s.perm",SUPERNET.MGWROOT,ram->name);
     ram_save_bitstreams(&refsha,fname,ram->blocks.hps,ram->blocks.contiguous);
     ram_map_bitstreams(1,ram,0,ram->blocks.M,&sha,ram->blocks.hps,ram->blocks.contiguous,fname,&refsha);
     printf("converted to permind, please copy over files with .perm files and restart\n");
@@ -850,14 +753,14 @@ void ram_init_ramchain(struct ramchain_info *ram)
     double startmilli;
     char fname[1024];
     startmilli = milliseconds();
-    strcpy(ram->dirpath,MGWROOT);
+    strcpy(ram->dirpath,SUPERNET.MGWROOT);
     ram->S.RTblocknum = _get_RTheight(&ram->lastgetinfo,ram->name,ram->serverport,ram->userpass,ram->S.RTblocknum);
     ram->blocks.blocknum = (ram->S.RTblocknum - ram->min_confirms);
     ram->blocks.numblocks = ram->maxblock = (ram->S.RTblocknum + 10000);
     ram_allocs(ram);
     printf("[%s] ramchain.%s RT.%d %.1f seconds to init_ramchain_directories: next.(%d %d %d %d)\n",ram->dirpath,ram->name,ram->S.RTblocknum,(milliseconds() - startmilli)/1000.,ram->S.permblocks,ram->next_txid_permind,ram->next_script_permind,ram->next_addr_permind);
     memset(blocknums,0,sizeof(blocknums));
-    sprintf(ram->permfname,"%s/ramchains/%s.perm",MGWROOT,ram->name);
+    sprintf(ram->permfname,"%s/ramchains/%s.perm",SUPERNET.MGWROOT,ram->name);
     nofile = (ram->permfp = ram_permopen(ram->permfname,ram->name)) == 0;
     nofile += ram_init_hashtable(0,&blocknums[0],ram,'a');
     nofile += ram_init_hashtable(0,&blocknums[1],ram,'s');
@@ -876,7 +779,7 @@ void ram_init_ramchain(struct ramchain_info *ram)
         if ( nofile >= 3 )
             ram_regen(ram);
     }
-    sprintf(fname,"%s/ramchains/%s.blocks",MGWROOT,ram->name);
+    sprintf(fname,"%s/ramchains/%s.blocks",SUPERNET.MGWROOT,ram->name);
     ram_map_bitstreams(0,ram,0,ram->blocks.M,&sha,ram->blocks.hps,0,fname,0);
     numblocks = ram_loadblocks(ram,startmilli);
     errs = ram_scanblocks(ram);
@@ -891,6 +794,8 @@ void ram_init_ramchain(struct ramchain_info *ram)
     } else printf("no need to save numblocks.%d errs.%d contiguous.%d\n",numblocks,errs,ram->blocks.contiguous);
     ram_disp_status(ram);
 }
+#endif
+
 
 
 

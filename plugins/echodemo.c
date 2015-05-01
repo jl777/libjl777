@@ -17,12 +17,14 @@
 #include "plugin777.c"
 #undef DEFINES_ONLY
 
+void echo_idle(struct plugin_info *plugin) {}
+
 STRUCTNAME
 {
     int32_t pad;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 };
-char *PLUGNAME(_methods)[] = { "echo", "echo2" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "echo" }; // list of supported methods
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -34,7 +36,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char onetimestr[64],resultstr[MAX_JSON_FIELD],*str;
+    char onetimestr[64],*resultstr,*str,*methodstr;
     retbuf[0] = 0;
     //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
@@ -46,9 +48,19 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     {
         if ( plugin_result(retbuf,json,tag) > 0 )
             return((int32_t)strlen(retbuf));
-        copy_cJSON(resultstr,cJSON_GetObjectItem(json,"result"));
-        if ( strcmp(resultstr,"registered") == 0 )
+        resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
+        methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
+        if ( methodstr == 0 || methodstr[0] == 0 )
+        {
+            printf("(%s) has not method\n",jsonstr);
+            return(0);
+        }
+        printf("ECHO.(%s)\n",methodstr);
+        if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
+        {
             plugin->registered = 1;
+            strcpy(retbuf,"{\"result\":\"activated\"}");
+        }
         else
         {
             str = stringifyM(jsonstr);

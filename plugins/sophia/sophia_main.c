@@ -19,18 +19,16 @@
 #include "db777.c"
 #undef DEFINES_ONLY
 
+struct db777 *DB_msigs,*DB_NXTaccts;//,*DB_NXTassettx,*DB_nodestats;
 
-STRUCTNAME
-{
-    int32_t numdbs;
-    struct db777 **DBS;
-} SOPHIA;
+STRUCTNAME SOPHIA;
 char *PLUGNAME(_methods)[] = { "create", "close", "add", "find",
 #ifdef BUNDLED
     "get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
 #endif
 };
 
+void sophia_idle(struct plugin_info *plugin) {} 
 
 // env = sp_env(void);
 // ctl = sp_ctl(env): get an environment control object.
@@ -298,12 +296,15 @@ int32_t db777_getind(struct db777 *DB)
     return(-1);
 }
 
-struct db777 *db777_getDB(char *dbname)
+struct db777 *db777_getDB(char *name)
 {
     int32_t i;
     for (i=0; i<SOPHIA.numdbs; i++)
-        if ( strcmp(SOPHIA.DBS[i]->dbname,dbname) == 0 )
+    {
+        printf("(%s) ",SOPHIA.DBS[i]->name);
+        if ( strcmp(SOPHIA.DBS[i]->name,name) == 0 )
             return(SOPHIA.DBS[i]);
+    }
     return(0);
 }
 
@@ -365,32 +366,43 @@ int32_t db777_close(struct db777 *DB)
     return(-errs);
 }
 
-struct db777 *db777_create(char *name,char *compression)
+struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compression)
 {
     struct db777 *DB = calloc(1,sizeof(*DB));
     char path[1024],dbname[1024],*str;
     int32_t err;
     cJSON *json;
-    if ( strlen(name) >= sizeof(DB->dbname)-1 )
-        name[sizeof(DB->dbname)-1] = 0;
+    strcpy(dbname,name);
+    if ( strlen(dbname) >= sizeof(DB->name)-1 )
+        dbname[sizeof(DB->name)-1] = 0;
+    strcpy(DB->name,dbname);
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
-    ensure_directory(SUPERNET.SOPHIA_DIR);
-    if ( SUPERNET.SOPHIA_DIR[0] == '.' && SUPERNET.SOPHIA_DIR[1] == '/' )
-        strcpy(path,SUPERNET.SOPHIA_DIR+2);
-    else strcpy(path,SUPERNET.SOPHIA_DIR);
-    strcat(path,"/"), strcat(path,name), os_compatible_path(path), ensure_directory(path);
-    if ( compression != 0 )
+    if ( SOPHIA.PATH[0] == '.' && SOPHIA.PATH[1] == '/' )
+        strcpy(path,SOPHIA.PATH+2);
+    else strcpy(path,SOPHIA.PATH);
+    ensure_directory(path);
+    if ( specialpath != 0 )
     {
-        sprintf(dbname,"%s.compression",name);
-        if ( strcmp(compression,"lz4") == 0 )
-            sp_set(DB->ctl,dbname,"lz4");
-        else if ( strcmp(compression,"zstd") == 0 )
-            sp_set(DB->ctl,dbname,"zstd");
-        else printf("compression.(%s) not supported\n",compression), compression = "";
-    } else compression = "";
-    strcpy(dbname,name);
-    printf("create path.(%s).(%s) -> [%s %s].%s\n",name,compression,path,dbname,compression);
+        printf("path.(%s) special.(%s) subdir.(%s) name.(%s)\n",path,specialpath,subdir,name);
+        sprintf(path + strlen(path),"/%s",specialpath), ensure_directory(path);
+        if ( subdir != 0 && subdir[0] != 0 )
+            sprintf(path + strlen(path),"/%s",subdir), ensure_directory(path);
+        /*if ( strcmp(specialpath,"RAMCHAINS") == 0 )
+        {
+            strcat(path,"/"), strcat(path,subdir);
+            ensure_directory(path);
+            printf("path.(%s)\n",path);
+        }
+        else if ( strcmp(specialpath,"MGW") == 0 )
+            strcat(path,"/"), strcmp(path,MGW.PATH);
+        else if ( strcmp(specialpath,"DATADIR") == 0 )
+            strcat(path,"/"), strcmp(path,SUPERNET.DATADIR);*/
+    }
+    strcat(path,"/"), strcat(path,name), os_compatible_path(path), ensure_directory(path);
+    strcpy(DB->backupdir,path), strcat(DB->backupdir,"/backups");
+    strcpy(dbname,compression != 0 && compression[0] != 0 ? compression : name);
+    printf("SOPHIA.(%s) MGW.(%s) create path.(%s).(%s) -> [%s %s].%s\n",SOPHIA.PATH,MGW.PATH,name,compression,path,dbname,compression);
     if ( (err= sp_set(DB->ctl,"sophia.path",path)) != 0 )
     {
         printf("err.%d setting path\n",err);
@@ -401,12 +413,29 @@ struct db777 *db777_create(char *name,char *compression)
         printf("err.%d setting scheduler.threads\n",err);
         return(db777_abort(DB));
     }
-    sprintf(DB->dbname,"db.%s",name);
-    if ( (err= sp_set(DB->ctl,"db",name)) != 0 )
+    sprintf(DB->dbname,"db.%s",dbname);
+    if ( (err= sp_set(DB->ctl,"db",dbname)) != 0 )
     {
         printf("err.%d setting name\n",err);
         return(db777_abort(DB));
     }
+    if ( (err= sp_set(DB->ctl,"backup.path",DB->backupdir)) != 0 )
+        printf("error.%d setting backup.path (%s)\n",err,DB->backupdir);
+    if ( compression != 0 )
+    {
+        sprintf(dbname,"db.%s.compression",name);
+        if ( strcmp(compression,"lz4") == 0 )
+        {
+            if ( sp_set(DB->ctl,"db.lz4.compression","lz4") != 0 )
+                printf("error setting lz4.(%s)\n",dbname);
+        }
+        else if ( strcmp(compression,"zstd") == 0 )
+        {
+            if ( sp_set(DB->ctl,"db.zstd.compression","zstd") != 0 )
+                printf("error setting zstd.(%s)\n",dbname);
+        }
+        else printf("compression.(%s) not supported\n",compression), compression = "";
+    } else compression = "";
     if ( (err= sp_open(DB->env)) != 0 )
     {
         printf("err.%d setting sp_open\n",err);
@@ -433,14 +462,15 @@ struct db777 *db777_create(char *name,char *compression)
         free(str);
         free_json(json);
     }
-    SOPHIA.DBS = realloc(SOPHIA.DBS,(SOPHIA.numdbs+1) * sizeof(*DB));
-    SOPHIA.DBS[SOPHIA.numdbs] = DB, SOPHIA.numdbs++;
+    //SOPHIA.DBS = realloc(SOPHIA.DBS,(SOPHIA.numdbs+1) * sizeof(*DB));
+    if ( SOPHIA.numdbs < sizeof(SOPHIA.DBS)/sizeof(*SOPHIA.DBS) )
+        SOPHIA.DBS[SOPHIA.numdbs] = DB, SOPHIA.numdbs++;
     return(DB);
 }
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char *method,*dbname,*key,*value,*compression;
+    char *method,*name,*key,*value,*compression,*resultstr,*path,*subdir;
     struct db777 *DB;
     int32_t len,offset;
     retbuf[0] = 0;
@@ -452,23 +482,35 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     }
     else
     {
+        name = cJSON_str(cJSON_GetObjectItem(json,"name"));
         if ( plugin_result(retbuf,json,tag) > 0 )
             return((int32_t)strlen(retbuf));
-        if ( (method= cJSON_str(cJSON_GetObjectItem(json,"method"))) == 0 || (dbname= cJSON_str(cJSON_GetObjectItem(json,"dbname"))) == 0 || dbname[0] == 0 )
+        resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
+        method = cJSON_str(cJSON_GetObjectItem(json,"method"));
+        path = cJSON_str(cJSON_GetObjectItem(json,"path"));
+        subdir = cJSON_str(cJSON_GetObjectItem(json,"subdir"));
+        if ( method == 0 || name == 0 || name[0] == 0 )
         {
             printf("(%s) has not method or dbname\n",jsonstr);
             return(0);
         }
-        if ( strcmp(method,"create") == 0 )
+        printf("SOPHIA.(%s) for (%s)\n",method,name);
+        if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
-            if ( strstr("../",dbname) != 0 || strstr("..\\",dbname) != 0 || dbname[0] == '/' || dbname[0] == '\\' || strcmp(dbname,"..") == 0  || strcmp(dbname,"*") == 0 )
+            plugin->registered = 1;
+            strcpy(retbuf,"{\"result\":\"activated\"}");
+        }
+        else if ( strcmp(method,"create") == 0 )
+        {
+            if ( strstr("../",name) != 0 || strstr("..\\",name) != 0 || name[0] == '/' || name[0] == '\\' || strcmp(name,"..") == 0  || strcmp(name,"*") == 0 )
                 strcpy(retbuf,"{\"error\":\"no funny filenames\"}");
+            else if ( path != 0 && (strcmp(path,"RAMCHAINS") != 0 || strcmp(path,"MGW") != 0 || strcmp(path,"DATADIR") != 0) )
+                strcpy(retbuf,"{\"error\":\"only RAMCHAINS/MGW/DATADIR path allowed\"}");
             else
             {
                 compression = cJSON_str(cJSON_GetObjectItem(json,"compression"));
-                if ( (DB= db777_create(dbname,compression)) != 0 )
+                if ( (DB= db777_create(path,subdir,name,compression)) != 0 )
                 {
-                    strcpy(DB->dbname,dbname);
                     strcpy(retbuf,"{\"result\":\"opened database\"}");
                 }
                 else strcpy(retbuf,"{\"error\":\"couldnt create database\"}");
@@ -478,14 +520,14 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             key = cJSON_str(cJSON_GetObjectItem(json,"key"));
             value = cJSON_str(cJSON_GetObjectItem(json,"value"));
-            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(dbname)) != 0 )
+            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(name)) != 0 )
                 sophia_retintstr(retbuf,"add",db777_addstr(DB,key,value));
             else strcpy(retbuf,"{\"error\":\"couldnt find database\"}");
         }
         else if ( strcmp(method,"find") == 0 )
         {
             key = cJSON_str(cJSON_GetObjectItem(json,"key"));
-            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(dbname)) != 0 )
+            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(name)) != 0 )
             {
                 strcpy(retbuf,"{\"method\":\"find\",\"result\":\"");
                 offset = (int32_t)strlen(retbuf);
@@ -496,8 +538,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         }
         else if ( strcmp(method,"close") == 0 )
         {
-            if ( (DB= db777_getDB(dbname)) != 0 )
+            if ( (DB= db777_getDB(name)) != 0 )
                 sophia_retintstr(retbuf,"close",db777_close(DB));
+            else strcpy(retbuf,"{\"error\":\"couldnt find dbname\"}");
         }
 #ifdef BUNDLED
         else if ( strcmp(method,"object") == 0 )
@@ -550,6 +593,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 {
     uint64_t disableflags = 0;
     // runtime specific state can be created and put into *data
+    ensure_directory(SOPHIA.PATH);
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 

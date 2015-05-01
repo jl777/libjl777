@@ -39,11 +39,11 @@ struct plugin_info
     char bindaddr[64],connectaddr[64],ipaddr[64],name[64];
     uint64_t daemonid,myid;
     union endpoints all;
-    uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered;
+    uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis;
     uint16_t port;
     uint8_t pluginspace[];
 };
-static int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
+int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 
 #endif
 #else
@@ -55,20 +55,6 @@ static int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 #include "plugin777.c"
 #undef DEFINES_ONLY
 #endif
-
-
-static int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag)
-{
-    char *error,*result;
-    error = cJSON_str(cJSON_GetObjectItem(json,"error"));
-    result = cJSON_str(cJSON_GetObjectItem(json,"result"));
-    if ( error != 0 || result != 0 )
-    {
-        sprintf(retbuf,"{\"result\":\"completed\",\"tag\":\"%llu\"}",(long long)tag);
-        return(1);
-    }
-    return(0);
-}
 
 static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,char *bindaddr,char *connectaddr,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
@@ -160,6 +146,9 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     }
     cJSON_AddItemToObject(json,"pluginrequest",cJSON_CreateString("SuperNET"));
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("register"));
+    if ( plugin->sleepmillis == 0 )
+        plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
+    cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
     sprintf(numstr,"%llu",(long long)plugin->myid), cJSON_AddItemToObject(json,"myid",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(json,"methods",array);
     jsonstr = cJSON_Print(json), free_json(json);
@@ -230,6 +219,7 @@ int32_t main
 {
     char *retbuf,registerbuf[MAX_JSON_FIELD];
     struct plugin_info *plugin;
+    double startmilli;
     cJSON *argjson;
     int32_t i,n,bundledflag,max,sendflag,sleeptime=1,len = 0;
     char *messages[16],*line,*jsonargs,*transportstr;
@@ -319,12 +309,15 @@ int32_t main
         }
         if ( n == 0 )
         {
-            sleeptime++;
-            if ( sleeptime > 10 )
-                sleeptime = 10;
-            msleep(sleeptime);
-        } else sleeptime = 1;
-        msleep(10);
+            if ( plugin->sleepmillis != 0 )
+            {
+                startmilli = milliseconds();
+                PLUGNAME(_idle)(plugin);
+                sleeptime = plugin->sleepmillis - (milliseconds() - startmilli);
+                if ( sleeptime > 0 )
+                    msleep(sleeptime);
+            }
+        }
     } fprintf(stderr,"ppid.%d changed to %d\n",plugin->ppid,OS_getppid());
     PLUGNAME(_shutdown)(plugin,len); // rc == 0 -> parent process died
     shutdown_plugsocks(&plugin->all);

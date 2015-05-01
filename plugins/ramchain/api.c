@@ -16,9 +16,9 @@
 #include <stdlib.h>
 #include "cJSON.h"
 #include "huff.c"
+#include "NXT777.c"
 #include "blocks.c"
 #include "../coins/msig.c"
-#include "ramchain.c"
 
 char *ramstatus(char *origargstr,char *sender,char *previpaddr,char *coin);
 char *rampyramid(char *NXTaddr,char *origargstr,char *sender,char *previpaddr,char *coin,uint32_t blocknum,char *typestr);
@@ -96,22 +96,6 @@ static int _decreasing_double_cmp(const void *a,const void *b)
  #undef uint64_b
  }*/
 
-char **ram_getallstrs(int32_t *numstrsp,struct ramchain_info *ram)
-{
-    char **strs = 0;
-    uint64_t varint;
-    int32_t i = 0;
-    struct ramchain_hashtable *hash;
-    struct ramchain_hashptr *hp,*tmp;
-    hash = ram_gethash(ram,'a');
-    *numstrsp = HASH_COUNT(hash->table);
-    strs = calloc(*numstrsp,sizeof(*strs));
-    HASH_ITER(hh,hash->table,hp,tmp)
-    strs[i++] = (char *)((long)hp->hh.key + hdecode_varint(&varint,hp->hh.key,0,9));
-    if ( i != *numstrsp )
-        printf("ram_getalladdrs HASH_COUNT.%d vs i.%d\n",*numstrsp,i);
-    return(strs);
-}
 
 struct ramchain_hashptr **ram_getallstrptrs(int32_t *numstrsp,struct ramchain_info *ram,char type)
 {
@@ -313,7 +297,7 @@ cJSON *ram_txpayload_json(struct ramchain_info *ram,struct rampayload *txpayload
 
 cJSON *ram_coinaddr_json(struct ramchain_info *ram,char *coinaddr,int32_t unspentflag,int32_t truncateflag,int32_t searchperms)
 {
-    char permstr[MAX_JSON_FIELD];
+    char *permstr;
     int64_t total = 0;
     cJSON *json = 0,*array = 0;
     int32_t i,n,numpayloads;
@@ -351,8 +335,8 @@ cJSON *ram_coinaddr_json(struct ramchain_info *ram,char *coinaddr,int32_t unspen
     cJSON_AddItemToObject(json,"permind",cJSON_CreateNumber(addrptr->permind));
     if ( searchperms != 0 )
     {
-        ram_searchpermind(permstr,ram,'a',addrptr->rawind);
-        cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
+        if ( (permstr= ram_searchpermind(ram_gethash(ram,'a'),addrptr->rawind)) != 0 )
+            cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
     }
     cJSON_AddItemToObject(json,ram->name,cJSON_CreateString(coinaddr));
     cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(ram->srvNXTADDR));
@@ -388,7 +372,7 @@ char *ram_addrind_json(struct ramchain_info *ram,char *coinaddr,int32_t truncate
 
 cJSON *ram_txidstr_json(struct ramchain_info *ram,char *txidstr,int32_t truncateflag,int32_t searchperms)
 {
-    char permstr[MAX_JSON_FIELD];
+    char *permstr;
     int64_t unspent = 0,total = 0;
     cJSON *json = 0,*array = 0;
     int32_t i,n,numpayloads;
@@ -420,8 +404,8 @@ cJSON *ram_txidstr_json(struct ramchain_info *ram,char *txidstr,int32_t truncate
     cJSON_AddItemToObject(json,"txid",cJSON_CreateString(txidstr));
     if ( searchperms != 0 )
     {
-        ram_searchpermind(permstr,ram,'t',txptr->rawind);
-        cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
+        if ( (permstr= ram_searchpermind(ram_gethash(ram,'t'),txptr->rawind)) != 0 )
+            cJSON_AddItemToObject(json,"permstr",cJSON_CreateString(permstr));
     }
     cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(ram->srvNXTADDR));
     return(json);
@@ -453,10 +437,11 @@ char *ram_txidind_json(struct ramchain_info *ram,char *txidstr,int32_t truncatef
 
 char *ram_script_json(struct ramchain_info *ram,uint32_t rawind,int32_t truncateflag)
 {
-    char hashstr[8193],permstr[8193],retbuf[1024];
-    ram_searchpermind(permstr,ram,'s',rawind);
+    char hashstr[8193],retbuf[1024],*permstr;
     if ( ram_script(hashstr,ram,rawind) != 0 )
     {
+      if ( (permstr= ram_searchpermind(ram_gethash(ram,'s'),rawind)) == 0 )
+          permstr = "0";
         sprintf(retbuf,"{\"NXT\":\"%s\",\"result\":\"%u\",\"script\":\"%s\",\"rawind\":\"%u\",\"permstr\":\"%s\"}",ram->srvNXTADDR,rawind,hashstr,rawind,permstr);
         return(clonestr(retbuf));
     }
@@ -1112,7 +1097,7 @@ void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblock
     int32_t ram_perm_sha256(bits256 *hashp,struct ramchain_info *ram,uint32_t blocknum,int32_t n);
     char destip[64],jsonstr[MAX_JSON_FIELD],shastr[128],hashstr[65];
     int32_t i;
-    cJSON *array;
+    //cJSON *array;
     bits256 hash;
     if ( addshaflag != 0 && ram_perm_sha256(&hash,ram,blocknum,numblocks) == numblocks )
     {
@@ -1129,13 +1114,14 @@ void ram_syncblocks(struct ramchain_info *ram,uint32_t blocknum,int32_t numblock
     }
     else
     {
-        array = cJSON_GetObjectItem(MGWconf,"whitelist");
-        if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        //array = cJSON_GetObjectItem(MGWconf,"whitelist");
+        //if ( array != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
         {
             //printf("RAMSYNC.(%s)\n",jsonstr);
-            for (i=0; i<n; i++)
+            for (i=0; i<SUPERNET.numgateways; i++)
             {
-                copy_cJSON(destip,cJSON_GetArrayItem(array,i));
+                //copy_cJSON(destip,cJSON_GetArrayItem(array,i));
+                expand_ipbits(destip,SUPERNET.srv64bits[i]);
                 ram_request(0,destip,ram,jsonstr);
             }
         }
