@@ -505,6 +505,8 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
         }
         return(retstr);
     }
+    else if ( is_bundled_plugin(plugin) != 0 )
+        language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
     return(clonestr("{\"error\":\"cant find plugin\"}"));
 }
 
