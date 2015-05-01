@@ -14,7 +14,7 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
-#include "plugin777.c"
+#include "../plugin777.c"
 #include "storage.c"
 #include "coins777.c"
 #undef DEFINES_ONLY
