@@ -130,4 +130,4 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     }
     return(retcode);
 }
-#include "plugin777.c"
+#include "../plugin777.c"
