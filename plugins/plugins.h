@@ -462,7 +462,16 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
     uint64_t tag;
     int32_t i,ind,async = (timeout == 0);
     fprintf(stderr,"PLUGINMETHOD.(%s) for (%s)\n",method,plugin);
-    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
+    if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) == 0 )
+    {
+        if ( is_bundled_plugin(plugin) != 0 )
+        {
+            language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
+            return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));
+        }
+        return(clonestr("{\"error\":\"cant find plugin\"}"));
+    }
+    else
     {
         if ( dp->readyflag == 0 )
             return(clonestr("{\"error\":\"plugin not ready\"}"));
@@ -505,9 +514,6 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
         }
         return(retstr);
     }
-    else if ( is_bundled_plugin(plugin) != 0 )
-        language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
-    return(clonestr("{\"error\":\"cant find plugin\"}"));
 }
 
 #endif
