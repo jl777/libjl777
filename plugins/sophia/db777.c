@@ -91,6 +91,7 @@ int32_t db777_add(int32_t forceflag,struct db777 *DB,void *key,int32_t keylen,vo
         sp_destroy(obj);
         return(-1);
     }
+    //printf("DB.%p add.[%p %d] val.%p %d [crcs %d %d]\n",DB,key,keylen,value,len,_crc32(0,key,keylen),_crc32(0,value,len));
     return(sp_set(DB->db,obj));
 }
 
@@ -121,6 +122,7 @@ void *db777_findM(int32_t *lenp,struct db777 *DB,void *key,int32_t keylen)
     int32_t valuesize = -1;
     if ( (obj= db777_find(DB,key,keylen)) != 0 )
     {
+       // printf("found keylen.%d\n",keylen);
         if ( (val= sp_get(obj,"value",&valuesize)) != 0 )
         {
             ptr = calloc(1,valuesize);

@@ -464,12 +464,12 @@ char *plugin_method(char *previpaddr,char *plugin,char *method,uint64_t daemonid
     fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d\n",method,plugin,is_bundled_plugin(plugin));
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) == 0 )
     {
-       // if ( is_bundled_plugin(plugin) != 0 )
+        if ( is_bundled_plugin(plugin) != 0 )
         {
             language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
             return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));
         }
-      //  return(clonestr("{\"error\":\"cant find plugin\"}"));
+        return(clonestr("{\"error\":\"cant find plugin\"}"));
     }
     else
     {

@@ -267,9 +267,14 @@ int32_t coinaddr_update(struct ramchain_hashtable *addrs,struct unspent_output *
 
 int32_t unspent_add(struct ramchain_hashtable *addrs,struct ramchain_hashtable *unspents,struct unspent_output *U)
 {
-    int32_t err,err2;
+    int32_t err,err2; void *ptr; int32_t len;
     if ( U->B.rawind > unspents->maxind )
         unspents->maxind = U->B.rawind;
+    if ( (ptr= db777_findM(&len,unspents->DB,&U->B.rawind,sizeof(U->B.rawind))) != 0 )
+    {
+        free(ptr);
+        return(0);
+    }
     err = db777_add(0,unspents->DB,&U->B.rawind,sizeof(U->B.rawind),U,sizeof(*U));
     err2 = db777_add(0,unspents->DB,&U->B,sizeof(U->B),&U->B.rawind,sizeof(U->B.rawind));
     coinaddr_update(addrs,U);
@@ -283,7 +288,12 @@ int32_t unspent_add(struct ramchain_hashtable *addrs,struct ramchain_hashtable *
 
 int32_t txid_add(struct ramchain_hashtable *txids,struct txid_output *txid,int32_t allocsize,uint8_t *key,int32_t keylen)
 {
-    int32_t err,err2,err3;
+    int32_t err,err2,err3; void *ptr; int32_t len;
+    if ( (ptr= db777_findM(&len,txids->DB,key,keylen)) != 0 )
+    {
+        free(ptr);
+        return(0);
+    }
     if ( txid->B.rawind > txids->maxind )
         txids->maxind = txid->B.rawind;
     err = db777_add(0,txids->DB,key,keylen,&txid->B,sizeof(txid->B));
@@ -302,10 +312,15 @@ int32_t txid_add(struct ramchain_hashtable *txids,struct txid_output *txid,int32
 
 int32_t ramchain_setitem(struct ramchain_hashtable *hash,void *key,int32_t keylen,struct address_entry *B) // 'a' and 's'
 {
-    int32_t err,err2,err3; uint32_t rawind = B->rawind;
+    int32_t err,err2,err3; void *ptr; int32_t len; uint32_t rawind = B->rawind;
+    if ( (ptr= db777_findM(&len,hash->DB,key,keylen)) != 0 )
+    {
+        free(ptr);
+        return(0);
+    }
     if ( rawind > hash->maxind )
         hash->maxind = rawind;
-    err = db777_add(0,hash->DB,&rawind,sizeof(rawind),key,keylen);
+    err = db777_add(0,hash->DB,key,keylen,B,sizeof(*B));
     if ( hash->needreverse > 0 )
     {
         err2 = db777_add(0,hash->DB,&rawind,sizeof(rawind),key,keylen);
@@ -369,21 +384,21 @@ uint32_t ramchain_rawind(struct ramchain_hashtable *hash,char *hashstr,int32_t c
         printf("ramchain_rawind: unsupported type.(%c)\n",hash->type);
         return(0);
     }
+    if ( (bp= db777_findM(&len,hash->DB,key,keylen)) != 0 )
+    {
+        if ( 0 && hash->type == 'a' && keylen > 30 )
+            printf("DUPLICATE rawind.%d: (%s)\n",hash->ind,key);
+        rawind = bp->rawind;
+        free(bp);
+        return(rawind);
+    }
     if ( createflag != 0 )
     {
         B->rawind = incr_rawind(hash);
         if ( ramchain_setitem(hash,key,keylen,B) == 0 )
-            rawind = B->rawind;
+            return(B->rawind);
     }
-    else
-    {
-        if ( (bp= db777_findM(&len,hash->DB,key,keylen)) != 0 )
-        {
-            rawind = bp->rawind;
-            free(bp);
-        }
-    }
-    return(rawind);
+    return(0);
 }
 
 uint16_t block_crc16(struct block_output *block)
@@ -508,6 +523,7 @@ int32_t unspent_create(struct unspent_output *U,struct ramchain_hashtable *unspe
     memset(U,0,sizeof(*U));
     B->rawind = 0;
     U->txidind = txidind, U->vout = vout;
+    U->addrind = ramchain_rawind(addrs,coinaddr,1,B);
     U->addrind = ramchain_rawind(addrs,coinaddr,1,B);
     U->scriptind = ramchain_rawind(scripts,script,1,B);
     U->value = value;
@@ -671,6 +687,7 @@ int32_t ramchain_rawblock(struct ramchain *ram,struct rawblock *raw,uint32_t blo
         memset(&MEM,0,sizeof(MEM)); MEM.ptr = ram->huffbits; MEM.size = ram->huffallocsize;
         if ( (block= ramchain_emit(ram,&MEM,raw->txspace,raw->numtx,raw->vinspace,raw->voutspace,&B)) != 0 )
         {
+            db777_delete(ram->blocks.DB,&blocknum,(int32_t)sizeof(blocknum));
             if ( (err= db777_add(0,ram->blocks.DB,&blocknum,(int32_t)sizeof(blocknum),(void *)block,block->allocsize)) != 0 )
                 printf("err.%d adding blocknum.%u\n",err,blocknum);
             else
@@ -714,7 +731,7 @@ int32_t ramchain_processblock(struct coin777 *coin,uint32_t blocknum,uint32_t RT
     {
         len = ramchain_rawblock(ram,&ram->EMIT,blocknum,1), memset(ram->huffbits,0,ram->huffallocsize);
         ramchain_rawblock(ram,&ram->DECODE,blocknum,0);
-        printf("[lag %-5d]    RTblock.%-6u    blocknum.%-6u  len.%-5d   minutes %.2f\n",RTblocknum-blocknum,RTblocknum,blocknum,len,estimate_completion(ram->startmilli,blocknum-ram->startblocknum,RTblocknum-blocknum)/60000);
+        printf("%-4s [lag %-5d]    RTblock.%-6u    blocknum.%-6u  len.%-5d   minutes %.2f\n",coin->name,RTblocknum-blocknum,RTblocknum,blocknum,len,estimate_completion(ram->startmilli,blocknum-ram->startblocknum,RTblocknum-blocknum)/60000);
         rawblock_patch(&ram->EMIT), rawblock_patch(&ram->DECODE);
         ram->DECODE.minted = ram->EMIT.minted = 0;
         if ( (len= memcmp(&ram->EMIT,&ram->DECODE,sizeof(ram->EMIT))) != 0 )

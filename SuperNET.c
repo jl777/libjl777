@@ -673,9 +673,9 @@ void SuperNET_loop(void *ipaddr)
     printf(">>>>>>>>> call bundled\n");
     sleep(3);
     language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"/tmp/coins.conf\"}",call_system);
-    sleep(2);
+    sleep(3);
     language_func((char *)"coins","",0,0,1,(char *)"coins","{\"filename\":\"/tmp/coins.conf\"}",call_system);
-    sleep(1);
+    sleep(3);
     language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"/tmp/coins.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
     while ( 1 )

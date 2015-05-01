@@ -57,7 +57,7 @@ int32_t update_MGW_msig(struct multisig_addr *msig,char *sender);
 #define LTC_COINID 2
 #define DOGE_COINID 4
 #define BTCD_COINID 8
-
+ 
 void multisig_keystr(char *keystr,char *coinstr,char *NXTaddr,char *msigaddr)
 {
     if ( msigaddr == 0 || msigaddr[0] == 0 )
