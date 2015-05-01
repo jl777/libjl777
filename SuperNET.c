@@ -676,7 +676,6 @@ void SuperNET_loop(void *ipaddr)
     sleep(1);
     language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"/tmp/coins.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
-#endif
     while ( 1 )
     {
         poll_daemons();
@@ -708,6 +707,7 @@ void SuperNET_loop(void *ipaddr)
             nn_freemsg(msg);
         }
     }
+#endif
     printf("sock = %d\n",MGW.all.socks.both.bus);
     while ( 1 )
     {
