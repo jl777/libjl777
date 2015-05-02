@@ -77,6 +77,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
+            RAMCHAINS.readyflag = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
         else

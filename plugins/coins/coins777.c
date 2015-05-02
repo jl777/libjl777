@@ -69,7 +69,7 @@ struct cointx_info
 #define numtx_coders2 (&coders[30])
 #define TOTAL_CODERS (32)
 
-struct address_entry { uint32_t rawind,blocknum,txind:15,vinflag:1,v:14,spent:1,isinternal:1; };
+struct address_entry { uint32_t rawind:31,spent:1,blocknum,txind:15,vinflag:1,v:14,isinternal:1; };
 
 struct ramchain_hashtable
 {
@@ -107,8 +107,10 @@ struct unspent_output
     uint64_t value;
     uint32_t addrind,scriptind,txidind,spend_txidind;
     uint16_t vout,spend_vout;
-    uint8_t tbd3:8,tbd4:4,ismine:1,ismsig:1,spent:1,pending:1;
+    uint8_t tbd3:8,tbd4:5,ismine:1,ismsig:1,pending:1;
 };
+struct unspent_entry { uint32_t unspentind; uint64_t amount; };
+struct unspent_entries { UT_hash_handle hh; uint32_t addrind,max,count; struct unspent_entry *entries; };
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
 char *bitcoind_passthru(char *coinstr,char *serverport,char *userpass,char *method,char *params);
@@ -259,7 +261,7 @@ uint32_t ramchain_setblocknum(struct ramchain_hashtable *hash,uint32_t blocknum)
 
 struct coinaddr_output *update_coinaddr_output(int32_t *lenp,struct coinaddr_output *ptr,struct unspent_output *U)
 {
-    if ( U->spent != 0 )
+    if ( U->B.spent != 0 )
     {
         
     }
@@ -304,16 +306,16 @@ int32_t coinaddr_update(struct ramchain *ram,struct unspent_output *U)
 
 int32_t unspent_add(struct ramchain *ram,struct ramchain_hashtable *unspents,struct unspent_output *U)
 {
-    int32_t err,err2; void *ptr; int32_t len;
+    int32_t err,err2; void *ptr; int32_t len; uint32_t rawind = U->B.rawind;
     if ( U->B.rawind > unspents->maxind )
         unspents->maxind = U->B.rawind;
-    if ( (ptr= db777_findM(&len,unspents->DB,&U->B.rawind,sizeof(U->B.rawind))) != 0 )
+    if ( (ptr= db777_findM(&len,unspents->DB,&rawind,sizeof(rawind))) != 0 )
     {
         free(ptr);
         return(0);
     }
-    err = db777_add(0,unspents->DB,&U->B.rawind,sizeof(U->B.rawind),U,sizeof(*U));
-    err2 = db777_add(0,unspents->DB,&U->B,sizeof(U->B),&U->B.rawind,sizeof(U->B.rawind));
+    err = db777_add(0,unspents->DB,&rawind,sizeof(rawind),U,sizeof(*U));
+    err2 = db777_add(0,unspents->DB,&U->B,sizeof(U->B),&rawind,sizeof(rawind));
     coinaddr_update(ram,U);
     if ( err != 0 || err2 != 0 )
     {
@@ -325,19 +327,19 @@ int32_t unspent_add(struct ramchain *ram,struct ramchain_hashtable *unspents,str
 
 int32_t txid_add(struct ramchain_hashtable *txids,struct txid_output *txid,int32_t allocsize,uint8_t *key,int32_t keylen)
 {
-    int32_t err,err2,err3; void *ptr; int32_t len;
-    if ( (ptr= db777_findM(&len,txids->DB,&txid->B.rawind,sizeof(txid->B.rawind))) != 0 )
+    int32_t err,err2,err3; void *ptr; int32_t len; uint32_t rawind = txid->B.rawind;
+    if ( (ptr= db777_findM(&len,txids->DB,&rawind,sizeof(rawind))) != 0 )
     {
         free(ptr);
         return(0);
     }
-    if ( txid->B.rawind > txids->maxind )
-        txids->maxind = txid->B.rawind;
+    if ( rawind > txids->maxind )
+        txids->maxind = rawind;
     err = db777_add(0,txids->DB,key,keylen,&txid->B,sizeof(txid->B));
     if ( txids->needreverse > 0 )
     {
-        err2 = db777_add(0,txids->DB,&txid->B.rawind,sizeof(txid->B.rawind),txid,allocsize);
-        err3 = db777_add(0,txids->DB,&txid->B,sizeof(txid->B),&txid->B.rawind,sizeof(txid->B.rawind));
+        err2 = db777_add(0,txids->DB,&rawind,sizeof(rawind),txid,allocsize);
+        err3 = db777_add(0,txids->DB,&txid->B,sizeof(txid->B),&rawind,sizeof(rawind));
         if ( err != 0 || err2 != 0 || err3 != 0 )
         {
             printf("error saving txid.%d\n",txid->B.rawind);
@@ -553,7 +555,7 @@ int32_t unspent_decode_vo(struct ramchain *ram,struct rawvout *vo,struct unspent
 int32_t unspent_create(struct ramchain *ram,struct unspent_output *U,struct ramchain_hashtable *unspents,uint32_t unspentind,struct ramchain_hashtable *addrs,char *coinaddr,struct ramchain_hashtable *scripts,char *script,uint64_t value,uint32_t txidind,uint16_t vout,struct address_entry *B)
 {
     memset(U,0,sizeof(*U));
-    B->rawind = 0;
+    B->rawind = 0, B->spent = 0;
     U->txidind = txidind, U->vout = vout;
     U->addrind = ramchain_rawind(addrs,coinaddr,1,B);
     U->scriptind = ramchain_rawind(scripts,script,1,B);
@@ -561,7 +563,7 @@ int32_t unspent_create(struct ramchain *ram,struct unspent_output *U,struct ramc
     U->B = *B, U->B.rawind = unspentind;
     if ( unspentind > unspents->maxind )
         unspents->maxind = unspentind;
-    //printf("create unspentind.%u txidind.%-6u.v%d addrind.%-6u scriptind.%-6u %.8f\n",unspentind,txidind,vout,U->addrind,U->scriptind,dstr(value));
+    printf("create unspentind.%u txidind.%-6u.v%d addrind.%-6u scriptind.%-6u %.8f\n",unspentind,txidind,vout,U->addrind,U->scriptind,dstr(value));
     return(unspent_add(ram,unspents,U));
  }
 
@@ -571,6 +573,7 @@ int32_t unspent_find(struct unspent_output *U,struct ramchain_hashtable *unspent
     if ( (up= db777_findM(&len,unspents->DB,&unspentind,sizeof(unspentind))) != 0 )
     {
         *U = *up;
+        printf("found unspentind.%u addrind.%u txidind.%d %.8f | spendtxind.%u v.%d\n",up->B.rawind,up->addrind,up->txidind,dstr(up->value),up->spend_txidind,up->spend_vout);
         free(up);
         return(0);
     }
@@ -585,12 +588,17 @@ uint32_t unspent_spend(struct ramchain *ram,uint32_t txidind,uint16_t vout,uint3
         unspentind = txid->first_unspentind + vout;
         if ( unspent_find(&U,&ram->unspents,unspentind) == 0 )
         {
-            U.spend_txidind = spend_txidind, U.spend_vout = B->v, U.spent = 1;
+            U.spend_txidind = spend_txidind, U.spend_vout = B->v, U.B.spent = 1;
             if ( unspent_add(ram,&ram->unspents,&U) != 0 )
                 printf("warning: couldnt update unspent\n");
-        }
+            else
+            {
+                if ( unspent_find(&U,&ram->unspents,unspentind) == 0 )
+                    printf("after spend %u: spent.%d txidind.%u v%d %.8f -> addrind.%u | spend_txidind.%u v%d\n",U.B.rawind,U.B.spent,U.spend_txidind,U.spend_vout,dstr(U.value),U.addrind,spend_txidind,B->v);
+            }
+        } else printf("cant find unspendind.%d\n",unspentind);
         free(txid);
-    }
+    } else printf("cant find txidind.%d\n",txidind);
     return(unspentind);
 }
 
@@ -760,6 +768,7 @@ int32_t ramchain_processblock(struct coin777 *coin,uint32_t blocknum,uint32_t RT
     memset(&ram->EMIT,0,sizeof(ram->EMIT)), memset(&ram->DECODE,0,sizeof(ram->DECODE));
     if ( rawblock_load(&ram->EMIT,coin->name,coin->serverport,coin->userpass,blocknum) > 0 )
     {
+        ram->RTblocknum = _get_RTheight(&ram->lastgetinfo,coin->name,coin->serverport,coin->userpass,ram->RTblocknum);
         len = ramchain_rawblock(ram,&ram->EMIT,blocknum,1), memset(ram->huffbits,0,ram->huffallocsize);
         ramchain_rawblock(ram,&ram->DECODE,blocknum,0);
         printf("%-4s [lag %-5d]    RTblock.%-6u    blocknum.%-6u  len.%-5d   minutes %.2f\n",coin->name,RTblocknum-blocknum,RTblocknum,blocknum,len,estimate_completion(ram->startmilli,blocknum-ram->startblocknum,RTblocknum-blocknum)/60000);
@@ -829,15 +838,41 @@ uint32_t init_hashDBs(struct ramchain *ram,char *coinstr,struct ramchain_hashtab
     return(0);
 }
 
+void delete_unspent_entries(struct unspent_entries *unspents)
+{
+    struct unspent_entries *current,*tmp;
+    HASH_ITER(hh,unspents,current,tmp)
+    {
+        HASH_DEL(unspents,current);
+        if ( current->entries != 0 )
+            free(current->entries);
+        free(current);
+    }
+}
+
 uint32_t ensure_ramchain_DBs(struct ramchain *ram)
 {
-    uint32_t i,minblocknum;
+    uint32_t i,j,minblocknum,numaddrs;  struct unspent_entries *unspents,*ptr; uint64_t sum,total;
+    init_hashDBs(ram,ram->name,&ram->unspents,"unspents","lz4",RAMCHAIN_PTRSBUNDLE);
+    if ( (unspents= db777_extract_unspents(&numaddrs,ram->unspents.DB)) != 0 )
+    {
+        total = i = 0;
+        for (ptr=unspents; ptr!=NULL; ptr=ptr->hh.next,i++)
+        {
+            for (sum=j=0; j<ptr->count; j++)
+                sum += ptr->entries[j].amount;
+            total += sum;
+            if ( ptr->count > 10 )
+                printf("i.%d of %d: addrind.%u count.%d max.%d | %.8f total %.8f\n",i,numaddrs,ptr->addrind,ptr->count,ptr->max,dstr(sum),dstr(total));
+        }
+        delete_unspent_entries(unspents);
+        printf("numaddrs.%d total %.8f\n",numaddrs,dstr(total));
+    }
+
     init_hashDBs(ram,ram->name,&ram->blocks,"blocks","lz4",0);
     init_hashDBs(ram,ram->name,&ram->addrs,"rawaddrs","lz4",RAMCHAIN_PTRSBUNDLE);
     init_hashDBs(ram,ram->name,&ram->txids,"txids","lz4",RAMCHAIN_PTRSBUNDLE);
     init_hashDBs(ram,ram->name,&ram->scripts,"scripts","lz4",RAMCHAIN_PTRSBUNDLE);
-    init_hashDBs(ram,ram->name,&ram->unspents,"unspents","lz4",RAMCHAIN_PTRSBUNDLE);
-    //init_hashDBs(ram,ram->name,&ram->coinaddrs,"coinaddrs","lz4",RAMCHAIN_PTRSBUNDLE);
     minblocknum = 0xffffffff;
     for (i=0; i<ram->numDBs; i++)
     {
@@ -891,7 +926,7 @@ int32_t init_ramchain(struct coin777 *coin,char *coinstr)
     strcpy(ram->name,coinstr);
     ram->blocknum = ram->startblocknum = ensure_ramchain_DBs(ram);
     ram->huffallocsize = sizeof(struct rawblock)/10, ram->huffbits = calloc(1,ram->huffallocsize), ram->huffbits2 = calloc(1,ram->huffallocsize);
-    ram->RTblocknum = _get_RTheight(&ram->lastgetinfo,coinstr,coin->serverport,coin->userpass,ram->lastgetinfo);
+    ram->RTblocknum = _get_RTheight(&ram->lastgetinfo,coinstr,coin->serverport,coin->userpass,ram->RTblocknum);
     ramchain_syncDBs(ram);
     coin->ramchain.readyflag = 1;
     return(0);

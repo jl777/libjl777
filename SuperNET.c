@@ -674,12 +674,15 @@ void SuperNET_loop(void *ipaddr)
    // sleep(3);
     language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"SuperNET.conf\"}",call_system);
     printf(">>>>>>>> addcoin\n");
+    poll_daemons();
+    sleep(3);
+    poll_daemons();
 #ifdef __APPLE__
     char *str;
     int32_t n;
     cJSON *json;
     sleep(3);
-    while ( 1 )
+    while ( 0 )
     {
         poll_daemons();
         if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\",\"coin\":\"BTCD\"}",1,5000)) != 0 )
@@ -712,22 +715,8 @@ void SuperNET_loop(void *ipaddr)
     }
 #endif
     printf("sock = %d\n",MGW.all.socks.both.bus);
-    while ( 1 )
-    {
-        int n,timeoutmillis = 10;
-        char *messages[100];
-        poll_daemons();
-        if ( (n= poll_endpoints(messages,&MGW.numrecv,MGW.numsent,&MGW.all,timeoutmillis)) > 0 )
-        {
-            for (i=0; i<n; i++)
-            {
-                msg = SuperNET_JSON(messages[i]);
-                printf("%d of %d: (%s)\n",i,n,msg);
-                free(messages[i]);
-            }
-        }
-        msleep(10);
-    }
+    void serverloop(void *_args);
+    serverloop(0);
 }
 
 int SuperNET_start(char *fname,char *myip)
@@ -754,7 +743,10 @@ int main(int argc,const char *argv[])
     int32_t i;
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
-    ///test();
+    void serverloop(void *_args);
+    SUPERNET.port = 7777;
+    serverloop(0); getchar();
+ ///test();
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");
     else if ( (json= cJSON_Parse(jsonstr)) == 0 )

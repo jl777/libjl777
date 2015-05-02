@@ -28,6 +28,12 @@
 #include "utlist.h"
 #include "nn.h"
 #include "pubsub.h"
+#include "pipeline.h"
+#include "survey.h"
+#include "reqrep.h"
+#include "bus.h"
+#include "pair.h"
+#define nn_errstr() nn_strerror(nn_errno())
 
 extern int32_t Debuglevel;
 
@@ -59,16 +65,16 @@ union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; st
 #define DEFAULT_APISLEEP 50
 struct SuperNET_info
 {
-    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024];
+    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],**publications;
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512];
     uint64_t my64bits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,europeflag,numpubs,readyflag;
     uint16_t port;
 }; extern struct SuperNET_info SUPERNET;
 
 struct coins_info
 {
-    int32_t num;
+    int32_t num,readyflag;
     cJSON *argjson;
     struct coin777 **LIST;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
@@ -77,7 +83,7 @@ struct coins_info
 struct sophia_info
 {
     char PATH[1024];
-    int32_t numdbs;
+    int32_t numdbs,readyflag;
     struct db777 *DBS[1024];
 }; extern struct sophia_info SOPHIA;
 
@@ -86,7 +92,7 @@ struct MGW_info
 {
     char PATH[1024],serverips[MAX_MGWSERVERS][64],bridgeipaddr[64],bridgeacct[64];
     uint64_t srv64bits[MAX_MGWSERVERS],issuers[64];
-    int32_t M,N,numgateways,gatewayid,numissuers;
+    int32_t M,N,numgateways,gatewayid,numissuers,readyflag;
     union endpoints all;
     uint32_t numrecv,numsent;
 }; extern struct MGW_info MGW;
@@ -97,7 +103,7 @@ struct ramchain_info
     char PATH[1024],coins[MAX_RAMCHAINS][16];
     double lastupdate[MAX_RAMCHAINS];
     union endpoints all;
-    int32_t num;
+    int32_t num,readyflag;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct ramchain_info RAMCHAINS;
 
@@ -461,6 +467,418 @@ int32_t getline777(char *line,int32_t max)
     return((int32_t)strlen(line));
 }
 
+#define MAX_SERVERNAME 128
+int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH };
+
+int32_t nn_oppotype(int32_t type)
+{
+    switch ( type )
+    {
+            // Messages that need a response from the set of peers: SURVEY
+        case NN_SURVEYOR: return(NN_RESPONDENT); break;
+        case NN_RESPONDENT: return(NN_SURVEYOR); break;
+            // Messages that need a response, but only from one peer: REQ/REP
+        case NN_REQ: return(NN_REP); break;
+        case NN_REP: return(NN_REQ); break;
+            // One-way messages to one peer: PUSH/PULL
+        case NN_PUSH: return(NN_PULL); break;
+        case NN_PULL: return(NN_PUSH); break;
+            //  One-way messages to all: PUB/SUB
+        case NN_PUB: return(NN_SUB); break;
+        case NN_SUB: return(NN_PUB); break;
+    }
+    return(-1);
+}
+
+int32_t nn_portoffset(int32_t type)
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(nn_typelist)/sizeof(*nn_typelist)); i++)
+        if ( nn_typelist[i] == type )
+            return(i);
+    return(-1);
+}
+
+void set_endpointaddr(char *endpoint,char *domain,uint16_t port,int32_t type)
+{
+    sprintf(endpoint,"tcp://%s:%d",domain,port + nn_portoffset(type));
+}
+
+int32_t badass_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port)
+{
+    static char *tcpformat = "instantdex%d.anonymous.supply";
+    char domain[MAX_SERVERNAME];
+    int32_t i,n = 0;
+    for (i=1; i<=7&&n<max; i++,n++)
+    {
+        sprintf(domain,tcpformat,i);
+        set_endpointaddr(servers[i],domain,port,NN_REP);
+    }
+    return(n);
+}
+
+int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port)
+{
+    static char *tcpformat = "ps%02d.bitcoindark.ca";
+    char domain[MAX_SERVERNAME];
+    int32_t i,n = 0;
+    for (i=0; i<=20&&n<max; i++,n++)
+    {
+        sprintf(domain,tcpformat,i);
+        set_endpointaddr(servers[i],domain,port,NN_REP);
+    }
+    return(n);
+}
+
+int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAME],int32_t num)
+{
+    int32_t i;
+    if ( num > 0 && servers != 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDPRIO,&priority,sizeof(priority)) == 0 )
+    {
+        for (i=0; i<num; i++)
+            if ( nn_connect(sock,servers[i]) != 0 )
+                printf("error connecting to (%s) (%s)\n",servers[i],nn_errstr());
+        priority++;
+    } else printf("error setting priority.%d (%s)\n",priority,nn_errstr());
+    return(priority);
+}
+
+int32_t nn_loadbalanced_socket(int32_t retrymillis,char servers[][MAX_SERVERNAME],int32_t num,char backups[][MAX_SERVERNAME],int32_t numbacks,char failsafe[MAX_SERVERNAME])
+{
+    int32_t reqsock,priority = 1;
+    if ( (reqsock= nn_socket(AF_SP,NN_REQ)) >= 0 )
+    {
+        if ( nn_setsockopt(reqsock,NN_REQ,NN_REQ_RESEND_IVL,&retrymillis,sizeof(retrymillis)) == 0 )
+            printf("error setting NN_SOL_SOCKET socket %s\n",nn_errstr());
+        priority = nn_addservers(priority,reqsock,servers,num);
+        priority = nn_addservers(priority,reqsock,backups,numbacks);
+        priority = nn_addservers(priority,reqsock,(char (*)[128])failsafe,1);
+    } else printf("error getting req socket %s\n",nn_errstr());
+    return(reqsock);
+}
+
+int32_t loadbalanced_socket(int32_t retrymillis,int32_t europeflag,int32_t port)
+{
+    char Cservers[32][MAX_SERVERNAME],Bservers[32][MAX_SERVERNAME],jnxtaddr[MAX_SERVERNAME];
+    int32_t n,m,lbsock;
+    set_endpointaddr(jnxtaddr,"jnxt.org",port,NN_REQ);
+    n = crackfoo_servers(Cservers,sizeof(Cservers)/sizeof(*Cservers),port);
+    m = badass_servers(Bservers,sizeof(Bservers)/sizeof(*Bservers),port);
+    if ( europeflag != 0 )
+        lbsock = nn_loadbalanced_socket(retrymillis,Bservers,m,Cservers,n,jnxtaddr);
+    else lbsock = nn_loadbalanced_socket(retrymillis,Cservers,n,Bservers,m,jnxtaddr);
+    return(lbsock);
+}
+
+void nn_shutdown_pfds(struct nn_pollfd pfds[2])
+{
+    if ( pfds[0].fd >= 0 )
+        nn_shutdown(pfds[0].fd,0);
+    if ( pfds[1].fd >= 0 )
+        nn_shutdown(pfds[1].fd,0);
+}
+
+int32_t process_bridge_pfds(struct nn_pollfd pfds[2],queue_t errQs[2])
+{
+    int32_t i,len,sendlen,flags = 0; char *msg;
+    for (i=0; i<2; i++)
+    {
+        flags <<= 4;
+        //printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
+        if ( (pfds[i].revents & NN_POLLIN) != 0 && (len= nn_recv(pfds[i].fd,&msg,NN_MSG,0)) > 0 )
+        {
+            sendlen = -1, flags |= 1;
+            if ( (pfds[i ^ 1].revents & NN_POLLOUT) == 0 || (sendlen= nn_send(pfds[i ^ 1].fd,msg,NN_MSG,0)) != len )
+            {
+                printf("bridging_point: socket.(%d) pollout.%d || sendlen.%d != len.%d\n",i ^ 1,pfds[i ^ 1].revents,sendlen,len);
+                queue_enqueue("bridge_errQ",&errQs[i ^ 1],queueitem(msg)), flags |= 2;
+            }
+            // else nn_freemsg(msg); done by nn_send on success
+        }
+        else if ( (pfds[i].revents & NN_POLLOUT) != 0 && (msg= queue_dequeue(&errQs[i],1)) != 0 )
+        {
+            printf("bridging_point: socket.(%d) resending.%p\n",i,msg);
+            flags |= 4;
+            if ( nn_send(pfds[i].fd,msg,NN_MSG,0) <= 0 )
+            {
+                printf("re-queue failed resend of %p\n",msg);
+                queue_enqueue("bridge_retryQ",&errQs[i],queueitem(msg)), flags |= 8;
+            }
+            free_queueitem(msg); // in either case need to free the queue_item wrapper
+        }
+    }
+    return(flags);
+}
+
+void MGW_loop()
+{
+    int32_t poll_daemons(); char *SuperNET_JSON(char *JSONstr);
+    int i,n,timeoutmillis = 10;
+    char *messages[100],*msg;
+    poll_daemons();
+    if ( (n= poll_endpoints(messages,&MGW.numrecv,MGW.numsent,&MGW.all,timeoutmillis)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            msg = SuperNET_JSON(messages[i]);
+            printf("%d of %d: (%s)\n",i,n,msg);
+            free(messages[i]);
+        }
+    }
+}
+
+struct loopargs { char *(*respondfunc)(int32_t type,char *); int32_t sock,type,bindflag; char endpoint[MAX_SERVERNAME]; };
+void provider_respondloop(void *_args)
+{
+    struct loopargs *args = _args;
+    int32_t len,sendlen; char *msg,*jsonstr;
+    if ( args->type != NN_RESPONDENT && args->type != NN_REP && args->type != NN_PAIR )
+    {
+        printf("responder loop doesnt deal with type.%d\n",args->type);
+        return;
+    }
+    if ( args->sock >= 0 )
+    {
+        if ( args->bindflag == 0 && nn_connect(args->sock,args->endpoint) != 0 )
+            printf("error connecting to bridgepoint sock.%d type.%d to (%s) %s\n",args->sock,args->type,args->endpoint,nn_errstr());
+        else if ( args->bindflag == 0 && nn_bind(args->sock,args->endpoint) != 0 )
+            printf("error binding to bridgepoint sock.%d type.%d to (%s) %s\n",args->sock,args->type,args->endpoint,nn_errstr());
+        else
+        {
+            while ( 1 )
+            {
+                if ( (len= nn_recv(args->sock,&msg,NN_MSG,0)) > 0 )
+                {
+                    if ( (jsonstr= (*args->respondfunc)(args->type,msg)) != 0 )
+                    {
+                        len = (int32_t)strlen(jsonstr)+1;
+                        if ( (sendlen= nn_send(args->sock,jsonstr,len,0)) != len )
+                            printf("warning: sendlen.%d vs %ld for (%s)\n",sendlen,strlen(jsonstr)+1,jsonstr);
+                        free(jsonstr);
+                    }
+                    nn_freemsg(msg);
+                }
+            }
+        }
+    } else printf("error getting socket type.%d %s\n",args->type,nn_errstr());
+}
+
+char *publist_jsonstr(char *category)
+{
+    cJSON *json,*array = cJSON_CreateArray();
+    int32_t i; char endpoint[MAX_SERVERNAME],*retstr;
+    for (i=0; i<SUPERNET.numpubs; i++)
+        cJSON_AddItemToArray(array,cJSON_CreateString(SUPERNET.publications[i]));
+    json = cJSON_CreateObject();
+    cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));
+    retstr = cJSON_Print(json);
+    free_json(json);
+    _stripwhite(retstr,' ');
+    return(retstr);
+}
+
+cJSON *Bridges;
+char *loadbalanced_response(char *jsonstr,cJSON *json)
+{
+    if ( Bridges != 0 )
+        return(cJSON_Print(Bridges));
+    else return(clonestr("{\"error\":\"no known bridges\"}"));
+}
+
+int32_t get_bridgeaddr(char *bridgeaddr,int32_t lbsock)
+{
+    cJSON *json,*item;
+    char *msg,*request = "{\"requestType\":\"getbridges\"}";
+    int32_t n,len,sendlen;
+    len = (int32_t)strlen(request) + 1;
+    if ( (sendlen= nn_send(lbsock,request,len,0)) == len )
+    {
+        if ( (len= nn_recv(lbsock,&msg,NN_MSG,0)) > 0 )
+        {
+            if ( (json= cJSON_Parse(msg)) != 0 )
+            {
+                if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+                    item = cJSON_GetArrayItem(json,rand() % n);
+                else item = cJSON_GetObjectItem(json,"endpoint");
+                copy_cJSON(bridgeaddr,item);
+                free_json(json);
+            }
+            nn_freemsg(msg);
+        } else printf("get_bridgeaddr: got len %d: %s\n",len,nn_errstr());
+    } else printf("got sendlen.%d instead of %d\n",sendlen,len);
+    return(-1);
+}
+
+char *global_response(char *jsonstr,cJSON *json)
+{
+    char *request,*endpoint;
+    if ( (request= cJSON_str(cJSON_GetObjectItem(json,"requestType"))) != 0 )
+    {
+        if ( strcmp(request,"newbridge") == 0 && (endpoint= cJSON_str(cJSON_GetObjectItem(json,"endpoint"))) != 0 )
+        {
+            if ( Bridges == 0 )
+                Bridges = cJSON_CreateArray();
+            if ( in_jsonarray(Bridges,endpoint) == 0 )
+            {
+                cJSON_AddItemToArray(Bridges,cJSON_CreateString(endpoint));
+                return(clonestr("{\"result\":\"bridge added\"}"));
+            }
+            else return(clonestr("{\"result\":\"bridge already in list\"}"));
+        }
+        if ( strcmp(request,"servicelist") == 0 )
+            return(publist_jsonstr(cJSON_str(cJSON_GetObjectItem(json,"category"))));
+    }
+    return(clonestr("{\"error\":\"unknown request\"}"));
+}
+
+char *process_buspacket(char *jsonstr,cJSON *json)
+{
+    printf("BUSPACKET.(%s)\n",jsonstr);
+    return(clonestr("{\"result\":\"processed bus packet\"}"));
+}
+
+char *nn_response(int32_t type,char *jsonstr)
+{
+    cJSON *json; char *retstr = 0;
+    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+    {
+        switch ( type )
+        {
+            case NN_REP: retstr = loadbalanced_response(jsonstr,json); break;
+            case NN_RESPONDENT: retstr = global_response(jsonstr,json); break;
+            case NN_BUS: retstr = process_buspacket(jsonstr,json); break;
+            default: retstr = clonestr("{\"error\":\"invalid socket type\"}"); break;
+        }
+        free_json(json);
+    } else retstr = clonestr("{\"error\":\"couldnt parse request\"}");
+    return(retstr);
+}
+
+void launch_serverthread(struct loopargs *args,int32_t type,int32_t bindflag)
+{
+    char endpoint[MAX_SERVERNAME];
+    set_endpointaddr(endpoint,"127.0.0.1",SUPERNET.port,type);
+    args->type = NN_RESPONDENT, args->respondfunc = nn_response, args->bindflag = bindflag, strcpy(args->endpoint,endpoint);
+    portable_thread_create(provider_respondloop,args);
+}
+
+void serverloop(void *_args)
+{
+    int32_t types[] = { NN_REP, NN_RESPONDENT, NN_PUB, NN_PULL };
+    struct nn_pollfd pfds[4][2]; queue_t errQs[4][2]; char bindaddr[128];
+    int32_t i,j,rc,n,type,portoffset,sock,numtypes,timeoutmillis,err,bindflag = 1;
+    struct loopargs args[2];
+    numtypes = (int32_t)(sizeof(types)/sizeof(*types));
+    memset(args,0,sizeof(args));
+    memset(pfds,0xff,sizeof(pfds)); memset(errQs,0,sizeof(errQs));
+    timeoutmillis = 1;
+    for (i=n=0; i<numtypes; i++)
+    {
+        printf("i.%d of numtypes.%d\n",i,numtypes);
+        for (j=err=0; j<2; j++,n++)
+        {
+            type = (j == 0) ? types[i] : nn_oppotype(types[i]);
+            if ( (portoffset= nn_portoffset(type)) != n )
+                printf("FATAL mismatched portoffset %d vs %d\n",portoffset,n), getchar();
+            set_endpointaddr(bindaddr,"127.0.0.1",SUPERNET.port,type);
+            printf("(%d) type.%d bindaddr.%s\n",types[i],type,bindaddr);
+            if ( (sock= nn_socket(AF_SP_RAW,type)) < 0 )
+                break;
+            printf("got socket %d\n",sock);
+            if ( (err= nn_bind(sock,bindaddr)) != 0 )
+                break;
+            printf("nn_bind %d\n",sock);
+            pfds[i][j].fd = sock;
+            pfds[i][j].events = NN_POLLIN | NN_POLLOUT;
+        }
+        if ( j != 2 )
+        {
+            printf("error.%d launching bridges at i.%d of %d j.%d %s\n",err,i,numtypes,j,nn_errstr());
+            break;
+        }
+    }
+    args[0].sock = nn_socket(AF_SP,NN_REP);
+    args[1].sock = nn_socket(AF_SP,NN_RESPONDENT);
+    printf("launch NN_REP %d\n",args[0].sock);
+    printf("launch NN_RESPONDENT %d\n",args[1].sock);
+    if  ( i == numtypes )
+    {
+        launch_serverthread(&args[0],NN_REP,bindflag);
+        launch_serverthread(&args[1],NN_RESPONDENT,bindflag);
+        getchar();
+        while ( 1 )
+        {
+            if ( (rc= nn_poll(&pfds[0][0],numtypes << 1,timeoutmillis)) > 0 )
+            {
+                for (i=0; i<numtypes; i++)
+                    process_bridge_pfds(pfds[i],errQs[i]);
+            }
+            else if ( rc < 0 )
+                printf("%s Error polling launch_bridging_point\n",nn_errstr());
+            if ( MGW.gatewayid >= 0 || MGW.srv64bits[MGW.N] == SUPERNET.my64bits )
+                MGW_loop();
+        }
+    }
+    for (i=0; i<numtypes; i++)
+        nn_shutdown_pfds(pfds[i]);
+}
+
+char *make_globalrequest(int32_t retrymillis,char *jsonquery,int32_t timeoutmillis)
+{
+    static char bridgeaddr[MAX_SERVERNAME];
+    static int32_t lbsock = -1;
+    cJSON *item,*array = cJSON_CreateArray();
+    int32_t n,len,surveysock;
+    char *msg,*retstr;
+    if ( timeoutmillis <= 0 )
+        timeoutmillis = 1000;
+    if ( lbsock < 0 )
+        lbsock = loadbalanced_socket(retrymillis,SUPERNET.europeflag,SUPERNET.port);
+    if ( lbsock < 0 )
+        return(clonestr("{\"error\":\"getting loadbalanced socket\"}"));
+    if ( bridgeaddr[0] == 0 && get_bridgeaddr(bridgeaddr,lbsock) != 0 )
+        return(clonestr("{\"error\":\"getting bridgeaddr\"}"));
+    if ( (surveysock= nn_socket(AF_SP,NN_SURVEYOR)) < 0 )
+        return(clonestr("{\"error\":\"getting surveysocket\"}"));
+    else if ( nn_connect(surveysock,bridgeaddr) != 0 )
+    {
+        nn_shutdown(surveysock,0);
+        return(clonestr("{\"error\":\"connecting to bridgepoint\"}"));
+    }
+    else if ( nn_setsockopt(surveysock,NN_SURVEYOR,NN_SURVEYOR_DEADLINE,&timeoutmillis,sizeof(timeoutmillis)) != 0 )
+    {
+        nn_shutdown(surveysock,0);
+        return(clonestr("{\"error\":\"setting timeout\"}"));
+    }
+    _stripwhite(jsonquery,' ');
+    if ( (len= nn_send(surveysock,jsonquery,(int32_t)strlen(jsonquery)+1,0)) > 0 )
+    {
+        n = 0;
+        while ( (len= nn_recv(surveysock,&msg,NN_MSG,0)) > 0 )
+        {
+            if ( (item= cJSON_Parse(msg)) != 0 )
+                cJSON_AddItemToArray(array,item), n++;
+            nn_freemsg(msg);
+        }
+    }
+    else
+    {
+        nn_shutdown(surveysock,0);
+        return(clonestr("{\"error\":\"sending out query\"}"));
+    }
+    nn_shutdown(surveysock,0);
+    if ( n == 0 )
+    {
+        bridgeaddr[0] = 0;
+        free_json(array);
+        return(clonestr("{\"error\":\"no responses\n"));
+    }
+    retstr = cJSON_Print(array);
+    printf("globalrequest(%s) via bridge.(%s) returned (%s) from n.%d respondents\n",jsonquery,bridgeaddr,retstr,n);
+    free_json(array);
+    return(retstr);
+}
+
 uint16_t wait_for_myipaddr(char *ipaddr)
 {
     uint16_t port = 0;
@@ -540,7 +958,7 @@ int32_t nn_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flag
 int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis)
 {
     struct nn_pollfd pfd[sizeof(struct allendpoints)/sizeof(int32_t)];
-    int32_t len,sock,received=0,rc,i,n = 0;
+    int32_t len,received=0,rc,i,n = 0;
     char *str,*msg;
     memset(pfd,0,sizeof(pfd));
     for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
@@ -553,14 +971,12 @@ int32_t poll_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,unio
     }
     if ( n > 0 )
     {
-        if ( (rc= nn_poll(pfd,sizeof(socks->all)/sizeof(*socks->all),timeoutmillis)) > 0 )
+        if ( (rc= nn_poll(pfd,n,timeoutmillis)) > 0 )
         {
-            for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
+            for (i=0; i<n; i++)
             {
-                if ( pfd[i].fd < 0 )
-                    continue;
                 //printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
-                if ( (pfd[i].revents & NN_POLLIN) != 0 && (sock= socks->all[i]) >= 0 && (len= nn_recv(sock,&msg,NN_MSG,0)) > 0 )
+                if ( (pfd[i].revents & NN_POLLIN) != 0 && (len= nn_recv(pfd[i].fd,&msg,NN_MSG,0)) > 0 )
                 {
                     (*numrecvp)++;
                     str = clonestr(msg);
