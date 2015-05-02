@@ -805,7 +805,6 @@ void serverloop(void *_args)
     {
         launch_serverthread(&args[0],NN_REP,bindflag);
         launch_serverthread(&args[1],NN_RESPONDENT,bindflag);
-        getchar();
         while ( 1 )
         {
             if ( (rc= nn_poll(&pfds[0][0],numtypes << 1,timeoutmillis)) > 0 )
