@@ -38,7 +38,8 @@
 #elif defined NN_HAVE_SOCKETPAIR
 #include "efd_socketpair.h"
 #else
-#error
+//#error
+#include "efd_socketpair.h"
 #endif
 
 /*  Initialise the efd object. */

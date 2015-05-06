@@ -50,8 +50,7 @@ int nn_ep_init (struct nn_ep *self, int src, struct nn_sock *sock, int eid,
 {
     int rc;
 
-    nn_fsm_init (&self->fsm, nn_ep_handler, nn_ep_shutdown,
-        src, self, &sock->fsm);
+    nn_fsm_init (&self->fsm, nn_ep_handler, nn_ep_shutdown,src, self, &sock->fsm);
     self->state = NN_EP_STATE_IDLE;
 
     self->epbase = NULL;
@@ -70,7 +69,7 @@ int nn_ep_init (struct nn_ep *self, int src, struct nn_sock *sock, int eid,
         rc = transport->bind ((void*) self, &self->epbase);
     else
         rc = transport->connect ((void*) self, &self->epbase);
-
+    //printf("bindflag.%d -> rc.%d\n",bind,rc);
     /*  Endpoint creation failed. */
     if (rc < 0) {
         nn_list_item_term (&self->item);

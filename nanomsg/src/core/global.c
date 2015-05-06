@@ -93,7 +93,7 @@
 #endif
 
 /*  Max number of concurrent SP sockets. */
-#define NN_MAX_SOCKETS 512
+#define NN_MAX_SOCKETS 4096
 
 /*  To save some space, list of unused socket slots uses uint16_t integers to
     refer to individual sockets. If there's a need to more that 0x10000 sockets,
@@ -497,7 +497,7 @@ int nn_global_create_socket (int domain, int protocol)
     struct nn_socktype *socktype;
     struct nn_sock *sock;
     /* The function is called with nn_glock held */
-
+    //printf("global_create_socket(domain.%d protocol.%d) nsocks.%ld vs MAX %d\n",domain,protocol,self.nsocks,NN_MAX_SOCKETS);
     /*  Only AF_SP and AF_SP_RAW domains are supported. */
     if (nn_slow (domain != AF_SP && domain != AF_SP_RAW)) {
         return -EAFNOSUPPORT;
@@ -514,16 +514,22 @@ int nn_global_create_socket (int domain, int protocol)
     /*  Find the appropriate socket type. */
     for (it = nn_list_begin (&self.socktypes);
           it != nn_list_end (&self.socktypes);
-          it = nn_list_next (&self.socktypes, it)) {
+          it = nn_list_next (&self.socktypes, it))
+    {
         socktype = nn_cont (it, struct nn_socktype, item);
-        if (socktype->domain == domain && socktype->protocol == protocol) {
+        //printf("socktype.(%d %d) ",socktype->domain,socktype->protocol);
+        if (socktype->domain == domain && socktype->protocol == protocol)
+        {
 
             /*  Instantiate the socket. */
             sock = nn_alloc (sizeof (struct nn_sock), "sock");
             alloc_assert (sock);
             rc = nn_sock_init (sock, socktype, s);
             if (rc < 0)
+            {
+                printf("error from nn_sock_init\n");
                 return rc;
+            }
 
             /*  Adjust the global socket table. */
             self.socks [s] = sock;
@@ -531,6 +537,7 @@ int nn_global_create_socket (int domain, int protocol)
             return s;
         }
     }
+    printf("cant find match for (%d %d)\n",domain,protocol);
     /*  Specified socket type wasn't found. */
     return -EINVAL;
 }
@@ -650,6 +657,7 @@ int nn_bind (int s, const char *addr)
 
     nn_glock_lock();
     rc = nn_global_create_ep (s, addr, 1);
+   // printf("nn_bind returns.%d\n",rc);
     nn_glock_unlock();
     if (rc < 0) {
         errno = -rc;
@@ -667,6 +675,7 @@ int nn_connect (int s, const char *addr)
 
     nn_glock_lock();
     rc = nn_global_create_ep (s, addr, 0);
+    //printf("nn_connect returns.%d\n",rc);
     nn_glock_unlock();
     if (rc < 0) {
         errno = -rc;
@@ -1182,7 +1191,7 @@ static int nn_global_create_ep (int s, const char *addr, int bind)
     size_t protosz;
     struct nn_transport *tp;
     struct nn_list_item *it;
-
+    //printf("global_create_ep.(%s)\n",addr);
     /*  Check whether address is valid. */
     if (!addr)
         return -EINVAL;
@@ -1194,6 +1203,7 @@ static int nn_global_create_ep (int s, const char *addr, int bind)
     delim = strchr (addr, ':');
     if (!delim)
         return -EINVAL;
+    //printf("delim.%s\n",delim);
     if (delim [1] != '/' || delim [2] != '/')
         return -EINVAL;
     protosz = delim - addr;
@@ -1205,19 +1215,22 @@ static int nn_global_create_ep (int s, const char *addr, int bind)
           it != nn_list_end (&self.transports);
           it = nn_list_next (&self.transports, it)) {
         tp = nn_cont (it, struct nn_transport, item);
+        //printf("%ld.(vs |%s| %d %d).%ld ",strlen (tp->name),tp->name,strlen (tp->name) == protosz,memcmp (tp->name, proto, protosz) == 0,protosz);
         if (strlen (tp->name) == protosz &&
               memcmp (tp->name, proto, protosz) == 0)
             break;
         tp = NULL;
     }
-
+    //printf("tp.%p (%s)\n",tp,proto);
     /*  The protocol specified doesn't match any known protocol. */
     if (!tp) {
+        //printf("null tp\n");
         return -EPROTONOSUPPORT;
     }
 
     /*  Ask the socket to create the endpoint. */
     rc = nn_sock_add_ep (self.socks [s], tp, bind, addr);
+    //printf("rc.%d from nn_sock_add_ep\n",rc);
     return rc;
 }
 

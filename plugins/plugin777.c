@@ -36,10 +36,10 @@
 
 struct plugin_info
 {
-    char bindaddr[64],connectaddr[64],ipaddr[64],name[64];
-    uint64_t daemonid,myid;
+    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64];
+    uint64_t daemonid,myid,nxt64bits;
     union endpoints all;
-    uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis;
+    uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
     uint16_t port;
     uint8_t pluginspace[];
 };
@@ -60,9 +60,10 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
 {
     int32_t errs = 0;
     struct allendpoints *socks = &plugin->all.socks;
-    printf("<<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",bindaddr,connectaddr);
-    if ( plugin->bundledflag != 0 && (socks->both.pair= init_socket(".pair","pair",NN_PAIR,0,connectaddr,timeout)) < 0 ) errs++;
-    //if ( plugin->bundledflag != 0 && (socks->both.bus= init_socket("","bus",NN_BUS,0,connectaddr,timeout)) < 0 ) errs++;
+    if ( Debuglevel > 2 )
+        printf("%s.%p <<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",plugin->name,plugin,bindaddr,connectaddr);
+    if ( (socks->both.pair= init_socket(".pair","pair",NN_PAIR,0,connectaddr,timeout)) < 0 ) errs++;
+    //if ( (socks->both.bus= init_socket("","bus",NN_BUS,0,connectaddr,timeout)) < 0 ) errs++;
     //if ( (socks->send.push= init_socket(".pipeline","push",NN_PUSH,bindaddr,0,timeout)) < 0 ) errs++;
     //if ( (socks->send.rep= init_socket(".reqrep","rep",NN_REP,bindaddr,connectaddr,timeout)) < 0 ) errs++;
     //if ( (socks->send.pub= init_socket(".pubsub","pub",NN_PUB,bindaddr,0,timeout)) < 0 ) errs++;
@@ -76,10 +77,9 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
 
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-    char ipaddr[MAX_JSON_FIELD],*jsonstr = 0;
+    char *myipaddr,*jsonstr = 0;
     cJSON *obj=0,*json = 0;
-    uint16_t port;
-    uint64_t tag = 0;
+    uint64_t nxt64bits,tag = 0;
     int32_t retval = 0;
     if ( jsonargs != 0 )
     {
@@ -92,16 +92,19 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     }
     if ( obj != 0 )
     {
-        tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"port"));
+        //printf("jsonargs.(%s)\n",jsonargs);
+        if ( (nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
+        {
+            plugin->nxt64bits = nxt64bits;
+            expand_nxt64bits(plugin->NXTADDR,plugin->nxt64bits);
+        }
+        tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
         if ( initflag > 0 )
         {
-            if ( (port = get_API_int(cJSON_GetObjectItem(obj,"port"),0)) != 0 )
-            {
-                copy_cJSON(ipaddr,cJSON_GetObjectItem(obj,"ipaddr"));
-                if ( ipaddr[0] != 0 )
-                    strcpy(plugin->ipaddr,ipaddr), plugin->port = port;
-                fprintf(stderr,"Set ipaddr (%s:%d)\n",plugin->ipaddr,plugin->port);
-            }
+            myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
+            if ( is_ipaddr(myipaddr) != 0 )
+                strcpy(plugin->ipaddr,myipaddr);
+            plugin->port = get_API_int(cJSON_GetObjectItem(obj,"port"),0);
         }
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
@@ -116,21 +119,23 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     return(retval);
 }
 
-static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag)
+static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
     char tagstr[128];
     //printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
     if ( tag != 0 )
         sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
     else tagstr[0] = 0;
-    sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u%s}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv,tagstr);
+    sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\",\"myipaddr\":\"%s\",\"allowremote\":%d%s}",plugin->NXTADDR,plugin->ipaddr,plugin->allowremote,tagstr);
+    if ( allfields != 0 )
+        sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
     //printf("APPEND.(%s)\n",retbuf);
 }
 
 static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,cJSON *argjson)
 {
     cJSON *json,*array;
-    char numstr[64],*jsonstr;
+    char *jsonstr;
     int32_t i;
     uint64_t disableflags = 0;
     json = cJSON_CreateObject();
@@ -149,12 +154,11 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     if ( plugin->sleepmillis == 0 )
         plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
-    sprintf(numstr,"%llu",(long long)plugin->myid), cJSON_AddItemToObject(json,"myid",cJSON_CreateString(numstr));
     cJSON_AddItemToObject(json,"methods",array);
     jsonstr = cJSON_Print(json), free_json(json);
     _stripwhite(jsonstr,' ');
     strcpy(retbuf,jsonstr), free(jsonstr);
-    append_stdfields(retbuf,max,plugin,0);
+    append_stdfields(retbuf,max,plugin,0,1);
     if ( Debuglevel > 2 )
         printf(">>>>>>>>>>> ret.(%s)\n",retbuf);
     return((int32_t)strlen(retbuf));
@@ -182,7 +186,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
     if ( Debuglevel > 2 )
-        printf("process_plugin_json.(%s)\n",plugin->name);
+        printf("PLUGIN.(%s) process_plugin_json\n",plugin->name);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 )
@@ -193,9 +197,9 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
             *sendflagp = 1;
-            append_stdfields(retbuf,max,plugin,tag);
+            append_stdfields(retbuf,max,plugin,tag,0);
             return((int32_t)strlen(retbuf));
-        } else printf("(%s) -> no return.%d (%s) vs (%s)\n",jsonstr,strcmp(name,plugin->name),name,plugin->name);
+        } else printf("(%s) -> no return.%d (%s) vs (%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,plugin->name,len);
     }
     else
     {
@@ -205,7 +209,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         sprintf(retbuf,"{\"result\":\"unparseable\",\"message\":\"%s\"}",jsonstr);
     }
     if ( *sendflagp != 0 && retbuf[0] != 0 )
-        append_stdfields(retbuf,max,plugin,tag);
+        append_stdfields(retbuf,max,plugin,tag,0);
     else retbuf[0] = *sendflagp = 0;
     return((int32_t)strlen(retbuf));
 }
@@ -268,24 +272,24 @@ int32_t main
     plugin_transportaddr(plugin->connectaddr,transportstr,0,plugin->daemonid+2*OFFSET_ENABLED);
     jsonargs = (argc >= 3) ? (char *)argv[3] : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);
-    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid);//,jsonargs!=0?jsonargs:"");
+    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu NXT.%s\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,plugin->NXTADDR);//,jsonargs!=0?jsonargs:"");
     if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->bindaddr,plugin->connectaddr,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
     {
         argjson = cJSON_Parse(jsonargs);
         if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin,argjson)) > 0 )
         {
-            if ( Debuglevel > 2 )
+            //if ( Debuglevel > 1 )
                 fprintf(stderr,">>>>>>>>>>>>>>> plugin sends REGISTER SEND.(%s)\n",registerbuf);
             nn_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
             //nn_send(plugin->sock,plugin->registerbuf,len+1,0); // send the null terminator too
-        }
+        } else printf("error register API\n");
         if ( argjson != 0 )
             free_json(argjson);
-    }
+    } else printf("error init_pluginsocks\n");
     while ( OS_getppid() == plugin->ppid )
     {
         retbuf[0] = 0;
-        if ( (n= get_newinput(messages,&plugin->numrecv,plugin->numsent,plugin->permanentflag,&plugin->all,plugin->timeout)) > 0 )
+        if ( (n= get_newinput(messages,&plugin->numrecv,plugin->numsent,plugin->permanentflag,&plugin->all,plugin->timeout,0)) > 0 )
         {
             for (i=0; i<n; i++)
             {

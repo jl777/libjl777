@@ -20,9 +20,13 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-
+ 
 #ifndef NN_H_INCLUDED
 #define NN_H_INCLUDED
+
+#ifdef __APPLE__
+#define NN_HAVE_OSX 1
+#endif
 
 #ifdef __cplusplus
 extern "C" {

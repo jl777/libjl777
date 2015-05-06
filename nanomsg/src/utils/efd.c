@@ -31,7 +31,9 @@
 #elif defined NN_HAVE_SOCKETPAIR
 #include "efd_socketpair.inc"
 #else
-#error
+#define NN_HAVE_POLL
+#include "efd_socketpair.inc"
+//#error
 #endif
 
 #if defined NN_HAVE_POLL

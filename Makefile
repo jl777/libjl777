@@ -12,12 +12,12 @@ else
 endif
 endif
 
-PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
+PLIBS := ../libs/libjl777.a ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm
 
-LIBS= libs/libjl777.a libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
+LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
 
 CC=clang
-CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Iplugins/includes/nanomsg -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
 
 TARGET	= libjl777.a
 
@@ -42,7 +42,7 @@ NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random
 COINS = $(C)/bitcoind_RPC.c $(C)/gen1.c $(C)/gen1auth.c $(C)/msig.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) plugins/mgw/MGW_main.c plugins/echodemo.c plugins/ramchain/ramchain_main.c
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) plugins/mgw/MGW_main.c plugins/echodemo.c plugins/ramchain/ramchain_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c
  
 OBJS	:= $(SRCS:%.c=%.o)
 
@@ -224,9 +224,11 @@ patch2: doesntexist; \
     #cp .libs/libuv.so ../libs; \
     #cd ..; \
 
+dependencies: doesntexist; \
+    sudo apt-get install make clang-3.5 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
+
 onetime: doesntexist; \
-    sudo apt-get install make clang-3.5 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev; \
-    cd nanomsg; ./autogen.sh; ./configure; make; make check; cp .libs/libnanomsg.a ../libs; cp src/*.h src/utils/mutex.h ../plugins/includes; cd ..; \
+    cd nanomsg; ./autogen.sh; ./configure; make; cd ..; \
     cd miniupnpc; make; cp libminiupnpc.a ../libs; cd ..; \
     git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \
     mkdir go/gocode; mkdir go/gocode/src; export GOPATH=`pwd`/go/gocode;  export GOROOT=`pwd`/go; echo $$GOPATH; echo $$GOROOT; \

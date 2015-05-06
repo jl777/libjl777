@@ -20,8 +20,8 @@
     IN THE SOFTWARE.
 */
 
-#include "../utils/err.h"
-#include "../utils/wire.h"
+#include "../../utils/err.h"
+#include "../../utils/wire.h"
 
 #if defined NN_HAVE_WINDOWS
 #include "../../utils/win.h"
@@ -71,7 +71,7 @@ int tcpmux_listen (int port, const char *service)
 
 int tcpmux_accept (int s)
 {
-    int rc;
+    //int rc;
     ssize_t ssz;
     char c;
     struct iovec iov;

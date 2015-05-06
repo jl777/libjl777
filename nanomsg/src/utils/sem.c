@@ -24,6 +24,7 @@
 #include "err.h"
 #include "fast.h"
 
+
 #if defined NN_HAVE_OSX
 
 void nn_sem_init (struct nn_sem *self)

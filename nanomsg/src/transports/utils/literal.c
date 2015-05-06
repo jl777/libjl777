@@ -72,8 +72,7 @@ static int nn_inet_pton(int family, const char *src, void *dst)
 
 #endif
 
-int nn_literal_resolve (const char *addr, size_t addrlen,
-    int ipv4only, struct sockaddr_storage *result, size_t *resultlen)
+int nn_literal_resolve (const char *addr, size_t addrlen,int ipv4only, struct sockaddr_storage *result, size_t *resultlen)
 {
     int rc;
     char addrz [INET6_ADDRSTRLEN > INET_ADDRSTRLEN ?
@@ -120,6 +119,7 @@ int nn_literal_resolve (const char *addr, size_t addrlen,
         if (result) {
            result->ss_family = AF_INET;
            ((struct sockaddr_in*) result)->sin_addr = inaddr;
+            //printf("inaddr.(%s) %x\n",addrz,*(uint32_t *)&inaddr);
         }
         if (resultlen)
             *resultlen = sizeof (struct sockaddr_in);

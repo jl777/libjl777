@@ -154,10 +154,10 @@ void nn_sws_init (struct nn_sws *self, int src,
         NN_SWS_UTF8_MAX_CODEPOINT_LEN);
     self->utf8_code_pt_fragment_len = 0;
 
-    self->pings_sent;
-    self->pongs_sent;
-    self->pings_received;
-    self->pongs_received;
+    //self->pings_sent;
+    //self->pongs_sent;
+    //self->pings_received;
+    //self->pongs_received;
 
     nn_fsm_event_init (&self->done);
 }
@@ -612,7 +612,7 @@ static void nn_sws_validate_utf8_chunk (struct nn_sws *self)
     int code_point_len;
     int len;
 
-    len = self->inmsg_current_chunk_len;
+    len = (int32_t)self->inmsg_current_chunk_len;
     pos = self->inmsg_current_chunk_buf;
 
     /*  For chunked transfers, it's possible that a previous chunk was cut
@@ -721,7 +721,7 @@ static void nn_sws_validate_close_handshake (struct nn_sws *self)
     int code_point_len;
     int len;
     
-    len = self->inmsg_current_chunk_len - NN_SWS_CLOSE_CODE_LEN;
+    len = (int32_t)(self->inmsg_current_chunk_len - NN_SWS_CLOSE_CODE_LEN);
     pos = self->inmsg_current_chunk_buf + NN_SWS_CLOSE_CODE_LEN;
 
     /*  As per RFC 6455 7.1.6, the Close Reason following the Close Code

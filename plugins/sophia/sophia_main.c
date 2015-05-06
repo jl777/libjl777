@@ -479,6 +479,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     {
         // configure settings
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
+        SOPHIA.readyflag = 1;
     }
     else
     {
@@ -498,7 +499,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
-            SOPHIA.readyflag = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
         else if ( strcmp(method,"create") == 0 )

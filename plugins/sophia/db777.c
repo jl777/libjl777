@@ -291,5 +291,29 @@ struct unspent_entries *db777_extract_unspents(uint32_t *nump,struct db777 *DB)
     return(table);
 }
 
+int32_t eligible_lbserver(char *server)
+{
+    cJSON *json; int32_t len,keylen,retval = 1; char *jsonstr,*status,*valstr = "{\"status\":\"enabled\"}";
+    if ( server == 0 || server[0] == 0 || ismyaddress(server) != 0 || is_remote_access(server) == 0 )
+        return(0);
+    keylen = (int32_t)strlen(server)+1;
+    if ( (jsonstr= db777_findM(&len,DB_NXTaccts,(uint8_t *)server,keylen)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( (status= cJSON_str(cJSON_GetObjectItem(json,"status"))) != 0 )
+            {
+                //printf("(%s) status.(%s)\n",server,status);
+                if ( strcmp(status,"disabled") != 0 )
+                    retval = 0;
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    else db777_add(1,DB_NXTaccts,server,keylen,valstr,(int32_t)strlen(valstr)+1);
+    return(retval);
+}
+
 #endif
 #endif

@@ -17,6 +17,7 @@
 #include "uthash.h"
 #include "cJSON.h"
 #include "db777.c"
+#include "bits777.c"
 #include "NXT777.c"
 #include "system777.c"
 #include "storage.c"
@@ -41,6 +42,7 @@ char *setmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 char *setmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *origargstr);
 char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coinstr,char *refacct,int32_t M,int32_t N,uint64_t *srv64bits,int32_t n,char *userpubkey,char *email,uint32_t buyNXT);
 int32_t update_MGW_msig(struct multisig_addr *msig,char *sender);
+char *MGW_publish_acctpubkeys(char *coinstr,cJSON *array);
 
 #endif
 #else
@@ -881,6 +883,27 @@ int32_t init_public_msigs()
     }
     printf("added.%d multisig addrs\n",added);
     return(added);
+}
+
+char *MGW_publish_acctpubkeys(char *coinstr,cJSON *array)
+{
+    char *retstr = 0;
+    cJSON *json;
+    if ( array != 0 )
+    {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json,"plugin",cJSON_CreateString("MGW"));
+        cJSON_AddItemToObject(json,"method",cJSON_CreateString("acctpubkeys"));
+        cJSON_AddItemToObject(json,"pubkeys",array);
+        cJSON_AddItemToObject(json,"coin",cJSON_CreateString(coinstr));
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(SUPERNET.NXTADDR));
+        cJSON_AddItemToObject(json,"gatewayid",cJSON_CreateNumber(MGW.gatewayid));
+        retstr = cJSON_Print(json);
+        _stripwhite(retstr,' ');
+        nn_publish(retstr,1);
+        free_json(json);
+    }
+    return(retstr);
 }
 
 #endif

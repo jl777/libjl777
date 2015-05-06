@@ -165,7 +165,7 @@ int nn_cws_create (void *hint, struct nn_epbase **epbase)
     colon = strrchr (addr, ':');
     slash = colon ? strchr (colon, '/') : strchr (addr, '/');
     resource = slash ? slash : addr + addrlen;
-    self->remote_hostname_len = colon ? colon - hostname : resource - hostname;
+    self->remote_hostname_len = (int32_t)(colon ? colon - hostname : resource - hostname);
     
     /*  Host contains both hostname and port. */
     hostlen = resource - hostname;

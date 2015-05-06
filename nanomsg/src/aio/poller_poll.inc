@@ -52,7 +52,7 @@ void nn_poller_term (struct nn_poller *self)
 void nn_poller_add (struct nn_poller *self, int fd,
     struct nn_poller_hndl *hndl)
 {
-    int rc;
+    //int rc;
 
     /*  If the capacity is too low to accommodate the next item, resize it. */
     if (nn_slow (self->size >= self->capacity)) {
@@ -165,7 +165,7 @@ again:
 int nn_poller_event (struct nn_poller *self, int *event,
     struct nn_poller_hndl **hndl)
 {
-    int rc;
+    //int rc;
 
     /*  Skip over empty events. This will also skip over removed fds as they
         have their revents nullified. */

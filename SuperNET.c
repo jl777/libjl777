@@ -550,7 +550,7 @@ int main(int argc,const char *argv[])
         retval = SuperNET_start("SuperNET.conf",ipaddr);
     sprintf(portstr,"%d",SUPERNET_PORT);
     oldport = newport = portstr;
-    if ( UPNP != 0 && upnpredirect(oldport,newport,"UDP","SuperNET_https") == 0 )
+    if ( UPNP != 0 && upnpredirect(oldport,newport,"UDP","SuperNET_http") == 0 )
         printf("TEST ERROR: failed redirect (%s) to (%s)\n",oldport,newport);
     printf("saving retval.%x (%d usessl.%d) UPNP.%d MULTIPORT.%d\n",retval,retval>>1,retval&1,UPNP,MULTIPORT);
     if ( (fp= fopen("horrible.hack","wb+")) != 0 )
@@ -658,63 +658,36 @@ char *SuperNET_url()
 
 void SuperNET_loop(void *ipaddr)
 {
-    char *msg;
-    int32_t i;
-    for (i=0; i<1; i++)
+    char *strs[16],jsonargs[512]; int32_t i,ind,n = 0;
+    while ( SUPERNET.readyflag == 0 || find_daemoninfo(&ind,"SuperNET",0,0) == 0 )
     {
         if ( poll_daemons() > 0 )
             break;
         msleep(10);
     }
-     printf(">>>>>>>>> call bundled\n");
-    //sleep(3);
-    language_func((char *)"sophia","",0,0,1,(char *)"sophia","{\"filename\":\"SuperNET.conf\"}",call_system);
-    //sleep(3);
-    language_func((char *)"coins","",0,0,1,(char *)"coins","{\"filename\":\"SuperNET.conf\"}",call_system);
-   // sleep(3);
-    language_func((char *)"ramchain","",0,0,1,(char *)"ramchain","{\"filename\":\"SuperNET.conf\"}",call_system);
-    printf(">>>>>>>> addcoin\n");
-    poll_daemons();
-    sleep(3);
-    poll_daemons();
-#ifdef __APPLE__
-    char *str;
-    int32_t n;
-    cJSON *json;
-    sleep(3);
-    while ( 0 )
-    {
+    sleep(1);
+    sprintf(jsonargs,"{\"filename\":\"SuperNET.conf\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d}",SUPERNET.NXTADDR,SUPERNET.myipaddr,SUPERNET.port);
+    strs[n++] = language_func((char *)"sophia","",0,0,1,(char *)"sophia",jsonargs,call_system);
+    while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"sophia",0,0) == 0 )
+         poll_daemons();
+    strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
+    strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
+    while ( COINS.readyflag == 0 || RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )
         poll_daemons();
-        if ( (str= plugin_method(0,"coins","addcoin",0,milliseconds(),"{\"method\":\"addcoin\",\"plugin\":\"coins\",\"coin\":\"BTCD\"}",1,5000)) != 0 )
-        {
-            printf("got (%s)\n",str);
-            if ( (json= cJSON_Parse(str)) != 0 )
-            {
-                if ( (msg= cJSON_str(cJSON_GetObjectItem(json,"result"))) != 0 && strcmp(msg,"addcoin") == 0 )
-                    break;
-            }
-            free(str);
-            sleep(1);
-        }
-    }
-    printf("start gen\n");
-    for (i=0; i<1; i++)
-    {
-        if ( (str= plugin_method(0,"ramchain","create",0,milliseconds(),"{\"method\":\"create\",\"coin\":\"BTCD\",\"plugin\":\"ramchain\"}",1,1000)) != 0 )
-        //if ( (str= plugin_method(0,"coins","genmultisig",0,milliseconds(),"{\"refcontact\":\"NXT-F2N7-GHWK-GH6U-8LTJC\",\"plugin\":\"coins\",\"M\":2,\"N\":3,\"method\":\"genmultisig\",\"coin\":\"BTCD\",\"multisigchar\":\"b\",\"rpc\":\"127.0.0.1:14632\",\"path\":\"BitcoinDark\",\"conf\":\"BitcoinDark.conf\"}",1,50000)) != 0 )
-        {
-            printf("got (%s)\n",str);
-            free(str);
-        }
+    strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
+    strs[n++] = language_func((char *)"peers","",0,0,1,(char *)"peers",jsonargs,call_system);
+    strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
+    while ( PEERS.readyflag == 0 || RELAYS.readyflag == 0 || SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 || find_daemoninfo(&ind,"peers",0,0) == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();
-        if ( (n= nn_recv(MGW.all.socks.both.bus,&msg,NN_MSG,0)) > 0 )
-        {
-            printf("MAIN.(%s) %d\n",msg,n);
-            nn_freemsg(msg);
-        }
+    for (i=0; i<n; i++)
+    {
+        printf("%s ",strs[i]);
+        free(strs[i]);
     }
-#endif
-    printf("sock = %d\n",MGW.all.socks.both.bus);
+    printf("num builtin plugin agents.%d\n",n);
+    if ( MGW.gatewayid >= 0 )
+        printf("MGW sock = %d\n",MGW.all.socks.both.bus);
+    sleep(3);
     void serverloop(void *_args);
     serverloop(0);
 }
@@ -743,10 +716,6 @@ int main(int argc,const char *argv[])
     int32_t i;
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
-    void serverloop(void *_args);
-    SUPERNET.port = 7777;
-    serverloop(0); getchar();
- ///test();
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");
     else if ( (json= cJSON_Parse(jsonstr)) == 0 )

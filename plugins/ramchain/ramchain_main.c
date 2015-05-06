@@ -20,7 +20,7 @@
 #undef DEFINES_ONLY
 
 STRUCTNAME RAMCHAINS;
-char *PLUGNAME(_methods)[] = { "create", "stats" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "create", "list" }; // list of supported methods
 
 void ramchain_idle(struct plugin_info *plugin)
 {
@@ -52,7 +52,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     struct coin777 *coin;
     int32_t i;
     retbuf[0] = 0;
-    //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+    printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
         if ( DB_msigs == 0 )
@@ -60,6 +60,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( DB_NXTaccts == 0 )
             DB_NXTaccts = db777_create(0,0,"NXTacct",0);
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
+        RAMCHAINS.readyflag = 1;
     }
     else
     {
@@ -77,7 +78,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
-            RAMCHAINS.readyflag = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
         else

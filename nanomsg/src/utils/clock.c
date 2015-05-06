@@ -41,6 +41,7 @@
 #define NN_CLOCK_PRECISION 1000000
 
 #if defined NN_HAVE_OSX
+#include <mach/mach_time.h>
 static mach_timebase_info_data_t nn_clock_timebase_info = {0};
 #endif
 
