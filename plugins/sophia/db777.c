@@ -36,7 +36,7 @@ struct db777 *db777_getDB(char *dbname);
 struct unspent_entries *db777_extract_unspents(uint32_t *nump,struct db777 *DB);
 
 extern struct sophia_info SOPHIA;
-extern struct db777 *DB_msigs,*DB_NXTaccts;//,*DB_NXTassettx,*DB_nodestats;
+extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,;
 
 #endif
 #else
@@ -77,7 +77,7 @@ int32_t db777_add(int32_t forceflag,struct db777 *DB,void *key,int32_t keylen,vo
     void *obj,*val;
     int32_t allocsize;
     if ( DB == 0 || DB->db == 0 )
-        return(0);
+        return(-1);
     if ( forceflag == 0 && (obj= db777_find(DB,key,keylen)) != 0 )
     {
         if ( (val= sp_get(obj,"value",&allocsize)) != 0 )
@@ -85,25 +85,25 @@ int32_t db777_add(int32_t forceflag,struct db777 *DB,void *key,int32_t keylen,vo
             if ( allocsize == len && memcmp(val,value,len) == 0 )
             {
                 sp_destroy(obj);
-                return(0);
+                return(-2);
             }
         }
         sp_destroy(obj);
     }
     if ( (obj= sp_object(DB->db)) == 0 )
-        return(-1);
+        return(-3);
     if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,len) != 0 )
     {
         sp_destroy(obj);
-        return(-1);
+        return(-4);
     }
-    //printf("DB.%p add.[%p %d] val.%p %d [crcs %d %d]\n",DB,key,keylen,value,len,_crc32(0,key,keylen),_crc32(0,value,len));
+    //printf("DB.%p add.[%p %d] val.%p %d [crcs %u %u]\n",DB,key,keylen,value,len,_crc32(0,key,keylen),_crc32(0,value,len));
     return(sp_set(DB->db,obj));
 }
 
 int32_t db777_addstr(struct db777 *DB,char *key,char *value)
 {
-    return(db777_add(0,DB,key,(int32_t)strlen(key)+1,value,(int32_t)strlen(value)+1));
+    return(db777_add(1,DB,key,(int32_t)strlen(key)+1,value,(int32_t)strlen(value)+1));
 }
 
 int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key)

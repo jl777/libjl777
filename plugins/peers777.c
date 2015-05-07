@@ -20,7 +20,7 @@
 void peers_idle(struct plugin_info *plugin) {}
 
 STRUCTNAME PEERS;
-char *PLUGNAME(_methods)[] = { "getinfo", "list", "newpeers", "listrelays", "newrelays" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "direct" }; // list of supported methods
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -32,7 +32,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char *resultstr,*methodstr;
+    char *resultstr,*methodstr,ipaddr[2048],*retstr,myipaddr[2048];
     retbuf[0] = 0;
     //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
@@ -48,23 +48,57 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
+        copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
+        copy_cJSON(myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
         if ( methodstr == 0 || methodstr[0] == 0 )
         {
             printf("(%s) has not method\n",jsonstr);
             return(0);
         }
-        //printf("RELAYS.(%s)\n",methodstr);
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        else if ( strcmp(methodstr,"getinfo") == 0 )
+        else if ( strcmp(methodstr,"direct") == 0 )
         {
-            strcpy(retbuf,"{\"result\":\"put getinfo here\"}");
+            char *nn_directconnect(char *ipaddr);
+            int32_t i,n; cJSON *item,*retjson,*array; char otheripaddr[2048],*connectstr,*str;
+            if ( ipaddr != 0 && strcmp(ipaddr,SUPERNET.myipaddr) == 0 )
+            {
+                if ( (retstr= nn_directconnect(myipaddr)) != 0 )
+                {
+                    if ( (retjson= cJSON_Parse(retstr)) != 0 )
+                    {
+                        if ( (array= cJSON_GetObjectItem(retjson,"responses")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+                        {
+                            for (i=0; i<n; i++)
+                            {
+                                item = cJSON_GetArrayItem(array,i);
+                                if ( (str= cJSON_str(cJSON_GetObjectItem(item,"result"))) != 0 && strcmp(str,"success") == 0 )
+                                {
+                                    copy_cJSON(otheripaddr,cJSON_GetObjectItem(item,"direct"));
+                                    if ( (connectstr= nn_directconnect(otheripaddr)) != 0 )
+                                    {
+                                        cJSON_AddItemToObject(item,"myconnect",cJSON_CreateString(connectstr));
+                                        free(connectstr);
+                                    } else cJSON_AddItemToObject(item,"myconnect",cJSON_CreateString("error"));
+                                    free(retstr);
+                                    retstr = cJSON_Print(item);
+                                    _stripwhite(retstr,' ');
+                                    break;
+                                }
+                            }
+                        } free_json(retjson);
+                    }
+                    strcpy(retbuf,retstr);
+                    free(retstr);
+                }
+            }
         }
         else strcpy(retbuf,"{\"error\":\"under construction\"}");
     }
+    printf("PEERS.(%s) -> (%s)\n",jsonstr,retbuf);
     return((int32_t)strlen(retbuf));
 }
 

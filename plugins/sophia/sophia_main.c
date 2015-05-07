@@ -19,7 +19,7 @@
 #include "db777.c"
 #undef DEFINES_ONLY
 
-struct db777 *DB_msigs,*DB_NXTaccts;//,*DB_NXTassettx,*DB_nodestats;
+struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,
 
 STRUCTNAME SOPHIA;
 char *PLUGNAME(_methods)[] = { "create", "close", "add", "find",

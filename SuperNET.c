@@ -617,7 +617,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),1000);
-        return(plugin_method(previpaddr,plugin,method,daemonid,instanceid,jsonstr,n,timeout));
+        return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,timeout));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 

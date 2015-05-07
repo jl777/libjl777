@@ -49,7 +49,7 @@ char *publish_jsonstr(char *category)
             cJSON_AddItemToArray(array,cJSON_CreateString(SUBSCRIPTIONS.publications[i]));
     }
     json = cJSON_CreateObject();
-    set_endpointaddr(endpoint,SUPERNET.myipaddr,SUPERNET.port,NN_PUB);
+    set_endpointaddr(SUPERNET.transport,endpoint,SUPERNET.myipaddr,SUPERNET.port,NN_PUB);
     cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));
     retstr = cJSON_Print(json);
     free_json(json);

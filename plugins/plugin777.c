@@ -121,15 +121,23 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
 
 static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
-    char tagstr[128];
+    char tagstr[128],*NXTaddr; cJSON *json;
     //printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
-    if ( tag != 0 )
-        sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
-    else tagstr[0] = 0;
-    sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\",\"myipaddr\":\"%s\",\"allowremote\":%d%s}",plugin->NXTADDR,plugin->ipaddr,plugin->allowremote,tagstr);
-    if ( allfields != 0 )
-        sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
-    //printf("APPEND.(%s)\n",retbuf);
+    if ( (json= cJSON_Parse(retbuf)) != 0 )
+    {
+        if ( tag != 0 && get_API_nxt64bits(cJSON_GetObjectItem(json,"tag")) == 0 )
+            sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
+        else tagstr[0] = 0;
+        if ( allfields != 0 )
+        {
+              NXTaddr = cJSON_str(cJSON_GetObjectItem(json,"NXT"));
+             if ( NXTaddr == 0 || NXTaddr[0] == 0 )
+                 sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\",\"myipaddr\":\"%s\"}",plugin->NXTADDR,plugin->ipaddr);
+             sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
+            sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
+         }
+         else sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
+    }
 }
 
 static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,cJSON *argjson)
@@ -185,7 +193,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     uint64_t tag = 0;
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
-    if ( Debuglevel > 2 )
+    //if ( Debuglevel > 2 )
         printf("PLUGIN.(%s) process_plugin_json\n",plugin->name);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -198,6 +206,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         {
             *sendflagp = 1;
             append_stdfields(retbuf,max,plugin,tag,0);
+            printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
         } else printf("(%s) -> no return.%d (%s) vs (%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,plugin->name,len);
     }
@@ -212,6 +221,26 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         append_stdfields(retbuf,max,plugin,tag,0);
     else retbuf[0] = *sendflagp = 0;
     return((int32_t)strlen(retbuf));
+}
+
+static int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_t permanentflag,union endpoints *socks,int32_t timeoutmillis,void (*funcp)(char *line))
+{
+    char line[8192];
+    int32_t len,n = 0;
+    line[0] = 0;
+    if ( (n= poll_local_endpoints(messages,numrecvp,numsent,socks,timeoutmillis)) <= 0 && permanentflag == 0 && getline777(line,sizeof(line)-1) > 0 )
+    {
+        len = (int32_t)strlen(line);
+        if ( line[len-1] == '\n' )
+            line[--len] = 0;
+        if ( len > 0 )
+        {
+            if ( funcp != 0 )
+                (*funcp)(line);
+            else messages[0] = clonestr(line), n = 1;
+        }
+    }
+    return(n);
 }
 
 #ifdef BUNDLED
@@ -280,7 +309,7 @@ int32_t main
         {
             //if ( Debuglevel > 1 )
                 fprintf(stderr,">>>>>>>>>>>>>>> plugin sends REGISTER SEND.(%s)\n",registerbuf);
-            nn_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
+            nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
             //nn_send(plugin->sock,plugin->registerbuf,len+1,0); // send the null terminator too
         } else printf("error register API\n");
         if ( argjson != 0 )
@@ -302,7 +331,7 @@ int32_t main
                         printf("%s\n",retbuf), fflush(stdout);
                     if ( sendflag != 0 )
                     {
-                        nn_broadcast(&plugin->all.socks,0,0,(uint8_t *)retbuf,len+1), plugin->numsent++;
+                        nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)retbuf,len+1), plugin->numsent++;
                         if ( Debuglevel > 2 )
                             fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
                         //nn_send(plugin->sock,retbuf,len+1,0); // send the null terminator too

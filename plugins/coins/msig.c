@@ -727,7 +727,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                             else printf("sent.(%s).%d\n",buf,len);
                             lastcrc = crc;
                         }
-                        /*if ( (str= plugin_method(0,"coins","getmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
+                        /*if ( (str= plugin_method(0,0,"coins","getmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
                         {
                             printf("GENMULTISIG sent to MGW bus (%s)\n",buf);
                             free(str);
@@ -793,7 +793,7 @@ char *getmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
             if ( nn_send(MGW.all.socks.both.bus,buf,(int32_t)strlen(buf)+1,0) <= 0 )
                 printf("error sending (%s)\n",buf);
             return(clonestr(buf));
-            /*if ( (str= plugin_method(previpaddr,"coins","setmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
+            /*if ( (str= plugin_method(0,previpaddr,"coins","setmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
             {
                 printf("GETMSIG sent to MGW bus (%s)\n",buf);
                 free(str);

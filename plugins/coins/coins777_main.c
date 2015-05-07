@@ -256,6 +256,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             //init_public_msigs();
         } else strcpy(retbuf,"{\"result\":\"no JSON for init\"}");
         COINS.readyflag = 1;
+        plugin->allowremote = 1;
         printf(">>>>>>>>>>>>>>>>>>> COINS.INIT ********************** (%s) (%s) (%s) SUPERNET.port %d UPNP.%d NXT.%s\n",SOPHIA.PATH,MGW.PATH,SUPERNET.NXTSERVER,SUPERNET.port,SUPERNET.UPNP,SUPERNET.NXTADDR);
     }
     else

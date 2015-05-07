@@ -122,7 +122,7 @@ char **get_tagstr(struct relayargs **argsp,struct daemon_info *dp,uint64_t tag)
             dest = (char **)dp->tags[i][1];
             if ( dp->tags[i][2] != 0 )
                 *argsp = (struct relayargs *)dp->tags[i][2];
-            dp->tags[i][0] = dp->tags[i][1] = 0;
+            dp->tags[i][0] = dp->tags[i][1] = dp->tags[i][2] = 0;
             if ( Debuglevel > 2 )
                 printf("slot.%d found tag.%llu dest.%p\n",i,(long long)tag,dest);
             return(dest);
@@ -132,17 +132,18 @@ char **get_tagstr(struct relayargs **argsp,struct daemon_info *dp,uint64_t tag)
     return(0);
 }
 
-char *wait_for_daemon(char **dest,uint64_t tag,int32_t timeout,int32_t sleepmillis)
+char *wait_for_daemon(char **destp,uint64_t tag,int32_t timeout,int32_t sleepmillis)
 {
     int32_t poll_daemons();
     static long counter,sum;
+    char retbuf[512];
     double startmilli = milliseconds();
     char *retstr;
     usleep(5);
     while ( milliseconds() < (startmilli + timeout) )
     {
         poll_daemons();
-        if ( (retstr= *dest) != 0 )
+        if ( (retstr= *destp) != 0 )
         {
             counter++;
             if ( (counter % 10000) == 0 )
@@ -152,8 +153,9 @@ char *wait_for_daemon(char **dest,uint64_t tag,int32_t timeout,int32_t sleepmill
         if ( sleepmillis != 0 )
             msleep(sleepmillis);
     }
-    printf("no tag %llu received after %.2f millis\n",(long long)tag,milliseconds() - startmilli);
-    return(0);
+    sprintf(retbuf,"{\"error\":\"timeout\",\"tag\":\"%llu\",\"elapsed\":\"%.2f\"}",(long long)tag,milliseconds() - startmilli);
+    *destp = clonestr(retbuf);
+    return(*destp);
 }
  
 uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_t daemonid,uint64_t instanceid,char *jsonstr)
@@ -194,7 +196,7 @@ uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_
                 if ( tag != 0 )
                     add_tagstr(dp,tag,retstrp,args);
                 dp->numsent++;
-                if ( nn_broadcast(&dp->perm.socks,instanceid,instanceid != 0 ? 0 : LOCALCAST,(uint8_t *)jsonstr,len + 1) < 0 )
+                if ( nn_local_broadcast(&dp->perm.socks,instanceid,instanceid != 0 ? 0 : LOCALCAST,(uint8_t *)jsonstr,len + 1) < 0 )
                     printf("error sending to daemon %s\n",nn_strerror(nn_errno()));
                 else return(tag);
             }
