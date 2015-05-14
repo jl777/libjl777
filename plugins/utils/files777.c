@@ -346,7 +346,7 @@ void *permalloc(char *coinstr,struct alloc_space *mem,long size,int32_t selector
             return(mem->ptr);
         }
     }
-    return(memalloc(mem,size));
+    return(memalloc(mem,size,0));
 }
 
 void ensure_dir(char *dirname)

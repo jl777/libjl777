@@ -223,8 +223,10 @@ cJSON *rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson)
 
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag)
 {
-    int32_t i;
-    long len;
+    //struct rawvin { char txidstr[128]; uint16_t vout; };
+    //struct rawvout { char coinaddr[128],script[1024]; uint64_t value; };
+    //struct rawtx { uint16_t firstvin,numvins,firstvout,numvouts; char txidstr[128]; };
+    int32_t i; long len; struct rawtx *tx;
     if ( totalflag != 0 )
     {
         uint8_t *ptr = (uint8_t *)raw;
@@ -238,13 +240,13 @@ void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag)
     }
     else
     {
-        raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
-        for (i=0; i<MAX_BLOCKTX; i++)
+        raw->blocknum = raw->minted = raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
+        tx = raw->txspace;
+        for (i=0; i<MAX_BLOCKTX; i++,tx++)
         {
-            raw->txspace[i].txidstr[0] = 0;
-            raw->vinspace[i].txidstr[0] = 0;
-            raw->voutspace[i].script[0] = 0;
-            raw->voutspace[i].coinaddr[0] = 0;
+            tx->txidstr[0] = tx->numvins = tx->numvouts = tx->firstvout = tx->firstvin = 0;
+            raw->vinspace[i].txidstr[0] = 0, raw->vinspace[i].vout = 0xffff;
+            raw->voutspace[i].coinaddr[0] = raw->voutspace[i].script[0] = 0, raw->voutspace[i].value = 0;
         }
     }
 }
@@ -274,7 +276,7 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
     uint32_t blockid;
     int32_t txind,n;
     uint64_t total = 0;
-    ram_clear_rawblock(raw,1);
+    ram_clear_rawblock(raw,0);
     //raw->blocknum = blocknum;
     //printf("_get_blockinfo.%d\n",blocknum);
     raw->minted = raw->numtx = raw->numrawvins = raw->numrawvouts = 0;

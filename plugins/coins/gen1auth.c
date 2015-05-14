@@ -24,7 +24,7 @@ struct cointx_info *createrawtransaction(char *coinstr,char *serverport,char *us
 int32_t cosigntransaction(char **cointxidp,char **cosignedtxp,char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *txbytes,int32_t gatewayid,int32_t numgateways);
 int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params);
 int32_t get_redeemscript(char *redeemScript,char *normaladdr,char *coinstr,char *serverport,char *userpass,char *multisigaddr);
-cJSON *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass);
+char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass);
 
 
 #endif
@@ -84,54 +84,58 @@ int32_t get_pubkey(char pubkey[512],char *coinstr,char *serverport,char *userpas
     return((int32_t)len);
 }
 
-cJSON *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass)
+cJSON *msig_itemjson(char *account,char *coinaddr,char *pubkey,int32_t allfields)
 {
-    char str[MAX_JSON_FIELD],pubkey[512],coinaddr[512],*retstr;
-    cJSON *json,*item,*array = 0;
+    cJSON *item = cJSON_CreateObject();
+    cJSON_AddItemToObject(item,"userNXT",cJSON_CreateString(account));
+    cJSON_AddItemToObject(item,"coinaddr",cJSON_CreateString(coinaddr));
+    cJSON_AddItemToObject(item,"pubkey",cJSON_CreateString(pubkey));
+    if ( allfields != 0 && MGW.gatewayid >= 0 )
+    {
+        cJSON_AddItemToObject(item,"gatewayNXT",cJSON_CreateString(SUPERNET.NXTADDR));
+        cJSON_AddItemToObject(item,"gatewayid",cJSON_CreateNumber(MGW.gatewayid));
+    }
+    return(item);
+}
+
+char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass)
+{
+    char pubkey[512],NXTaddr[64],account[512],coinaddr[512],*retstr = 0;
+    cJSON *json,*item,*array = cJSON_CreateArray();
+    uint64_t nxt64bits;
     int32_t i,n;
-    if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"listaccounts","")) != 0 )
+    if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"listreceivedbyaddress","[1, true]")) != 0 )
     {
         //printf("listaccounts.(%s)\n",retstr);
-        retstr[0] = '[';
-        n = (int32_t)strlen(retstr);
-        retstr[n-1] = ']';
-        for (i=0; i<n; i++)
-            if ( retstr[i] == ':' )
-                retstr[i] = ',';
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
             {
-                for (i=0; i<n; i+=2)
+                for (i=0; i<n; i++)
                 {
-                    copy_cJSON(str,cJSON_GetArrayItem(json,i));
-                    if ( is_decimalstr(str) != 0 )
+                    item = cJSON_GetArrayItem(json,i);
+                    copy_cJSON(account,cJSON_GetObjectItem(item,"account"));
+                    if ( is_decimalstr(account) > 0 )
                     {
-                        if ( get_acct_coinaddr(coinaddr,coinstr,serverport,userpass,str) != 0 )
+                        nxt64bits = calc_nxt64bits(account);
+                        expand_nxt64bits(NXTaddr,nxt64bits);
+                        if ( strcmp(account,NXTaddr) == 0 )
                         {
+                            copy_cJSON(coinaddr,cJSON_GetObjectItem(item,"address"));
                             if ( get_pubkey(pubkey,coinstr,serverport,userpass,coinaddr) != 0 )
-                            {
-                                item = cJSON_CreateObject();
-                                cJSON_AddItemToObject(item,"NXT",cJSON_CreateString(str));
-                                cJSON_AddItemToObject(item,"coinaddr",cJSON_CreateString(coinaddr));
-                                cJSON_AddItemToObject(item,"pubkey",cJSON_CreateString(pubkey));
-                                if ( array == 0 )
-                                    array = cJSON_CreateArray();
-                                cJSON_AddItemToArray(array,item);
-                            }
+                                cJSON_AddItemToArray(array,msig_itemjson(account,coinaddr,pubkey,1));
                         }
+                        else printf("decimal.%d (%s) -> (%s)? ",is_decimalstr(account),account,NXTaddr);
                     }
                 }
-                //sprintf(addr,"\"%s\"",NXTaddr);
-                //strcpy(coinaddr,retstr);
-                //free(retstr);
-                //return(coinaddr);
             }
             free_json(json);
         } else printf("couldnt parse.(%s)\n",retstr);
         free(retstr);
     }
-    return(array);
+    retstr = cJSON_Print(array);
+    _stripwhite(retstr,' ');
+    return(retstr);
 }
 
 cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass)
@@ -253,104 +257,6 @@ struct cointx_info *createrawtransaction(char *coinstr,char *serverport,char *us
     } else fprintf(stderr,"error creating rawtransaction\n");
     return(rettx);
 }
-
-int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params)
-{
-    char addr[1024],*retstr;
-    cJSON *json,*redeemobj,*msigobj;
-    int32_t flag = 0;
-    if ( addmultisig != 0 )
-    {
-        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"addmultisigaddress",params)) != 0 )
-        {
-            strcpy(multisigaddr,retstr);
-            free(retstr);
-            sprintf(addr,"\"%s\"",multisigaddr);
-            if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"validateaddress",addr)) != 0 )
-            {
-                json = cJSON_Parse(retstr);
-                if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
-                else
-                {
-                    if ( (redeemobj= cJSON_GetObjectItem(json,"hex")) != 0 )
-                    {
-                        copy_cJSON(redeemScript,redeemobj);
-                        flag = 1;
-                    } else printf("missing redeemScript in (%s)\n",retstr);
-                    free_json(json);
-                }
-                free(retstr);
-            }
-        } else printf("error creating multisig address\n");
-    }
-    else
-    {
-        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"createmultisig",params)) != 0 )
-        {
-            json = cJSON_Parse(retstr);
-            if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
-            else
-            {
-                if ( (msigobj= cJSON_GetObjectItem(json,"address")) != 0 )
-                {
-                    if ( (redeemobj= cJSON_GetObjectItem(json,"redeemScript")) != 0 )
-                    {
-                        copy_cJSON(multisigaddr,msigobj);
-                        copy_cJSON(redeemScript,redeemobj);
-                        flag = 1;
-                    } else printf("missing redeemScript in (%s)\n",retstr);
-                } else printf("multisig missing address in (%s) params.(%s)\n",retstr,params);
-                free_json(json);
-            }
-            free(retstr);
-        } else printf("error issuing createmultisig.(%s)\n",params);
-    }
-    return(flag);
-}
-
-int32_t get_redeemscript(char *redeemScript,char *normaladdr,char *coinstr,char *serverport,char *userpass,char *multisigaddr)
-{
-    cJSON *json,*array,*json2;
-    char args[1024],addr[1024],*retstr,*retstr2;
-    int32_t i,n,ismine = 0;
-    redeemScript[0] = normaladdr[0] = 0;
-    sprintf(args,"\"%s\"",multisigaddr);
-    if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"validateaddress",args)) != 0 )
-    {
-        printf("get_redeemscript retstr.(%s)\n",retstr);
-        if ( (json= cJSON_Parse(retstr)) != 0 )
-        {
-            if ( (array= cJSON_GetObjectItem(json,"addresses")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-            {
-                for (i=0; i<n; i++)
-                {
-                    ismine = 0;
-                    copy_cJSON(addr,cJSON_GetArrayItem(array,i));
-                    if ( addr[0] != 0 )
-                    {
-                        sprintf(args,"\"%s\"",addr);
-                        retstr2 = bitcoind_passthru(coinstr,serverport,userpass,"validateaddress",args);
-                        if ( retstr2 != 0 )
-                        {
-                            if ( (json2= cJSON_Parse(retstr2)) != 0 )
-                                ismine = is_cJSON_True(cJSON_GetObjectItem(json2,"ismine")), free_json(json2);
-                            free(retstr2);
-                        }
-                    }
-                    if ( ismine != 0 )
-                    {
-                        //printf("(%s) ismine.%d\n",addr,ismine);
-                        strcpy(normaladdr,addr);
-                        copy_cJSON(redeemScript,cJSON_GetObjectItem(json,"hex"));
-                        break;
-                    }
-                }
-            } free_json(json);
-        } free(retstr);
-    }
-    return(ismine);
-}
-
 
 #endif
 #endif

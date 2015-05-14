@@ -307,6 +307,21 @@ void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,
     sha256_done(&md,hash);
 }
 
+void update_sha256(unsigned char hash[256 >> 3],struct sha256_state *state,unsigned char *src,int32_t len)
+{
+    hash_state md;
+    memset(&md,0,sizeof(md));
+    if ( src == 0 )
+        sha256_init(&md);
+    else
+    {
+        md.sha256 = *state;
+        sha256_process(&md,src,len);
+    }
+    *state = md.sha256;
+    sha256_done(&md,hash);
+}
+
 /**
   Self-test the hash
   @return CRYPT_OK if successful, CRYPT_NOP if self-tests have been disabled

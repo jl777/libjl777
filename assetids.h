@@ -110,19 +110,6 @@ uint64_t is_cryptocoin(char *name)
     return(0);
 }
 
-
-uint64_t stringbits(char *str)
-{
-    uint64_t bits = 0;
-    int32_t i,n = (int32_t)strlen(str);
-    if ( n > 8 )
-        n = 8;
-    for (i=n-1; i>=0; i--)
-        bits = (bits << 8) | (str[i] & 0xff);
-    //printf("(%s) -> %llx %llu\n",str,(long long)bits,(long long)bits);
-    return(bits);
-}
-
 int32_t is_native_crypto(char *name,uint64_t bits)
 {
     int32_t i,n;

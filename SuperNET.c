@@ -581,7 +581,7 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 #include "plugins/plugins.h"
 #undef DEFINES_ONLY
 
-int32_t got_newpeer(const char *ip_port) { printf("got_newpeer.(%s)\n",ip_port); return(0); }
+int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_newpeer.(%s)\n",ip_port); return(0); }
 
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
@@ -666,10 +666,13 @@ void SuperNET_loop(void *ipaddr)
         msleep(10);
     }
     sleep(1);
-    sprintf(jsonargs,"{\"filename\":\"SuperNET.conf\",\"NXT\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d}",SUPERNET.NXTADDR,SUPERNET.myipaddr,SUPERNET.port);
+    sprintf(jsonargs,"{\"filename\":\"SuperNET.conf\"}");
     strs[n++] = language_func((char *)"sophia","",0,0,1,(char *)"sophia",jsonargs,call_system);
     while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"sophia",0,0) == 0 )
          poll_daemons();
+    strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
+    while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
+        poll_daemons();
     strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
     strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
     while ( COINS.readyflag == 0 || RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )

@@ -47,6 +47,7 @@ uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr);
 int32_t is_decimalstr(char *str);
 long stripstr(char *buf,long len);
 char safechar64(int32_t x);
+uint64_t stringbits(char *str);
 
 char *_mbstr(double n);
 char *_mbstr2(double n);
@@ -60,7 +61,7 @@ int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size);
 double estimate_completion(double startmilli,int32_t processed,int32_t numleft);
 
 void clear_alloc_space(struct alloc_space *mem,int32_t alignflag);
-void *memalloc(struct alloc_space *mem,long size);
+void *memalloc(struct alloc_space *mem,long size,int32_t clearflag);
 
 int32_t notlocalip(char *ipaddr);
 int32_t is_remote_access(char *previpaddr);
@@ -366,8 +367,20 @@ int32_t is_decimalstr(char *str)
         return(0);
     for (i=0; str[i]!=0; i++)
         if ( str[i] < '0' || str[i] > '9' )
-            return(-1);
+            return(0);
     return(i);
+}
+
+uint64_t stringbits(char *str)
+{
+    uint64_t bits = 0;
+    int32_t i,n = (int32_t)strlen(str);
+    if ( n > 8 )
+        n = 8;
+    for (i=n-1; i>=0; i--)
+        bits = (bits << 8) | (str[i] & 0xff);
+    //printf("(%s) -> %llx %llu\n",str,(long long)bits,(long long)bits);
+    return(bits);
 }
 
 double _kb(double n) { return(n / 1024.); }
@@ -575,20 +588,6 @@ double estimate_completion(double startmilli,int32_t processed,int32_t numleft)
     return(numleft * rate);
 }
 
-int32_t notlocalip(char *ipaddr)
-{
-    if ( ipaddr == 0 || ipaddr[0] == 0 || strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
-        return(0);
-    else return(1);
-}
-
-int32_t is_remote_access(char *previpaddr)
-{
-    if ( notlocalip(previpaddr) != 0 )
-        return(1);
-    else return(0);
-}
-
 void clear_alloc_space(struct alloc_space *mem,int32_t alignflag)
 {
     memset(mem->ptr,0,mem->size);
@@ -596,7 +595,7 @@ void clear_alloc_space(struct alloc_space *mem,int32_t alignflag)
     mem->alignflag = alignflag;
 }
 
-void *memalloc(struct alloc_space *mem,long size)
+void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
 {
     void *ptr = 0;
     if ( (mem->used + size) > mem->size )
@@ -607,7 +606,8 @@ void *memalloc(struct alloc_space *mem,long size)
     }
     ptr = (void *)((long)mem->ptr + mem->used);
     mem->used += size;
-    memset(ptr,0,size);
+    if ( clearflag != 0 )
+        memset(ptr,0,size);
     if ( mem->alignflag != 0 && (mem->used & 0xf) != 0 )
         mem->used += 0x10 - (mem->used & 0xf);
     return(ptr);

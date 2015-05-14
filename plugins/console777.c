@@ -173,7 +173,7 @@ char *localcommand(char *line)
 
 char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,int32_t broadcastflag)
 {
-    int32_t i,j; char *pubstr,*cmdstr = 0; cJSON *json;
+    int32_t i,j; char numstr[64],*pubstr,*cmdstr = 0; cJSON *json;
     for (i=0; i<512&&line[i]!=' '&&line[i]!=0; i++)
         plugin[i] = line[i];
     plugin[i] = 0;
@@ -193,6 +193,8 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
     {
         if ( cJSON_GetObjectItem(json,"myipaddr") == 0 )
             cJSON_AddItemToObject(json,"myipaddr",cJSON_CreateString(SUPERNET.myipaddr));
+        if ( cJSON_GetObjectItem(json,"tag") == 0 )
+            sprintf(numstr,"%llu",((long long)rand()<<32) | rand()),cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
         if ( cJSON_GetObjectItem(json,"NXT") == 0 )
             cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(SUPERNET.NXTADDR));
         *timeoutp = get_API_int(cJSON_GetObjectItem(json,"timeout"),0);
@@ -216,7 +218,7 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
 void process_userinput(char *_line)
 {
     static char *line,*line2;
-    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; int j,timeout,broadcastflag = 0;
+    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int j,timeout,broadcastflag = 0;
     printf("[%s]\n",_line);
     if ( line == 0 )
         line = calloc(1,65536), line2 = calloc(1,65536);
@@ -225,6 +227,13 @@ void process_userinput(char *_line)
         return;
     if ( line[0] == '!' )
         broadcastflag = 1, line++;
+    if ( (json= cJSON_Parse(line)) != 0 )
+    {
+        free_json(json);
+        retstr = nn_loadbalanced(line);
+        printf("(%s) -> (%s)\n",line,retstr);
+        return;
+    }
     settoken(ipaddr,line);
     printf("expands to: %s [%s] %s\n",broadcastflag != 0 ? "broadcast": "",line,ipaddr);
     if ( is_ipaddr(ipaddr) != 0 )

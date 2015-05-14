@@ -20,7 +20,7 @@
 void peers_idle(struct plugin_info *plugin) {}
 
 STRUCTNAME PEERS;
-char *PLUGNAME(_methods)[] = { "direct" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "direct", "devMGW" }; // list of supported methods
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -32,7 +32,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char *resultstr,*methodstr,ipaddr[2048],*retstr,myipaddr[2048];
+    char *resultstr,*methodstr,ipaddr[2048],*retstr = 0,myipaddr[2048];
     retbuf[0] = 0;
     //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
@@ -59,6 +59,12 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
+        }
+        else if ( strcmp(methodstr,"devMGW") == 0 )
+        {
+            char *devMGW_command(char *jsonstr,cJSON *json);
+            if ( MGW.gatewayid >= 0 )
+                retstr = devMGW_command(jsonstr,json);
         }
         else if ( strcmp(methodstr,"direct") == 0 )
         {
@@ -91,14 +97,16 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                             }
                         } free_json(retjson);
                     }
-                    strcpy(retbuf,retstr);
-                    free(retstr);
                 }
             }
         }
-        else strcpy(retbuf,"{\"error\":\"under construction\"}");
+        if ( retstr != 0 )
+        {
+            strcpy(retbuf,retstr);
+            free(retstr);
+        }// else strcpy(retbuf,"{\"error\":\"under construction\"}");
     }
-    printf("PEERS.(%s) -> (%s)\n",jsonstr,retbuf);
+    printf("PEERS (%s)\n",retbuf);
     return((int32_t)strlen(retbuf));
 }
 

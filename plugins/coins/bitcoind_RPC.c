@@ -146,7 +146,7 @@ try_again:
             
             databuf = (char *)malloc(256 + strlen(command) + strlen(params));
             sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
-            //fprintf(stderr,"url.(%s) userpass.(%s) databuf.(%s)\n",url,userpass,databuf);
+//fprintf(stderr,"url.(%s) userpass.(%s) databuf.(%s)\n",url,userpass,databuf);
             //
         } //else if ( specialcase != 0 ) fprintf(stderr,"databuf.(%s)\n",params);
         curl_easy_setopt(curl_handle,CURLOPT_POST,1L);
@@ -272,7 +272,7 @@ static size_t WriteMemoryCallback(void *ptr,size_t size,size_t nmemb,void *data)
     return(realsize);
 }
 
-void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1,char *hdr2)
+void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *hdr0,char *hdr1,char *hdr2)
 {
     struct MemoryStruct chunk; CURL *cHandle; long code; struct curl_slist *headers = 0;
     if ( (cHandle= *cHandlep) == NULL )
@@ -284,6 +284,8 @@ void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1
 	curl_easy_setopt(cHandle,CURLOPT_USERAGENT,"Mozilla/4.0 (compatible; )");
 	curl_easy_setopt(cHandle,CURLOPT_SSL_VERIFYPEER,0);
 	curl_easy_setopt(cHandle,CURLOPT_URL,url);
+    if ( userpass != 0 )
+        curl_easy_setopt(cHandle,CURLOPT_USERPWD,userpass);
 	if ( postfields != NULL )
 		curl_easy_setopt(cHandle,CURLOPT_POSTFIELDS,postfields);
     if ( hdr0 != NULL )
@@ -309,4 +311,12 @@ void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1
     return(chunk.memory);
 }
 
+void foo(char *serverport,char *userpass)
+{
+    static CURL *cHandle;
+    char *retstr;
+    //sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
+    retstr = curl_post(&cHandle,serverport,userpass,"{\"method\":\"listreceivedbyaddress\",\"params\":[1 true]}",0,0,0);
+    printf("retstr.%p (%s)\n",retstr,retstr!=0?retstr:"");
+}
 #endif

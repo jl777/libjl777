@@ -486,13 +486,13 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     }
     else
     {
-        fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d (%s) ready.%d remote.%d\n",method,plugin,is_bundled_plugin(plugin),origargstr,dp->readyflag,dp->allowremote);
+        fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d remote.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote);
         if ( dp->readyflag == 0 )
         {
             printf("readyflag.%d\n",dp->readyflag);
             return(clonestr("{\"error\":\"plugin not ready\"}"));
         }
-        if ( localaccess != 0 && dp->allowremote == 0 )
+        if ( localaccess == 0 && dp->allowremote == 0 )
         {
             printf("allowremote.%d isremote.%d\n",dp->allowremote,!localaccess);
             sprintf(retbuf,"{\"error\":\"cant remote call plugin\",\"ipaddr\":\"%s\",\"plugin\":\"%s\"}",SUPERNET.myipaddr,plugin);

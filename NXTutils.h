@@ -1635,7 +1635,7 @@ struct acct_coin *get_NXT_coininfo(uint64_t srvbits,char *acctcoinaddr,char *pub
     return(0);
 }
 
-void add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey)
+int32_t add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey)
 {
     int32_t i;
     struct NXT_acct *np;

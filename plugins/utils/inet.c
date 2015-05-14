@@ -420,6 +420,19 @@ uint32_t conv_domainname(char *ipaddr,char *domain)
     return(0);
 }
 
+int32_t notlocalip(char *ipaddr)
+{
+    if ( ipaddr == 0 || ipaddr[0] == 0 || strcmp("127.0.0.1",ipaddr) == 0 || strncmp("192.168",ipaddr,7) == 0 )
+        return(0);
+    else return(1);
+}
+
+int32_t is_remote_access(char *previpaddr)
+{
+    if ( notlocalip(previpaddr) != 0 )
+        return(1);
+    else return(0);
+}
 /*struct sockaddr_in conv_ipbits(uint64_t ipbits)
  {
  char ipaddr[64];

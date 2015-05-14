@@ -519,31 +519,5 @@ char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,s
     return(paramstr);
 }
 
-char *createmultisig_json_params(struct pubkey_info *pubkeys,int32_t m,int32_t n,char *acctparm)
-{
-    int32_t i;
-    char *paramstr = 0;
-    cJSON *array,*mobj,*keys,*key;
-    keys = cJSON_CreateArray();
-    for (i=0; i<n; i++)
-    {
-        key = cJSON_CreateString(pubkeys[i].pubkey);
-        cJSON_AddItemToArray(keys,key);
-    }
-    mobj = cJSON_CreateNumber(m);
-    array = cJSON_CreateArray();
-    if ( array != 0 )
-    {
-        cJSON_AddItemToArray(array,mobj);
-        cJSON_AddItemToArray(array,keys);
-        if ( acctparm != 0 )
-            cJSON_AddItemToArray(array,cJSON_CreateString(acctparm));
-        paramstr = cJSON_Print(array);
-        free_json(array);
-    }
-    //printf("createmultisig_json_params.%s\n",paramstr);
-    return(paramstr);
-}
-
 #endif
 #endif

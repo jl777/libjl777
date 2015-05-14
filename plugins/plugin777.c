@@ -77,9 +77,10 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
 
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-    char *myipaddr,*jsonstr = 0;
-    cJSON *obj=0,*json = 0;
-    uint64_t nxt64bits,tag = 0;
+    void *loadfile(uint64_t *allocsizep,char *fname);
+    char filename[1024],*myipaddr,*jsonstr = 0;
+    cJSON *obj=0,*tmp,*json = 0;
+    uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
     if ( jsonargs != 0 )
     {
@@ -87,7 +88,15 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
         if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
             obj = cJSON_GetArrayItem(json,0);
         else obj = json;
-        jsonstr = cJSON_Print(obj);
+        copy_cJSON(filename,cJSON_GetObjectItem(obj,"filename"));
+        if ( filename[0] != 0 && (jsonstr= loadfile(&allocsize,filename)) != 0 )
+        {
+            if ( (tmp= cJSON_Parse(jsonstr)) != 0 )
+                obj = tmp;
+            else free(jsonstr), jsonstr = 0;
+        }
+        if ( jsonstr == 0 )
+            jsonstr = cJSON_Print(obj);
         _stripwhite(jsonstr,' ');
     }
     if ( obj != 0 )
@@ -107,10 +116,11 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             plugin->port = get_API_int(cJSON_GetObjectItem(obj,"port"),0);
         }
     }
-    //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
+    fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
         retval = PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,initflag);
     else printf("error with JSON.(%s)\n",jsonstr), getchar();
+    fprintf(stderr,"done tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 )
         free(jsonstr);
     if ( json != 0 )
@@ -193,7 +203,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     uint64_t tag = 0;
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
-    //if ( Debuglevel > 2 )
+    if ( Debuglevel > 2 )
         printf("PLUGIN.(%s) process_plugin_json\n",plugin->name);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -201,6 +211,8 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
             obj = cJSON_GetArrayItem(json,0);
         else obj = json;
         copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
+        if ( name[0] == 0 )
+            copy_cJSON(name,cJSON_GetObjectItem(obj,"destplugin"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
         if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
@@ -307,7 +319,7 @@ int32_t main
         argjson = cJSON_Parse(jsonargs);
         if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin,argjson)) > 0 )
         {
-            //if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 fprintf(stderr,">>>>>>>>>>>>>>> plugin sends REGISTER SEND.(%s)\n",registerbuf);
             nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
             //nn_send(plugin->sock,plugin->registerbuf,len+1,0); // send the null terminator too

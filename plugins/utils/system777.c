@@ -62,6 +62,21 @@ struct biendpoints { int32_t bus,pair; };
 struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
 union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
 
+struct db777
+{
+    void *db,*asyncdb;
+    char compression[8],dbname[32],name[16];
+    void *ctl,*env; char namestr[32],restoredir[512],argspecialpath[512],argsubdir[512],restorelogdir[512],argname[512],argcompression[512],backupdir[512];
+};
+
+struct env777
+{
+    char coinstr[16],subdir[64];
+    void *ctl,*env,*transactions;
+    struct db777 dbs[16];
+    int32_t numdbs,needbackup,lastbackup,currentbackup;
+};
+
 #define DEFAULT_APISLEEP 100
 struct SuperNET_info
 {
@@ -70,6 +85,7 @@ struct SuperNET_info
     uint64_t my64bits;
     int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,europeflag,readyflag,UPNP,iamrelay;
     uint16_t port;
+    struct env777 DBs;
 }; extern struct SuperNET_info SUPERNET;
 
 struct coins_info
@@ -100,7 +116,7 @@ struct MGW_info
 #define MAX_RAMCHAINS 128
 struct ramchain_info
 {
-    char PATH[1024],coins[MAX_RAMCHAINS][16];
+    char PATH[1024],coins[MAX_RAMCHAINS][16],pullnode[64];
     double lastupdate[MAX_RAMCHAINS];
     union endpoints all;
     int32_t num,readyflag;
@@ -124,7 +140,7 @@ struct relayargs
 {
     char *(*commandprocessor)(struct relayargs *args,uint8_t *msg,int32_t len);
     char name[16],endpoint[MAX_SERVERNAME];
-    int32_t lbsock,bussock,pubsock,subsock,peersock,sock,type,bindflag,sendtimeout,recvtimeout;
+    int32_t lbsock,bussock,pubsock,subsock,peersock,pushsock,sock,type,bindflag,sendtimeout,recvtimeout;
 };
 
 struct _relay_info { int32_t sock,num,mytype,desttype; uint64_t servers[4096]; };
@@ -132,7 +148,7 @@ struct relay_info
 {
     struct relayargs args[8];
     struct _relay_info lb,peer,bus,sub,pair;
-    int32_t readyflag,pubsock,querypeers,surveymillis;
+    int32_t readyflag,pubsock,querypeers,surveymillis,pushsock,pullsock;
 }; extern struct relay_info RELAYS;
 
 // only OS portable functions in this file
@@ -560,7 +576,7 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
         else if ( type == NN_SUB && (err= nn_setsockopt(sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0)) < 0 )
             return(report_err(typestr,err,"nn_setsockopt subscribe",type,bindaddr,connectaddr));
     }
-    //if ( Debuglevel > 2 )
+    if ( Debuglevel > 2 )
         printf("%s.%s socket.%d bind.(%s) connect.(%s)\n",typestr,suffix,sock,bindaddr,connectaddr);
     return(sock);
 }
