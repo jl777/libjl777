@@ -81,7 +81,7 @@ char *plugin_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
     n = get_API_int(objs[5],1);
     tag = calc_nxt64bits(tagstr);
     timeout = get_API_int(objs[6],1000);
-    return(plugin_method(0,previpaddr,plugin,method,daemonid,instanceid,tag,origargstr,n,timeout));
+    return(plugin_method(0,previpaddr,plugin,method,daemonid,instanceid,tag,origargstr,0,timeout));
 }
 
 char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)

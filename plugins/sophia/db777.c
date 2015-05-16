@@ -19,26 +19,37 @@
 #include "coins777.c"
 #include "storage.c"
 
+#define DB777_RAM 1
+#define DB777_HDD 2
+#define DB777_NANO 4
+#define DB777_FLUSH 8
+#define DB777_KEY32 0x20
+#define ENV777_BACKUP 0x40
+#define DB777_MULTITHREAD 0x80
+
 
 #define SOPHIA_USERDIR "/user"
+void *db777_get(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen);
+int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen);
+
 uint64_t db777_ctlinfo64(void *ctl,char *field);
 int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t len);
+int32_t db777_delete(int32_t flags,void *transactions,struct db777 *DB,void *key,int32_t keylen);
+int32_t db777_sync(void *transactions,struct env777 *DBs,int32_t fullbackup);
+void db777_free(struct db777 *DB);
+
 int32_t db777_addstr(struct db777 *DB,char *key,char *value);
-int32_t db777_delete(struct db777 *DB,void *key,int32_t keylen);
 int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key);
-void *db777_findM(int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen);
+
 int32_t db777_close(struct db777 *DB);
-int32_t db777_free(struct db777 *DB);
 void **db777_copy_all(int32_t *nump,struct db777 *DB,char *field,int32_t size);
-struct db777 *db777_getDB(char *dbname);
-int32_t db777_backup(void *ctl);
-void *db777_transaction(void *env,struct db777 *DB,void *transactions,void *key,int32_t keylen,void *value,int32_t len);
 struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compression,int32_t restoreflag);
+
 int32_t env777_start(int32_t dispflag,struct env777 *DBs);
 char **db777_index(int32_t *nump,struct db777 *DB,int32_t max);
 int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue);
 
-extern struct sophia_info SOPHIA;
+extern struct db777_info SOPHIA;
 extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,;
 
 #endif
@@ -52,107 +63,317 @@ extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTa
 #undef DEFINES_ONLY
 #endif
 
-void *db777_find(void *transactions,struct db777 *DB,void *key,int32_t keylen)
+void db777_lock(struct db777 *DB)
 {
-    void *obj,*result = 0;
-    int32_t len;
-    if ( DB == 0 || DB->db == 0 || (obj= sp_object(DB->db)) == 0 )
-        return(0);
-    if ( sp_set(obj,"key",key,keylen) == 0 )
-        result = sp_get(transactions != 0 ? transactions : DB->db,obj,&len);
-    else sp_destroy(obj);
-    return(result);
+    if ( (DB->flags & DB777_MULTITHREAD) != 0 )
+        portable_mutex_lock(&DB->mutex);
 }
 
-int32_t db777_delete(struct db777 *DB,void *key,int32_t keylen)
+void db777_unlock(struct db777 *DB)
 {
-    void *obj;
-    if ( DB == 0 || DB->db == 0 || (obj= sp_object(DB->db)) == 0 )
-        return(0);
-    if ( sp_set(obj,"key",key,keylen) == 0 )
-        return(sp_delete(DB->db,obj));
-    else sp_destroy(obj);
-    return(-1);
+    if ( (DB->flags & DB777_MULTITHREAD) != 0 )
+        portable_mutex_unlock(&DB->mutex);
 }
 
-void *db777_transaction(void *env,struct db777 *DB,void *transactions,void *key,int32_t keylen,void *value,int32_t len)
+void *db777_get(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen)
 {
-    void *obj;
-    if ( transactions == 0 )
-        return(sp_begin(env));
-    else if ( key != 0 )
+    int32_t i,c,max; struct db777_entry *entry = 0; void *obj,*result = 0,*value = 0; char buf[8192],_keystr[513],*keystr = _keystr;
+    max = *lenp, *lenp = 0;
+    if ( (DB->flags & DB777_RAM) != 0 )
     {
-        if ( (obj= sp_object(DB->db)) == 0 )
-            return(0);
-        if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,len) != 0 )
+        db777_lock(DB);
+        HASH_FIND(hh,DB->table,key,keylen,entry);
+        db777_unlock(DB);
+        if ( entry != 0 )
         {
-            sp_destroy(obj);
-            sp_destroy(transactions);
-            return(0);
+            *lenp = entry->valuelen;
+            if ( entry->valuesize == 0 )
+                memcpy(&value,entry->value,sizeof(value));
+            else value = entry->value;
+            if ( entry->valuelen <= max )
+                memcpy(dest,value,entry->valuelen);
+            else return(0);
+            //if ( strcmp(DB->name,"addrinfos") == 0 )
+            //    printf("RAM found %p %s [%x] keylen.%d -> [%x] valuelen.%d | value.%p entry.%p\n",dest,DB->name,*(int *)key,keylen,*(int *)value,entry->valuelen,value,entry);
+            return(dest);
         }
-        if ( sp_set(transactions,obj) != 0 )
-        {
-            sp_destroy(transactions);
-            return(0);
-        }
-        return(transactions);
     }
-    if ( sp_commit(transactions) != 0 )
-        printf("error commiting transaction\n");
+    if ( (DB->flags & DB777_HDD) != 0 )
+    {
+        if ( (obj= sp_object(DB->db)) != 0 )
+        {
+            if ( sp_set(obj,"key",key,keylen) == 0 && (result= sp_get(transactions != 0 ? transactions : DB->db,obj)) != 0 )
+            {
+                value = sp_get(result,"value",lenp);
+                if ( *lenp <= max )
+                {
+                    memcpy(dest,value,*lenp);
+                    if ( (DB->flags & DB777_RAM) != 0 )
+                        db777_set(DB777_RAM,transactions,DB,key,keylen,value,*lenp);
+                }
+                else dest = 0;
+            }
+            if ( result != 0 )
+                sp_destroy(result);
+        }
+        if ( value != 0 )
+            return(dest);
+    }
+    if ( 0 && (DB->flags & DB777_NANO) != 0 && DB->reqsock != 0 )
+    {
+        for (i=0; i<keylen; i++)
+            if ( (c= ((uint8_t *)key)[i]) < 0x20 || c >= 0x80 )
+                break;
+        if ( i != keylen )
+        {
+            if ( keylen > sizeof(_keystr)/2 )
+                key = malloc((keylen << 1) + 1);
+            init_hexbytes_noT(keystr,key,keylen);
+        }
+        else
+        {
+            keystr = key;
+            if ( keystr[keylen] != 0 )
+            {
+                printf("db777_get: adding null terminator\n");
+                keystr[keylen] = 0;
+            }
+        }
+        if ( keylen < sizeof(buf)-128 )
+        {
+            sprintf(buf,"{\"destplugin\":\"db777\",\"method\":\"get\",\"coin\":\"%s\",\"DB\":\"%s\",\"key\":\"%s\"}",DB->coinstr,DB->name,keystr);
+            nn_send(DB->reqsock,buf,(int32_t)strlen(buf)+1,0);
+            printf("db777_get: sent.(%s)\n",buf);
+        } else printf("db777_get: keylen.%d too big for buf\n",keylen);
+    }
     return(0);
 }
 
-uint32_t Duplicate,Mismatch,Added;
-int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t len)
+void _db777_free(struct db777_entry *entry)
 {
-    void *obj = 0,*val = 0;
-    int32_t allocsize = 0;
-    if ( DB == 0 || DB->db == 0 )
-        return(-1);
-    if ( forceflag <= 0 && (obj= db777_find(transactions,DB,key,keylen)) != 0 )
+    void *obj;
+    if ( entry->valuesize == 0 )
     {
-        if ( (val= sp_get(obj,"value",&allocsize)) != 0 )
+        memcpy(&obj,entry->value,sizeof(obj));
+        free(obj);
+    }
+    free(entry);
+}
+
+int32_t db777_delete(int32_t flags,void *transactions,struct db777 *DB,void *key,int32_t keylen)
+{
+    struct db777_entry *entry; void *obj; int32_t retval = -1;
+    if ( DB != 0 )
+    {
+        if ( ((flags & DB->flags) & DB777_HDD) != 0 )
         {
-            if ( allocsize == len && memcmp(val,value,len) == 0 )
+            if ( (obj= sp_object(DB->db)) == 0 )
             {
-                if ( forceflag < 0 )
-                {
-                    Duplicate++;
-                    //if ( (rand() % 1000) == 0 )
-                    //    printf("found duplicate len.%d | duplicate.%d mismatch.%d\n",len,Duplicate,Mismatch);
-                }
-                sp_destroy(obj);
-                return(0);
+                if ( sp_set(obj,"key",key,keylen) == 0 )
+                    retval = sp_delete((transactions != 0) ? transactions : DB->db,obj);
+                else sp_destroy(obj);
             }
+        }
+        if ( ((flags & DB->flags) & DB777_RAM) != 0 )
+        {
+            db777_lock(DB);
+            HASH_FIND(hh,DB->table,key,keylen,entry);
+            if ( entry != 0 )
+            {
+                HASH_DEL(DB->table,entry);
+                _db777_free(entry);
+            }
+            db777_unlock(DB);
+        }
+    }
+    return(retval);
+}
+
+void db777_free(struct db777 *DB)
+{
+    struct db777_entry *entry,*tmp;
+    if ( DB->table != 0 )
+    {
+        db777_lock(DB);
+        HASH_ITER(hh,DB->table,entry,tmp)
+        {
+            HASH_DEL(DB->table,entry);
+            _db777_free(entry);
+        }
+        db777_unlock(DB);
+    }
+}
+
+int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen)
+{
+    struct db777_entry *entry = 0; void *db,*newkey,*obj = 0; int32_t retval = 0;
+    //if ( strcmp(DB->name,"revaddrs") == 0 )
+    //    printf("%s SET.%08x keylen.%d | value %x len.%d value.%p (%s)\n",DB->name,*(int *)key,keylen,*(int *)value,valuelen,value,value);
+    if ( ((DB->flags & flags) & DB777_HDD) != 0 )
+    {
+        db = DB->asyncdb != 0 ? DB->asyncdb : DB->db;
+        if ( (obj= sp_object(db)) == 0 )
+            retval = -3;
+        if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,valuelen) != 0 )
+        {
+            sp_destroy(obj);
+            retval = -4;
+        }
+        else retval = sp_set((transactions != 0 ? transactions : db),obj);
+    }
+    if ( ((DB->flags & flags) & DB777_RAM) != 0 )
+    {
+        db777_lock(DB);
+        HASH_FIND(hh,DB->table,key,keylen,entry);
+        if ( entry == 0 )
+        {
+            if ( DB->valuesize == 0 )
+            {
+                entry = calloc(1,sizeof(*entry) + sizeof(void *));
+                if ( valuelen > 0 )
+                {
+                    obj = malloc(valuelen);
+                    memcpy(entry->value,&obj,sizeof(obj));
+                }
+            }
+            else if ( valuelen == DB->valuesize )
+            {
+                entry = calloc(1,sizeof(*entry) + valuelen);
+                obj = entry->value;
+                entry->valuesize = DB->valuesize;
+            }
+            else
+            {
+                printf("%s mismatched valuelen.%d vs DB->valuesize.%d\n",DB->name,valuelen,DB->valuesize);
+                db777_unlock(DB);
+                return(-1);
+            }
+            entry->allocsize = entry->valuelen = valuelen;
+            entry->keylen = keylen;
+            entry->dirty = 1;
+            //if ( strcmp(DB->name,"addrinfos") == 0 )
+            //    printf("%s ADD_KEYPTR[%x] <- value.%p entry.%p newkey.%p\n",DB->name,*(int *)key,obj,entry,newkey);
+            if ( obj != 0 )
+                memcpy(obj,value,valuelen);
+            else printf("%s keylen.%d unexpected null obj\n",DB->name,keylen);
+            //if ( (DB->flags & DB777_KEY32) != 0 ) // causes misses txoffests?
+            //    HASH_ADD(hh,DB->table,key32,keylen,entry);
+            //else
+            {
+                newkey = malloc(keylen);
+                memcpy(newkey,key,keylen);
+                HASH_ADD_KEYPTR(hh,DB->table,newkey,keylen,entry);
+            }
+            db777_unlock(DB);
+        }
+        else
+        {
+            db777_unlock(DB);
+            entry->dirty = 1;
+            if ( entry->valuesize == 0 )
+            {
+                memcpy(&obj,entry->value,sizeof(obj));
+                if ( entry->valuelen != valuelen || memcmp(obj,value,valuelen) != 0 )
+                {
+                    if ( entry->allocsize >= valuelen )
+                    {
+                        memcpy(obj,value,valuelen);
+                        if ( valuelen < entry->allocsize )
+                            memset(&((uint8_t *)obj)[valuelen],0,entry->allocsize - valuelen);
+                    }
+                    else
+                    {
+                        entry->allocsize = valuelen;
+                        obj = realloc(obj,entry->allocsize);
+                        memcpy(obj,value,entry->allocsize);
+                        memcpy(entry->value,&obj,sizeof(obj));
+                    }
+                    entry->valuelen = valuelen;
+                }
+                //if ( strcmp(DB->name,"addrinfos") == 0 )
+                //    printf("%s ADD_KEYPTR[%x] <- value %p entry.%p REALLOC\n",DB->name,*(int *)key,obj,entry);
+            }
+            else if ( entry->valuesize != valuelen || valuelen != DB->valuesize )
+                printf("entry->valuesize.%d DB->valuesize.%d vs valuesize.%d??\n",entry->valuesize,DB->valuesize,valuelen);
+            else
+            {
+                if ( memcmp(entry->value,value,valuelen) != 0 )
+                    memcpy(entry->value,value,valuelen);
+            }
+        }
+    }
+    return(retval);
+}
+
+int32_t db777_flush(void *transactions,struct db777 *DB)
+{
+    struct db777_entry *entry,*tmp; void *obj; int32_t flushed = 0,n = 0,numerrs = 0;
+    if ( (DB->flags & DB777_RAM) != 0 )
+    {
+        db777_lock(DB);
+        HASH_ITER(hh,DB->table,entry,tmp)
+        {
+            if ( entry->valuesize == 0 && entry->valuelen < entry->valuesize )
+            {
+                memcpy(&obj,entry->value,sizeof(obj));
+                entry->allocsize = entry->valuelen;
+                obj = realloc(obj,entry->valuelen);
+                memcpy(entry->value,&obj,sizeof(obj));
+            }
+            if ( entry->dirty != 0 )
+            {
+                if ( (DB->flags & DB777_HDD) != 0 )
+                {
+                    db777_delete(DB777_HDD,transactions,DB,entry->hh.key,entry->keylen);
+                    obj = (DB->valuesize == 0) ? *(void **)entry->value : entry->value;
+                    entry->dirty = (db777_set(DB777_HDD,transactions,DB,entry->hh.key,entry->keylen,obj,entry->valuelen) != 0);
+                    //if ( strcmp(DB->name,"revaddrs") == 0 )
+                    //    printf("%d: (%s).%d\n",*(int32_t *)entry->hh.key,obj,entry->valuelen);
+                    numerrs += entry->dirty;
+                    n++, flushed += entry->valuelen;
+                }
+            }
+        }
+        db777_unlock(DB);
+    }
+    printf("(%s %d).%d ",DB->name,flushed,n);
+    return(-numerrs);
+}
+
+uint32_t Duplicate,Mismatch,Added;
+int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen)
+{
+    void *val = 0;
+    int32_t retval,allocsize = sizeof(DB->checkbuf);
+    if ( DB == 0 )
+        return(-1);
+    if ( forceflag <= 0 && (val= db777_get(DB->checkbuf,&allocsize,transactions,DB,key,keylen)) != 0 )
+    {
+        if ( allocsize == valuelen && memcmp(val,value,valuelen) == 0 )
+        {
+            if ( forceflag < 0 )
+                Duplicate++;
+            return(0);
         }
     }
     if ( forceflag < 0 && allocsize != 0 )
     {
         int i;
-        for (i=0; i<60&&i<len; i++)
+        for (i=0; i<60&&i<valuelen; i++)
             printf("%02x ",((uint8_t *)value)[i]);
-        printf("value len.%d\n",len);
+        printf("value len.%d %s | key %x keylen.%d\n",valuelen,DB->name,*(int *)key,keylen);
         if ( val != 0 )
         {
             for (i=0; i<60&&i<allocsize; i++)
                 printf("%02x ",((uint8_t *)val)[i]);
-            printf("saved %d\n",allocsize);
+            printf("save len %d %s\n",allocsize,DB->name);
         }
-        Mismatch++, printf("duplicate.%d mismatch.%d | keylen.%d len.%d -> allocsize.%d\n",Duplicate,Mismatch,keylen,len,allocsize);
-    }
-    if ( obj != 0 )
-        sp_destroy(obj);
-    if ( (obj= sp_object(DB->asyncdb != 0 ? DB->asyncdb : DB->db)) == 0 )
-        return(-3);
-    if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,len) != 0 )
-    {
-        sp_destroy(obj);
-        return(-4);
+        Mismatch++, printf("%s duplicate.%d mismatch.%d | keylen.%d valuelen.%d -> allocsize.%d\n",DB->name,Duplicate,Mismatch,keylen,valuelen,allocsize);
     }
     if ( forceflag < 1 )
         Added++;
-    //printf("DB.%p add.[%p %d] val.%p %d [crcs %u %u]\n",DB,key,keylen,value,len,_crc32(0,key,keylen),_crc32(0,value,len));
-    return(sp_set(transactions != 0 ? transactions : (DB->asyncdb != 0 ? DB->asyncdb : DB->db),obj));
+    retval = db777_set((DB->flags & DB777_RAM) == 0 ? DB777_HDD : DB777_RAM,transactions,DB,key,keylen,value,valuelen);
+    return(retval);
 }
 
 int32_t db777_addstr(struct db777 *DB,char *key,char *value)
@@ -162,42 +383,36 @@ int32_t db777_addstr(struct db777 *DB,char *key,char *value)
 
 int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key)
 {
-    void *obj,*val;
-    int32_t valuesize = -1;
-    if ( (obj= db777_find(0,DB,key,(int32_t)strlen(key)+1)) != 0 )
+    void *val;
+    int32_t valuesize = max;
+    retbuf[0] = 0;
+    if ( key == 0 || key[0] == 0 )
+        return(-1);
+    if ( (val= db777_get(retbuf,&valuesize,0,DB,key,(int32_t)strlen(key)+1)) != 0 )
     {
-        if ( (val= sp_get(obj,"value",&valuesize)) != 0 )
-        {
-            max--;
-            memcpy(retbuf,val,(valuesize < max) ? valuesize : max), retbuf[max] = 0;
-        } else retbuf[0] = 0;
-       // printf("found str.(%s) -> (%s)\n",key,retbuf);
-        sp_destroy(obj);
+        //max--;
+        //if ( valuesize > 0 )
+        //    memcpy(retbuf,val,(valuesize < max) ? valuesize : max), retbuf[max] = 0;
     }
+    // printf("found str.(%s) -> (%s)\n",key,retbuf);
     return(valuesize);
 }
 
-void *db777_findM(int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen)
+int32_t db777_sync(void *transactions,struct env777 *DBs,int32_t flags)
 {
-    void *obj,*val,*ptr = 0;
-    int32_t valuesize = -1;
-    if ( (obj= db777_find(transactions,DB,key,keylen)) != 0 )
+    int32_t i,err = 0;
+    if ( (flags & DB777_FLUSH) != 0 )
     {
-       //printf("found keylen.%d\n",keylen);
-        if ( (val= sp_get(obj,"value",&valuesize)) != 0 )
-        {
-            ptr = calloc(1,valuesize+1);
-            memcpy(ptr,val,valuesize);
-            *lenp = valuesize;
-        }
-        sp_destroy(obj);
+        //transactions = sp_begin(DBs->env);
+        for (i=0; i<DBs->numdbs; i++)
+            if ( (DBs->dbs[i].flags & DB777_FLUSH) != 0 )
+                db777_flush(transactions,&DBs->dbs[i]);
+        if ( transactions != 0 && (err= sp_commit(transactions)) != 0 )
+            printf("db777_sync err.%d\n",err);
     }
-    return(ptr);
-}
-
-int32_t db777_backup(void *ctl)
-{
-    return(sp_set(ctl,"backup.run"));
+    if ( (flags & ENV777_BACKUP) != 0 )
+        sp_set(DBs->ctl,"backup.run");
+    return(err);
 }
 
 uint64_t db777_ctlinfo64(void *ctl,char *field)
@@ -303,7 +518,7 @@ int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue)
     return(n);
 }
 
-int32_t eligible_lbserver(char *server)
+/*int32_t eligible_lbserver(char *server)
 {
     cJSON *json; int32_t len,keylen,retval = 1; char *jsonstr,*status,*valstr = "{\"status\":\"enabled\"}";
     if ( server == 0 || server[0] == 0 || ismyaddress(server) != 0 || is_remote_access(server) == 0 )
@@ -325,7 +540,7 @@ int32_t eligible_lbserver(char *server)
     }
     else db777_add(1,0,DB_NXTaccts,server,keylen,valstr,(int32_t)strlen(valstr)+1);
     return(retval);
-}
+}*/
 
 #endif
 #endif

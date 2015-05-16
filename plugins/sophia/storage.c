@@ -47,9 +47,9 @@ struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits);
 
 struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits)
 {
-    struct NXT_acct *np;
-    int32_t len;
-    if ( (np= db777_findM(&len,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits))) == 0 )
+    static struct NXT_acct N,*np;
+    int32_t len = sizeof(N);
+    if ( (np= db777_get(&N,&len,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits))) == 0 )
     {
         np = calloc(1,sizeof(*np));
         np->nxt64bits = nxt64bits, expand_nxt64bits(np->NXTaddr,nxt64bits);

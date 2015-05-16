@@ -256,7 +256,7 @@ void process_userinput(char *_line)
         else if ( strcmp(plugin,"peers") == 0 )
             retstr = nn_allpeers(cmdstr,timeout != 0 ? timeout : RELAYS.surveymillis,0);
         else if ( find_daemoninfo(&j,plugin,0,0) != 0 )
-            retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,timeout != 0 ? timeout : 0);
+            retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,0,timeout != 0 ? timeout : 0);
         else retstr = nn_publish(cmdstr,0);
         printf("(%s) -> (%s) -> (%s)\n",line,cmdstr,retstr);
         free(cmdstr);

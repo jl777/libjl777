@@ -35,7 +35,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
 char *setmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *origargstr);
 char *getmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *coinstr,char *refNXTaddr,char *myacctcoinaddr,char *mypubkey);
 char *setmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *coinstr,char *refNXTaddr,char *acctcoinaddr,char *userpubkey);
-struct multisig_addr *find_msigaddr(int32_t *lenp,char *coinstr,char *NXTaddr,char *msigaddr);
+struct multisig_addr *find_msigaddr(struct multisig_addr *msig,int32_t *lenp,char *coinstr,char *NXTaddr,char *msigaddr);
 int32_t save_msigaddr(char *coinstr,char *NXTaddr,struct multisig_addr *msig,int32_t len);
 struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,char *coinstr,char *serverport,char *userpass,int32_t use_addmultisig,char *refNXTaddr,char *userpubkey,uint64_t *srvbits);
 
@@ -614,7 +614,7 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
                             else printf("sent.(%s).%d\n",buf,len);
                             lastcrc = crc;
                         }
-                        /*if ( (str= plugin_method(0,0,"coins","getmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
+                        /*if ( (str= plugin_method(0,0,"coins","getmsigpubkey",0,milliseconds(),buf,0,1,10000)) != 0 )
                         {
                             printf("GENMULTISIG sent to MGW bus (%s)\n",buf);
                             free(str);
@@ -681,7 +681,7 @@ char *getmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
             if ( nn_send(MGW.all.socks.both.bus,buf,(int32_t)strlen(buf)+1,0) <= 0 )
                 printf("error sending (%s)\n",buf);
             return(clonestr(buf));
-            /*if ( (str= plugin_method(0,previpaddr,"coins","setmsigpubkey",0,milliseconds(),buf,1,10000)) != 0 )
+            /*if ( (str= plugin_method(0,previpaddr,"coins","setmsigpubkey",0,milliseconds(),buf,0,1,10000)) != 0 )
             {
                 printf("GETMSIG sent to MGW bus (%s)\n",buf);
                 free(str);

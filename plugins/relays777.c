@@ -14,8 +14,10 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
+#include "system777.c"
 #include "plugin777.c"
 #undef DEFINES_ONLY
+#define NN_WS -4
 
 void relay_idle(struct plugin_info *plugin) {}
 
@@ -23,6 +25,32 @@ STRUCTNAME RELAYS;
 char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
+char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2", "tbd3" };
+
+void expand_epbits(char *endpoint,struct endpoint epbits)
+{
+    char ipaddr[64];
+    if ( epbits.ipbits == 0 )
+        expand_ipbits(ipaddr,epbits.ipbits);
+    else strcpy(ipaddr,"*");
+    sprintf(endpoint,"%s://%s:%d",nn_transports[epbits.transport],ipaddr,epbits.port);
+}
+
+struct endpoint calc_epbits(char *transport,uint32_t ipbits,uint16_t port,int32_t type)
+{
+    int32_t i; struct endpoint epbits;
+    memset(&epbits,0,sizeof(epbits));
+    for (i=0; i<(int32_t)(sizeof(nn_transports)/sizeof(*nn_transports)); i++)
+        if ( strcmp(transport,nn_transports[i]) == 0 )
+        {
+            epbits.ipbits = ipbits;
+            epbits.port = port;
+            epbits.transport = i;
+            epbits.nn = type;
+            break;
+        }
+    return(epbits);
+}
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -83,58 +111,62 @@ int32_t nn_portoffset(int32_t type)
     return(-1);
 }
 
-void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t port,int32_t type)
+/*void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t refport,int32_t type)
 {
-    sprintf(endpoint,"%s://%s:%d",transport,domain,port + nn_portoffset(type));
-}
+    sprintf(endpoint,"%s://%s:%d",transport,domain,refport + nn_portoffset(type));
+}*/
 
-int32_t add_relay(struct _relay_info *list,uint64_t ipbits)
+int32_t add_relay(struct _relay_info *list,struct endpoint epbits)
 {
     //static portable_mutex_t mutex; static int didinit;
     //if ( didinit == 0 ) didinit++, portable_mutex_init(&mutex);
     //portable_mutex_lock(&mutex);
-    list->servers[list->num % (sizeof(list->servers)/sizeof(*list->servers))] = ipbits, list->num++;
+    list->connections[list->num % (sizeof(list->connections)/sizeof(*list->connections))] = epbits, list->num++;
     //portable_mutex_unlock(&mutex);
-    if ( list->num > (sizeof(list->servers)/sizeof(*list->servers)) )
-        printf("add_relay warning num.%d > %ld\n",list->num,(sizeof(list->servers)/sizeof(*list->servers)));
+    if ( list->num > (sizeof(list->connections)/sizeof(*list->connections)) )
+        printf("add_relay warning num.%d > %ld\n",list->num,(sizeof(list->connections)/sizeof(*list->connections)));
     return(list->num);
 }
 
-int32_t find_ipbits(struct _relay_info *list,uint32_t ipbits)
+struct endpoint find_epbits(struct _relay_info *list,uint32_t ipbits,uint16_t port,int32_t type)
 {
-    int32_t i;
-    if ( list == 0 || list->num == 0 )
-        return(-1);
-    for (i=0; i<list->num&&i<(int32_t)(sizeof(list->servers)/sizeof(*list->servers)); i++)
-        if ( (uint32_t)list->servers[i] == ipbits )
-            return(i);
-    return(-1);
+    int32_t i; struct endpoint epbits;
+    memset(&epbits,0,sizeof(epbits));
+    if ( list != 0 && list->num > 0 )
+    {
+        if ( type >= 0 )
+            type = nn_portoffset(type);
+        for (i=0; i<list->num&&i<(int32_t)(sizeof(list->connections)/sizeof(*list->connections)); i++)
+            if ( list->connections[i].ipbits == ipbits && (port == 0 || port == list->connections[i].port)  && (type < 0 || type == list->connections[i].nn) )
+                return(list->connections[i]);
+    }
+    return(epbits);
 }
 
-int32_t update_serverbits(struct _relay_info *list,char *server,uint64_t ipbits,int32_t type)
+int32_t update_serverbits(struct _relay_info *list,char *transport,uint32_t ipbits,uint16_t port,int32_t type)
 {
-    char endpoint[1024];
+    char endpoint[1024]; struct endpoint epbits;
     if ( list->sock < 0 )
     {
         printf("illegal list sock.%d\n",list->sock);
         return(-1);
     }
     //printf("%p update_serverbits sock.%d type.%d num.%d ipbits.%llx\n",list,list->sock,type,list->num,(long long)ipbits);
-    if ( find_ipbits(list,(uint32_t)ipbits) < 0 )
+    epbits = find_epbits(list,ipbits,port,type);
+    if ( epbits.ipbits == 0 )
     {
-        set_endpointaddr("tcp",endpoint,server,SUPERNET.port,type);
+        epbits = calc_epbits(transport,ipbits,port,type);
+        expand_epbits(endpoint,epbits);
         if ( nn_connect(list->sock,endpoint) < 0 )
             printf("error connecting to (%s) %s\n",endpoint,nn_errstr());
         else
         {
-            if ( type == NN_PUB )
+            if ( list->desttype == NN_PUB )
             {
                 printf("subscribed to (%s)\n",endpoint);
                 nn_setsockopt(list->sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0);
             }
-            add_relay(list,ipbits);
-            set_endpointaddr("ws",endpoint,server,SUPERNET.port,type);
-            nn_connect(list->sock,endpoint);
+            add_relay(list,epbits);
         }
     }
     return(list->num);
@@ -164,20 +196,21 @@ int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port
 
 int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAME],int32_t num)
 {
-    int32_t i; char endpoint[512]; uint64_t ipbits;
+    int32_t i; char endpoint[512]; struct endpoint epbits; uint32_t ipbits;
     if ( num > 0 && servers != 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDPRIO,&priority,sizeof(priority)) >= 0 )
     {
         for (i=0; i<num; i++)
         {
-            if ( (ipbits= calc_ipbits(servers[i])) == 0 )
+            if ( (ipbits= (uint32_t)calc_ipbits(servers[i])) == 0 )
                 continue;
-            set_endpointaddr("tcp",endpoint,servers[i],SUPERNET.port,NN_REP);
+            epbits = calc_epbits("tcp",ipbits,SUPERNET.port + nn_portoffset(NN_REP),NN_REP);
+            expand_epbits(endpoint,epbits);
             if ( ismyaddress(servers[i]) == 0 && nn_connect(sock,endpoint) >= 0 )
             {
                 printf("+%s ",endpoint);
-                add_relay(&RELAYS.lb,ipbits);
-                set_endpointaddr("ws",endpoint,servers[i],SUPERNET.port,NN_REP);
-                nn_connect(sock,endpoint);
+                add_relay(&RELAYS.lb,epbits);
+                //set_endpointaddr("ws",endpoint,servers[i],SUPERNET.port,NN_REP);
+                //nn_connect(sock,endpoint);
             }
         }
         priority++;
@@ -210,10 +243,7 @@ int32_t nn_lbsocket(int32_t retrymillis,int32_t port)
 {
     char Cservers[32][MAX_SERVERNAME],Bservers[32][MAX_SERVERNAME],failsafes[4][MAX_SERVERNAME];
     int32_t n,m,lbsock,numfailsafes = 0;
-    strcpy(failsafes[numfailsafes++],"jnxt.org");
-    strcpy(failsafes[numfailsafes++],"209.126.70.156");
-    strcpy(failsafes[numfailsafes++],"209.126.70.159");
-    strcpy(failsafes[numfailsafes++],"209.126.70.170");
+    strcpy(failsafes[numfailsafes++],"76.176.198.6");
     n = crackfoo_servers(Cservers,sizeof(Cservers)/sizeof(*Cservers),port);
     m = badass_servers(Bservers,sizeof(Bservers)/sizeof(*Bservers),port);
     //if ( europeflag != 0 )
@@ -223,14 +253,66 @@ int32_t nn_lbsocket(int32_t retrymillis,int32_t port)
     return(lbsock);
 }
 
-int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,uint16_t port,int32_t sendtimeout,int32_t recvtimeout)
+int32_t nn_directsocket(struct endpoint epbits)
 {
     int32_t sock;
-    set_endpointaddr(SUPERNET.transport,endpoint,"*",SUPERNET.port,type);
+    if ( epbits.directind > 0 && (sock= RELAYS.direct[epbits.directind].sock) > 0 )
+        return(sock);
+    return(-1);
+}
+
+int32_t nn_directind()
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(RELAYS.direct)/sizeof(*RELAYS.direct)); i++)
+        if ( RELAYS.direct[i].sock == 0 )
+        {
+            RELAYS.direct[i].sock = -1;
+            return(i);
+        }
+    for (i=0; i<(int32_t)(sizeof(RELAYS.direct)/sizeof(*RELAYS.direct)); i++)
+        if ( RELAYS.direct[i].sock == -1 )
+            return(i);
+    return(0);
+}
+
+struct endpoint nn_directepbits(char *retbuf,char *transport,char *ipaddr,uint16_t port)
+{
+    struct endpoint epbits;
+    if ( transport == 0 || transport[0] == 0 )
+        transport = "tcp";
+    if ( ipaddr == 0 || ipaddr[0] == 0 )
+        sprintf(retbuf,"{\"error\":\"no ipaddr specified\"}");
+    else if ( port == 0 )
+        sprintf(retbuf,"{\"error\":\"no port specified\"}");
+    else return(find_epbits(&RELAYS.pair,(uint32_t)calc_ipbits(ipaddr),port,NN_PAIR));
+    memset(&epbits,0,sizeof(epbits));
+    return(epbits);
+}
+
+void nn_startdirect(struct endpoint epbits,int32_t sock,char *handler)
+{
+    struct direct_connection *dc;
+    dc = &RELAYS.direct[epbits.directind];
+    if ( handler != 0 && handler[0] != 0 )
+        safecopy(dc->handler,handler,sizeof(dc->handler));
+    dc->sock = sock;
+    dc->epbits = epbits;
+}
+
+int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,uint16_t port,int32_t sendtimeout,int32_t recvtimeout)
+{
+    int32_t sock,typeind = 0; struct endpoint epbits;
     if ( (sock= nn_socket(AF_SP,type)) < 0 )
         printf("error getting socket %s\n",nn_errstr());
-    if ( bindflag != 0 && nn_bind(sock,endpoint) < 0 )
-        printf("error binding to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+    if ( bindflag != 0 )
+    {
+        //set_endpointaddr(SUPERNET.transport,endpoint,"*",SUPERNET.port,type);
+        epbits = calc_epbits(SUPERNET.transport,0,SUPERNET.port + nn_portoffset(type) + typeind,type);
+        expand_epbits(endpoint,epbits);
+        if ( nn_bind(sock,endpoint) < 0 )
+            printf("error binding to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+    }
     //else if ( bindflag == 0 && nn_connect(sock,endpoint) < 0 )
     //    printf("error connecting to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
     else
@@ -259,64 +341,70 @@ int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis)
     else return(-1);
 }
 
-char *nn_directconnect(char *ipaddr)
+char *nn_directconnect(char *transport,char *ipaddr,uint16_t port,char *handler)
 {
     char endpoint[512],retbuf[1024];
-    int32_t sock,ind;
-    uint64_t ipbits;
+    int32_t sock; uint16_t myport;
+    struct direct_connection *dc;
+    uint32_t ipbits; struct endpoint epbits;
     if ( is_ipaddr(ipaddr) == 0 )
         return(clonestr("{\"error\":\"illegal ipaddress\"}"));
+    else if ( port == 0 )
+        return(clonestr("{\"error\":\"myport field not set\"}"));
+    if ( transport == 0 || transport[0] == 0 )
+        transport = "tcp";
     ipbits = (uint32_t)calc_ipbits(ipaddr);
-    if ( (ind= find_ipbits(&RELAYS.pair,(uint32_t)ipbits)) >= 0 )
+    epbits = find_epbits(&RELAYS.pair,ipbits,port,NN_PAIR);
+    myport = SUPERNET.port + nn_portoffset(NN_PAIR) + epbits.directind - 1;
+    if ( epbits.ipbits != 0 && epbits.directind != 0 )
     {
-        set_endpointaddr("tcp",endpoint,ipaddr,SUPERNET.port,NN_PAIR);
-        sprintf(retbuf,"{\"result\":\"success\",\"direct\":\"%s\",\"connected\":\"%s\",\"status\":\"already connected\"}",SUPERNET.myipaddr,endpoint);
-        return(clonestr(retbuf));
+        dc = &RELAYS.direct[epbits.directind];
+        if ( handler == 0 || strcmp(dc->handler,handler) == 0 )
+        {
+            expand_epbits(endpoint,epbits);
+            sprintf(retbuf,"{\"result\":\"success\",\"handler\":\"%s\",\"mytransport\":\"%s\",\"direct\":\"%s\",\"myport\":%u,\"connected\":\"%s\",\"status\":\"already connected\"}",handler,SUPERNET.transport,SUPERNET.myipaddr,myport,endpoint);
+            return(clonestr(retbuf));
+        }
     }
     if ( is_ipaddr(SUPERNET.myipaddr) == 0 && SUPERNET.iamrelay != 0 )
         return(clonestr("{\"error\":\"dont know myipaddr\"}"));
-    if ( (sock= nn_createsocket(endpoint,1,"direct",NN_PAIR,SUPERNET.port,10,1000)) >= 0 )
+    if ( (epbits.directind= nn_directind()) == 0 )
+        return(clonestr("{\"error\":\"out of directsockets\"}"));
+    myport = SUPERNET.port + nn_portoffset(NN_PAIR) + epbits.directind - 1;
+    if ( (sock= nn_createsocket(endpoint,1,"direct",NN_PAIR,myport,10,1000)) >= 0 )
     {
-        if ( sock >= (1 << 16) )
-            return(clonestr("{\"error\":\"socket val too big\"}"));
-        ipbits |= ((uint64_t)sock << 48);
-        set_endpointaddr("tcp",endpoint,ipaddr,SUPERNET.port,NN_PAIR);
-        printf("direct connect to (%s) using sock.%d\n",endpoint,sock);
+        nn_startdirect(epbits,sock,handler);
+        expand_epbits(endpoint,epbits);
+        printf("try direct connect to (%s) using sock.%d\n",endpoint,sock);
         if ( nn_connect(sock,endpoint) < 0 )
             printf("error connecting to (%s) %s\n",endpoint,nn_errstr());
         else
         {
-            set_endpointaddr("ws",endpoint,ipaddr,SUPERNET.port,NN_PAIR);
-            if ( nn_connect(sock,endpoint) < 0 )
-                printf("error connecting to (%s) %s\n",endpoint,nn_errstr());
-            else
-            {
-                add_relay(&RELAYS.pair,ipbits);
-                sprintf(retbuf,"{\"result\":\"success\",\"direct\":\"%s\",\"connected\":\"%s\"}",SUPERNET.myipaddr,endpoint);
-                return(clonestr(retbuf));
-            }
+            add_relay(&RELAYS.pair,epbits);
+            sprintf(retbuf,"{\"result\":\"success\",\"mytransport\":\"%s\",\"direct\":\"%s\",\"myport\":%u,\"connected\":\"%s\"}",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + nn_portoffset(NN_PAIR) + epbits.directind - 1,endpoint);
+            return(clonestr(retbuf));
         }
         sprintf(retbuf,"{\"error\":\"connect failed\",\"dest\",\"%s\",\"%s\"}",endpoint,nn_errstr());
         return(clonestr(retbuf));
     } else return(clonestr("{\"error\":\"couldnt create direct socket\"}"));
 }
 
-int32_t add_connections(char *server,int32_t skiplb)
+int32_t add_relay_connections(char *domain,int32_t skiplb)
 {
-    uint64_t ipbits; int32_t n;
-    if ( server == 0 || is_ipaddr(server) == 0 || ismyaddress(server) != 0 )
+    uint32_t ipbits; int32_t n;
+    if ( domain == 0 || is_ipaddr(domain) == 0 || ismyaddress(domain) != 0 )
         return(-1);
-    ipbits = calc_ipbits(server);
+    ipbits = (uint32_t)calc_ipbits(domain);
     n = (RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num);
-    update_serverbits(&RELAYS.peer,server,ipbits,NN_SURVEYOR);
+    update_serverbits(&RELAYS.peer,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_SURVEYOR),NN_SURVEYOR);
     if ( SUPERNET.iamrelay != 0 )
     {
-        update_serverbits(&RELAYS.sub,server,ipbits,NN_PUB);
+        update_serverbits(&RELAYS.sub,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_PUB),NN_PUB);
         if ( skiplb == 2 )
-            update_serverbits(&RELAYS.bus,server,ipbits,NN_BUS);
+            update_serverbits(&RELAYS.bus,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_BUS);
     }
     if ( skiplb == 0 )
-        update_serverbits(&RELAYS.lb,server,ipbits,NN_REP);
+        update_serverbits(&RELAYS.lb,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_REP),NN_REP);
     return((RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num) > n);
 }
 
@@ -341,7 +429,7 @@ int32_t start_devices(int32_t type)
         {
             type = (j == 0) ? devicetypes[i] : nn_oppotype(devicetypes[i]);
             portoffset = nn_portoffset(type);
-            set_endpointaddr(SUPERNET.transport,bindaddr,"*",SUPERNET.port,type);
+            expand_epbits(bindaddr,calc_epbits(SUPERNET.transport,0,SUPERNET.port + nn_portoffset(type),type));
             if ( (sock= nn_socket(AF_SP_RAW,type)) < 0 )
                 break;
             if ( (err= nn_bind(sock,bindaddr)) < 0 )
@@ -397,7 +485,7 @@ char *nn_publish(char *publishstr,int32_t nostr)
     {
         len = (int32_t)strlen(publishstr) + 1;
         if ( (sendlen= nn_send(RELAYS.pubsock,publishstr,len,0)) != len )
-            printf("add_connections warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
+            printf("add_relay_connections warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
         else printf("published.(%s)\n",strlen(publishstr)<1024?publishstr:"<big string>");
         sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,(int32_t)strlen(publishstr)));
         if ( nostr != 0 )
@@ -408,23 +496,27 @@ char *nn_publish(char *publishstr,int32_t nostr)
     return(clonestr(retbuf));
 }
 
+int32_t nn_directsend(struct endpoint epbits,uint8_t *msg,int32_t len)
+{
+    int32_t sock,i;
+    sock = nn_directsocket(epbits);
+    for (i=0; i<10; i++)
+        if ( (nn_socket_status(sock,1) & NN_POLLOUT) != 0 )
+            break;
+    return(nn_send(sock,(char *)msg,len,0));
+}
+
 char *nn_direct(char *ipaddr,char *request)
 {
-    int32_t ind,sock,len,sendlen,i;
-    uint64_t ipbits;
+    int32_t ipbits,sendlen,len; struct endpoint epbits;
     if ( is_ipaddr(ipaddr) != 0 )
     {
         ipbits = (uint32_t)calc_ipbits(ipaddr);
-        if ( (ind= find_ipbits(&RELAYS.pair,(uint32_t)ipbits)) >= 0 )
+        epbits = find_epbits(&RELAYS.pair,ipbits,0,NN_PAIR);
+        if ( epbits.ipbits != 0 )
         {
-            ipbits = RELAYS.pair.servers[ind];
-            sock = (int32_t)(ipbits >> 48);
-            printf("got direct socket.%d for %s\n",sock,ipaddr);
-            len = (int32_t)strlen(request)+1;
-            for (i=0; i<10; i++)
-                if ( (nn_socket_status(sock,1) & NN_POLLOUT) != 0 )
-                    break;
-            if ( (sendlen= nn_send(sock,request,len,0)) != len )
+            len = (int32_t)request + 1;
+            if ( (sendlen= nn_directsend(epbits,(uint8_t *)request,len)) != len )
             {
                 printf("sendlen.%d vs len.%d %s\n",sendlen,len,nn_errstr());
                 return(clonestr("{\"error\":\"error sending direct packet\"}"));
@@ -507,12 +599,14 @@ char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
 
 char *find_directconnect(cJSON *retjson)
 {
-    char result[MAX_JSON_FIELD],otheripaddr[MAX_JSON_FIELD],*connectstr,*jsonstr = 0;
+    uint16_t port; char result[MAX_JSON_FIELD],otheripaddr[MAX_JSON_FIELD],othertransport[MAX_JSON_FIELD],*connectstr,*jsonstr = 0;
     copy_cJSON(result,cJSON_GetObjectItem(retjson,"result"));
+    copy_cJSON(othertransport,cJSON_GetObjectItem(retjson,"mytransport"));
     copy_cJSON(otheripaddr,cJSON_GetObjectItem(retjson,"direct"));
+    port = get_API_int(cJSON_GetObjectItem(retjson,"myport"),0);
     if ( strcmp(result,"success") == 0 )
     {
-        if ( (connectstr= nn_directconnect(otheripaddr)) != 0 )
+        if ( (connectstr= nn_directconnect(othertransport,otheripaddr,port,cJSON_str(cJSON_GetObjectItem(retjson,"myhandler")))) != 0 )
         {
             cJSON_AddItemToObject(retjson,"myconnect",cJSON_CreateString(connectstr));
             free(connectstr);
@@ -599,11 +693,11 @@ char *nn_lb_processor(struct relayargs *args,uint8_t *msg,int32_t len)
                 retstr = nn_pubsub_processor(args,msg,len);
             else if ( strcmp(plugin,"peers") == 0 )
                 retstr = nn_allpeers_processor(args,msg,len);
-            else retstr = plugin_method(0,-1,plugin,(char *)args,0,0,(char *)msg,1000);
+            else retstr = plugin_method(0,-1,plugin,(char *)args,0,0,(char *)msg,len,1000);
         }
         else
         {
-            retstr = plugin_method(0,-1,"relay",(char *)args,0,0,(char *)msg,1000);
+            retstr = plugin_method(0,-1,"relay",(char *)args,0,0,(char *)msg,len,1000);
             printf("returnpath.(%s) (%s) -> (%s)\n",args->name,jsonstr,retstr);
         }
         free_json(json);
@@ -623,9 +717,9 @@ char *nn_pubsub_processor(struct relayargs *args,uint8_t *msg,int32_t len)
                 retstr = nn_lb_processor(args,msg,len);
             else if ( strcmp(plugin,"peers") == 0 )
                 retstr = nn_allpeers_processor(args,msg,len);
-            else retstr = plugin_method(0,-1,plugin,(char *)args,0,0,(char *)msg,1000);
+            else retstr = plugin_method(0,-1,plugin,(char *)args,0,0,(char *)msg,len,1000);
         }
-        else retstr = plugin_method(0,-1,plugin==0?"subscriptions":plugin,(char *)args,0,0,(char *)msg,1000);
+        else retstr = plugin_method(0,-1,plugin==0?"subscriptions":plugin,(char *)args,0,0,(char *)msg,len,1000);
         free_json(json);
     } else retstr = clonestr((char *)msg);
     return(retstr);
@@ -638,7 +732,7 @@ void nn_direct_processor(int32_t directind,uint8_t *msg,int32_t len)
     {
         if ( (retstr= nn_lb_processor(&RELAYS.args[0],msg,len)) != 0 )
         {
-            sock = (int32_t)(RELAYS.pair.servers[directind] >> 48);
+            sock = nn_directsocket(RELAYS.pair.connections[directind]);
             if ( sock >= 0 )
             {
                 retlen = (int32_t)strlen(retstr) + 1;
@@ -651,7 +745,7 @@ void nn_direct_processor(int32_t directind,uint8_t *msg,int32_t len)
     }
     else
     {
-        if ( (retstr = plugin_method(0,-1,"subscriptions",0,0,0,(char *)msg,1000)) != 0 )
+        if ( (retstr = plugin_method(0,0,"subscriptions","directmsg",0,0,(char *)msg,len,1000)) != 0 )
         {
             printf("DIRECTRETURN.(%s) from (%s)\n",retstr,(char *)msg);
             free(retstr);
@@ -668,7 +762,7 @@ char *nn_allpeers_processor(struct relayargs *args,uint8_t *msg,int32_t len)
         {
             if ( strcmp(plugin,"subscriptions") == 0 )
                 retstr = nn_pubsub_processor(args,msg,len);
-            else retstr = plugin_method(0,-1,plugin==0?"peers":plugin,(char *)args,0,0,(char *)msg,500);
+            else retstr = plugin_method(0,-1,plugin==0?"peers":plugin,(char *)args,0,0,(char *)msg,len,500);
         }
         free_json(json);
     } else retstr = clonestr("{\"error\":\"couldnt parse request\"}");
@@ -748,15 +842,14 @@ nn_busdata_processor(0,both,*datalenp);
 cJSON *relay_json(struct _relay_info *list)
 {
     cJSON *json,*array;
-    char endpoint[512],server[64];
+    char endpoint[512];
     int32_t i;
     if ( list == 0 || list->num == 0 )
         return(0);
     array = cJSON_CreateArray();
-    for (i=0; i<list->num&&i<(int32_t)(sizeof(list->servers)/sizeof(*list->servers)); i++)
+    for (i=0; i<list->num&&i<(int32_t)(sizeof(list->connections)/sizeof(*list->connections)); i++)
     {
-        expand_ipbits(server,(uint32_t)list->servers[i]);
-        set_endpointaddr(SUPERNET.transport,endpoint,server,SUPERNET.port,list->desttype);
+        expand_epbits(endpoint,list->connections[i]);
         cJSON_AddItemToArray(array,cJSON_CreateString(endpoint));
     }
     json = cJSON_CreateObject();
@@ -851,16 +944,17 @@ int32_t launch_responseloop(struct relayargs *args,char *name,int32_t type,int32
 int32_t poll_direct(int32_t timeoutmillis)
 {
     struct _relay_info *list = &RELAYS.pair;
-    int32_t inds[(sizeof(list->servers)/sizeof(*list->servers))];
-    struct nn_pollfd pfds[(sizeof(list->servers)/sizeof(*list->servers))];
-    int32_t len,sock,max,received=0,rc,i,n = 0;
-    char *msg;
-    max = (int32_t)(sizeof(list->servers)/sizeof(*list->servers));
+    struct direct_connection *dc;
+    int32_t inds[(sizeof(list->connections)/sizeof(*list->connections))];
+    struct nn_pollfd pfds[(sizeof(list->connections)/sizeof(*list->connections))];
+    int32_t len,tmp,sock,max,received=0,rc,i,n = 0;
+    char *msg,*retstr;
+    max = (int32_t)(sizeof(list->connections)/sizeof(*list->connections));
     memset(pfds,0xff,sizeof(*pfds) * max);
     memset(inds,0xff,sizeof(*inds) * max);
     for (i=0; i<list->num&&i<max; i++)
     {
-        sock = (int32_t)(list->servers[i] >> 48);
+        sock = nn_directsocket(list->connections[i]);
         if ( (pfds[n].fd= sock) >= 0 )
         {
             inds[n] = n;
@@ -877,7 +971,14 @@ int32_t poll_direct(int32_t timeoutmillis)
                 // printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
                 if ( (pfds[i].revents & NN_POLLIN) != 0 && (len= nn_recv(pfds[i].fd,&msg,NN_MSG,0)) > 0 )
                 {
-                    nn_direct_processor(inds[i],(uint8_t *)msg,len);
+                    dc = &RELAYS.direct[list->connections[i].directind];
+                    if ( dc->handler[0] == 0 || find_daemoninfo(&tmp,dc->handler,0,0) == 0 )
+                        nn_direct_processor(inds[i],(uint8_t *)msg,len);
+                    else
+                    {
+                        if ( (retstr = plugin_method(0,0,dc->handler,"directmsg",0,0,(char *)msg,len,1000)) != 0 )
+                            free(retstr);
+                    }
                     nn_freemsg(msg);
                     received++;
                     if ( Debuglevel > 1 )
@@ -909,7 +1010,7 @@ void serverloop(void *_args)
     if ( RAMCHAINS.pullnode[0] != 0 )
     {
         RELAYS.pushsock = pushsock = nn_createsocket(endpoint,0,"NN_PUSH",NN_PUSH,SUPERNET.port,sendtimeout,recvtimeout);
-        set_endpointaddr(SUPERNET.transport,endpoint,RAMCHAINS.pullnode,SUPERNET.port,NN_PULL);
+        expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(RAMCHAINS.pullnode),SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
         nn_connect(pushsock,endpoint);
         if ( strcmp(RAMCHAINS.pullnode,SUPERNET.myipaddr) == 0 )
             RELAYS.pullsock = nn_createsocket(endpoint,1,"NN_PULL",NN_PULL,SUPERNET.port,sendtimeout,recvtimeout);
@@ -934,11 +1035,10 @@ void serverloop(void *_args)
         arg->peersock = peersock;
         arg->pushsock = pushsock;
     }
-    int32_t add_connections(char *server,int32_t skiplb);
     for (i=0; i<RELAYS.lb.num; i++)
     {
-        expand_ipbits(ipaddr,(uint32_t)RELAYS.lb.servers[i]);
-        add_connections(ipaddr,2);
+        expand_ipbits(ipaddr,RELAYS.lb.connections[i].ipbits);
+        add_relay_connections(ipaddr,2);
     }
     if ( SUPERNET.iamrelay != 0 )
     {
@@ -999,7 +1099,7 @@ char *busdata_sync(char *jsonstr,cJSON *json)
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *resultstr,*retstr = 0,*methodstr,*hostname,*myipaddr;
-    int32_t i,n,count; uint64_t ipbits;
+    int32_t i,n,count; uint32_t ipbits;
     cJSON *array;
     retbuf[0] = 0;
     printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
@@ -1030,7 +1130,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         else if ( strcmp(methodstr,"devMGW") == 0 )
         {
             char *devMGW_command(char *jsonstr,cJSON *json);
-            if ( MGW.gatewayid >= 0 )
+            if ( SUPERNET.gatewayid >= 0 )
                 retstr = devMGW_command(jsonstr,json);
         }
         else
@@ -1039,7 +1139,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             if ( strcmp(methodstr,"add") == 0 && (array= cJSON_GetObjectItem(json,"hostnames")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
                 for (i=count=0; i<n; i++)
-                    if ( add_connections(cJSON_str(cJSON_GetArrayItem(array,i)),1) > 0 )
+                    if ( add_relay_connections(cJSON_str(cJSON_GetArrayItem(array,i)),1) > 0 )
                         count++;
                 sprintf(retbuf,"{\"result\":\"relay added\",\"count\":%d}",count);
             }
@@ -1050,24 +1150,27 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             else if ( (myipaddr= cJSON_str(cJSON_GetObjectItem(json,"myipaddr"))) != 0 && is_ipaddr(myipaddr) != 0 )
             {
                 if ( strcmp(methodstr,"direct") == 0 )
-                    retstr = nn_directconnect(myipaddr);
+                {
+                    retstr = nn_directconnect(cJSON_str(cJSON_GetObjectItem(json,"mytransport")),myipaddr,get_API_int(cJSON_GetObjectItem(json,"myport"),0),cJSON_str(cJSON_GetObjectItem(json,"myhandler")));
+                }
                 else if ( strcmp(methodstr,"join") == 0  )
                 {
-                    if ( add_connections(myipaddr,1) > 0 )
+                    ipbits = (uint32_t)calc_ipbits(myipaddr);
+                    if ( add_relay_connections(myipaddr,1) > 0 )
                     {
                         if ( SUPERNET.iamrelay != 0 )
                         {
-                            if ( (ipbits= calc_ipbits(myipaddr)) != 0 )
+                            if ( ipbits != 0 )
                             {
-                                update_serverbits(&RELAYS.peer,myipaddr,ipbits,NN_SURVEYOR);
-                                update_serverbits(&RELAYS.sub,myipaddr,ipbits,NN_PUB);
+                                update_serverbits(&RELAYS.peer,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_SURVEYOR),NN_SURVEYOR);
+                                update_serverbits(&RELAYS.sub,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_PUB),NN_PUB);
                                 nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(jsonstr)+1,0);
                             }
                         }
                         sprintf(retbuf,"{\"result\":\"added ipaddr\"}");
                     } else sprintf(retbuf,"{\"result\":\"didnt add ipaddr, probably already there\"}");
                     if ( (hostname= cJSON_str(cJSON_GetObjectItem(json,"iamrelay"))) != 0 )
-                        update_serverbits(&RELAYS.bus,hostname,calc_ipbits(hostname),NN_BUS);
+                        update_serverbits(&RELAYS.bus,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_BUS);
                 }
             }
         }

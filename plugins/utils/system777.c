@@ -21,6 +21,7 @@
 #include "../includes/miniupnp/miniupnpc.h"
 #include "../includes/miniupnp/upnpcommands.h"
 #include "../includes/miniupnp/upnperrors.h"
+#include "uthash.h"
 #include "cJSON.h"
 #include "utils777.c"
 #include "inet.c"
@@ -33,6 +34,7 @@
 #include "reqrep.h"
 #include "bus.h"
 #include "pair.h"
+
 #define nn_errstr() nn_strerror(nn_errno())
 
 extern int32_t Debuglevel;
@@ -56,17 +58,36 @@ int32_t OS_launch_process(char *args[]);
 int32_t OS_getppid();
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
 
+// only OS portable functions in this file
+#define portable_mutex_t struct nn_mutex
+#define portable_mutex_init nn_mutex_init
+#define portable_mutex_lock nn_mutex_lock
+#define portable_mutex_unlock nn_mutex_unlock
+
+struct queueitem { struct queueitem *next,*prev; };
+typedef struct queue
+{
+	struct queueitem *list;
+	portable_mutex_t mutex;
+    char name[31],initflag;
+} queue_t;
+
 struct sendendpoints { int32_t push,rep,pub,survey; };
 struct recvendpoints { int32_t pull,req,sub,respond; };
 struct biendpoints { int32_t bus,pair; };
 struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
 union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
+struct db777_entry { UT_hash_handle hh; uint32_t allocsize,valuelen,valuesize,keylen:31,dirty:1; uint8_t value[]; };
 
 struct db777
 {
     void *db,*asyncdb;
-    char compression[8],dbname[32],name[16];
+    portable_mutex_t mutex;
+    struct db777_entry *table;
+    int32_t reqsock,valuesize;
+    char compression[8],dbname[32],name[16],coinstr[16],flags;
     void *ctl,*env; char namestr[32],restoredir[512],argspecialpath[512],argsubdir[512],restorelogdir[512],argname[512],argcompression[512],backupdir[512];
+    uint8_t checkbuf[1000000];
 };
 
 struct env777
@@ -83,7 +104,7 @@ struct SuperNET_info
     char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16];
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512],hostname[512];
     uint64_t my64bits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,europeflag,readyflag,UPNP,iamrelay;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay;
     uint16_t port;
     struct env777 DBs;
 }; extern struct SuperNET_info SUPERNET;
@@ -96,19 +117,19 @@ struct coins_info
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct coins_info COINS;
 
-struct sophia_info
+struct db777_info
 {
     char PATH[1024];
     int32_t numdbs,readyflag;
     struct db777 *DBS[1024];
-}; extern struct sophia_info SOPHIA;
+}; extern struct db777_info SOPHIA;
 
 #define MAX_MGWSERVERS 16
 struct MGW_info
 {
     char PATH[1024],serverips[MAX_MGWSERVERS][64],bridgeipaddr[64],bridgeacct[64];
     uint64_t srv64bits[MAX_MGWSERVERS],issuers[64];
-    int32_t M,N,numgateways,gatewayid,numissuers,readyflag;
+    int32_t M,numissuers,readyflag;
     union endpoints all;
     uint32_t numrecv,numsent;
 }; extern struct MGW_info MGW;
@@ -143,27 +164,21 @@ struct relayargs
     int32_t lbsock,bussock,pubsock,subsock,peersock,pushsock,sock,type,bindflag,sendtimeout,recvtimeout;
 };
 
-struct _relay_info { int32_t sock,num,mytype,desttype; uint64_t servers[4096]; };
+#define CONNECTION_NUMBITS 10
+struct endpoint { uint64_t ipbits:32,port:16,transport:2,nn:4,directind:CONNECTION_NUMBITS; };
+struct _relay_info { int32_t sock,num,mytype,desttype; struct endpoint connections[1 << CONNECTION_NUMBITS]; };
+struct direct_connection { char handler[16]; struct endpoint epbits; int32_t sock; };
+
 struct relay_info
 {
     struct relayargs args[8];
     struct _relay_info lb,peer,bus,sub,pair;
     int32_t readyflag,pubsock,querypeers,surveymillis,pushsock,pullsock;
+    struct direct_connection direct[1 << CONNECTION_NUMBITS];
 }; extern struct relay_info RELAYS;
 
-// only OS portable functions in this file
-#define portable_mutex_t struct nn_mutex
-#define portable_mutex_init nn_mutex_init
-#define portable_mutex_lock nn_mutex_lock
-#define portable_mutex_unlock nn_mutex_unlock
-
-struct queueitem { struct queueitem *next,*prev; };
-typedef struct queue
-{
-	struct queueitem *list;
-	portable_mutex_t mutex;
-    char name[31],initflag;
-} queue_t;
+void expand_epbits(char *endpoint,struct endpoint epbits);
+struct endpoint calc_epbits(char *transport,uint32_t ipbits,uint16_t port,int32_t type);
 
 void lock_queue(queue_t *queue);
 void queue_enqueue(char *name,queue_t *queue,struct queueitem *item);
@@ -193,6 +208,8 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
 int32_t shutdown_plugsocks(union endpoints *socks);
 int32_t nn_local_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len);
 int32_t poll_local_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis);
+struct endpoint nn_directepbits(char *retbuf,char *transport,char *ipaddr,uint16_t port);
+int32_t nn_directsend(struct endpoint epbits,uint8_t *msg,int32_t len);
 
 void ensure_directory(char *dirname);
 uint32_t is_ipaddr(char *str);
@@ -208,12 +225,13 @@ int32_t ismyaddress(char *server);
 void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t port,int32_t type);
 int32_t nn_portoffset(int32_t type);
 
-char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t timeout);
+char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
 char *nn_direct(char *ipaddr,char *publishstr);
 char *nn_publish(char *publishstr,int32_t nostr);
 char *nn_allpeers(char *jsonquery,int32_t timeoutmillis,char *localresult);
 char *nn_loadbalanced(char *requeststr);
 char *relays_jsonstr(char *jsonstr,cJSON *argjson);
+struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
 
 #endif
 #else

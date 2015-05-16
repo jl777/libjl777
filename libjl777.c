@@ -1332,7 +1332,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     if ( initflag > 0 )
     {
         Debuglevel = 2;
-        MGW.gatewayid = -1;
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
         if ( SUPERNET.NXTAPIURL[0] == 0 )
@@ -1348,9 +1347,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         strcat(SUPERNET.NXTSERVER,"?requestType");
         set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
         SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
-        SUPERNET.europeflag = get_API_int(cJSON_GetObjectItem(json,"EUROPE"),1);
+        copy_cJSON(SUPERNET.myNXTacct,cJSON_GetObjectItem(json,"myNXTacct"));
         copy_cJSON(SUPERNET.myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
-        if ( strncmp(SUPERNET.myipaddr,"209.126",7) == 0 || strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
+        if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
             SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1);
         else SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
         copy_cJSON(SUPERNET.hostname,cJSON_GetObjectItem(json,"hostname"));
@@ -1358,6 +1357,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
 #ifndef __linux__
         SUPERNET.UPNP = 1;
 #endif
+        SUPERNET.gatewayid = get_API_int(cJSON_GetObjectItem(json,"gatewayid"),-1);
+        SUPERNET.numgateways = get_API_int(cJSON_GetObjectItem(json,"numgateways"),3);
         SUPERNET.UPNP = get_API_int(cJSON_GetObjectItem(json,"UPNP"),SUPERNET.UPNP);
         copy_cJSON(SUPERNET.transport,cJSON_GetObjectItem(json,"transport"));
         if ( SUPERNET.transport[0] == 0 )

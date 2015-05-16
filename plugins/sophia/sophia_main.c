@@ -7,8 +7,8 @@
 //
 
 #define BUNDLED
-#define PLUGINSTR "sophia"
-#define PLUGNAME(NAME) sophia ## NAME
+#define PLUGINSTR "db777"
+#define PLUGNAME(NAME) db777 ## NAME
 #define STRUCTNAME struct PLUGNAME(_info)
 #define STRINGIFY(NAME) #NAME
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
@@ -22,13 +22,13 @@
 struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,
 
 STRUCTNAME SOPHIA;
-char *PLUGNAME(_methods)[] = { // "create", "close", "add", "find",
+char *PLUGNAME(_methods)[] = { "stats" // "create", "close", "add", "find",
 #ifdef BUNDLED
-    "get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
+    //"get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
 #endif
 };
 
-void sophia_idle(struct plugin_info *plugin) {} 
+void db777_idle(struct plugin_info *plugin) {}
 
 // env = sp_env(void);
 // ctl = sp_ctl(env): get an environment control object.
@@ -374,6 +374,7 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     char path[1024],restorepath[1024],dbname[1024],*str,*namestr;
     int32_t err;
     cJSON *json;
+    DB->flags = DB777_HDD;
     strcpy(DB->argname,name);
     if ( specialpath != 0 )
         strcpy(DB->argspecialpath,specialpath);
@@ -486,18 +487,18 @@ void db777_path(char *path,char *coinstr,char *subdir)
     printf("db777_path.(%s)\n",path);
 }
 
-struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression)
+struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize)
 {
     char path[1024],bdir[1024],compname[512]; int32_t err; struct db777 *DB = 0;
-    if ( DBs->env == 0 )
+    if ( DBs->env == 0 && (flags & DB777_HDD) != 0 )
     {
         DBs->env = sp_env();
         DBs->ctl = sp_ctl(DBs->env);
         db777_path(path,DBs->coinstr,DBs->subdir);
         if ( (err= sp_set(DBs->ctl,"sophia.path",path)) != 0 )
             printf("err.%d setting path (%s)\n",err,path);
-        //if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
-        //    printf("err.%d setting scheduler.threads\n",err);
+        if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
+            printf("err.%d setting scheduler.threads\n",err);
         strcpy(bdir,path), strcat(bdir,"/backups"), ensure_directory(bdir);
         if ( (err= sp_set(DBs->ctl,"backup.path",bdir)) != 0 )
             printf("error.%d settingB backup.path (%s)\n",err,bdir);
@@ -507,7 +508,12 @@ struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *co
     {
         DB = &DBs->dbs[DBs->numdbs];
         memset(DB,0,sizeof(*DB));
+        safecopy(DB->coinstr,DBs->coinstr,sizeof(DB->coinstr));
         safecopy(DB->name,name,sizeof(DB->name));
+        portable_mutex_init(&DB->mutex);
+        DB->flags = flags, DB->valuesize = valuesize;
+        if ( (DB->flags & DB777_HDD) == 0 )
+            return(DB);
         if ( compression != 0 )
             safecopy(DB->compression,compression,sizeof(DB->compression));
         sprintf(DB->dbname,"db.%s",name);
@@ -515,7 +521,7 @@ struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *co
             printf("err.%d setting name\n",err);
         else
         {
-            //printf("path.(%s) name.(%s)\n",path,name);
+            printf("path.(%s) name.(%s)\n",path,name);
             if ( compression != 0 )
             {
                 sprintf(compname,"db.%s.compression",name);
@@ -538,7 +544,7 @@ int32_t db777_dbopen(void *ctl,struct db777 *DB)
         {
             //printf("err.%d sp_open will error if already exists\n",err);
         }
-        DB->asyncdb = sp_async(DB->db);
+        DB->asyncdb = 0;//sp_async(DB->db);
         //printf("DB->db.%p for %s\n",DB->db,DB->dbname);
         return(0);
     }
@@ -553,6 +559,7 @@ int32_t env777_start(int32_t dispflag,struct env777 *DBs)
     for (i=0; i<DBs->numdbs; i++)
     {
         DB = &DBs->dbs[i];
+        DB->reqsock = RELAYS.lb.sock;
         if ( db777_dbopen(DBs->ctl,DB) == 0 )
         {
             if ( dispflag != 0 && (json= db777_json(DBs->env,DB)) != 0 )

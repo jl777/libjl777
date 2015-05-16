@@ -90,10 +90,10 @@ cJSON *msig_itemjson(char *account,char *coinaddr,char *pubkey,int32_t allfields
     cJSON_AddItemToObject(item,"userNXT",cJSON_CreateString(account));
     cJSON_AddItemToObject(item,"coinaddr",cJSON_CreateString(coinaddr));
     cJSON_AddItemToObject(item,"pubkey",cJSON_CreateString(pubkey));
-    if ( allfields != 0 && MGW.gatewayid >= 0 )
+    if ( allfields != 0 && SUPERNET.gatewayid >= 0 )
     {
         cJSON_AddItemToObject(item,"gatewayNXT",cJSON_CreateString(SUPERNET.NXTADDR));
-        cJSON_AddItemToObject(item,"gatewayid",cJSON_CreateNumber(MGW.gatewayid));
+        cJSON_AddItemToObject(item,"gatewayid",cJSON_CreateNumber(SUPERNET.gatewayid));
     }
     return(item);
 }

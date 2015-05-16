@@ -658,63 +658,6 @@ char *bitcoind_passthru(char *coinstr,char *serverport,char *userpass,char *meth
     return(bitcoind_RPC(0,coinstr,serverport,userpass,method,params));
 }
 
-char *parse_conf_line(char *line,char *field)
-{
-    line += strlen(field);
-    for (; *line!='='&&*line!=0; line++)
-        break;
-    if ( *line == 0 )
-        return(0);
-    if ( *line == '=' )
-        line++;
-    stripstr(line,strlen(line));
-    if ( Debuglevel > 0 )
-        printf("[%s]\n",line);
-    return(clonestr(line));
-}
-
-char *extract_userpass(char *userhome,char *coindir,char *confname)
-{
-    FILE *fp;
-    char fname[2048],line[1024],userpass[1024],*rpcuser,*rpcpassword,*str;
-    userpass[0] = 0;
-    sprintf(fname,"%s/%s/%s",userhome,coindir,confname);
-    if ( (fp= fopen(os_compatible_path(fname),"r")) != 0 )
-    {
-        if ( Debuglevel > 0 )
-            printf("extract_userpass from (%s)\n",fname);
-        rpcuser = rpcpassword = 0;
-        while ( fgets(line,sizeof(line),fp) != 0 )
-        {
-            if ( line[0] == '#' )
-                continue;
-            //printf("line.(%s) %p %p\n",line,strstr(line,"rpcuser"),strstr(line,"rpcpassword"));
-            if ( (str= strstr(line,"rpcuser")) != 0 )
-                rpcuser = parse_conf_line(str,"rpcuser");
-            else if ( (str= strstr(line,"rpcpassword")) != 0 )
-                rpcpassword = parse_conf_line(str,"rpcpassword");
-        }
-        if ( rpcuser != 0 && rpcpassword != 0 )
-            sprintf(userpass,"%s:%s",rpcuser,rpcpassword);
-        else userpass[0] = 0;
-        if ( Debuglevel > 0 )
-            printf("-> (%s):(%s) userpass.(%s)\n",rpcuser,rpcpassword,userpass);
-        if ( rpcuser != 0 )
-            free(rpcuser);
-        if ( rpcpassword != 0 )
-            free(rpcpassword);
-        fclose(fp);
-    }
-    else
-    {
-        printf("extract_userpass cant open.(%s)\n",fname);
-        return(0);
-    }
-    if ( userpass[0] != 0 )
-        return(clonestr(userpass));
-    return(0);
-}
-
 
 #endif
 #endif

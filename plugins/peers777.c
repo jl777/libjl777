@@ -63,7 +63,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         else if ( strcmp(methodstr,"devMGW") == 0 )
         {
             char *devMGW_command(char *jsonstr,cJSON *json);
-            if ( MGW.gatewayid >= 0 )
+            if ( SUPERNET.gatewayid >= 0 )
                 retstr = devMGW_command(jsonstr,json);
         }
         else if ( strcmp(methodstr,"direct") == 0 )

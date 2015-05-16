@@ -95,6 +95,27 @@ void *loadfile(uint64_t *allocsizep,char *fname)
     *allocsizep = 0;
     return(_loadfile(fname,&buf,&filesize,allocsizep));
 }
+cJSON *check_conffile(int32_t *allocflagp,cJSON *json)
+{
+    char buf[MAX_JSON_FIELD],*filestr;
+    uint64_t allocsize;
+    cJSON *item;
+    *allocflagp = 0;
+    if ( json == 0 )
+        return(0);
+    copy_cJSON(buf,cJSON_GetObjectItem(json,"filename"));
+    if ( buf[0] != 0 && (filestr= loadfile(&allocsize,buf)) != 0 )
+    {
+        if ( (item= cJSON_Parse(filestr)) != 0 )
+        {
+            json = item;
+            *allocflagp = 1;
+            printf("parsed (%s) for JSON\n",buf);
+        }
+        free(filestr);
+    }
+    return(json);
+}
 
 int32_t compare_files(char *fname,char *fname2)
 {
