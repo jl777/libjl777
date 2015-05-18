@@ -77,7 +77,7 @@ struct recvendpoints { int32_t pull,req,sub,respond; };
 struct biendpoints { int32_t bus,pair; };
 struct allendpoints { struct sendendpoints send; struct recvendpoints recv; struct biendpoints both; };
 union endpoints { int32_t all[sizeof(struct allendpoints) / sizeof(int32_t)]; struct allendpoints socks; };
-struct db777_entry { UT_hash_handle hh; uint32_t allocsize,valuelen,valuesize,keylen:31,dirty:1; uint8_t value[]; };
+struct db777_entry { UT_hash_handle hh; uint32_t allocsize,valuelen,valuesize,keylen:30,linked:1,dirty:1; uint8_t value[]; };
 
 struct db777
 {

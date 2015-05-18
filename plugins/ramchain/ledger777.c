@@ -20,7 +20,7 @@ struct ledger_inds
 {
     uint64_t voutsum,spendsum;
     uint32_t blocknum,numsyncs,addrind,txidind,scriptind,unspentind,numspents,numaddrinfos,txoffsets;
-    struct sha256_state hashstates[12]; uint8_t hashes[12][256 >> 3];
+    struct sha256_state hashstates[13]; uint8_t hashes[13][256 >> 3];
 };
 
 struct ledger_blockinfo
@@ -349,7 +349,7 @@ uint32_t ledger_addtx(struct ledger_info *ledger,struct alloc_space *mem,uint32_
     {
         if ( db777_add(-1,ledger->DBs.transactions,ledger->revtxids.DB,&txidind,sizeof(txidind),txid,txidlen) != 0 )
             printf("error saving txid.(%s) addrind.%u\n",txidstr,txidind);
-        else db777_link(ledger->txids.DB,ledger->revtxids.DB,txidind,txid,txidlen);
+        else db777_link(ledger->DBs.transactions,ledger->txids.DB,ledger->revtxids.DB,txidind,txid,txidlen);
         memset(&tx,0,sizeof(tx));
         tx.firstvout = totalvouts, tx.firstvin = totalspends, tx.numvouts = numvouts, tx.numvins = numvins;
         tx.txidlen = txidlen, memcpy(tx.txid,txid,txidlen);
@@ -388,10 +388,10 @@ uint32_t ledger_addunspent(uint16_t *numaddrsp,uint16_t *numscriptsp,struct ledg
     vout.newscript = (vout.scriptind == ledger->scripts.ind);
     (*numscriptsp) += vout.newscript;
     vout.addrlen = (int32_t)strlen(coinaddr);
-    if ( vout.addrlen < ledger->addrs.DB->valuesize )
+    if ( vout.addrlen < ledger->revaddrs.DB->valuesize )
     {
-        memset(&coinaddr[vout.addrlen],0,ledger->addrs.DB->valuesize - vout.addrlen);
-        vout.addrlen = ledger->addrs.DB->valuesize;
+        memset(&coinaddr[vout.addrlen],0,ledger->revaddrs.DB->valuesize - vout.addrlen);
+        vout.addrlen = ledger->revaddrs.DB->valuesize;
     }
     if ( (vout.U.ind= ledger_rawind(&firstblocknum,1,ledger->DBs.transactions,&ledger->addrs,coinaddr,vout.addrlen,blocknum)) != 0 )
     {
@@ -404,7 +404,7 @@ uint32_t ledger_addunspent(uint16_t *numaddrsp,uint16_t *numscriptsp,struct ledg
             vout.newaddr = 1, strcpy(vout.coinaddr,coinaddr), (*numaddrsp)++;
             if ( db777_add(-1,ledger->DBs.transactions,ledger->revaddrs.DB,&vout.U.ind,sizeof(vout.U.ind),coinaddr,vout.addrlen) != 0 )
                 printf("error saving coinaddr.(%s) addrind.%u\n",coinaddr,vout.U.ind);
-            else db777_link(ledger->addrs.DB,ledger->revaddrs.DB,vout.U.ind,coinaddr,vout.addrlen);
+            else db777_link(ledger->DBs.transactions,ledger->addrs.DB,ledger->revaddrs.DB,vout.U.ind,coinaddr,vout.addrlen);
             update_sha256(ledger->revaddrs.sha256,&ledger->revaddrs.state,(void *)coinaddr,vout.addrlen);
         }
         if ( Debuglevel > 2 )
@@ -560,25 +560,25 @@ uint64_t ledger_recalc_addrinfos(char *retbuf,int32_t maxlen,struct ledger_info 
         if ( n > 0 )
         {
             revsortfs(sortbuf,n,sizeof(*sortbuf) * 2);
-            strcpy(retbuf,"{\"richlist\":["), len = (int32_t)strlen(retbuf);
+            sprintf(retbuf,"{\"supply\":%.8f,\"richlist\":[",dstr(addrsum)), len = (int32_t)strlen(retbuf);
             if ( numrichlist > 0 && n > 0 )
             {
-            for (i=0; i<numrichlist&&i<n; i++)
-            {
-                memcpy(&addrind,&sortbuf[(i << 1) + 1],sizeof(addrind));
-                allocsize = sizeof(ledger->getbuf);
-                addrinfo = db777_get(ledger->getbuf,&allocsize,ledger->DBs.transactions,ledger->addrinfos.DB,&addrind,sizeof(addrind));
-                ledger_coinaddr(ledger,coinaddr,sizeof(coinaddr),addrind);
-                sprintf(itembuf,"%s[\"%s\", \"%.8f\"],",i==0?"":" ",coinaddr,sortbuf[i << 1]);
-                itemlen = (int32_t)strlen(itembuf);
-                if ( len+itemlen < maxlen-32 )
+                for (i=0; i<numrichlist&&i<n; i++)
                 {
-                    memcpy(retbuf+len,itembuf,itemlen+1);
-                    len += itemlen;
+                    memcpy(&addrind,&sortbuf[(i << 1) + 1],sizeof(addrind));
+                    allocsize = sizeof(ledger->getbuf);
+                    addrinfo = db777_get(ledger->getbuf,&allocsize,ledger->DBs.transactions,ledger->addrinfos.DB,&addrind,sizeof(addrind));
+                    ledger_coinaddr(ledger,coinaddr,sizeof(coinaddr),addrind);
+                    sprintf(itembuf,"%s[\"%s\", \"%.8f\"],",i==0?"":" ",coinaddr,sortbuf[i << 1]);
+                    itemlen = (int32_t)strlen(itembuf);
+                    if ( len+itemlen < maxlen-32 )
+                    {
+                        memcpy(retbuf+len,itembuf,itemlen+1);
+                        len += itemlen;
+                    }
                 }
-            }
             } else strcat(retbuf,"]}");
-            sprintf(retbuf + len - 1,"],\"supply\":%.8f}",dstr(addrsum));
+            strcat(retbuf + len - 1,"]}");
             //printf("(%s) top.%d of %d\n",retbuf,i,n);
         }
         free(sortbuf);
@@ -627,33 +627,41 @@ int32_t ledger_copyhashes(struct ledger_inds *lp,struct ledger_info *ledger,int3
 
 int32_t ledger_setlast(struct ledger_info *ledger,uint32_t blocknum,uint32_t numsyncs)
 {
-    struct ledger_inds L;
+    struct ledger_inds L; int32_t retval;
     memset(&L,0,sizeof(L));
-    uint16_t key = numsyncs;
     L.blocknum = ledger->blocknum, L.numsyncs = ledger->numsyncs;
     L.voutsum = ledger->voutsum, L.spendsum = ledger->spendsum;
     L.addrind = ledger->addrs.ind, L.txidind = ledger->txids.ind, L.scriptind = ledger->scripts.ind;
     L.unspentind = ledger->unspentmap.ind, L.numspents = ledger->spentbits.ind;
     L.numaddrinfos = ledger->addrinfos.ind, L.txoffsets = ledger->txoffsets.ind;
     ledger_copyhashes(&L,ledger,0);
+    printf("SYNCNUM.%d -> %d supply %.8f | ledgerhash %llx\n",numsyncs,blocknum,dstr(L.voutsum)-dstr(L.spendsum),*(long long *)ledger->ledger.sha256);
     if ( numsyncs > 0 )
     {
-        printf("SYNCNUM.%d -> %d supply %.8f | ledgerhash %llx\n",numsyncs,blocknum,dstr(L.voutsum)-dstr(L.spendsum),*(long long *)ledger->ledger.sha256);
-        db777_add(1,ledger->DBs.transactions,ledger->ledger.DB,&key,sizeof(key),&L,sizeof(L));
+        if ( db777_set(DB777_HDD,ledger->DBs.transactions,ledger->ledger.DB,&numsyncs,sizeof(numsyncs),&L,sizeof(L)) != 0 )
+            printf("error saving ledger\n");
+        //allocsize = sizeof(checkL);
+        //if ( (ptr= db777_get(&checkL,&allocsize,ledger->DBs.transactions,ledger->ledger.DB,&numsyncs,sizeof(numsyncs))) != 0 )
+        //    printf("got checkval.%d/%d vs numsyncs.%d\n",checkL.blocknum,blocknum,numsyncs);
+        //else printf("ptr.%p error getting ledger.DB numsync.%d checkL.blocknum %d allocsize.%d | transactions.%p\n",ptr,numsyncs,checkL.blocknum,allocsize,ledger->DBs.transactions);
     }
-    return(db777_add(2,ledger->DBs.transactions,ledger->ledger.DB,"last",strlen("last"),&L,sizeof(L)));
+    numsyncs = 0;
+    if ( (retval = db777_set(DB777_HDD,ledger->DBs.transactions,ledger->ledger.DB,&numsyncs,sizeof(numsyncs),&L,sizeof(L))) != 0 )
+        printf("error saving numsyncs.0 retval.%d\n",retval);
+    //allocsize = sizeof(checkL);
+    //if ( (ptr= db777_get(&checkL,&allocsize,ledger->DBs.transactions,ledger->ledger.DB,&numsyncs,sizeof(numsyncs))) != 0 )
+    //    printf("got checkval.%d/%d vs numsyncs.%d\n",L.blocknum,blocknum,numsyncs);
+    //else printf("ptr.%p errorB getting ledger.DB numsync.%d checkL.blocknum %d allocsize.%d | transactions.%p\n",ptr,numsyncs,checkL.blocknum,allocsize,ledger->DBs.transactions);
+    return(retval);
 }
 
 struct ledger_inds *ledger_getsyncdata(struct ledger_inds *L,struct ledger_info *ledger,uint32_t syncind)
 {
-    struct ledger_inds *lp; void *key; uint16_t skey; int32_t keylen,allocsize = sizeof(*L);
-    if ( syncind == 0 )
-        key = "last", keylen = (int32_t)strlen(key);
-    else key = &skey, skey = syncind, keylen = sizeof(skey);
-    if ( (lp= db777_get(L,&allocsize,ledger->DBs.transactions,ledger->ledger.DB,key,keylen)) != 0 )
+    struct ledger_inds *lp; int32_t allocsize = sizeof(*L);
+    if ( (lp= db777_get(L,&allocsize,ledger->DBs.transactions,ledger->ledger.DB,&syncind,sizeof(syncind))) != 0 )
         return(lp);
     else memset(L,0,sizeof(*L));
-    printf("couldnt find syncind.%d keylen.%d\n",syncind,keylen);
+    printf("couldnt find syncind.%d keylen.%ld\n",syncind,sizeof(syncind));
     return(0);
 }
 

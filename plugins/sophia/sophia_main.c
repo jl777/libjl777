@@ -503,15 +503,13 @@ struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *co
         if ( (err= sp_set(DBs->ctl,"sophia.path",path)) != 0 )
             printf("err.%d setting path (%s)\n",err,path);
         if ( SOPHIA.RAMDISK[0] != 0 )
-        {
-            if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
-                printf("err.%d setting scheduler.threads\n",err);
-            db777_path(path,DBs->coinstr,DBs->subdir,0);
-        }
+             db777_path(path,DBs->coinstr,DBs->subdir,0);
         strcpy(bdir,path), strcat(bdir,"/backups"), ensure_directory(bdir);
         if ( (err= sp_set(DBs->ctl,"backup.path",bdir)) != 0 )
             printf("error.%d settingB backup.path (%s)\n",err,bdir);
         else printf("set backup path to.(%s)\n",bdir);
+        if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
+            printf("err.%d setting scheduler.threads\n",err);
     }
     if ( DBs->env != 0 && DBs->numdbs < (int32_t)(sizeof(DBs->dbs)/sizeof(*DBs->dbs)) )
     {
@@ -585,7 +583,7 @@ int32_t env777_start(int32_t dispflag,struct env777 *DBs,uint32_t RTblocknum)
                     matrixkey = (j * DB777_MATRIXROW);
                     DB->matrix[j] = calloc(DB->valuesize,DB777_MATRIXROW);
                     allocsize = DB->valuesize * DB777_MATRIXROW;
-                    fprintf(stderr,"%s allocsize.%d read\n",DB->name,allocsize);
+                   // fprintf(stderr,"%s allocsize.%d read\n",DB->name,allocsize);
                     if ( (ptr= db777_read(DB->matrix[j],&allocsize,0,DB,&matrixkey,sizeof(matrixkey),1)) != 0 && allocsize == DB->valuesize * DB777_MATRIXROW )
                         fprintf(stderr,"+[%d] ",matrixkey);
                     else

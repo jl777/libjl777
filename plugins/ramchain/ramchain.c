@@ -98,7 +98,6 @@ struct ledger_info *ledger_alloc(char *coinstr,char *subdir,int32_t flags)
         safecopy(ledger->DBs.coinstr,coinstr,sizeof(ledger->DBs.coinstr));
         safecopy(ledger->DBs.subdir,subdir,sizeof(ledger->DBs.subdir));
         printf("open ramchain DB files (%s) (%s)\n",coinstr,subdir);
-        ledger_stateinit(&ledger->DBs,&ledger->ledger,coinstr,subdir,"ledger","zstd",flags,sizeof(struct ledger_inds));
         ledger_stateinit(&ledger->DBs,&ledger->blocks,coinstr,subdir,"blocks","zstd",flags | DB777_KEY32,0);
         ledger_stateinit(&ledger->DBs,&ledger->addrinfos,coinstr,subdir,"addrinfos","zstd",flags | flagsM,0);
 
@@ -111,6 +110,7 @@ struct ledger_info *ledger_alloc(char *coinstr,char *subdir,int32_t flags)
         ledger_stateinit(&ledger->DBs,&ledger->addrs,coinstr,subdir,"addrs","zstd",flags | DB777_RAM,sizeof(uint32_t) * 2);
         ledger_stateinit(&ledger->DBs,&ledger->txids,coinstr,subdir,"txids",0,flags | DB777_RAM,sizeof(uint32_t) * 2);
         ledger_stateinit(&ledger->DBs,&ledger->scripts,coinstr,subdir,"scripts","zstd",flags | DB777_RAM,sizeof(uint32_t) * 2);
+        ledger_stateinit(&ledger->DBs,&ledger->ledger,coinstr,subdir,"ledger","zstd",flags,sizeof(struct ledger_inds));
         ledger->blocknum = 0;
     }
     return(ledger);
@@ -137,7 +137,7 @@ int32_t ramchain_update(struct ramchain *ramchain,char *serverport,char *userpas
         {
             if ( syncflag != 0 )
             {
-                ledger_setlast(ledger,ledger->blocknum,++ledger->numsyncs);
+                ledger_setlast(ledger,ledger->blocknum,ledger->numsyncs++);
                 db777_sync(ledger->DBs.transactions,&ledger->DBs,DB777_FLUSH);
                 ledger->DBs.transactions = 0;
             }
@@ -149,8 +149,8 @@ int32_t ramchain_update(struct ramchain *ramchain,char *serverport,char *userpas
             supply = ledger->voutsum - ledger->spendsum;
             if ( dispflag != 0 )
             {
-                extern uint32_t Duplicate,Mismatch,Added;
-                printf("%-5s [lag %-5d] %-6u %.8f %.8f (%.8f) [%.8f] %13.8f | dur %.2f %.2f %.2f | len.%-5d %s %.1f | DMA %d ?.%d %d %08x\n",ramchain->name,ramchain->RTblocknum-blocknum,blocknum,dstr(supply),dstr(ramchain->addrsum),dstr(supply)-dstr(ramchain->addrsum),dstr(supply)-dstr(oldsupply),dstr(ramchain->EMIT.minted),elapsed,elapsed+(ramchain->RTblocknum-blocknum)*diff/60000,elapsed+estimate,block->allocsize,_mbstr(ramchain->totalsize),(double)ramchain->totalsize/blocknum,Duplicate,Mismatch,Added,*(uint32_t *)ledger->ledger.sha256);
+                extern uint32_t Duplicate,Mismatch,Added,Linked;
+                printf("%-5s [lag %-5d] %-6u %.8f %.8f (%.8f) [%.8f] %13.8f | dur %.2f %.2f %.2f | len.%-5d %s %.1f | DMA %d %d %d %d %08x\n",ramchain->name,ramchain->RTblocknum-blocknum,blocknum,dstr(supply),dstr(ramchain->addrsum),dstr(supply)-dstr(ramchain->addrsum),dstr(supply)-dstr(oldsupply),dstr(ramchain->EMIT.minted),elapsed,elapsed+(ramchain->RTblocknum-blocknum)*diff/60000,elapsed+estimate,block->allocsize,_mbstr(ramchain->totalsize),(double)ramchain->totalsize/blocknum,Duplicate,Mismatch,Added,Linked,*(uint32_t *)ledger->ledger.sha256);
             }
             ledger->blocknum++;
             return(1);
@@ -160,10 +160,33 @@ int32_t ramchain_update(struct ramchain *ramchain,char *serverport,char *userpas
     return(0);
 }
 
+int32_t db777_linkDB(struct db777 *DB,struct db777 *revDB,uint32_t maxind)
+{
+    uint32_t ind; void *value; int32_t matrixi;
+    printf("linkDB maxind.%d\n",maxind);
+    for (ind=1; ind<=maxind; ind++)
+    {
+        if ( (value= db777_matrixptr(&matrixi,0,revDB,&ind,sizeof(ind))) != 0 )
+        {
+            if ( db777_link(0,DB,revDB,ind,value,revDB->valuesize) != 0 )
+            {
+                printf("ind.%d linkerror\n",ind);
+                break;
+            }
+        }
+        else
+        {
+            printf("couldnt find ind.%d, value.%p valuesize.%d matrixi.%d\n",ind,value,revDB->valuesize,matrixi);
+            break;
+        }
+    }
+    return(ind);
+}
+
 int32_t ramchain_resume(char *retbuf,struct ramchain *ramchain,char *serverport,char *userpass,uint32_t startblocknum,uint32_t endblocknum)
 {
     extern uint32_t Duplicate,Mismatch,Added;
-    struct ledger_info *ledger; struct alloc_space MEM; uint64_t balance; char richlist[8192];
+    struct ledger_info *ledger; struct alloc_space MEM; uint64_t balance; char richlist[8192]; int32_t numlinks,numlinks2;
     if ( (ledger= ramchain->activeledger) == 0 )
     {
         sprintf(retbuf,"{\"error\":\"no active ledger\"}");
@@ -182,9 +205,15 @@ int32_t ramchain_resume(char *retbuf,struct ramchain *ramchain,char *serverport,
     ledger->blocknum = ramchain->startblocknum + (ramchain->startblocknum > 1);
     printf("set %u to %u | sizes: uthash.%ld addrinfo.%ld unspentmap.%ld txoffset.%ld db777_entry.%ld\n",ramchain->startblocknum,endblocknum,sizeof(UT_hash_handle),sizeof(struct ledger_addrinfo),sizeof(struct unspentmap),sizeof(struct upair32),sizeof(struct db777_entry));
     ramchain->endblocknum = (endblocknum > ramchain->startblocknum) ? endblocknum : ramchain->startblocknum;
+    if ( 0 )
+    {
+        numlinks = db777_linkDB(ledger->addrs.DB,ledger->revaddrs.DB,ledger->addrs.ind);
+        numlinks2 = db777_linkDB(ledger->txids.DB,ledger->revtxids.DB,ledger->txids.ind);
+        printf("addrs numlinks.%d, txids numlinks.%d\n",numlinks,numlinks2);
+    }
     balance = ledger_recalc_addrinfos(richlist,sizeof(richlist),ledger,25);
     printf("balance recalculated %.8f\n",dstr(balance));
-    sprintf(retbuf,"[{\"result\":\"resumed\",\"ledgerhash\":\"%llx\",\"startblocknum\":%d,\"endblocknum\":%d,\"addrsum\":%.8f,\"ledger supply\":%.8f,\"diff\":%.8f,\"elapsed\":%.3f},%s]",*(long long *)ledger->ledger.sha256,ramchain->startblocknum,ramchain->endblocknum,dstr(balance),dstr(ledger->voutsum) - dstr(ledger->spendsum),dstr(balance) - (dstr(ledger->voutsum) - dstr(ledger->spendsum)),(milliseconds() - ramchain->startmilli)/1000.,richlist);
+    sprintf(retbuf,"{\"result\":\"resumed\",\"ledgerhash\":\"%llx\",\"startblocknum\":%d,\"endblocknum\":%d,\"addrsum\":%.8f,\"ledger supply\":%.8f,\"diff\":%.8f,\"elapsed\":%.3f,%s",*(long long *)ledger->ledger.sha256,ramchain->startblocknum,ramchain->endblocknum,dstr(balance),dstr(ledger->voutsum) - dstr(ledger->spendsum),dstr(balance) - (dstr(ledger->voutsum) - dstr(ledger->spendsum)),(milliseconds() - ramchain->startmilli)/1000.,richlist);
     ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,serverport,userpass,ramchain->RTblocknum);
     ramchain->startmilli = milliseconds();
     ramchain->paused = 0;
@@ -193,7 +222,7 @@ int32_t ramchain_resume(char *retbuf,struct ramchain *ramchain,char *serverport,
 
 int32_t ramchain_init(char *retbuf,struct coin777 *coin,char *coinstr,uint32_t startblocknum,uint32_t endblocknum)
 {
-    struct ramchain *ramchain = &coin->ramchain;
+    struct ramchain *ramchain = &coin->ramchain; struct ledger_info *ledger;
     if ( coin != 0 )
     {
         ramchain->syncfreq = DB777_MATRIXROW;
@@ -201,8 +230,9 @@ int32_t ramchain_init(char *retbuf,struct coin777 *coin,char *coinstr,uint32_t s
         ramchain->readyflag = 1;
         if ( (ramchain->activeledger= ledger_alloc(coinstr,"",0)) != 0 )
         {
+            ledger = ramchain->activeledger;
             ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,coin->serverport,coin->userpass,ramchain->RTblocknum);
-            env777_start(0,&ramchain->activeledger->DBs,ramchain->RTblocknum);
+            env777_start(0,&ledger->DBs,ramchain->RTblocknum);
             if ( endblocknum == 0 )
                 endblocknum = 1000000000;
             return(ramchain_resume(retbuf,ramchain,coin->serverport,coin->userpass,startblocknum,endblocknum));

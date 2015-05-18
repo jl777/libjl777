@@ -28,16 +28,15 @@ char *PLUGNAME(_authmethods)[] = { "signrawtransaction", "dumpprivkey" }; // lis
 
 int32_t ramchain_idle(struct plugin_info *plugin)
 {
-    int32_t i,lag,syncflag,flag = 0;
-    struct coin777 *coin;
-    struct ramchain *ramchain;
-    struct ledger_info *ledger;
+    uint32_t blocknum; int32_t i,lag,syncflag,flag = 0;
+    struct coin777 *coin; struct ramchain *ramchain; struct ledger_info *ledger;
     for (i=0; i<COINS.num; i++)
     {
         if ( (coin= COINS.LIST[i]) != 0  && (ledger= coin->ramchain.activeledger) != 0 )
         {
+            blocknum = ledger->blocknum;
             ramchain = &coin->ramchain;
-            if ( (lag= (ramchain->RTblocknum - ledger->blocknum)) < 1000 || (ledger->blocknum % 100) == 0 )
+            if ( (lag= (ramchain->RTblocknum - blocknum)) < 1000 || (blocknum % 100) == 0 )
                 ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,coin->serverport,coin->userpass,ramchain->RTblocknum);
             if ( lag < DB777_MATRIXROW*10 && ramchain->syncfreq > DB777_MATRIXROW )
                 ramchain->syncfreq = DB777_MATRIXROW;
@@ -49,22 +48,22 @@ int32_t ramchain_idle(struct plugin_info *plugin)
                 ramchain->syncfreq = DB777_MATRIXROW/1000;
             if ( ramchain->paused < 10 )
             {
-                syncflag = (((ledger->blocknum % ramchain->syncfreq) == 0) || (ramchain->needbackup != 0) || (ledger->blocknum % 10000) == 0);
+                syncflag = (((blocknum % ramchain->syncfreq) == 0) || (ramchain->needbackup != 0) || (blocknum % 10000) == 0);
                 //if ( syncflag != 0 )
-                //    printf("sync.%d (%d  %d) || %d\n",syncflag,ledger->blocknum,ramchain->syncfreq,ramchain->needbackup);
-                if ( ledger->blocknum >= ramchain->endblocknum || ramchain->paused != 0 )
+                //    printf("sync.%d (%d  %d) || %d\n",syncflag,blocknum,ramchain->syncfreq,ramchain->needbackup);
+                if ( blocknum >= ramchain->endblocknum || ramchain->paused != 0 )
                 {
-                    if ( ledger->blocknum >= ramchain->endblocknum )
+                    if ( blocknum >= ramchain->endblocknum )
                         ramchain->paused = 3, syncflag = 2;
-                    printf("ramchain.%s blocknum.%d <<< PAUSING paused.%d |  endblocknum.%u\n",ramchain->name,ledger->blocknum,ramchain->paused,ramchain->endblocknum);
+                    printf("ramchain.%s blocknum.%d <<< PAUSING paused.%d |  endblocknum.%u\n",ramchain->name,blocknum,ramchain->paused,ramchain->endblocknum);
                 }
-                flag = ramchain_update(ramchain,coin->serverport,coin->userpass,syncflag * (ledger->blocknum != 0));
+                flag = ramchain_update(ramchain,coin->serverport,coin->userpass,syncflag * (blocknum != 0));
                 if ( ramchain->paused == 3 )
                 {
                     ledger_free(ramchain->activeledger,1), ramchain->activeledger = 0;
                     printf("STOPPED\n");
                 }
-                if ( ledger->blocknum > ramchain->endblocknum || ramchain->paused != 0 )
+                if ( blocknum > ramchain->endblocknum || ramchain->paused != 0 )
                     ramchain->paused = 10;
             }
         }
