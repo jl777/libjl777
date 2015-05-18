@@ -25,14 +25,15 @@
 
 #define MAX_BLOCKTX 0xffff
 struct rawvin { char txidstr[128]; uint16_t vout; };
-struct rawvout { char coinaddr[128],script[1024]; uint64_t value; };
+struct rawvout { char coinaddr[128],script[2048]; uint64_t value; };
 struct rawtx { uint16_t firstvin,numvins,firstvout,numvouts; char txidstr[128]; };
 
 struct rawblock
 {
-    uint32_t blocknum;
-    uint16_t numtx,numrawvins,numrawvouts;
+    uint32_t blocknum,timestamp;
+    uint16_t numtx,numrawvins,numrawvouts,pad;
     uint64_t minted;
+    char blockhash[4096],merkleroot[4096];
     struct rawtx txspace[MAX_BLOCKTX];
     struct rawvin vinspace[MAX_BLOCKTX];
     struct rawvout voutspace[MAX_BLOCKTX];
@@ -66,7 +67,8 @@ struct sha256_state
 };
 
 struct upair32 { uint32_t firstvout,firstvin; };
-struct ledger_addrinfo { uint32_t balance[2],count:28,notify:1,pending:1,MGW:1,dirty:1; uint32_t unspentinds[]; };
+struct unspentmap { uint64_t value; uint32_t ind,scriptind; };
+struct ledger_addrinfo { uint64_t balance; uint32_t firstblocknum,count:28,notify:1,pending:1,MGW:1,dirty:1; struct unspentmap unspents[]; };
 
 struct ledger_state
 {
@@ -82,7 +84,7 @@ struct ledger_info
     struct env777 DBs;
     uint64_t voutsum,spendsum;
     uint32_t blocknum,blockpending,numsyncs,sessionid,counter;
-    struct ledger_state ledger,revaddrs,addrs,txids,scripts,blocks,unspentmap,txoffsets,spentbits,addrinfos;
+    struct ledger_state ledger,revaddrs,addrs,revtxids,txids,scripts,blocks,unspentmap,txoffsets,spentbits,addrinfos;
     uint8_t getbuf[1000000];
 };
 

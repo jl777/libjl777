@@ -17,14 +17,16 @@
 #include "plugin777.c"
 #undef DEFINES_ONLY
 
-void echo_idle(struct plugin_info *plugin) {}
+int32_t echo_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME
 {
     int32_t pad;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 };
-char *PLUGNAME(_methods)[] = { "echo" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "echo" }; // list of supported methods approved for local access
+char *PLUGNAME(_pubmethods)[] = { "echo" }; // list of supported methods approved for public (Internet) access
+char *PLUGNAME(_authmethods)[] = { "echo" }; // list of supported methods that require authentication
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {

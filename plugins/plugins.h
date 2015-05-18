@@ -22,7 +22,7 @@ struct daemon_info
     struct queueitem DL;
     queue_t messages;
     char name[64],ipaddr[64],*cmd,*jsonargs;
-    cJSON *methodsjson;
+    cJSON *methodsjson,*pubmethods,*authmethods;
     double lastsearch;
     union endpoints perm,wss;
     int32_t (*daemonfunc)(struct daemon_info *dp,int32_t permanentflag,char *cmd,char *jsonargs);
@@ -44,6 +44,10 @@ void free_daemon_info(struct daemon_info *dp)
         free(dp->jsonargs);
     if ( dp->methodsjson != 0 )
         free_json(dp->methodsjson);
+    if ( dp->pubmethods != 0 )
+        free_json(dp->pubmethods);
+    if ( dp->authmethods != 0 )
+        free_json(dp->authmethods);
     shutdown_plugsocks(&dp->perm), shutdown_plugsocks(&dp->wss);
     free(dp);
 }
@@ -120,7 +124,7 @@ int32_t set_first_plugin(char *plugin,char *method)
     {
         for (i=0; i<Numdaemons; i++)
         {
-            if ( (dp= Daemoninfos[i]) != 0 && dp->methodsjson != 0 && in_jsonarray(dp->methodsjson,"method") != 0 )
+            if ( (dp= Daemoninfos[i]) != 0 && dp->methodsjson != 0 && in_jsonarray(dp->methodsjson,method) != 0 )
             {
                 strcpy(plugin,dp->name);
                 return(i);
@@ -432,10 +436,10 @@ char *language_func(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,in
     return(clonestr(buffer));
 }
 
-char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *methodsjson)
+char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *methodsjson,cJSON *pubmethods,cJSON *authmethods)
 {
     struct daemon_info *dp;
-    char retbuf[8192],*methodstr;
+    char retbuf[8192],*methodstr,*authmethodstr,*pubmethodstr;
     int32_t ind;
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
     {
@@ -446,8 +450,18 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
                 dp->methodsjson = cJSON_Duplicate(methodsjson,1);
                 methodstr = cJSON_Print(dp->methodsjson);
             } else methodstr = clonestr("[]");
-            sprintf(retbuf,"{\"result\":\"registered\",\"plugin\":\"%s\",\"daemonid\":%llu,\"instanceid\":%llu,\"allowremote\":%d,\"methods\":%s}",plugin,(long long)daemonid,(long long)instanceid,dp->allowremote,methodstr);
-            free(methodstr);
+            if ( methodsjson != 0 )
+            {
+                dp->pubmethods = cJSON_Duplicate(pubmethods,1);
+                pubmethodstr = cJSON_Print(dp->pubmethods);
+            } else pubmethodstr = clonestr("[]");
+            if ( authmethods != 0 )
+            {
+                dp->authmethods = cJSON_Duplicate(authmethods,1);
+                authmethodstr = cJSON_Print(dp->authmethods);
+            } else authmethodstr = clonestr("[]");
+            sprintf(retbuf,"{\"result\":\"registered\",\"plugin\":\"%s\",\"daemonid\":%llu,\"instanceid\":%llu,\"allowremote\":%d,\"methods\":%s,\"pubmethods\":%s,\"authmethods\":%s}",plugin,(long long)daemonid,(long long)instanceid,dp->allowremote,methodstr,pubmethodstr,authmethodstr);
+            free(methodstr), free(pubmethodstr), free(authmethodstr);
             printf("register_daemon READY.(%s) >>>>>>>>>>>>>> READY.(%s)\n",dp->name,dp->name);
             dp->readyflag = 1;
             return(clonestr(retbuf));
@@ -486,7 +500,7 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     }
     else
     {
-        fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d remote.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote);
+        fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d allowremote.%d localaccess.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote,localaccess);
         if ( dp->readyflag == 0 )
         {
             printf("readyflag.%d\n",dp->readyflag);
@@ -498,9 +512,9 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
             sprintf(retbuf,"{\"error\":\"cant remote call plugin\",\"ipaddr\":\"%s\",\"plugin\":\"%s\"}",SUPERNET.myipaddr,plugin);
             return(clonestr(retbuf));
         }
-        else if ( in_jsonarray(dp->methodsjson,method) == 0 )
+        else if ( in_jsonarray(localaccess != 0 ? dp->methodsjson : dp->pubmethods,method) == 0 )
         {
-            methodsstr = cJSON_Print(dp->methodsjson);
+            methodsstr = cJSON_Print(localaccess != 0 ? dp->methodsjson : dp->pubmethods);
            // if ( Debuglevel > 2 )
                 fprintf(stderr,"available methods.(%s)\n",methodsstr);
             sprintf(retbuf,"{\"error\":\"method not allowed\",\"plugin\":\"%s\",\"%s\":\"%s\"}",plugin,method,methodsstr);

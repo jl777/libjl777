@@ -1274,12 +1274,14 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 #include "plugins/utils/files777.c"
 #undef DEFINES_ONLY
 
-void SuperNET_idle(struct plugin_info *plugin) {}
+int32_t SuperNET_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME SUPERNET;
 int32_t Debuglevel;
 
 char *PLUGNAME(_methods)[] = { "install", "plugin" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "ping", "pong" }; // list of supported methods
+char *PLUGNAME(_authmethods)[] = { "setpass" }; // list of supported methods
 
 uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t max,cJSON *argjson,char *coinstr,char *serverport,char *userpass)
 {
@@ -1288,7 +1290,8 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
     char coinaddr[MAX_JSON_FIELD],*str,*privkey;
     NXTaddr[0] = 0;
     extract_cJSON_str(secret,max,argjson,"secret");
-    printf("set_account_NXTSECRET.(%s)\n",secret);
+    if ( Debuglevel > 2 )
+        printf("set_account_NXTSECRET.(%s)\n",secret);
     if ( secret[0] == 0 )
     {
         extract_cJSON_str(coinaddr,sizeof(coinaddr),argjson,"privateaddr");
@@ -1318,7 +1321,7 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
     expand_nxt64bits(NXTaddr,nxt64bits);
     if ( 1 )
         conv_rsacctstr(NXTacct,nxt64bits);
-    printf("(%s) (%s) (%s)\n",NXTacct,NXTaddr,secret);
+    printf("(%s) (%s) (%s)\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>");
     return(nxt64bits);
 }
 
@@ -1375,6 +1378,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         }
         else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
         copy_cJSON(SOPHIA.PATH,cJSON_GetObjectItem(json,"SOPHIA"));
+        copy_cJSON(SOPHIA.RAMDISK,cJSON_GetObjectItem(json,"RAMDISK"));
         if ( SOPHIA.PATH[0] == 0 )
             strcpy(SOPHIA.PATH,"./DB");
         os_compatible_path(SOPHIA.PATH);

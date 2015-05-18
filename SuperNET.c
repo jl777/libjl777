@@ -639,7 +639,7 @@ char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
         {
             daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
             instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
-            retstr = register_daemon(name,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"));
+            retstr = register_daemon(name,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"),cJSON_GetObjectItem(json,"pubmethods"),cJSON_GetObjectItem(json,"authmethods"));
         }
         free_json(json);
     } else retstr = process_jl777_msg(0,JSONstr,60);

@@ -23,10 +23,12 @@
 #include "msig.c"
 #undef DEFINES_ONLY
 
-void coins_idle(struct plugin_info *plugin) {}
+int32_t coins_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME COINS;
 char *PLUGNAME(_methods)[] = { "acctpubkeys" };
+char *PLUGNAME(_pubmethods)[] = { "acctpubkeys" };
+char *PLUGNAME(_authmethods)[] = { "acctpubkeys" };
 
 cJSON *coins777_json()
 {
@@ -126,7 +128,7 @@ uint16_t extract_userpass(char *serverport,char *userpass,char *coinstr,char *us
     char fname[2048],line[1024],*rpcuser,*rpcpassword,*rpcport,*str;
     serverport[0] = userpass[0] = 0;
     set_coinconfname(fname,coinstr,userhome,coindir,confname);
-    printf("userpass.(%s)\n",fname);
+    printf("set_coinconfname.(%s)\n",fname);
     if ( (fp= fopen(os_compatible_path(fname),"r")) != 0 )
     {
         if ( Debuglevel > 1 )
@@ -182,7 +184,6 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         path = cJSON_str(cJSON_GetObjectItem(argjson,"path"));
         conf = cJSON_str(cJSON_GetObjectItem(argjson,"conf"));
     }
-    printf("extract userpass\n");
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
@@ -266,16 +267,16 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                 {
                     if ( coinstr[0] == 0 )
                         strcpy(retbuf,"{\"result\":\"need to specify coin\"}");
-                    else if ( (coin= coin777_find(coinstr,0)) != 0 )
+                    else if ( (coin= coin777_find(coinstr,1)) != 0 )
                     {
                         if ( (str= get_msig_pubkeys(coin->name,coin->serverport,coin->userpass)) != 0 )
                         {
                             MGW_publish_acctpubkeys(coin->name,str);
                             strcpy(retbuf,"{\"result\":\"published and processed acctpubkeys\"}");
                             free(str), str= 0;
-                        }
-                    }
-                }
+                        } else sprintf(retbuf,"{\"error\":\"no get_msig_pubkeys result\",\"method\":\"%s\"}",methodstr);
+                    } else sprintf(retbuf,"{\"error\":\"no coin777\",\"method\":\"%s\"}",methodstr);
+                } else sprintf(retbuf,"{\"error\":\"gateway only method\",\"method\":\"%s\"}",methodstr);
             }
             else sprintf(retbuf,"{\"error\":\"unsupported method\",\"method\":\"%s\"}",methodstr);
             if ( str != 0 )

@@ -19,10 +19,12 @@
 #undef DEFINES_ONLY
 #define NN_WS -4
 
-void relay_idle(struct plugin_info *plugin) {}
+int32_t relay_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME RELAYS;
 char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
+char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
 char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2", "tbd3" };
@@ -30,7 +32,7 @@ char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2"
 void expand_epbits(char *endpoint,struct endpoint epbits)
 {
     char ipaddr[64];
-    if ( epbits.ipbits == 0 )
+    if ( epbits.ipbits != 0 )
         expand_ipbits(ipaddr,epbits.ipbits);
     else strcpy(ipaddr,"*");
     sprintf(endpoint,"%s://%s:%d",nn_transports[epbits.transport],ipaddr,epbits.port);
@@ -151,7 +153,7 @@ int32_t update_serverbits(struct _relay_info *list,char *transport,uint32_t ipbi
         printf("illegal list sock.%d\n",list->sock);
         return(-1);
     }
-    //printf("%p update_serverbits sock.%d type.%d num.%d ipbits.%llx\n",list,list->sock,type,list->num,(long long)ipbits);
+//printf("%p update_serverbits sock.%d type.%d num.%d ipbits.%llx\n",list,list->sock,type,list->num,(long long)ipbits);
     epbits = find_epbits(list,ipbits,port,type);
     if ( epbits.ipbits == 0 )
     {
@@ -189,8 +191,8 @@ int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port
 {
     int32_t n = 0;
     strcpy(servers[n++],"192.99.151.160"); //"78.46.137.178");//
-    strcpy(servers[n++],"167.114.96.223"); //"5.9.102.210");//
-    strcpy(servers[n++],"167.114.113.197"); //"5.9.56.103");
+    strcpy(servers[n++],"167.114.96.223"); //"");//
+    strcpy(servers[n++],"167.114.113.197"); //"");
     return(n);
 }
 
@@ -202,9 +204,13 @@ int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAM
         for (i=0; i<num; i++)
         {
             if ( (ipbits= (uint32_t)calc_ipbits(servers[i])) == 0 )
+            {
+                printf("null ipbits.(%s)\n",servers[i]);
                 continue;
+            }
             epbits = calc_epbits("tcp",ipbits,SUPERNET.port + nn_portoffset(NN_REP),NN_REP);
             expand_epbits(endpoint,epbits);
+            //printf("epbits.%llx ipbits.%x %s\n",*(long long *)&epbits,(uint32_t)ipbits,endpoint);
             if ( ismyaddress(servers[i]) == 0 && nn_connect(sock,endpoint) >= 0 )
             {
                 printf("+%s ",endpoint);
@@ -236,6 +242,7 @@ int32_t _lb_socket(int32_t retrymillis,char servers[][MAX_SERVERNAME],int32_t nu
         priority = nn_addservers(priority,lbsock,backups,numbacks);
         priority = nn_addservers(priority,lbsock,failsafes,numfailsafes);
     } else printf("error getting req socket %s\n",nn_errstr());
+    //printf("RELAYS.lb.num %d\n",RELAYS.lb.num);
     return(lbsock);
 }
 
@@ -256,7 +263,7 @@ int32_t nn_lbsocket(int32_t retrymillis,int32_t port)
 int32_t nn_directsocket(struct endpoint epbits)
 {
     int32_t sock;
-    if ( epbits.directind > 0 && (sock= RELAYS.direct[epbits.directind].sock) > 0 )
+    if ( epbits.directind > 0 && (sock= RELAYS.directlinks[epbits.directind].sock) > 0 )
         return(sock);
     return(-1);
 }
@@ -264,14 +271,14 @@ int32_t nn_directsocket(struct endpoint epbits)
 int32_t nn_directind()
 {
     int32_t i;
-    for (i=0; i<(int32_t)(sizeof(RELAYS.direct)/sizeof(*RELAYS.direct)); i++)
-        if ( RELAYS.direct[i].sock == 0 )
+    for (i=0; i<(int32_t)(sizeof(RELAYS.directlinks)/sizeof(*RELAYS.directlinks)); i++)
+        if ( RELAYS.directlinks[i].sock == 0 )
         {
-            RELAYS.direct[i].sock = -1;
+            RELAYS.directlinks[i].sock = -1;
             return(i);
         }
-    for (i=0; i<(int32_t)(sizeof(RELAYS.direct)/sizeof(*RELAYS.direct)); i++)
-        if ( RELAYS.direct[i].sock == -1 )
+    for (i=0; i<(int32_t)(sizeof(RELAYS.directlinks)/sizeof(*RELAYS.directlinks)); i++)
+        if ( RELAYS.directlinks[i].sock == -1 )
             return(i);
     return(0);
 }
@@ -293,7 +300,7 @@ struct endpoint nn_directepbits(char *retbuf,char *transport,char *ipaddr,uint16
 void nn_startdirect(struct endpoint epbits,int32_t sock,char *handler)
 {
     struct direct_connection *dc;
-    dc = &RELAYS.direct[epbits.directind];
+    dc = &RELAYS.directlinks[epbits.directind];
     if ( handler != 0 && handler[0] != 0 )
         safecopy(dc->handler,handler,sizeof(dc->handler));
     dc->sock = sock;
@@ -304,28 +311,30 @@ int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,
 {
     int32_t sock,typeind = 0; struct endpoint epbits;
     if ( (sock= nn_socket(AF_SP,type)) < 0 )
-        printf("error getting socket %s\n",nn_errstr());
+        fprintf(stderr,"error getting socket %s\n",nn_errstr());
     if ( bindflag != 0 )
     {
         //set_endpointaddr(SUPERNET.transport,endpoint,"*",SUPERNET.port,type);
         epbits = calc_epbits(SUPERNET.transport,0,SUPERNET.port + nn_portoffset(type) + typeind,type);
         expand_epbits(endpoint,epbits);
         if ( nn_bind(sock,endpoint) < 0 )
-            printf("error binding to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+            fprintf(stderr,"error binding to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+        else fprintf(stderr,"BIND.(%s) <- %s\n",endpoint,name);
     }
-    //else if ( bindflag == 0 && nn_connect(sock,endpoint) < 0 )
-    //    printf("error connecting to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+    else if ( bindflag == 0 && endpoint[0] != 0 )
+    {
+        if ( nn_connect(sock,endpoint) < 0 )
+            fprintf(stderr,"error connecting to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
+        else fprintf(stderr,"%s -> CONNECT.(%s)\n",name,endpoint);
+    }
+    if ( sendtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
+        fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+    else if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
+        fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
     else
     {
-        if ( sendtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
-            printf("error setting sendtimeout %s\n",nn_errstr());
-        else if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
-            printf("error setting sendtimeout %s\n",nn_errstr());
-        else
-        {
-            printf("nn_createsocket.(%s) %d\n",name,sock);
-            return(sock);
-        }
+        fprintf(stderr,"nn_createsocket.(%s) %d\n",name,sock);
+        return(sock);
     }
     return(-1);
 }
@@ -358,7 +367,7 @@ char *nn_directconnect(char *transport,char *ipaddr,uint16_t port,char *handler)
     myport = SUPERNET.port + nn_portoffset(NN_PAIR) + epbits.directind - 1;
     if ( epbits.ipbits != 0 && epbits.directind != 0 )
     {
-        dc = &RELAYS.direct[epbits.directind];
+        dc = &RELAYS.directlinks[epbits.directind];
         if ( handler == 0 || strcmp(dc->handler,handler) == 0 )
         {
             expand_epbits(endpoint,epbits);
@@ -392,6 +401,7 @@ char *nn_directconnect(char *transport,char *ipaddr,uint16_t port,char *handler)
 int32_t add_relay_connections(char *domain,int32_t skiplb)
 {
     uint32_t ipbits; int32_t n;
+    //printf("add_relay_connections.(%s)\n",domain);
     if ( domain == 0 || is_ipaddr(domain) == 0 || ismyaddress(domain) != 0 )
         return(-1);
     ipbits = (uint32_t)calc_ipbits(domain);
@@ -486,7 +496,7 @@ char *nn_publish(char *publishstr,int32_t nostr)
         len = (int32_t)strlen(publishstr) + 1;
         if ( (sendlen= nn_send(RELAYS.pubsock,publishstr,len,0)) != len )
             printf("add_relay_connections warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
-        else printf("published.(%s)\n",strlen(publishstr)<1024?publishstr:"<big string>");
+        else printf("published.(%s) %d bytes\n",len<1024?publishstr:"<big string>",len);
         sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,(int32_t)strlen(publishstr)));
         if ( nostr != 0 )
             return(0);
@@ -529,9 +539,9 @@ char *nn_direct(char *ipaddr,char *request)
 char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
 {
     cJSON *item,*json,*array = 0;
-    int32_t i,errs,sendlen,peersock,len,n = 0;
+    int32_t i,errs,numsuccess,sendlen,peersock,len,n = 0;
     double startmilli;
-    char error[MAX_JSON_FIELD],*request,*msg,*retstr;
+    char error[MAX_JSON_FIELD],result[MAX_JSON_FIELD],*request,*msg,*retstr;
     if ( timeoutmillis == 0 )
         timeoutmillis = 2000;
     if ( (peersock= RELAYS.querypeers) < 0 )
@@ -560,22 +570,27 @@ char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
     for (i=0; i<10; i++)
         if ( (nn_socket_status(peersock,1) & NN_POLLOUT) != 0 )
             break;
+    numsuccess = n = 0;
     if ( (sendlen= nn_send(peersock,request,len,0)) == len )
     {
         while ( (len= nn_recv(peersock,&msg,NN_MSG,0)) > 0 )
         {
+            n++;
             if ( (item= cJSON_Parse(msg)) != 0 )
             {
                 copy_cJSON(error,cJSON_GetObjectItem(item,"error"));
-                if ( error[0] == 0 || strcmp(error,"timeout") != 0 )
+                copy_cJSON(result,cJSON_GetObjectItem(item,"result"));
+                if ( error[0] == 0 )//|| strcmp(error,"timeout") != 0 )
                 {
                     if ( array == 0 )
                         array = cJSON_CreateArray();
                     cJSON_AddItemToObject(item,"lag",cJSON_CreateNumber(milliseconds()-startmilli));
                     cJSON_AddItemToArray(array,item);
-                    n++;
-                } else errs++;
-            }
+                }
+                else if ( strcmp(result,"success") == 0 )
+                    numsuccess++;
+                else errs++;
+            } else errs++;
             nn_freemsg(msg);
         }
     } else printf("nn_allpeers: sendlen.%d vs len.%d\n",sendlen,len);
@@ -587,8 +602,9 @@ char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
     }
     json = cJSON_CreateObject();
     cJSON_AddItemToObject(json,"responses",array);
-    cJSON_AddItemToObject(json,"n",cJSON_CreateNumber(n));
-    cJSON_AddItemToObject(json,"timeouts",cJSON_CreateNumber(errs));
+    cJSON_AddItemToObject(json,"success",cJSON_CreateNumber(numsuccess));
+    cJSON_AddItemToObject(json,"err responses",cJSON_CreateNumber(errs));
+    cJSON_AddItemToObject(json,"total",cJSON_CreateNumber(n));
     retstr = cJSON_Print(json);
     _stripwhite(retstr,' ');
     printf("globalrequest(%s) returned (%s) from n.%d respondents\n",request,retstr,n);
@@ -685,6 +701,7 @@ char *nn_lb_processor(struct relayargs *args,uint8_t *msg,int32_t len)
     char *nn_pubsub_processor(struct relayargs *args,uint8_t *msg,int32_t len);
     cJSON *json; char *jsonstr,*plugin,*retstr = 0;
     jsonstr = (char *)msg;
+    printf("LB PROCESSOR.(%s)\n",msg);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( (plugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) != 0 )
@@ -889,7 +906,7 @@ void responseloop(void *_args)
     int32_t len; char *str,*msg,*retstr,*broadcaststr; cJSON *json;
     if ( args->sock >= 0 )
     {
-        printf("respondloop.%s %d type.%d <- (%s).%d\n",args->name,args->sock,args->type,args->endpoint,nn_oppotype(args->type));
+        fprintf(stderr,"respondloop.%s %d type.%d <- (%s).%d\n",args->name,args->sock,args->type,args->endpoint,nn_oppotype(args->type));
         while ( 1 )
         {
             if ( (len= nn_recv(args->sock,&msg,NN_MSG,0)) > 0 )
@@ -971,7 +988,7 @@ int32_t poll_direct(int32_t timeoutmillis)
                 // printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
                 if ( (pfds[i].revents & NN_POLLIN) != 0 && (len= nn_recv(pfds[i].fd,&msg,NN_MSG,0)) > 0 )
                 {
-                    dc = &RELAYS.direct[list->connections[i].directind];
+                    dc = &RELAYS.directlinks[list->connections[i].directind];
                     if ( dc->handler[0] == 0 || find_daemoninfo(&tmp,dc->handler,0,0) == 0 )
                         nn_direct_processor(inds[i],(uint8_t *)msg,len);
                     else

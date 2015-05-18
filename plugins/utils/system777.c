@@ -84,10 +84,12 @@ struct db777
     void *db,*asyncdb;
     portable_mutex_t mutex;
     struct db777_entry *table;
-    int32_t reqsock,valuesize;
+    int32_t reqsock,valuesize,matrixentries;
+    uint32_t start_RTblocknum;
+    void **matrix; char *dirty;
     char compression[8],dbname[32],name[16],coinstr[16],flags;
     void *ctl,*env; char namestr[32],restoredir[512],argspecialpath[512],argsubdir[512],restorelogdir[512],argname[512],argcompression[512],backupdir[512];
-    uint8_t checkbuf[1000000];
+    uint8_t checkbuf[10000000];
 };
 
 struct env777
@@ -95,10 +97,11 @@ struct env777
     char coinstr[16],subdir[64];
     void *ctl,*env,*transactions;
     struct db777 dbs[16];
-    int32_t numdbs,needbackup,lastbackup,currentbackup;
+    int32_t numdbs,needbackup,lastbackup,currentbackup,matrixentries;
+    uint32_t start_RTblocknum;
 };
 
-#define DEFAULT_APISLEEP 100
+#define DEFAULT_APISLEEP 100  // milliseconds
 struct SuperNET_info
 {
     char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16];
@@ -119,7 +122,7 @@ struct coins_info
 
 struct db777_info
 {
-    char PATH[1024];
+    char PATH[1024],RAMDISK[1024];
     int32_t numdbs,readyflag;
     struct db777 *DBS[1024];
 }; extern struct db777_info SOPHIA;
@@ -129,7 +132,7 @@ struct MGW_info
 {
     char PATH[1024],serverips[MAX_MGWSERVERS][64],bridgeipaddr[64],bridgeacct[64];
     uint64_t srv64bits[MAX_MGWSERVERS],issuers[64];
-    int32_t M,numissuers,readyflag;
+    int32_t M,numissuers,readyflag,port;
     union endpoints all;
     uint32_t numrecv,numsent;
 }; extern struct MGW_info MGW;
@@ -174,7 +177,7 @@ struct relay_info
     struct relayargs args[8];
     struct _relay_info lb,peer,bus,sub,pair;
     int32_t readyflag,pubsock,querypeers,surveymillis,pushsock,pullsock;
-    struct direct_connection direct[1 << CONNECTION_NUMBITS];
+    struct direct_connection directlinks[1 << CONNECTION_NUMBITS];
 }; extern struct relay_info RELAYS;
 
 void expand_epbits(char *endpoint,struct endpoint epbits);

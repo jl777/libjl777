@@ -138,12 +138,15 @@ static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin
         if ( tag != 0 && get_API_nxt64bits(cJSON_GetObjectItem(json,"tag")) == 0 )
             sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
         else tagstr[0] = 0;
+        NXTaddr = cJSON_str(cJSON_GetObjectItem(json,"NXT"));
+        if ( NXTaddr == 0 || NXTaddr[0] == 0 )
+            NXTaddr = SUPERNET.NXTADDR;
+        sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\"}",SUPERNET.NXTADDR);
         if ( allfields != 0 )
         {
-              NXTaddr = cJSON_str(cJSON_GetObjectItem(json,"NXT"));
-             if ( NXTaddr == 0 || NXTaddr[0] == 0 )
-                 sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\",\"myipaddr\":\"%s\"}",plugin->NXTADDR,plugin->ipaddr);
-             sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
+             if ( SUPERNET.iamrelay != 0 )
+                 sprintf(retbuf+strlen(retbuf)-1,",\"myipaddr\":\"%s\"}",plugin->ipaddr);
+            sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
             sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
          }
          else sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
@@ -157,9 +160,9 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     int32_t i;
     uint64_t disableflags = 0;
     json = cJSON_CreateObject();
-    array = cJSON_CreateArray();
     retbuf[0] = 0;
     disableflags = PLUGNAME(_register)(plugin,(void *)plugin->pluginspace,argjson);
+    array = cJSON_CreateArray();
     for (i=0; i<(sizeof(PLUGNAME(_methods))/sizeof(*PLUGNAME(_methods))); i++)
     {
         if ( PLUGNAME(_methods)[i] == 0 || PLUGNAME(_methods)[i][0] == 0 )
@@ -167,12 +170,30 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
         if ( ((1LL << i) & disableflags) == 0 )
             cJSON_AddItemToArray(array,cJSON_CreateString(PLUGNAME(_methods)[i]));
     }
+    cJSON_AddItemToObject(json,"methods",array);
+    array = cJSON_CreateArray();
+    for (i=0; i<(sizeof(PLUGNAME(_pubmethods))/sizeof(*PLUGNAME(_pubmethods))); i++)
+    {
+        if ( PLUGNAME(_pubmethods)[i] == 0 || PLUGNAME(_pubmethods)[i][0] == 0 )
+            break;
+        if ( ((1LL << i) & disableflags) == 0 )
+            cJSON_AddItemToArray(array,cJSON_CreateString(PLUGNAME(_pubmethods)[i]));
+    }
+    cJSON_AddItemToObject(json,"pubmethods",array);
+    array = cJSON_CreateArray();
+    for (i=0; i<(sizeof(PLUGNAME(_authmethods))/sizeof(*PLUGNAME(_authmethods))); i++)
+    {
+        if ( PLUGNAME(_authmethods)[i] == 0 || PLUGNAME(_authmethods)[i][0] == 0 )
+            break;
+        if ( ((1LL << i) & disableflags) == 0 )
+            cJSON_AddItemToArray(array,cJSON_CreateString(PLUGNAME(_authmethods)[i]));
+    }
+    cJSON_AddItemToObject(json,"authmethods",array);
     cJSON_AddItemToObject(json,"pluginrequest",cJSON_CreateString("SuperNET"));
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("register"));
     if ( plugin->sleepmillis == 0 )
         plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
-    cJSON_AddItemToObject(json,"methods",array);
     jsonstr = cJSON_Print(json), free_json(json);
     _stripwhite(jsonstr,' ');
     strcpy(retbuf,jsonstr), free(jsonstr);
@@ -217,6 +238,8 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
             *sendflagp = 1;
+            if ( retbuf[0] == 0 )
+                sprintf(retbuf,"{\"result\":\"no response\"}");
             append_stdfields(retbuf,max,plugin,tag,0);
             printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
@@ -269,7 +292,7 @@ int32_t main
     int32_t i,n,bundledflag,max,sendflag,sleeptime=1,len = 0;
     char *messages[16],*line,*jsonargs,*transportstr;
     milliseconds();
-    max = 65536;
+    max = 1000000;
     retbuf = malloc(max+1);
     plugin = calloc(1,sizeof(*plugin) + PLUGIN_EXTRASIZE);
     plugin->extrasize = PLUGIN_EXTRASIZE;
@@ -354,13 +377,16 @@ int32_t main
         }
         if ( n == 0 )
         {
-            if ( plugin->sleepmillis != 0 )
+            startmilli = milliseconds();
+            if ( PLUGNAME(_idle)(plugin) == 0 )
             {
-                startmilli = milliseconds();
-                PLUGNAME(_idle)(plugin);
-                sleeptime = plugin->sleepmillis - (milliseconds() - startmilli);
-                if ( sleeptime > 0 )
-                    msleep(sleeptime);
+                if ( plugin->sleepmillis != 0 )
+                {
+                    sleeptime = plugin->sleepmillis - (milliseconds() - startmilli);
+                    //printf("%s sleepmillis.%d sleeptime.%d\n",plugin->name,plugin->sleepmillis,sleeptime);
+                    if ( sleeptime > 0 )
+                        msleep(sleeptime);
+                }
             }
         }
     } fprintf(stderr,"ppid.%d changed to %d\n",plugin->ppid,OS_getppid());

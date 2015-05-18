@@ -132,7 +132,7 @@ char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass)
             free_json(json);
         } else printf("couldnt parse.(%s)\n",retstr);
         free(retstr);
-    }
+    } else printf("listreceivedbyaddress doesnt return any accounts\n");
     retstr = cJSON_Print(array);
     _stripwhite(retstr,' ');
     return(retstr);

@@ -22,13 +22,15 @@
 struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,
 
 STRUCTNAME SOPHIA;
-char *PLUGNAME(_methods)[] = { "stats" // "create", "close", "add", "find",
+char *PLUGNAME(_methods)[] = { "stats" };
+char *PLUGNAME(_pubmethods)[] = { "stats" };
+char *PLUGNAME(_authmethods)[] = { "stats", "create", "close", "add", "find",
 #ifdef BUNDLED
-    //"get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
+    "get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
 #endif
 };
 
-void db777_idle(struct plugin_info *plugin) {}
+int32_t db777_idle(struct plugin_info *plugin) { return(0); }
 
 // env = sp_env(void);
 // ctl = sp_ctl(env): get an environment control object.
@@ -474,11 +476,14 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     return(DB);
 }
 
-void db777_path(char *path,char *coinstr,char *subdir)
+void db777_path(char *path,char *coinstr,char *subdir,int32_t useramdisk)
 {
-    if ( SOPHIA.PATH[0] == '.' && SOPHIA.PATH[1] == '/' )
-        strcpy(path,SOPHIA.PATH+2);
-    else strcpy(path,SOPHIA.PATH);
+    if ( useramdisk == 0 || SOPHIA.RAMDISK[0] == 0 )
+    {
+        if ( SOPHIA.PATH[0] == '.' && SOPHIA.PATH[1] == '/' )
+            strcpy(path,SOPHIA.PATH+2);
+        else strcpy(path,SOPHIA.PATH);
+    } else strcpy(path,SOPHIA.RAMDISK);
     ensure_directory(path);
     if ( coinstr[0] != 0 )
         strcat(path,"/"), strcat(path,coinstr), ensure_directory(path);
@@ -494,11 +499,15 @@ struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *co
     {
         DBs->env = sp_env();
         DBs->ctl = sp_ctl(DBs->env);
-        db777_path(path,DBs->coinstr,DBs->subdir);
+        db777_path(path,DBs->coinstr,DBs->subdir,flags & DB777_RAMDISK);
         if ( (err= sp_set(DBs->ctl,"sophia.path",path)) != 0 )
             printf("err.%d setting path (%s)\n",err,path);
-        if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
-            printf("err.%d setting scheduler.threads\n",err);
+        if ( SOPHIA.RAMDISK[0] != 0 )
+        {
+            if ( (err= sp_set(DBs->ctl,"scheduler.threads","1")) != 0 )
+                printf("err.%d setting scheduler.threads\n",err);
+            db777_path(path,DBs->coinstr,DBs->subdir,0);
+        }
         strcpy(bdir,path), strcat(bdir,"/backups"), ensure_directory(bdir);
         if ( (err= sp_set(DBs->ctl,"backup.path",bdir)) != 0 )
             printf("error.%d settingB backup.path (%s)\n",err,bdir);
@@ -544,24 +553,49 @@ int32_t db777_dbopen(void *ctl,struct db777 *DB)
         {
             //printf("err.%d sp_open will error if already exists\n",err);
         }
-        DB->asyncdb = 0;//sp_async(DB->db);
+        DB->asyncdb = sp_async(DB->db);
         //printf("DB->db.%p for %s\n",DB->db,DB->dbname);
         return(0);
     }
     return(err);
 }
 
-int32_t env777_start(int32_t dispflag,struct env777 *DBs)
+int32_t env777_start(int32_t dispflag,struct env777 *DBs,uint32_t RTblocknum)
 {
-    int32_t err,i; struct db777 *DB; cJSON *json; char *str;
+    uint32_t matrixkey; int32_t allocsize,err,i,j; struct db777 *DB; cJSON *json; char *str; void *ptr;
+    fprintf(stderr,"Open environment\n");
     if ( (err= sp_open(DBs->env)) != 0 )
         printf("err.%d setting sp_open for DBs->env %p\n",err,DBs->env);
+    DBs->start_RTblocknum = RTblocknum;
+    DBs->matrixentries = ((RTblocknum * 10) / DB777_MATRIXROW) + 16;
     for (i=0; i<DBs->numdbs; i++)
     {
         DB = &DBs->dbs[i];
+        DB->start_RTblocknum = RTblocknum;
         DB->reqsock = RELAYS.lb.sock;
         if ( db777_dbopen(DBs->ctl,DB) == 0 )
         {
+            if ( db777_matrixalloc(DB) != 0 )
+            {
+                DB->dirty = calloc(DBs->matrixentries,sizeof(*DB->dirty));
+                DB->matrix = calloc(DBs->matrixentries,sizeof(*DB->matrix));
+                DB->matrixentries = DBs->matrixentries;
+                for (j=0; j<DB->matrixentries; j++)
+                {
+                    matrixkey = (j * DB777_MATRIXROW);
+                    DB->matrix[j] = calloc(DB->valuesize,DB777_MATRIXROW);
+                    allocsize = DB->valuesize * DB777_MATRIXROW;
+                    fprintf(stderr,"%s allocsize.%d read\n",DB->name,allocsize);
+                    if ( (ptr= db777_read(DB->matrix[j],&allocsize,0,DB,&matrixkey,sizeof(matrixkey),1)) != 0 && allocsize == DB->valuesize * DB777_MATRIXROW )
+                        fprintf(stderr,"+[%d] ",matrixkey);
+                    else
+                    {
+                        printf("got allocsize.%d vs %d | ptr.%p vs matrix[] %p\n",allocsize,DB->valuesize * DB777_MATRIXROW,ptr,DB->matrix[j]);
+                        break;
+                    }
+                }
+                fprintf(stderr,"loaded matrix.%d from DB\n",j);
+            }
             if ( dispflag != 0 && (json= db777_json(DBs->env,DB)) != 0 )
             {
                 str = cJSON_Print(json);
@@ -569,7 +603,7 @@ int32_t env777_start(int32_t dispflag,struct env777 *DBs)
                 free(str);
                 free_json(json);
             }
-            printf("opened %s.(%s/%s) env.%p ctl.%p db.%p asyncdb.%p\n",DBs->coinstr,DBs->subdir,DB->name,DBs->env,DBs->ctl,DB->db,DB->asyncdb);
+            printf("opened %s.(%s/%s) env.%p ctl.%p db.%p asyncdb.%p matrixalloc.%d | RAM.%d KEY32.%d valuesize.%d\n",DBs->coinstr,DBs->subdir,DB->name,DBs->env,DBs->ctl,DB->db,DB->asyncdb,DB->matrixentries,DB->flags & DB777_RAM,DB->flags & DB777_KEY32,DB->valuesize);
         }
         else
         {

@@ -195,8 +195,8 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
             cJSON_AddItemToObject(json,"myipaddr",cJSON_CreateString(SUPERNET.myipaddr));
         if ( cJSON_GetObjectItem(json,"tag") == 0 )
             sprintf(numstr,"%llu",((long long)rand()<<32) | rand()),cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
-        if ( cJSON_GetObjectItem(json,"NXT") == 0 )
-            cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(SUPERNET.NXTADDR));
+        //if ( cJSON_GetObjectItem(json,"NXT") == 0 )
+        //    cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(SUPERNET.NXTADDR));
         *timeoutp = get_API_int(cJSON_GetObjectItem(json,"timeout"),0);
         if ( plugin[0] == 0 )
             strcpy(plugin,"relay");
