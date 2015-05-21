@@ -1408,8 +1408,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             return((int32_t)strlen(retbuf));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
-        if ( (destplugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) == 0 )
-            destplugin = cJSON_str(cJSON_GetObjectItem(json,"name"));
+        if ( (destplugin= cJSON_str(cJSON_GetObjectItem(json,"name"))) == 0 )
+            destplugin = cJSON_str(cJSON_GetObjectItem(json,"path"));
         printf("SUPERNET\n");
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
