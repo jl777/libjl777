@@ -17,7 +17,7 @@
 #include "plugin777.c"
 #undef DEFINES_ONLY
 
-int32_t echo_idle(struct plugin_info *plugin) { return(0); }
+int32_t echodemo_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME
 {
@@ -31,7 +31,7 @@ char *PLUGNAME(_authmethods)[] = { "str" }; // list of supported methods that re
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
     uint64_t disableflags = 0;
-    printf("init %s size.%ld\n",plugin->name,sizeof(struct echo_info));
+    printf("init %s size.%ld\n",plugin->name,sizeof(struct echodemo_info));
     // runtime specific state can be created and put into *data
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
