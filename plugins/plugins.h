@@ -445,6 +445,7 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
     struct daemon_info *dp;
     char retbuf[8192],*methodstr,*authmethodstr,*pubmethodstr;
     int32_t ind;
+    printf("register.(%s)\n",plugin);
     update_Daemoninfos();
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
     {
