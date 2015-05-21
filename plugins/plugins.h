@@ -83,7 +83,10 @@ void update_Daemoninfos()
     }
     Numdaemons = n;
     while ( (dp= queue_dequeue(&DaemonQ,0)) != 0 )
+    {
+        printf("dequeued new daemon.(%s)\n",dp->name);
         Daemoninfos[Numdaemons++] = dp;
+    }
     portable_mutex_unlock(&mutex);
 }
 
