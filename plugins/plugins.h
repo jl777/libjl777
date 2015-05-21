@@ -388,6 +388,7 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
 {
     struct daemon_info *dp;
     char retbuf[1024];
+    printf("launch daemon.(%s)\n",plugin);
     if ( Numdaemons >= sizeof(Daemoninfos)/sizeof(*Daemoninfos) )
         return(clonestr("{\"error\":\"too many daemons, cant create anymore\"}"));
     dp = calloc(1,sizeof(*dp));

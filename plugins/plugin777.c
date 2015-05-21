@@ -132,7 +132,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
 static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
     char tagstr[128],*NXTaddr; cJSON *json;
-printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
+//printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
     if ( (json= cJSON_Parse(retbuf)) != 0 )
     {
         if ( tag != 0 && get_API_nxt64bits(cJSON_GetObjectItem(json,"tag")) == 0 )
