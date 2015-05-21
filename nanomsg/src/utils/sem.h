@@ -22,7 +22,7 @@
 
 #ifndef NN_SEM_INCLUDED
 #define NN_SEM_INCLUDED
-#include "nn.h"
+#include "../nn.h"
 
 /*  Simple semaphore. It can have only two values (0/1 i.e. locked/unlocked). */
 
