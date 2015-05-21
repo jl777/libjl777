@@ -581,15 +581,29 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 #include "plugins/plugins.h"
 #undef DEFINES_ONLY
 
+char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
+{
+    char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD];
+    int32_t ind,async;
+    uint16_t port,websocket;
+    if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
+        return(clonestr("{\"error\":\"plugin already installed\"}"));
+    copy_cJSON(path,cJSON_GetObjectItem(json,"path"));
+    copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
+    port = get_API_int(cJSON_GetObjectItem(json,"port"),0);
+    async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
+    websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
+    return(language_func(plugin,ipaddr,port,websocket,async,path,jsonstr,call_system));
+}
+
 int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_newpeer.(%s)\n",ip_port); return(0); }
 
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*bstr;
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],*bstr,*retstr;
     uint64_t daemonid,instanceid,tag;
-    int32_t ind,async,timeout,broadcastflag = 0,n = 1;
-    uint16_t port,websocket;
+    int32_t timeout,broadcastflag = 0,n = 1;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -597,14 +611,9 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
         if ( strcmp(request,"install") == 0 && plugin[0] != 0 )
         {
-            if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
-                return(clonestr("{\"error\":\"plugin already installed\"}"));
-            copy_cJSON(path,cJSON_GetObjectItem(json,"path"));
-            copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
-            port = get_API_int(cJSON_GetObjectItem(json,"port"),0);
-            async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
-            websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
-            return(language_func(plugin,ipaddr,port,websocket,async,path,jsonstr,call_system));
+            retstr = SuperNET_install(plugin,jsonstr,json);
+            free_json(json);
+            return(retstr);
         }
         tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
