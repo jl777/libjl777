@@ -206,9 +206,12 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-printf("configure_plugin\n");
+printf("configure_plugin %p\n",jsonargs);
     if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 )
+    {
         unstringify(jsonargs);
+    }
+    printf("process_json\n");
     process_json(retbuf,max,plugin,jsonargs,initflag);
 }
 
@@ -312,9 +315,10 @@ int32_t main
     plugin->timeout = 1;
     if ( argc <= 2 )
     {
-        jsonargs = (argc > 1) ? (char *)argv[1]:"{}";
+        jsonargs = (argc > 1) ? clonestr((char *)argv[1]):clonestr("{}");
         configure_plugin(retbuf,max,plugin,jsonargs,-1);
-        //fprintf(stderr,"PLUGIN_RETURNS.[%s]\n",retbuf), fflush(stdout);
+        free(jsonsargs);
+fprintf(stderr,"PLUGIN_RETURNS.[%s]\n",retbuf), fflush(stdout);
         return(0);
     }
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
