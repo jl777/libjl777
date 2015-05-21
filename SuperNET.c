@@ -583,7 +583,7 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 
 char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
 {
-    char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD];
+    char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*str,*retstr;
     int32_t ind,async;
     uint16_t port,websocket;
     if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
@@ -593,8 +593,11 @@ char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
     port = get_API_int(cJSON_GetObjectItem(json,"port"),0);
     async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
     websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
-    printf("call language_func.(%s)\n",jsonstr);
-    return(language_func(plugin,ipaddr,port,websocket,async,path,jsonstr,call_system));
+    str = stringifyM(jsonstr);
+    printf("call language_func.(%s)\n",str);
+    retstr = language_func(plugin,ipaddr,port,websocket,async,path,str,call_system);
+    free(str);
+    return(retstr);
 }
 
 int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_newpeer.(%s)\n",ip_port); return(0); }
