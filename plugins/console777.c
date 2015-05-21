@@ -191,7 +191,7 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
         json = cJSON_CreateObject();
     if ( json != 0 )
     {
-        if ( cJSON_GetObjectItem(json,"myipaddr") == 0 )
+        if ( strcmp("direct",method) == 0 && cJSON_GetObjectItem(json,"myipaddr") == 0 )
             cJSON_AddItemToObject(json,"myipaddr",cJSON_CreateString(SUPERNET.myipaddr));
         if ( cJSON_GetObjectItem(json,"tag") == 0 )
             sprintf(numstr,"%llu",((long long)rand()<<32) | rand()),cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
@@ -215,10 +215,24 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
     else return(clonestr(pubstr));
 }
 
+char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout)
+{
+    struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
+    int32_t tmp; char *retstr;
+    if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
+        retstr = nn_loadbalanced(cmdstr);
+    else if ( strcmp(plugin,"peers") == 0 )
+        retstr = nn_allpeers(cmdstr,timeout,0);
+    else if ( find_daemoninfo(&tmp,plugin,0,0) != 0 )
+        retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,0,timeout != 0 ? timeout : 0);
+    else retstr = nn_publish(cmdstr,0);
+    return(retstr);
+}
+
 void process_userinput(char *_line)
 {
     static char *line,*line2;
-    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int j,timeout,broadcastflag = 0;
+    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int timeout,broadcastflag = 0;
     printf("[%s]\n",_line);
     if ( line == 0 )
         line = calloc(1,65536), line2 = calloc(1,65536);
@@ -250,14 +264,7 @@ void process_userinput(char *_line)
     }
     if ( (cmdstr = parse_expandedline(plugin,method,&timeout,line,broadcastflag)) != 0 )
     {
-        struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
-        if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
-            retstr = nn_loadbalanced(cmdstr);
-        else if ( strcmp(plugin,"peers") == 0 )
-            retstr = nn_allpeers(cmdstr,timeout != 0 ? timeout : RELAYS.surveymillis,0);
-        else if ( find_daemoninfo(&j,plugin,0,0) != 0 )
-            retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,0,timeout != 0 ? timeout : 0);
-        else retstr = nn_publish(cmdstr,0);
+        retstr = process_user_json(plugin,method,cmdstr,broadcastflag,timeout != 0 ? timeout : RELAYS.surveymillis);
         printf("(%s) -> (%s) -> (%s)\n",line,cmdstr,retstr);
         free(cmdstr);
     }

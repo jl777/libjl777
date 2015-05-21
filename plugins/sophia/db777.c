@@ -53,6 +53,7 @@ char **db777_index(int32_t *nump,struct db777 *DB,int32_t max);
 int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue);
 void *db777_read(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen,int32_t fillcache);
 void *db777_matrixptr(int32_t *matrixindp,void *transactions,struct db777 *DB,void *key,int32_t keylen);
+int32_t db777_linkDB(struct db777 *DB,struct db777 *revDB,uint32_t maxind);
 
 extern struct db777_info SOPHIA;
 extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,;
@@ -149,6 +150,7 @@ void *db777_matrixptr(int32_t *matrixindp,void *transactions,struct db777 *DB,vo
 
 int32_t db777_matrixalloc(struct db777 *DB)
 {
+    return(0);
     return((DB->flags & (DB777_RAM | DB777_KEY32)) == (DB777_RAM | DB777_KEY32) && DB->valuesize != 0);
 }
 
@@ -156,6 +158,8 @@ int32_t db777_link(void *transactions,struct db777 *DB,struct db777 *revDB,uint3
 {
     struct db777_entry *entry; void *revptr; int32_t matrixi;
     return(0);
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     db777_lock(DB);
     HASH_FIND(hh,DB->table,value,valuelen,entry);
     db777_unlock(DB);
@@ -179,10 +183,35 @@ int32_t db777_link(void *transactions,struct db777 *DB,struct db777 *revDB,uint3
     return(-1);
 }
 
+int32_t db777_linkDB(struct db777 *DB,struct db777 *revDB,uint32_t maxind)
+{
+    uint32_t ind; void *value; int32_t matrixi;
+    printf("linkDB maxind.%d\n",maxind);
+    for (ind=1; ind<=maxind; ind++)
+    {
+        if ( (value= db777_matrixptr(&matrixi,0,revDB,&ind,sizeof(ind))) != 0 )
+        {
+            if ( db777_link(0,DB,revDB,ind,value,revDB->valuesize) != 0 )
+            {
+                printf("ind.%d linkerror\n",ind);
+                break;
+            }
+        }
+        else
+        {
+            printf("couldnt find ind.%d, value.%p valuesize.%d matrixi.%d\n",ind,value,revDB->valuesize,matrixi);
+            break;
+        }
+    }
+    return(ind);
+}
+
 void *db777_read(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen,int32_t fillcache)
 {
     void *obj,*value,*result = 0; int32_t flag,max = *lenp;
     flag = 0;
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     if ( (obj= sp_object(DB->db)) != 0 )
     {
         if ( sp_set(obj,"key",key,keylen) == 0 && (result= sp_get(transactions != 0 ? transactions : DB->db,obj)) != 0 )
@@ -206,6 +235,8 @@ void *db777_get(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,voi
 {
     int32_t i,c,max,matrixi; struct db777_entry *entry = 0; void *src,*value = 0; char buf[8192],_keystr[513],*keystr = _keystr;
     max = *lenp, *lenp = 0;
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     if ( db777_matrixalloc(DB) != 0 )
     {
         if ( (src= db777_matrixptr(&matrixi,transactions,DB,key,keylen)) != 0 )
@@ -277,6 +308,8 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
 {
     struct db777_entry *entry = 0; void *db,*newkey,*dest,*obj = 0; int32_t ismatrix,matrixi,retval = 0;
     ismatrix = db777_matrixalloc(DB);
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     if ( DB->valuesize != 0 && valuelen > DB->valuesize )
     {
         if ( ismatrix == 0 || (ismatrix != 0 && ((*(uint32_t *)key % DB777_MATRIXROW) != 0 || valuelen != DB777_MATRIXROW*DB->valuesize)) )
@@ -284,34 +317,6 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
             printf("%s UNEXPECTED SIZE SET.%08x keylen.%d | value %x len.%d value.%p (%s)\n",DB->name,*(int *)key,keylen,*(int *)value,valuelen,value,value);
             return(-1);
         }
-    }
-    if ( ((DB->flags & flags) & DB777_HDD) != 0 )
-    {
-        if ( ismatrix != 0 && ((*(uint32_t *)key % DB777_MATRIXROW) != 0 || valuelen != DB777_MATRIXROW*DB->valuesize) )
-        {
-            printf("%s UNEXPECTED db777_set: %x keylen.%d valuelen.%d %x\n",DB->name,*(int *)key,keylen,valuelen,*(int *)value);
-            return(-1);
-        }
-        else
-        {
-            db = DB->asyncdb != 0 ? DB->asyncdb : DB->db;
-            if ( (obj= sp_object(db)) == 0 )
-                retval = -3;
-            if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,valuelen) != 0 )
-            {
-                sp_destroy(obj);
-                printf("error setting key/value %s[%d]\n",DB->name,*(int *)key);
-                retval = -4;
-            }
-            else
-            {
-                retval = sp_set((transactions != 0 ? transactions : db),obj);
-                //if ( strcmp(DB->name,"ledger") == 0 )
-                //    printf("retval.%d %s key.%u valuelen.%d\n",retval,DB->name,*(int *)key,valuelen);
-            }
-        }
-        //if ( ismatrix != 0 )
-        //    printf("%s save key.%u valuelen.%d\n",DB->name,*(int *)key,valuelen);
     }
     if ( ((DB->flags & flags) & DB777_RAM) != 0 )
     {
@@ -363,6 +368,7 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
                 newkey = malloc(keylen);
                 memcpy(newkey,key,keylen);
                 HASH_ADD_KEYPTR(hh,DB->table,newkey,keylen,entry);
+                retval = 0;
             }
             else
             {
@@ -394,6 +400,7 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
                         }
                         entry->valuelen = valuelen;
                     }
+                    retval = 0;
                 }
                 else if ( entry->valuesize != valuelen || valuelen != DB->valuesize )
                     printf("entry->valuesize.%d DB->valuesize.%d vs valuesize.%d??\n",entry->valuesize,DB->valuesize,valuelen);
@@ -401,10 +408,39 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
                 {
                     if ( memcmp(entry->value,value,valuelen) != 0 )
                         memcpy(entry->value,value,valuelen);
+                    retval = 0;
                 }
             }
             db777_unlock(DB);
         }
+    }
+    else if ( ((DB->flags & flags) & DB777_HDD) != 0 )
+    {
+        if ( ismatrix != 0 && ((*(uint32_t *)key % DB777_MATRIXROW) != 0 || valuelen != DB777_MATRIXROW*DB->valuesize) )
+        {
+            printf("%s UNEXPECTED db777_set: %x keylen.%d valuelen.%d %x\n",DB->name,*(int *)key,keylen,valuelen,*(int *)value);
+            return(-1);
+        }
+        else
+        {
+            db = DB->asyncdb != 0 ? DB->asyncdb : DB->db;
+            if ( (obj= sp_object(db)) == 0 )
+                retval = -3;
+            if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,valuelen) != 0 )
+            {
+                sp_destroy(obj);
+                printf("error setting key/value %s[%d]\n",DB->name,*(int *)key);
+                retval = -4;
+            }
+            else
+            {
+                retval = sp_set((transactions != 0 ? transactions : db),obj);
+                //if ( strcmp(DB->name,"ledger") == 0 )
+                //    printf("retval.%d %s key.%u valuelen.%d\n",retval,DB->name,*(int *)key,valuelen);
+            }
+        }
+        //if ( ismatrix != 0 )
+        //    printf("%s save key.%u valuelen.%d\n",DB->name,*(int *)key,valuelen);
     }
     return(retval);
 }
@@ -424,6 +460,8 @@ int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *ke
     int32_t retval,flag = 0,allocsize = sizeof(DB->checkbuf);
     if ( DB == 0 )
         return(-1);
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     if ( forceflag <= 0 && (val= db777_get(DB->checkbuf,&allocsize,transactions,DB,key,keylen)) != 0 )
     {
         flag = 1;
@@ -513,6 +551,8 @@ int32_t db777_delete(int32_t flags,void *transactions,struct db777 *DB,void *key
 int32_t db777_flush(void *transactions,struct db777 *DB)
 {
     struct db777_entry *entry,*tmp; void *obj; uint32_t key; int32_t valuelen,flushed = 0,i,n = 0,numerrs = 0;
+    //if ( strcmp(DB->name,"addrinfos") != 0 )
+        transactions = 0;
     if ( (DB->flags & DB777_RAM) != 0 )
     {
         db777_lock(DB);
@@ -552,7 +592,7 @@ int32_t db777_flush(void *transactions,struct db777 *DB)
                 {
                     if ( (DB->flags & DB777_HDD) != 0 )
                     {
-                        db777_delete(DB777_HDD,transactions,DB,entry->hh.key,entry->keylen);
+                        //db777_delete(DB777_HDD,transactions,DB,entry->hh.key,entry->keylen);
                         obj = (DB->valuesize == 0) ? *(void **)entry->value : entry->value;
                         entry->dirty = (db777_set(DB777_HDD,transactions,DB,entry->hh.key,entry->keylen,obj,entry->valuelen) != 0);
                         //if ( strcmp(DB->name,"revaddrs") == 0 )

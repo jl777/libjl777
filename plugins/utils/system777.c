@@ -143,7 +143,7 @@ struct ramchain_info
     char PATH[1024],coins[MAX_RAMCHAINS][16],pullnode[64];
     double lastupdate[MAX_RAMCHAINS];
     union endpoints all;
-    int32_t num,readyflag;
+    int32_t num,readyflag,fastmode;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct ramchain_info RAMCHAINS;
 

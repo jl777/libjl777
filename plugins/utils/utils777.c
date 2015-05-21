@@ -66,6 +66,9 @@ void *memalloc(struct alloc_space *mem,long size,int32_t clearflag);
 int32_t notlocalip(char *ipaddr);
 int32_t is_remote_access(char *previpaddr);
 
+float xblend(float *destp,float val,float decay);
+double dxblend(double *destp,double val,double decay);
+
 #endif
 #else
 #ifndef crypto777_util777_c
@@ -613,6 +616,75 @@ void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
     return(ptr);
 }
 
+float _xblend(float *destp,float val,float decay)
+{
+    float oldval;
+	if ( (oldval = *destp) != 0. )
+		return((oldval * decay) + ((1. - decay) * val));
+	else return(val);
+}
+
+double _dxblend(double *destp,double val,double decay)
+{
+    double oldval;
+	if ( (oldval = *destp) != 0. )
+		return((oldval * decay) + ((1. - decay) * val));
+	else return(val);
+}
+
+float xblend(float *destp,float val,float decay)
+{
+	double newval,slope;
+	if ( isnan(*destp) != 0 )
+		*destp = 0.;
+	if ( isnan(val) != 0 )
+		return(0.);
+	if ( *destp == 0 )
+	{
+		*destp = val;
+		return(0);
+	}
+	newval = _xblend(destp,val,decay);
+	if ( newval < SMALLVAL && newval > -SMALLVAL )
+	{
+		// non-zero marker for actual values close to or even equal to zero
+		if ( newval < 0. )
+			newval = -SMALLVAL;
+		else newval = SMALLVAL;
+	}
+	if ( *destp != 0. && newval != 0. )
+		slope = (newval - *destp);
+	else slope = 0.;
+	*destp = newval;
+	return(slope);
+}
+
+double dxblend(double *destp,double val,double decay)
+{
+	double newval,slope;
+	if ( isnan(*destp) != 0 )
+		*destp = 0.;
+	if ( isnan(val) != 0 )
+		return(0.);
+	if ( *destp == 0 )
+	{
+		*destp = val;
+		return(0);
+	}
+	newval = _dxblend(destp,val,decay);
+	if ( newval < SMALLVAL && newval > -SMALLVAL )
+	{
+		// non-zero marker for actual values close to or even equal to zero
+		if ( newval < 0. )
+			newval = -SMALLVAL;
+		else newval = SMALLVAL;
+	}
+	if ( *destp != 0. && newval != 0. )
+		slope = (newval - *destp);
+	else slope = 0.;
+	*destp = newval;
+	return(slope);
+}
 
 #endif
 #endif

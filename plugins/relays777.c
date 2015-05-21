@@ -495,8 +495,8 @@ char *nn_publish(char *publishstr,int32_t nostr)
     {
         len = (int32_t)strlen(publishstr) + 1;
         if ( (sendlen= nn_send(RELAYS.pubsock,publishstr,len,0)) != len )
-            printf("add_relay_connections warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
-        else printf("published.(%s) %d bytes\n",len<1024?publishstr:"<big string>",len);
+            printf("nn_publish warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
+        else printf("nn_publish.(%s) %d bytes\n",len<1024?publishstr:"<big string>",len);
         sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,(int32_t)strlen(publishstr)));
         if ( nostr != 0 )
             return(0);

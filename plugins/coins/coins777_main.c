@@ -26,7 +26,7 @@
 int32_t coins_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME COINS;
-char *PLUGNAME(_methods)[] = { "acctpubkeys" };
+char *PLUGNAME(_methods)[] = { "acctpubkeys", "sendrawtransaction" };
 char *PLUGNAME(_pubmethods)[] = { "acctpubkeys" };
 char *PLUGNAME(_authmethods)[] = { "acctpubkeys" };
 
@@ -181,9 +181,11 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         if ( (serverport= cJSON_str(cJSON_GetObjectItem(argjson,"rpc"))) != 0 )
             safecopy(coin->serverport,serverport,sizeof(coin->serverport));
         coin->use_addmultisig = get_API_int(cJSON_GetObjectItem(argjson,"useaddmultisig"),(strcmp("BTC",coinstr) != 0));
+        coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
         path = cJSON_str(cJSON_GetObjectItem(argjson,"path"));
         conf = cJSON_str(cJSON_GetObjectItem(argjson,"conf"));
     }
+    else coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;

@@ -227,7 +227,7 @@ patch2: doesntexist; \
     #cd ..; \
 
 dependencies: doesntexist; \
-    sudo apt-get install make clang-3.5 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
+    sudo apt-get install make clang-3.4 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
 
 onetime: doesntexist; \
     cd nanomsg; ./autogen.sh; ./configure; make; cd ..; \

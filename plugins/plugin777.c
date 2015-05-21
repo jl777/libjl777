@@ -241,7 +241,8 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
             if ( retbuf[0] == 0 )
                 sprintf(retbuf,"{\"result\":\"no response\"}");
             append_stdfields(retbuf,max,plugin,tag,0);
-            printf("return.(%s)\n",retbuf);
+            if ( Debuglevel > 2 )
+                printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
         } else printf("(%s) -> no return.%d (%s) vs (%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,plugin->name,len);
     }

@@ -585,9 +585,10 @@ int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_new
 
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
-    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD];
+    char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*bstr;
     uint64_t daemonid,instanceid,tag;
-    int32_t ind,async,timeout,n = 1;
+    int32_t ind,async,timeout,broadcastflag = 0,n = 1;
     uint16_t port,websocket;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -609,6 +610,9 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
         copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
+        if ( (bstr= cJSON_str(cJSON_GetObjectItem(json,"broadcast"))) != 0 )
+            broadcastflag = 1;
+        else broadcastflag = 0;
         if ( method[0] == 0 )
         {
             strcpy(method,request);
@@ -617,7 +621,8 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),1000);
-        return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
+        return(process_user_json(plugin,method,jsonstr,broadcastflag,timeout));
+        //return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 

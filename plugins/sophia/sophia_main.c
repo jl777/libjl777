@@ -551,7 +551,7 @@ int32_t db777_dbopen(void *ctl,struct db777 *DB)
         {
             //printf("err.%d sp_open will error if already exists\n",err);
         }
-        DB->asyncdb = sp_async(DB->db);
+        DB->asyncdb = 0;//sp_async(DB->db);
         //printf("DB->db.%p for %s\n",DB->db,DB->dbname);
         return(0);
     }
