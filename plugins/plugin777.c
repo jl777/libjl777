@@ -337,7 +337,7 @@ int32_t main
         } else plugin_transportaddr(plugin->bindaddr,transportstr,0,plugin->daemonid + 1*OFFSET_ENABLED);
     } else plugin_transportaddr(plugin->bindaddr,transportstr,0,plugin->daemonid + 1*OFFSET_ENABLED);
     plugin_transportaddr(plugin->connectaddr,transportstr,0,plugin->daemonid+2*OFFSET_ENABLED);
-    jsonargs = (argc >= 3) ? (char *)argv[3] : 0;
+    jsonargs = (argc >= 3) ? stringifyM((char *)argv[3]) : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);
     printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu NXT.%s\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,plugin->NXTADDR);//,jsonargs!=0?jsonargs:"");
     if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->bindaddr,plugin->connectaddr,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
