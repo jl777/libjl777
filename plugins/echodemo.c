@@ -6,7 +6,7 @@
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 
-#define BUNDLED
+//#define BUNDLED
 #define PLUGINSTR "echo"
 #define PLUGNAME(NAME) echo ## NAME
 #define STRUCTNAME struct PLUGNAME(_info) 

@@ -1253,8 +1253,6 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 
 #include <stdio.h>
 //
-//  echodemo.c
-//  SuperNET API extension example plugin
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
