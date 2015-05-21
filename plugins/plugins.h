@@ -407,12 +407,12 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
     dp->jsonargs = (arg != 0 && arg[0] != 0) ? clonestr(arg) : 0;
     dp->daemonfunc = daemonfunc;
     dp->websocket = websocket;
+    queue_enqueue("DaemonQ",&DaemonQ,&dp->DL);
     if ( portable_thread_create((void *)daemon_loop2,dp) == 0 || (dp->bundledflag == 0 && websocket != 0 && portable_thread_create((void *)daemon_loop,dp) == 0) )
     {
         free_daemon_info(dp);
         return(clonestr("{\"error\":\"portable_thread_create couldnt create daemon\"}"));
     }
-    queue_enqueue("DaemonQ",&DaemonQ,&dp->DL);
     sprintf(retbuf,"{\"result\":\"launched\",\"daemonid\":\"%llu\"}\n",(long long)dp->daemonid);
     return(clonestr(retbuf));
  }
@@ -442,7 +442,6 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
     struct daemon_info *dp;
     char retbuf[8192],*methodstr,*authmethodstr,*pubmethodstr;
     int32_t ind;
-    poll_daemons();
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
     {
         if ( plugin[0] == 0 || strcmp(dp->name,plugin) == 0 )
