@@ -48,6 +48,7 @@ int32_t is_decimalstr(char *str);
 long stripstr(char *buf,long len);
 char safechar64(int32_t x);
 uint64_t stringbits(char *str);
+int32_t has_backslash(char *str);
 
 char *_mbstr(double n);
 char *_mbstr2(double n);
@@ -172,6 +173,17 @@ int64_t conv_floatstr(char *numstr)
     val = atof(numstr);
     corr = (val < 0.) ? -0.50000000001 : 0.50000000001;
     return((int64_t)(val * SATOSHIDEN + corr));
+}
+
+int32_t has_backslash(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(0);
+    for (i=0; str[i]!=0; i++)
+        if ( str[i] == '\\' )
+            return(1);
+    return(0);
 }
 
 void touppercase(char *str)

@@ -82,7 +82,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     cJSON *obj=0,*tmp,*json = 0;
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
-//printf("call process_json.(%s)\n",jsonargs);
+printf("call process_json.(%s)\n",jsonargs);
     if ( jsonargs != 0 )
     {
         json = cJSON_Parse(jsonargs);
@@ -206,7 +206,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-    if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 )
+    if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 && has_backslash(jsonargs) != 0 )
         unstringify(jsonargs);
     process_json(retbuf,max,plugin,jsonargs,initflag);
 }
@@ -311,7 +311,7 @@ int32_t main
     plugin->timeout = 1;
     if ( argc <= 2 )
     {
-        jsonargs = (argc > 1) ? clonestr((char *)argv[1]):clonestr("{}");
+        jsonargs = (argc > 1) ? clonestr((char *)argv[1]) : clonestr("{}");
         configure_plugin(retbuf,max,plugin,jsonargs,-1);
         free(jsonargs);
 //fprintf(stderr,"PLUGIN_RETURNS.[%s]\n",retbuf), fflush(stdout);
