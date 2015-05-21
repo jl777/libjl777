@@ -205,11 +205,10 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
+#ifdef BUNDLED
     if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 && has_backslash(jsonargs) != 0 )
-    {
-        printf("call unstringify.(%s)\n",jsonargs);
         unstringify(jsonargs);
-    }
+#endif
     process_json(retbuf,max,plugin,jsonargs,initflag);
 }
 
