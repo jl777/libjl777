@@ -83,9 +83,8 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
 printf("call process_json.(%s)\n",jsonargs);
-    if ( jsonargs != 0 )
+    if ( jsonargs != 0 && (json= cJSON_Parse(jsonargs)) != 0 )
     {
-        json = cJSON_Parse(jsonargs);
         if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
             obj = cJSON_GetArrayItem(json,0);
         else obj = json;
