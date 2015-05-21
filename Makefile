@@ -12,7 +12,7 @@ else
 endif
 endif
 
-PLIBS := ../libs/libjl777.a ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm
+PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a -lpthread -lcurl -lanl -lm
 
 LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
 
@@ -62,7 +62,7 @@ clean: doesntexist
 
 PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libtom -Iincludes/miniupnp -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
-_echo := rm lib/echo; gcc -o lib/echo -Os $(PINCLUDES) echodemo.c $(PLIBS)
+_echo := rm lib/echo; gcc -o lib/echo -Os $(PINCLUDES) echodemo.c $(PLIBS) 
 
 _MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
 
