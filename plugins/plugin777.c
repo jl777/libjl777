@@ -310,7 +310,7 @@ int32_t main
     plugin->timeout = 1;
     if ( argc <= 2 )
     {
-        jsonargs = (argc > 1) ? clonestr((char *)argv[1]) : clonestr("{}");
+        jsonargs = (argc > 1) ? stringifyM((char *)argv[1]) : stringifyM("{}");
         configure_plugin(retbuf,max,plugin,jsonargs,-1);
         free(jsonargs);
 //fprintf(stderr,"PLUGIN_RETURNS.[%s]\n",retbuf), fflush(stdout);
