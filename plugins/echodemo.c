@@ -24,9 +24,9 @@ STRUCTNAME
     int32_t pad;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 };
-char *PLUGNAME(_methods)[] = { "str" }; // list of supported methods approved for local access
-char *PLUGNAME(_pubmethods)[] = { "str" }; // list of supported methods approved for public (Internet) access
-char *PLUGNAME(_authmethods)[] = { "str" }; // list of supported methods that require authentication
+char *PLUGNAME(_methods)[] = { "echo" }; // list of supported methods approved for local access
+char *PLUGNAME(_pubmethods)[] = { "echo" }; // list of supported methods approved for public (Internet) access
+char *PLUGNAME(_authmethods)[] = { "echo" }; // list of supported methods that require authentication
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -38,7 +38,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char onetimestr[64],*resultstr,*str,*methodstr;
+    char echostr[MAX_JSON_FIELD],*resultstr,*str,*methodstr;
     retbuf[0] = 0;
     printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
@@ -52,6 +52,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
+        copy_cJSON(echostr,cJSON_GetObjectItem(json,"echostr"));
         retbuf[0] = 0;
         if ( methodstr == 0 || methodstr[0] == 0 )
         {
@@ -63,14 +64,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        else
+        else if ( strcmp(methodstr,"echo") == 0 )
         {
-            str = stringifyM(jsonstr);
-            if ( initflag < 0 )
-                sprintf(onetimestr,",\"onetime\":%d",initflag);
-            else onetimestr[0] = 0;
-            sprintf(retbuf,"{\"tag\":\"%llu\",\"args\":%s,\"milliseconds\":%f%s}",(long long)tag,str,milliseconds(),onetimestr);
-            free(str);
+            sprintf(retbuf,"{\"result\":\"%s\"}",echostr);
         }
     }
     return((int32_t)strlen(retbuf));
