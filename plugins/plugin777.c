@@ -317,7 +317,7 @@ int32_t main
     {
         jsonargs = (argc > 1) ? clonestr((char *)argv[1]):clonestr("{}");
         configure_plugin(retbuf,max,plugin,jsonargs,-1);
-        free(jsonsargs);
+        free(jsonargs);
 fprintf(stderr,"PLUGIN_RETURNS.[%s]\n",retbuf), fflush(stdout);
         return(0);
     }
