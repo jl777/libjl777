@@ -390,7 +390,7 @@ void *daemon_loop2(void *args) // launch permanent plugin process
 char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,char *cmd,char *arg,int32_t (*daemonfunc)(struct daemon_info *dp,int32_t permanentflag,char *cmd,char *jsonargs))
 {
     struct daemon_info *dp;
-    char retbuf[1024];
+    char retbuf[1024]; int32_t i,delim,offset=0;
     //printf("launch daemon.(%s)\n",plugin);
     if ( Numdaemons >= sizeof(Daemoninfos)/sizeof(*Daemoninfos) )
         return(clonestr("{\"error\":\"too many daemons, cant create anymore\"}"));
@@ -400,10 +400,20 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
     dp->port = port;
     if ( ipaddr != 0 )
         strcpy(dp->ipaddr,ipaddr);
-    if ( plugin != 0 )
-        strcpy(dp->name,plugin);
     randombytes((uint8_t *)&dp->myid,sizeof(dp->myid));
     dp->cmd = clonestr(cmd!=0&&cmd[0]!=0?cmd:plugin);
+#ifdef WIN32
+    delim = '\\';
+#else
+    delim = '/';
+#endif
+    if ( plugin != 0 )
+    {
+        for (i=0; plugin[i]!=0; i++)
+            if ( plugin[i] == delim )
+                offset = i+1;
+        strcpy(dp->name,plugin+1);
+    }
     dp->daemonid = (uint64_t)(milliseconds() * 1000000) & (~(uint64_t)3) ^ *(int32_t *)plugin;
     memset(&dp->perm,0xff,sizeof(dp->perm));
     memset(&dp->wss,0xff,sizeof(dp->wss));
