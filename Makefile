@@ -78,7 +78,7 @@ plugins: lib/echo lib/MGW lib/stockfish lib/sophia; \
     $(_MGW); \
     cd ..
 
-echodemo: lib/echodemo; \
+echodemo: plugins/lib/echodemo; \
  	cd plugins; $(_echodemo); cd ..
 
 stockfish: lib/stockfish; \
@@ -296,9 +296,9 @@ cstdlib/errno.o: cstdlib/errno.c interpreter.h platform.h
 cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
-lib/stockfish: plugins/stockfish/stockfish.cpp
-lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
-lib/echo: plugins/echodemo.c
+plugins/lib/stockfish: plugins/stockfish/stockfish.cpp
+plugins/lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
+plugins/lib/echodemo: plugins/echodemo.c
 #plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
 #plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
 

@@ -670,9 +670,9 @@ uint32_t ledger_setlast(struct ledger_inds *L,struct ledger_info *ledger,uint32_
     L->unspentind = ledger->unspentmap.ind, L->numspents = ledger->spentbits.ind;
     L->numaddrinfos = ledger->addrinfos.ind, L->txoffsets = ledger->txoffsets.ind;
     n = ledger_copyhashes(L,ledger,0);
-    update_sha256(ledger->sha256,&ledger->ledgerstate,0,0);
-    update_sha256(ledger->sha256,&ledger->ledgerstate,(void *)L,sizeof(*L));
-    ledgerhash = *(uint32_t *)ledger->sha256;
+    update_sha256(ledger->ledger.sha256,&ledger->ledger.state,0,0);
+    update_sha256(ledger->ledger.sha256,&ledger->ledger.state,(void *)L,sizeof(*L));
+    ledgerhash = *(uint32_t *)ledger->ledger.sha256;
     if ( numsyncs < 0 )
     {
         printf("\n");
@@ -689,7 +689,7 @@ uint32_t ledger_setlast(struct ledger_inds *L,struct ledger_info *ledger,uint32_
     }
     if ( numsyncs >= 0 )
     {
-        printf(" synci.%d: blocknum.%u %08x txids.%d addrs.%d scripts.%d unspents.%d supply %.8f | ",numsyncs,ledger->blocknum,*(int *)ledger->sha256,ledger->txids.ind,ledger->addrs.ind,ledger->scripts.ind,ledger->unspentmap.ind,dstr(ledger->voutsum)-dstr(ledger->spendsum));
+        printf(" synci.%d: blocknum.%u %08x txids.%d addrs.%d scripts.%d unspents.%d supply %.8f | ",numsyncs,ledger->blocknum,*(int *)ledger->ledger.sha256,ledger->txids.ind,ledger->addrs.ind,ledger->scripts.ind,ledger->unspentmap.ind,dstr(ledger->voutsum)-dstr(ledger->spendsum));
         printf("SYNCNUM.%d -> %d supply %.8f | ledgerhash %llx\n",numsyncs,blocknum,dstr(L->voutsum)-dstr(L->spendsum),*(long long *)ledger->ledger.sha256);
         if ( db777_set(DB777_HDD,ledger->DBs.transactions,ledger->ledger.DB,&numsyncs,sizeof(numsyncs),L,sizeof(*L)) != 0 )
             printf("error saving ledger\n");
@@ -878,7 +878,7 @@ struct ledger_blockinfo *ledger_setblocknum(struct ledger_info *ledger,struct al
     uint32_t addrind; int32_t modval,lastmodval,allocsize = sizeof(ledger->getbuf); uint64_t balance = 0;
     struct ledger_blockinfo *block; struct ledger_addrinfo *addrinfo;
     startblocknum = ledger_startblocknum(ledger,-1);
-    ledger->ledgerstate = ledger->ledger.state, memcpy(ledger->sha256,ledger->ledger.sha256,sizeof(ledger->sha256));
+    //ledger->ledgerstate = ledger->ledger.state, memcpy(ledger->sha256,ledger->ledger.sha256,sizeof(ledger->sha256));
     if ( startblocknum < 1 )
     {
         ledger->numsyncs = 1;

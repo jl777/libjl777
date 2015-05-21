@@ -86,8 +86,8 @@ struct ledger_info
     double startmilli,load_elapsed,calc_elapsed;
     uint32_t blocknum,blockpending,numsyncs,sessionid,counter,startblocknum,endblocknum,syncfreq,needbackup;
     struct ledger_state ledger,revaddrs,addrs,revtxids,txids,scripts,revscripts,blocks,unspentmap,txoffsets,spentbits,addrinfos;
-    uint8_t sha256[256 >> 3];
-    struct sha256_state ledgerstate;
+    //uint8_t sha256[256 >> 3];
+    //struct sha256_state ledgerstate;
     uint8_t getbuf[1000000];
 };
 
