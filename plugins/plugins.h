@@ -409,10 +409,10 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
 #endif
     if ( plugin != 0 )
     {
-        for (i=0; plugin[i]!=0; i++)
+        for (i=offset=0; plugin[i]!=0; i++)
             if ( plugin[i] == delim )
                 offset = i+1;
-        strcpy(dp->name,plugin+1);
+        strcpy(dp->name,plugin+offset);
     }
     dp->daemonid = (uint64_t)(milliseconds() * 1000000) & (~(uint64_t)3) ^ *(int32_t *)plugin;
     memset(&dp->perm,0xff,sizeof(dp->perm));
