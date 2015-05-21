@@ -82,7 +82,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     cJSON *obj=0,*tmp,*json = 0;
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
-printf("call process_json.(%s)\n",jsonargs);
+//printf("call process_json.(%s)\n",jsonargs);
     if ( jsonargs != 0 && (json= cJSON_Parse(jsonargs)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
@@ -101,7 +101,7 @@ printf("call process_json.(%s)\n",jsonargs);
     }
     if ( obj != 0 )
     {
-printf("jsonargs.(%s)\n",jsonargs);
+//printf("jsonargs.(%s)\n",jsonargs);
         if ( (nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
         {
             plugin->nxt64bits = nxt64bits;
@@ -224,16 +224,16 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     uint64_t tag = 0;
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
-    if ( Debuglevel > 2 )
-        printf("PLUGIN.(%s) process_plugin_json\n",plugin->name);
+    if ( Debuglevel > 1 )
+        printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 )
             obj = cJSON_GetArrayItem(json,0);
         else obj = json;
-        copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
+        copy_cJSON(name,cJSON_GetObjectItem(obj,"destplugin"));
         if ( name[0] == 0 )
-            copy_cJSON(name,cJSON_GetObjectItem(obj,"destplugin"));
+            copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
         if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
