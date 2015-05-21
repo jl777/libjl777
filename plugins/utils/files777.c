@@ -183,7 +183,7 @@ void ensure_filesize(char *fname,long filesize)
         //printf("filesize.%ld is less than %ld\n",filesize,allocsize);
         if ( (fp= fopen(os_compatible_path(fname),"ab")) != 0 )
         {
-			zeroes = aligned_alloc(16*1024*1024);
+			zeroes = myaligned_alloc(16*1024*1024);
             memset(zeroes,0,16*1024*1024);
             n = filesize - allocsize;
             while ( n > 16*1024*1024 )
@@ -208,7 +208,7 @@ int32_t open_mappedptr(struct mappedptr *mp)
     if ( mp->actually_allocated != 0 )
 	{
 		if ( mp->fileptr == 0 )
-			mp->fileptr = aligned_alloc(mp->allocsize);
+			mp->fileptr = myaligned_alloc(mp->allocsize);
 		else memset(mp->fileptr,0,mp->allocsize);
 		return(0);
 	}

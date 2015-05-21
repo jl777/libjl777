@@ -192,7 +192,7 @@ void free_queueitem(void *itemptr);
 
 int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description);
 
-void *aligned_alloc(uint64_t allocsize);
+void *myaligned_alloc(uint64_t allocsize);
 int32_t aligned_free(void *alignedptr);
 
 void *portable_thread_create(void *funcp,void *argp);
@@ -277,7 +277,7 @@ void nn_thread_term (struct nn_thread *self);
 
 static uint64_t _align16(uint64_t ptrval) { if ( (ptrval & 15) != 0 ) ptrval += 16 - (ptrval & 15); return(ptrval); }
 
-void *aligned_alloc(uint64_t allocsize)
+void *myaligned_alloc(uint64_t allocsize)
 {
     void *ptr,*realptr;
     realptr = calloc(1,allocsize + 16 + sizeof(realptr));

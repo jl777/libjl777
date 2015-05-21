@@ -82,6 +82,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     cJSON *obj=0,*tmp,*json = 0;
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
+printf("call process_json.(%s)\n",jsonargs);
     if ( jsonargs != 0 )
     {
         json = cJSON_Parse(jsonargs);
@@ -101,7 +102,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     }
     if ( obj != 0 )
     {
-        //printf("jsonargs.(%s)\n",jsonargs);
+printf("jsonargs.(%s)\n",jsonargs);
         if ( (nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
         {
             plugin->nxt64bits = nxt64bits;
@@ -205,6 +206,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
+printf("configure_plugin\n");
     if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 )
         unstringify(jsonargs);
     process_json(retbuf,max,plugin,jsonargs,initflag);
@@ -224,7 +226,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     uint64_t tag = 0;
     char name[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
-    if ( Debuglevel > 2 )
+    if ( Debuglevel > 1 )
         printf("PLUGIN.(%s) process_plugin_json\n",plugin->name);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -248,7 +250,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     }
     else
     {
-        //printf("couldnt parse.(%s)\n",jsonstr);
+printf("couldnt parse.(%s)\n",jsonstr);
         if ( jsonstr[len-1] == '\r' || jsonstr[len-1] == '\n' || jsonstr[len-1] == '\t' || jsonstr[len-1] == ' ' )
             jsonstr[--len] = 0;
         sprintf(retbuf,"{\"result\":\"unparseable\",\"message\":\"%s\"}",jsonstr);
@@ -319,6 +321,7 @@ int32_t main
     plugin->permanentflag = atoi(argv[1]);
     plugin->daemonid = atol(argv[2]);
     memset(&plugin->all,0xff,sizeof(plugin->all));
+printf("calling get_localtransport\n");
     plugin->bundledflag = bundledflag = is_bundled_plugin(plugin->name);
     transportstr = get_localtransport(plugin->bundledflag);
     if ( plugin->permanentflag != 0 )
