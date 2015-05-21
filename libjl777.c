@@ -1326,7 +1326,7 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json);
-    char *retstr,*resultstr,*methodstr;
+    char *retstr,*resultstr,*methodstr,*destplugin;
     FILE *fp;
     int32_t i;
     retbuf[0] = 0;
@@ -1408,14 +1408,16 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             return((int32_t)strlen(retbuf));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
+        if ( (destplugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) == 0 )
+            destplugin = cJSON_str(cJSON_GetObjectItem(json,"name"));
         printf("SUPERNET\n");
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
             retstr = "return registered";
         }
-        else if ( methodstr != 0 && strcmp(methodstr,"install") == 0 )
-            retstr = SuperNET_install("SuperNET",jsonstr,json);
+        else if ( methodstr != 0 && strcmp(methodstr,"install") == 0 && destplugin != 0 && destplugin[0] != 0 )
+            retstr = SuperNET_install(destplugin,jsonstr,json);
         else retstr = "return JSON result";
         sprintf(retbuf,"{\"result\":\"%s\",\"debug\":%d,\"USESSL\":%d,\"MAINNET\":%d,\"DATADIR\":\"%s\",\"NXTAPI\":\"%s\",\"WEBSOCKETD\":\"%s\",\"SUPERNET_PORT\":%d,\"APISLEEP\":%d,\"domain\":\"%s\"}",retstr,Debuglevel,SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.DATADIR,SUPERNET.NXTAPIURL,SUPERNET.WEBSOCKETD,SUPERNET.port,SUPERNET.APISLEEP,SUPERNET.hostname);
     }
