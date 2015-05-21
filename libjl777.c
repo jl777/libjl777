@@ -1419,7 +1419,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         else if ( methodstr != 0 && strcmp(methodstr,"install") == 0 && destplugin != 0 && destplugin[0] != 0 )
             retstr = SuperNET_install(destplugin,jsonstr,json);
         else retstr = "return JSON result";
-        sprintf(retbuf,"{\"result\":\"%s\",\"debug\":%d,\"USESSL\":%d,\"MAINNET\":%d,\"DATADIR\":\"%s\",\"NXTAPI\":\"%s\",\"WEBSOCKETD\":\"%s\",\"SUPERNET_PORT\":%d,\"APISLEEP\":%d,\"domain\":\"%s\"}",retstr,Debuglevel,SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.DATADIR,SUPERNET.NXTAPIURL,SUPERNET.WEBSOCKETD,SUPERNET.port,SUPERNET.APISLEEP,SUPERNET.hostname);
+        strcpy(retbuf,retstr);
+        sprintf(retbuf + strlen(retbuf) - 1,",\"debug\":%d,\"USESSL\":%d,\"MAINNET\":%d,\"DATADIR\":\"%s\",\"NXTAPI\":\"%s\",\"WEBSOCKETD\":\"%s\",\"SUPERNET_PORT\":%d,\"APISLEEP\":%d,\"domain\":\"%s\"}",Debuglevel,SUPERNET.usessl,SUPERNET.ismainnet,SUPERNET.DATADIR,SUPERNET.NXTAPIURL,SUPERNET.WEBSOCKETD,SUPERNET.port,SUPERNET.APISLEEP,SUPERNET.hostname);
     }
     return((int32_t)strlen(retbuf));
 }
