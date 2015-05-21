@@ -1335,6 +1335,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     if ( initflag > 0 )
     {
         Debuglevel = 2;
+        SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
         if ( SUPERNET.NXTAPIURL[0] == 0 )
@@ -1348,9 +1349,11 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         }
         strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
         strcat(SUPERNET.NXTSERVER,"?requestType");
-        set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
-        SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
         copy_cJSON(SUPERNET.myNXTacct,cJSON_GetObjectItem(json,"myNXTacct"));
+        if ( SUPERNET.disableNXT == 0 )
+            set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
+        else strcpy(SUPERNET.NXTADDR,SUPERNET.myNXTacct);
+        SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
         copy_cJSON(SUPERNET.myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
         if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
             SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1);
