@@ -594,7 +594,6 @@ char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
     async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
     websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
     str = stringifyM(jsonstr);
-    printf("call language_func.(%s)\n",str);
     retstr = language_func(plugin,ipaddr,port,websocket,async,path,str,call_system);
     free(str);
     return(retstr);
