@@ -442,6 +442,7 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
     struct daemon_info *dp;
     char retbuf[8192],*methodstr,*authmethodstr,*pubmethodstr;
     int32_t ind;
+    poll_daemons();
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) != 0 )
     {
         if ( plugin[0] == 0 || strcmp(dp->name,plugin) == 0 )

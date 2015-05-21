@@ -595,7 +595,7 @@ char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
     websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
     str = stringifyM(jsonstr);
     retstr = language_func(plugin,ipaddr,port,websocket,async,path,str,call_system);
-    for (i=0; i<10; i++)
+    for (i=0; i<3; i++)
     {
         if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
             break;
