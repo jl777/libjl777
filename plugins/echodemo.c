@@ -57,7 +57,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             printf("(%s) has not method\n",jsonstr);
             return(0);
         }
-        printf("ECHO.(%s)\n",methodstr);
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
@@ -69,7 +68,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             if ( initflag < 0 )
                 sprintf(onetimestr,",\"onetime\":%d",initflag);
             else onetimestr[0] = 0;
-            sprintf(retbuf,"{\"tag\":\"%llu\",\"args\":%s,\"milliseconds\":%f%s}\n",(long long)tag,str,milliseconds(),onetimestr);
+            sprintf(retbuf,"{\"tag\":\"%llu\",\"args\":%s,\"milliseconds\":%f%s}",(long long)tag,str,milliseconds(),onetimestr);
             free(str);
         }
     }
