@@ -22,7 +22,7 @@
 
 #ifndef NN_POLLER_INCLUDED
 #define NN_POLLER_INCLUDED
-#include "../../nn.h"
+#include "../nn.h"
 
 #if !defined NN_HAVE_WINDOWS
 
