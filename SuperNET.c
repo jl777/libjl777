@@ -584,7 +584,7 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
 {
     char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*str,*retstr;
-    int32_t ind,async;
+    int32_t i,ind,async;
     uint16_t port,websocket;
     if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
         return(clonestr("{\"error\":\"plugin already installed\"}"));
@@ -595,6 +595,13 @@ char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
     websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
     str = stringifyM(jsonstr);
     retstr = language_func(plugin,ipaddr,port,websocket,async,path,str,call_system);
+    for (i=0; i<10; i++)
+    {
+        if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
+            break;
+        poll_daemons();
+        sleep(1);
+    }
     free(str);
     return(retstr);
 }
