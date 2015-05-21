@@ -101,7 +101,7 @@ printf("call process_json.(%s)\n",jsonargs);
     }
     if ( obj != 0 )
     {
-//printf("jsonargs.(%s)\n",jsonargs);
+printf("jsonargs.(%s)\n",jsonargs);
         if ( (nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
         {
             plugin->nxt64bits = nxt64bits;
@@ -116,7 +116,7 @@ printf("call process_json.(%s)\n",jsonargs);
             plugin->port = get_API_int(cJSON_GetObjectItem(obj,"port"),0);
         }
     }
-    fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
+    fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
         retval = PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,initflag);
     else printf("error with JSON.(%s)\n",jsonstr), getchar();
