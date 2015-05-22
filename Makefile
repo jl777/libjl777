@@ -39,7 +39,7 @@ R = plugins/ramchain
 S = plugins/sophia
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
 SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
-RAMCHAIN = $(R)/ledger777.c $(R)/ramchain_main.c $(R)/ramchain.c
+RAMCHAIN = $(R)/ledger777.c $(R)/ramchain_main.c $(R)/ramchain.c $(R)/pass1.c $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 COINS = $(C)/bitcoind_RPC.c $(C)/gen1.c $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
@@ -269,12 +269,7 @@ libs/libuv.a:
 doesntexist:
 picoc.o: picoc.c picoc.h
 libgfshare.o: libgfshare.c libgfshare.h
-libjl777.o: libjl777.c SuperNET.c
-    #atomic.h ciphers.h feeds.h jl777hash.h libgfshare.h mofnfs.h packets.h sorts.h tradebot.h \
-            #storage.h bars.h cJSON.h jl777str.h NXTservices.h telepathy.h transporter.h \
-            #bitcoind.h coincache.h jdatetime.h jsoncodec.h NXTutils.h sortnetworks.h telepods.h \
-            #NXT_tx.h assetids.h exchanges.h orderbooks.h quotes.h rambooks.h signals.h trades.h \
-            #bitcoinglue.h coins.h jl777.h kademlia.h mappedptr.h InstantDEX.h _sorts.h teleport.h udp.h tweetnacl.h
+libjl777.o: $(SRCS)
 table.o: table.c interpreter.h platform.h
 lex.o: lex.c interpreter.h platform.h
 parse.o: parse.c picoc.h interpreter.h platform.h

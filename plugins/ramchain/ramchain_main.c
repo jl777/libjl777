@@ -31,14 +31,20 @@ char *PLUGNAME(_authmethods)[] = { PUB_METHODS, "signrawtransaction", "dumpprivk
 int32_t ramchain_idle(struct plugin_info *plugin)
 {
     int32_t i,flag = 0;
-    struct coin777 *coin; struct ramchain *ramchain; struct ledger_info *ledger;
+    struct coin777 *coin; struct ramchain *ramchain; struct ledger_info *ledger = 0; struct packedblock *packed = 0;
     for (i=0; i<COINS.num; i++)
     {
         if ( (coin= COINS.LIST[i]) != 0 )
         {
             ramchain = &coin->ramchain;
+            //printf("packed.%p ledger.%p\n",coin->packed,ramchain->activeledger);
             if ( ramchain->readyflag != 0 && (ledger= ramchain->activeledger) != 0 )
-                 flag += ramchain_update(ramchain,ledger);
+            {
+                if ( coin->packed != 0 && (packed= coin->packed[ledger->blocknum]) != 0 )
+                    flag += ramchain_update(ramchain,ledger,packed);
+                else flag += ramchain_update(ramchain,ledger,0);
+                //else printf("ptr.%p blocknum.%u\n",packed,ledger->blocknum);
+            }
         }
     }
     return(flag);
@@ -56,7 +62,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     {
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
         plugin->allowremote = 1;
-        copy_cJSON(RAMCHAINS.pullnode,cJSON_GetObjectItem(json,"pullnode"));
         RAMCHAINS.fastmode = get_API_int(cJSON_GetObjectItem(json,"fastmode"),0);
         RAMCHAINS.readyflag = 1;
     }

@@ -33,10 +33,22 @@ struct rawblock
     uint32_t blocknum,timestamp;
     uint16_t numtx,numrawvins,numrawvouts,pad;
     uint64_t minted;
-    char blockhash[4096],merkleroot[4096];
+    char blockhash[65],merkleroot[65];
     struct rawtx txspace[MAX_BLOCKTX];
     struct rawvin vinspace[MAX_BLOCKTX];
     struct rawvout voutspace[MAX_BLOCKTX];
+};
+
+struct packedvin { uint32_t txidstroffset; uint16_t vout; };
+struct packedvout { uint32_t coinaddroffset,scriptoffset; uint64_t value; };
+struct packedtx { uint16_t firstvin,numvins,firstvout,numvouts; uint32_t txidstroffset; };
+
+struct packedblock
+{
+    uint16_t crc16,numtx,numrawvins,numrawvouts;
+    uint64_t minted;
+    uint32_t blocknum,timestamp,blockhash_offset,merkleroot_offset,txspace_offsets,vinspace_offsets,voutspace_offsets,allocsize;
+    uint8_t rawdata[];
 };
 
 #define MAX_COINTX_INPUTS 16
@@ -58,7 +70,6 @@ struct cointx_info
     char signedtx[];
 };
 
-
 struct sha256_state
 {
     uint64_t length;
@@ -76,6 +87,7 @@ struct ledger_state
     uint8_t sha256[256 >> 3];
     struct sha256_state state;
     struct db777 *DB;
+    FILE *fp;
     int32_t ind,allocsize;
 };
 
@@ -85,7 +97,7 @@ struct ledger_info
     uint64_t voutsum,spendsum,addrsum,totalsize;
     double startmilli,load_elapsed,calc_elapsed;
     uint32_t blocknum,blockpending,numsyncs,sessionid,counter,startblocknum,endblocknum,syncfreq,needbackup;
-    struct ledger_state ledger,revaddrs,addrs,revtxids,txids,scripts,revscripts,blocks,unspentmap,txoffsets,spentbits,addrinfos;
+    struct ledger_state ledger,revaddrs,addrs,packed,revtxids,txids,scripts,revscripts,blocks,unspentmap,txoffsets,spentbits,addrinfos;
     //uint8_t sha256[256 >> 3];
     //struct sha256_state ledgerstate;
     uint8_t getbuf[1000000];
@@ -105,8 +117,12 @@ struct coin777
 {
     char name[16],serverport[64],userpass[128],*jsonstr;
     cJSON *argjson;
+    double lastgetinfo;
     struct ramchain ramchain;
+    uint32_t packedstart,packedend,packedincr,RTblocknum,packedblocknum,maxpackedblocks,readahead;
     int32_t use_addmultisig,minconfirms;
+    struct rawblock EMIT,DECODE;
+    struct packedblock **packed;
 };
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
@@ -119,6 +135,13 @@ void rawblock_patch(struct rawblock *raw);
 
 void update_sha256(unsigned char hash[256 >> 3],struct sha256_state *state,unsigned char *src,int32_t len);
 struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize);
+struct packedblock *coin777_packrawblock(struct coin777 *coin,struct rawblock *raw);
+int32_t coin777_unpackblock(struct rawblock *raw,struct packedblock *packed,uint32_t blocknum);
+void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
+void coin777_disprawblock(struct rawblock *raw);
+void ensure_packedptrs(struct coin777 *coin);
+void ramchain_setpackedblock(struct ramchain *ramchain,struct packedblock *packed,uint32_t blocknum);
+struct packedblock *ramchain_getpackedblock(void *space,int32_t *lenp,struct ramchain *ramchain,uint32_t blocknum);
 
 #endif
 #else

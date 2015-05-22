@@ -15,10 +15,11 @@
 #include <stdlib.h>
 #include "cJSON.h"
 #include "system777.c"
+#include "pass1.c"
 #include "ledger777.c"
 
 int32_t ramchain_init(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJSON *argjson,char *coinstr,char *serverport,char *userpass,uint32_t startblocknum,uint32_t endblocknum,uint32_t minconfirms);
-int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger);
+int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger,struct packedblock *packed);
 int32_t ramchain_func(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJSON *argjson,char *method);
 int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJSON *argjson,uint32_t startblocknum,uint32_t endblocknum);
 
@@ -33,9 +34,46 @@ int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJ
 #undef DEFINES_ONLY
 #endif
 
-int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger)
+struct packedblock *ramchain_getpackedblock(void *space,int32_t *lenp,struct ramchain *ramchain,uint32_t blocknum)
 {
-    struct alloc_space MEM; uint32_t blocknum; double startmilli; int32_t lag,syncflag,flag = 0;
+    struct ledger_info *ledger;
+    if ( (ledger= ramchain->activeledger) != 0 )
+        return(db777_get(space,lenp,ledger->DBs.transactions,ledger->packed.DB,&blocknum,sizeof(blocknum)));
+    else return(0);
+}
+
+void ramchain_setpackedblock(struct ramchain *ramchain,struct packedblock *packed,uint32_t blocknum)
+{
+    struct ledger_info *ledger;
+    if ( (ledger= ramchain->activeledger) != 0 )
+        db777_set(DB777_HDD,ledger->DBs.transactions,ledger->ledger.DB,&blocknum,sizeof(blocknum),packed,packed->allocsize);
+    if ( RELAYS.pushsock >= 0 )
+    {
+        printf("PUSHED.(%d) blocknum.%u | len %d %d %d %.8f %u %u %u %u %u %u %d\n",packed->blocknum,packed->crc16,packed->numtx,packed->numrawvins,packed->numrawvouts,dstr(packed->minted),packed->timestamp,packed->blockhash_offset,packed->merkleroot_offset,packed->txspace_offsets,packed->vinspace_offsets,packed->voutspace_offsets,packed->allocsize);
+        nn_send(RELAYS.pushsock,(void *)packed,packed->allocsize,0);
+    }
+    
+}
+
+    uint16_t crc16,numtx,numrawvins,numrawvouts;
+    uint64_t minted;
+    uint32_t blocknum,timestamp,blockhash_offset,merkleroot_offset,txspace_offsets,vinspace_offsets,voutspace_offsets,allocsize;
+
+void coin777_pulldata(struct packedblock *packed,int32_t len)
+{
+    struct coin777 *coin;
+    if ( len >= ((long)&packed->allocsize - (long)packed + sizeof(packed->allocsize)) && packed->allocsize == len )
+    {
+        if ( (coin= coin777_find("BTC",0)) != 0 )
+            ramchain_setpackedblock(&coin->ramchain,packed,packed->blocknum);
+        printf("PULLED.(%d) blocknum.%u | %u %d %d %d %.8f %u %u %u %u %u %u %d\n",len,packed->blocknum,packed->crc16,packed->numtx,packed->numrawvins,packed->numrawvouts,dstr(packed->minted),packed->timestamp,packed->blockhash_offset,packed->merkleroot_offset,packed->txspace_offsets,packed->vinspace_offsets,packed->voutspace_offsets,packed->allocsize);
+    } else printf("pulled.%d but size mismatch\n",len);
+    nn_freemsg(packed);
+}
+
+int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger,struct packedblock *packed)
+{
+    struct alloc_space MEM; uint32_t blocknum; double startmilli; int32_t len,lag,syncflag,flag = 0;
     blocknum = ledger->blocknum;
     if ( (lag= (ramchain->RTblocknum - blocknum)) < 1000 || (blocknum % 100) == 0 )
         ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,ramchain->serverport,ramchain->userpass,ramchain->RTblocknum);
@@ -62,11 +100,15 @@ int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger)
         {
             memset(&MEM,0,sizeof(MEM)), MEM.ptr = &ramchain->DECODE, MEM.size = sizeof(ramchain->DECODE);
             startmilli = milliseconds();
-            if ( rawblock_load(&ramchain->EMIT,ramchain->name,ramchain->serverport,ramchain->userpass,blocknum) > 0 )
+            len = (int32_t)MEM.size;
+            if ( packed != 0 || (packed= ramchain_getpackedblock(MEM.ptr,&len,ramchain,blocknum)) != 0 )
             {
-                dxblend(&ledger->load_elapsed,(milliseconds() - startmilli),.99); printf("%.3f ",ledger->load_elapsed/1000.);
-                flag = ledger_update(&ramchain->EMIT,ledger,&MEM,ramchain->RTblocknum,syncflag * (blocknum != 0),ramchain->minconfirms);
+                ram_clear_rawblock(&ramchain->EMIT,0);
+                coin777_unpackblock(&ramchain->EMIT,packed,blocknum);
             }
+            else rawblock_load(&ramchain->EMIT,ramchain->name,ramchain->serverport,ramchain->userpass,blocknum);
+            dxblend(&ledger->load_elapsed,(milliseconds() - startmilli),.99); printf("%.3f ",ledger->load_elapsed/1000.);
+            flag = ledger_update(&ramchain->EMIT,ledger,&MEM,ramchain->RTblocknum,syncflag * (blocknum != 0),ramchain->minconfirms);
         }
         if ( ramchain->paused == 3 )
         {
@@ -82,7 +124,7 @@ int32_t ramchain_update(struct ramchain *ramchain,struct ledger_info *ledger)
 int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJSON *argjson,uint32_t startblocknum,uint32_t endblocknum)
 {
     extern uint32_t Duplicate,Mismatch,Added;
-    struct ledger_info *ledger; struct alloc_space MEM; uint64_t balance; int32_t numlinks,numlinks2;
+    struct ledger_info *ledger; struct alloc_space MEM; uint64_t balance; //int32_t numlinks,numlinks2;
     if ( (ledger= ramchain->activeledger) == 0 )
     {
         sprintf(retbuf,"{\"error\":\"no active ledger\"}");
@@ -91,22 +133,22 @@ int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJ
     Duplicate = Mismatch = Added = 0;
     ledger->startmilli = milliseconds();
     ledger->totalsize = 0;
-    printf("resuming %u to %u\n",startblocknum,endblocknum);
+    //printf("resuming %u to %u\n",startblocknum,endblocknum);
     ledger->startblocknum = ledger_startblocknum(ledger,-1);
-    printf("updated %u to %u\n",ledger->startblocknum,endblocknum);
+    //printf("updated %u to %u\n",ledger->startblocknum,endblocknum);
     memset(&MEM,0,sizeof(MEM)), MEM.ptr = &ramchain->DECODE, MEM.size = sizeof(ramchain->DECODE);
     ledger_setblocknum(ledger,&MEM,ledger->startblocknum);
     ledger->blocknum = ledger->startblocknum + (ledger->startblocknum > 1);
     printf("set %u to %u | sizes: uthash.%ld addrinfo.%ld unspentmap.%ld txoffset.%ld db777_entry.%ld\n",ledger->startblocknum,endblocknum,sizeof(UT_hash_handle),sizeof(struct ledger_addrinfo),sizeof(struct unspentmap),sizeof(struct upair32),sizeof(struct db777_entry));
     ledger->endblocknum = (endblocknum > ledger->startblocknum) ? endblocknum : ledger->startblocknum;
-    if ( 0 )
+    /*if ( 0 )
     {
         numlinks = db777_linkDB(ledger->addrs.DB,ledger->revaddrs.DB,ledger->addrs.ind);
         numlinks2 = db777_linkDB(ledger->txids.DB,ledger->revtxids.DB,ledger->txids.ind);
         printf("addrs numlinks.%d, txids numlinks.%d\n",numlinks,numlinks2);
-    }
-    balance = ledger_recalc_addrinfos(0,0,ledger,0);
-    printf("balance recalculated %.8f\n",dstr(balance));
+    }*/
+    balance = 0;//ledger_recalc_addrinfos(0,0,ledger,0);
+    //printf("balance recalculated %.8f\n",dstr(balance));
     sprintf(retbuf,"{\"result\":\"resumed\",\"ledgerhash\":\"%llx\",\"startblocknum\":%d,\"endblocknum\":%d,\"addrsum\":%.8f,\"ledger supply\":%.8f,\"diff\":%.8f,\"elapsed\":%.3f}",*(long long *)ledger->ledger.sha256,ledger->startblocknum,ledger->endblocknum,dstr(balance),dstr(ledger->voutsum) - dstr(ledger->spendsum),dstr(balance) - (dstr(ledger->voutsum) - dstr(ledger->spendsum)),(milliseconds() - ledger->startmilli)/1000.);
     ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,ramchain->serverport,ramchain->userpass,ramchain->RTblocknum);
     ledger->startmilli = milliseconds();
@@ -145,7 +187,7 @@ int32_t ramchain_init(char *retbuf,int32_t maxlen,struct ramchain *ramchain,cJSO
     if ( (ramchain->activeledger= ledger_alloc(coinstr,"",0)) != 0 )
     {
         ledger = ramchain->activeledger;
-        ledger->syncfreq = DB777_MATRIXROW;
+        ledger->syncfreq = 100;//DB777_MATRIXROW;
         ledger->startblocknum = startblocknum, ledger->endblocknum = endblocknum;
         ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,ramchain->name,ramchain->serverport,ramchain->userpass,ramchain->RTblocknum);
         env777_start(0,&ledger->DBs,ramchain->RTblocknum);

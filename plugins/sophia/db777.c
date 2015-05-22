@@ -32,6 +32,7 @@
 #define SOPHIA_USERDIR "/user"
 void *db777_get(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen);
 int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen);
+char *db777_errstr(void *ctl);
 
 uint64_t db777_ctlinfo64(void *ctl,char *field);
 int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t len);
@@ -69,7 +70,7 @@ extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTa
 #undef DEFINES_ONLY
 #endif
 
-uint32_t Duplicate,Mismatch,Added,Linked;
+uint32_t Duplicate,Mismatch,Added,Linked,Numgets;
 
 void db777_lock(struct db777 *DB)
 {
@@ -159,7 +160,7 @@ int32_t db777_link(void *transactions,struct db777 *DB,struct db777 *revDB,uint3
     struct db777_entry *entry; void *revptr; int32_t matrixi;
     return(0);
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     db777_lock(DB);
     HASH_FIND(hh,DB->table,value,valuelen,entry);
     db777_unlock(DB);
@@ -211,9 +212,10 @@ void *db777_read(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,vo
     void *obj,*value,*result = 0; int32_t flag,max = *lenp;
     flag = 0;
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     if ( (obj= sp_object(DB->db)) != 0 )
     {
+        Numgets++;
         if ( sp_set(obj,"key",key,keylen) == 0 && (result= sp_get(transactions != 0 ? transactions : DB->db,obj)) != 0 )
         {
             value = sp_get(result,"value",lenp);
@@ -236,7 +238,7 @@ void *db777_get(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,voi
     int32_t i,c,max,matrixi; struct db777_entry *entry = 0; void *src,*value = 0; char buf[8192],_keystr[513],*keystr = _keystr;
     max = *lenp, *lenp = 0;
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     if ( db777_matrixalloc(DB) != 0 )
     {
         if ( (src= db777_matrixptr(&matrixi,transactions,DB,key,keylen)) != 0 )
@@ -309,7 +311,7 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
     struct db777_entry *entry = 0; void *db,*newkey,*dest,*obj = 0; int32_t ismatrix,matrixi,retval = 0;
     ismatrix = db777_matrixalloc(DB);
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     if ( DB->valuesize != 0 && valuelen > DB->valuesize )
     {
         if ( ismatrix == 0 || (ismatrix != 0 && ((*(uint32_t *)key % DB777_MATRIXROW) != 0 || valuelen != DB777_MATRIXROW*DB->valuesize)) )
@@ -434,6 +436,7 @@ int32_t db777_set(int32_t flags,void *transactions,struct db777 *DB,void *key,in
             }
             else
             {
+                Added++;
                 retval = sp_set((transactions != 0 ? transactions : db),obj);
                 //if ( strcmp(DB->name,"ledger") == 0 )
                 //    printf("retval.%d %s key.%u valuelen.%d\n",retval,DB->name,*(int *)key,valuelen);
@@ -461,7 +464,7 @@ int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *ke
     if ( DB == 0 )
         return(-1);
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     if ( forceflag <= 0 && (val= db777_get(DB->checkbuf,&allocsize,transactions,DB,key,keylen)) != 0 )
     {
         flag = 1;
@@ -486,8 +489,6 @@ int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *ke
         }
         Mismatch++, printf("%s duplicate.%d mismatch.%d | keylen.%d valuelen.%d -> allocsize.%d\n",DB->name,Duplicate,Mismatch,keylen,valuelen,allocsize);
     }
-    if ( forceflag < 1 )
-        Added++;
     retval = db777_set((DB->flags & DB777_RAM) == 0 ? DB777_HDD : DB777_RAM,transactions,DB,key,keylen,value,valuelen);
     return(retval);
 }
@@ -552,7 +553,7 @@ int32_t db777_flush(void *transactions,struct db777 *DB)
 {
     struct db777_entry *entry,*tmp; void *obj; uint32_t key; int32_t valuelen,flushed = 0,i,n = 0,numerrs = 0;
     //if ( strcmp(DB->name,"addrinfos") != 0 )
-        transactions = 0;
+    //    transactions = 0;
     if ( (DB->flags & DB777_RAM) != 0 )
     {
         db777_lock(DB);
@@ -605,7 +606,8 @@ int32_t db777_flush(void *transactions,struct db777 *DB)
         }
         db777_unlock(DB);
     }
-    printf("(%s %d).%d ",DB->name,flushed,n);
+   if ( Debuglevel > 2 )
+       printf("(%s %d).%d ",DB->name,flushed,n);
     return(-numerrs);
 }
 
@@ -636,6 +638,19 @@ uint64_t db777_ctlinfo64(void *ctl,char *field)
         sp_destroy(obj);
     }
     return(val);
+}
+
+char *db777_errstr(void *ctl)
+{
+   	void *obj,*ptr; static char errstr[1024];
+    errstr[0] = 0;
+    if ( (obj= sp_get(ctl,"sophia.error")) != 0 )
+    {
+        if ( (ptr= sp_get(obj,"value",NULL)) != 0 )
+            strcpy(errstr,ptr);
+        sp_destroy(obj);
+    }
+    return(errstr);
 }
 
 char **db777_index(int32_t *nump,struct db777 *DB,int32_t max)

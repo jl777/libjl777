@@ -16,6 +16,7 @@
 #define DEFINES_ONLY
 #include "system777.c"
 #include "plugin777.c"
+#include "gen1block.c"
 #undef DEFINES_ONLY
 #define NN_WS -4
 
@@ -314,9 +315,9 @@ int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,
         fprintf(stderr,"error getting socket %s\n",nn_errstr());
     if ( bindflag != 0 )
     {
-        //set_endpointaddr(SUPERNET.transport,endpoint,"*",SUPERNET.port,type);
         epbits = calc_epbits(SUPERNET.transport,0,SUPERNET.port + nn_portoffset(type) + typeind,type);
         expand_epbits(endpoint,epbits);
+        //set_endpointaddr(SUPERNET.transport,endpoint,"*",SUPERNET.port,type);
         if ( nn_bind(sock,endpoint) < 0 )
             fprintf(stderr,"error binding to relaypoint sock.%d type.%d to (%s) (%s) %s\n",sock,type,name,endpoint,nn_errstr());
         else fprintf(stderr,"BIND.(%s) <- %s\n",endpoint,name);
@@ -1024,9 +1025,11 @@ void serverloop(void *_args)
     RELAYS.peer.mytype = NN_SURVEYOR, RELAYS.peer.desttype = nn_oppotype(RELAYS.peer.mytype);
     RELAYS.sub.mytype = NN_SUB, RELAYS.sub.desttype = nn_oppotype(RELAYS.sub.mytype);
     lbargs = &RELAYS.args[n++];
-    if ( RAMCHAINS.pullnode[0] != 0 )
+    if ( 1 && RAMCHAINS.pullnode[0] != 0 )
     {
+        endpoint[0] = 0;
         RELAYS.pushsock = pushsock = nn_createsocket(endpoint,0,"NN_PUSH",NN_PUSH,SUPERNET.port,sendtimeout,recvtimeout);
+        //printf("my push endpoint.(%s)\n",endpoint), getchar();
         expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(RAMCHAINS.pullnode),SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
         nn_connect(pushsock,endpoint);
         if ( strcmp(RAMCHAINS.pullnode,SUPERNET.myipaddr) == 0 )
@@ -1071,6 +1074,7 @@ void serverloop(void *_args)
     } else conv_busdata(&i,cJSON_Parse("{\"key\":\"foo\",\"data\":\"deadbeef\"}"));
     while ( 1 )
     {
+        void coin777_pulldata(struct packedblock *packed,int32_t len);
         int32_t len;
 #ifdef STANDALONE
         char line[1024];
@@ -1080,14 +1084,8 @@ void serverloop(void *_args)
         int32_t poll_daemons();
         if ( poll_daemons() == 0 && poll_direct(1) == 0 && SUPERNET.APISLEEP > 0 )
             msleep(SUPERNET.APISLEEP);
-        if ( RELAYS.pullsock >= 0 && (nn_socket_status(RELAYS.pullsock,1) & NN_POLLIN) != 0 )
-        {
-            if ( (len= nn_recv(RELAYS.pullsock,&retstr,NN_MSG,0)) > 0 )
-            {
-                printf("(%s)\n",retstr);
-                nn_freemsg(retstr);
-            }
-        }
+        while ( RELAYS.pullsock >= 0 && (nn_socket_status(RELAYS.pullsock,1) & NN_POLLIN) != 0 &&  (len= nn_recv(RELAYS.pullsock,&retstr,NN_MSG,0)) > 0 )
+            coin777_pulldata((void *)retstr,len);
         if ( 0 && SUPERNET.iamrelay != 0 )
             nn_send(RELAYS.bus.sock,SUPERNET.NXTADDR,strlen(SUPERNET.NXTADDR),0), sleep(3);
     }

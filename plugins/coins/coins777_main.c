@@ -23,10 +23,103 @@
 #include "msig.c"
 #undef DEFINES_ONLY
 
-int32_t coins_idle(struct plugin_info *plugin) { return(0); }
+void ensure_packedptrs(struct coin777 *coin)
+{
+    uint32_t newmax;
+    coin->RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->RTblocknum);
+    newmax = (uint32_t)(coin->RTblocknum * 1.1);
+    if ( coin->maxpackedblocks < newmax )
+    {
+        coin->packed = realloc(coin->packed,sizeof(*coin->packed) * newmax);
+        memset(&coin->packed[coin->maxpackedblocks],0,sizeof(*coin->packed) * (newmax - coin->maxpackedblocks));
+        coin->maxpackedblocks = newmax;
+    }
+}
+
+void coins_verify(struct coin777 *coin,struct packedblock *packed,uint32_t blocknum)
+{
+    int32_t i;
+    ram_clear_rawblock(&coin->DECODE,1);
+    coin777_unpackblock(&coin->DECODE,packed,blocknum);
+    if ( memcmp(&coin->DECODE,&coin->EMIT,sizeof(coin->DECODE)) != 0 )
+    {
+        for (i=0; i<sizeof(coin->DECODE); i++)
+            if ( ((uint8_t *)&coin->DECODE)[i] != ((uint8_t *)&coin->DECODE)[i] )
+                break;
+        printf("packblock decode error blocknum.%u\n",coin->readahead);
+        coin777_disprawblock(&coin->EMIT);
+        printf("----> \n");
+        coin777_disprawblock(&coin->DECODE);
+        printf("mismatch\n");
+        while ( 1 ) sleep(1);
+    } else printf("COMPARED! ");
+}
+
+int32_t coins_idle(struct plugin_info *plugin)
+{
+    int32_t i,flag = 0; uint32_t width = 1000;
+    struct coin777 *coin; struct ledger_info *ledger;
+    for (i=0; i<COINS.num; i++)
+    {
+        if ( (coin= COINS.LIST[i]) != 0 && coin->packed != 0 )
+        {
+            coin->RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->RTblocknum);
+            while ( coin->packedblocknum <= coin->RTblocknum && coin->packedblocknum < coin->packedend )
+            {
+                ram_clear_rawblock(&coin->EMIT,1);
+                if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->packedblocknum) > 0 )
+                {
+                    if ( coin->packed[coin->packedblocknum] == 0 )
+                    {
+                        if ( (coin->packed[coin->packedblocknum]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
+                        {
+                            ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                            //coins_verify(coin,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                            coin->packedblocknum += coin->packedincr;
+                        }
+                        flag = 1;
+                    }
+                } else break;
+                coin->packedblocknum += coin->packedincr;
+            }
+            if ( 0 && flag == 0 && (ledger= coin->ramchain.activeledger) != 0 )
+            {
+                //printf("readahead.%d vs blocknum.%u\n",coin->readahead,ledger->blocknum);
+                if ( coin->readahead <= ledger->blocknum )
+                    coin->readahead = ledger->blocknum;
+                while ( coin->readahead <= ledger->blocknum+width )
+                {
+                    //printf("readahead.%u %p\n",coin->readahead++,coin->packed[coin->readahead]);
+                    if ( coin->packed[coin->readahead] == 0 )
+                    {
+                        ram_clear_rawblock(&coin->EMIT,1);
+                        if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->readahead) > 0 )
+                        {
+                            if ( (coin->packed[coin->readahead]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
+                            {
+                                ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->readahead],coin->readahead);
+                                //coins_verify(coin,coin->packed[coin->readahead],coin->readahead);
+                                width++;
+                                if ( coin->readahead > width && coin->readahead-width > ledger->blocknum && coin->packed[coin->readahead-width] != 0 )
+                                {
+                                    printf("purge.%u\n",coin->readahead-width);
+                                    free(coin->packed[coin->readahead-width]), coin->packed[coin->readahead-width] = 0;
+                                }
+                                
+                                flag = 1;
+                                break;
+                            }
+                        } else printf("error rawblock_load.%u\n",coin->readahead);
+                    } else coin->readahead++;
+                }
+            }
+        }
+    }
+    return(flag);
+}
 
 STRUCTNAME COINS;
-char *PLUGNAME(_methods)[] = { "acctpubkeys", "sendrawtransaction" };
+char *PLUGNAME(_methods)[] = { "acctpubkeys",  "packblocks", "sendrawtransaction" };
 char *PLUGNAME(_pubmethods)[] = { "acctpubkeys" };
 char *PLUGNAME(_authmethods)[] = { "acctpubkeys" };
 
@@ -189,6 +282,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
+    //ensure_packedptrs(coin);
     return(coin);
 }
 
@@ -220,6 +314,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( json != 0 )
         {
             COINS.argjson = cJSON_Duplicate(json,1);
+            COINS.slicei = get_API_int(cJSON_GetObjectItem(json,"slice"),0);
             copy_cJSON(SUPERNET.userhome,cJSON_GetObjectItem(json,"userdir"));
             if ( SUPERNET.userhome[0] == 0 )
                 strcpy(SUPERNET.userhome,"/root");
@@ -236,6 +331,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         } else strcpy(retbuf,"{\"result\":\"no JSON for init\"}");
         COINS.readyflag = 1;
         plugin->allowremote = 1;
+        //plugin->sleepmillis = 1;
     }
     else
     {
@@ -259,10 +355,11 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             zerobuf[0] = 0;
             str = 0;
-            printf("INSIDE COINS.(%s)\n",jsonstr);
+            printf("INSIDE COINS.(%s) methods.%ld\n",jsonstr,sizeof(coins_methods)/sizeof(*coins_methods));
             copy_cJSON(sender,cJSON_GetObjectItem(json,"NXT"));
             if ( coinstr == 0 )
                 coinstr = zerobuf;
+            else coin = coin777_find(coinstr,1);
             if ( strcmp(methodstr,"acctpubkeys") == 0 )
             {
                 if ( SUPERNET.gatewayid >= 0 )
@@ -280,6 +377,14 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                     } else sprintf(retbuf,"{\"error\":\"no coin777\",\"method\":\"%s\"}",methodstr);
                 } else sprintf(retbuf,"{\"error\":\"gateway only method\",\"method\":\"%s\"}",methodstr);
             }
+            else if ( strcmp(methodstr,"packblocks") == 0 )
+            {
+                coin->packedblocknum = coin->packedstart = get_API_int(cJSON_GetObjectItem(json,"start"),0) + COINS.slicei;
+                coin->packedend = get_API_int(cJSON_GetObjectItem(json,"end"),1000000000);
+                coin->packedincr = get_API_int(cJSON_GetObjectItem(json,"incr"),1);
+                ensure_packedptrs(coin);
+                sprintf(retbuf,"{\"result\":\"packblocks\",\"start\":\"%u\",\"end\":\"%u\",\"incr\":\"%u\",\"RTblocknum\":\"%u\"}",coin->packedstart,coin->packedend,coin->packedincr,coin->RTblocknum);
+            }
             else sprintf(retbuf,"{\"error\":\"unsupported method\",\"method\":\"%s\"}",methodstr);
             if ( str != 0 )
             {
@@ -288,7 +393,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             }
         }
     }
-    printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s\n",SUPERNET.myNXTaddr,initflag,plugin->name);
+    printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s slice.%d\n",SUPERNET.myNXTaddr,initflag,plugin->name,COINS.slicei);
     return((int32_t)strlen(retbuf));
 }
 

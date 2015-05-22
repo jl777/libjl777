@@ -657,7 +657,7 @@ int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][
             printf("error binding socket.%d %s\n",sock,nn_strerror(nn_errno()));
             return(-1);
         }
-        if ( (err= nn_connect(sock,tcpaddr)) < 0 )
+        if ( 0 && (err= nn_connect(sock,tcpaddr)) < 0 )
         {
             printf("error nn_connect (%s <-> %s) socket.%d %s\n",bindaddr,tcpaddr,sock,nn_strerror(nn_errno()));
             return(-1);
@@ -669,7 +669,7 @@ int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][
         }
         for (i=0; i<n; i++)
         {
-            //if ( strcmp(bindaddr,serverips[i]) != 0 )
+            if ( serverips[i] != 0 && serverips[i][0] != 0 && strcmp(bindaddr,serverips[i]) != 0 )
             {
                 sprintf(tcpaddr,"tcp://%s:%d",serverips[i],port);
                 printf("conn.(%s) ",tcpaddr);

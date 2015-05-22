@@ -223,7 +223,7 @@ int32_t rawblock_txvins(struct rawblock *raw,struct rawtx *tx,char *coinstr,char
     return(numvins);
 }
 
-uint64_t rawblock_txidinfo(struct rawblock *raw,struct rawtx *tx,char *coinstr,char *serverport,char *userpass,int32_t txind,char *txidstr)
+uint64_t rawblock_txidinfo(struct rawblock *raw,struct rawtx *tx,char *coinstr,char *serverport,char *userpass,int32_t txind,char *txidstr,uint32_t blocknum)
 {
     char *retstr = 0;
     cJSON *txjson;
@@ -240,8 +240,16 @@ uint64_t rawblock_txidinfo(struct rawblock *raw,struct rawtx *tx,char *coinstr,c
             free_json(txjson);
         } else printf("update_txid_infos parse error.(%s)\n",retstr);
         free(retstr);
-    } else printf("error getting.(%s)\n",txidstr);
-    //printf("tx.%d: (%s) numvins.%d numvouts.%d (raw %d %d)\n",txind,tx->txidstr,tx->numvins,tx->numvouts,raw->numrawvins,raw->numrawvouts);
+    }
+    else
+    {
+        if ( blocknum == 0 )
+        {
+            
+        }
+        else printf("error getting.(%s)\n",txidstr);
+    }
+//printf("tx.%d: (%s) numvins.%d numvouts.%d (raw %d %d)\n",txind,tx->txidstr,tx->numvins,tx->numvouts,raw->numrawvins,raw->numrawvouts);
     return(total);
 }
 
@@ -305,16 +313,237 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
             {
                 copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
                 //printf("block.%d txind.%d TXID.(%s)\n",blocknum,txind,txidstr);
-                total += rawblock_txidinfo(raw,&raw->txspace[raw->numtx++],coinstr,serverport,userpass,txind,txidstr);
+                total += rawblock_txidinfo(raw,&raw->txspace[raw->numtx++],coinstr,serverport,userpass,txind,txidstr,blocknum);
             }
         } else printf("error _get_blocktxarray for block.%d got %d, n.%d vs %d\n",blocknum,blockid,n,MAX_BLOCKTX);
         if ( raw->minted == 0 )
             raw->minted = total;
         free_json(json);
     } else printf("get_blockjson error parsing.(%s)\n",txidstr);
-    //printf("BLOCK.%d: block.%d numtx.%d minted %.8f rawnumvins.%d rawnumvouts.%d\n",blocknum,raw->blocknum,raw->numtx,dstr(raw->minted),raw->numrawvins,raw->numrawvouts);
+//printf("BLOCK.%d: block.%d numtx.%d minted %.8f rawnumvins.%d rawnumvouts.%d\n",blocknum,raw->blocknum,raw->numtx,dstr(raw->minted),raw->numrawvins,raw->numrawvouts);
     rawblock_patch(raw);
     return(raw->numtx);
 }
+
+uint32_t coin777_packedoffset(struct alloc_space *mem,char *str,int32_t convflag)
+{
+    uint32_t offset; uint16_t len; uint8_t _hex[255],blen,*hex = _hex;
+    offset = (uint32_t)mem->used;
+    len = (uint16_t)strlen(str);
+    if ( convflag != 0 )
+    {
+        len >>= 1;
+        if ( len >= sizeof(_hex) )
+        {
+            printf("coin777_packedoffset: extreme len.%d for (%s)\n",len,str);
+            hex = malloc(len);
+        }
+        decode_hex(hex,len,str);
+        if ( len < 0xfd )
+        {
+            blen = len;
+            memcpy(memalloc(mem,1,0),&blen,1);
+        }
+        else
+        {
+            blen = 0xfd;
+            printf("long string len.%d %llx\n",len,*(long long *)hex);
+            memcpy(memalloc(mem,1,0),&blen,1);
+            memcpy(memalloc(mem,2,0),&len,2);
+        }
+        memcpy(memalloc(mem,len,0),hex,len);
+        if ( hex != _hex )
+            free(hex);
+    } else len++, memcpy(memalloc(mem,len,0),str,len);
+    return(offset);
+}
+
+int32_t coin777_unpackoffset(struct alloc_space *mem,char *str,int32_t convflag,uint32_t offset)
+{
+    int16_t len; uint8_t blen; char *ptr;
+    if ( convflag != 0 )
+    {
+        memcpy(&blen,memalloc(mem,1,0),1);
+        if ( blen == 0xfd )
+            memcpy(&len,memalloc(mem,2,0),2);
+        else len = blen;
+        init_hexbytes_noT(str,memalloc(mem,len,0),len);
+        len = (len << 1) + 1;
+    }
+    else
+    {
+        ptr = (char *)((long)mem->ptr + mem->used);
+        len = (int16_t)strlen(ptr) + 1;
+        memcpy(str,memalloc(mem,len,0),len);
+    }
+    return(len);
+}
+
+void coin777_packtx(struct alloc_space *mem,struct packedtx *ptx,struct rawtx *tx)
+{
+//printf("packtx.(%s) numvins.%d numvouts.%d\n",tx->txidstr,tx->numvins,tx->numvouts);
+    ptx->firstvin = tx->firstvin, ptx->numvins = tx->numvins, ptx->firstvout = tx->firstvout, ptx->numvouts = tx->numvouts;
+    ptx->txidstroffset = coin777_packedoffset(mem,tx->txidstr,1);
+}
+
+void coin777_packvout(struct alloc_space *mem,struct packedvout *pvo,struct rawvout *vo)
+{
+//printf("packvout.(%s) (%s) %.8f\n",vo->coinaddr,vo->script,dstr(vo->value));
+    pvo->value = vo->value;
+    pvo->coinaddroffset = coin777_packedoffset(mem,vo->coinaddr,0);
+    pvo->scriptoffset = coin777_packedoffset(mem,vo->script,1);
+}
+
+void coin777_packvin(struct alloc_space *mem,struct packedvin *pvi,struct rawvin *vi)
+{
+//printf("packvin.(%s) vout.%d\n",vi->txidstr,vi->vout);
+    pvi->vout = vi->vout;
+    pvi->txidstroffset = coin777_packedoffset(mem,vi->txidstr,1);
+}
+
+void coin777_unpacktx(struct alloc_space *mem,struct packedtx *ptx,struct rawtx *tx)
+{
+    tx->firstvin = ptx->firstvin, tx->numvins = ptx->numvins, tx->firstvout = ptx->firstvout, tx->numvouts = ptx->numvouts;
+    coin777_unpackoffset(mem,tx->txidstr,1,ptx->txidstroffset);
+    //printf("unpackedtx.(%s) numvins.%d numvouts.%d\n",tx->txidstr,tx->numvins,tx->numvouts);
+}
+
+void coin777_unpackvout(struct alloc_space *mem,struct packedvout *pvo,struct rawvout *vo)
+{
+    vo->value = pvo->value;
+    coin777_unpackoffset(mem,vo->coinaddr,0,pvo->coinaddroffset);
+    coin777_unpackoffset(mem,vo->script,1,pvo->scriptoffset);
+    //printf("unpackedvout.(%s) (%s) %.8f\n",vo->coinaddr,vo->script,dstr(vo->value));
+}
+
+void coin777_unpackvin(struct alloc_space *mem,struct packedvin *pvi,struct rawvin *vi)
+{
+    vi->vout = pvi->vout;
+    coin777_unpackoffset(mem,vi->txidstr,1,pvi->txidstroffset);
+   // printf("unpackedvin.(%s) vout.%d\n",vi->txidstr,vi->vout);
+}
+
+struct packedblock *coin777_packrawblock(struct coin777 *coin,struct rawblock *raw)
+{
+    static long totalsizes,totalpacked;
+    struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; struct alloc_space MEM,*mem = &MEM;
+    struct packedtx *ptx; struct packedvin *pvi; struct packedvout *pvo; struct packedblock *packed = 0;
+    uint32_t i,txind,n,crc;
+    mem = init_alloc_space(0,0,256 + raw->numtx*sizeof(struct rawtx) + raw->numrawvouts*sizeof(struct rawvout) + raw->numrawvins*sizeof(struct rawvin),0);
+    packed = memalloc(mem,sizeof(*packed),1);
+    packed->numtx = raw->numtx, packed->numrawvins = raw->numrawvins, packed->numrawvouts = raw->numrawvouts;
+    packed->blocknum = raw->blocknum, packed->timestamp = raw->timestamp, packed->minted = raw->minted;
+    packed->blockhash_offset = coin777_packedoffset(mem,raw->blockhash,1);
+    packed->merkleroot_offset = coin777_packedoffset(mem,raw->merkleroot,1);
+    packed->txspace_offsets = (uint32_t)mem->used, ptx = memalloc(mem,raw->numtx*sizeof(struct packedtx),0);
+    packed->voutspace_offsets = (uint32_t)mem->used, pvo = memalloc(mem,raw->numrawvouts*sizeof(struct packedvout),0);
+    packed->vinspace_offsets = (uint32_t)mem->used, pvi = memalloc(mem,raw->numrawvins*sizeof(struct packedvin),0);
+    tx = raw->txspace, vi = raw->vinspace, vo = raw->voutspace;
+//printf("blocknum.%u numtx.%u numvouts.%d numvins.%d | %s\n",raw->blocknum,raw->numtx,raw->numrawvouts,raw->numrawvins,tx[0].txidstr);
+    if ( raw->numtx > 0 )
+    {
+        for (txind=0; txind<raw->numtx; txind++,tx++,ptx++)
+        {
+            coin777_packtx(mem,ptx,tx);
+            if ( (n= tx->numvouts) > 0 )
+                for (i=0; i<n; i++,vo++,pvo++)
+                    coin777_packvout(mem,pvo,vo);
+            if ( (n= tx->numvins) > 0 )
+                for (i=0; i<n; i++,vi++,pvi++)
+                    coin777_packvin(mem,pvi,vi);
+        }
+    }
+    packed->allocsize = (uint32_t)mem->used;
+    crc = _crc32(0,&((uint8_t *)packed)[sizeof(packed->crc16)],(int32_t)(packed->allocsize - sizeof(packed->crc16)));
+    packed->crc16 = (((crc >> 16) & 0xffff) ^ (uint16_t)crc);
+    totalsizes += mem->size, totalpacked += mem->used;
+    //for (i=0; i<mem->used; i++)
+    //    printf("%02x ",((uint8_t *)mem->ptr)[i]);
+    printf("block.%u packed sizes: block.%ld tx.%ld vin.%ld vout.%ld | crc.%-5u mem->size %ld -> %5d %8s vs %8s [%.3fx]\n",raw->blocknum,sizeof(struct packedblock),sizeof(struct packedtx),sizeof(struct packedvout),sizeof(struct packedvin),packed->crc16,mem->size,packed->allocsize,_mbstr(totalsizes),_mbstr2(totalpacked),(double)totalsizes / totalpacked);
+    packed = malloc(mem->used), memcpy(packed,mem->ptr,mem->used), free(mem);
+    ramchain_setpackedblock(&coin->ramchain,packed,packed->blocknum);
+    return(packed);
+}
+
+int32_t coin777_unpackblock(struct rawblock *raw,struct packedblock *packed,uint32_t blocknum)
+{
+    struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; struct alloc_space MEM,*mem = &MEM;
+    struct packedtx *ptx; struct packedvin *pvi; struct packedvout *pvo;
+    uint32_t i,txind,n,crc; int32_t retval = -1;
+    //printf("***************\n\n");
+    //for (i=0; i<packed->allocsize; i++)
+    //    printf("%02x ",((uint8_t *)packed)[i]);
+    //printf("unpack %d\n",packed->allocsize);
+    crc = _crc32(0,&((uint8_t *)packed)[sizeof(packed->crc16)],(int32_t)(packed->allocsize - sizeof(packed->crc16)));
+    if ( packed->crc16 != (((crc >> 16) & 0xffff) ^ (uint16_t)crc) || packed->blocknum != blocknum )
+    {
+        printf("allocsize.%d crc16 mismatch %u vs %u | blocknum.%u mismatch %u\n",packed->allocsize,packed->crc16,(((crc >> 16) & 0xffff) ^ (uint16_t)crc),blocknum,packed->blocknum);
+        return(-6);
+    }
+    mem = init_alloc_space(mem,packed,packed->allocsize,0);
+    memalloc(mem,sizeof(*packed),0);
+    raw->numtx = packed->numtx, raw->numrawvins = packed->numrawvins, raw->numrawvouts = packed->numrawvouts;
+    raw->blocknum = packed->blocknum, raw->timestamp = packed->timestamp, raw->minted = packed->minted;
+    coin777_unpackoffset(mem,raw->blockhash,1,packed->blockhash_offset);
+    coin777_unpackoffset(mem,raw->merkleroot,1,packed->merkleroot_offset);
+    //printf("blocknum.%u numtx.%u numvouts.%d numvins.%d %.8f t%u | %s %s\n",raw->blocknum,raw->numtx,raw->numrawvouts,raw->numrawvins,dstr(raw->minted),raw->timestamp,raw->blockhash,raw->merkleroot);
+    if ( packed->txspace_offsets != mem->used )
+        retval = -2, printf("mismatched txspace offset %d vs %ld\n",packed->txspace_offsets,mem->used);
+    else
+    {
+        ptx = memalloc(mem,packed->numtx * sizeof(struct packedtx),0);
+        if ( packed->voutspace_offsets != mem->used )
+            retval = -3, printf("mismatched voutspace_offsets %d vs %ld\n",packed->voutspace_offsets,mem->used);
+         else
+        {
+            pvo = memalloc(mem,packed->numrawvouts * sizeof(struct packedvout),0);
+            if ( packed->vinspace_offsets != mem->used )
+                retval = -4, printf("mismatched vinspace_offsets %d vs %ld\n",packed->vinspace_offsets,mem->used);
+            else
+            {
+                pvi = memalloc(mem,packed->numrawvins * sizeof(struct packedvin),0);
+                tx = raw->txspace, vi = raw->vinspace, vo = raw->voutspace;
+                if ( packed->numtx > 0 )
+                {
+                    for (txind=0; txind<packed->numtx; txind++,tx++,ptx++)
+                    {
+                        coin777_unpacktx(mem,ptx,tx);
+                        if ( (n= tx->numvouts) > 0 )
+                            for (i=0; i<n; i++,vo++,pvo++)
+                                coin777_unpackvout(mem,pvo,vo);
+                        if ( (n= tx->numvins) > 0 )
+                            for (i=0; i<n; i++,vi++,pvi++)
+                                coin777_unpackvin(mem,pvi,vi);
+                    }
+                }
+            }
+        }
+    }
+    if ( packed->allocsize != mem->used )
+        retval = -5, printf("allocsize error.%d != %ld\n",packed->allocsize,mem->used);
+    return(retval);
+}
+
+
+void coin777_disprawblock(struct rawblock *raw)
+{
+    struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; uint32_t i,txind,n;
+    tx = raw->txspace, vi = raw->vinspace, vo = raw->voutspace;
+    printf("blocknum.%u numtx.%u numvouts.%d numvins.%d | %s %s\n",raw->blocknum,raw->numtx,raw->numrawvouts,raw->numrawvins,raw->blockhash,raw->merkleroot);
+    if ( raw->numtx > 0 )
+    {
+        for (txind=0; txind<raw->numtx; txind++,tx++)
+        {
+            printf("(%s) numvouts.%d numvins.%d\n",tx->txidstr,tx->numvouts,tx->numvins);
+            if ( (n= tx->numvouts) > 0 )
+                for (i=0; i<n; i++,vo++)
+                    printf("(%s) (%s) %.8f\n",vo->coinaddr,vo->script,dstr(vo->value));
+            if ( (n= tx->numvins) > 0 )
+                for (i=0; i<n; i++,vi++)
+                    printf("(%s).v%d ",vi->txidstr,vi->vout);
+        }
+    }
+}
+
 #endif
 #endif

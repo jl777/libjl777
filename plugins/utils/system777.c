@@ -114,7 +114,7 @@ struct SuperNET_info
 
 struct coins_info
 {
-    int32_t num,readyflag;
+    int32_t num,readyflag,slicei;
     cJSON *argjson;
     struct coin777 **LIST;
     // this will be at the end of the plugins structure and will be called with all zeros to _init

@@ -20,7 +20,7 @@
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 
-struct alloc_space { void *ptr; long used,size; int32_t alignflag; };
+struct alloc_space { void *ptr; long used,size; int32_t alignflag; uint8_t space[]; };
 
 int32_t portable_pton(int32_t af,char *src,void *dst);
 int32_t portable_ntop(int32_t af,void *src,char *dst,size_t size);
@@ -63,6 +63,8 @@ double estimate_completion(double startmilli,int32_t processed,int32_t numleft);
 
 void clear_alloc_space(struct alloc_space *mem,int32_t alignflag);
 void *memalloc(struct alloc_space *mem,long size,int32_t clearflag);
+void rewind_alloc_space(struct alloc_space *mem,int32_t flags);
+struct alloc_space *init_alloc_space(struct alloc_space *mem,void *ptr,long size,int32_t flags);
 
 int32_t notlocalip(char *ipaddr);
 int32_t is_remote_access(char *previpaddr);
@@ -259,7 +261,7 @@ int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
     if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
     {
         bytes[0] = unhex(hex[0]);
-        printf("decode_hex n.%d hex[0] (%c) -> %d\n",n,hex[0],bytes[0]);
+        printf("decode_hex n.%d hex[0] (%c) -> %d (%s)\n",n,hex[0],bytes[0],hex);
         //while ( 1 ) portable_sleep(1);
         bytes++;
         hex++;
@@ -608,6 +610,24 @@ void clear_alloc_space(struct alloc_space *mem,int32_t alignflag)
     memset(mem->ptr,0,mem->size);
     mem->used = 0;
     mem->alignflag = alignflag;
+}
+
+void rewind_alloc_space(struct alloc_space *mem,int32_t flags)
+{
+    if ( (flags & 1) != 0 )
+        clear_alloc_space(mem,1);
+    else mem->used = 0;
+    mem->alignflag = ((flags & ~1) != 0);
+}
+
+struct alloc_space *init_alloc_space(struct alloc_space *mem,void *ptr,long size,int32_t flags)
+{
+    if ( mem == 0 )
+        mem = calloc(1,size + sizeof(*mem)), ptr = mem->space;
+    mem->size = size;
+    mem->ptr = ptr;
+    rewind_alloc_space(mem,flags);
+    return(mem);
 }
 
 void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
