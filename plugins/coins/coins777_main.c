@@ -57,8 +57,8 @@ void coins_verify(struct coin777 *coin,struct packedblock *packed,uint32_t block
 
 int32_t coins_idle(struct plugin_info *plugin)
 {
-    int32_t i,flag = 0; uint32_t width = 1000;
-    struct coin777 *coin; struct ledger_info *ledger;
+    int32_t i,len,flag = 0; uint32_t width = 10000;
+    struct coin777 *coin; struct ledger_info *ledger; struct packedblock *packed;
     for (i=0; i<COINS.num; i++)
     {
         if ( (coin= COINS.LIST[i]) != 0 && coin->packed != 0 )
@@ -66,25 +66,35 @@ int32_t coins_idle(struct plugin_info *plugin)
             coin->RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->RTblocknum);
             while ( coin->packedblocknum <= coin->RTblocknum && coin->packedblocknum < coin->packedend )
             {
-                ram_clear_rawblock(&coin->EMIT,1);
-                if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->packedblocknum) > 0 )
+                len = (int32_t)sizeof(coin->EMIT);
+                if ( (packed= ramchain_getpackedblock(&coin->EMIT,&len,&coin->ramchain,coin->packedblocknum)) == 0 || packed_crc16(packed) != packed->crc16 )
                 {
-                    if ( coin->packed[coin->packedblocknum] == 0 )
+                    ram_clear_rawblock(&coin->EMIT,1);
+                    if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->packedblocknum) > 0 )
                     {
-                        if ( (coin->packed[coin->packedblocknum]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
+                        if ( coin->packed[coin->packedblocknum] == 0 )
                         {
-                            ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->packedblocknum],coin->packedblocknum);
-                            //coins_verify(coin,coin->packed[coin->packedblocknum],coin->packedblocknum);
-                            coin->packedblocknum += coin->packedincr;
+                            if ( (coin->packed[coin->packedblocknum]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
+                            {
+                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                                //coins_verify(coin,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                                coin->packedblocknum += coin->packedincr;
+                            }
+                            flag = 1;
+                            return(1);
                         }
-                        flag = 1;
-                    }
-                } else break;
+                    } else break;
+                }
+                else if ( RELAYS.pushsock >= 0 )
+                {
+                    printf("PUSHED.(%d) blocknum.%u | crc.%u %d %d %d %.8f %u %u %u %u %u %u %d\n",packed->allocsize,packed->blocknum,packed->crc16,packed->numtx,packed->numrawvins,packed->numrawvouts,dstr(packed->minted),packed->timestamp,packed->blockhash_offset,packed->merkleroot_offset,packed->txspace_offsets,packed->vinspace_offsets,packed->voutspace_offsets,packed->allocsize);
+                    nn_send(RELAYS.pushsock,(void *)packed,packed->allocsize,0);
+                }
                 coin->packedblocknum += coin->packedincr;
             }
-            if ( 0 && flag == 0 && (ledger= coin->ramchain.activeledger) != 0 )
+            if ( 1 && flag == 0 && (ledger= coin->ramchain.activeledger) != 0 )
             {
-                //printf("readahead.%d vs blocknum.%u\n",coin->readahead,ledger->blocknum);
+                printf("readahead.%d vs blocknum.%u\n",coin->readahead,ledger->blocknum);
                 if ( coin->readahead <= ledger->blocknum )
                     coin->readahead = ledger->blocknum;
                 while ( coin->readahead <= ledger->blocknum+width )
@@ -97,7 +107,7 @@ int32_t coins_idle(struct plugin_info *plugin)
                         {
                             if ( (coin->packed[coin->readahead]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
                             {
-                                ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->readahead],coin->readahead);
+                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->readahead],coin->readahead);
                                 //coins_verify(coin,coin->packed[coin->readahead],coin->readahead);
                                 width++;
                                 if ( coin->readahead > width && coin->readahead-width > ledger->blocknum && coin->packed[coin->readahead-width] != 0 )

@@ -1025,16 +1025,22 @@ void serverloop(void *_args)
     RELAYS.peer.mytype = NN_SURVEYOR, RELAYS.peer.desttype = nn_oppotype(RELAYS.peer.mytype);
     RELAYS.sub.mytype = NN_SUB, RELAYS.sub.desttype = nn_oppotype(RELAYS.sub.mytype);
     lbargs = &RELAYS.args[n++];
-    if ( 1 && RAMCHAINS.pullnode[0] != 0 )
+    RELAYS.pullsock = RELAYS.pushsock = pushsock = -1;
+    if ( RAMCHAINS.pullnode[0] != 0 )
     {
-        endpoint[0] = 0;
-        RELAYS.pushsock = pushsock = nn_createsocket(endpoint,0,"NN_PUSH",NN_PUSH,SUPERNET.port,sendtimeout,recvtimeout);
         //printf("my push endpoint.(%s)\n",endpoint), getchar();
-        expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(RAMCHAINS.pullnode),SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
-        nn_connect(pushsock,endpoint);
         if ( strcmp(RAMCHAINS.pullnode,SUPERNET.myipaddr) == 0 )
+        {
+            expand_epbits(endpoint,calc_epbits("tcp",0,SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
+            //nn_connect(pushsock,endpoint);
             RELAYS.pullsock = nn_createsocket(endpoint,1,"NN_PULL",NN_PULL,SUPERNET.port,sendtimeout,recvtimeout);
-    } else RELAYS.pullsock = RELAYS.pushsock = pushsock = -1;
+        }
+        else
+        {
+            expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(RAMCHAINS.pullnode),SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
+            RELAYS.pushsock = pushsock = nn_createsocket(endpoint,0,"NN_PUSH",NN_PUSH,SUPERNET.port,sendtimeout,recvtimeout);
+        }
+    }
     RELAYS.querypeers = peersock = nn_createsocket(endpoint,1,"NN_SURVEYOR",NN_SURVEYOR,SUPERNET.port,sendtimeout,recvtimeout);
     peerargs = &RELAYS.args[n++], RELAYS.peer.sock = launch_responseloop(peerargs,"NN_RESPONDENT",NN_RESPONDENT,0,nn_allpeers_processor);
     pubsock = nn_createsocket(endpoint,1,"NN_PUB",NN_PUB,SUPERNET.port,sendtimeout,-1);

@@ -423,12 +423,19 @@ void coin777_unpackvin(struct alloc_space *mem,struct packedvin *pvi,struct rawv
    // printf("unpackedvin.(%s) vout.%d\n",vi->txidstr,vi->vout);
 }
 
+uint16_t packed_crc16(struct packedblock *packed)
+{
+    uint32_t crc;
+    crc = _crc32(0,&((uint8_t *)packed)[sizeof(packed->crc16)],(int32_t)(packed->allocsize - sizeof(packed->crc16)));
+    return((((crc >> 16) & 0xffff) ^ (uint16_t)crc));
+}
+
 struct packedblock *coin777_packrawblock(struct coin777 *coin,struct rawblock *raw)
 {
     static long totalsizes,totalpacked;
     struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; struct alloc_space MEM,*mem = &MEM;
     struct packedtx *ptx; struct packedvin *pvi; struct packedvout *pvo; struct packedblock *packed = 0;
-    uint32_t i,txind,n,crc;
+    uint32_t i,txind,n;
     mem = init_alloc_space(0,0,256 + raw->numtx*sizeof(struct rawtx) + raw->numrawvouts*sizeof(struct rawvout) + raw->numrawvins*sizeof(struct rawvin),0);
     packed = memalloc(mem,sizeof(*packed),1);
     packed->numtx = raw->numtx, packed->numrawvins = raw->numrawvins, packed->numrawvouts = raw->numrawvouts;
@@ -454,8 +461,7 @@ struct packedblock *coin777_packrawblock(struct coin777 *coin,struct rawblock *r
         }
     }
     packed->allocsize = (uint32_t)mem->used;
-    crc = _crc32(0,&((uint8_t *)packed)[sizeof(packed->crc16)],(int32_t)(packed->allocsize - sizeof(packed->crc16)));
-    packed->crc16 = (((crc >> 16) & 0xffff) ^ (uint16_t)crc);
+    packed->crc16 = packed_crc16(packed);
     totalsizes += mem->size, totalpacked += mem->used;
     //for (i=0; i<mem->used; i++)
     //    printf("%02x ",((uint8_t *)mem->ptr)[i]);
@@ -469,15 +475,14 @@ int32_t coin777_unpackblock(struct rawblock *raw,struct packedblock *packed,uint
 {
     struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; struct alloc_space MEM,*mem = &MEM;
     struct packedtx *ptx; struct packedvin *pvi; struct packedvout *pvo;
-    uint32_t i,txind,n,crc; int32_t retval = -1;
+    uint32_t i,txind,n; int32_t retval = -1;
     //printf("***************\n\n");
     //for (i=0; i<packed->allocsize; i++)
     //    printf("%02x ",((uint8_t *)packed)[i]);
     //printf("unpack %d\n",packed->allocsize);
-    crc = _crc32(0,&((uint8_t *)packed)[sizeof(packed->crc16)],(int32_t)(packed->allocsize - sizeof(packed->crc16)));
-    if ( packed->crc16 != (((crc >> 16) & 0xffff) ^ (uint16_t)crc) || packed->blocknum != blocknum )
+    if ( packed->crc16 != packed_crc16(packed) || packed->blocknum != blocknum )
     {
-        printf("allocsize.%d crc16 mismatch %u vs %u | blocknum.%u mismatch %u\n",packed->allocsize,packed->crc16,(((crc >> 16) & 0xffff) ^ (uint16_t)crc),blocknum,packed->blocknum);
+        printf("allocsize.%d crc16 mismatch %u vs %u | blocknum.%u mismatch %u\n",packed->allocsize,packed->crc16,packed_crc16(packed),blocknum,packed->blocknum);
         return(-6);
     }
     mem = init_alloc_space(mem,packed,packed->allocsize,0);

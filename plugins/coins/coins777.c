@@ -142,6 +142,7 @@ void coin777_disprawblock(struct rawblock *raw);
 void ensure_packedptrs(struct coin777 *coin);
 void ramchain_setpackedblock(struct ramchain *ramchain,struct packedblock *packed,uint32_t blocknum);
 struct packedblock *ramchain_getpackedblock(void *space,int32_t *lenp,struct ramchain *ramchain,uint32_t blocknum);
+uint16_t packed_crc16(struct packedblock *packed);
 
 #endif
 #else
