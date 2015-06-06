@@ -19,7 +19,7 @@
 #include "db777.c"
 #undef DEFINES_ONLY
 
-struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,
+struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*NXT_txids;//,*DB_NXTassettx,
 
 STRUCTNAME SOPHIA;
 char *PLUGNAME(_methods)[] = { "stats" };
@@ -390,7 +390,7 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     strcpy(DB->name,dbname);
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
-    if ( SOPHIA.PATH[0] == '.' && SOPHIA.PATH[1] == '/' )
+    if ( SOPHIA.PATH[0] == '.' && (SOPHIA.PATH[1] == '/' || SOPHIA.PATH[1] == '\\') )
         strcpy(path,SOPHIA.PATH+2);
     else strcpy(path,SOPHIA.PATH);
     ensure_directory(path);
@@ -489,7 +489,7 @@ void db777_path(char *path,char *coinstr,char *subdir,int32_t useramdisk)
         strcat(path,"/"), strcat(path,coinstr), ensure_directory(path);
     if ( subdir[0] != 0 )
         strcat(path,"/"), strcat(path,subdir), ensure_directory(path);
-    printf("db777_path.(%s)\n",path);
+   // printf("db777_path.(%s)\n",path);
 }
 
 struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize)

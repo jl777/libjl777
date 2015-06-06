@@ -16,16 +16,16 @@
 #define DEFINES_ONLY
 #include "system777.c"
 #include "plugin777.c"
-#include "gen1block.c"
+//#include "gen1block.c"
 #undef DEFINES_ONLY
 #define NN_WS -4
 
 int32_t relay_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME RELAYS;
-char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
-char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
-char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "devMGW" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
+char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
 char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2", "tbd3" };
@@ -1078,10 +1078,16 @@ void serverloop(void *_args)
             }
         }
     } else conv_busdata(&i,cJSON_Parse("{\"key\":\"foo\",\"data\":\"deadbeef\"}"));
+    if ( SUPERNET.gatewayid >= 0 )
+    {
+        int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][64],int32_t n);
+        MGW.all.socks.both.bus = make_MGWbus(MGW.port,SUPERNET.myipaddr,MGW.serverips,SUPERNET.numgateways+1*0);
+    }
     while ( 1 )
     {
-        void coin777_pulldata(struct packedblock *packed,int32_t len);
-        int32_t len;
+        //void coin777_pulldata(struct packedblock *packed,int32_t len);
+        int32_t len; char retbuf[8192],*jsonstr; cJSON *json;
+        //struct coin777 *coin;
 #ifdef STANDALONE
         char line[1024];
         if ( getline777(line,sizeof(line)-1) > 0 )
@@ -1090,10 +1096,30 @@ void serverloop(void *_args)
         int32_t poll_daemons();
         if ( poll_daemons() == 0 && poll_direct(1) == 0 && SUPERNET.APISLEEP > 0 )
             msleep(SUPERNET.APISLEEP);
-        while ( RELAYS.pullsock >= 0 && (nn_socket_status(RELAYS.pullsock,1) & NN_POLLIN) != 0 &&  (len= nn_recv(RELAYS.pullsock,&retstr,NN_MSG,0)) > 0 )
+        if ( (len= nn_recv(MGW.all.socks.both.bus,&jsonstr,NN_MSG,0)) > 0 )
+        {
+            int32_t process_acctpubkeys(char *retbuf,char *jsonstr,cJSON *json);
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                process_acctpubkeys(retbuf,jsonstr,json);
+                free_json(json);
+            }
+            printf("MGW bus recv.%d json.%p\n",len,json);
+            nn_freemsg(jsonstr);
+        }
+
+        /*while ( RELAYS.pullsock >= 0 && (nn_socket_status(RELAYS.pullsock,1) & NN_POLLIN) != 0 &&  (len= nn_recv(RELAYS.pullsock,&retstr,NN_MSG,0)) > 0 )
             coin777_pulldata((void *)retstr,len);
         if ( 0 && SUPERNET.iamrelay != 0 )
             nn_send(RELAYS.bus.sock,SUPERNET.NXTADDR,strlen(SUPERNET.NXTADDR),0), sleep(3);
+        for (i=0; i<COINS.num; i++)
+        {
+            if ( (coin= COINS.LIST[i]) != 0 )//&& coin->P.packed != 0 )
+            {
+                while ( coin777_processQs(coin) != 0 )
+                    ;
+            }
+        }*/
     }
 }
 
@@ -1148,7 +1174,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        else if ( strcmp(methodstr,"devMGW") == 0 )
+        else if ( strcmp(methodstr,"msigaddr") == 0 )
         {
             char *devMGW_command(char *jsonstr,cJSON *json);
             if ( SUPERNET.gatewayid >= 0 )

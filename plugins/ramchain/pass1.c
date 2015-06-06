@@ -294,7 +294,6 @@ struct ledger_blockinfo *ledger_setblocknum(struct ledger_info *ledger,struct al
     uint32_t addrind; int32_t modval,lastmodval,allocsize = sizeof(ledger->getbuf); uint64_t balance = 0;
     struct ledger_blockinfo *block; struct ledger_addrinfo *addrinfo;
     startblocknum = ledger_startblocknum(ledger,-1);
-    //ledger->ledgerstate = ledger->ledger.state, memcpy(ledger->sha256,ledger->ledger.sha256,sizeof(ledger->sha256));
     if ( startblocknum < 1 )
     {
         ledger->numsyncs = 1;
@@ -418,5 +417,17 @@ struct ledger_blockinfo *ledger_block_pass1(int32_t dispflag,struct ledger_info 
     }
 }*/
 
+/*struct packedvin { uint32_t txidstroffset; uint16_t vout; };
+ struct packedvout { uint32_t coinaddroffset,scriptoffset; uint64_t value; };
+ struct packedtx { uint16_t firstvin,numvins,firstvout,numvouts; uint32_t txidstroffset; };
+ 
+ struct packedblock
+ {
+ uint16_t crc16,numtx,numrawvins,numrawvouts;
+ uint64_t minted;
+ uint32_t blocknum,timestamp,blockhash_offset,merkleroot_offset,txspace_offsets,vinspace_offsets,voutspace_offsets,allocsize;
+ uint8_t rawdata[];
+ };
+ */
 #endif
 #endif

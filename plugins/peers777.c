@@ -20,9 +20,9 @@
 int32_t peers_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME PEERS;
-char *PLUGNAME(_methods)[] = { "direct", "devMGW" };
-char *PLUGNAME(_pubmethods)[] = { "direct", "devMGW" };
-char *PLUGNAME(_authmethods)[] = { "direct", "devMGW" };
+char *PLUGNAME(_methods)[] = { "direct", "msigaddr" };
+char *PLUGNAME(_pubmethods)[] = { "direct", "msigaddr" };
+char *PLUGNAME(_authmethods)[] = { "direct", "msigaddr" };
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
 {
@@ -62,7 +62,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        else if ( strcmp(methodstr,"devMGW") == 0 )
+        else if ( strcmp(methodstr,"msigaddr") == 0 )
         {
             char *devMGW_command(char *jsonstr,cJSON *json);
             if ( SUPERNET.gatewayid >= 0 )

@@ -560,3 +560,4 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
 }
 
 #endif
+

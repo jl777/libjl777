@@ -84,9 +84,10 @@ int32_t get_pubkey(char pubkey[512],char *coinstr,char *serverport,char *userpas
     return((int32_t)len);
 }
 
-cJSON *msig_itemjson(char *account,char *coinaddr,char *pubkey,int32_t allfields)
+cJSON *msig_itemjson(char *coinstr,char *account,char *coinaddr,char *pubkey,int32_t allfields)
 {
     cJSON *item = cJSON_CreateObject();
+    cJSON_AddItemToObject(item,"coin",cJSON_CreateString(coinstr));
     cJSON_AddItemToObject(item,"userNXT",cJSON_CreateString(account));
     cJSON_AddItemToObject(item,"coinaddr",cJSON_CreateString(coinaddr));
     cJSON_AddItemToObject(item,"pubkey",cJSON_CreateString(pubkey));
@@ -95,6 +96,7 @@ cJSON *msig_itemjson(char *account,char *coinaddr,char *pubkey,int32_t allfields
         cJSON_AddItemToObject(item,"gatewayNXT",cJSON_CreateString(SUPERNET.NXTADDR));
         cJSON_AddItemToObject(item,"gatewayid",cJSON_CreateNumber(SUPERNET.gatewayid));
     }
+    //printf("(%s)\n",cJSON_Print(item));
     return(item);
 }
 
@@ -123,7 +125,7 @@ char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass)
                         {
                             copy_cJSON(coinaddr,cJSON_GetObjectItem(item,"address"));
                             if ( get_pubkey(pubkey,coinstr,serverport,userpass,coinaddr) != 0 )
-                                cJSON_AddItemToArray(array,msig_itemjson(account,coinaddr,pubkey,1));
+                                cJSON_AddItemToArray(array,msig_itemjson(coinstr,account,coinaddr,pubkey,1));
                         }
                         else printf("decimal.%d (%s) -> (%s)? ",is_decimalstr(account),account,NXTaddr);
                     }

@@ -17,7 +17,7 @@
 #include "../plugin777.c"
 #include "storage.c"
 #include "system777.c"
-#include "ledger777.c"
+//#include "ledger777.c"
 #include "ramchain.c"
 #undef DEFINES_ONLY
 
@@ -31,19 +31,16 @@ char *PLUGNAME(_authmethods)[] = { PUB_METHODS, "signrawtransaction", "dumpprivk
 int32_t ramchain_idle(struct plugin_info *plugin)
 {
     int32_t i,flag = 0;
-    struct coin777 *coin; struct ramchain *ramchain; struct ledger_info *ledger = 0; struct packedblock *packed = 0;
+    struct coin777 *coin; struct ramchain *ramchain;
     for (i=0; i<COINS.num; i++)
     {
         if ( (coin= COINS.LIST[i]) != 0 )
         {
             ramchain = &coin->ramchain;
             //printf("packed.%p ledger.%p\n",coin->packed,ramchain->activeledger);
-            if ( ramchain->readyflag != 0 && (ledger= ramchain->activeledger) != 0 )//&& ledger->blocknum <= coin->readahead )
+            if ( ramchain->readyflag != 0 )//&& (ledger= ramchain->activeledger) != 0 )//&& ledger->blocknum <= coin->readahead )
             {
-                if ( coin->packed != 0 && (packed= coin->packed[ledger->blocknum]) != 0 )
-                    flag += ramchain_update(ramchain,ledger,packed);
-                else flag += ramchain_update(ramchain,ledger,0);
-                //else printf("ptr.%p blocknum.%u\n",packed,ledger->blocknum);
+                flag += ramchain_update(coin,ramchain);
             }
         }
     }
@@ -63,6 +60,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
         plugin->allowremote = 1;
         RAMCHAINS.fastmode = get_API_int(cJSON_GetObjectItem(json,"fastmode"),0);
+        RAMCHAINS.verifyspends = get_API_int(cJSON_GetObjectItem(json,"verifyspends"),1);
+        //RAMCHAINS.fileincr = get_API_int(cJSON_GetObjectItem(json,"fileincr"),100L * 1000 * 1);
         RAMCHAINS.readyflag = 1;
     }
     else
@@ -93,20 +92,19 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             if ( strcmp(methodstr,"backup") == 0 )
             {
-                if ( coin->ramchain.activeledger == 0 )
-                    ramchain_init(retbuf,maxlen,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
-                if ( coin->ramchain.activeledger != 0 && coin->ramchain.activeledger->DBs.ctl != 0 )
+                if ( coin->ramchain.DBs.ctl == 0 )
+                    ramchain_init(retbuf,maxlen,coin,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
+                if ( coin->ramchain.DBs.ctl != 0 )
                 {
-                    db777_sync(0,&coin->ramchain.activeledger->DBs,ENV777_BACKUP);
+                    coin777_incrbackup(coin,0,0,0);
                     strcpy(retbuf,"{\"result\":\"started backup\"}");
                 } else strcpy(retbuf,"{\"error\":\"cant create ramchain when coin not ready\"}");
             }
             else if ( strcmp(methodstr,"resume") == 0 )
-                ramchain_init(retbuf,maxlen,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
+                ramchain_init(retbuf,maxlen,coin,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
             else if ( strcmp(methodstr,"create") == 0 )
-                ramchain_init(retbuf,maxlen,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
-            else if ( coin->ramchain.activeledger != 0 )
-                ramchain_func(retbuf,maxlen,&coin->ramchain,json,methodstr);
+                ramchain_init(retbuf,maxlen,coin,&coin->ramchain,json,coinstr,coin->serverport,coin->userpass,startblocknum,endblocknum,coin->minconfirms);
+            else ramchain_func(retbuf,maxlen,coin,&coin->ramchain,json,methodstr);
             //else sprintf(retbuf,"{\"result\":\"no active ramchain\"}");
             //printf("RAMCHAIN RETURNS.(%s)\n",retbuf);
         }

@@ -18383,7 +18383,7 @@ int sd_merge(sdmerge *m)
 	sd_indexinit(&m->index);
 	int rc = sd_indexbegin(&m->index, m->r, m->size_key, m->offset);
 	if (srunlikely(rc == -1))
-		return -1;
+		return -2;
 
 	uint64_t processed = m->processed;
 	uint64_t current = 0;
@@ -18402,17 +18402,17 @@ int sd_merge(sdmerge *m)
 	{
 		rc = sd_buildbegin(m->build, m->r, m->checksum, m->compression);
 		if (srunlikely(rc == -1))
-			return -1;
+			return -3;
 		while (sr_iterhas(sv_writeiter, &m->i)) {
 			sv *v = sr_iterof(sv_writeiter, &m->i);
 			rc = sd_buildadd(m->build, m->r, v, sv_mergeisdup(m->merge));
 			if (srunlikely(rc == -1))
-				return -1;
+				return -4;
 			sr_iternext(sv_writeiter, &m->i);
 		}
 		rc = sd_buildend(m->build, m->r);
 		if (srunlikely(rc == -1))
-			return -1;
+			return -5;
 
 		/* page offset is relative to index:
 		 *
@@ -18433,7 +18433,7 @@ int sd_merge(sdmerge *m)
 		                 h->lsnmin,
 		                 h->lsnmax);
 		if (srunlikely(rc == -1))
-			return -1;
+			return -6;
 		sd_buildcommit(m->build);
 
 		current = m->index.h->total;
@@ -19947,9 +19947,10 @@ si_branchcreate(si *index, sr *r, sdc *c, sinode *parent, svindex *vindex, uint6
 	             index->conf->node_page_checksum,
 	             index->conf->compression, 1, vlsn);
 	rc = sd_merge(&merge);
-	if (srunlikely(rc == -1)) {
+	if (srunlikely(rc < 0)) {
 		sv_mergefree(&vmerge, r->a);
-		sr_malfunction(r->e, "%s", "memory allocation failed");
+        fprintf(stderr,"sd_merge error.%d\n",rc);
+		sr_malfunction(r->e, "%s", "sd_merge memory allocation failed");
 		goto error;
 	}
 	assert(rc == 1);

@@ -20,7 +20,7 @@
 #define SATOSHIDEN 100000000L
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 
-struct alloc_space { void *ptr; long used,size; int32_t alignflag; uint8_t space[]; };
+struct alloc_space { void *ptr; long used,size; int32_t alignflag; uint8_t space[4]; };
 
 int32_t portable_pton(int32_t af,char *src,void *dst);
 int32_t portable_ntop(int32_t af,void *src,char *dst,size_t size);
@@ -58,6 +58,7 @@ int32_t revsortds(double *buf,uint32_t num,int32_t size);
 int32_t sortds(double *buf,uint32_t num,int32_t size);
 int32_t sort64s(uint64_t *buf,uint32_t num,int32_t size);
 int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size);
+int32_t sort32s(uint32_t *buf,uint32_t num,int32_t size);
 
 double estimate_completion(double startmilli,int32_t processed,int32_t numleft);
 
@@ -430,10 +431,10 @@ char *_mbstr2(double n)
 	return(str);
 }
 
-int _increasing_unsignedint(const void *a,const void *b)
+int _increasing_uint32(const void *a,const void *b)
 {
-#define uint_a (((unsigned int *)a)[0])
-#define uint_b (((unsigned int *)b)[0])
+#define uint_a (((uint32_t *)a)[0])
+#define uint_b (((uint32_t *)b)[0])
 	if ( uint_b > uint_a )
 		return(-1);
 	else if ( uint_b < uint_a )
@@ -577,6 +578,12 @@ int32_t revsortds(double *buf,uint32_t num,int32_t size)
 int32_t sortds(double *buf,uint32_t num,int32_t size)
 {
 	qsort(buf,num,size,_increasing_double);
+	return(0);
+}
+
+int32_t sort32s(uint32_t *buf,uint32_t num,int32_t size)
+{
+	qsort(buf,num,size,_increasing_uint32);
 	return(0);
 }
 

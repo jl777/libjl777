@@ -18,109 +18,31 @@
 #include "cJSON.h"
 #include "../plugin777.c"
 #include "files777.c"
+#include "NXT777.c"
 #include "coins777.c"
 #include "gen1auth.c"
 #include "msig.c"
 #undef DEFINES_ONLY
 
-void ensure_packedptrs(struct coin777 *coin)
-{
-    uint32_t newmax;
-    coin->RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->RTblocknum);
-    newmax = (uint32_t)(coin->RTblocknum * 1.1);
-    if ( coin->maxpackedblocks < newmax )
-    {
-        coin->packed = realloc(coin->packed,sizeof(*coin->packed) * newmax);
-        memset(&coin->packed[coin->maxpackedblocks],0,sizeof(*coin->packed) * (newmax - coin->maxpackedblocks));
-        coin->maxpackedblocks = newmax;
-    }
-}
-
-void coins_verify(struct coin777 *coin,struct packedblock *packed,uint32_t blocknum)
-{
-    int32_t i;
-    ram_clear_rawblock(&coin->DECODE,1);
-    coin777_unpackblock(&coin->DECODE,packed,blocknum);
-    if ( memcmp(&coin->DECODE,&coin->EMIT,sizeof(coin->DECODE)) != 0 )
-    {
-        for (i=0; i<sizeof(coin->DECODE); i++)
-            if ( ((uint8_t *)&coin->DECODE)[i] != ((uint8_t *)&coin->DECODE)[i] )
-                break;
-        printf("packblock decode error blocknum.%u\n",coin->readahead);
-        coin777_disprawblock(&coin->EMIT);
-        printf("----> \n");
-        coin777_disprawblock(&coin->DECODE);
-        printf("mismatch\n");
-        while ( 1 ) sleep(1);
-    } else printf("COMPARED! ");
-}
-
 int32_t coins_idle(struct plugin_info *plugin)
 {
-    int32_t i,len,flag = 0; uint32_t width = 10000;
-    struct coin777 *coin; struct ledger_info *ledger; struct packedblock *packed;
-    for (i=0; i<COINS.num; i++)
+    int32_t i,flag = 0;
+    struct coin777 *coin;
+    if ( COINS.num > 0 )
     {
-        if ( (coin= COINS.LIST[i]) != 0 && coin->packed != 0 )
+        for (i=0; i<COINS.num; i++)
         {
-            coin->RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->RTblocknum);
-            while ( coin->packedblocknum <= coin->RTblocknum && coin->packedblocknum < coin->packedend )
+            if ( (coin= COINS.LIST[i]) != 0 )
             {
-                len = (int32_t)sizeof(coin->EMIT);
-                if ( (packed= ramchain_getpackedblock(&coin->EMIT,&len,&coin->ramchain,coin->packedblocknum)) == 0 || packed_crc16(packed) != packed->crc16 )
+                if ( coin->mgw.assetidstr[0] != 0 && milliseconds() > coin->mgw.lastupdate+60000 )
                 {
-                    ram_clear_rawblock(&coin->EMIT,1);
-                    if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->packedblocknum) > 0 )
-                    {
-                        if ( coin->packed[coin->packedblocknum] == 0 )
-                        {
-                            if ( (coin->packed[coin->packedblocknum]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
-                            {
-                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->packedblocknum],coin->packedblocknum);
-                                //coins_verify(coin,coin->packed[coin->packedblocknum],coin->packedblocknum);
-                                coin->packedblocknum += coin->packedincr;
-                            }
-                            flag = 1;
-                            return(1);
-                        }
-                    } else break;
-                }
-                else if ( RELAYS.pushsock >= 0 )
-                {
-                    printf("PUSHED.(%d) blocknum.%u | crc.%u %d %d %d %.8f %u %u %u %u %u %u %d\n",packed->allocsize,packed->blocknum,packed->crc16,packed->numtx,packed->numrawvins,packed->numrawvouts,dstr(packed->minted),packed->timestamp,packed->blockhash_offset,packed->merkleroot_offset,packed->txspace_offsets,packed->vinspace_offsets,packed->voutspace_offsets,packed->allocsize);
-                    nn_send(RELAYS.pushsock,(void *)packed,packed->allocsize,0);
-                }
-                coin->packedblocknum += coin->packedincr;
-            }
-            if ( 1 && flag == 0 && (ledger= coin->ramchain.activeledger) != 0 )
-            {
-                printf("readahead.%d vs blocknum.%u\n",coin->readahead,ledger->blocknum);
-                if ( coin->readahead <= ledger->blocknum )
-                    coin->readahead = ledger->blocknum;
-                while ( coin->readahead <= ledger->blocknum+width )
-                {
-                    //printf("readahead.%u %p\n",coin->readahead++,coin->packed[coin->readahead]);
-                    if ( coin->packed[coin->readahead] == 0 )
-                    {
-                        ram_clear_rawblock(&coin->EMIT,1);
-                        if ( rawblock_load(&coin->EMIT,coin->name,coin->serverport,coin->userpass,coin->readahead) > 0 )
-                        {
-                            if ( (coin->packed[coin->readahead]= coin777_packrawblock(coin,&coin->EMIT)) != 0 )
-                            {
-                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->readahead],coin->readahead);
-                                //coins_verify(coin,coin->packed[coin->readahead],coin->readahead);
-                                width++;
-                                if ( coin->readahead > width && coin->readahead-width > ledger->blocknum && coin->packed[coin->readahead-width] != 0 )
-                                {
-                                    printf("purge.%u\n",coin->readahead-width);
-                                    free(coin->packed[coin->readahead-width]), coin->packed[coin->readahead-width] = 0;
-                                }
-                                
-                                flag = 1;
-                                break;
-                            }
-                        } else printf("error rawblock_load.%u\n",coin->readahead);
-                    } else coin->readahead++;
+                    uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 *coin);
+                    char smallestaddr[128],smallestaddrB[128];
+                    update_NXT_assettransfers(&coin->mgw);
+                    if ( SUPERNET.gatewayid >= 0 )
+                        mgw_calc_unspent(smallestaddr,smallestaddrB,coin);
+                    coin->mgw.lastupdate = milliseconds();
+                   // nn_send(MGW.all.socks.both.bus,"FINISHED update_NXT_assettransfers\n",(int32_t)strlen("FINISHED update_NXT_assettransfers\n"),0);
                 }
             }
         }
@@ -197,9 +119,9 @@ char *default_coindir(char *confname,char *coinstr)
 {
     int32_t i;
 #ifdef __APPLE__
-    char *coindirs[][3] = { {"BTC","Bitcoin","bitcoin"}, {"BTCD","BitcoinDark"}, {"LTC","Litecoin","litecoin"}, {"VRC","VeriCoin","vericoin"} };
+    char *coindirs[][3] = { {"BTC","Bitcoin","bitcoin"}, {"BTCD","BitcoinDark"}, {"LTC","Litecoin","litecoin"}, {"VRC","Vericoin","vericoin"}, {"OPAL","OpalCoin","opalcoin"}, {"BITS","Bitstar","bitstar"}, {"DOGE","Dogecoin","dogecoin"}, {"DASH","Dash","dash"}, {"BC","Blackcoin","blackcoin"}, {"FIBRE","Fibre","fibre"}, {"VPN","Vpncoin","vpncoin"} };
 #else
-    char *coindirs[][3] = { {"BTC",".bitcoin"}, {"BTCD",".BitcoinDark"}, {"LTC",".litecoin"}, {"VRC",".vericoin"}, {"VPN",".vpncoin"} };
+    char *coindirs[][3] = { {"BTC",".bitcoin"}, {"BTCD",".BitcoinDark"}, {"LTC",".litecoin"}, {"VRC",".vericoin"}, {"OPAL",".opalcoin"}, {"BITS",".Bitstar"}, {"DOGE",".dogecoin"}, {"DASH",".dash"}, {"BC",".blackcoin"}, {"FIBRE",".Fibre"}, {"VPN",".vpncoin"} };
 #endif
     for (i=0; i<(int32_t)(sizeof(coindirs)/sizeof(*coindirs)); i++)
         if ( strcmp(coindirs[i][0],coinstr) == 0 )
@@ -283,13 +205,36 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         coin->argjson = cJSON_Duplicate(argjson,1);
         if ( (serverport= cJSON_str(cJSON_GetObjectItem(argjson,"rpc"))) != 0 )
             safecopy(coin->serverport,serverport,sizeof(coin->serverport));
-        coin->use_addmultisig = get_API_int(cJSON_GetObjectItem(argjson,"useaddmultisig"),(strcmp("BTC",coinstr) != 0));
         coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
         path = cJSON_str(cJSON_GetObjectItem(argjson,"path"));
         conf = cJSON_str(cJSON_GetObjectItem(argjson,"conf"));
+        
+        copy_cJSON(coin->mgw.assetidstr,cJSON_GetObjectItem(argjson,"assetid"));
+        coin->mgw.assetidbits = calc_nxt64bits(coin->mgw.assetidstr);
+        coin->mgw.ap_mult = assetmult(coin->mgw.assetname,coin->mgw.assetidstr);
+        strcpy(coin->mgw.coinstr,coinstr);
+        printf("coin777_create %s: %s %llu mult.%llu\n",coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult);
+        if ( (coin->mgw.special= cJSON_GetObjectItem(argjson,"special")) == 0 )
+            coin->mgw.special = cJSON_GetObjectItem(COINS.argjson,"special");
+        if ( coin->mgw.special != 0 )
+            coin->mgw.special = NXT_convjson(coin->mgw.special);
+        coin->mgw.limbo = cJSON_GetObjectItem(argjson,"limbo");
+        coin->mgw.dust = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"dust"));
+        coin->mgw.txfee = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"txfee_satoshis"));
+        if ( coin->mgw.txfee == 0 )
+            coin->mgw.txfee = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(argjson,"txfee")));
+        if ( coin->mgw.txfee == 0 )
+            coin->mgw.txfee = 10000;
+        coin->mgw.NXTfee_equiv = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"NXTfee_equiv_satoshis"));
+        if ( coin->mgw.NXTfee_equiv == 0 )
+            coin->mgw.NXTfee_equiv = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(argjson,"NXTfee_equiv")));
+        copy_cJSON(coin->mgw.marker,cJSON_GetObjectItem(argjson,"marker"));
+        copy_cJSON(coin->mgw.marker2,cJSON_GetObjectItem(argjson,"marker2"));
+        coin->mgw.use_addmultisig = get_API_int(cJSON_GetObjectItem(argjson,"useaddmultisig"),(strcmp("BTC",coinstr) != 0));
     }
     else coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
+    printf("COIN.%s (%s)\n",coin->name,coin->userpass);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
     //ensure_packedptrs(coin);
@@ -386,14 +331,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                         } else sprintf(retbuf,"{\"error\":\"no get_msig_pubkeys result\",\"method\":\"%s\"}",methodstr);
                     } else sprintf(retbuf,"{\"error\":\"no coin777\",\"method\":\"%s\"}",methodstr);
                 } else sprintf(retbuf,"{\"error\":\"gateway only method\",\"method\":\"%s\"}",methodstr);
-            }
-            else if ( strcmp(methodstr,"packblocks") == 0 )
-            {
-                coin->packedblocknum = coin->packedstart = get_API_int(cJSON_GetObjectItem(json,"start"),0) + COINS.slicei;
-                coin->packedend = get_API_int(cJSON_GetObjectItem(json,"end"),1000000000);
-                coin->packedincr = get_API_int(cJSON_GetObjectItem(json,"incr"),1);
-                ensure_packedptrs(coin);
-                sprintf(retbuf,"{\"result\":\"packblocks\",\"start\":\"%u\",\"end\":\"%u\",\"incr\":\"%u\",\"RTblocknum\":\"%u\"}",coin->packedstart,coin->packedend,coin->packedincr,coin->RTblocknum);
             }
             else sprintf(retbuf,"{\"error\":\"unsupported method\",\"method\":\"%s\"}",methodstr);
             if ( str != 0 )

@@ -23,6 +23,7 @@
 #define DB777_HDD 2
 #define DB777_NANO 4
 #define DB777_FLUSH 8
+#define DB777_VOLATILE 0x10
 #define DB777_KEY32 0x20
 #define ENV777_BACKUP 0x40
 #define DB777_MULTITHREAD 0x80
@@ -55,9 +56,11 @@ int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue);
 void *db777_read(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen,int32_t fillcache);
 void *db777_matrixptr(int32_t *matrixindp,void *transactions,struct db777 *DB,void *key,int32_t keylen);
 int32_t db777_linkDB(struct db777 *DB,struct db777 *revDB,uint32_t maxind);
+void db777_path(char *path,char *coinstr,char *subdir,int32_t useramdisk);
+int32_t db777_write(void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen);
 
 extern struct db777_info SOPHIA;
-extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata;//,*DB_NXTassettx,;
+extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*NXT_txids;//,*DB_NXTassettx,;
 
 #endif
 #else
@@ -207,12 +210,31 @@ int32_t db777_linkDB(struct db777 *DB,struct db777 *revDB,uint32_t maxind)
     return(ind);
 }
 
+int32_t db777_write(void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen)
+{
+    int32_t retval = -1; void *obj,*db;
+    db = DB->asyncdb != 0 ? DB->asyncdb : DB->db;
+    if ( (obj= sp_object(db)) == 0 )
+        retval = -3;
+    if ( sp_set(obj,"key",key,keylen) != 0 || sp_set(obj,"value",value,valuelen) != 0 )
+    {
+        sp_destroy(obj);
+        printf("error setting key/value %s[%d]\n",DB->name,*(int *)key);
+        retval = -4;
+    }
+    else
+    {
+        retval = sp_set((transactions != 0 ? transactions : db),obj);
+        //if ( strcmp(DB->name,"ledger") == 0 )
+        //    printf("retval.%d %s key.%u valuelen.%d\n",retval,DB->name,*(int *)key,valuelen);
+    }
+    return(retval);
+}
+
 void *db777_read(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen,int32_t fillcache)
 {
     void *obj,*value,*result = 0; int32_t flag,max = *lenp;
     flag = 0;
-    //if ( strcmp(DB->name,"addrinfos") != 0 )
-    //    transactions = 0;
     if ( (obj= sp_object(DB->db)) != 0 )
     {
         Numgets++;
@@ -495,7 +517,7 @@ int32_t db777_add(int32_t forceflag,void *transactions,struct db777 *DB,void *ke
 
 int32_t db777_addstr(struct db777 *DB,char *key,char *value)
 {
-    return(db777_add(1,0,DB,key,(int32_t)strlen(key)+1,value,(int32_t)strlen(value)+1));
+    return(db777_write(0,DB,key,(int32_t)strlen(key)+1,value,(int32_t)strlen(value)+1));
 }
 
 int32_t db777_findstr(char *retbuf,int32_t max,struct db777 *DB,char *key)
@@ -714,7 +736,7 @@ void **db777_copy_all(int32_t *nump,struct db777 *DB,char *field,int32_t size)
     if ( ptrs != 0 )
         ptrs[n] = 0;
     *nump = n;
-    printf("ptrs.%p [0] %p numdb.%d\n",ptrs,ptrs[0],n);
+    //printf("ptrs.%p [0] %p numdb.%d\n",ptrs,ptrs[0],n);
     return(ptrs);
 }
 
@@ -736,7 +758,7 @@ int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue)
                 init_hexbytes_noT(keyhex,key,keylen), key = keyhex;
             if ( binaryvalue != 0 )
                 init_hexbytes_noT(valuehex,value,len), value = valuehex;
-            printf("%-5d: %100s | %s\n",n,key,value);
+            printf("%-5d: %16s keylen.%d | %s len.%d\n",n,key,keylen,value,len);
             n++;
         }
         sp_destroy(cursor);

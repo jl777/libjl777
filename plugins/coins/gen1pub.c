@@ -17,11 +17,12 @@
 #include "coins777.c"
 
 
-//char *_get_transaction(char *coinstr,char *serverport,char *userpass,char *txidstr);
+char *_get_transaction(char *coinstr,char *serverport,char *userpass,char *txidstr);
 uint64_t ram_verify_txstillthere(char *coinstr,char *serverport,char *userpass,char *txidstr,int32_t vout);
 //char *_get_blockhashstr(char *coinstr,char *serverport,char *userpass,uint32_t blocknum);
-//cJSON *_get_blockjson(uint32_t *heightp,char *coinstr,char *serverport,char *userpass,char *blockhashstr,uint32_t blocknum);
+cJSON *_get_blockjson(uint32_t *heightp,char *coinstr,char *serverport,char *userpass,char *blockhashstr,uint32_t blocknum);
 uint32_t _get_RTheight(double *lastmillip,char *coinstr,char *serverport,char *userpass,int32_t current_RTblocknum);
+cJSON *_rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson);
 
 #endif
 #else
@@ -48,6 +49,7 @@ uint32_t _get_RTheight(double *lastmillip,char *coinstr,char *serverport,char *u
             if ( (json= cJSON_Parse(retstr)) != 0 )
             {
                 height = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocks"),0);
+                //printf("get_RTheight %u\n",height);
                 free_json(json);
                 *lastmillip = milliseconds();
             }
@@ -253,7 +255,7 @@ uint64_t rawblock_txidinfo(struct rawblock *raw,struct rawtx *tx,char *coinstr,c
     return(total);
 }
 
-cJSON *rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson)
+cJSON *_rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson)
 {
     cJSON *txarray = 0;
     if ( blockjson != 0 )
@@ -307,7 +309,7 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
             copy_cJSON(mintedstr,cJSON_GetObjectItem(json,"newmint"));
         if ( mintedstr[0] != 0 )
             raw->minted = (uint64_t)(atof(mintedstr) * SATOSHIDEN);
-        if ( (txobj= rawblock_txarray(&blockid,&n,json)) != 0 && blockid == blocknum && n < MAX_BLOCKTX )
+        if ( (txobj= _rawblock_txarray(&blockid,&n,json)) != 0 && blockid == blocknum && n < MAX_BLOCKTX )
         {
             for (txind=0; txind<n; txind++)
             {
@@ -325,6 +327,7 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
     return(raw->numtx);
 }
 
+#ifdef notneeded
 uint32_t coin777_packedoffset(struct alloc_space *mem,char *str,int32_t convflag)
 {
     uint32_t offset; uint16_t len; uint8_t _hex[255],blen,*hex = _hex;
@@ -529,7 +532,6 @@ int32_t coin777_unpackblock(struct rawblock *raw,struct packedblock *packed,uint
     return(retval);
 }
 
-
 void coin777_disprawblock(struct rawblock *raw)
 {
     struct rawtx *tx; struct rawvin *vi; struct rawvout *vo; uint32_t i,txind,n;
@@ -549,6 +551,142 @@ void coin777_disprawblock(struct rawblock *raw)
         }
     }
 }
+void coins_verify(struct coin777 *coin,struct packedblock *packed,uint32_t blocknum)
+{
+    int32_t i;
+    ram_clear_rawblock(coin->P.DECODE,1);
+    coin777_unpackblock(coin->P.DECODE,packed,blocknum);
+    if ( memcmp(coin->P.DECODE,coin->P.EMIT,sizeof(*coin->P.DECODE)) != 0 )
+    {
+        for (i=0; i<sizeof(coin->P.DECODE); i++)
+            if ( ((uint8_t *)coin->P.DECODE)[i] != ((uint8_t *)coin->P.DECODE)[i] )
+                break;
+        printf("packblock decode error blocknum.%u\n",coin->P.readahead);
+        coin777_disprawblock(coin->P.EMIT);
+        printf("----> \n");
+        coin777_disprawblock(coin->P.DECODE);
+        printf("mismatch\n");
+        while ( 1 ) sleep(1);
+    } else printf("COMPARED! ");
+}
+
+int32_t coins_idle(struct plugin_info *plugin)
+{
+    int32_t i,len,flag = 0; uint32_t width = 10000;
+    struct coin777 *coin; struct ledger_info *ledger; struct packedblock *packed;
+    for (i=0; i<COINS.num; i++)
+    {
+        if ( 0 && (coin= COINS.LIST[i]) != 0 )//&& coin->P.packed != 0 )
+        {
+            //if ( coin777_processQs(coin) != 0 )
+            //    return(1);
+            //else continue;
+            coin->P.RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->P.RTblocknum);
+            while ( coin->P.packedblocknum <= coin->P.RTblocknum && coin->P.packedblocknum < coin->P.packedend )
+            {
+                len = (int32_t)sizeof(*coin->P.EMIT);
+                if ( (packed= ramchain_getpackedblock(coin->P.EMIT,&len,&coin->ramchain,coin->P.packedblocknum)) == 0 || packed_crc16(packed) != packed->crc16 )
+                {
+                    ram_clear_rawblock(coin->P.EMIT,1);
+                    if ( rawblock_load(coin->P.EMIT,coin->name,coin->serverport,coin->userpass,coin->P.packedblocknum) > 0 )
+                    {
+                        if ( coin->P.packed[coin->P.packedblocknum] == 0 )
+                        {
+                            if ( (coin->P.packed[coin->P.packedblocknum]= coin777_packrawblock(coin,coin->P.EMIT)) != 0 )
+                            {
+                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                                //coins_verify(coin,coin->packed[coin->packedblocknum],coin->packedblocknum);
+                                coin->P.packedblocknum += coin->P.packedincr;
+                            }
+                            flag = 1;
+                            return(1);
+                        }
+                    } else break;
+                }
+                else if ( RELAYS.pushsock >= 0 )
+                {
+                    printf("PUSHED.(%d) blocknum.%u | crc.%u %d %d %d %.8f %u %u %u %u %u %u %d\n",packed->allocsize,packed->blocknum,packed->crc16,packed->numtx,packed->numrawvins,packed->numrawvouts,dstr(packed->minted),packed->timestamp,packed->blockhash_offset,packed->merkleroot_offset,packed->txspace_offsets,packed->vinspace_offsets,packed->voutspace_offsets,packed->allocsize);
+                    nn_send(RELAYS.pushsock,(void *)packed,packed->allocsize,0);
+                }
+                coin->P.packedblocknum += coin->P.packedincr;
+            }
+            if ( 1 && flag == 0 && (ledger= coin->ramchain.activeledger) != 0 )
+            {
+                printf("readahead.%d vs blocknum.%u\n",coin->P.readahead,ledger->blocknum);
+                if ( coin->P.readahead <= ledger->blocknum )
+                    coin->P.readahead = ledger->blocknum;
+                while ( coin->P.readahead <= ledger->blocknum+width )
+                {
+                    //printf("readahead.%u %p\n",coin->readahead++,coin->packed[coin->readahead]);
+                    if ( coin->P.packed[coin->P.readahead] == 0 )
+                    {
+                        ram_clear_rawblock(coin->P.EMIT,1);
+                        if ( rawblock_load(coin->P.EMIT,coin->name,coin->serverport,coin->userpass,coin->P.readahead) > 0 )
+                        {
+                            if ( (coin->P.packed[coin->P.readahead]= coin777_packrawblock(coin,coin->P.EMIT)) != 0 )
+                            {
+                                //ramchain_setpackedblock(&coin->ramchain,coin->packed[coin->readahead],coin->readahead);
+                                //coins_verify(coin,coin->packed[coin->readahead],coin->readahead);
+                                width++;
+                                if ( coin->P.readahead > width && coin->P.readahead-width > ledger->blocknum && coin->P.packed[coin->P.readahead-width] != 0 )
+                                {
+                                    printf("purge.%u\n",coin->P.readahead-width);
+                                    free(coin->P.packed[coin->P.readahead-width]), coin->P.packed[coin->P.readahead-width] = 0;
+                                }
+                                
+                                flag = 1;
+                                break;
+                            }
+                        } else printf("error rawblock_load.%u\n",coin->P.readahead);
+                    } else coin->P.readahead++;
+                }
+            }
+        }
+    }
+    return(flag);
+}
+
+void ensure_packedptrs(struct coin777 *coin)
+{
+    uint32_t newmax;
+    coin->P.RTblocknum = _get_RTheight(&coin->lastgetinfo,coin->name,coin->serverport,coin->userpass,coin->P.RTblocknum);
+    newmax = (uint32_t)(coin->P.RTblocknum * 1.1);
+    if ( coin->P.maxpackedblocks < newmax )
+    {
+        coin->P.packed = realloc(coin->P.packed,sizeof(*coin->P.packed) * newmax);
+        memset(&coin->P.packed[coin->P.maxpackedblocks],0,sizeof(*coin->P.packed) * (newmax - coin->P.maxpackedblocks));
+        coin->P.maxpackedblocks = newmax;
+    }
+}
+
+void coins_verify(struct coin777 *coin,struct packedblock *packed,uint32_t blocknum)
+{
+    int32_t i;
+    ram_clear_rawblock(coin->P.DECODE,1);
+    coin777_unpackblock(coin->P.DECODE,packed,blocknum);
+    if ( memcmp(coin->P.DECODE,coin->P.EMIT,sizeof(*coin->P.DECODE)) != 0 )
+    {
+        for (i=0; i<sizeof(coin->P.DECODE); i++)
+            if ( ((uint8_t *)coin->P.DECODE)[i] != ((uint8_t *)coin->P.DECODE)[i] )
+                break;
+        printf("packblock decode error blocknum.%u\n",coin->P.readahead);
+        coin777_disprawblock(coin->P.EMIT);
+        printf("----> \n");
+        coin777_disprawblock(coin->P.DECODE);
+        printf("mismatch\n");
+        while ( 1 ) sleep(1);
+    } else printf("COMPARED! ");
+}
+else if ( strcmp(methodstr,"packblocks") == 0 )
+{
+    coin->P.packedblocknum = coin->P.packedstart = get_API_int(cJSON_GetObjectItem(json,"start"),0) + COINS.slicei;
+    coin->P.packedend = get_API_int(cJSON_GetObjectItem(json,"end"),1000000000);
+    coin->P.packedincr = get_API_int(cJSON_GetObjectItem(json,"incr"),1);
+    ensure_packedptrs(coin);
+    sprintf(retbuf,"{\"result\":\"packblocks\",\"start\":\"%u\",\"end\":\"%u\",\"incr\":\"%u\",\"RTblocknum\":\"%u\"}",coin->P.packedstart,coin->P.packedend,coin->P.packedincr,coin->P.RTblocknum);
+}
+
+#endif
 
 #endif
 #endif

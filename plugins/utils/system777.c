@@ -104,7 +104,7 @@ struct env777
 #define DEFAULT_APISLEEP 100  // milliseconds
 struct SuperNET_info
 {
-    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16];
+    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512];
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512],hostname[512];
     uint64_t my64bits;
     int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT;
@@ -143,7 +143,7 @@ struct ramchain_info
     char PATH[1024],coins[MAX_RAMCHAINS][16],pullnode[64];
     double lastupdate[MAX_RAMCHAINS];
     union endpoints all;
-    int32_t num,readyflag,fastmode;
+    int32_t num,readyflag,fastmode,verifyspends;
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct ramchain_info RAMCHAINS;
 
@@ -303,7 +303,7 @@ int32_t aligned_free(void *ptr)
         printf("ptr %p and realptr %p too far apart %ld\n",ptr,realptr,diff);
         return(-2);
     }
-    printf("aligned_free: ptr %p -> realptr %p %ld\n",ptr,realptr,diff);
+    //printf("aligned_free: ptr %p -> realptr %p %ld\n",ptr,realptr,diff);
     free(realptr);
     return(0);
 }

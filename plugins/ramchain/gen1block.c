@@ -419,5 +419,13 @@ struct ledger_blockinfo *ledger_setblock(int32_t dispflag,struct ledger_info *le
     return(block);
 }
 
+/*int32_t ledger_setblock(int32_t dispflag,struct ledger_info *ledger,struct alloc_space *mem,struct rawblock *emit,uint32_t blocknum)
+{
+    struct coin777 *coin = coin777_find(ledger->DBs.coinstr,0);
+    if ( coin != 0 )
+        return(coin777_parse(coin,coin,blocknum));
+    return(0);
+}*/
+
 #endif
 #endif

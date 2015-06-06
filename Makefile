@@ -17,7 +17,7 @@ PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a
 LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
 
 CC=clang
-CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 #-DADDRINFO_SIZE=256
 
 TARGET	= libjl777.a
 
@@ -39,12 +39,12 @@ R = plugins/ramchain
 S = plugins/sophia
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
 SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
-RAMCHAIN = $(R)/ledger777.c $(R)/ramchain_main.c $(R)/ramchain.c $(R)/pass1.c $(R)/gen1block.c
+RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
-COINS = $(C)/bitcoind_RPC.c $(C)/gen1.c $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c
+COINS = $(C)/bitcoind_RPC.c $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) plugins/mgw/MGW_main.c plugins/echodemo.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) plugins/mgw/MGW_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c # plugins/echodemo.c
  
 OBJS	:= $(SRCS:%.c=%.o)
 

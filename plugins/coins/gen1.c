@@ -645,7 +645,7 @@ int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txob
         if ( coinaddr[0] == 0 )
         {
             copy_cJSON(typestr,cJSON_GetObjectItem(scriptobj,"type"));
-            if ( strcmp(typestr,"nonstandard") != 0 )
+            if ( strcmp(typestr,"pubkey") != 0 && strcmp(typestr,"nonstandard") != 0 && strcmp(typestr,"nulldata") != 0 )
                 printf("missing addr? (%s)\n",cJSON_Print(txobj));//, getchar();
         }
         return(0);

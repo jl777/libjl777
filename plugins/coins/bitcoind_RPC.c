@@ -191,7 +191,7 @@ try_again:
             count++;
             elapsedsum += (milliseconds() - starttime);
             if ( (count % 10000) == 0)
-                fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command);
+                fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | bitcoind_RPC.(%s) url.(%s)\n",count,elapsedsum/count,(milliseconds() - starttime),command,url);
             if ( retstrp != 0 )
             {
                 *retstrp = s.ptr;
@@ -206,7 +206,7 @@ try_again:
             count2++;
             elapsedsum2 += (milliseconds() - starttime);
             if ( (count2 % 10000) == 0)
-                fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s)\n",count2,elapsedsum2/count2,(double)(milliseconds() - starttime),url);
+                fprintf(stderr,"%d: ave %9.6f | elapsed %.3f millis | NXT calls.(%s) cmd.(%s)\n",count2,elapsedsum2/count2,(double)(milliseconds() - starttime),url,command);
             return(s.ptr);
         }
     }

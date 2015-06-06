@@ -92,33 +92,6 @@ void update_nodestats_data(struct nodestats *stats)
     db777_add(1,0,DB_NXTaccts,&stats->nxt64bits,sizeof(stats->nxt64bits),np,sizeof(*np));
 }
 
-struct NXT_assettxid *find_NXT_assettxid(int32_t *createdflagp,struct NXT_asset *ap,char *txid)
-{
-    int32_t createdflag;
-    struct NXT_assettxid *tp;
-    if ( createdflagp == 0 )
-        createdflagp = &createdflag;
-    printf("port assettxid\n"); getchar();
-    tp = 0;//MTadd_hashtable(createdflagp,&NXT_assettxids,txid);
-    if ( *createdflagp != 0 )
-    {
-        //tp->assetbits = ap->assetbits;
-        // tp->redeemtxid = calc_nxt64bits(txid);
-        // tp->timestamp = timestamp;
-        //printf("%d) %s txid.%s\n",ap->num,ap->name,txid);
-        if ( ap != 0 )
-        {
-            if ( ap->num >= ap->max )
-            {
-                ap->max = ap->num + NXT_ASSETLIST_INCR;
-                ap->txids = realloc(ap->txids,sizeof(*ap->txids) * ap->max);
-            }
-            ap->txids[ap->num++] = tp;
-        }
-    }
-    return(tp);
-}
-
 /*struct acct_coin2 *find_NXT_coininfo(struct NXT_acct **npp,uint64_t nxt64bits,char *coinstr)
 {
     char NXTaddr[64];

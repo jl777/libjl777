@@ -1369,6 +1369,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( SUPERNET.transport[0] == 0 )
             strcpy(SUPERNET.transport,SUPERNET.UPNP == 0 ? "tcp" : "ws");
         SUPERNET.APISLEEP = get_API_int(cJSON_GetObjectItem(json,"APISLEEP"),DEFAULT_APISLEEP);
+        if ( SUPERNET.APISLEEP <= 1 )
+            SUPERNET.APISLEEP = 1;
         copy_cJSON(SUPERNET.DATADIR,cJSON_GetObjectItem(json,"DATADIR"));
         if ( SUPERNET.DATADIR[0] == 0 )
             strcpy(SUPERNET.DATADIR,"archive");
@@ -1379,6 +1381,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             strcpy(SUPERNET.WEBSOCKETD,"libs/websocketd");
         }
         else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
+        copy_cJSON(SUPERNET.BACKUPS,cJSON_GetObjectItem(json,"backups"));
+        if ( SUPERNET.BACKUPS[0] == 0 )
+            strcpy(SUPERNET.BACKUPS,"/tmp");
         copy_cJSON(SOPHIA.PATH,cJSON_GetObjectItem(json,"SOPHIA"));
         copy_cJSON(SOPHIA.RAMDISK,cJSON_GetObjectItem(json,"RAMDISK"));
         if ( SOPHIA.PATH[0] == 0 )
@@ -1391,6 +1396,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             DB_nodestats = db777_create(0,0,"nodestats",0,0);
         if ( DB_busdata == 0 )
             DB_busdata = db777_create(0,0,"busdata",0,0);
+        if ( NXT_txids == 0 )
+            NXT_txids = db777_create(0,0,"NXT_txids",0,0);
         SUPERNET.readyflag = 1;
         if ( SUPERNET.UPNP != 0 )
         {
