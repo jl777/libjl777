@@ -41,15 +41,15 @@ struct rawblock
     struct rawvout voutspace[MAX_BLOCKTX];
 };
 
-#define MAX_COINTX_INPUTS 16
+#define MAX_COINTX_INPUTS 64
 #define MAX_COINTX_OUTPUTS 8
 struct cointx_input { struct rawvin tx; char coinaddr[64],sigs[1024]; uint64_t value; uint32_t sequence; char used; };
 struct cointx_info
 {
     uint32_t crc; // MUST be first
-    char coinstr[16];
+    char coinstr[16],cointxid[128];
     uint64_t inputsum,amount,change,redeemtxid;
-    uint32_t allocsize,batchsize,batchcrc,gatewayid,isallocated;
+    uint32_t allocsize,batchsize,batchcrc,gatewayid,isallocated,completed;
     // bitcoin tx order
     uint32_t version,timestamp,numinputs;
     uint32_t numoutputs;
@@ -132,14 +132,26 @@ struct MGWstate
 };
 
 #define NUM_GATEWAYS 3
+
+#define MGW_ISINTERNAL 1
+#define MGW_PENDINGXFER 2
+#define MGW_DEPOSITDONE 4
+#define MGW_PENDINGREDEEM 8
+#define MGW_WITHDRAWDONE 16
+#define MGW_IGNORE 128
+#define MGW_ERRORSTATUS 0x8000
+struct extra_info { uint64_t assetidbits,txidbits,senderbits,receiverbits,amount; int32_t ind,vout,flags; uint32_t height; char coindata[128]; };
+
 struct mgw777
 {
-    char coinstr[16],assetidstr[32],assetname[32],marker[128],marker2[128];
-    uint32_t marker_addrind,marker2_addrind,use_addmultisig;
-    uint64_t assetidbits,ap_mult,NXTfee_equiv,txfee,dust;
+    char coinstr[16],assetidstr[32],assetname[32],issuer[32],marker[128],marker2[128],opreturnmarker[128];
+    uint32_t marker_addrind,marker2_addrind,use_addmultisig,firstunspentind,redeemheight,numwithdraws,numunspents,oldtx_format,do_opreturn,RTNXT_height;
+    uint64_t assetidbits,ap_mult,NXTfee_equiv,txfee,dust,issuerbits,circulation,unspent,withdrawsum; int64_t balance;
     cJSON *limbo,*special;
-    double lastupdate;
+    double lastupdate,NXTconvrate;
+    struct unspent_info *unspents;
     struct MGWstate S,otherS[16],remotesrcs[16];
+    struct extra_info withdraws[128];
     /*uint64_t MGWbits,NXTfee_equiv,txfee,*limboarray; char *coinstr,*serverport,*userpass,*marker,*marker2;
      int32_t numgateways,nummsigs,depositconfirms,withdrawconfirms,remotemode,numpendingsends,min_NXTconfirms,numspecials;
      uint32_t firsttime,NXTtimestamp,marker_rawind,marker2_rawind;
@@ -153,7 +165,7 @@ struct coin777
     char name[16],serverport[512],userpass[4096],*jsonstr; cJSON *argjson;
     struct ramchain ramchain;
     struct mgw777 mgw;
-    int32_t minconfirms;
+    int32_t minconfirms; uint64_t minoutput;
 };
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
@@ -193,6 +205,11 @@ int32_t coin777_unspentmap(uint32_t *txidindp,char *txidstr,struct coin777 *coin
 uint64_t coin777_Uvalue(struct unspent_info *U,struct coin777 *coin,uint32_t unspentind);
 int32_t update_NXT_assettransfers(struct mgw777 *mgw);
 uint64_t calc_circulation(int32_t minconfirms,struct mgw777 *mgw,uint32_t height);
+int32_t coin777_RWaddrtx(int32_t writeflag,struct coin777 *coin,uint32_t addrind,struct addrtx_info *ATX,struct coin777_Lentry *L,int32_t addrtxi);
+#define coin777_scriptptr(A) ((A)->scriptlen == 0 ? 0 : (uint8_t *)&(A)->coinaddr[(A)->addrlen])
+int32_t NXT_set_revassettxid(uint64_t assetidbits,uint32_t ind,struct extra_info *extra);
+int32_t NXT_revassettxid(struct extra_info *extra,uint64_t assetidbits,uint32_t ind);
+int32_t NXT_mark_withdrawdone(struct mgw777 *mgw,uint64_t redeemtxid);
 
 #endif
 #else
@@ -748,7 +765,10 @@ struct addrtx_info *coin777_compact(int32_t compactflag,uint64_t *balancep,int32
                 {
                     actives[addrtxi++] = ATX;
                     if ( ATX.spendind == 0 )
+                    {
+                        //printf("(%d) ",ATX.unspentind);
                         balance += coin777_Uvalue(&U,coin,ATX.unspentind);
+                    }
                 }
             }
         }
@@ -757,6 +777,7 @@ struct addrtx_info *coin777_compact(int32_t compactflag,uint64_t *balancep,int32
     }
     if ( addrtxi != 0 && Debuglevel > 2 )
         printf("-> balance %.8f ",dstr(balance));
+    //printf("-> balance %.8f numaddrtx.%d -> %d\n",dstr(balance),L->numaddrtx,addrtxi);
     *numaddrtxp = addrtxi;
     if ( balancep != 0 )
         *balancep = balance;
@@ -980,7 +1001,10 @@ uint64_t coin777_unspents(uint64_t (*unspentsfuncp)(struct coin777 *coin,void *a
     {
         if ( coin777_RWmmap(0,&L,coin,&coin->ramchain.ledger,addrind) == 0 && (unspents= coin777_compact(1,&balance,&n,coin,addrind,&L)) != 0 )
         {
-            sum += (*unspentsfuncp)(coin,args,addrind,unspents,n,balance);
+            if ( unspentsfuncp != 0 )
+                sum = (*unspentsfuncp)(coin,args,addrind,unspents,n,balance);
+            else sum = balance;
+            //printf("{%.8f} ",dstr(sum));
             free(unspents);
         }
     }
@@ -1736,6 +1760,8 @@ uint64_t coin777_flush(struct coin777 *coin,uint32_t blocknum,int32_t numsyncs,u
         if ( coin777_verify(coin,numrawvouts,numrawvins,credits,debits,addrind,1,totaladdrtxp) != 0 )
             printf("cant verify at block.%u\n",blocknum), debugstop();
     }
+    else if ( (coin->ramchain.RTblocknum - blocknum) < coin->minconfirms*2 )
+        coin->ramchain.addrsum = addrinfos_sum(coin,addrind,0,numrawvouts,numrawvins,1,totaladdrtxp);
     memset(&H,0,sizeof(H)); H.blocknum = blocknum, H.numsyncs = numsyncs, H.credits = credits, H.debits = debits;
     H.timestamp = timestamp, H.txidind = txidind, H.unspentind = numrawvouts, H.numspends = numrawvins, H.addrind = addrind, H.scriptind = scriptind, H.totaladdrtx = *totaladdrtxp;
     if ( numsyncs >= 0 )

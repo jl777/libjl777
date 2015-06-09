@@ -698,13 +698,19 @@ void SuperNET_loop(void *ipaddr)
     while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
         poll_daemons();
     strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
+    while ( COINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 )
+        poll_daemons();
     strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
-    while ( COINS.readyflag == 0 || RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )
+    while ( RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )
         poll_daemons();
     strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
+    while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 )
+        poll_daemons();
     strs[n++] = language_func((char *)"peers","",0,0,1,(char *)"peers",jsonargs,call_system);
+    while ( PEERS.readyflag == 0 || find_daemoninfo(&ind,"peers",0,0) == 0 )
+        poll_daemons();
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
-    while ( PEERS.readyflag == 0 || RELAYS.readyflag == 0 || SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 || find_daemoninfo(&ind,"peers",0,0) == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
+    while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();
     for (i=0; i<n; i++)
     {

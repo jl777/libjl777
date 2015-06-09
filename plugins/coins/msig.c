@@ -35,8 +35,8 @@ char *genmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *coins
 char *setmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *origargstr);
 char *getmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *coinstr,char *refNXTaddr,char *myacctcoinaddr,char *mypubkey);
 char *setmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sender,char *coinstr,char *refNXTaddr,char *acctcoinaddr,char *userpubkey);
-struct multisig_addr *find_msigaddr(struct multisig_addr *msig,int32_t *lenp,char *coinstr,char *NXTaddr,char *msigaddr);
-int32_t save_msigaddr(char *coinstr,char *NXTaddr,struct multisig_addr *msig,int32_t len);
+struct multisig_addr *find_msigaddr(struct multisig_addr *msig,int32_t *lenp,char *coinstr,char *msigaddr);
+int32_t save_msigaddr(char *coinstr,char *NXTaddr,struct multisig_addr *msig);
 struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,char *coinstr,char *serverport,char *userpass,int32_t use_addmultisig,char *refNXTaddr,char *userpubkey,uint64_t *srvbits);
 
 int32_t update_MGW_msig(struct multisig_addr *msig,char *sender);
@@ -321,139 +321,6 @@ struct multisig_addr *http_search_msig(char *external_NXTaddr,char *external_ipa
         free_json(array);
     }
     return(msig);
-}
-
-void set_MGW_fname(char *fname,char *dirname,char *NXTaddr)
-{
-    if ( NXTaddr == 0 )
-        sprintf(fname,"%s/MGW/%s/ALL",MGW.PATH,dirname);
-    else sprintf(fname,"%s/MGW/%s/%s",MGW.PATH,dirname,NXTaddr);
-}
-
-void set_MGW_msigfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"msig",NXTaddr); }
-void set_MGW_statusfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"status",NXTaddr); }
-void set_MGW_moneysentfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"sent",NXTaddr); }
-void set_MGW_depositfname(char *fname,char *NXTaddr) { set_MGW_fname(fname,"deposit",NXTaddr); }
-
-void save_MGW_file(char *fname,char *jsonstr)
-{
-    FILE *fp;
-    //char cmd[1024];
-    if ( (fp= fopen(os_compatible_path(fname),"wb+")) != 0 )
-    {
-        fwrite(jsonstr,1,strlen(jsonstr),fp);
-        fclose(fp);
-        //sprintf(cmd,"chmod +r %s",fname);
-        //system(cmd);
-        //printf("fname.(%s) cmd.(%s)\n",fname,cmd);
-    }
-}
-
-void save_MGW_status(char *NXTaddr,char *jsonstr)
-{
-    char fname[1024];
-    set_MGW_statusfname(fname,NXTaddr);
-    //printf("save_MGW_status.(%s) -> (%s)\n",NXTaddr,fname);
-    save_MGW_file(fname,jsonstr);
-}
-
-cJSON *update_MGW_file(FILE **fpp,cJSON **newjsonp,char *fname,char *jsonstr)
-{
-    FILE *fp;
-    long fsize;
-    cJSON *json,*newjson;
-    char cmd[1024],*str;
-    *newjsonp = 0;
-    *fpp = 0;
-    if ( (newjson= cJSON_Parse(jsonstr)) == 0 )
-    {
-        printf("update_MGW_files: cant parse.(%s)\n",jsonstr);
-        return(0);
-    }
-    if ( (fp= fopen(os_compatible_path(fname),"rb+")) == 0 )
-    {
-        fp = fopen(os_compatible_path(fname),"wb+");
-        if ( fp != 0 )
-        {
-            if ( (json = cJSON_CreateArray()) != 0 )
-            {
-                cJSON_AddItemToArray(json,newjson), newjson = 0;
-                str = cJSON_Print(json);
-                fprintf(fp,"%s",str);
-                free(str);
-                free_json(json);
-            }
-            fclose(fp);
-#ifndef WIN32
-            sprintf(cmd,"chmod +r %s",fname);
-            if ( system(os_compatible_path(cmd)) != 0 )
-                printf("update_MGW_file chmod error\n");
-#endif
-        } else printf("couldnt open (%s)\n",fname);
-        if ( newjson != 0 )
-            free_json(newjson);
-        return(0);
-    }
-    else
-    {
-        *fpp = fp;
-        fseek(fp,0,SEEK_END);
-        fsize = ftell(fp);
-        rewind(fp);
-        str = calloc(1,fsize);
-        if ( fread(str,1,fsize,fp) != fsize )
-            printf("error reading %ld from %s\n",fsize,fname);
-        json = cJSON_Parse(str);
-        free(str);
-        *newjsonp = newjson;
-        return(json);
-    }
-}
-
-cJSON *append_MGW_file(char *fname,FILE *fp,cJSON *json,cJSON *newjson)
-{
-    char *str;
-    cJSON_AddItemToArray(json,newjson);//, newjson = 0;
-    str = cJSON_Print(json);
-    rewind(fp);
-    fprintf(fp,"%s",str);
-    free(str);
-    printf("updated (%s)\n",fname);
-    return(0);
-}
-
-int32_t update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*extract_jsondata)(cJSON *item,void *arg,void *arg2),int32_t (*jsoncmp)(void *ref,void *item),char *NXTaddr,char *jsonstr,void *arg,void *arg2)
-{
-    FILE *fp;
-    int32_t i,n,cmpval,appendflag = 0;
-    void *refdata,*itemdata;
-    cJSON *json,*newjson;
-    char fname[1024];
-    (*setfname)(fname,NXTaddr);
-    if ( (json= update_MGW_file(&fp,&newjson,fname,jsonstr)) != 0 && newjson != 0 && fp != 0 )
-    {
-        refdata = (*extract_jsondata)(newjson,arg,arg2);
-        if ( refdata != 0 && is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
-        {
-            for (i=0; i<n; i++)
-            {
-                if ( (itemdata = (*extract_jsondata)(cJSON_GetArrayItem(json,i),arg,arg2)) != 0 )
-                {
-                    cmpval = (*jsoncmp)(refdata,itemdata);
-                    if ( itemdata != 0 ) free(itemdata);
-                    if ( cmpval == 0 )
-                        break;
-                }
-            }
-            if ( i == n )
-                newjson = append_MGW_file(fname,fp,json,newjson), appendflag = 1;
-        }
-        fclose(fp);
-        if ( refdata != 0 ) free(refdata);
-        if ( newjson != 0 ) free_json(newjson);
-        free_json(json);
-    }
-    return(appendflag);
 }
 
 int32_t update_MGW_msig(struct multisig_addr *msig,char *sender)

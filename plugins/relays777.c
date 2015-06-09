@@ -1098,13 +1098,13 @@ void serverloop(void *_args)
             msleep(SUPERNET.APISLEEP);
         if ( (len= nn_recv(MGW.all.socks.both.bus,&jsonstr,NN_MSG,0)) > 0 )
         {
-            int32_t process_acctpubkeys(char *retbuf,char *jsonstr,cJSON *json);
+            int32_t mgw_processbus(char *retbuf,char *jsonstr,cJSON *json);
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
             {
-                process_acctpubkeys(retbuf,jsonstr,json);
+                mgw_processbus(retbuf,jsonstr,json);
                 free_json(json);
             }
-            printf("MGW bus recv.%d json.%p\n",len,json);
+            //printf("MGW bus recv.%d json.%p\n",len,json);
             nn_freemsg(jsonstr);
         }
 

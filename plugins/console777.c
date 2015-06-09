@@ -245,7 +245,7 @@ void process_userinput(char *_line)
     {
         free_json(json);
         retstr = nn_loadbalanced(line);
-        printf("(%s) -> (%s)\n",line,retstr);
+        printf("console.(%s) -> (%s)\n",line,retstr);
         return;
     }
     settoken(ipaddr,line);
@@ -262,10 +262,10 @@ void process_userinput(char *_line)
         }
         return;
     }
-    if ( (cmdstr = parse_expandedline(plugin,method,&timeout,line,broadcastflag)) != 0 )
+    if ( (cmdstr= parse_expandedline(plugin,method,&timeout,line,broadcastflag)) != 0 )
     {
         retstr = process_user_json(plugin,method,cmdstr,broadcastflag,timeout != 0 ? timeout : RELAYS.surveymillis);
-        printf("(%s) -> (%s) -> (%s)\n",line,cmdstr,retstr);
+        printf("CONSOLE (%s) -> (%s) -> (%s)\n",line,cmdstr,retstr);
         free(cmdstr);
     }
 }

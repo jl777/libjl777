@@ -183,39 +183,6 @@ int32_t update_MGW_jsonfile(void (*setfname)(char *fname,char *NXTaddr),void *(*
     return(appendflag);
 }
 
-void *extract_jsonkey(cJSON *item,void *arg,void *arg2)
-{
-    char *redeemstr = calloc(1,MAX_JSON_FIELD);
-    copy_cJSON(redeemstr,cJSON_GetObjectItem(item,arg));
-    return(redeemstr);
-}
-
-void *extract_jsonints(cJSON *item,void *arg,void *arg2)
-{
-    char argstr[MAX_JSON_FIELD],*keystr;
-    cJSON *obj0=0,*obj1=0;
-    if ( arg != 0 )
-        obj0 = cJSON_GetObjectItem(item,arg);
-    if ( arg2 != 0 )
-        obj1 = cJSON_GetObjectItem(item,arg2);
-    if ( obj0 != 0 && obj1 != 0 )
-    {
-        sprintf(argstr,"%llu.%llu",(long long)get_API_int(obj0,0),(long long)get_API_int(obj1,0));
-        keystr = calloc(1,strlen(argstr)+1);
-        strcpy(keystr,argstr);
-        return(keystr);
-    } else return(0);
-}
-
-void *extract_jsonmsig(cJSON *item,void *arg,void *arg2)
-{
-    char sender[MAX_JSON_FIELD];
-    copy_cJSON(sender,cJSON_GetObjectItem(item,"sender"));
-    return(decode_msigjson(0,item,sender));
-}
-
-int32_t jsonmsigcmp(void *ref,void *item) { return(msigcmp(ref,item)); }
-int32_t jsonstrcmp(void *ref,void *item) { return(strcmp(ref,item)); }
 
 
 /*int32_t jsonstrcmp2(void *ref,void *item)

@@ -46,10 +46,8 @@ int32_t ramchain_update(struct coin777 *coin,struct ramchain *ramchain)
         ramchain->syncfreq = DB777_MATRIXROW;
     else if ( lag < DB777_MATRIXROW && ramchain->syncfreq > DB777_MATRIXROW/10 )
         ramchain->syncfreq = DB777_MATRIXROW/10;
-    //else if ( lag < DB777_MATRIXROW/10 && ramchain->syncfreq > DB777_MATRIXROW/100 )
-    //    ramchain->syncfreq = DB777_MATRIXROW/100;
-    //else if ( strcmp(ramchain->DBs.coinstr,"BTC") == 0 && lag < DB777_MATRIXROW/100 && ramchain->syncfreq > DB777_MATRIXROW/1000 )
-    //    ramchain->syncfreq = DB777_MATRIXROW/1000;
+    else if ( strcmp(ramchain->DBs.coinstr,"BTC") == 0 && lag < DB777_MATRIXROW/10 && ramchain->syncfreq > DB777_MATRIXROW/100 )
+        ramchain->syncfreq = DB777_MATRIXROW/100;
     if ( ramchain->paused < 10 )
     {
         syncflag = (((blocknum % ramchain->syncfreq) == 0) || (ramchain->needbackup != 0) || (blocknum % DB777_MATRIXROW) == 0);
@@ -59,6 +57,8 @@ int32_t ramchain_update(struct coin777 *coin,struct ramchain *ramchain)
                 ramchain->paused = 3, syncflag = 2;
             printf("ramchain.%s blocknum.%d <<< PAUSING paused.%d |  endblocknum.%u\n",ramchain->DBs.coinstr,blocknum,ramchain->paused,ramchain->endblocknum);
         }
+        if ( coin->minconfirms == 0 )
+            coin->minconfirms = (strcmp("BTC",coin->name) == 0) ? 3 : 10;
         if ( blocknum <= (ramchain->RTblocknum - coin->minconfirms) )
              flag = coin777_parse(coin,ramchain->RTblocknum,syncflag * (blocknum != 0),coin->minconfirms);
         if ( ramchain->paused == 3 )
@@ -78,17 +78,18 @@ uint32_t ramchain_prepare(struct coin777 *coin,struct ramchain *ramchain)
     ramchain->startmilli = milliseconds();
     if ( ramchain->DBs.ctl == 0 )
     {
+        ramchain->paused = 1;
         ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,coin->name,coin->serverport,coin->userpass,ramchain->RTblocknum);
         coin777_initDBenv(coin);
         ramchain->startblocknum = coin777_startblocknum(coin,-1);
         printf("startblocknum.%u\n",ramchain->startblocknum);
-        ramchain->paused = 1;
         if ( coin777_getinds(coin,ramchain->startblocknum,&credits,&debits,&timestamp,&txidind,&numrawvouts,&numrawvins,&addrind,&scriptind,&totaladdrtx) == 0 )
         {
             coin777_initmmap(coin,ramchain->startblocknum,txidind,addrind,scriptind,numrawvouts,numrawvins,totaladdrtx);
             printf("t%u u%u s%u a%u c%u x%u initialized in %.3f seconds\n",txidind,numrawvouts,numrawvins,addrind,scriptind,totaladdrtx,(milliseconds() - ramchain->startmilli)/1000.);
             coin777_verify(coin,numrawvouts,numrawvins,credits,debits,addrind,1,&totaladdrtx);
         }
+        ramchain->paused = 0;
     }
     return(ramchain->startblocknum);
 }
@@ -98,6 +99,7 @@ int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct coin777 *coin,struct 
     ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,coin->name,coin->serverport,coin->userpass,ramchain->RTblocknum);
     if ( ramchain->DBs.ctl == 0 )
         ramchain_prepare(coin,ramchain);
+    ramchain->readyflag = 1;
     ramchain->paused = 0;
     return(0);
 }
@@ -118,17 +120,7 @@ int32_t ramchain_stop(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ra
 
 int32_t ramchain_init(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ramchain *ramchain,cJSON *argjson,char *coinstr,char *serverport,char *userpass,uint32_t startblocknum,uint32_t endblocknum,uint32_t minconfirms)
 {
-    //strcpy(ramchain->name,coinstr);
-    //strcpy(ramchain->serverport,serverport);
-    //strcpy(ramchain->userpass,userpass);
-    ramchain->readyflag = 1;
     coin->minconfirms = minconfirms;
-    /*if ( ramchain->activeledger != 0 )
-    {
-        ramchain_stop(retbuf,maxlen,coin,ramchain,argjson);
-        while ( ramchain->activeledger != 0 )
-            sleep(1);
-    }*/
     printf("(%s %s %s) vs (%s %s %s)\n",coinstr,serverport,userpass,coin->name,coin->serverport,coin->userpass);
     ramchain->syncfreq = 10000;
     ramchain->startblocknum = startblocknum, ramchain->endblocknum = endblocknum;
@@ -338,68 +330,6 @@ uint32_t *conv_addrjson(int32_t *nump,struct coin777 *coin,cJSON *addrjson)
             addrinds[i] = coin777_addrind(&firstblocknum,coin,cJSON_str(cJSON_GetArrayItem(addrjson,i)));
     }
     return(addrinds);
-}
-
-struct addrtx_info *coin777_bestfit(uint64_t *valuep,struct coin777 *coin,struct addrtx_info *unspents,int32_t numunspents,uint64_t value)
-{
-    uint64_t above,below,gap,atx_value; struct unspent_info U;
-    int32_t i;
-    struct addrtx_info *vin,*abovevin,*belowvin;
-    abovevin = belowvin = 0;
-    *valuep = 0;
-    for (above=below=i=0; i<numunspents; i++)
-    {
-        vin = &unspents[i];
-        if ( vin->spendind != 0 )
-            continue;
-        *valuep = atx_value = coin777_Uvalue(&U,coin,vin->unspentind);
-        if ( atx_value == value )
-            return(vin);
-        else if ( atx_value > value )
-        {
-            gap = (atx_value - value);
-            if ( above == 0 || gap < above )
-            {
-                above = gap;
-                abovevin = vin;
-            }
-        }
-        else
-        {
-            gap = (value - atx_value);
-            if ( below == 0 || gap < below )
-            {
-                below = gap;
-                belowvin = vin;
-            }
-        }
-    }
-    return((abovevin != 0) ? abovevin : belowvin);
-}
-
-int64_t coin777_inputs(int64_t *changep,int32_t *nump,struct coin777 *coin,struct addrtx_info *inputs,int32_t max,struct addrtx_info *unspents,int32_t numunspents,struct cointx_info *cointx,uint64_t amount,uint64_t txfee)
-{
-    int64_t remainder,sum = 0; int32_t i,numinputs = 0; struct addrtx_info *vin; uint64_t atx_value;
-    remainder = amount + txfee;
-    for (i=0; i<numunspents&&i<max-1; i++)
-    {
-        if ( (vin= coin777_bestfit(&atx_value,coin,unspents,numunspents,remainder)) != 0 )
-        {
-            sum += atx_value;
-            remainder -= atx_value;
-            vin->spendind = 1;
-            inputs[numinputs++] = *vin;
-            if ( sum >= (amount + txfee) )
-            {
-                *nump = numinputs;
-                *changep = (sum - amount - txfee);
-                fprintf(stderr,"numinputs %d sum %.8f vs amount %.8f change %.8f -> miners %.8f\n",numinputs,dstr(sum),dstr(amount),dstr(*changep),dstr(sum - *changep - amount));
-                return(sum);
-            }
-        } else printf("no bestfit found i.%d of %d\n",i,numunspents);
-    }
-    fprintf(stderr,"error numinputs %d sum %.8f\n",numinputs,dstr(sum));
-    return(0);
 }
 
 int32_t ramchain_unspents(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ramchain *ramchain,cJSON *argjson)

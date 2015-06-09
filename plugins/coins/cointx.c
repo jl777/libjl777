@@ -19,17 +19,13 @@
 #include "gen1auth.c"
 #include "msig.c"
 
-//#define MAX_BLOCKTX 0xffff
-//struct rawvin { char txidstr[128]; uint16_t vout; };
-//struct rawvout { char coinaddr[64],script[256]; uint64_t value; };
-//struct rawtx { uint16_t firstvin,numvins,firstvout,numvouts; char txidstr[128]; };
-char *_insert_OP_RETURN(char *rawtx,int32_t do_opreturn,int32_t replace_vout,uint64_t *redeems,int32_t numredeems,int32_t oldtx);
 struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
 int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx);
-char *_createsignraw_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys,int32_t gatewayid,int32_t numgateways);
-char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways);
+//char *_createsignraw_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys,int32_t gatewayid,int32_t numgateways);
+//char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways);
 int32_t hcalc_varint(uint8_t *buf,uint64_t x);
 long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize);
+void disp_cointx(struct cointx_info *cointx);
 
 #endif
 #else
@@ -186,18 +182,18 @@ long _decode_vout(struct rawvout *vout,uint8_t *data,long offset,long len)
 
 void disp_cointx_output(struct rawvout *vout)
 {
-    printf("(%s %s %.8f) ",vout->coinaddr,vout->script,dstr(vout->value));
+    printf("%p.(%s %s %.8f) ",vout,vout->coinaddr,vout->script,dstr(vout->value));
 }
 
 void disp_cointx_input(struct cointx_input *vin)
 {
-    printf("{ %s/v%d %s }.s%d ",vin->tx.txidstr,vin->tx.vout,vin->sigs,vin->sequence);
+    printf("{ %s/v%d (%s) }.s%d ",vin->tx.txidstr,vin->tx.vout,vin->sigs,vin->sequence);
 }
 
 void disp_cointx(struct cointx_info *cointx)
 {
     int32_t i;
-    printf("version.%u timestamp.%u nlocktime.%u numinputs.%u numoutputs.%u\n",cointx->version,cointx->timestamp,cointx->nlocktime,cointx->numinputs,cointx->numoutputs);
+    printf("disp_cointx version.%u timestamp.%u nlocktime.%u numinputs.%u numoutputs.%u\n",cointx->version,cointx->timestamp,cointx->nlocktime,cointx->numinputs,cointx->numoutputs);
     for (i=0; i<cointx->numinputs; i++)
         disp_cointx_input(&cointx->inputs[i]);
     printf("-> ");
@@ -307,176 +303,7 @@ struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx)
     return(cointx);
 }
 
-int32_t _make_OP_RETURN(char *scriptstr,uint64_t *redeems,int32_t numredeems)
-{
-    long _emit_uint32(uint8_t *data,long offset,uint32_t x);
-    uint8_t hashdata[256],revbuf[8];
-    uint64_t redeemtxid;
-    int32_t i,j,size;
-    long offset;
-    scriptstr[0] = 0;
-    if ( numredeems >= (sizeof(hashdata)/sizeof(uint64_t))-1 )
-    {
-        printf("ram_make_OP_RETURN numredeems.%d is crazy\n",numredeems);
-        return(-1);
-    }
-    hashdata[1] = OP_RETURN_OPCODE;
-    hashdata[2] = 'M', hashdata[3] = 'G', hashdata[4] = 'W';
-    hashdata[5] = numredeems;
-    offset = 6;
-    for (i=0; i<numredeems; i++)
-    {
-        redeemtxid = redeems[i];
-        for (j=0; j<8; j++)
-            revbuf[j] = ((uint8_t *)&redeemtxid)[7-j];
-        memcpy(&redeemtxid,revbuf,sizeof(redeemtxid));
-        offset = _emit_uint32(hashdata,offset,(uint32_t)redeemtxid);
-        offset = _emit_uint32(hashdata,offset,(uint32_t)(redeemtxid >> 32));
-    }
-    hashdata[0] = size = (int32_t)(5 + sizeof(uint64_t)*numredeems);
-    init_hexbytes_noT(scriptstr,hashdata+1,hashdata[0]);
-    if ( size > 0xfc )
-    {
-        printf("ram_make_OP_RETURN numredeems.%d -> size.%d too big\n",numredeems,size);
-        return(-1);
-    }
-    return(size);
-}
-
-char *_insert_OP_RETURN(char *rawtx,int32_t do_opreturn,int32_t replace_vout,uint64_t *redeems,int32_t numredeems,int32_t oldtx)
-{
-    char scriptstr[1024],str40[41],*retstr = 0;
-    long len,i;
-    struct rawvout *vout;
-    struct cointx_info *cointx;
-    if ( _make_OP_RETURN(scriptstr,redeems,numredeems) > 0 && (cointx= _decode_rawtransaction(rawtx,oldtx)) != 0 )
-    {
-        //if ( replace_vout == cointx->numoutputs-1 )
-        //    cointx->outputs[cointx->numoutputs] = cointx->outputs[cointx->numoutputs-1];
-        //cointx->numoutputs++;
-        vout = &cointx->outputs[replace_vout];
-        ///vout->value = 1;
-        //cointx->outputs[0].value -= vout->value;
-        //vout->coinaddr[0] = 0;
-        if ( do_opreturn != 0 )
-            safecopy(vout->script,scriptstr,sizeof(vout->script));
-        else
-        {
-            init_hexbytes_noT(str40,(void *)&redeems[0],sizeof(redeems[0]));
-            for (i=strlen(str40); i<40; i++)
-                str40[i] = '0';
-            str40[i] = 0;
-            sprintf(scriptstr,"76a914%s88ac",str40);
-            strcpy(vout->script,scriptstr);
-        }
-        len = strlen(rawtx) * 2;
-        retstr = calloc(1,len + 1);
-        disp_cointx(cointx);
-        if ( _emit_cointx(retstr,len,cointx,oldtx) < 0 )
-            free(retstr), retstr = 0;
-        free(cointx);
-    }
-    return(retstr);
-}
-
-cJSON *_create_privkeys_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char **privkeys,int32_t numinputs,int32_t gatewayid,int32_t numgateways)
-{
-    int32_t allocflag,i,ret,nonz = 0;
-    cJSON *array;
-    char normaladdr[1024],redeemScript[4096];
-    //printf("create privkeys %p numinputs.%d\n",privkeys,numinputs);
-    if ( privkeys == 0 )
-    {
-        privkeys = calloc(numinputs,sizeof(*privkeys));
-        for (i=0; i<numinputs; i++)
-        {
-            if ( (ret= _map_msigaddr(redeemScript,coinstr,serverport,userpass,normaladdr,cointx->inputs[i].coinaddr,gatewayid,numgateways)) >= 0 )
-            {
-                //fprintf(stderr,"(%s) -> (%s).%d ",normaladdr,normaladdr,i);
-                if ( (privkeys[i]= dumpprivkey(coinstr,serverport,userpass,normaladdr)) == 0 )
-                    printf("error getting privkey to (%s)\n",normaladdr);
-            } else fprintf(stderr,"ret.%d for %d (%s)\n",ret,i,normaladdr);
-        }
-        allocflag = 1;
-        //fprintf(stderr,"allocated\n");
-    } else allocflag = 0;
-    array = cJSON_CreateArray();
-    for (i=0; i<numinputs; i++)
-    {
-        if ( privkeys[i] != 0 )
-        {
-            nonz++;
-            //printf("(%s %s) ",privkeys[i],cointx->inputs[i].coinaddr);
-            cJSON_AddItemToArray(array,cJSON_CreateString(privkeys[i]));
-        }
-    }
-    if ( nonz == 0 )
-        free_json(array), array = 0;
-    // else printf("privkeys.%d of %d: %s\n",nonz,numinputs,cJSON_Print(array));
-    if ( allocflag != 0 )
-    {
-        for (i=0; i<numinputs; i++)
-            if ( privkeys[i] != 0 )
-                free(privkeys[i]);
-        free(privkeys);
-    }
-    return(array);
-}
-
-cJSON *_create_vins_json_params(char **localcoinaddrs,char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways)
-{
-    int32_t i,ret;
-    char normaladdr[1024],redeemScript[4096];
-    cJSON *json,*array;
-    struct cointx_input *vin;
-    array = cJSON_CreateArray();
-    for (i=0; i<cointx->numinputs; i++)
-    {
-        vin = &cointx->inputs[i];
-        if ( localcoinaddrs != 0 )
-            localcoinaddrs[i] = 0;
-        json = cJSON_CreateObject();
-        cJSON_AddItemToObject(json,"txid",cJSON_CreateString(vin->tx.txidstr));
-        cJSON_AddItemToObject(json,"vout",cJSON_CreateNumber(vin->tx.vout));
-        cJSON_AddItemToObject(json,"scriptPubKey",cJSON_CreateString(vin->sigs));
-        if ( (ret= _map_msigaddr(redeemScript,coinstr,serverport,userpass,normaladdr,vin->coinaddr,gatewayid,numgateways)) >= 0 )
-            cJSON_AddItemToObject(json,"redeemScript",cJSON_CreateString(redeemScript));
-        else printf("ret.%d redeemScript.(%s) (%s) for (%s)\n",ret,redeemScript,normaladdr,vin->coinaddr);
-        if ( localcoinaddrs != 0 )
-            localcoinaddrs[i] = vin->coinaddr;
-        cJSON_AddItemToArray(array,json);
-    }
-    return(array);
-}
-
-char *_createsignraw_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys,int32_t gatewayid,int32_t numgateways)
-{
-    char *paramstr = 0;
-    cJSON *array,*rawobj,*vinsobj=0,*keysobj=0;
-    rawobj = cJSON_CreateString(rawbytes);
-    if ( rawobj != 0 )
-    {
-        vinsobj = _create_vins_json_params(0,coinstr,serverport,userpass,cointx,gatewayid,numgateways);
-        if ( vinsobj != 0 )
-        {
-            keysobj = _create_privkeys_json_params(coinstr,serverport,userpass,cointx,privkeys,cointx->numinputs,gatewayid,numgateways);
-            if ( keysobj != 0 )
-            {
-                array = cJSON_CreateArray();
-                cJSON_AddItemToArray(array,rawobj);
-                cJSON_AddItemToArray(array,vinsobj);
-                cJSON_AddItemToArray(array,keysobj);
-                paramstr = cJSON_Print(array);
-                free_json(array);
-            }
-            else free_json(vinsobj);
-        }
-        else free_json(rawobj);
-        //printf("vinsobj.%p keysobj.%p rawobj.%p\n",vinsobj,keysobj,rawobj);
-    }
-    return(paramstr);
-}
-
+/*
 cJSON *_create_vouts_json_params(struct cointx_info *cointx)
 {
     int32_t i;
@@ -515,9 +342,9 @@ char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,s
         }
         else free_json(vinsobj);
     } else printf("_error create_vins_json_params\n");
-    //printf("_createrawtxid_json_params.%s\n",paramstr);
+//printf("_createrawtxid_json_params.%s\n",paramstr);
     return(paramstr);
-}
+}*/
 
 #endif
 #endif

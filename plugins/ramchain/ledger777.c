@@ -373,20 +373,11 @@ int32_t ramchain_update(struct coin777 *coin,struct ramchain *ramchain,void *dep
                 ramchain->paused = 3, syncflag = 2;
             printf("ramchain.%s blocknum.%d <<< PAUSING paused.%d |  endblocknum.%u\n",coin->DBs.coinstr,blocknum,ramchain->paused,coin->endblocknum);
         }
+        if ( coin->minconfirms == 0 )
+            
         if ( blocknum <= (coin->RTblocknum - coin->minconfirms) )
         {
-            //memset(&MEM,0,sizeof(MEM)), MEM.ptr = &ramchain->DECODE, MEM.size = sizeof(ramchain->DECODE);
-            //startmilli = milliseconds();
-            //len = (int32_t)MEM.size;
-            /*if ( (packed != 0 || (packed= ramchain_getpackedblock(MEM.ptr,&len,ramchain,blocknum)) != 0) && packed_crc16(packed) == packed->crc16 )
-             {
-             ram_clear_rawblock(ramchain->EMIT,0);
-             coin777_unpackblock(ramchain->EMIT,packed,blocknum);
-             }
-             else rawblock_load(ramchain->EMIT,ramchain->name,ramchain->serverport,ramchain->userpass,blocknum);
-             dxblend(&ledger->load_elapsed,(milliseconds() - startmilli),.99); printf("%.3f ",ledger->load_elapsed/1000.);*/
             flag = coin777_parse(coin,coin->RTblocknum,syncflag * (blocknum != 0),coin->minconfirms);
-            // flag = ledger_update(coin,ledger,&MEM,ramchain->RTblocknum,syncflag * (blocknum != 0),ramchain->minconfirms);
         }
         if ( ramchain->paused == 3 )
         {

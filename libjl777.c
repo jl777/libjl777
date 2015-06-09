@@ -1326,7 +1326,7 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json);
-    char *retstr,*resultstr,*methodstr,*destplugin;
+    char *retstr,*resultstr,*methodstr,*destplugin,buf[1024];
     FILE *fp;
     int32_t i;
     retbuf[0] = 0;
@@ -1336,6 +1336,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
+        SUPERNET.NXTconfirms = get_API_int(cJSON_GetObjectItem(json,"NXTconfirms"),0);
         if ( SUPERNET.NXTAPIURL[0] == 0 )
         {
             if ( SUPERNET.usessl == 0 )
@@ -1389,6 +1390,14 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( SOPHIA.PATH[0] == 0 )
             strcpy(SOPHIA.PATH,"./DB");
         os_compatible_path(SOPHIA.PATH);
+        copy_cJSON(MGW.PATH,cJSON_GetObjectItem(json,"MGWPATH"));
+        if ( MGW.PATH[0] == 0 )
+            strcpy(MGW.PATH,"/var/www/html/MGW");
+        ensure_directory(MGW.PATH);
+        sprintf(buf,"%s/msig",MGW.PATH), ensure_directory(buf);
+        sprintf(buf,"%s/status",MGW.PATH), ensure_directory(buf);
+        sprintf(buf,"%s/sent",MGW.PATH), ensure_directory(buf);
+        sprintf(buf,"%s/deposit",MGW.PATH), ensure_directory(buf);
         printf(">>>>>>>>>>>>>>>>>>> INIT ********************** (%s) (%s) (%s) SUPERNET.port %d UPNP.%d NXT.%s ip.(%s) iamrelay.%d pullnode.(%s)\n",SOPHIA.PATH,MGW.PATH,SUPERNET.NXTSERVER,SUPERNET.port,SUPERNET.UPNP,SUPERNET.NXTADDR,SUPERNET.myipaddr,SUPERNET.iamrelay,RAMCHAINS.pullnode);
         if ( DB_NXTaccts == 0 )
             DB_NXTaccts = db777_create(0,0,"NXTaccts",0,0);
@@ -1396,8 +1405,14 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             DB_nodestats = db777_create(0,0,"nodestats",0,0);
         if ( DB_busdata == 0 )
             DB_busdata = db777_create(0,0,"busdata",0,0);
-        if ( NXT_txids == 0 )
-            NXT_txids = db777_create(0,0,"NXT_txids",0,0);
+        if ( DB_NXTtxids == 0 )
+            DB_NXTtxids = db777_create(0,0,"NXT_txids",0,0);
+        if ( DB_redeems == 0 )
+            DB_redeems = db777_create(0,0,"redeems",0,0);
+        if ( DB_MGW == 0 )
+            DB_MGW = db777_create(0,0,"MGW",0,0);
+        if ( DB_msigs == 0 )
+            DB_msigs = db777_create(0,0,"msigs",0,0);
         SUPERNET.readyflag = 1;
         if ( SUPERNET.UPNP != 0 )
         {
