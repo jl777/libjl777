@@ -1325,6 +1325,11 @@ int32_t mgw_markunspent(char *txidstr,int32_t vout,int32_t status)
     return(db777_write(0,DB_MGW,key,keylen,&status,sizeof(status)));
 }
 
+int32_t mgw_isrealtime(struct coin777 *coin)
+{
+    return(1);
+}
+
 uint64_t mgw_unspentsfunc(struct coin777 *coin,void *args,uint32_t addrind,struct addrtx_info *unspents,int32_t num,uint64_t balance)
 {
     struct mgw777 *mgw; struct multisig_addr *msig = args;
@@ -1387,7 +1392,7 @@ uint64_t mgw_unspentsfunc(struct coin777 *coin,void *args,uint32_t addrind,struc
                     else if ( coin->mgw.firstunspentind == 0 || unspentind >= coin->mgw.firstunspentind )
                     {
                         printf("pending deposit.%u (%s).v%d %.8f -> %s | Ustatus.%d status.%d\n",unspentind,txidstr,vout,dstr(atx_value),msig->multisigaddr,Ustatus,status);
-                        if ( (nxt64bits % msig->n) == SUPERNET.gatewayid )
+                        if ( (nxt64bits % msig->n) == SUPERNET.gatewayid && mgw_isrealtime(coin) != 0 )
                         {
                             if ( MGWtransfer_asset(0,1,nxt64bits,msig->NXTpubkey,coin,atx_value,msig->multisigaddr,txidstr,vout,&msig->buyNXT,DEPOSIT_XFER_DURATION) != 0 )
                                 mgw_markunspent(txidstr,vout,Ustatus | MGW_PENDINGXFER);
@@ -1720,11 +1725,11 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
     strcpy(cointx->outputs[numoutputs].coinaddr,mgw->opreturnmarker);
     cointx->outputs[numoutputs++].value = opreturn_amount;
     cointx->numoutputs = numoutputs;
-    cointx->amount = amount = (MGWfee + value + opreturn_amount + mgw->txfee);
+    cointx->amount = amount = value - mgw->txfee;//(MGWfee + value + opreturn_amount + mgw->txfee);
     if ( mgw->balance >= 0 )
     {
         cointx->inputsum = coin777_inputs(&cointx->change,&cointx->numinputs,coin,cointx->inputs,sizeof(cointx->inputs)/sizeof(*cointx->inputs),amount,mgw->txfee);
-        if ( cointx->inputsum >= (cointx->amount + mgw->txfee) )
+        if ( cointx->inputsum >= cointx->amount )
         {
             if ( cointx->change != 0 )
             {
@@ -1802,7 +1807,7 @@ uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 
     mgw->unspent = unspent;
     balance = (unspent - circulation - mgw->withdrawsum);
     printf("%s circulation %.8f vs unspents %.8f numwithdraws.%d withdrawsum %.8f [%.8f] nummsigs.%d\n",coin->name,dstr(circulation),dstr(unspent),mgw->numwithdraws,dstr(mgw->withdrawsum),dstr(balance),m);
-    if ( balance >= 0 && mgw->numwithdraws > 0 )
+    if ( balance >= 0 && mgw->numwithdraws > 0 && mgw_isrealtime(coin) != 0 )
     {
         struct cointx_info *cointx;
         for (i=0; i<mgw->numwithdraws; i++)

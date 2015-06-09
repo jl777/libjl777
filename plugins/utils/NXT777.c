@@ -986,6 +986,9 @@ int32_t update_NXT_assettransfers(struct mgw777 *mgw)
         //fprintf(stderr,"sequential tx.%d\n",count);
         NXT_revassettxid(&extra,mgw->assetidbits,count);
         mostrecent = extra.txidbits;
+        //NXT_revassettxid(&extra,mgw->assetidbits,count+1);
+        //if ( extra.txidbits != 0 )
+        //    mostrecent = extra.txidbits;
         //printf("mostrecent.%llu count.%d\n",(long long)mostrecent,count);
         for (i=0; i<sizeof(txids)/sizeof(*txids); i++)
         {
@@ -993,7 +996,7 @@ int32_t update_NXT_assettransfers(struct mgw777 *mgw)
             {
                 if ( i != 0 )
                     printf("asset.(%s) count.%d i.%d mostrecent.%llu vs %llu\n",mgw->assetidstr,count,i,(long long)mostrecent,(long long)txids[i]);
-                while ( --i > 0 )
+                while ( i-- > 0 )
                 {
                     expand_nxt64bits(txidstr,txids[i]);
                     if ( (txidjsonstr= NXT_txidstr(mgw,txidstr,1,++count)) != 0 )

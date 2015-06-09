@@ -73,7 +73,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         coinstr = cJSON_str(cJSON_GetObjectItem(json,"coin"));
         startblocknum = get_API_int(cJSON_GetObjectItem(json,"start"),0);
         endblocknum = get_API_int(cJSON_GetObjectItem(json,"end"),0);
-        printf("RAMCHAIN.(%s) for (%s)\n",methodstr,coinstr!=0?coinstr:"");
         if ( coinstr != 0 )
             coin = coin777_find(coinstr,1);
         if ( methodstr == 0 || methodstr[0] == 0 )
@@ -81,6 +80,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             printf("(%s) has not method\n",jsonstr);
             return(0);
         }
+        printf("RAMCHAIN.(%s) for (%s) %p\n",methodstr,coinstr!=0?coinstr:"",coin);
         if ( coin != 0 && coinstr == 0 )
             coinstr = coin->name;
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )

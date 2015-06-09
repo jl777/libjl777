@@ -199,16 +199,16 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     struct coin777 *coin = calloc(1,sizeof(*coin));
     char *serverport,*path=0,*conf=0;
     safecopy(coin->name,coinstr,sizeof(coin->name));
+    coin->minoutput = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"minoutput"));
+    coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
     if ( argjson != 0 )
     {
         coin->jsonstr = cJSON_Print(argjson);
         coin->argjson = cJSON_Duplicate(argjson,1);
         if ( (serverport= cJSON_str(cJSON_GetObjectItem(argjson,"rpc"))) != 0 )
             safecopy(coin->serverport,serverport,sizeof(coin->serverport));
-        coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
         path = cJSON_str(cJSON_GetObjectItem(argjson,"path"));
         conf = cJSON_str(cJSON_GetObjectItem(argjson,"conf"));
-        coin->minoutput = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"minoutput"));
 
         copy_cJSON(coin->mgw.assetidstr,cJSON_GetObjectItem(argjson,"assetid"));
         coin->mgw.assetidbits = calc_nxt64bits(coin->mgw.assetidstr);
@@ -248,9 +248,9 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         }
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
     }
-    else coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits);
-    extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
+    if ( path != 0 && conf != 0 )
+        extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     printf("COIN.%s (%s)\n",coin->name,coin->userpass);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
@@ -284,6 +284,7 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate)
                 }
             }
         }
+        return(coin777_create(coinstr,COINS.argjson));
     }
     return(0);
 }
