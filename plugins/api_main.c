@@ -4,78 +4,71 @@
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
+#include <stdint.h>
+#include "nn.h"
+#include "cJSON.h"
+#include "pipeline.h"
+uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
+long _stripwhite(char *buf,int accept);
 
-//#define BUNDLED
-#define PLUGINSTR "api"
-#define PLUGNAME(NAME) api ## NAME
-#define STRUCTNAME struct PLUGNAME(_info) 
-#define STRINGIFY(NAME) #NAME
-#define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
-
-#define DEFINES_ONLY
-#include "plugin777.c"
-#undef DEFINES_ONLY
-
-int32_t api_idle(struct plugin_info *plugin) { return(0); }
-
-STRUCTNAME
+int main(int argc, char **argv)
 {
-    int32_t pad;
-    // this will be at the end of the plugins structure and will be called with all zeros to _init
-};
-char *PLUGNAME(_methods)[] = { "InstantDEX" }; // list of supported methods approved for local access
-char *PLUGNAME(_pubmethods)[] = { "disabled" }; // list of supported methods approved for public (Internet) access
-char *PLUGNAME(_authmethods)[] = { "disabled" }; // list of supported methods that require authentication
-
-uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
-{
-    uint64_t disableflags = 0;
-    printf("init %s size.%ld\n",plugin->name,sizeof(struct api_info));
-    // runtime specific state can be created and put into *data
-    return(disableflags); // set bits corresponding to array position in _methods[]
-}
-
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
-{
-    char echostr[MAX_JSON_FIELD],*resultstr,*methodstr;
-    retbuf[0] = 0;
-    printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
-    if ( initflag > 0 )
-    {
-        // configure settings
-        plugin->allowremote = 1;
-        strcpy(retbuf,"{\"result\":\"api init\"}");
-    }
+    CGI_varlist *varlist; const char *name; CGI_value  *value; int32_t pushsock,pullsock,i,len,checklen; uint32_t tag; cJSON *json;
+    char endpoint[128],*resultstr,*jsonstr,*apiendpoint = "ipc://SuperNET.api";
+    fputs("Content-type: text/plain\r\n\r\n", stdout);
+    if ( (varlist= CGI_get_all(0)) == 0 )
+        printf("No CGI data received\r\n");
+        return 0;
     else
     {
-        if ( plugin_result(retbuf,json,tag) > 0 )
-            return((int32_t)strlen(retbuf));
-        resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
-        methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
-        retbuf[0] = 0;
-        if ( methodstr == 0 || methodstr[0] == 0 )
+        // output all values of all variables and cookies
+        for (name=CGI_first_name(varlist); name!=0; name=CGI_next_name(varlist))
         {
-            printf("(%s) has not method\n",jsonstr);
-            return(0);
+            value = CGI_lookup_all(varlist,0);
+            ///CGI_lookup_all(varlist, name) could also be used
+            for (i=0; value[i]!=0; i++)
+                printf("%s [%d] = %s\r\n",name,i,value[i]);
+            if ( i == 0 )
+            {
+                if ( (json= cJSON_Parse(name)) != 0 )
+                {
+                    len = (int32_t)strlen(name)+1;
+                    tag = _crc32(0,name,len);
+                    sprintf(endpoint,"ipc://api.%u",tag);
+                    cJSON_AddItemToObject(json,"apitag",cJSON_CreateString(endpoint));
+                    jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+                    len = (int32_t)strlen(jsonstr)+1;
+                    if ( (pushsock= nn_socket(AF_SP,NN_PUSH)) >= 0 )
+                    {
+                        if ( nn_connect(pushsock,apiendpoint) < 0 )
+                            fprintf(stderr,"error connecting to apiendpoint sock.%d type.%d (%s) %s\n",pushsock,NN_PUSH,apiendpoint,nn_errstr());
+                        else if ( (checklen= nn_send(pushsock,jsonstr,len,0)) != len )
+                            fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,apiendpoint);
+                        else
+                        {
+                            if ( (pullsock= nn_socket(AF_SP,NN_PULL)) >= 0 )
+                            {
+                                if ( nn_bind(pullsock,endpoint) < 0 )
+                                    fprintf(stderr,"error binding to sock.%d type.%d (%s) %s\n",pullsock,NN_PULL,endpoint,nn_errstr());
+                                else
+                                {
+                                    if ( nn_recv(pullsock,&resultstr,NN_MSG,0) > 0 )
+                                    {
+                                        printf("%s\n",resultstr);
+                                        nn_freemsg(resultstr);
+                                    }
+                                }
+                                nn_shutdown(pullsock,0);
+                            }
+                            nn_shutdown(pushsock,0);
+                        }
+                    free_json(json), free(jsonstr);
+                } else printf("JSON parse error.(%s)\n",name);
+            }
         }
-        if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
-        {
-            plugin->registered = 1;
-            strcpy(retbuf,"{\"result\":\"activated\"}");
-        }
-        else if ( strcmp(methodstr,"InstantDEX") == 0 )
-        {
-            sprintf(retbuf,"{\"result\":\"%s\"}",echostr);
-        }
+        CGI_free_varlist(varlist);
     }
-    return((int32_t)strlen(retbuf));
+    return(0);
 }
 
-int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
-{
-    if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
-    {
-    }
-    return(retcode);
-}
-#include "plugin777.c"
+

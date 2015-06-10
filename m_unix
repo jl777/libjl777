@@ -7,9 +7,11 @@ ps aux | grep BitcoinDarkd
 echo "there should only be the entries for grep in the above lines"
 rm SuperNET
 make SuperNET
+make api
 if make btcd; then
 	rm ~/.BitcoinDark/debug.log
 	./BitcoinDarkd
+	websocketd --cgidir=plugins/lib --port=7777
 else
 	echo "error building"
 fi

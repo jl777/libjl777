@@ -64,7 +64,7 @@ PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libto
 
 _echodemo := rm lib/echodemo; gcc -o lib/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
-_api := rm lib/api; gcc -o lib/api -O2 $(PINCLUDES) api_main.c $(PLIBS)
+_api := rm lib/api; gcc -o lib/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c $(PLIBS)
 
 _eth := rm lib/eth; gcc -o lib/eth -O2 $(PINCLUDES) eth.c $(PLIBS)
 

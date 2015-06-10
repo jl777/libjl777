@@ -725,6 +725,45 @@ void SuperNET_loop(void *ipaddr)
     serverloop(0);
 }
 
+void SuperNET_apiloop(void *ipaddr)
+{
+    int32_t sock,pushsock,len,checklen; cJSON *json; char apitag[1024],*retstr,*jsonstr,*endpoint = "ipc://SuperNET.api";
+    if ( (sock= nn_socket(AF_SP,NN_PULL)) >= 0 )
+    {
+        if ( nn_bind(sock,endpoint) < 0 )
+            fprintf(stderr,"error binding to relaypoint sock.%d type.%d (%s) %s\n",sock,NN_PULL,endpoint,nn_errstr());
+        else
+        {
+            fprintf(stderr,"BIND.(%s)\n",endpoint);
+            while ( 1 )
+            {
+                if ( (len= nn_recv(sock,&jsonstr,NN_MSG,0)) > 0 )
+                {
+                    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                    {
+                        copy_cJSON(apitag,cJSON_GetObjectItem(json,"apitag"));
+                        printf("API RECV.(%s)\n",jsonstr);
+                        retstr = clonestr(jsonstr);
+                        if ( (pushsock= nn_socket(AF_SP,NN_PUSH)) >= 0 )
+                        {
+                            if ( nn_connect(pushsock,apitag) < 0 )
+                                fprintf(stderr,"error connecting to (%s) for (%s)\n",apitag,jsonstr);
+                            else if ( (checklen= nn_send(pushsock,retstr,len,0)) != len )
+                                fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,endpoint);
+                            nn_shutdown(pushsock,0);
+                        }
+                        free_json(json);
+                        free(retstr);
+                    }
+                    nn_freemsg(jsonstr);
+                }
+            }
+        }
+        nn_shutdown(sock,0);
+    }
+    return;
+}
+
 int SuperNET_start(char *fname,char *myip)
 {
     char *jsonstr = 0;
@@ -736,6 +775,7 @@ int SuperNET_start(char *fname,char *myip)
     if ( jsonstr != 0 )
         free(jsonstr);
     portable_thread_create((void *)SuperNET_loop,myip);
+    portable_thread_create((void *)SuperNET_apiloop,myip);
     return(0);
 }
 
