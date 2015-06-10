@@ -64,6 +64,8 @@ PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libto
 
 _echodemo := rm lib/echodemo; gcc -o lib/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
+_api := rm lib/api; gcc -o lib/api -O2 $(PINCLUDES) api_main.c $(PLIBS)
+
 _eth := rm lib/eth; gcc -o lib/eth -O2 $(PINCLUDES) eth.c $(PLIBS)
 
 _MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
@@ -82,6 +84,9 @@ plugins: lib/echo lib/MGW lib/stockfish lib/sophia; \
 
 echodemo: plugins/lib/echodemo; \
  	cd plugins; $(_echodemo); cd ..
+
+api: plugins/lib/api; \
+ 	cd plugins; $(_api); cd ..
 
 eth: plugins/lib/eth; \
         cd plugins; $(_eth); cd ..
