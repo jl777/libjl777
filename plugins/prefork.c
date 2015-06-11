@@ -322,9 +322,10 @@ CGI_prefork_server(const char *host, int port, const char *pidfile,
     setsid();
     set_handler(SIGTERM, terminate);
     set_handler(SIGCHLD, child_handler);
-    freopen("/dev/null", "r", stdin);
-    freopen("/dev/null", "w", stdout);
-
+    if ( freopen("/dev/null", "r", stdin) != 0 )
+        printf("freopen error\n");
+    if ( freopen("/dev/null", "w", stdout) != 0 )
+        printf("freopen2 error\n");
     /* write our pid to pidfile */
 
     if (pidfile != 0 && *pidfile != 0 &&
@@ -347,7 +348,8 @@ CGI_prefork_server(const char *host, int port, const char *pidfile,
 
     /* open pipe to receive messages from child processes */
 
-    pipe(pfd);
+    if ( pipe(pfd) != 0 )
+        printf("pipe error\n");
 
     /* parent manages child processes */
 
@@ -426,7 +428,8 @@ CGI_prefork_server(const char *host, int port, const char *pidfile,
         /* notify parent we are busy */
 
         message.state = SCORE_BUSY;
-        write(pfd[1], &message, sizeof(message));
+        if ( write(pfd[1], &message, sizeof(message)) != sizeof(message) )
+            printf("write error\n");
 
         /* redirect stdin and stdout to socket */
 
@@ -451,8 +454,10 @@ CGI_prefork_server(const char *host, int port, const char *pidfile,
 
         /* close socket and restore environment */
 
-        freopen("/dev/null", "r", stdin);  /* closes socket */
-        freopen("/dev/null", "w", stdout);
+        if ( freopen("/dev/null", "r", stdin) != 0 )
+            printf("freopen3 error\n");
+        if ( freopen("/dev/null", "w", stdout) != 0 )
+            printf("freopen4 error\n");
         environ = realenv;
         if (tmpenv != 0) {
             free(tmpbuf);
@@ -462,7 +467,8 @@ CGI_prefork_server(const char *host, int port, const char *pidfile,
         /* notify parent we are idle */
 
         message.state = SCORE_IDLE;
-        write(pfd[1], &message, sizeof(message));
+       if ( write(pfd[1], &message, sizeof(message)) != sizeof(message) )
+           printf("write2 error\n");
     }
     _exit(0);
 }

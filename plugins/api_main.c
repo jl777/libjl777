@@ -5,70 +5,84 @@
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 #include <stdint.h>
+#include "ccgi.h"
 #include "nn.h"
 #include "cJSON.h"
+#include "pair.h"
 #include "pipeline.h"
 uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 long _stripwhite(char *buf,int accept);
+#define nn_errstr() nn_strerror(nn_errno())
+#define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
+
+void process_json(cJSON *json)
+{
+    int32_t sock,i,len,checklen,sendtimeout,recvtimeout; uint32_t tag;
+    char endpoint[128],*resultstr,*jsonstr;
+    jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+    //printf("jsonstr.(%s)\r\n",jsonstr);
+    len = (int32_t)strlen(jsonstr)+1;
+    tag = _crc32(0,jsonstr,len);
+    sprintf(endpoint,"ipc://api.%u",tag);
+    free(jsonstr);
+    cJSON_AddItemToObject(json,"apitag",cJSON_CreateString(endpoint));
+    jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+    len = (int32_t)strlen(jsonstr)+1;
+    if ( json != 0 )
+    {
+        recvtimeout = sendtimeout = 1000;
+        if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
+        {
+            if ( sendtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
+                fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+            if ( nn_connect(sock,SUPERNET_APIENDPOINT) < 0 )
+                printf("error connecting to apiendpoint sock.%d type.%d (%s) %s\r\n",sock,NN_PUSH,SUPERNET_APIENDPOINT,nn_errstr());
+            else if ( (checklen= nn_send(sock,jsonstr,len,0)) != len )
+                printf("checklen.%d != len.%d for nn_send to (%s)\r\n",checklen,len,SUPERNET_APIENDPOINT);
+            else
+            {
+                if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
+                    fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+                if ( nn_recv(sock,&resultstr,NN_MSG,0) > 0 )
+                {
+                    printf("Content-Length: %ld\r\n\r\n",strlen(resultstr)+2);
+                    printf("%s\r\n",resultstr);
+                    nn_freemsg(resultstr);
+                } else printf("error getting results %s\r\n",nn_errstr());
+            }
+            nn_shutdown(sock,0);
+        } else printf("error getting pushsock.%s\r\n",nn_errstr());
+    }
+    free(jsonstr);
+}
 
 int main(int argc, char **argv)
 {
-    CGI_varlist *varlist; const char *name; CGI_value  *value; int32_t pushsock,pullsock,i,len,checklen; uint32_t tag; cJSON *json;
-    char endpoint[128],*resultstr,*jsonstr,*apiendpoint = "ipc://SuperNET.api";
-    fputs("Content-type: text/plain\r\n\r\n", stdout);
-    if ( (varlist= CGI_get_all(0)) == 0 )
-        printf("No CGI data received\r\n");
-        return 0;
-    else
+    CGI_varlist *varlist; const char *name; CGI_value  *value;  int i,iter; cJSON *json;
+    fputs("Access-Control-Allow-Origin: null\r\n",stdout);
+    fputs("Access-Control-Allow-Headers: Authorization, Content-Type\r\n",stdout);
+    fputs("Access-Control-Allow-Credentials: true\r\n",stdout);
+    fputs("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n",stdout);
+    fputs("Content-type: text/plain\r\n",stdout);
+    json = cJSON_CreateObject();
+    for (iter=0; iter<2; iter++)
     {
-        // output all values of all variables and cookies
-        for (name=CGI_first_name(varlist); name!=0; name=CGI_next_name(varlist))
+        if ( (varlist= ((iter==0) ? CGI_get_post(0,0) : CGI_get_query(0))) != 0 )
         {
-            value = CGI_lookup_all(varlist,0);
-            ///CGI_lookup_all(varlist, name) could also be used
-            for (i=0; value[i]!=0; i++)
-                printf("%s [%d] = %s\r\n",name,i,value[i]);
-            if ( i == 0 )
+            for (name=CGI_first_name(varlist); name!=0; name=CGI_next_name(varlist))
             {
-                if ( (json= cJSON_Parse(name)) != 0 )
+                value = CGI_lookup_all(varlist,0);
+                for (i=0; value[i]!=0; i++)
                 {
-                    len = (int32_t)strlen(name)+1;
-                    tag = _crc32(0,name,len);
-                    sprintf(endpoint,"ipc://api.%u",tag);
-                    cJSON_AddItemToObject(json,"apitag",cJSON_CreateString(endpoint));
-                    jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
-                    len = (int32_t)strlen(jsonstr)+1;
-                    if ( (pushsock= nn_socket(AF_SP,NN_PUSH)) >= 0 )
-                    {
-                        if ( nn_connect(pushsock,apiendpoint) < 0 )
-                            fprintf(stderr,"error connecting to apiendpoint sock.%d type.%d (%s) %s\n",pushsock,NN_PUSH,apiendpoint,nn_errstr());
-                        else if ( (checklen= nn_send(pushsock,jsonstr,len,0)) != len )
-                            fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,apiendpoint);
-                        else
-                        {
-                            if ( (pullsock= nn_socket(AF_SP,NN_PULL)) >= 0 )
-                            {
-                                if ( nn_bind(pullsock,endpoint) < 0 )
-                                    fprintf(stderr,"error binding to sock.%d type.%d (%s) %s\n",pullsock,NN_PULL,endpoint,nn_errstr());
-                                else
-                                {
-                                    if ( nn_recv(pullsock,&resultstr,NN_MSG,0) > 0 )
-                                    {
-                                        printf("%s\n",resultstr);
-                                        nn_freemsg(resultstr);
-                                    }
-                                }
-                                nn_shutdown(pullsock,0);
-                            }
-                            nn_shutdown(pushsock,0);
-                        }
-                    free_json(json), free(jsonstr);
-                } else printf("JSON parse error.(%s)\n",name);
+                    //printf("%s [%d] = %s\r\n", name, i, value[i]);
+                    if ( i == 0 )
+                        cJSON_AddItemToObject(json,name,cJSON_CreateString(value[i]));
+                }
             }
         }
         CGI_free_varlist(varlist);
     }
-    return(0);
+    process_json(json);
+    return 0;
 }
-
 

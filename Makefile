@@ -64,9 +64,15 @@ PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libto
 
 _echodemo := rm lib/echodemo; gcc -o lib/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
-_api := rm lib/api; gcc -o lib/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c $(PLIBS)
+_api := rm cgi/api; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c utils/bits777.c utils/utils777.c utils/cJSON.c ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm
 
-_eth := rm lib/eth; gcc -o lib/eth -O2 $(PINCLUDES) eth.c $(PLIBS)
+_msc := rm lib/msc; gcc -o lib/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
+
+_nxt := rm lib/msc; gcc -o lib/nxt -O2 $(PINCLUDES) two/nxt.c $(PLIBS)
+
+_eth := rm lib/eth; gcc -o lib/eth -O2 $(PINCLUDES) two/eth.c $(PLIBS)
+
+_two := rm lib/two; gcc -o lib/two -O2 $(PINCLUDES) two/two.c $(PLIBS)
 
 _MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
 
@@ -74,22 +80,36 @@ _sophia := gcc -c -o ../libs/sophia.o $(PINCLUDES)  -g -O2 -std=c99 -pedantic -W
 
 _stockfish := cd stockfish; rm stockfish; make build ARCH=x86-64-modern; cp stockfish ../lib; cd ..
 
-plugins: lib/echo lib/MGW lib/stockfish lib/sophia; \
+plugins: lib/echodemo lib/MGW lib/stockfish lib/sophia cgi/api lib/nxt lib/two lib/eth lib/eth; \
 	cd plugins; \
     $(_echo); \
     $(_stockfish); \
     $(_sophia); \
     $(_MGW); \
+    $(_api); \
+    $(_nxt); \
+    $(_two); \
+    $(_eth); \
+    $(_msc); \
     cd ..
 
 echodemo: plugins/lib/echodemo; \
  	cd plugins; $(_echodemo); cd ..
 
-api: plugins/lib/api; \
+api: plugins/cgi/api; \
  	cd plugins; $(_api); cd ..
 
 eth: plugins/lib/eth; \
-        cd plugins; $(_eth); cd ..
+       cd plugins; $(_eth); cd ..
+
+msc: plugins/lib/msc; \
+        cd plugins; $(_msc); cd ..
+
+nxt: plugins/lib/nxt; \
+        cd plugins; $(_nxt); cd ..
+
+two: plugins/lib/two; \
+        cd plugins; $(_two); cd ..
 
 install_eth: doesntexist; \
     sudo add-apt-repository -y ppa:ethereum/ethereum-dev; \
@@ -251,6 +271,7 @@ dependencies: doesntexist; \
 onetime: doesntexist; \
     cd nanomsg; ./autogen.sh; ./configure; make; cd ..; \
     cd miniupnpc; make; cp libminiupnpc.a ../libs; cd ..; \
+    git clone https://github.com/joewalnes/websocketd; cd websocketd; make; cp websocketd ../libs; cd ..; \
     #git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \
     #mkdir go/gocode; mkdir go/gocode/src; export GOPATH=`pwd`/go/gocode;  export GOROOT=`pwd`/go; echo $$GOPATH; echo $$GOROOT; \
     #go get golang.org/x/tools/cmd; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get golang.org/x/tools;\
@@ -315,6 +336,10 @@ plugins/lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
 plugins/lib/echodemo: plugins/echodemo.c
 #plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
 #plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
-plugins/lib/eth: plugins/eth.c
+plugins/lib/eth: plugins/two/eth.c
+plugins/lib/msc: plugins/two/msc.c
+plugins/lib/nxt: plugins/two/nxt.c
+plugins/lib/two: plugins/two/two.c
+plugins/lib/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
 
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c

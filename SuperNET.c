@@ -725,16 +725,20 @@ void SuperNET_loop(void *ipaddr)
     serverloop(0);
 }
 
+#define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
 void SuperNET_apiloop(void *ipaddr)
 {
-    int32_t sock,pushsock,len,checklen; cJSON *json; char apitag[1024],*retstr,*jsonstr,*endpoint = "ipc://SuperNET.api";
-    if ( (sock= nn_socket(AF_SP,NN_PULL)) >= 0 )
+    int32_t sock,len,ind,checklen,recvtimeout; cJSON *json; char apitag[1024],*retstr,*jsonstr;
+    if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
     {
-        if ( nn_bind(sock,endpoint) < 0 )
-            fprintf(stderr,"error binding to relaypoint sock.%d type.%d (%s) %s\n",sock,NN_PULL,endpoint,nn_errstr());
+        if ( nn_bind(sock,SUPERNET_APIENDPOINT) < 0 )
+            fprintf(stderr,"error binding to relaypoint sock.%d type.%d (%s) %s\n",sock,NN_PAIR,SUPERNET_APIENDPOINT,nn_errstr());
         else
         {
-            fprintf(stderr,"BIND.(%s)\n",endpoint);
+            recvtimeout = 1000;
+            if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
+                fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+            fprintf(stderr,"BIND.(%s)\n",SUPERNET_APIENDPOINT);
             while ( 1 )
             {
                 if ( (len= nn_recv(sock,&jsonstr,NN_MSG,0)) > 0 )
@@ -744,13 +748,13 @@ void SuperNET_apiloop(void *ipaddr)
                         copy_cJSON(apitag,cJSON_GetObjectItem(json,"apitag"));
                         printf("API RECV.(%s)\n",jsonstr);
                         retstr = clonestr(jsonstr);
-                        if ( (pushsock= nn_socket(AF_SP,NN_PUSH)) >= 0 )
+                        if ( (ind= nn_connect(sock,apitag)) < 0 )
+                            fprintf(stderr,"error connecting to (%s) for (%s)\n",apitag,jsonstr);
+                        else
                         {
-                            if ( nn_connect(pushsock,apitag) < 0 )
-                                fprintf(stderr,"error connecting to (%s) for (%s)\n",apitag,jsonstr);
-                            else if ( (checklen= nn_send(pushsock,retstr,len,0)) != len )
-                                fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,endpoint);
-                            nn_shutdown(pushsock,0);
+                            if ( (checklen= nn_send(sock,retstr,len,0)) != len )
+                                fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,apitag);
+                            nn_shutdown(sock,ind);
                         }
                         free_json(json);
                         free(retstr);

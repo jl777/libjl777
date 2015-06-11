@@ -599,62 +599,6 @@ int32_t revsort64s(uint64_t *buf,uint32_t num,int32_t size)
 	return(0);
 }
 
-double estimate_completion(double startmilli,int32_t processed,int32_t numleft)
-{
-    double elapsed,rate;
-    if ( processed <= 0 )
-        return(0.);
-    elapsed = (milliseconds() - startmilli);
-    rate = (elapsed / processed);
-    if ( rate <= 0. )
-        return(0.);
-    //printf("numleft %d rate %f\n",numleft,rate);
-    return(numleft * rate);
-}
-
-void clear_alloc_space(struct alloc_space *mem,int32_t alignflag)
-{
-    memset(mem->ptr,0,mem->size);
-    mem->used = 0;
-    mem->alignflag = alignflag;
-}
-
-void rewind_alloc_space(struct alloc_space *mem,int32_t flags)
-{
-    if ( (flags & 1) != 0 )
-        clear_alloc_space(mem,1);
-    else mem->used = 0;
-    mem->alignflag = ((flags & ~1) != 0);
-}
-
-struct alloc_space *init_alloc_space(struct alloc_space *mem,void *ptr,long size,int32_t flags)
-{
-    if ( mem == 0 )
-        mem = calloc(1,size + sizeof(*mem)), ptr = mem->space;
-    mem->size = size;
-    mem->ptr = ptr;
-    rewind_alloc_space(mem,flags);
-    return(mem);
-}
-
-void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
-{
-    void *ptr = 0;
-    if ( (mem->used + size) > mem->size )
-    {
-        printf("alloc: (mem->used %ld + %ld size) %ld > %ld mem->size\n",mem->used,size,(mem->used + size),mem->size);
-        while ( 1 )
-            portable_sleep(1);
-    }
-    ptr = (void *)((long)mem->ptr + mem->used);
-    mem->used += size;
-    if ( clearflag != 0 )
-        memset(ptr,0,size);
-    if ( mem->alignflag != 0 && (mem->used & 0xf) != 0 )
-        mem->used += 0x10 - (mem->used & 0xf);
-    return(ptr);
-}
-
 float _xblend(float *destp,float val,float decay)
 {
     float oldval;
