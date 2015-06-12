@@ -27,6 +27,7 @@
 #define BARI_AVEASK 13
 #define BARI_MEDIAN 14
 #define BARI_AVEPRICE 15
+#define NUM_BARPRICES 16
 
 #define TRADEVALS_FIFOSIZE (60+(2*((HARDCODED_CONTAMINATION_PIXELS+1) * 180))) //TRADEVALS_MAXPRIME)))
 #define HARDCODED_CONTAMINATION_PIXELS 6
@@ -267,7 +268,7 @@ void calc_pairaves(float aves[NUM_BARPRICES/2],float bar[NUM_BARPRICES])
 		aves[bari>>1] = _pairave(bar[bari],bar[bari+1]);
 }
 
-float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_t polarity)
+/*float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_t polarity)
 {
     float *bars,*invbars;
     bars = invbars = 0;
@@ -294,7 +295,7 @@ float *get_bars(float **invbarp,struct tradebot_ptrs *ptrs,int32_t period,int32_
         return(invbars);
     }
     return(0);
-}
+}*/
 
 /*void recalc_bars(int32_t polarity,struct tradebot_ptrs *ptrs,struct orderbook_tx **orders,int numorders,struct price_data *dp,uint32_t jdatetime)
 {

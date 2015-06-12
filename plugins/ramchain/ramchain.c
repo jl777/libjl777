@@ -40,7 +40,9 @@ int32_t ramchain_update(struct coin777 *coin,struct ramchain *ramchain)
 {
     uint32_t blocknum; int32_t lag,syncflag,flag = 0; //double startmilli; struct alloc_space MEM; 
     blocknum = ramchain->blocknum;
-    if ( (lag= (ramchain->RTblocknum - blocknum)) < 1000 || (blocknum % 100) == 0 )
+    if ( (lag= (ramchain->RTblocknum - blocknum)) < 1000 )
+        ramchain->RTmode = 1;
+    if ( ramchain->RTmode != 0 || (blocknum % 100) == 0 )
         ramchain->RTblocknum = _get_RTheight(&ramchain->lastgetinfo,coin->name,coin->serverport,coin->userpass,ramchain->RTblocknum);
     if ( lag < DB777_MATRIXROW*10 && ramchain->syncfreq > DB777_MATRIXROW )
         ramchain->syncfreq = DB777_MATRIXROW;

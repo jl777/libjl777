@@ -208,8 +208,7 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
         cJSON_AddItemToObject(json,"method",cJSON_CreateString(method));
         if ( broadcastflag != 0 )
             cJSON_AddItemToObject(json,"broadcast",cJSON_CreateString("allpeers"));
-        cmdstr = cJSON_Print(json);
-        _stripwhite(cmdstr,' ');
+        cmdstr = cJSON_Print(json), _stripwhite(cmdstr,' ');
         return(cmdstr);
     }
     else return(clonestr(pubstr));
@@ -218,14 +217,15 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
 char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
-    int32_t tmp; char *retstr;
+    int32_t tmp,len; char *retstr;
+    len = (int32_t)strlen(cmdstr) + 1;
     if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
-        retstr = nn_loadbalanced(cmdstr);
+        retstr = nn_loadbalanced((uint8_t *)cmdstr,len);
     else if ( strcmp(plugin,"peers") == 0 )
-        retstr = nn_allpeers(cmdstr,timeout,0);
+        retstr = nn_allpeers((uint8_t *)cmdstr,len,timeout,0);
     else if ( find_daemoninfo(&tmp,plugin,0,0) != 0 )
-        retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,0,timeout != 0 ? timeout : 0);
-    else retstr = nn_publish(cmdstr,0);
+        retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,len,timeout != 0 ? timeout : 0);
+    else retstr = nn_publish((uint8_t *)cmdstr,len,0);
     return(retstr);
 }
 
@@ -244,7 +244,7 @@ void process_userinput(char *_line)
     if ( (json= cJSON_Parse(line)) != 0 )
     {
         free_json(json);
-        retstr = nn_loadbalanced(line);
+        retstr = nn_loadbalanced((uint8_t *)line,(int32_t)strlen(line)+1);
         printf("console.(%s) -> (%s)\n",line,retstr);
         return;
     }
@@ -256,7 +256,7 @@ void process_userinput(char *_line)
         if ( (cmdstr = parse_expandedline(plugin,method,&timeout,line,broadcastflag)) != 0 )
         {
             printf("ipaddr.(%s) (%s)\n",ipaddr,line);
-            retstr = nn_direct(ipaddr,line);
+            retstr = nn_direct(ipaddr,(uint8_t *)line,(int32_t)strlen(line)+1);
             printf("(%s) -> (%s) -> (%s)\n",line,cmdstr,retstr);
             free(cmdstr);
         }

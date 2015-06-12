@@ -233,7 +233,11 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         else obj = json;
         copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
         if ( name[0] == 0 )
+            copy_cJSON(name,cJSON_GetObjectItem(obj,"agent"));
+        else if ( name[0] == 0 )
             copy_cJSON(name,cJSON_GetObjectItem(obj,"destplugin"));
+        else if ( name[0] == 0 )
+            copy_cJSON(name,cJSON_GetObjectItem(obj,"destagent"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
         if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
@@ -241,14 +245,14 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
             if ( retbuf[0] == 0 )
                 sprintf(retbuf,"{\"result\":\"no response\"}");
             append_stdfields(retbuf,max,plugin,tag,0);
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
         } else printf("(%s) -> no return.%d (%s) vs (%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,plugin->name,len);
     }
     else
     {
-//printf("couldnt parse.(%s)\n",jsonstr);
+printf("process_plugin_json: couldnt parse.(%s)\n",jsonstr);
         if ( jsonstr[len-1] == '\r' || jsonstr[len-1] == '\n' || jsonstr[len-1] == '\t' || jsonstr[len-1] == ' ' )
             jsonstr[--len] = 0;
         sprintf(retbuf,"{\"result\":\"unparseable\",\"message\":\"%s\"}",jsonstr);
@@ -369,12 +373,12 @@ int32_t main
                         printf("%s\n",retbuf), fflush(stdout);
                     if ( sendflag != 0 )
                     {
-                        nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)retbuf,len+1), plugin->numsent++;
+                        nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)retbuf,(int32_t)strlen(retbuf)+1), plugin->numsent++;
                         if ( Debuglevel > 2 )
                             fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
                         //nn_send(plugin->sock,retbuf,len+1,0); // send the null terminator too
                     }
-                }
+                } else printf("null return from process_plugin_json\n");
                 free(line);
             }
         }

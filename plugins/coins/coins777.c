@@ -113,7 +113,7 @@ struct coin777_addrinfo
 struct ramchain
 {
     uint64_t minted,addrsum; double calc_elapsed,startmilli,lastgetinfo;
-    uint32_t latestblocknum,blocknum,numsyncs,RTblocknum,startblocknum,endblocknum,needbackup,num,syncfreq,readyflag,paused;
+    uint32_t latestblocknum,blocknum,numsyncs,RTblocknum,startblocknum,endblocknum,needbackup,num,syncfreq,readyflag,paused,RTmode;
     struct coin_offsets latest; long totalsize;
     struct env777 DBs;
     struct coin777_state *sps[16],txidDB,addrDB,scriptDB,hashDB,ledger,addrtx,blocks,txoffsets,txidbits,unspents,spends,addrinfos;
@@ -1578,9 +1578,15 @@ int32_t coin777_incrbackup(struct coin777 *coin,uint32_t blocknum,int32_t prevsy
         if ( errs != 0 )
             printf("errs.%d after scripts\n",errs);
     }
-    db777_path(fname,coin->name,"",0), strcat(fname,"/ledger"), sprintf(destfname,"cp %s %s.sync",fname,fname), system(destfname);//copy_file(fname,destfname);
-    db777_path(fname,coin->name,"",0), strcat(fname,"/addrtx"), sprintf(destfname,"cp %s %s.sync",fname,fname), system(destfname);//copy_file(fname,destfname);
-    db777_path(fname,coin->name,"",0), strcat(fname,"/addrinfos"), sprintf(destfname,"cp %s %s.sync",fname,fname), system(destfname);//copy_file(fname,destfname);
+    db777_path(fname,coin->name,"",0), strcat(fname,"/ledger"), sprintf(destfname,"cp %s %s.sync",fname,fname);
+    if ( system(destfname) != 0 )
+        printf("error doing.(%s)\n",destfname);//copy_file(fname,destfname);
+    db777_path(fname,coin->name,"",0), strcat(fname,"/addrtx"), sprintf(destfname,"cp %s %s.sync",fname,fname);
+    if ( system(destfname) != 0 )
+        printf("error doing.(%s)\n",destfname);//copy_file(fname,destfname);
+    db777_path(fname,coin->name,"",0), strcat(fname,"/addrinfos"), sprintf(destfname,"cp %s %s.sync",fname,fname);
+    if ( system(destfname) != 0 )
+        printf("error doing.(%s)\n",destfname);//copy_file(fname,destfname);
     sum = addrinfos_sum(coin,H->addrind,0,H->unspentind,H->numspends,0,0);
     printf("finished Backup.(%s) supply %.8f in %.3f seconds | errs.%d\n",dirname,dstr(sum),(milliseconds() - startmilli)/1000.,errs);
     return(-errs);

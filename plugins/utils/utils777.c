@@ -72,6 +72,11 @@ int32_t is_remote_access(char *previpaddr);
 
 float xblend(float *destp,float val,float decay);
 double dxblend(double *destp,double val,double decay);
+void tolowercase(char *str);
+
+double _pairaved(double valA,double valB);
+double _pairave(float valA,float valB);
+
 
 #endif
 #else
@@ -389,6 +394,15 @@ int32_t is_decimalstr(char *str)
     return(i);
 }
 
+void tolowercase(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return;
+    for (i=0; str[i]!=0; i++)
+        str[i] = tolower(str[i]);
+}
+
 uint64_t stringbits(char *str)
 {
     uint64_t bits = 0;
@@ -667,6 +681,22 @@ double dxblend(double *destp,double val,double decay)
 	else slope = 0.;
 	*destp = newval;
 	return(slope);
+}
+
+double _pairaved(double valA,double valB)
+{
+	if ( valA != 0. && valB != 0. )
+		return((valA + valB) / 2.);
+	else if ( valA != 0. ) return(valA);
+	else return(valB);
+}
+
+double _pairave(float valA,float valB)
+{
+	if ( valA != 0.f && valB != 0.f )
+		return((valA + valB) / 2.);
+	else if ( valA != 0.f ) return(valA);
+	else return(valB);
 }
 
 #endif

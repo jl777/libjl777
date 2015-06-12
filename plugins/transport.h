@@ -162,14 +162,17 @@ uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
     struct daemon_info *dp;
-    char numstr[64],*tmpstr,*jsonstr;
-    int32_t ind,diff,tmplen,origlen,flag = 0;
-    uint64_t tmp,tag = 0;
-    cJSON *json;
-    //printf("send_to_daemon.(%s)\n",jsonstr);
+    char numstr[64],*tmpstr,*jsonstr; uint8_t *data; int32_t ind,datalen,tmplen,flag = 0; uint64_t tmp,tag = 0; cJSON *json;
+//printf("A send_to_daemon.(%s).%d\n",origjsonstr,len);
     if ( (json= cJSON_Parse(origjsonstr)) != 0 )
     {
         jsonstr = origjsonstr;
+        tmplen = (int32_t)strlen(origjsonstr)+1;
+        if ( len > tmplen )
+        {
+            data = (uint8_t *)&origjsonstr[tmplen];
+            datalen = (len - tmplen);
+        } else data = 0, datalen = 0;
         tmp = get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"));
         if ( retstrp != 0 )
         {
@@ -177,26 +180,19 @@ uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_
                 tag = tmp, flag = 1;
             if ( tag == 0 )
                 tag = (((uint64_t)rand() << 32) | rand()), flag = 1;
-            //printf("tag.%llu flag.%d tmp.%llu\n",(long long)tag,flag,(long long)tmp);
+//printf("tag.%llu flag.%d tmp.%llu datalen.%d\n",(long long)tag,flag,(long long)tmp,datalen);
             if ( flag != 0 )
             {
                 sprintf(numstr,"%llu",(long long)tag), ensure_jsonitem(json,"tag",numstr);
-                jsonstr = cJSON_Print(json);
-                _stripwhite(jsonstr,' ');
-                if ( len != 0 )
+                jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+                tmplen = (int32_t)strlen(jsonstr) + 1;
+                if ( datalen != 0 )
                 {
-                    tmplen = (int32_t)strlen(jsonstr) + 1;
-                    origlen = (int32_t)strlen(origjsonstr) + 1;
-                    diff = (len - origlen);
-                    if ( diff > 0 )
-                    {
-                        tmpstr = malloc(tmplen + diff);
-                        strcpy(tmpstr,jsonstr), free(jsonstr);
-                        memcpy(tmpstr+tmplen,origjsonstr + origlen,diff);
-                        jsonstr = tmpstr;
-                        len = tmplen + diff;
-                    }
-                }
+                    tmpstr = malloc(tmplen + datalen);
+                    memcpy(tmpstr,jsonstr,tmplen);
+                    memcpy(&tmpstr[tmplen],data,datalen);
+                    free(jsonstr), jsonstr = tmpstr, len = tmplen + datalen;
+                } else len = tmplen;
             }
         } else tag = tmp;
         free_json(json);
@@ -205,7 +201,7 @@ uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_
         //printf("send_to_daemon.(%s) tag.%llu\n",jsonstr,(long long)tag);
         if ( (dp= find_daemoninfo(&ind,name,daemonid,instanceid)) != 0 )
         {
-            //printf("send_to_daemon.(%s) tag.%llu dp.%p\n",jsonstr,(long long)tag,dp);
+//printf("send_to_daemon.(%s) tag.%llu dp.%p len.%d vs %ld\n",jsonstr,(long long)tag,dp,len,strlen(jsonstr)+1);
             if ( len > 0 )
             {
                 if ( Debuglevel > 2 )

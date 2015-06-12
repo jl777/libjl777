@@ -488,17 +488,16 @@ int32_t complete_relay(struct relayargs *args,char *retstr)
     //else printf("SUCCESS complete_relay.(%s) -> sock.%d %s\n",retstr,args->sock,args->name);
 }
 
-char *nn_publish(char *publishstr,int32_t nostr)
+char *nn_publish(uint8_t *publishstr,int32_t len,int32_t nostr)
 {
-    int32_t len,sendlen = -1;
+    int32_t sendlen = -1;
     char retbuf[1024];
     if ( publishstr != 0 )
     {
-        len = (int32_t)strlen(publishstr) + 1;
         if ( (sendlen= nn_send(RELAYS.pubsock,publishstr,len,0)) != len )
             printf("nn_publish warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
-        else printf("nn_publish.(%s) %d bytes\n",len<1024?publishstr:"<big string>",len);
-        sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,(int32_t)strlen(publishstr)));
+        else printf("nn_publish.(%s) %d bytes\n",len<1024?(char *)publishstr:"<big string>",len);
+        sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,len));
         if ( nostr != 0 )
             return(0);
     }
@@ -517,9 +516,9 @@ int32_t nn_directsend(struct endpoint epbits,uint8_t *msg,int32_t len)
     return(nn_send(sock,(char *)msg,len,0));
 }
 
-char *nn_direct(char *ipaddr,char *request)
+char *nn_direct(char *ipaddr,uint8_t *request,int32_t len)
 {
-    int32_t ipbits,sendlen,len; struct endpoint epbits;
+    int32_t ipbits,sendlen; struct endpoint epbits;
     if ( is_ipaddr(ipaddr) != 0 )
     {
         ipbits = (uint32_t)calc_ipbits(ipaddr);
@@ -527,7 +526,7 @@ char *nn_direct(char *ipaddr,char *request)
         if ( epbits.ipbits != 0 )
         {
             len = (int32_t)request + 1;
-            if ( (sendlen= nn_directsend(epbits,(uint8_t *)request,len)) != len )
+            if ( (sendlen= nn_directsend(epbits,request,len)) != len )
             {
                 printf("sendlen.%d vs len.%d %s\n",sendlen,len,nn_errstr());
                 return(clonestr("{\"error\":\"error sending direct packet\"}"));
@@ -537,10 +536,10 @@ char *nn_direct(char *ipaddr,char *request)
     } else return(clonestr("{\"error\":\"illegal ipaddr for direct connect\"}"));
 }
 
-char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
+char *nn_allpeers(uint8_t *_request,int32_t len,int32_t timeoutmillis,char *localresult)
 {
     cJSON *item,*json,*array = 0;
-    int32_t i,errs,numsuccess,sendlen,peersock,len,n = 0;
+    int32_t i,errs,numsuccess,sendlen,peersock,n = 0;
     double startmilli;
     char error[MAX_JSON_FIELD],result[MAX_JSON_FIELD],*request,*msg,*retstr;
     if ( timeoutmillis == 0 )
@@ -552,8 +551,8 @@ char *nn_allpeers(char *_request,int32_t timeoutmillis,char *localresult)
         printf("error nn_setsockopt %d %s\n",peersock,nn_errstr());
         return(clonestr("{\"error\":\"setting NN_SURVEYOR_DEADLINE\"}"));
     }
-    request = malloc(strlen(_request) + 512);
-    strcpy(request,_request);
+    request = malloc(len + 512);
+    memcpy(request,_request,len);
     add_standard_fields(request);
     if ( Debuglevel > 2 )
         printf("request_allpeers.(%s)\n",request);
@@ -634,17 +633,16 @@ char *find_directconnect(cJSON *retjson)
     return(jsonstr);
 }
 
-char *nn_loadbalanced(char *_request)
+char *nn_loadbalanced(uint8_t *data,int32_t len)
 {
     cJSON *json,*retjson,*array,*item;
     char method[MAX_JSON_FIELD],*msg,*request,*connectstr,*jsonstr = 0;
-    int32_t len,sendlen,i,n,lbsock,recvlen = 0;
+    int32_t sendlen,i,n,lbsock,recvlen = 0;
     if ( (lbsock= RELAYS.lb.sock) < 0 )
         return(clonestr("{\"error\":\"invalid load balanced socket\"}"));
-    request = malloc(strlen(_request) + 512);
-    strcpy(request,_request);
+    request = malloc(len + 512);
+    memcpy(request,data,len);
     add_standard_fields(request);
-    len = (int32_t)strlen(request) + 1;
     for (i=0; i<10; i++)
         if ( (nn_socket_status(lbsock,1) & NN_POLLOUT) != 0 )
             break;
@@ -705,7 +703,7 @@ char *nn_lb_processor(struct relayargs *args,uint8_t *msg,int32_t len)
     printf("LB PROCESSOR.(%s)\n",msg);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
-        if ( (plugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) != 0 )
+        if ( (plugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) != 0 || (plugin= cJSON_str(cJSON_GetObjectItem(json,"agent"))) != 0 )
         {
             if ( strcmp(plugin,"subscriptions") == 0 )
                 retstr = nn_pubsub_processor(args,msg,len);
@@ -776,7 +774,7 @@ char *nn_allpeers_processor(struct relayargs *args,uint8_t *msg,int32_t len)
     cJSON *json; char *plugin,*retstr = 0;
     if ( (json= cJSON_Parse((char *)msg)) != 0 )
     {
-        if ( (plugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) != 0 )
+        if ( (plugin= cJSON_str(cJSON_GetObjectItem(json,"plugin"))) != 0 || (plugin= cJSON_str(cJSON_GetObjectItem(json,"agent"))) != 0 )
         {
             if ( strcmp(plugin,"subscriptions") == 0 )
                 retstr = nn_pubsub_processor(args,msg,len);
@@ -923,8 +921,9 @@ void responseloop(void *_args)
                         cJSON_DeleteItemFromObject(json,"broadcast");
                         str = cJSON_Print(json);
                         _stripwhite(str,' ');
-                        retstr = (*args->commandprocessor)(args,(uint8_t *)str,(int32_t)strlen(str)+1);
-                        retstr = nn_allpeers(str,1000,retstr);
+                        len = (int32_t)strlen(str)+1;
+                        retstr = (*args->commandprocessor)(args,(uint8_t *)str,len);
+                        retstr = nn_allpeers((uint8_t *)str,len,1000,retstr);
                         free(str);
                     }
                     else retstr = (*args->commandprocessor)(args,(uint8_t *)msg,(int32_t)strlen((char *)msg)+1);
@@ -1017,7 +1016,7 @@ void serverloop(void *_args)
     struct relayargs *peerargs,*lbargs,*arg;
     char endpoint[128],request[1024],ipaddr[64],*retstr;
     int32_t i,sendtimeout,recvtimeout,lbsock,bussock,pubsock,pushsock,peersock,n = 0;
-    //start_devices(NN_RESPONDENT);
+  //start_devices(NN_RESPONDENT);
     sendtimeout = 10, recvtimeout = 10000;
     RELAYS.lb.mytype = NN_REQ, RELAYS.lb.desttype = nn_oppotype(RELAYS.lb.mytype);
     RELAYS.pair.mytype = NN_PAIR, RELAYS.pair.desttype = nn_oppotype(RELAYS.pair.mytype);
@@ -1071,7 +1070,7 @@ void serverloop(void *_args)
         if ( SUPERNET.hostname[0] != 0 || SUPERNET.myipaddr[0] != 0 )
         {
             sprintf(request,"{\"plugin\":\"relay\",\"method\":\"add\",\"hostnames\":[\"%s\"]}",SUPERNET.hostname[0]!=0?SUPERNET.hostname:SUPERNET.myipaddr);
-            if ( (retstr= nn_loadbalanced(request)) != 0 )
+            if ( (retstr= nn_loadbalanced((uint8_t *)request,(int32_t)strlen(request)+1)) != 0 )
             {
                 printf("LB_RESPONSE.(%s)\n",retstr);
                 free(retstr);

@@ -216,7 +216,7 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         else if ( instanceid != 0 && (broadcastflag= get_API_int(cJSON_GetObjectItem(json,"broadcast"),0)) > 0 )
         {
             fprintf(stderr,"send to other <<<<<<<<<<<<<<<<<<<<< \n");
-            nn_local_broadcast(&dp->perm.socks,instanceid,broadcastflag,(uint8_t *)str,len), dp->numsent++;
+            nn_local_broadcast(&dp->perm.socks,instanceid,broadcastflag,(uint8_t *)str,(int32_t)strlen(str)+1), dp->numsent++;
         }
         free_json(json);
     } else printf("parse error.(%s)\n",str);
@@ -270,7 +270,7 @@ int32_t poll_daemons() // the only thread that is allowed to modify Daemoninfos[
                     for (i=0; i<n; i++,processed++)
                     {
                         str = messages[i];
-                        if ( Debuglevel > 1 )
+                        if ( Debuglevel > 2 )
                             printf("(%d %d) %d %.6f HOST RECEIVED.%d i.%d/%d (%s) FROM (%s) %llu >>>>>>>>>>>>>>\n",dp->numrecv,dp->numsent,processed,milliseconds(),n,i,Numdaemons,str,dp->cmd,(long long)dp->daemonid);
                         process_plugin_message(dp,str,(int32_t)strlen(str)+1);
                         //free(str);
@@ -334,7 +334,9 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t peers_main(int32_t,char *args[]);
         int32_t subscriptions_main(int32_t,char *args[]);
         int32_t relay_main(int32_t,char *args[]);
+        int32_t InstantDEX_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
+        else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
         else if ( strcmp(dp->name,"db777") == 0 ) return(db777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
         else if ( strcmp(dp->name,"peers") == 0 ) return(peers_main(n,args));
@@ -349,7 +351,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"db777") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 || strcmp(plugin,"peers") == 0 || strcmp(plugin,"relay") == 0 || strcmp(plugin,"subscriptions") == 0 )
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"db777") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 || strcmp(plugin,"peers") == 0 || strcmp(plugin,"relay") == 0 || strcmp(plugin,"subscriptions") == 0 )
         return(1);
     else return(0);
 }
@@ -489,11 +491,19 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
 char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
 {
     struct daemon_info *dp;
-    char retbuf[8192],methodbuf[1024],*str,*methodsstr,*retstr = 0;
+    char retbuf[8192],methodbuf[1024],*str,*methodsstr,*jsonstr=0,*retstr = 0;
     uint64_t tag;
     cJSON *json;
     struct relayargs *args = 0;
     int32_t ind,async;
+//printf("origargstr.(%s).%d\n",origargstr,len);
+    if ( (json= cJSON_Parse(origargstr)) != 0 )
+    {
+        cJSON_AddItemToObject(json,"localaccess",cJSON_CreateNumber(localaccess));
+        jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+        len += (int32_t)(strlen(jsonstr) - strlen(origargstr));
+        free_json(json);
+    } else return(0);
     async = (timeout == 0 || retstrp != 0);
     if ( retstrp == 0 )
         retstrp = &retstr;
@@ -501,7 +511,7 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     {
         localaccess = 0;
         args = (struct relayargs *)method, method = 0, methodbuf[0] = 0;
-        if ( (json= cJSON_Parse(origargstr)) != 0 )
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
             copy_cJSON(methodbuf,cJSON_GetObjectItem(json,"method"));
         method = methodbuf;
     }
@@ -509,22 +519,24 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     {
         if ( is_bundled_plugin(plugin) != 0 )
         {
-            language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
+            language_func((char *)plugin,"",0,0,1,(char *)plugin,jsonstr,call_system);
+            free(jsonstr);
             return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));
         }
         return(clonestr("{\"error\":\"cant find plugin\"}"));
     }
     else
     {
-        fprintf(stderr,"PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d allowremote.%d localaccess.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote,localaccess);
+        if ( Debuglevel > 2 )
+            fprintf(stderr,">>>>>>> PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d allowremote.%d localaccess.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote,localaccess);
         if ( dp->readyflag == 0 )
         {
-            printf("readyflag.%d\n",dp->readyflag);
+            fprintf(stderr,"readyflag.%d\n",dp->readyflag);
             return(clonestr("{\"error\":\"plugin not ready\"}"));
         }
         if ( localaccess == 0 && dp->allowremote == 0 )
         {
-            printf("allowremote.%d isremote.%d\n",dp->allowremote,!localaccess);
+            fprintf(stderr,"allowremote.%d isremote.%d\n",dp->allowremote,!localaccess);
             sprintf(retbuf,"{\"error\":\"cant remote call plugin\",\"ipaddr\":\"%s\",\"plugin\":\"%s\"}",SUPERNET.myipaddr,plugin);
             return(clonestr(retbuf));
         }
@@ -539,19 +551,23 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
         }
         else
         {
+//fprintf(stderr,"send_to_daemon.(%s).%d\n",jsonstr,len);
             *retstrp = 0;
-            if ( (tag= send_to_daemon(args,async==0?retstrp:0,dp->name,daemonid,instanceid,origargstr,len)) == 0 )
+            if ( (tag= send_to_daemon(args,async==0?retstrp:0,dp->name,daemonid,instanceid,jsonstr,len)) == 0 )
             {
-                printf("null tag from send_to_daemon\n");
+//fprintf(stderr,"null tag from send_to_daemon\n");
+                free(jsonstr);
                 return(clonestr("{\"error\":\"null tag from send_to_daemon\"}"));
             }
             else if ( async != 0 )
                 return(0);//override == 0 ? clonestr("{\"error\":\"request sent to plugin async\"}") : 0);
+//fprintf(stderr,"wait_for_daemon\n");
             if ( ((*retstrp)= wait_for_daemon(retstrp,tag,timeout,10)) == 0 || (*retstrp)[0] == 0 )
             {
-                str = stringifyM(origargstr);
+                str = stringifyM(jsonstr);
                 sprintf(retbuf,"{\"error\":\"\",\"args\":%s}",str);
                 free(str);
+                free(jsonstr);
                 return(clonestr(retbuf));
             }
         }

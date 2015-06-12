@@ -72,6 +72,14 @@ typedef struct queue
     char name[31],initflag;
 } queue_t;
 
+struct pingpong_queue
+{
+    char *name;
+    queue_t pingpong[2],*destqueue,*errorqueue;
+    int32_t (*action)();
+    int offset;
+};
+
 struct sendendpoints { int32_t push,rep,pub,survey; };
 struct recvendpoints { int32_t pull,req,sub,respond; };
 struct biendpoints { int32_t bus,pair; };
@@ -110,6 +118,7 @@ struct SuperNET_info
     int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms;
     uint16_t port;
     struct env777 DBs;
+    cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
 
 struct coins_info
@@ -158,6 +167,10 @@ struct subscriptions_info
     int32_t readyflag,numpubs;
 }; extern struct subscriptions_info SUBSCRIPTIONS;
 
+struct InstantDEX_info
+{
+    int32_t readyflag;
+}; extern struct InstantDEX_info INSTANTDEX;
 
 #define MAX_SERVERNAME 128
 struct relayargs
@@ -229,12 +242,14 @@ void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t port,
 int32_t nn_portoffset(int32_t type);
 
 char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
-char *nn_direct(char *ipaddr,char *publishstr);
-char *nn_publish(char *publishstr,int32_t nostr);
-char *nn_allpeers(char *jsonquery,int32_t timeoutmillis,char *localresult);
-char *nn_loadbalanced(char *requeststr);
+char *nn_direct(char *ipaddr,uint8_t *data,int32_t len);
+char *nn_publish(uint8_t *data,int32_t len,int32_t nostr);
+char *nn_allpeers(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
+char *nn_loadbalanced(uint8_t *data,int32_t len);
 char *relays_jsonstr(char *jsonstr,cJSON *argjson);
 struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
+int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*action)(),queue_t *destq,queue_t *errorq);
+int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr);
 
 #endif
 #else
@@ -376,6 +391,67 @@ int32_t queue_size(queue_t *queue)
     DL_COUNT(queue->list,tmp,count);
     portable_mutex_unlock(&queue->mutex);
 	return count;
+}
+
+int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*action)(),queue_t *destq,queue_t *errorq)
+{
+    ppq->name = name;
+    ppq->destqueue = destq;
+    ppq->errorqueue = errorq;
+    ppq->action = action;
+    ppq->offset = 1;
+    return(queue_size(&ppq->pingpong[0]) + queue_size(&ppq->pingpong[1]));  // init mutex side effect
+}
+
+// seems a bit wastefull to do all the two iter queueing/dequeuing with threadlock overhead
+// however, there is assumed to be plenty of CPU time relative to actual blockchain events
+// also this method allows for adding of parallel threads without worry
+int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
+{
+    int32_t iter,retval,freeflag = 0;
+    void *ptr;
+    //printf("%p process_pingpong_queue.%s %d %d\n",ppq,ppq->name,queue_size(&ppq->pingpong[0]),queue_size(&ppq->pingpong[1]));
+    for (iter=0; iter<2; iter++)
+    {
+        while ( (ptr= queue_dequeue(&ppq->pingpong[iter],ppq->offset)) != 0 )
+        {
+            if ( Debuglevel > 2 )
+                printf("%s pingpong[%d].%p action.%p\n",ppq->name,iter,ptr,ppq->action);
+            retval = (*ppq->action)(&ptr,argptr);
+            if ( retval == 0 )
+                queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
+            else if ( ptr != 0 )
+            {
+                if ( retval < 0 )
+                {
+                    if ( Debuglevel > 0 )
+                        printf("%s iter.%d errorqueue %p vs %p\n",ppq->name,iter,ppq->errorqueue,&ppq->pingpong[0]);
+                    if ( ppq->errorqueue == &ppq->pingpong[0] )
+                        queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
+                    else if ( ppq->errorqueue != 0 )
+                        queue_enqueue(ppq->name,ppq->errorqueue,ptr);
+                    else freeflag = 1;
+                }
+                else if ( ppq->destqueue != 0 )
+                {
+                    if ( Debuglevel > 0 )
+                        printf("%s iter.%d destqueue %p vs %p\n",ppq->name,iter,ppq->destqueue,&ppq->pingpong[0]);
+                    if ( ppq->destqueue == &ppq->pingpong[0] )
+                        queue_enqueue(ppq->name,&ppq->pingpong[iter ^ 1],ptr);
+                    else if ( ppq->destqueue != 0 )
+                        queue_enqueue(ppq->name,ppq->destqueue,ptr);
+                    else freeflag = 1;
+                }
+                if ( freeflag != 0 )
+                {
+                    if ( ppq->offset == 0 )
+                        free(ptr);
+                    else free_queueitem(ptr);
+                }
+            }
+        }
+    }
+    return(queue_size(&ppq->pingpong[0]) + queue_size(&ppq->pingpong[0]));
 }
 
 uint16_t wait_for_myipaddr(char *ipaddr)

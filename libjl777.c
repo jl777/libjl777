@@ -1277,7 +1277,7 @@ int32_t SuperNET_idle(struct plugin_info *plugin) { return(0); }
 STRUCTNAME SUPERNET;
 int32_t Debuglevel;
 
-char *PLUGNAME(_methods)[] = { "install", "plugin" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "install", "plugin", "agent" }; // list of supported methods
 char *PLUGNAME(_pubmethods)[] = { "ping", "pong" }; // list of supported methods
 char *PLUGNAME(_authmethods)[] = { "setpass" }; // list of supported methods
 
@@ -1480,6 +1480,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
     printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s)! (%s) initflag.%d process %s\n",plugin->name,jsonstr,initflag,plugin->name);
     if ( initflag > 0 )
     {
+        SUPERNET.argjson = cJSON_Duplicate(json,1);
         SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
@@ -1493,6 +1494,9 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                 strcat(SUPERNET.NXTAPIURL,"7876/nxt");
             else strcat(SUPERNET.NXTAPIURL,"6876/nxt");
         }
+        copy_cJSON(SUPERNET.userhome,cJSON_GetObjectItem(json,"userdir"));
+        if ( SUPERNET.userhome[0] == 0 )
+            strcpy(SUPERNET.userhome,"/root");
         copy_cJSON(RAMCHAINS.pullnode,cJSON_GetObjectItem(json,"pullnode"));
         strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
         strcat(SUPERNET.NXTSERVER,"?requestType");

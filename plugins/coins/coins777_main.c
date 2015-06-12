@@ -249,9 +249,8 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
     }
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits);
-    if ( path != 0 && conf != 0 )
-        extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
-    printf("COIN.%s (%s)\n",coin->name,coin->userpass);
+    extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
+    printf("COIN.%s serverport.(%s) userpass.(%s)\n",coin->name,coin->serverport,coin->userpass);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
     //ensure_packedptrs(coin);
@@ -302,9 +301,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             COINS.argjson = cJSON_Duplicate(json,1);
             COINS.slicei = get_API_int(cJSON_GetObjectItem(json,"slice"),0);
-            copy_cJSON(SUPERNET.userhome,cJSON_GetObjectItem(json,"userdir"));
-            if ( SUPERNET.userhome[0] == 0 )
-                strcpy(SUPERNET.userhome,"/root");
             if ( (array= cJSON_GetObjectItem(json,"coins")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
             {
                 for (i=j=0; i<n; i++)

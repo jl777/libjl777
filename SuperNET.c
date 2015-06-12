@@ -619,13 +619,15 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
     {
         copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
         copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
+        if ( plugin[0] == 0 )
+            copy_cJSON(plugin,cJSON_GetObjectItem(json,"agent"));
         if ( strcmp(request,"install") == 0 && plugin[0] != 0 )
         {
             retstr = SuperNET_install(plugin,jsonstr,json);
             free_json(json);
             return(retstr);
         }
-        tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
+        tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"));
         daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
         copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
@@ -659,14 +661,16 @@ char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
     {
         copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
         copy_cJSON(name,cJSON_GetObjectItem(json,"plugin"));
+        if ( name[0] == 0 )
+            copy_cJSON(name,cJSON_GetObjectItem(json,"agent"));
         if ( strcmp(request,"register") == 0 )
         {
             daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
             instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
             retstr = register_daemon(name,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"),cJSON_GetObjectItem(json,"pubmethods"),cJSON_GetObjectItem(json,"authmethods"));
-        }
+        } else retstr = process_jl777_msg(0,JSONstr,60);
         free_json(json);
-    } else retstr = process_jl777_msg(0,JSONstr,60);
+    }
     if ( retstr == 0 )
         retstr = clonestr("{\"result\":\"call_SuperNET_JSON no response\"}");
     return(retstr);
@@ -712,6 +716,9 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
     while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();
+    strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
+    while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
+        poll_daemons();
     for (i=0; i<n; i++)
     {
         printf("%s ",strs[i]);
@@ -728,7 +735,7 @@ void SuperNET_loop(void *ipaddr)
 #define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
 void SuperNET_apiloop(void *ipaddr)
 {
-    int32_t sock,len,ind,checklen,recvtimeout; cJSON *json; char apitag[1024],*retstr,*jsonstr;
+    int32_t sock,len,ind,checklen,retlen, recvtimeout; cJSON *json; char apitag[1024],*retstr,*jsonstr;
     if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
     {
         if ( nn_bind(sock,SUPERNET_APIENDPOINT) < 0 )
@@ -747,13 +754,14 @@ void SuperNET_apiloop(void *ipaddr)
                     {
                         copy_cJSON(apitag,cJSON_GetObjectItem(json,"apitag"));
                         printf("API RECV.(%s)\n",jsonstr);
-                        retstr = clonestr(jsonstr);
+                        retstr = call_SuperNET_JSON(jsonstr);
+                        retlen = (int32_t)strlen(retstr) + 1;
                         if ( (ind= nn_connect(sock,apitag)) < 0 )
                             fprintf(stderr,"error connecting to (%s) for (%s)\n",apitag,jsonstr);
                         else
                         {
-                            if ( (checklen= nn_send(sock,retstr,len,0)) != len )
-                                fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,len,apitag);
+                            if ( (checklen= nn_send(sock,retstr,retlen,0)) != retlen )
+                                fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
                             nn_shutdown(sock,ind);
                         }
                         free_json(json);
@@ -789,7 +797,7 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { print
 
 int main(int argc,const char *argv[])
 {
-    char _ipaddr[64],*jsonstr = 0,*ipaddr = "127.0.0.1:7777";//,*ipaddr6 = "[2001:16d8:dd24:0:86c9:681e:f931:256]";
+    char _ipaddr[64],*jsonstr = 0,*ipaddr = "127.0.0.1:7777";
     int32_t i;
     cJSON *json = 0;
     uint64_t ipbits,allocsize;

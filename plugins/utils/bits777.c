@@ -42,6 +42,7 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
 void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,unsigned char *src2,int32_t len2);
+uint64_t calc_txid(unsigned char *buf,int32_t len);
 
 #endif
 #else

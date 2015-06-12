@@ -17,7 +17,7 @@ PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a
 LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lanl -lm #-lssl -lcrypto
 
 CC=clang
-CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 #-DADDRINFO_SIZE=256
+CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -I../includes -I../../includes -I/usr/include -Iplugins -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 #-DADDRINFO_SIZE=256
 
 TARGET	= libjl777.a
 
@@ -37,14 +37,17 @@ U = plugins/utils
 C = plugins/coins
 R = plugins/ramchain
 S = plugins/sophia
+I = plugins/InstantDEX
+
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
 SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 COINS = $(C)/bitcoind_RPC.c $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
-CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha384.c $(U)/sha512.c
+CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c
+INSTANTDEX = $(I)/InstantDEX_main.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) plugins/mgw/MGW_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c # plugins/echodemo.c
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) plugins/mgw/MGW_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c # plugins/echodemo.c
  
 OBJS	:= $(SRCS:%.c=%.o)
 
@@ -62,30 +65,24 @@ clean: doesntexist
 
 PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libtom -Iincludes/miniupnp -I. -Iutils -Iramchain -Imgw -I ../includes -I../..
 
-_echodemo := rm lib/echodemo; gcc -o lib/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
+_echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
-_api := rm cgi/api; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c utils/bits777.c utils/utils777.c utils/cJSON.c ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm
+_api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c utils/bits777.c utils/utils777.c utils/cJSON.c ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/nxt; ln cgi/api cgi/eth; ln cgi/api cgi/two; ln cgi/api cgi/msc ln cgi/api cgi/InstantDEX
 
-_msc := rm lib/msc; gcc -o lib/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
+_msc := rm agents/msc; gcc -o agents/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
 
-_nxt := rm lib/msc; gcc -o lib/nxt -O2 $(PINCLUDES) two/nxt.c $(PLIBS)
+_nxt := rm agents/msc; gcc -o agents/nxt -O2 $(PINCLUDES) two/nxt.c $(PLIBS)
 
-_eth := rm lib/eth; gcc -o lib/eth -O2 $(PINCLUDES) two/eth.c $(PLIBS)
+_eth := rm agents/eth; gcc -o agents/eth -O2 $(PINCLUDES) two/eth.c $(PLIBS)
 
-_two := rm lib/two; gcc -o lib/two -O2 $(PINCLUDES) two/two.c $(PLIBS)
+_two := rm agents/two; gcc -o agents/two -O2 $(PINCLUDES) two/two.c $(PLIBS)
 
-_MGW :=    rm lib/MGW; gcc -o lib/MGW $(PINCLUDES) mgw/main.c mgw/mgw.c mgw/state.c mgw/huff.c  ramchain/ramchain.c ramchain/init.c  ramchain/search.c ramchain/blocks.c ramchain/api.c ramchain/tokens.c utils/bitcoind_RPC.c utils/bitcoind.c  $(PLIBS) -lcurl
+_stockfish := cd stockfish; rm stockfish; make build ARCH=x86-64-modern; cp stockfish ../agents; cd ..
 
-_sophia := gcc -c -o ../libs/sophia.o $(PINCLUDES)  -g -O2 -std=c99 -pedantic -Wextra -Wall -Wunused-parameter -Wsign-compare -Wno-unused-function -fPIC -fno-stack-protector -fvisibility=hidden  sophia/sophia.c $(PLIBS)
-
-_stockfish := cd stockfish; rm stockfish; make build ARCH=x86-64-modern; cp stockfish ../lib; cd ..
-
-plugins: lib/echodemo lib/MGW lib/stockfish lib/sophia cgi/api lib/nxt lib/two lib/eth lib/eth; \
+agents: plugins/agents/echodemo plugins/agents/stockfish plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
 	cd plugins; \
-    $(_echo); \
+    $(_echodemo); \
     $(_stockfish); \
-    $(_sophia); \
-    $(_MGW); \
     $(_api); \
     $(_nxt); \
     $(_two); \
@@ -93,22 +90,22 @@ plugins: lib/echodemo lib/MGW lib/stockfish lib/sophia cgi/api lib/nxt lib/two l
     $(_msc); \
     cd ..
 
-echodemo: plugins/lib/echodemo; \
+echodemo: plugins/agents/echodemo; \
  	cd plugins; $(_echodemo); cd ..
 
 api: plugins/cgi/api; \
  	cd plugins; $(_api); cd ..
 
-eth: plugins/lib/eth; \
+eth: plugins/agents/eth; \
        cd plugins; $(_eth); cd ..
 
-msc: plugins/lib/msc; \
+msc: plugins/agents/msc; \
         cd plugins; $(_msc); cd ..
 
-nxt: plugins/lib/nxt; \
+nxt: plugins/agents/nxt; \
         cd plugins; $(_nxt); cd ..
 
-two: plugins/lib/two; \
+two: plugins/agents/two; \
         cd plugins; $(_two); cd ..
 
 install_eth: doesntexist; \
@@ -129,8 +126,8 @@ sophia: lib/sophia; \
 MGW: lib/MGW; \
 	cd plugins; $(_MGW); cd ..
 
-SuperNET: $(SRCS) SuperNET.c plugins/relays777.c $(TARGET); \
-    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE SuperNET.c plugins/relays777.c $(LIBS) 
+SuperNET: $(SRCS) $(TARGET); \
+    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS) 
 
 #-lz -ldl -lutil -lpcre -lexpat
 
@@ -331,15 +328,15 @@ cstdlib/errno.o: cstdlib/errno.c interpreter.h platform.h
 cstdlib/ctype.o: cstdlib/ctype.c interpreter.h platform.h
 cstdlib/stdbool.o: cstdlib/stdbool.c interpreter.h platform.h
 cstdlib/unistd.o: cstdlib/unistd.c interpreter.h platform.h
-plugins/lib/stockfish: plugins/stockfish/stockfish.cpp
-plugins/lib/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
-plugins/lib/echodemo: plugins/echodemo.c
+plugins/agents/stockfish: plugins/stockfish/stockfish.cpp
+plugins/agents/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
+plugins/agents/echodemo: plugins/echodemo.c
 #plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
 #plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
-plugins/lib/eth: plugins/two/eth.c
-plugins/lib/msc: plugins/two/msc.c
-plugins/lib/nxt: plugins/two/nxt.c
-plugins/lib/two: plugins/two/two.c
-plugins/lib/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
+plugins/agents/eth: plugins/two/eth.c
+plugins/agents/msc: plugins/two/msc.c
+plugins/agents/nxt: plugins/two/nxt.c
+plugins/agents/two: plugins/two/two.c
+plugins/cgi/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
 
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c
