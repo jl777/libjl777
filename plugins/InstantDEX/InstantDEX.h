@@ -170,8 +170,6 @@ char *submit_respondtx(char *respondtxstr,uint64_t nxt64bits,char *NXTACCTSECRET
     expand_nxt64bits(NXTaddr,nxt64bits);
     expand_nxt64bits(destNXTaddr,dest64bits);
     return(nn_loadbalanced((uint8_t *)_tokbuf,len));
-// if ( (retstr= directsend_tokenized_cmd(NXTaddr,NXTACCTSECRET,_tokbuf,len,destNXTaddr)) != 0 )
-  //      free(retstr);
 }
 
 int32_t calc_users_maxopentrades(uint64_t nxt64bits)
@@ -248,6 +246,8 @@ char *submitquote_str(struct InstantDEX_quote *iQ,uint64_t baseid,uint64_t relid
     uint64_t basetmp,reltmp;
     if ( (json= gen_InstantDEX_json(&basetmp,&reltmp,0,iQ->isask,iQ,baseid,relid,0)) != 0 )
     {
+        ensure_jsonitem(json,"plugin","relay");
+        ensure_jsonitem(json,"destplugin","InstantDEX");
         cJSON_ReplaceItemInObject(json,"requestType",cJSON_CreateString((iQ->isask != 0) ? "ask" : "bid"));
         jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
         if ( (str= submit_quote(jsonstr)) != 0 )

@@ -735,7 +735,7 @@ void SuperNET_loop(void *ipaddr)
 #define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
 void SuperNET_apiloop(void *ipaddr)
 {
-    int32_t sock,len,ind,checklen,retlen, recvtimeout; cJSON *json; char apitag[1024],*retstr,*jsonstr;
+    int32_t sock,len,ind,checklen,retlen,recvtimeout; cJSON *json; char apitag[1024],*retstr,*jsonstr;
     if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
     {
         if ( nn_bind(sock,SUPERNET_APIENDPOINT) < 0 )
@@ -829,28 +829,11 @@ int main(int argc,const char *argv[])
             if ( is_bundled_plugin((char *)argv[i]) != 0 )
                 language_func((char *)argv[i],"",0,0,1,(char *)argv[i],jsonstr,call_system);
     }
-    /*int32_t coin777_processQs(struct coin777 *coin);
-    struct coin777 *coin; int32_t n;
     while ( 1 )
     {
-        for (i=n=0; i<COINS.num; i++)
-        {
-            if ( (coin= COINS.LIST[i]) != 0 )
-            {
-                if ( coin777_processQs(coin) != 0 )
-                    n++;
-            }
-        }
-        if ( n == 0 && SUPERNET.APISLEEP != 0 )
-            msleep(SUPERNET.APISLEEP);
-    }
-    int32_t update_NXT_assettransfers(char *assetidstr); extern struct db777 *NXT_txids;
-    while ( NXT_txids == 0 || NXT_txids->db == 0 )
-        sleep(5);
-    update_NXT_assettransfers("15344649963748848799");*/
-    while ( 1 )
-    {
-        sleep(60);
+        char line[1024];
+        if ( getline777(line,sizeof(line)-1) > 0 )
+            process_userinput(line);
         //update_NXT_assettransfers("15344649963748848799");
     }
     return(0);

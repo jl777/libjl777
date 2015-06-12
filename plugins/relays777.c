@@ -1088,9 +1088,9 @@ void serverloop(void *_args)
         int32_t len; char retbuf[8192],*jsonstr; cJSON *json;
         //struct coin777 *coin;
 #ifdef STANDALONE
-        char line[1024];
-        if ( getline777(line,sizeof(line)-1) > 0 )
-            process_userinput(line);
+        //char line[1024];
+        //if ( getline777(line,sizeof(line)-1) > 0 )
+        //    process_userinput(line);
 #endif
         int32_t poll_daemons();
         if ( poll_daemons() == 0 && poll_direct(1) == 0 && SUPERNET.APISLEEP > 0 )
