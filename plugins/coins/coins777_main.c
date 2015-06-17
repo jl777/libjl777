@@ -51,8 +51,8 @@ int32_t coins_idle(struct plugin_info *plugin)
 }
 
 STRUCTNAME COINS;
-char *PLUGNAME(_methods)[] = { "acctpubkeys",  "packblocks", "sendrawtransaction" };
-char *PLUGNAME(_pubmethods)[] = { "acctpubkeys" };
+char *PLUGNAME(_methods)[] = { "acctpubkeys",  "packblocks", "sendrawtransaction", "setmultisig", "gotmsigaddr" };
+char *PLUGNAME(_pubmethods)[] = { "acctpubkeys", "setmultisig", "gotmsigaddr" };
 char *PLUGNAME(_authmethods)[] = { "acctpubkeys" };
 
 cJSON *coins777_json()
@@ -215,7 +215,9 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         copy_cJSON(coin->mgw.issuer,cJSON_GetObjectItem(argjson,"issuer"));
         coin->mgw.issuerbits = conv_acctstr(coin->mgw.issuer);
         printf(">>>>>>>>>>>> a issuer.%s %llu assetid.%llu minoutput.%llu\n",coin->mgw.issuer,(long long)coin->mgw.issuerbits,(long long)coin->mgw.assetidbits,(long long)coin->minoutput);
-        coin->mgw.ap_mult = assetmult(coin->mgw.assetname,coin->mgw.assetidstr);
+        uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits);
+        set_assetname(0,coin->mgw.assetname,calc_nxt64bits(coin->mgw.assetidstr));
+        coin->mgw.ap_mult = assetmult(coin->mgw.assetidstr);
         strcpy(coin->mgw.coinstr,coinstr);
         if ( (coin->mgw.special= cJSON_GetObjectItem(argjson,"special")) == 0 )
             coin->mgw.special = cJSON_GetObjectItem(COINS.argjson,"special");
@@ -331,7 +333,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             printf("(%s) has not method\n",jsonstr);
             return(0);
         }
-        printf("COINS.(%s) for (%s) (%s)\n",methodstr,coinstr!=0?coinstr:"",jsonstr);
+        //printf("COINS.(%s) for (%s) (%s)\n",methodstr,coinstr!=0?coinstr:"",jsonstr);
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
@@ -341,7 +343,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         {
             zerobuf[0] = 0;
             str = 0;
-            printf("INSIDE COINS.(%s) methods.%ld\n",jsonstr,sizeof(coins_methods)/sizeof(*coins_methods));
+            //printf("INSIDE COINS.(%s) methods.%ld\n",jsonstr,sizeof(coins_methods)/sizeof(*coins_methods));
             copy_cJSON(sender,cJSON_GetObjectItem(json,"NXT"));
             if ( coinstr == 0 )
                 coinstr = zerobuf;
@@ -362,6 +364,11 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                         } else sprintf(retbuf,"{\"error\":\"no get_msig_pubkeys result\",\"method\":\"%s\"}",methodstr);
                     } else sprintf(retbuf,"{\"error\":\"no coin777\",\"method\":\"%s\"}",methodstr);
                 } else sprintf(retbuf,"{\"error\":\"gateway only method\",\"method\":\"%s\"}",methodstr);
+            }
+            else if ( strcmp(methodstr,"gotmsigaddr") == 0 )
+            {
+                if ( SUPERNET.gatewayid < 0 )
+                    printf("GOTMSIG.(%s)\n",jsonstr);
             }
             else sprintf(retbuf,"{\"error\":\"unsupported method\",\"method\":\"%s\"}",methodstr);
             if ( str != 0 )

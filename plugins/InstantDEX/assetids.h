@@ -142,13 +142,14 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
 {
     int32_t decimals = -1;
     cJSON *json;
-    *multp = 0;
+    if ( multp != 0 )
+        *multp = 0;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( get_cJSON_int(json,"errorCode") == 0 )
         {
             decimals = (int32_t)get_cJSON_int(json,"decimals");
-            if ( decimals >= 0 && decimals <= 8 )
+            if ( multp != 0 && decimals >= 0 && decimals <= 8 )
                 *multp = _calc_decimals_mult(decimals);
             if ( extract_cJSON_str(buf,16,json,"name") <= 0 )
                 decimals = -1;
@@ -162,10 +163,12 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
 {
     char assetstr[64],buf[MAX_JSON_FIELD],*jsonstr,*jsonstr2;
     uint32_t i,retval = INSTANTDEX_UNKNOWN;
-    *multp = 1;
+    if ( multp != 0 )
+        *multp = 1;
     if ( assetbits == NXT_ASSETID )
     {
-        *multp = 1;
+        if ( multp != 0 )
+            *multp = 1;
         strcpy(name,"NXT");
         return(INSTANTDEX_NATIVE); // native crypto type
     }
@@ -178,7 +181,8 @@ uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)
         if ( strcmp(MGWassets[i][0],assetstr) == 0 )
         {
             strcpy(name,MGWassets[i][1]);
-            *multp = _calc_decimals_mult(atoi(MGWassets[i][2]));
+            if ( multp != 0 )
+                *multp = _calc_decimals_mult(atoi(MGWassets[i][2]));
             //printf("SETASSETNAME.(%s) <- %s mult.%llu\n",name,assetstr,(long long)*multp);
             return(INSTANTDEX_NATIVE); // native crypto type
         }
@@ -216,7 +220,7 @@ uint64_t min_asset_amount(uint64_t assetid)
     if ( assetid == NXT_ASSETID )
         return(1);
     expand_nxt64bits(assetidstr,assetid);
-    return(assetmult(0,assetidstr));
+    return(assetmult(assetidstr));
 }
 
 int32_t get_assetdecimals(uint64_t assetid)
@@ -236,7 +240,7 @@ uint64_t calc_assetoshis(uint64_t assetidbits,uint64_t amount)
     if ( assetidbits == 0 || assetidbits == NXT_ASSETID )
         return(amount);
     expand_nxt64bits(assetidstr,assetidbits);
-    if ( (ap_mult= assetmult(0,assetidstr)) != 0 )
+    if ( (ap_mult= assetmult(assetidstr)) != 0 )
         assetoshis = amount / ap_mult;
     else
     {
@@ -251,7 +255,7 @@ uint64_t get_assetmult(uint64_t assetid)
 {
     char assetidstr[64];
     expand_nxt64bits(assetidstr,assetid);
-    return(assetmult(0,assetidstr));
+    return(assetmult(assetidstr));
 }
 
 double get_minvolume(uint64_t assetid)
@@ -272,7 +276,7 @@ uint64_t calc_asset_qty(uint64_t *availp,uint64_t *priceNQTp,char *NXTaddr,int32
         {
             //price = (double)get_satoshi_obj(srcitem,"priceNQT") / ap_mult;
             //vol = (double)get_satoshi_obj(srcitem,"quantityQNT") * ((double)ap_mult / SATOSHIDEN);
-            priceNQT = (price * ap_mult + ap_mult/2);
+            priceNQT = (price * ap_mult + (ap_mult/2)/SATOSHIDEN);
             quantityQNT = (vol * SATOSHIDEN) / ap_mult;
             balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
             printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | price_vol.(%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,price,vol,SATOSHIDEN,(long long)ap_mult);
@@ -430,7 +434,7 @@ int32_t is_unfunded_order(uint64_t nxt64bits,uint64_t assetid,uint64_t amount)
     else
     {
         expand_nxt64bits(assetidstr,assetid);
-        if ( (ap_mult= assetmult(0,assetidstr)) != 0 )
+        if ( (ap_mult= assetmult(assetidstr)) != 0 )
         {
             expand_nxt64bits(NXTaddr,nxt64bits);
             balance = ap_mult * get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);

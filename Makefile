@@ -43,11 +43,11 @@ UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777
 SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
-COINS = $(C)/bitcoind_RPC.c $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
+COINS = $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c
 INSTANTDEX = $(I)/InstantDEX_main.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) plugins/mgw/MGW_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c # plugins/echodemo.c
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) plugins/mgw/MGW_main.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c $(C)/bitcoind_RPC.c
  
 OBJS	:= $(SRCS:%.c=%.o)
 
@@ -67,11 +67,11 @@ PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -Iincludes/libto
 
 _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
-_api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c utils/bits777.c utils/utils777.c utils/cJSON.c ../nanomsg/.libs/libnanomsg.a -lpthread -lanl -lm; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/nxt; ln cgi/api cgi/eth; ln cgi/api cgi/two; ln cgi/api cgi/msc ln cgi/api cgi/InstantDEX
+_api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/echodemo 
 
 _msc := rm agents/msc; gcc -o agents/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
 
-_nxt := rm agents/msc; gcc -o agents/nxt -O2 $(PINCLUDES) two/nxt.c $(PLIBS)
+_nxt := rm agents/nxt; gcc -o agents/nxt -O2 $(PINCLUDES) two/nxt.c $(PLIBS)
 
 _eth := rm agents/eth; gcc -o agents/eth -O2 $(PINCLUDES) two/eth.c $(PLIBS)
 
@@ -84,10 +84,6 @@ agents: plugins/agents/echodemo plugins/agents/stockfish plugins/cgi/api plugins
     $(_echodemo); \
     $(_stockfish); \
     $(_api); \
-    $(_nxt); \
-    $(_two); \
-    $(_eth); \
-    $(_msc); \
     cd ..
 
 echodemo: plugins/agents/echodemo; \
@@ -337,6 +333,8 @@ plugins/agents/eth: plugins/two/eth.c
 plugins/agents/msc: plugins/two/msc.c
 plugins/agents/nxt: plugins/two/nxt.c
 plugins/agents/two: plugins/two/two.c
+plugins/InstantDEX/InstantDEX_main.o: plugins/InstantDEX/InstantDEX_main.c plugins/InstantDEX/assetids.h plugins/InstantDEX/atomic.h plugins/InstantDEX/bars.h plugins/InstantDEX/exchangepairs.h plugins/InstantDEX/exchanges.h plugins/InstantDEX/feeds.h plugins/InstantDEX/NXT_tx.h plugins/InstantDEX/orderbooks.h plugins/InstantDEX/quotes.h plugins/InstantDEX/rambooks.h plugins/InstantDEX/signals.h plugins/InstantDEX/tradebot.h plugins/InstantDEX/trades.h plugins/InstantDEX/InstantDEX.h
+
 plugins/cgi/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
 
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c

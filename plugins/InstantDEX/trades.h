@@ -128,7 +128,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
     uint64_t senderbits;
     if ( timestamp == 0 )
         timestamp = 38785003;
-    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&withMessage=true",refNXTaddr,timestamp);
+    sprintf(cmdstr,"requestType=getBlockchainTransactions&account=%s&timestamp=%u&withMessage=true",refNXTaddr,timestamp);
     if ( (jsonstr= issue_NXTPOST(cmdstr)) != 0 )
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )

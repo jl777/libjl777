@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #define DAEMONFREE_MARGIN_SECONDS 13
-#define NUM_PLUGINTAGS 256
+#define NUM_PLUGINTAGS 8192
 
 struct daemon_info
 {
@@ -490,37 +490,36 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
 
 char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
 {
+    static char *retstr = 0;
     struct daemon_info *dp;
-    char retbuf[8192],methodbuf[1024],*str,*methodsstr,*jsonstr=0,*retstr = 0;
+    char retbuf[8192],methodbuf[1024],*str,*methodsstr;
     uint64_t tag;
-    cJSON *json;
+    cJSON *json,*argjson;
     struct relayargs *args = 0;
     int32_t ind,async;
-//printf("origargstr.(%s).%d\n",origargstr,len);
-    if ( (json= cJSON_Parse(origargstr)) != 0 )
-    {
-        cJSON_AddItemToObject(json,"localaccess",cJSON_CreateNumber(localaccess));
-        jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
-        len += (int32_t)(strlen(jsonstr) - strlen(origargstr));
-        free_json(json);
-    } else return(0);
+//printf("localaccess.%d origargstr.(%s).%d retstrp.%p\n",localaccess,origargstr,len,retstrp);
     async = (timeout == 0 || retstrp != 0);
     if ( retstrp == 0 )
         retstrp = &retstr;
-    if ( localaccess < 0 )// && strcmp(previpaddr,"remote") == 0 )
+    if ( localaccess < 0 )
     {
         localaccess = 0;
         args = (struct relayargs *)method, method = 0, methodbuf[0] = 0;
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-            copy_cJSON(methodbuf,cJSON_GetObjectItem(json,"method"));
+        if ( (json= cJSON_Parse(origargstr)) != 0 )
+        {
+            if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
+                argjson = cJSON_GetArrayItem(json,0);
+            else argjson = json;
+            copy_cJSON(methodbuf,cJSON_GetObjectItem(argjson,"method"));
+            free(json);
+        }
         method = methodbuf;
     }
     if ( (dp= find_daemoninfo(&ind,plugin,daemonid,instanceid)) == 0 )
     {
         if ( is_bundled_plugin(plugin) != 0 )
         {
-            language_func((char *)plugin,"",0,0,1,(char *)plugin,jsonstr,call_system);
-            free(jsonstr);
+            language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
             return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));
         }
         return(clonestr("{\"error\":\"cant find plugin\"}"));
@@ -528,7 +527,7 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     else
     {
         if ( Debuglevel > 2 )
-            fprintf(stderr,">>>>>>> PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d allowremote.%d localaccess.%d\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote,localaccess);
+            fprintf(stderr,">>>>>>> PLUGINMETHOD.(%s) for (%s) bundled.%d ready.%d allowremote.%d localaccess.%d retstrp.%p\n",method,plugin,is_bundled_plugin(plugin),dp->readyflag,dp->allowremote,localaccess,retstrp);
         if ( dp->readyflag == 0 )
         {
             fprintf(stderr,"readyflag.%d\n",dp->readyflag);
@@ -544,19 +543,18 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
         {
             methodsstr = cJSON_Print(localaccess != 0 ? dp->methodsjson : dp->pubmethods);
            // if ( Debuglevel > 2 )
-                fprintf(stderr,"available methods.(%s)\n",methodsstr);
+                fprintf(stderr,"available methods.(%s) vs (%s)\n",methodsstr,method);
             sprintf(retbuf,"{\"error\":\"method not allowed\",\"plugin\":\"%s\",\"%s\":\"%s\"}",plugin,method,methodsstr);
             free(methodsstr);
             return(clonestr(retbuf));
         }
         else
         {
-//fprintf(stderr,"send_to_daemon.(%s).%d\n",jsonstr,len);
+//fprintf(stderr,"send_to_daemon.(%s).%d\n",origargstr,len);
             *retstrp = 0;
-            if ( (tag= send_to_daemon(args,async==0?retstrp:0,dp->name,daemonid,instanceid,jsonstr,len)) == 0 )
+            if ( (tag= send_to_daemon(args,retstrp,dp->name,daemonid,instanceid,origargstr,len,localaccess)) == 0 )
             {
-//fprintf(stderr,"null tag from send_to_daemon\n");
-                free(jsonstr);
+fprintf(stderr,"null tag from send_to_daemon\n");
                 return(clonestr("{\"error\":\"null tag from send_to_daemon\"}"));
             }
             else if ( async != 0 )
@@ -564,10 +562,9 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
 //fprintf(stderr,"wait_for_daemon\n");
             if ( ((*retstrp)= wait_for_daemon(retstrp,tag,timeout,10)) == 0 || (*retstrp)[0] == 0 )
             {
-                str = stringifyM(jsonstr);
+                str = stringifyM(origargstr);
                 sprintf(retbuf,"{\"error\":\"\",\"args\":%s}",str);
                 free(str);
-                free(jsonstr);
                 return(clonestr(retbuf));
             }
         }

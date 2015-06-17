@@ -20,31 +20,33 @@
 #include "InstantDEX.h"
 typedef char *(*json_handler)(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr);
 
-int32_t InstantDEX_idle(struct plugin_info *plugin) { return(0); }
+int32_t InstantDEX_idle(struct plugin_info *plugin)
+{
+    poll_pending_offers(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET);
+    return(0);
+}
 
-char *PLUGNAME(_methods)[] = { "allorderbooks", "orderbook", "lottostats", "cancelquote", "openorders", "placebid", "placeask", "respondtx", "jumptrades", "tradehistory" }; // list of supported methods approved for local access
-char *PLUGNAME(_pubmethods)[] = { "bid", "ask", "makeoffer3" }; // list of supported methods approved for public (Internet) access
+char *PLUGNAME(_methods)[] = { "makeoffer3", "allorderbooks", "orderbook", "lottostats", "cancelquote", "openorders", "placebid", "placeask", "respondtx", "jumptrades", "tradehistory", "msigaddr", "setmsigaddr" }; // list of supported methods approved for local access
+char *PLUGNAME(_pubmethods)[] = { "bid", "ask", "makeoffer3", "msigaddr", "setmsigaddr" }; // list of supported methods approved for public (Internet) access
 char *PLUGNAME(_authmethods)[] = { "echo" }; // list of supported methods that require authentication
 
 char *makeoffer3_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char *retstr = 0;
-    printf("makeoffer3 localaccess.%d\n",localaccess);
-    if ( localaccess == 0 )
-        return(0);
+    //printf("makeoffer3 localaccess.%d\n",localaccess);
     if ( valid > 0 )
-        retstr = call_makeoffer3(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,objs);
+        retstr = call_makeoffer3(localaccess,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,objs);
     return(retstr);
 }
 
 char *respondtx_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char cmdstr[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],utx[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
+    char cmdstr[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],utx[MAX_JSON_FIELD],offerNXT[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
     uint64_t quoteid,assetid,qty,priceNQT,otherassetid,otherqty;
     int32_t minperc;
-    printf("got respond_tx\n");
-    //if ( is_remote_access(previpaddr) == 0 )
-    //    return(0);
+    printf("got respond_tx.(%s)\n",origargstr);
+    if ( localaccess == 0 )
+        return(0);
     copy_cJSON(cmdstr,objs[0]);
     assetid = get_API_nxt64bits(objs[1]);
     qty = get_API_nxt64bits(objs[2]);
@@ -54,13 +56,13 @@ char *respondtx_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numo
     copy_cJSON(sig,objs[6]);
     copy_cJSON(utx,objs[7]);
     minperc = (int32_t)get_API_int(objs[8],INSTANTDEX_MINVOL);
-    if ( localaccess != 0 )
-        copy_cJSON(sender,objs[9]);
+    //if ( localaccess != 0 )
+        copy_cJSON(offerNXT,objs[9]);
     otherassetid = get_API_nxt64bits(objs[10]);
     otherqty = get_API_nxt64bits(objs[11]);
-    if ( valid > 0 && triggerhash[0] != 0 )
-        retstr = respondtx(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sender,cmdstr,assetid,qty,priceNQT,triggerhash,quoteid,sig,utx,minperc,otherassetid,otherqty);
-    else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
+    if ( strcmp(offerNXT,SUPERNET.NXTADDR) == 0 && valid > 0 && triggerhash[0] != 0 )
+        retstr = respondtx(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,offerNXT,cmdstr,assetid,qty,priceNQT,triggerhash,quoteid,sig,utx,minperc,otherassetid,otherqty);
+    //else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
     return(retstr);
 }
 
@@ -89,21 +91,24 @@ char *InstantDEX_parser(char *origargstr,cJSON *origargjson)
     if ( is_cJSON_Array(origargjson) != 0 )
         argjson = cJSON_GetArrayItem(origargjson,0);
     else argjson = origargjson;
-    localaccess = get_API_int(cJSON_GetObjectItem(argjson,"localaccess"),0);
+    localaccess = 0;
     NXTACCTSECRET[0] = 0;
     if ( argjson != 0 )
     {
-        obj = cJSON_GetObjectItem(argjson,"requestType");
+        if ( (obj= cJSON_GetObjectItem(argjson,"requestType")) == 0 )
+            obj = cJSON_GetObjectItem(argjson,"method");
         nxtobj = cJSON_GetObjectItem(argjson,"NXT");
         secretobj = cJSON_GetObjectItem(argjson,"secret");
         copy_cJSON(NXTaddr,nxtobj);
+        if ( strcmp(NXTaddr,SUPERNET.NXTADDR) == 0 )
+            localaccess = 1;
         if ( localaccess != 0 && strcmp(NXTaddr,SUPERNET.NXTADDR) != 0 )
         {
             strcpy(NXTaddr,SUPERNET.NXTADDR);
             ensure_jsonitem(argjson,"NXT",NXTaddr);
-            valid = 1;
             //printf("subsititute NXT.%s\n",NXTaddr);
         }
+        valid = 1;
         copy_cJSON(command,obj);
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 )
@@ -114,7 +119,7 @@ char *InstantDEX_parser(char *origargstr,cJSON *origargjson)
                 strcpy(NXTaddr,SUPERNET.NXTADDR);
              }
         }
-        //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
+   /// printf("(%s) command.(%s) NXT.(%s) valid.%d\n",cJSON_Print(argjson),command,NXTaddr,valid);
         //fprintf(stderr,"SuperNET_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
         for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
         {
@@ -122,7 +127,6 @@ char *InstantDEX_parser(char *origargstr,cJSON *origargjson)
             //printf("needvalid.(%c) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
             if ( strcmp(cmdinfo[1],command) == 0 )
             {
-                //printf("%d %d\n",cmdinfo[2][0],valid);
                 if ( cmdinfo[2][0] != 0 && valid <= 0 )
                     return(0);
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
@@ -145,14 +149,16 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*retstr;
+    char sender[MAX_JSON_FIELD],echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*retstr = 0;
     retbuf[0] = 0;
-    //printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+//fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
         // configure settings
         plugin->allowremote = 1;
         init_InstantDEX(calc_nxt64bits(SUPERNET.NXTADDR),0);
+        update_NXT_assettrades();
+        INSTANTDEX.readyflag = 1;
         strcpy(retbuf,"{\"result\":\"InstantDEX init\"}");
     }
     else
@@ -161,7 +167,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         if ( (methodstr= cJSON_str(cJSON_GetObjectItem(json,"method"))) == 0 )
-            methodstr= cJSON_str(cJSON_GetObjectItem(json,"requestType"));
+            methodstr = cJSON_str(cJSON_GetObjectItem(json,"requestType"));
         copy_cJSON(echostr,cJSON_GetObjectItem(json,"echostr"));
         retbuf[0] = 0;
         if ( methodstr == 0 || methodstr[0] == 0 )
@@ -174,17 +180,24 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        else
+        else if ( strcmp(methodstr,"msigaddr") == 0 )
         {
-            if ( (retstr= InstantDEX_parser(jsonstr,json)) != 0 )
+            char *devMGW_command(char *jsonstr,cJSON *json);
+            if ( SUPERNET.gatewayid >= 0 )
             {
-                if ( strlen(retstr) >= maxlen-1 )
-                    retstr[maxlen-1] = 0;
-                strcpy(retbuf,retstr);
-                free(retstr);
-            }
-            else sprintf(retbuf,"{\"error\":\"method not found\"}");
+                if ( (retstr= devMGW_command(jsonstr,json)) != 0 )
+                    should_forward(sender,retstr);
+            } //else retstr = nn_loadbalanced((uint8_t *)jsonstr,(int32_t)strlen(jsonstr)+1);
         }
+        else retstr = InstantDEX_parser(jsonstr,json);
+        if ( retstr != 0 )
+        {
+            if ( strlen(retstr) >= maxlen-1 )
+                retstr[maxlen-1] = 0;
+            strcpy(retbuf,retstr);
+            free(retstr);
+        }
+        else sprintf(retbuf,"{\"error\":\"method %s not found\"}",methodstr);
     }
     return((int32_t)strlen(retbuf));
 }

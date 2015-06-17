@@ -538,7 +538,7 @@ cJSON *conv_NXT_quotejson(cJSON *json,char *fieldname,uint64_t ap_mult)
     else free_json(json), json = 0;
     return(json);
 }
-
+ 
 int32_t parse_NXT(struct exchange_state *ep,int32_t maxdepth)
 {
     cJSON *json,*bidobj,*askobj;

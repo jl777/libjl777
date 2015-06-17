@@ -148,16 +148,16 @@ void ramparse_stub(struct rambook_info *bids,struct rambook_info *asks,int32_t m
     printf("unexpected call to ramparse_stub gui.%s maxdepth.%d\n",gui,maxdepth);
 }
 
-int32_t validate_sender(char *sender,char *tokenizedtxt)
+int32_t validate_sender(char *forwarder,char *sender,char *tokenizedtxt)
 {
-    char pubkey[512]; int32_t strictflag = 1;
-    return(validate_token(pubkey,sender,tokenizedtxt,strictflag));
+    char pubkey[512]; int32_t strictflag = 0;
+    return(validate_token(forwarder,pubkey,sender,tokenizedtxt,strictflag));
 }
 
 char *submit_quote(char *quotestr)
 {
     int32_t len; char _tokbuf[4096];
-    printf("submit_quote.(%s)\n",quotestr);
+    //printf("submit_quote.(%s)\n",quotestr);
     len = construct_tokenized_req(_tokbuf,quotestr,SUPERNET.NXTACCTSECRET);
     return(nn_loadbalanced((uint8_t *)_tokbuf,len));
 }
@@ -165,7 +165,7 @@ char *submit_quote(char *quotestr)
 char *submit_respondtx(char *respondtxstr,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t dest64bits)
 {
     char _tokbuf[8192],NXTaddr[64],destNXTaddr[64]; int32_t len;
-    printf("submit_respondtx.(%s)\n",respondtxstr);
+    printf("submit_respondtx.(%s) -> dest.%llu\n",respondtxstr,(long long)dest64bits);
     len = construct_tokenized_req(_tokbuf,respondtxstr,NXTACCTSECRET);
     expand_nxt64bits(NXTaddr,nxt64bits);
     expand_nxt64bits(destNXTaddr,dest64bits);
@@ -196,11 +196,36 @@ int32_t time_to_nextblock(int32_t lookahead)
 #include "NXT_tx.h"
 #include "quotes.h"
 
-void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx *txptrs[],int32_t updateNXT) // from poll_pending_offers via main
+void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx *txptrs[],int32_t numtx,int32_t updateNXT) // from poll_pending_offers via main
 {
-    //printf("update_openorder iQ.%llu with tx.%llu\n",(long long)iQ->quoteid,(long long)tx->txid);
-    // regen orderbook and see if it crosses
-    // updatestats
+    char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *refiQ);
+    char *retstr;
+    printf("update_openorder iQ.%llu with numtx.%d updateNXT.%d | expires in %ld\n",(long long)iQ->quoteid,numtx,updateNXT,iQ->timestamp+iQ->duration-time(NULL));
+    if ( (SUPERNET.automatch & 2) != 0 && (retstr= check_ordermatch(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,iQ)) != 0 )
+    {
+        printf("automatched order!\n");
+        free(retstr);
+    }
+}
+
+char *fill_nxtae(uint64_t nxt64bits,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid)
+{
+    uint64_t txid,assetid,avail,qty,priceNQT,ap_mult; char retbuf[512],*errstr;
+    if ( nxt64bits != calc_nxt64bits(SUPERNET.NXTADDR) )
+        return(clonestr("{\"error\":\"must use your NXT address\"}"));
+    else if ( baseid == NXT_ASSETID )
+        dir = -dir, assetid = relid;
+    else if ( relid == NXT_ASSETID )
+        assetid = baseid;
+    else return(clonestr("{\"error\":\"NXT AE order without NXT\"}"));
+    if ( (ap_mult= get_assetmult(assetid)) == 0 )
+        return(clonestr("{\"error\":\"assetid not found\"}"));
+    qty = calc_asset_qty(&avail,&priceNQT,SUPERNET.NXTADDR,0,assetid,price,volume);
+    txid = submit_triggered_nxtae(&errstr,0,dir > 0 ? "placeBidOrder" : "placeAskOrder",nxt64bits,SUPERNET.NXTACCTSECRET,assetid,qty,priceNQT,0,0,0,0);
+    if ( errstr != 0 )
+        sprintf(retbuf,"{\"error\":\"%s\"}",errstr), free(errstr);
+    else sprintf(retbuf,"{\"result\":\"success\",\"txid\":\"%llu\"}",(long long)txid);
+    return(clonestr(retbuf));
 }
 
 #include "rambooks.h"
@@ -211,9 +236,97 @@ void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx
 #include "bars.h"
 #include "signals.h"
 
-char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *iQ,char *submitstr) // called by placequote, should autofill
+char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *refiQ) // called by placequote, should autofill
 {
-    return(submitstr);
+    struct orderbook *op,*obooks[32]; char base[16],rel[16]; uint64_t mult; int32_t i,besti,n=0,dir = 1; struct InstantDEX_quote *iQ,*quotes;
+    uint64_t assetA,amountA,assetB,amountB; char jumpstr[1024],otherNXTaddr[64],exchange[64],*retstr = 0;
+    double refprice,refvol,price,vol,metric,perc,bestmetric = 0.;
+    //struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount,type; uint32_t timestamp; char exchange[9]; uint8_t closed:1,sent:1,matched:1,isask:1; };
+    update_rambooks(refiQ->baseid,refiQ->relid,DEFAULT_MAXDEPTH,refiQ->gui,1);
+    set_assetname(&mult,base,refiQ->baseid), set_assetname(&mult,rel,refiQ->relid);
+    besti = -1;
+    if ( refiQ->isask != 0 )
+        dir = -1;
+    if ( (refprice= calc_price_volume(&refvol,refiQ->baseamount,refiQ->relamount)) <= SMALLVAL )
+        return(0);
+    printf("%s dir.%d check_ordermatch(%llu %.8f | %llu %.8f) ref %.8f vol %.8f\n",NXTaddr,dir,(long long)refiQ->baseid,dstr(refiQ->baseamount),(long long)refiQ->relid,dstr(refiQ->relamount),refprice,refvol);
+    if ( (op= make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,refiQ->baseid,rel,refiQ->relid,DEFAULT_MAXDEPTH,0,refiQ->gui)) != 0 )
+    {
+        if ( dir > 0 && (n= op->numasks) != 0 )
+            quotes = op->asks;
+        else if ( dir < 0 && (n= op->numbids) != 0 )
+            quotes = op->bids;
+        if ( n > 0 )
+        {
+            for (i=0; i<n; i++)
+            {
+                iQ = &quotes[i];
+                expand_nxt64bits(otherNXTaddr,iQ->nxt64bits);
+                if ( iQ->closed != 0 )
+                    continue;
+                if ( is_unfunded_order(iQ->nxt64bits,dir > 0 ? iQ->baseid : iQ->relid,dir > 0 ? iQ->baseamount : iQ->relamount) != 0 )
+                {
+                    iQ->closed = 1;
+                    printf("found unfunded order!\n");
+                    continue;
+                }
+                iQ_exchangestr(exchange,iQ);
+                if ( strcmp(otherNXTaddr,NXTaddr) != 0 && iQ->matched == 0 && iQ->exchangeid == INSTANTDEX_EXCHANGEID )
+                {
+                    printf("matchedflag.%d exchange.(%s) %llu/%llu from (%s)\n",iQ->matched,exchange,(long long)iQ->baseamount,(long long)iQ->relamount,otherNXTaddr);
+                    price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+                    printf("price %.8f vol %.8f | %.8f > %.8f? %.8f > %.8f?\n",price,vol,vol,(refvol * INSTANTDEX_MINVOLPERC),refvol,(vol * INSTANTDEX_MINVOLPERC));
+                    if ( vol > (refvol * INSTANTDEX_MINVOLPERC) && refvol > (vol * INSTANTDEX_MINVOLPERC) )
+                    {
+                        if ( vol < refvol )
+                            metric = (vol / refvol);
+                        else metric = 1.;
+                        printf("price %f against %f or %f\n",price,(refprice * (1. + INSTANTDEX_PRICESLIPPAGE) + SMALLVAL),(refprice * (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL));
+                        if ( dir > 0 && price < (refprice * (1. + INSTANTDEX_PRICESLIPPAGE) + SMALLVAL) )
+                            metric *= (1. + (refprice - price)/refprice);
+                        else if ( dir < 0 && price > (refprice * (1. - INSTANTDEX_PRICESLIPPAGE) - SMALLVAL) )
+                            metric *= (1. + (price - refprice)/refprice);
+                        else metric = 0.;
+                        printf("metric %f\n",metric);
+                        if ( metric > bestmetric )
+                        {
+                            bestmetric = metric;
+                            besti = i;
+                        }
+                    }
+                }
+            }
+        } else printf("n.%d\n",n);
+        if ( besti >= 0 )
+        {
+            iQ = &quotes[besti];
+            jumpstr[0] = 0;
+            if ( dir < 0 )
+            {
+                assetA = refiQ->relid;
+                amountA = iQ->relamount;
+                assetB = refiQ->baseid;
+                amountB = iQ->baseamount;
+            }
+            else
+            {
+                assetB = refiQ->relid;
+                amountB = iQ->relamount;
+                assetA = refiQ->baseid;
+                amountA = iQ->baseamount;
+            }
+            price = calc_price_volume(&vol,iQ->baseamount,iQ->relamount);
+            iQ_exchangestr(exchange,iQ);
+            expand_nxt64bits(otherNXTaddr,iQ->nxt64bits);
+            perc = 100. * vol / refvol;
+            if ( perc == 0 )
+                perc = 1;
+            if ( perc >= iQ->minperc )
+                retstr = makeoffer3(NXTaddr,NXTACCTSECRET,price,vol,0,perc,refiQ->baseid,refiQ->relid,iQ->baseiQ,iQ->reliQ,iQ->quoteid,dir < 0,exchange,iQ->baseamount,iQ->relamount,iQ->nxt64bits,iQ->minperc,get_iQ_jumpasset(iQ));
+        } else printf("besti.%d\n",besti);
+        free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
+    } else printf("cant make orderbook\n");
+    return(retstr);
 }
 
 char *lottostats_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -239,21 +352,19 @@ char *placequote_str(struct InstantDEX_quote *iQ)
     return(clonestr(buf));
 }
 
-char *submitquote_str(struct InstantDEX_quote *iQ,uint64_t baseid,uint64_t relid)
+char *submitquote_str(int32_t localaccess,struct InstantDEX_quote *iQ,uint64_t baseid,uint64_t relid)
 {
     cJSON *json;
-    char *str,*jsonstr = 0;
+    char *jsonstr = 0;
     uint64_t basetmp,reltmp;
-    if ( (json= gen_InstantDEX_json(&basetmp,&reltmp,0,iQ->isask,iQ,baseid,relid,0)) != 0 )
+    if ( (json= gen_InstantDEX_json(localaccess,&basetmp,&reltmp,0,iQ->isask,iQ,baseid,relid,0)) != 0 )
     {
         ensure_jsonitem(json,"plugin","relay");
         ensure_jsonitem(json,"destplugin","InstantDEX");
-        cJSON_ReplaceItemInObject(json,"requestType",cJSON_CreateString((iQ->isask != 0) ? "ask" : "bid"));
+        ensure_jsonitem(json,"method",(iQ->isask != 0) ? "ask" : "bid");
         jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
-        if ( (str= submit_quote(jsonstr)) != 0 )
-            free(str);
         free_json(json);
-    }
+    } else printf("gen_InstantDEX_json returns null\n");
     return(jsonstr);
 }
 
@@ -296,6 +407,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int3
     if ( duration <= 0 || duration > ORDERBOOK_EXPIRATION )
         duration = ORDERBOOK_EXPIRATION;
     copy_cJSON(exchangestr,objs[11]);
+    printf("placequote localaccess.%d dir.%d exchangestr.(%s)\n",localaccess,dir,exchangestr);
     if ( exchangestr[0] == 0 )
         strcpy(exchangestr,INSTANTDEX_NAME);
     else
@@ -305,7 +417,9 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int3
             printf("remote node (%d) (%s) trying to place quote to exchange (%s)\n",localaccess,sender,exchangestr);
             return(clonestr("{\"error\":\"no remote exchange orders: you cannot submit an order from a remote node\"}"));
         }
-        else if ( strcmp(exchangestr,"nxtae") != 0 && strcmp(exchangestr,"unconf") != 0 && strcmp(exchangestr,"InstantDEX") != 0 )
+        else if ( strcmp(exchangestr,"nxtae") == 0 )
+            return(fill_nxtae(nxt64bits,dir,price,volume,baseid,relid));
+        else if ( strcmp(exchangestr,"InstantDEX") != 0 )
         {
             if ( is_native_crypto(base,baseid) > 0 && is_native_crypto(rel,relid) > 0 && price > 0 && volume > 0 && dir != 0 )
             {
@@ -320,17 +434,17 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int3
                     else return(clonestr("{\"error\":\"no trade function for exchange\"}\n"));
                 } else return(clonestr("{\"error\":\"exchange not active, check SuperNET.conf exchanges array\"}\n"));
             } else return(clonestr("{\"error\":\"illegal parameter baseid or relid not crypto or invalid price\"}\n"));
-        }
+        } //else printf("alternate else case.(%s)\n",exchangestr);
     }
+    if ( Debuglevel > 2 )
+        printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     update_rambooks(baseid,relid,0,0,0);
-    printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
     minbasevol = get_minvolume(baseid), minrelvol = get_minvolume(relid);
     if ( volume < minbasevol || (volume * price) < minrelvol )
     {
         sprintf(buf,"{\"error\":\"not enough volume\",\"price\":%f,\"volume\":%f,\"minbasevol\":%f,\"minrelvol\":%f,\"relvol\":%f}",price,volume,minbasevol,minrelvol,price*volume);
         return(clonestr(buf));
     }
-
     /*if ( automatch != 0 && remoteflag == 0 && (retstr= auto_makeoffer2(NXTaddr,NXTACCTSECRET,dir,baseid,baseamount,relid,relamount,gui)) != 0 )
      {
      fprintf(stderr,"got (%s) from auto_makeoffer2\n",retstr);
@@ -347,19 +461,23 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int3
                 {
                     retstr = placequote_str(&iQ);
                     if ( Debuglevel > 2 )
-                        printf("placequote.(%s)\n",retstr);
+                        printf("placequote.(%s) remoteflag.%d\n",retstr,remoteflag);
                 }
-                if ( (jsonstr= submitquote_str(&iQ,baseid,relid)) != 0 )
+                if ( (jsonstr= submitquote_str(localaccess,&iQ,baseid,relid)) != 0 )
                 {
+                    //printf("got submitquote_str.(%s)\n",jsonstr);
                     if ( remoteflag == 0 )
                     {
                         if ( (str= submit_quote(jsonstr)) != 0 )
                             free(str);
-                        //free(jsonstr);
                         retstr = jsonstr;
                     }
-                    else retstr = check_ordermatch(NXTaddr,NXTACCTSECRET,&iQ,jsonstr);
-                }
+                    else if ( (SUPERNET.automatch & 1) != 0 && (retstr= check_ordermatch(NXTaddr,NXTACCTSECRET,&iQ)) != 0 )
+                    {
+                        free(jsonstr);
+                        return(retstr);
+                    }
+                } else printf("not submitquote_str\n");
             } else return(clonestr("{\"error\":\"cant get price close enough due to limited decimals\"}"));
         }
         if ( retstr == 0 )
@@ -386,20 +504,43 @@ char *placeask_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numob
     return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,-1,SUPERNET.NXTADDR,valid,objs,numobjs,origargstr));
 }
 
+int32_t should_forward(char *sender,char *origargstr)
+{
+    char forwarder[64],plugin[MAX_JSON_FIELD]; uint8_t *buf; int32_t len;
+    if ( validate_sender(forwarder,sender,origargstr) > 0 )
+    {
+        //printf("sender.(%s) forwarder.(%s)\n",sender,forwarder);
+        if ( strcmp(forwarder,sender) == 0 )
+        {
+            len = (int32_t)strlen(origargstr) + 1;
+            if ( (buf= replace_forwarder(plugin,(uint8_t *)origargstr,&len)) != 0 )
+            {
+                nn_publish(buf,len,1);
+                if ( buf != (uint8_t *)origargstr )
+                    free(buf);
+            }
+            return(1);
+        }
+    }
+    return(0);
+}
+
 char *bid_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char sender[64];
-    if ( validate_sender(sender,origargstr) != 0 )
+    char sender[MAX_JSON_FIELD];
+    should_forward(sender,origargstr);
+    if ( strcmp(SUPERNET.NXTADDR,sender) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,1,sender,valid,objs,numobjs,origargstr));
-    else return(clonestr("{\"error\":\"cant validate sender\"}"));
+    else return(0);
 }
 
 char *ask_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    char sender[64];
-    if ( validate_sender(sender,origargstr) != 0 )
+    char sender[MAX_JSON_FIELD];
+    should_forward(sender,origargstr);
+    if ( strcmp(SUPERNET.NXTADDR,sender) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,-1,sender,valid,objs,numobjs,origargstr));
-    else return(clonestr("{\"error\":\"cant validate sender\"}"));
+    else return(0);
 }
 
 uint64_t PTL_placebid(char *base,char *rel,double price,double volume)
@@ -631,9 +772,9 @@ int32_t orderbook_verifymatch(int32_t dir,uint64_t baseid,uint64_t relid,double 
     return(retval);
 }
 
-char *call_makeoffer3(char *NXTaddr,char *NXTACCTSECRET,cJSON *objs[])
+char *call_makeoffer3(int32_t localaccess,char *NXTaddr,char *NXTACCTSECRET,cJSON *objs[])
 {
-    uint64_t quoteid,baseid,relid,baseamount,relamount,offerNXT,jumpasset;
+    uint64_t quoteid,baseid,relid,baseamount,relamount,offerNXT,jumpasset; struct InstantDEX_quote baseiQ,reliQ;
     char exchange[MAX_JSON_FIELD];
     double price,volume;
     int32_t minperc,perc,flip = 0;
@@ -650,10 +791,13 @@ char *call_makeoffer3(char *NXTaddr,char *NXTACCTSECRET,cJSON *objs[])
     offerNXT = get_API_nxt64bits(objs[13]);
     minperc = (int32_t)get_API_int(objs[14],INSTANTDEX_MINVOL);
     jumpasset = get_API_nxt64bits(objs[15]);
-    return(makeoffer3(NXTaddr,NXTACCTSECRET,price,volume,flip,perc,baseid,relid,objs[5],objs[6],quoteid,get_API_int(objs[7],0),exchange,baseamount,relamount,offerNXT,minperc,jumpasset));
+    memset(&baseiQ,0,sizeof(baseiQ));
+    memset(&reliQ,0,sizeof(reliQ));
+    set_basereliQ(&baseiQ,objs[5]), set_basereliQ(&reliQ,objs[6]);
+    return(makeoffer3(NXTaddr,NXTACCTSECRET,price,volume,flip,perc,baseid,relid,&baseiQ,&reliQ,quoteid,get_API_int(objs[7],0),exchange,baseamount,relamount,offerNXT,minperc,jumpasset));
 }
 
-char *makeoffer3_stub(char *NXTaddr,char *NXTACCTSECRET,char *jsonstr)
+char *makeoffer3_stub(int32_t localaccess,char *NXTaddr,char *NXTACCTSECRET,char *jsonstr)
 {
     static char *makeoffer3_fields[] = { (char *)0, "makeoffer3", "V", "baseid", "relid", "quoteid", "perc", "flip", "baseiQ", "reliQ", "askoffer", "price", "volume", "exchange", "baseamount", "relamount", "offerNXT", "minperc", "jumpasset", 0 };
     cJSON *json,*objs[16];
@@ -663,7 +807,7 @@ char *makeoffer3_stub(char *NXTaddr,char *NXTACCTSECRET,char *jsonstr)
     {
         for (j=3; j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
             objs[j-3] = cJSON_GetObjectItem(json,makeoffer3_fields[j]);
-        retstr = call_makeoffer3(NXTaddr,NXTACCTSECRET,objs);
+        retstr = call_makeoffer3(localaccess,NXTaddr,NXTACCTSECRET,objs);
         free_json(json);
     }
     return(retstr);
@@ -714,8 +858,8 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
             quoteid = (long long)calc_quoteid(&iQ);
             if ( orderbook_testpair(items,quoteid,nxt64bits,base,baseid,rel,relid,gui,maxdepth) == 0 )
             {
-                jsonstr = submitquote_str(&iQ,baseid,relid);
-                if ( (retstr= makeoffer3_stub("4077619696739571952",0,jsonstr)) != 0 )
+                jsonstr = submitquote_str(1,&iQ,baseid,relid);
+                if ( (retstr= makeoffer3_stub(1,"4077619696739571952",0,jsonstr)) != 0 )
                 {
                     if ( (json= cJSON_Parse(retstr)) != 0 )
                     {
@@ -728,9 +872,9 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
                         if ( 0 && rb->numquotes > 1 )
                         {
                             char *jsonstr2,*retstr2; cJSON *json2;
-                            if ( (jsonstr2= submitquote_str(&rb->quotes[1],baseid,relid)) != 0 )
+                            if ( (jsonstr2= submitquote_str(1,&rb->quotes[1],baseid,relid)) != 0 )
                             {
-                                if ( (retstr2= makeoffer3_stub("4077619696739571952",0,jsonstr2)) != 0 )
+                                if ( (retstr2= makeoffer3_stub(1,"4077619696739571952",0,jsonstr2)) != 0 )
                                 {
                                     if ( (json2= cJSON_Parse(retstr2)) != 0 )
                                     {

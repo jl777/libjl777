@@ -68,7 +68,7 @@ void update_orderbook(int32_t iter,struct orderbook *op,int32_t *numbidsp,int32_
         if ( Debuglevel > 1 )
         {
             double p,v;
-            p = calc_price_volume(&v,quote->baseamount,quote->relamount), printf("%c.(%f %f).%d ",'B'-quote->isask,p,v,polarity);
+            p = calc_price_volume(&v,quote->baseamount,quote->relamount);//, printf("%c.(%f %f).%d ",'B'-quote->isask,p,v,polarity);
         }
     }
 }
@@ -92,14 +92,14 @@ void sort_orderbook(struct orderbook *op)
 
 void debug_json(cJSON *item)
 {
-    char *str,*str2;
-    if ( Debuglevel > 1 )
+    char *str;//,*str2;
+    if ( Debuglevel > 1 && item != 0 )
     {
         str = cJSON_Print(item);
         _stripwhite(str,' ');
-        str2 = stringifyM(str);
-        printf("%s\n",str2);
-        free(str), free(str2);
+        //str2 = stringifyM(str);
+        printf("./BitcoinDarkd SuperNET '%s'\n",str);
+        free(str);//, free(str2);
     }
 }
 
@@ -114,11 +114,13 @@ int32_t nonz_and_lesser(int32_t a,int32_t b)
     return(0);
 }
 
-struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t m)
+struct orderbook *make_jumpbook(char *base,uint64_t baseid,uint64_t jumpasset,char *rel,uint64_t relid,struct orderbook *to,struct orderbook *from,char *gui,struct orderbook *rawop,int32_t maxdepth)
 {
     struct orderbook *op = 0;
-    int32_t i,j,n;
+    int32_t i,j,n,m = sqrt(maxdepth);
     uint64_t mult;
+    if ( m < 10 )
+        m = 10;
     if ( 0 && rawop != 0 )
     {
         for (i=0; i<rawop->numbids; i++)
@@ -288,14 +290,15 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
 
 char *orderbook_jsonstr(uint64_t nxt64bits,struct orderbook *op,char *base,char *rel,int32_t maxdepth,int32_t allflag)
 {
-    cJSON *json,*bids,*asks,*item;
+    cJSON *json,*bids,*asks,*item,*highbid=0,*lowask=0;
     char baserel[64],assetA[64],assetB[64],NXTaddr[64],obook[64];
     int32_t i;
     if ( op == 0 )
         return(clonestr("{\"error\":\"empty orderbook\"}"));
     strcpy(op->base,base), strcpy(op->rel,rel);
     sprintf(baserel,"%s/%s",op->base,op->rel);
-    printf("ORDERBOOK %s/%s iQsize.%ld numbids.%d numasks.%d maxdepth.%d\n",op->base,op->rel,sizeof(struct InstantDEX_quote),op->numbids,op->numasks,maxdepth);
+    if ( Debuglevel > 2 )
+        printf("ORDERBOOK %s/%s iQsize.%ld numbids.%d numasks.%d maxdepth.%d\n",op->base,op->rel,sizeof(struct InstantDEX_quote),op->numbids,op->numasks,maxdepth);
     json = cJSON_CreateObject();
     bids = cJSON_CreateArray();
     asks = cJSON_CreateArray();
@@ -307,7 +310,7 @@ char *orderbook_jsonstr(uint64_t nxt64bits,struct orderbook *op,char *base,char 
             {
                 cJSON_AddItemToArray(bids,item);
                 if ( Debuglevel > 1 && i == 0 )
-                    debug_json(item);
+                    highbid = item;
             }
         }
         for (i=0; i<op->numasks; i++)
@@ -316,7 +319,7 @@ char *orderbook_jsonstr(uint64_t nxt64bits,struct orderbook *op,char *base,char 
             {
                 cJSON_AddItemToArray(asks,item);
                 if ( Debuglevel > 1 && i == 0 )
-                    debug_json(item);
+                    lowask = item;
             }
         }
     }
@@ -333,6 +336,7 @@ char *orderbook_jsonstr(uint64_t nxt64bits,struct orderbook *op,char *base,char 
     cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
     cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
     cJSON_AddItemToObject(json,"maxdepth",cJSON_CreateNumber(maxdepth));
+    debug_json(highbid), debug_json(lowask);
     return(cJSON_Print(json));
 }
 
@@ -407,7 +411,7 @@ struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,
     obooks[n] = 0;
     if ( m > 1 )
     {
-        printf("num jumpbooks.%d\n",m);
+        //printf("num jumpbooks.%d\n",m);
         op = merge_books(base,refbaseid,rel,refrelid,jumpbooks,m);
     }
     else op = jumpbooks[0];
@@ -483,9 +487,10 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
             {
                 bids = get_rambook(0,baseid,0,relid,(exchangeid<<1));
                 asks = get_rambook(0,baseid,0,relid,(exchangeid<<1) | 1);
-                fprintf(stderr,"(%llu %llu).%s ",(long long)baseid,(long long)relid,Exchanges[exchangeid].name);
                 if ( exchangeid != INSTANTDEX_EXCHANGEID )
                 {
+                    if ( Debuglevel > 2 )
+                        fprintf(stderr,"(%llu %llu max.%d).%s ",(long long)baseid,(long long)relid,maxdepth,Exchanges[exchangeid].name);
                     if ( bids != 0 && asks != 0 && maxdepth > 0 && exchange->exchangeid == exchangeid )
                     {
                         if ( exchange->pollgap != 0 )
@@ -498,7 +503,7 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
                             emit_orderbook_changes(bids,prevbids,numoldbids), emit_orderbook_changes(asks,prevasks,numoldasks);
                             exchange->lastaccess = now = (uint32_t)time(NULL);
                         } else printf("wait %u vs %u %u %u\n",now,exchange->lastaccess,bids->lastaccess,asks->lastaccess);
-                    } else printf("unexpected %p %p %d %d %d\n",bids,asks,maxdepth,exchangeid,exchange->exchangeid);
+                    }// else printf("unexpected %p %p %d %d %d\n",bids,asks,maxdepth,exchangeid,exchange->exchangeid);
                 }
             }
         }
@@ -515,6 +520,8 @@ char *orderbook_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numo
     baseid = get_API_nxt64bits(objs[0]), relid = get_API_nxt64bits(objs[1]), allflag = get_API_int(objs[2],0), oldest = get_API_int(objs[3],0);
     maxdepth = get_API_int(objs[4],DEFAULT_MAXDEPTH), copy_cJSON(base,objs[5]), copy_cJSON(rel,objs[6]), copy_cJSON(gui,objs[7]), gui[sizeof(iQ->gui)-1] = 0, showall = get_API_int(objs[8],1);
     retstr = 0;
+    if ( maxdepth <= 0 )
+        maxdepth = DEFAULT_MAXDEPTH;
     if ( baseid == 0 && base[0] != 0 )
         baseid = stringbits(base);
     else set_assetname(&mult,base,baseid);

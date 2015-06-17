@@ -111,7 +111,7 @@ char *passthru_func(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
         if ( daemonid != 0 )
         {
             unstringify(params);
-            send_to_daemon(is_remote_access(previpaddr)==0,&retstr,plugin,daemonid,instanceid,params);
+            send_to_daemon(0,&retstr,plugin,daemonid,instanceid,params,(int32_t)strlen(params),is_remote_access(previpaddr)==0);
             return(wait_for_daemon(&retstr,tag,10,10000));
         }
         else if ( (cp= get_coin_info(coinstr)) != 0 && method[0] != 0 )

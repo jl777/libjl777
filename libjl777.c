@@ -1473,7 +1473,7 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json);
-    char *retstr,*resultstr,*methodstr,*destplugin,buf[1024];
+    char *retstr,*resultstr,*methodstr,*destplugin,buf[1024],myipaddr[512];
     FILE *fp;
     int32_t i;
     retbuf[0] = 0;
@@ -1505,12 +1505,18 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
         else strcpy(SUPERNET.NXTADDR,SUPERNET.myNXTacct);
         SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
-        copy_cJSON(SUPERNET.myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
+        copy_cJSON(myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
+        if ( SUPERNET.myipaddr[0] == 0 )
+            strcpy(SUPERNET.myipaddr,myipaddr);
+        printf("sigwo this is your ipaddr? (%s)\n",SUPERNET.myipaddr);
+        if ( SUPERNET.myipaddr[0] != 0 )
+            SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
         if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
             SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1);
         else SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
         copy_cJSON(SUPERNET.hostname,cJSON_GetObjectItem(json,"hostname"));
         SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),7777);
+        SUPERNET.automatch = get_API_int(cJSON_GetObjectItem(json,"automatch"),3);
 #ifndef __linux__
         SUPERNET.UPNP = 1;
 #endif
@@ -1564,6 +1570,8 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             DB_MGW = db777_create(0,0,"MGW",0,0);
         if ( DB_msigs == 0 )
             DB_msigs = db777_create(0,0,"msigs",0,0);
+        if ( DB_NXTtrades == 0 )
+            DB_NXTtrades = db777_create(0,0,"NXT_trades",0,0);
         SUPERNET.readyflag = 1;
         if ( SUPERNET.UPNP != 0 )
         {

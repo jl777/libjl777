@@ -45,7 +45,7 @@ void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite)
 	if ( enablewrite != 0 )
 		rwflags |= PROT_WRITE;
 #if __i386__
-	xx ptr = mmap(0,filesize,rwflags,flags,fd,0);
+	ptr = mmap(0,filesize,rwflags,flags,fd,0);
 #else
 	ptr = mmap64(0,filesize,rwflags,flags,fd,0);
 #endif

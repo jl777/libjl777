@@ -38,6 +38,7 @@ char *setmsigpubkey(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sen
 struct multisig_addr *find_msigaddr(struct multisig_addr *msig,int32_t *lenp,char *coinstr,char *msigaddr);
 int32_t save_msigaddr(char *coinstr,char *NXTaddr,struct multisig_addr *msig);
 struct multisig_addr *gen_multisig_addr(char *sender,int32_t M,int32_t N,char *coinstr,char *serverport,char *userpass,int32_t use_addmultisig,char *refNXTaddr,char *userpubkey,uint64_t *srvbits);
+int32_t add_MGWaddr(char *previpaddr,char *sender,int32_t valid,char *origargstr);
 
 int32_t update_MGW_msig(struct multisig_addr *msig,char *sender);
 int32_t MGW_publish_acctpubkeys(char *coinstr,char *str);
@@ -585,7 +586,7 @@ char *setmultisig(char *NXTaddr,char *NXTACCTSECRET,char *previpaddr,char *sende
         if ( (crc= _crc32(0,origargstr,strlen(origargstr))) != lastcrc )
         {
             if ( nn_send(MGW.all.socks.both.bus,origargstr,(int32_t)strlen(origargstr)+1,0) <= 0 )
-            printf("error sending (%s)\n",origargstr);
+                printf("error sending (%s)\n",origargstr);
             lastcrc = crc;
         }
         add_MGWaddr(previpaddr,sender,1,origargstr);

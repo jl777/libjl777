@@ -115,7 +115,8 @@ struct SuperNET_info
     char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512];
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512],hostname[512];
     uint64_t my64bits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms;
+    uint32_t myipbits;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch;
     uint16_t port;
     struct env777 DBs;
     cJSON *argjson;
@@ -250,6 +251,7 @@ char *relays_jsonstr(char *jsonstr,cJSON *argjson);
 struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
 int32_t init_pingpong_queue(struct pingpong_queue *ppq,char *name,int32_t (*action)(),queue_t *destq,queue_t *errorq);
 int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr);
+uint8_t *replace_forwarder(char *pluginbuf,uint8_t *data,int32_t *datalenp);
 
 #endif
 #else
@@ -513,10 +515,6 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
         //printf("bind\n");
         if ( (err= nn_bind(sock,bindaddr)) < 0 )
             return(report_err(typestr,err,"nn_bind",type,bindaddr,connectaddr));
-        if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&timeout,sizeof(timeout)) < 0 )
-            return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
-        if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
-            return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
     }
     if ( connectaddr[0] != 0 )
     {
@@ -526,6 +524,10 @@ int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char
         else if ( type == NN_SUB && (err= nn_setsockopt(sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0)) < 0 )
             return(report_err(typestr,err,"nn_setsockopt subscribe",type,bindaddr,connectaddr));
     }
+    if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&timeout,sizeof(timeout)) < 0 )
+        return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
+    if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
+        return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
     if ( Debuglevel > 2 )
         printf("%s.%s socket.%d bind.(%s) connect.(%s)\n",typestr,suffix,sock,bindaddr,connectaddr);
     return(sock);

@@ -330,15 +330,15 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
     return(txid);
 }
 
-uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT,char *base,char *rel,double price,double volume)
+uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT,char *base,char *rel,double price,double volume,uint32_t triggerheight)
 {
     uint64_t txid = 0;
     char assetidstr[64],*cmd,*retstr = 0;
-    int32_t ap_type,subtype;
+    int32_t ap_type,decimals;
     struct exchange_info *exchange;
     *jsonstrp = 0;
     expand_nxt64bits(assetidstr,assetid);
-    ap_type = get_assettype(&subtype,assetidstr);
+    ap_type = get_assettype(&decimals,assetidstr);
     if ( dir == 0 || priceNQT == 0 )
         cmd = (ap_type == 2 ? "transferAsset" : "transferCurrency"), priceNQT = 0;
     else cmd = ((dir > 0) ? (ap_type == 2 ? "placeBidOrder" : "currencyBuy") : (ap_type == 2 ? "placeAskOrder" : "currencySell")), otherNXT = 0;
@@ -347,7 +347,7 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
         if ( assetid != NXT_ASSETID && qty != 0 && (dir == 0 || priceNQT != 0) )
         {
             printf("submit to exchange.%s (%s) dir.%d\n",Exchanges[exchangeid].name,comment,dir);
-            txid = submit_triggered_nxtae(jsonstrp,ap_type == 5,cmd,nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment,otherNXT);
+            txid = submit_triggered_nxtae(jsonstrp,ap_type == 5,cmd,nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment,otherNXT,triggerheight);
             if ( *jsonstrp != 0 )
                 txid = 0;
         }

@@ -222,7 +222,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     int32_t len = (int32_t)strlen(jsonstr);
     cJSON *json,*obj;
     uint64_t tag = 0;
-    char name[MAX_JSON_FIELD];
+    char name[MAX_JSON_FIELD],destname[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
     if ( Debuglevel > 2 )
         printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
@@ -234,12 +234,11 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
         if ( name[0] == 0 )
             copy_cJSON(name,cJSON_GetObjectItem(obj,"agent"));
-        else if ( name[0] == 0 )
-            copy_cJSON(name,cJSON_GetObjectItem(obj,"destplugin"));
-        else if ( name[0] == 0 )
-            copy_cJSON(name,cJSON_GetObjectItem(obj,"destagent"));
+        copy_cJSON(destname,cJSON_GetObjectItem(obj,"destplugin"));
+        if ( destname[0] == 0 )
+            copy_cJSON(destname,cJSON_GetObjectItem(obj,"destagent"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
-        if ( strcmp(name,plugin->name) == 0 && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
+        if ( (strcmp(name,plugin->name) == 0 || strcmp(destname,plugin->name) == 0) && (len= PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
         {
             *sendflagp = 1;
             if ( retbuf[0] == 0 )
@@ -248,7 +247,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
             if ( Debuglevel > 2 )
                 printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
-        } else printf("(%s) -> no return.%d (%s) vs (%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,plugin->name,len);
+        } else printf("(%s) -> no return.%d (%s) vs (%s):(%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,destname,plugin->name,len);
     }
     else
     {
