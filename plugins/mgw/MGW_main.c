@@ -1926,7 +1926,6 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                     MGW.issuers[MGW.numissuers++] = nxt64bits;
             }
         }
-        MGW.port = get_API_int(cJSON_GetObjectItem(json,"MGWport"),7643);
         MGW.M = get_API_int(cJSON_GetObjectItem(json,"M"),2);
         if ( (array= cJSON_GetObjectItem(json,"MGWservers")) != 0 && (n= cJSON_GetArraySize(array)) > 0 && (n & 1) == 0 )
         {

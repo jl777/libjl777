@@ -1547,6 +1547,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( SOPHIA.PATH[0] == 0 )
             strcpy(SOPHIA.PATH,"./DB");
         os_compatible_path(SOPHIA.PATH);
+        MGW.port = get_API_int(cJSON_GetObjectItem(json,"MGWport"),7643);
         copy_cJSON(MGW.PATH,cJSON_GetObjectItem(json,"MGWPATH"));
         if ( MGW.PATH[0] == 0 )
             strcpy(MGW.PATH,"/var/www/html/MGW");
