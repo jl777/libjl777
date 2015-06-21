@@ -41,6 +41,7 @@ struct plugin_info
     union endpoints all;
     uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
     uint16_t port;
+    portable_mutex_t mutex;
     uint8_t pluginspace[];
 };
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
@@ -119,7 +120,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
         retval = PLUGNAME(_process_json)(plugin,tag,retbuf,max,jsonstr,obj,initflag);
-    else printf("error with JSON.(%s)\n",jsonstr), getchar();
+    else printf("error with JSON.(%s)\n",jsonstr);//, getchar();
     //fprintf(stderr,"done tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 )
         free(jsonstr);

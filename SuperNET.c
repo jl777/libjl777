@@ -642,6 +642,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),1000);
+//printf("call process_user_json.(%s)\n",jsonstr);
         return(process_user_json(plugin,method,jsonstr,broadcastflag,timeout));
         //return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
@@ -698,9 +699,12 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"db777","",0,0,1,(char *)"db777",jsonargs,call_system);
     while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"db777",0,0) == 0 )
          poll_daemons();
-    strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
-    while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
-        poll_daemons();
+    if ( SUPERNET.iamrelay != 0 )
+    {
+        strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
+        while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
+            poll_daemons();
+    }
     strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
     while ( COINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 )
         poll_daemons();
@@ -716,9 +720,12 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
     while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();
-    strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
-    while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
-        poll_daemons();
+    if ( SUPERNET.disableNXT == 0 )
+    {
+        strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
+        while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
+            poll_daemons();
+    }
     for (i=0; i<n; i++)
     {
         printf("%s ",strs[i]);
@@ -733,20 +740,20 @@ void SuperNET_loop(void *ipaddr)
 }
 
 #define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
-struct pending_cgi { struct queueitem DL; char apitag[24],*retstr; };
+struct pending_cgi { struct queueitem DL; char apitag[24],*retstr; int32_t retind; };
 queue_t cgiQ[2];
 
-int32_t SuperNET_apireturn(int32_t sock,char *apitag,char *retstr)
+int32_t SuperNET_apireturn(int32_t retsock,int32_t retind,char *apitag,char *retstr)
 {
-    int32_t retlen,ind,checklen;
+    int32_t retlen,checklen;
     retlen = (int32_t)strlen(retstr) + 1;
-    if ( (ind= nn_connect(sock,apitag)) < 0 )
-        fprintf(stderr,"error connecting to (%s)\n",apitag);
-    else
+    //if ( (ind= nn_connect(sock,apitag)) < 0 )
+    //    fprintf(stderr,"error connecting to (%s)\n",apitag);
+    //else
     {
-        if ( (checklen= nn_send(sock,retstr,retlen,0)) != retlen )
+        if ( (checklen= nn_send(retsock,retstr,retlen,0)) != retlen )
             fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
-        return(nn_shutdown(sock,ind));
+        return(nn_shutdown(retsock,retind));
     }
     return(-1);
 }
@@ -781,21 +788,26 @@ void SuperNET_apiloop(void *ipaddr)
                         copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
                         timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),0);
                         fprintf(stderr,"API RECV.(%s)\n",jsonstr);
-                        //retstr = call_SuperNET_JSON(jsonstr);
-                        //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
-                        if ( (str= plugin_method(&ptr->retstr,1,plugin,method,0,0,jsonstr,(int32_t)strlen(jsonstr)+1,timeout)) != 0 )
+                        if ( (ptr->retind= nn_connect(sock,apitag)) < 0 )
+                            fprintf(stderr,"error connecting to (%s)\n",apitag);
+                        else
                         {
-                            if ( (retjson= cJSON_Parse(str)) != 0 )
+                            //retstr = call_SuperNET_JSON(jsonstr);
+                            //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
+                            if ( (str= plugin_method(&ptr->retstr,1,plugin,method,0,0,jsonstr,(int32_t)strlen(jsonstr)+1,timeout)) != 0 )
                             {
-                                copy_cJSON(errstr,cJSON_GetObjectItem(retjson,"error"));
-                                free_json(retjson);
+                                if ( (retjson= cJSON_Parse(str)) != 0 )
+                                {
+                                    copy_cJSON(errstr,cJSON_GetObjectItem(retjson,"error"));
+                                    free_json(retjson);
+                                }
                             }
                         }
                         free_json(json);
                         if ( str != 0 )
                         {
                             if ( errstr[0] != 0 )
-                                SuperNET_apireturn(sock,apitag,str);
+                                SuperNET_apireturn(sock,ptr->retind,apitag,str);
                             free(str);
                         } else queue_enqueue("cgiQ",&cgiQ[0],&ptr->DL);
                     }
@@ -807,7 +819,7 @@ void SuperNET_apiloop(void *ipaddr)
                     {
                         if ( ptr->retstr != 0 )
                         {
-                            SuperNET_apireturn(sock,ptr->apitag,ptr->retstr);
+                            SuperNET_apireturn(sock,ptr->retind,ptr->apitag,ptr->retstr);
                             free(ptr->retstr);
                             free(ptr);
                         } else queue_enqueue("cgiQ2",&cgiQ[iter ^ 1],&ptr->DL);

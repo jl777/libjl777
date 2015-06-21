@@ -241,7 +241,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         coin->mgw.redeemheight = get_API_int(cJSON_GetObjectItem(argjson,"redeemheight"),430000);
         coin->mgw.use_addmultisig = get_API_int(cJSON_GetObjectItem(argjson,"useaddmultisig"),(strcmp("BTC",coinstr) != 0));
         coin->mgw.do_opreturn = get_API_int(cJSON_GetObjectItem(argjson,"do_opreturn"),(strcmp("BTC",coinstr) == 0));
-        coin->mgw.oldtx_format = get_API_int(cJSON_GetObjectItem(argjson,"old_txformat"),(strcmp("BTC",coinstr) == 0));
+        coin->mgw.oldtx_format = get_API_int(cJSON_GetObjectItem(argjson,"oldtx_format"),(strcmp("BTC",coinstr) == 0));
         coin->mgw.firstunspentind = get_API_int(cJSON_GetObjectItem(argjson,"firstunspent"),(strcmp("BTCD",coinstr) == 0) ? 2500000 : 0);
         if ( (coin->mgw.NXTconvrate = get_API_float(cJSON_GetObjectItem(argjson,"NXTconvrate"))) == 0 )
         {
@@ -250,7 +250,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         }
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
     }
-    printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits);
+    printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     printf("COIN.%s serverport.(%s) userpass.(%s)\n",coin->name,coin->serverport,coin->userpass);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
@@ -378,7 +378,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             }
         }
     }
-    printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s slice.%d\n",SUPERNET.myNXTaddr,initflag,plugin->name,COINS.slicei);
+    //printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s slice.%d\n",SUPERNET.myNXTaddr,initflag,plugin->name,COINS.slicei);
     return((int32_t)strlen(retbuf));
 }
 

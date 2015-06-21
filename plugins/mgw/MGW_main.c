@@ -1480,7 +1480,7 @@ char *mgw_OP_RETURN(int32_t opreturn,char *rawtx,int32_t do_opreturn,uint64_t re
         {
             mgw_encode_OP_RETURN(scriptstr,redeemtxid);
             safecopy(vout->script,scriptstr,sizeof(vout->script));
-            //printf("opreturn vout.%d (%s)\n",opreturn,vout->script);
+            printf("opreturn vout.%d (%s)\n",opreturn,vout->script);
         }
         else
         {
@@ -1490,7 +1490,7 @@ char *mgw_OP_RETURN(int32_t opreturn,char *rawtx,int32_t do_opreturn,uint64_t re
             str40[i] = 0;
             sprintf(scriptstr,"76a914%s88ac",str40);
             strcpy(vout->script,scriptstr);
-            //printf("vout.%d (%s)\n",opreturn,vout->script);
+            printf("vout.%d (%s)\n",opreturn,vout->script);
         }
         if ( 1 )
         {
@@ -1501,9 +1501,9 @@ char *mgw_OP_RETURN(int32_t opreturn,char *rawtx,int32_t do_opreturn,uint64_t re
         }
         len = strlen(rawtx) * 2;
         retstr = calloc(1,len + 1);
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             disp_cointx(cointx);
-        //printf("vout.%d %p (%s) (%s)\n",opreturn,vout,vout->script,cointx->outputs[opreturn].script);
+        printf("vout.%d %p (%s) (%s)\n",opreturn,vout,vout->script,cointx->outputs[opreturn].script);
         if ( _emit_cointx(retstr,len,cointx,oldtx_format) < 0 )
             free(retstr), retstr = 0;
         free(cointx);

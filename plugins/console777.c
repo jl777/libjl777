@@ -223,9 +223,13 @@ char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcast
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
     int32_t tmp,len; char *retstr;
     len = (int32_t)strlen(cmdstr) + 1;
-    //printf("userjson.(%s).%d plugin.(%s)\n",cmdstr,len,plugin);
+printf("userjson.(%s).%d plugin.(%s) broadcastflag.%d method.(%s)\n",cmdstr,len,plugin,broadcastflag,method);
     if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
-        retstr = nn_loadbalanced((uint8_t *)cmdstr,len);
+    {
+        if ( strcmp(method,"busdata") == 0 )
+            retstr = busdata_sync(cmdstr);
+        else retstr = nn_loadbalanced((uint8_t *)cmdstr,len);
+    }
     else if ( strcmp(plugin,"peers") == 0 )
         retstr = nn_allpeers((uint8_t *)cmdstr,len,timeout,0);
     else if ( find_daemoninfo(&tmp,plugin,0,0) != 0 )
