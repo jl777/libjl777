@@ -496,9 +496,9 @@ char *nn_busdata_processor(struct relayargs *args,uint8_t *msg,int32_t len)
                             str = cJSON_Print(dupjson), _stripwhite(str,' ');
                             printf("broadcast.(%s) forwarder.%llu vs %s\n",str,(long long)forwardbits,SUPERNET.NXTADDR);
                             if ( strcmp(broadcaststr,"allrelays") == 0 )
-                                nn_send(RELAYS.bus.sock,str,(int32_t)strlen(str)+1,0);
+                                nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(str)+1,0);
                             else if ( strcmp(broadcaststr,"allnodes") == 0 )
-                                nn_send(RELAYS.pubsock,str,(int32_t)strlen(str)+1,0);
+                                nn_send(RELAYS.pubsock,jsonstr,(int32_t)strlen(str)+1,0);
                             free(str);
                         } else printf("forwardbits.%llu stop.%p\n",(long long)forwardbits,cJSON_GetObjectItem(second,"stop"));
                         free_json(dupjson);
