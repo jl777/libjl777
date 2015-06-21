@@ -167,7 +167,7 @@ int32_t update_serverbits(struct _relay_info *list,char *transport,uint32_t ipbi
             printf("error connecting to (%s) %s\n",endpoint,nn_errstr());
         else
         {
-            if ( list->desttype == NN_PUB )
+            if ( type == NN_PUB )
             {
                 printf("subscribed to (%s)\n",endpoint);
                 nn_setsockopt(list->sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0);
@@ -189,7 +189,7 @@ int32_t badass_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port)
     strcpy(servers[n++],"89.248.160.242");
     strcpy(servers[n++],"89.248.160.243");
     strcpy(servers[n++],"89.248.160.244");
-    strcpy(servers[n++],"89.248.160.245");
+    //strcpy(servers[n++],"89.248.160.245");
     return(n);
 }
 
@@ -425,20 +425,20 @@ int32_t add_relay_connections(char *domain,int32_t skiplb)
     if ( domain == 0 || is_ipaddr(domain) == 0 || ismyaddress(domain) != 0 )
         return(-1);
     ipbits = (uint32_t)calc_ipbits(domain);
-    n = (RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num);
+    n = (RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num + RELAYS.bus.num);
     update_serverbits(&RELAYS.peer,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_SURVEYOR),NN_SURVEYOR);
     update_serverbits(&RELAYS.sub,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_PUB),NN_PUB);
     if ( SUPERNET.iamrelay != 0 )
     {
         if ( skiplb == 2 )
         {
-            printf("BUS ");
-            update_serverbits(&RELAYS.bus,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_BUS);
+            printf("SERVICE ");
+            update_serverbits(&RELAYS.sub,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_PUB);
         }
     }
     if ( skiplb == 0 )
         update_serverbits(&RELAYS.lb,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_REP),NN_REP);
-    return((RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num) > n);
+    return((RELAYS.lb.num + RELAYS.peer.num + RELAYS.sub.num + RELAYS.bus.num) > n);
 }
 
 void run_device(void *_args)
@@ -558,7 +558,7 @@ char *nn_direct(char *ipaddr,uint8_t *request,int32_t len)
     } else return(clonestr("{\"error\":\"illegal ipaddr for direct connect\"}"));
 }
 
-char *nn_allpeers(uint8_t *_request,int32_t len,int32_t timeoutmillis,char *localresult)
+char *nn_allrelays(uint8_t *_request,int32_t len,int32_t timeoutmillis,char *localresult)
 {
     cJSON *item,*json,*array = 0;
     int32_t i,errs,numsuccess,sendlen,peersock,n = 0;
@@ -577,7 +577,7 @@ char *nn_allpeers(uint8_t *_request,int32_t len,int32_t timeoutmillis,char *loca
     memcpy(request,_request,len);
     add_standard_fields(request);
     if ( Debuglevel > 2 )
-        printf("request_allpeers.(%s)\n",request);
+        printf("request_allrelays.(%s)\n",request);
     len = (int32_t)strlen(request) + 1;
     startmilli = milliseconds();
     errs = 0;
@@ -615,7 +615,7 @@ char *nn_allpeers(uint8_t *_request,int32_t len,int32_t timeoutmillis,char *loca
             } else errs++;
             nn_freemsg(msg);
         }
-    } else printf("nn_allpeers: sendlen.%d vs len.%d\n",sendlen,len);
+    } else printf("nn_allrelays: sendlen.%d vs len.%d\n",sendlen,len);
     if ( n == 0 )
     {
         free_json(array);
@@ -752,7 +752,7 @@ uint8_t *replace_forwarder(char *pluginbuf,uint8_t *data,int32_t *datalenp)
 
 char *nn_lb_processor(struct relayargs *args,uint8_t *msg,int32_t len)
 {
-    char *nn_allpeers_processor(struct relayargs *args,uint8_t *msg,int32_t len);
+    char *nn_allrelays_processor(struct relayargs *args,uint8_t *msg,int32_t len);
     char *nn_pubsub_processor(struct relayargs *args,uint8_t *msg,int32_t len);
     char plugin[MAX_JSON_FIELD],*retstr = 0; uint8_t *buf;
     //printf("LB PROCESSOR.(%s)\n",msg);
@@ -762,7 +762,7 @@ char *nn_lb_processor(struct relayargs *args,uint8_t *msg,int32_t len)
         if ( strcmp(plugin,"subscriptions") == 0 )
             retstr = nn_pubsub_processor(args,msg,len);
         else if ( strcmp(plugin,"peers") == 0 )
-            retstr = nn_allpeers_processor(args,msg,len);
+            retstr = nn_allrelays_processor(args,msg,len);
         else retstr = plugin_method(0,-1,plugin,(char *)args,0,0,(char *)msg,len,1000);
     } else { retstr = clonestr("{\"error\":\"couldnt parse LB request\"}"); printf("%s\n",retstr); }
     if ( buf != msg )
@@ -788,7 +788,7 @@ char *nn_pubsub_processor(struct relayargs *args,uint8_t *msg,int32_t len)
     return(retstr);
 }
 
-char *nn_allpeers_processor(struct relayargs *args,uint8_t *msg,int32_t len)
+char *nn_allrelays_processor(struct relayargs *args,uint8_t *msg,int32_t len)
 {
     char plugin[MAX_JSON_FIELD],*retstr = 0; uint8_t *buf;
     if ( (buf= replace_forwarder(plugin,msg,&len)) != 0 )
@@ -888,23 +888,21 @@ void responseloop(void *_args)
                     if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
                         argjson = cJSON_GetArrayItem(json,0);
                     else argjson = json;
+                    printf("CALL BUSDATA PROCESSOR.(%s)\n",msg);
                     if ( (methodstr= cJSON_str(cJSON_GetObjectItem(argjson,"method"))) != 0 && strcmp(methodstr,"busdata") == 0 )
-                    {
-                        //printf("CALL BUSDATA PROCESSOR.(%s)\n",msg);
                         retstr = nn_busdata_processor(args,(uint8_t *)msg,len);
-                    }
                     else
                     {
                         //if ( Debuglevel > 1 )
                         printf("%s RECV.%s (%s).%ld\n",methodstr,args->name,strlen(msg)<1400?msg:"<big message>",strlen(msg));
                         broadcaststr = cJSON_str(cJSON_GetObjectItem(argjson,"broadcast"));
-                        if ( broadcaststr != 0 && strcmp(broadcaststr,"allpeers") == 0 )
+                        if ( broadcaststr != 0 && strcmp(broadcaststr,"allrelays") == 0 )
                         {
                             cJSON_DeleteItemFromObject(argjson,"broadcast");
                             str = cJSON_Print(json), _stripwhite(str,' ');
                             len = (int32_t)strlen(str)+1;
                             retstr = (*args->commandprocessor)(args,(uint8_t *)str,len);
-                            retstr2 = nn_allpeers((uint8_t *)str,len,1000,retstr), free(retstr), free(str);
+                            retstr2 = nn_allrelays((uint8_t *)str,len,1000,retstr), free(retstr), free(str);
                             retstr = retstr2;
                         }
                         else retstr = (*args->commandprocessor)(args,(uint8_t *)msg,(int32_t)strlen((char *)msg)+1);
@@ -996,71 +994,42 @@ int32_t poll_direct(int32_t timeoutmillis)
 void serverloop(void *_args)
 {
     struct relayargs *peerargs,*lbargs,*arg;
-    char endpoint[128],request[1024],ipaddr[64],*retstr;
-    int32_t i,sendtimeout,recvtimeout,lbsock,bussock,pubsock,pushsock,peersock,n = 0;
+    char endpoint[128],ipaddr[64];
+    int32_t i,sendtimeout,recvtimeout,lbsock,pubsock,peersock,n = 0;
   //start_devices(NN_RESPONDENT);
     sendtimeout = 10, recvtimeout = 10000;
     RELAYS.lb.mytype = NN_REQ, RELAYS.lb.desttype = nn_oppotype(RELAYS.lb.mytype);
     RELAYS.pair.mytype = NN_PAIR, RELAYS.pair.desttype = nn_oppotype(RELAYS.pair.mytype);
-    RELAYS.bus.mytype = NN_BUS, RELAYS.bus.desttype = nn_oppotype(RELAYS.bus.mytype);
+    RELAYS.bus.mytype = NN_PUB, RELAYS.bus.desttype = nn_oppotype(RELAYS.bus.mytype);
     RELAYS.peer.mytype = NN_SURVEYOR, RELAYS.peer.desttype = nn_oppotype(RELAYS.peer.mytype);
     RELAYS.sub.mytype = NN_SUB, RELAYS.sub.desttype = nn_oppotype(RELAYS.sub.mytype);
     lbargs = &RELAYS.args[n++];
-    RELAYS.pullsock = RELAYS.pushsock = pushsock = -1;
-    if ( 0 && RAMCHAINS.pullnode[0] != 0 )
-    {
-        //printf("my push endpoint.(%s)\n",endpoint), getchar();
-        if ( strcmp(RAMCHAINS.pullnode,SUPERNET.myipaddr) == 0 )
-        {
-            expand_epbits(endpoint,calc_epbits("tcp",0,SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
-            //nn_connect(pushsock,endpoint);
-            RELAYS.pullsock = nn_createsocket(endpoint,1,"NN_PULL",NN_PULL,SUPERNET.port,sendtimeout,recvtimeout);
-        }
-        else
-        {
-            expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(RAMCHAINS.pullnode),SUPERNET.port + nn_portoffset(NN_PULL),NN_PULL));
-            RELAYS.pushsock = pushsock = nn_createsocket(endpoint,0,"NN_PUSH",NN_PUSH,SUPERNET.port,sendtimeout,recvtimeout);
-        }
-    }
     RELAYS.querypeers = peersock = nn_createsocket(endpoint,1,"NN_SURVEYOR",NN_SURVEYOR,SUPERNET.port,sendtimeout,recvtimeout);
-    peerargs = &RELAYS.args[n++], RELAYS.peer.sock = launch_responseloop(peerargs,"NN_RESPONDENT",NN_RESPONDENT,0,nn_allpeers_processor);
+    peerargs = &RELAYS.args[n++], RELAYS.peer.sock = launch_responseloop(peerargs,"NN_RESPONDENT",NN_RESPONDENT,0,nn_allrelays_processor);
     pubsock = nn_createsocket(endpoint,1,"NN_PUB",NN_PUB,SUPERNET.port,sendtimeout,-1);
     RELAYS.sub.sock = launch_responseloop(&RELAYS.args[n++],"NN_SUB",NN_SUB,0,nn_pubsub_processor);
     RELAYS.lb.sock = lbargs->sock = lbsock = nn_lbsocket(10000,SUPERNET.port); // NN_REQ
-    bussock = -1;
-    busdata_init(sendtimeout,recvtimeout);
+    //bussock = -1;
+    busdata_init(sendtimeout,10);
     if ( SUPERNET.iamrelay != 0 )
     {
         launch_responseloop(lbargs,"NN_REP",NN_REP,1,nn_lb_processor);
-        bussock = launch_responseloop(&RELAYS.args[n++],"NN_BUS",NN_BUS,1,nn_busdata_processor);
+        //bussock = launch_responseloop(&RELAYS.args[n++],"NN_BUS",NN_BUS,1,nn_busdata_processor);
     } else lbargs->commandprocessor = nn_lb_processor;
-    RELAYS.bus.sock = bussock, RELAYS.pubsock = pubsock;
+    RELAYS.pubsock = pubsock;
     for (i=0; i<n; i++)
     {
         arg = &RELAYS.args[i];
         arg->lbsock = lbsock;
-        arg->bussock = bussock;
+        //arg->bussock = bussock;
         arg->pubsock = pubsock;
         arg->peersock = peersock;
-        arg->pushsock = pushsock;
     }
     for (i=0; i<RELAYS.lb.num; i++)
     {
         expand_ipbits(ipaddr,RELAYS.lb.connections[i].ipbits);
         add_relay_connections(ipaddr,2);
     }
-    if ( SUPERNET.iamrelay != 0 )
-    {
-        if ( SUPERNET.hostname[0] != 0 || SUPERNET.myipaddr[0] != 0 )
-        {
-            sprintf(request,"{\"plugin\":\"relay\",\"method\":\"add\",\"hostnames\":[\"%s\"]}",SUPERNET.hostname[0]!=0?SUPERNET.hostname:SUPERNET.myipaddr);
-            if ( (retstr= nn_loadbalanced((uint8_t *)request,(int32_t)strlen(request)+1)) != 0 )
-            {
-                printf("LB_RESPONSE.(%s)\n",retstr);
-                free(retstr);
-            }
-        }
-    } //else conv_busdata(&i,"{\"key\":\"foo\",\"data\":\"deadbeef\"}");
     if ( SUPERNET.gatewayid >= 0 )
     {
         int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][64],int32_t n);
@@ -1089,7 +1058,7 @@ void serverloop(void *_args)
 
 int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char *resultstr,*retstr = 0,*methodstr,*hostname,*myipaddr;
+    char *resultstr,*retstr = 0,*methodstr,*myipaddr,*hostname;
     int32_t i,n,count; uint32_t ipbits;
     cJSON *array;
     retbuf[0] = 0;
@@ -1137,7 +1106,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             else if ( strcmp(methodstr,"list") == 0 )
                 retstr = relays_jsonstr(jsonstr,json);
             else if ( strcmp(methodstr,"busdata") == 0 )
-                retstr = busdata_sync(jsonstr);
+                retstr = busdata_sync(jsonstr,0);
             else if ( (myipaddr= cJSON_str(cJSON_GetObjectItem(json,"myipaddr"))) != 0 && is_ipaddr(myipaddr) != 0 )
             {
                 if ( strcmp(methodstr,"direct") == 0 )
@@ -1155,13 +1124,13 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
                             {
                                 update_serverbits(&RELAYS.peer,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_SURVEYOR),NN_SURVEYOR);
                                 update_serverbits(&RELAYS.sub,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_PUB),NN_PUB);
-                                nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(jsonstr)+1,0);
+                                //nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(jsonstr)+1,0);
                             }
                         }
                         sprintf(retbuf,"{\"result\":\"added ipaddr\"}");
                     } else sprintf(retbuf,"{\"result\":\"didnt add ipaddr, probably already there\"}");
                     if ( (hostname= cJSON_str(cJSON_GetObjectItem(json,"iamrelay"))) != 0 )
-                        update_serverbits(&RELAYS.bus,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_BUS);
+                        update_serverbits(&RELAYS.bus,"tcp",ipbits,SUPERNET.port + nn_portoffset(NN_BUS),NN_PUB);
                 }
             }
         }

@@ -211,7 +211,7 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
             strcpy(method,"help");
         cJSON_AddItemToObject(json,"method",cJSON_CreateString(method));
         if ( broadcastflag != 0 )
-            cJSON_AddItemToObject(json,"broadcast",cJSON_CreateString("allpeers"));
+            cJSON_AddItemToObject(json,"broadcast",cJSON_CreateString("allrelays"));
         cmdstr = cJSON_Print(json), _stripwhite(cmdstr,' ');
         return(cmdstr);
     }
@@ -227,11 +227,11 @@ printf("userjson.(%s).%d plugin.(%s) broadcastflag.%d method.(%s)\n",cmdstr,len,
     if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
     {
         if ( strcmp(method,"busdata") == 0 )
-            retstr = busdata_sync(cmdstr);
+            retstr = busdata_sync(cmdstr,broadcastflag==0?0:"allnodes");
         else retstr = nn_loadbalanced((uint8_t *)cmdstr,len);
     }
     else if ( strcmp(plugin,"peers") == 0 )
-        retstr = nn_allpeers((uint8_t *)cmdstr,len,timeout,0);
+        retstr = nn_allrelays((uint8_t *)cmdstr,len,timeout,0);
     else if ( find_daemoninfo(&tmp,plugin,0,0) != 0 )
         retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,len,timeout != 0 ? timeout : 0);
     else retstr = nn_publish((uint8_t *)cmdstr,len,0);

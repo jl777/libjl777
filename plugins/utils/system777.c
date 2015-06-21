@@ -116,7 +116,7 @@ struct SuperNET_info
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],userhome[512],hostname[512];
     uint64_t my64bits;
     uint32_t myipbits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT;
     uint16_t port;
     struct env777 DBs;
     cJSON *argjson;
@@ -178,7 +178,7 @@ struct relayargs
 {
     char *(*commandprocessor)(struct relayargs *args,uint8_t *msg,int32_t len);
     char name[16],endpoint[MAX_SERVERNAME];
-    int32_t lbsock,bussock,pubsock,subsock,peersock,pushsock,sock,type,bindflag,sendtimeout,recvtimeout;
+    int32_t lbsock,pubsock,subsock,peersock,sock,type,bindflag,sendtimeout,recvtimeout;
 };
 
 #define CONNECTION_NUMBITS 10
@@ -189,8 +189,8 @@ struct direct_connection { char handler[16]; struct endpoint epbits; int32_t soc
 struct relay_info
 {
     struct relayargs args[8];
-    struct _relay_info lb,peer,bus,sub,pair;
-    int32_t readyflag,pubsock,servicesock,querypeers,surveymillis,pushsock,pullsock;
+    struct _relay_info lb,peer,sub,pair,bus;
+    int32_t readyflag,pubsock,servicesock,querypeers,surveymillis,pullsock;
     struct direct_connection directlinks[1 << CONNECTION_NUMBITS];
 }; extern struct relay_info RELAYS;
 
@@ -245,7 +245,7 @@ int32_t nn_portoffset(int32_t type);
 char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
 char *nn_direct(char *ipaddr,uint8_t *data,int32_t len);
 char *nn_publish(uint8_t *data,int32_t len,int32_t nostr);
-char *nn_allpeers(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
+char *nn_allrelays(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
 char *nn_loadbalanced(uint8_t *data,int32_t len);
 char *relays_jsonstr(char *jsonstr,cJSON *argjson);
 struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
@@ -257,7 +257,8 @@ int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis);
 char *nn_busdata_processor(struct relayargs *args,uint8_t *msg,int32_t len);
 void busdata_init(int32_t sendtimeout,int32_t recvtimeout);
 void busdata_poll();
-char *busdata_sync(char *jsonstr);
+char *busdata_sync(char *jsonstr,char *broadcastmode);
+int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 
 #endif
 #else

@@ -44,7 +44,7 @@ SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 COINS = $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
-CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c
+CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c $(U)/peer777.c $(U)/user777.c $(U)/node777.c $(U)/SaM.c $(U)/transport777.c $(U)/crypto777.c $(U)/packet777.c
 INSTANTDEX = $(I)/InstantDEX_main.c
 
 SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) plugins/mgw/MGW_main.c plugins/busdata777.c plugins/relays777.c plugins/peers777.c plugins/subscriptions777.c plugins/console777.c $(C)/bitcoind_RPC.c

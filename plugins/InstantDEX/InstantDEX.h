@@ -148,7 +148,7 @@ void ramparse_stub(struct rambook_info *bids,struct rambook_info *asks,int32_t m
     printf("unexpected call to ramparse_stub gui.%s maxdepth.%d\n",gui,maxdepth);
 }
 
-int32_t validate_sender(char *forwarder,char *sender,char *tokenizedtxt)
+/*int32_t validate_sender(char *forwarder,char *sender,char *tokenizedtxt)
 {
     char pubkey[512]; int32_t strictflag = 0;
     return(validate_token(forwarder,pubkey,sender,tokenizedtxt,strictflag));
@@ -160,16 +160,12 @@ char *submit_quote(char *quotestr)
     //printf("submit_quote.(%s)\n",quotestr);
     len = construct_tokenized_req(_tokbuf,quotestr,SUPERNET.NXTACCTSECRET);
     return(nn_loadbalanced((uint8_t *)_tokbuf,len));
-}
+}*/
 
 char *submit_respondtx(char *respondtxstr,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t dest64bits)
 {
-    char _tokbuf[8192],NXTaddr[64],destNXTaddr[64]; int32_t len;
     printf("submit_respondtx.(%s) -> dest.%llu\n",respondtxstr,(long long)dest64bits);
-    len = construct_tokenized_req(_tokbuf,respondtxstr,NXTACCTSECRET);
-    expand_nxt64bits(NXTaddr,nxt64bits);
-    expand_nxt64bits(destNXTaddr,dest64bits);
-    return(nn_loadbalanced((uint8_t *)_tokbuf,len));
+    return(busdata_sync(respondtxstr,"allnodes"));
 }
 
 int32_t calc_users_maxopentrades(uint64_t nxt64bits)
@@ -200,6 +196,7 @@ void update_openorder(struct InstantDEX_quote *iQ,uint64_t quoteid,struct NXT_tx
 {
     char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *refiQ);
     char *retstr;
+return;
     printf("update_openorder iQ.%llu with numtx.%d updateNXT.%d | expires in %ld\n",(long long)iQ->quoteid,numtx,updateNXT,iQ->timestamp+iQ->duration-time(NULL));
     if ( (SUPERNET.automatch & 2) != 0 && (retstr= check_ordermatch(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,iQ)) != 0 )
     {
@@ -468,7 +465,7 @@ char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int3
                     //printf("got submitquote_str.(%s)\n",jsonstr);
                     if ( remoteflag == 0 )
                     {
-                        if ( (str= submit_quote(jsonstr)) != 0 )
+                        if ( (str= busdata_sync(jsonstr,"allnodes")) != 0 )
                             free(str);
                         retstr = jsonstr;
                     }
@@ -504,31 +501,12 @@ char *placeask_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numob
     return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,-1,SUPERNET.NXTADDR,valid,objs,numobjs,origargstr));
 }
 
-int32_t should_forward(char *sender,char *origargstr)
-{
-    char forwarder[64],plugin[MAX_JSON_FIELD]; uint8_t *buf; int32_t len;
-    if ( validate_sender(forwarder,sender,origargstr) > 0 )
-    {
-        //printf("sender.(%s) forwarder.(%s)\n",sender,forwarder);
-        if ( strcmp(forwarder,sender) == 0 )
-        {
-            len = (int32_t)strlen(origargstr) + 1;
-            if ( (buf= replace_forwarder(plugin,(uint8_t *)origargstr,&len)) != 0 )
-            {
-                nn_publish(buf,len,1);
-                if ( buf != (uint8_t *)origargstr )
-                    free(buf);
-            }
-            return(1);
-        }
-    }
-    return(0);
-}
+/**/
 
 char *bid_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char sender[MAX_JSON_FIELD];
-    should_forward(sender,origargstr);
+    //should_forward(sender,origargstr);
     if ( strcmp(SUPERNET.NXTADDR,sender) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,1,sender,valid,objs,numobjs,origargstr));
     else return(0);
@@ -537,7 +515,7 @@ char *bid_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,ch
 char *ask_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char sender[MAX_JSON_FIELD];
-    should_forward(sender,origargstr);
+    //should_forward(sender,origargstr);
     if ( strcmp(SUPERNET.NXTADDR,sender) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,localaccess,-1,sender,valid,objs,numobjs,origargstr));
     else return(0);

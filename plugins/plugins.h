@@ -434,10 +434,18 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
 
 char *language_func(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,int32_t launchflag,char *cmd,char *jsonargs,int32_t (*daemonfunc)(struct daemon_info *dp,int32_t permanentflag,char *cmd,char *jsonargs))
 {
+    FILE *fp;
     char buffer[65536] = { 0 };
     int out_pipe[2],saved_stdout;
+    if ( is_bundled_plugin(plugin) == 0 )
+    {
+        if ( (fp= fopen(cmd,"rb")) == 0 )
+            return(clonestr("{\"error\":\"no agent file\"}"));
+        else fclose(fp);
+    }
+    printf("found file.(%s)\n",cmd);
     if ( launchflag != 0 || websocket != 0 )
-        return(launch_daemon(plugin,ipaddr,port,websocket,cmd,jsonargs,daemonfunc));
+     return(launch_daemon(plugin,ipaddr,port,websocket,cmd,jsonargs,daemonfunc));
     saved_stdout = dup(STDOUT_FILENO);
     if( pipe(out_pipe) != 0 )
         return(clonestr("{\"error\":\"pipe creation error\"}"));
@@ -555,7 +563,8 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
             if ( (tag= send_to_daemon(args,retstrp,dp->name,daemonid,instanceid,origargstr,len,localaccess)) == 0 )
             {
 fprintf(stderr,"null tag from send_to_daemon\n");
-                return(clonestr("{\"error\":\"null tag from send_to_daemon\"}"));
+                *retstrp = clonestr("{\"error\":\"null tag from send_to_daemon\"}");
+                return(*retstrp);
             }
             else if ( async != 0 )
                 return(0);//override == 0 ? clonestr("{\"error\":\"request sent to plugin async\"}") : 0);

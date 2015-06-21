@@ -34,7 +34,7 @@ int32_t coins_idle(struct plugin_info *plugin)
         {
             if ( (coin= COINS.LIST[i]) != 0 )
             {
-                if ( coin->mgw.assetidstr[0] != 0 && milliseconds() > coin->mgw.lastupdate+10000 )
+                if ( coin->mgw.assetidstr[0] != 0 && milliseconds() > coin->mgw.lastupdate+60000 )
                 {
                     uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 *coin);
                     char smallestaddr[128],smallestaddrB[128];

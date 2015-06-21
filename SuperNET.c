@@ -641,7 +641,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
         n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
-        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),1000);
+        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),SUPERNET.PLUGINTIMEOUT);
 //printf("call process_user_json.(%s)\n",jsonstr);
         return(process_user_json(plugin,method,jsonstr,broadcastflag,timeout));
         //return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
@@ -699,7 +699,7 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"db777","",0,0,1,(char *)"db777",jsonargs,call_system);
     while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"db777",0,0) == 0 )
          poll_daemons();
-    if ( SUPERNET.iamrelay != 0 )
+    if ( SUPERNET.gatewayid >= 0 )
     {
         strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
         while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
@@ -720,7 +720,7 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
     while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();
-    if ( SUPERNET.disableNXT == 0 )
+    if ( SUPERNET.disableNXT == 0 && SUPERNET.iamrelay == 0 )
     {
         strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
         while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
