@@ -223,7 +223,7 @@ fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,json
             portable_mutex_lock(&plugin->mutex);
             retstr = InstantDEX_parser(jsonstr,json);
             portable_mutex_unlock(&plugin->mutex);
-        } else return(0);
+        } else retstr = clonestr("{\"result\":\"relays only relay\"}");
         if ( retstr != 0 )
         {
             if ( strlen(retstr) >= maxlen-1 )
