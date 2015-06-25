@@ -111,7 +111,7 @@ int32_t nn_portoffset(int32_t type)
     int32_t i;
     for (i=0; i<(int32_t)(sizeof(nn_typelist)/sizeof(*nn_typelist)); i++)
         if ( nn_typelist[i] == type )
-            return(i+10);
+            return(i + 2);
     return(-1);
 }
 
@@ -202,17 +202,20 @@ int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port
     strcpy(servers[n++],"5.9.105.170");
     strcpy(servers[n++],"136.243.5.70");
      strcpy(servers[n++],"5.9.155.145");*/
-    strcpy(servers[n++],"167.114.96.223");
-    strcpy(servers[n++],"167.114.113.25");
-    strcpy(servers[n++],"167.114.113.27");
-    strcpy(servers[n++],"167.114.113.194");
-    strcpy(servers[n++],"167.114.113.197");
-    strcpy(servers[n++],"167.114.113.201");
-    strcpy(servers[n++],"167.114.113.246");
-    strcpy(servers[n++],"167.114.113.249");
-    strcpy(servers[n++],"167.114.113.250");
-    strcpy(servers[n++],"192.99.151.160");
-    strcpy(servers[n++],"167.114.96.222");
+    if ( 0 )
+    {
+        strcpy(servers[n++],"167.114.96.223");
+        strcpy(servers[n++],"167.114.113.25");
+        strcpy(servers[n++],"167.114.113.27");
+        strcpy(servers[n++],"167.114.113.194");
+        strcpy(servers[n++],"167.114.113.197");
+        strcpy(servers[n++],"167.114.113.201");
+        strcpy(servers[n++],"167.114.113.246");
+        strcpy(servers[n++],"167.114.113.249");
+        strcpy(servers[n++],"167.114.113.250");
+        strcpy(servers[n++],"192.99.151.160");
+        strcpy(servers[n++],"167.114.96.222");
+    }
     return(n);
 }
 
@@ -244,39 +247,46 @@ int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAM
     return(priority);
 }
 
-int32_t _lb_socket(int32_t retrymillis,char servers[][MAX_SERVERNAME],int32_t num,char backups[][MAX_SERVERNAME],int32_t numbacks,char failsafes[][MAX_SERVERNAME],int32_t numfailsafes)
+int32_t _lb_socket(int32_t maxmillis,char servers[][MAX_SERVERNAME],int32_t num,char backups[][MAX_SERVERNAME],int32_t numbacks,char failsafes[][MAX_SERVERNAME],int32_t numfailsafes)
 {
-    int32_t lbsock,timeout,priority = 1;
+    int32_t lbsock,timeout,retrymillis,priority = 1;
     if ( (lbsock= nn_socket(AF_SP,NN_REQ)) >= 0 )
     {
+        retrymillis = (maxmillis / 40) + 1;
         //printf("!!!!!!!!!!!! lbsock.%d !!!!!!!!!!!\n",lbsock);
-        if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&retrymillis,sizeof(retrymillis)) < 0 )
+        if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
             printf("error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
-        timeout = 10000;
+        else if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
+            fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+        timeout = 1000;
         if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
             printf("error setting NN_SOL_SOCKET NN_RCVTIMEO socket %s\n",nn_errstr());
         timeout = 100;
         if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_SNDTIMEO,&timeout,sizeof(timeout)) < 0 )
             printf("error setting NN_SOL_SOCKET NN_SNDTIMEO socket %s\n",nn_errstr());
-        priority = nn_addservers(priority,lbsock,servers,num);
-        priority = nn_addservers(priority,lbsock,backups,numbacks);
-        priority = nn_addservers(priority,lbsock,failsafes,numfailsafes);
+        if ( num > 0 )
+            priority = nn_addservers(priority,lbsock,servers,num);
+        if ( numbacks > 0 )
+            priority = nn_addservers(priority,lbsock,backups,numbacks);
+        if ( numfailsafes > 0 )
+            priority = nn_addservers(priority,lbsock,failsafes,numfailsafes);
     } else printf("error getting req socket %s\n",nn_errstr());
     //printf("RELAYS.lb.num %d\n",RELAYS.lb.num);
     return(lbsock);
 }
 
-int32_t nn_lbsocket(int32_t retrymillis,int32_t port)
+int32_t nn_lbsocket(int32_t maxmillis,int32_t port)
 {
     char Cservers[32][MAX_SERVERNAME],Bservers[32][MAX_SERVERNAME],failsafes[4][MAX_SERVERNAME];
     int32_t n,m,lbsock,numfailsafes = 0;
-    strcpy(failsafes[numfailsafes++],"76.176.198.6");
+    strcpy(failsafes[numfailsafes++],"5.9.56.103");
+    strcpy(failsafes[numfailsafes++],"5.9.102.210");
     n = crackfoo_servers(Cservers,sizeof(Cservers)/sizeof(*Cservers),port);
     m = badass_servers(Bservers,sizeof(Bservers)/sizeof(*Bservers),port);
     //if ( europeflag != 0 )
     //    lbsock = nn_loadbalanced_socket(retrymillis,Bservers,m,Cservers,n,failsafes,numfailsafes);
     //else lbsock = nn_loadbalanced_socket(retrymillis,Cservers,n,Bservers,m,failsafes,numfailsafes);
-    lbsock = _lb_socket(retrymillis,Bservers,m,Cservers,n,failsafes,numfailsafes);
+    lbsock = _lb_socket(maxmillis,Bservers,0*m,Cservers,0*n,failsafes,numfailsafes);
     return(lbsock);
 }
 
@@ -329,9 +339,14 @@ void nn_startdirect(struct endpoint epbits,int32_t sock,char *handler)
 
 int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,uint16_t port,int32_t sendtimeout,int32_t recvtimeout)
 {
-    int32_t sock; struct endpoint epbits;
+    int32_t sock,retrymillis,maxmillis; struct endpoint epbits;
+    maxmillis = 1000, retrymillis = maxmillis/40;
     if ( (sock= nn_socket(AF_SP,type)) < 0 )
         fprintf(stderr,"error getting socket %s\n",nn_errstr());
+    else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
+        printf("error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+    else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
+        fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
     if ( bindflag != 0 )
     {
         epbits = calc_epbits(SUPERNET.transport,0,port + nn_portoffset(type),type);
@@ -506,8 +521,8 @@ int32_t complete_relay(struct relayargs *args,char *retstr)
         printf("complete_relay.%s warning: send.%d vs %d for (%s) sock.%d %s\n",args->name,sendlen,len,retstr,args->sock,nn_errstr());
         return(-1);
     }
+    //printf("SUCCESS complete_relay.(%s) -> sock.%d %s\n",retstr,args->sock,args->name);
     return(0);
-    //else printf("SUCCESS complete_relay.(%s) -> sock.%d %s\n",retstr,args->sock,args->name);
 }
 
 char *nn_publish(uint8_t *publishstr,int32_t len,int32_t nostr)
@@ -665,10 +680,10 @@ char *nn_loadbalanced(uint8_t *data,int32_t len)
     for (i=0; i<10; i++)
         if ( (nn_socket_status(lbsock,1) & NN_POLLOUT) != 0 )
             break;
-    printf("NN_LBSEND.(%s)\n",data);
+    //printf("NN_LBSEND.(%s)\n",data);
     if ( (sendlen= nn_send(lbsock,data,len,0)) == len )
     {
-        for (i=0; i<1000; i++)
+        for (i=0; i<100; i++)
             if ( (nn_socket_status(lbsock,1) & NN_POLLIN) != 0 )
                 break;
         if ( (recvlen= nn_recv(lbsock,&msg,NN_MSG,0)) > 0 )
@@ -888,9 +903,11 @@ void responseloop(void *_args)
                     if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
                         argjson = cJSON_GetArrayItem(json,0);
                     else argjson = json;
-                    printf("CALL BUSDATA PROCESSOR.(%s)\n",msg);
                     if ( (methodstr= cJSON_str(cJSON_GetObjectItem(argjson,"method"))) != 0 && strcmp(methodstr,"busdata") == 0 )
-                        retstr = nn_busdata_processor(args,(uint8_t *)msg,len);
+                    {
+                        //printf("CALL BUSDATA PROCESSOR.(%s)\n",msg);
+                        retstr = nn_busdata_processor((uint8_t *)msg,len);
+                    }
                     else
                     {
                         //if ( Debuglevel > 1 )
@@ -915,7 +932,7 @@ void responseloop(void *_args)
                     free(retstr);
                 }
                 nn_freemsg(msg);
-            }// else fprintf(stderr,".");
+            }
         }
     } else printf("error getting socket type.%d %s\n",args->type,nn_errstr());
 }
@@ -1008,7 +1025,7 @@ void serverloop(void *_args)
     peerargs = &RELAYS.args[n++], RELAYS.peer.sock = launch_responseloop(peerargs,"NN_RESPONDENT",NN_RESPONDENT,0,nn_allrelays_processor);
     pubsock = nn_createsocket(endpoint,1,"NN_PUB",NN_PUB,SUPERNET.port,sendtimeout,-1);
     RELAYS.sub.sock = launch_responseloop(&RELAYS.args[n++],"NN_SUB",NN_SUB,0,nn_pubsub_processor);
-    RELAYS.lb.sock = lbargs->sock = lbsock = nn_lbsocket(10000,SUPERNET.port); // NN_REQ
+    RELAYS.lb.sock = lbargs->sock = lbsock = nn_lbsocket(1000,SUPERNET.port); // NN_REQ
     //bussock = -1;
     busdata_init(sendtimeout,10);
     if ( SUPERNET.iamrelay != 0 )
@@ -1027,6 +1044,7 @@ void serverloop(void *_args)
     }
     for (i=0; i<RELAYS.lb.num; i++)
     {
+        printf("add connection.%d\n",i);
         expand_ipbits(ipaddr,RELAYS.lb.connections[i].ipbits);
         add_relay_connections(ipaddr,2);
     }
@@ -1035,6 +1053,7 @@ void serverloop(void *_args)
         int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][64],int32_t n);
         MGW.all.socks.both.bus = make_MGWbus(MGW.port,SUPERNET.myipaddr,MGW.serverips,SUPERNET.numgateways+1*0);
     }
+    sleep(10);
     while ( 1 )
     {
         int32_t len; char retbuf[8192],*jsonstr; cJSON *json;
@@ -1056,7 +1075,7 @@ void serverloop(void *_args)
     }
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *resultstr,*retstr = 0,*methodstr,*myipaddr,*hostname;
     int32_t i,n,count; uint32_t ipbits;
@@ -1106,7 +1125,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
             else if ( strcmp(methodstr,"list") == 0 )
                 retstr = relays_jsonstr(jsonstr,json);
             else if ( strcmp(methodstr,"busdata") == 0 )
-                retstr = busdata_sync(jsonstr,0);
+                retstr = busdata_sync(jsonstr,cJSON_str(cJSON_GetObjectItem(json,"broadcast")));
             else if ( (myipaddr= cJSON_str(cJSON_GetObjectItem(json,"myipaddr"))) != 0 && is_ipaddr(myipaddr) != 0 )
             {
                 if ( strcmp(methodstr,"direct") == 0 )

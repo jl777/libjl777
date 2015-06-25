@@ -59,7 +59,7 @@ char *publish_jsonstr(char *category)
     return(retstr);
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *resultstr,*methodstr,*retstr = 0;
     retbuf[0] = 0;

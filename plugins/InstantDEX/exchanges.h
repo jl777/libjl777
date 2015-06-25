@@ -256,16 +256,37 @@ uint64_t poloniex_trade(char **retstrp,struct exchange_info *exchange,char *base
     return(txid);
 }
 
+int32_t cny_flip(char *market,char *coinname,char *base,char *rel,int32_t dir,double *pricep,double *volumep)
+{
+    char pairstr[512],lbase[16],lrel[16],*refstr;
+    strcpy(lbase,base), tolowercase(lbase), strcpy(lrel,rel), tolowercase(lrel);
+    if ( strcmp(lbase,"cny") == 0 || strcmp(lrel,"cny") == 0 )
+    {
+        dir = flip_for_exchange(pairstr,"%s_%s","cny",dir,pricep,volumep,lbase,lrel);
+        refstr = "cny";
+    }
+    else if ( strcmp(lbase,"btc") == 0 || strcmp(lrel,"btc") == 0 )
+    {
+        dir = flip_for_exchange(pairstr,"%s_%s","btc",dir,pricep,volumep,lbase,lrel);
+        refstr = "btc";
+    }
+    if ( market != 0 && coinname != 0 && refstr != 0 )
+    {
+        strcpy(market,refstr);
+        if ( strcmp(lbase,"refstr") != 0 )
+            strcpy(coinname,lbase);
+        else strcpy(coinname,lrel);
+        touppercase(coinname);
+    }
+    return(dir);
+}
+
 uint64_t bter_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
- 	char *sig,*data,buf[512],cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1],lbase[16],lrel[16];
+ 	char *sig,*data,buf[512],cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1];
     cJSON *json; uint64_t txid = 0;
-    strcpy(lbase,base), tolowercase(lbase), strcpy(lrel,rel), tolowercase(lrel);
-    if ( strcmp(lbase,"cny") == 0 || strcmp(lrel,"cny") == 0 )
-        dir = flip_for_exchange(pairstr,"%s_%s","cny",dir,&price,&volume,lbase,lrel);
-    else if ( strcmp(lbase,"btc") == 0 || strcmp(lrel,"btc") == 0 )
-        dir = flip_for_exchange(pairstr,"%s_%s","btc",dir,&price,&volume,lbase,lrel);
+    dir = cny_flip(0,0,base,rel,dir,&price,&volume);
     sprintf(cmdbuf,"type=%s&nonce=%ld&pair=%s&rate=%.8f&amount=%.8f",dir>0?"BUY":"SELL",time(NULL),pairstr,price,volume);
     if ( (sig = hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),cmdbuf)) != 0 )
         sprintf(hdr2,"SIGN:%s",sig);
@@ -323,6 +344,62 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
             free_json(json);
         }
     }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
+    return(txid);
+}
+
+uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+{
+   /* $ Stamp = $ date-> getTimestamp ();
+    type, 1 for the purchase of Entry, 2 entry order to sell, can not be empty / the type of the order
+   
+    $ Mdt = "_ public here to write here write here to write user ID_ private _" $ stamp.;
+    $ Mdt = md5 ($ mdt);
+    
+    $ Data = array ("key" => "here to write public", "time" => $ stamp, "md5" => $ mdt, "type" => 1, "mk_type" => "cny",
+                    "Price" => "0.0001", "amount" => "100", "coinname" => "XRP");
+    // $ Data_string = json_encode ($ data);
+    $ Ch = curl_init ();
+    curl_setopt ($ ch, CURLOPT_URL, 'http://www.btc38.com/trade/t_api/submitOrder.php');
+    curl_setopt ($ ch, CURLOPT_POST, 1);
+    curl_setopt ($ ch, CURLOPT_POSTFIELDS, $ data);
+    curl_setopt ($ ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt ($ ch, CURLOPT_HEADER, 0);  */
+    static CURL *cHandle;
+ 	char *data,cmdbuf[8192],buf[512],digest[33],market[16],coinname[16],fmtstr[512],*pricefmt,*volfmt = "%.4f";
+    cJSON *json,*resultobj; uint32_t stamp; uint64_t txid = 0;
+    stamp = (uint32_t)time(NULL);
+    if ( (dir= cny_flip(market,coinname,base,rel,dir,&price,&volume)) == 0 )
+    {
+        fprintf(stderr,"btc38_trade illegal base.(%s) or rel.(%s)\n",base,rel);
+        return(0);
+    }
+    if ( strcmp(market,"cny") == 0 )
+        pricefmt = "%.5f";
+    else pricefmt = "%.8f";
+    sprintf(buf,"%s%u",exchange->apisecret,stamp);
+    calc_md5(digest,buf,(int32_t)strlen(buf));
+    sprintf(fmtstr,"key=%%s&time=%%u&md5=%%s&type=%%s&mk_type=%%s&coinname=%%s&Price=%s&amount=%s",pricefmt,volfmt);
+    sprintf(cmdbuf,fmtstr,exchange->apikey,stamp,digest,dir>0?"1":"2",market,coinname,price,volume);
+    if ( (data= curl_post(&cHandle,"http://www.btc38.com/trade/t_api/submitOrder.php",cmdbuf,0,0,0)) != 0 )
+    {
+        printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
+        if ( (json= cJSON_Parse(data)) != 0 )
+        {
+            if ( get_API_int(cJSON_GetObjectItem(json,"success"),-1) > 0 && (resultobj= cJSON_GetObjectItem(json,"return")) != 0 )
+            {
+                if ( (txid= get_API_nxt64bits(cJSON_GetObjectItem(resultobj,"order_id"))) == 0 )
+                {
+                    if ( get_API_nxt64bits(cJSON_GetObjectItem(resultobj,"remains")) == 0 )
+                        txid = _crc32(0,cmdbuf,strlen(cmdbuf));
+                }
+            }
+            free_json(json);
+        }
+    } else fprintf(stderr,"submit err cmd.(%s)\n",cmdbuf);
     if ( retstrp != 0 )
         *retstrp = data;
     else if ( data != 0 )

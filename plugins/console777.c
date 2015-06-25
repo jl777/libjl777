@@ -221,20 +221,20 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
 char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
-    int32_t tmp,len; char *retstr;
+    int32_t tmp,len; char *retstr;//,*tokstr;
     len = (int32_t)strlen(cmdstr) + 1;
-printf("userjson.(%s).%d plugin.(%s) broadcastflag.%d method.(%s)\n",cmdstr,len,plugin,broadcastflag,method);
+//printf("userjson.(%s).%d plugin.(%s) broadcastflag.%d method.(%s)\n",cmdstr,len,plugin,broadcastflag,method);
     if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
     {
         if ( strcmp(method,"busdata") == 0 )
             retstr = busdata_sync(cmdstr,broadcastflag==0?0:"allnodes");
-        else retstr = nn_loadbalanced((uint8_t *)cmdstr,len);
+        else retstr = clonestr("{\"error\":\"direct load balanced calls deprecated, use busdata\"}");//nn_loadbalanced((uint8_t *)cmdstr,len);
     }
-    else if ( strcmp(plugin,"peers") == 0 )
-        retstr = nn_allrelays((uint8_t *)cmdstr,len,timeout,0);
+    //else if ( strcmp(plugin,"peers") == 0 )
+    //    retstr = nn_allrelays((uint8_t *)cmdstr,len,timeout,0);
     else if ( find_daemoninfo(&tmp,plugin,0,0) != 0 )
         retstr = plugin_method(0,1,plugin,method,0,0,cmdstr,len,timeout != 0 ? timeout : 0);
-    else retstr = nn_publish((uint8_t *)cmdstr,len,0);
+    else retstr = clonestr("{\"error\":\"invalid command\"}");
     return(retstr);
 }
 

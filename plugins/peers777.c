@@ -32,7 +32,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *resultstr,*methodstr,ipaddr[2048],*retstr = 0,myipaddr[2048];
     retbuf[0] = 0;

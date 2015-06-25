@@ -188,7 +188,7 @@ struct direct_connection { char handler[16]; struct endpoint epbits; int32_t soc
 
 struct relay_info
 {
-    struct relayargs args[8];
+    struct relayargs args[16];
     struct _relay_info lb,peer,sub,pair,bus;
     int32_t readyflag,pubsock,servicesock,querypeers,surveymillis,pullsock;
     struct direct_connection directlinks[1 << CONNECTION_NUMBITS];
@@ -254,11 +254,16 @@ int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr);
 uint8_t *replace_forwarder(char *pluginbuf,uint8_t *data,int32_t *datalenp);
 int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis);
 
-char *nn_busdata_processor(struct relayargs *args,uint8_t *msg,int32_t len);
+char *nn_busdata_processor(uint8_t *msg,int32_t len);
 void busdata_init(int32_t sendtimeout,int32_t recvtimeout);
 void busdata_poll();
 char *busdata_sync(char *jsonstr,char *broadcastmode);
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
+int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
+char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode);
+int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
+uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce);
+#define MAXTIMEDIFF 10
 
 #endif
 #else

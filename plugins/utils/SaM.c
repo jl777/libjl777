@@ -28,7 +28,7 @@
 #include "system777.c"
 #define MAX_INPUT_SIZE ((int32_t)(4096 - sizeof(bits256) - 2*sizeof(uint32_t)))
 
-struct SaM_info { TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; bits384 bits; };
+struct SaM_info { TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; bits384 bits; int SAM_INDICES[SAM_STATE_SIZE]; };
 struct SaMhdr { bits384 sig; uint32_t timestamp,nonce; uint8_t numrounds,leverage; };
 
 void SaM_Initialize(struct SaM_info *state);
@@ -52,23 +52,23 @@ uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64
 static const TRIT SAM_TRITS[729] = {
     -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1
 };
-static int SAM_INDICES[SAM_STATE_SIZE];
+//static int SAM_INDICES[SAM_STATE_SIZE];
 
-void SaM_PrepareIndices()
+void SaM_PrepareIndices(struct SaM_info *state)
 {
     int32_t i,nextIndex,currentIndex = 0;
     for (i=0; i<SAM_STATE_SIZE; i++)
     {
         nextIndex = ((currentIndex + 1) * SAM_MAGIC_NUMBER) % SAM_STATE_SIZE;
-        SAM_INDICES[currentIndex] = nextIndex;
+        state->SAM_INDICES[currentIndex] = nextIndex;
         currentIndex = nextIndex;
     }
 }
 
 void SaM_Initialize(struct SaM_info *state)
 {
-    if ( SAM_INDICES[0] == 0 )
-        SaM_PrepareIndices(), printf("SAM_INDICES[0] -> %d\n",SAM_INDICES[0]);
+    //if ( SAM_INDICES[0] == 0 )
+    SaM_PrepareIndices(state);//, printf("SAM_INDICES[0] -> %d\n",SAM_INDICES[0]);
     memset(state->hash,0,sizeof(state->hash));
     memcpy(state->trits,SAM_TRITS,sizeof(state->trits));
 }
@@ -101,17 +101,17 @@ void SaM_SplitAndMerge(struct SaM_info *state,uint64_t numrounds)
     {
 		for (i=0; i<SAM_STATE_SIZE; i++)
         {
-            nextIndex = SAM_INDICES[currentIndex];
+            nextIndex = state->SAM_INDICES[currentIndex];
             current = state->trits[currentIndex] + 1, next = state->trits[nextIndex] + 1;
             leftPart.trits[i] = SAMBIAS[current][next];//SaM_Bias(current,next);;//
             rightPart.trits[i] = SAMBIAS[next][current];//SaM_Bias(next,current);//
-            currentIndex = SAM_INDICES[nextIndex];
+            currentIndex = state->SAM_INDICES[nextIndex];
  		}
 		for (i=0; i<SAM_STATE_SIZE; i++)
         {
-            nextIndex = SAM_INDICES[currentIndex];
+            nextIndex = state->SAM_INDICES[currentIndex];
 			state->trits[i] = SAMSUM[leftPart.trits[currentIndex]+1][rightPart.trits[nextIndex]+1];
-			currentIndex = SAM_INDICES[nextIndex];
+			currentIndex = state->SAM_INDICES[nextIndex];
 		}
 	}
 }
@@ -286,7 +286,7 @@ uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64
         if ( rseed != 0 )
             rseed = (uint32_t)(sigp->txid ^ hit);
     }
-    //printf("%llu %.2f%% numrounds.%lld threshold.%llu seed.%u\n",(long long)hit,100.*(double)hit/threshold,(long long)numrounds,(long long)threshold,rseed);
+    //printf("%5.1f %14llu %7.2f%% numrounds.%lld threshold.%llu seed.%u\n",milliseconds()-startmilli,(long long)hit,100.*(double)hit/threshold,(long long)numrounds,(long long)threshold,rseed);
     return(hit);
 }
 

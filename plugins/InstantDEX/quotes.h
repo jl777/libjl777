@@ -12,24 +12,13 @@ struct normal_fields { uint64_t nxt64bits,quoteid; struct InstantDEX_quote *base
 union quotefields { struct normal_fields normal; };
 struct InstantDEX_quote
 {
+    UT_hash_handle hh;
     uint64_t quoteid,baseid,baseamount,relid,relamount,nxt64bits;
     struct InstantDEX_quote *baseiQ,*reliQ;
     uint32_t timestamp,duration;
     uint8_t closed:1,sent:1,matched:1,isask:1,pad2:4,minperc:7;
     char exchangeid,gui[9];
-};
-
-uint64_t get_iQ_jumpasset(struct InstantDEX_quote *iQ)
-{
-    if ( iQ->baseiQ != 0 && iQ->reliQ != 0 )
-    {
-        if ( iQ->baseiQ->baseid == iQ->reliQ->baseid || iQ->baseiQ->baseid == iQ->reliQ->relid )
-            return(iQ->baseiQ->baseid);
-        else if ( iQ->baseiQ->relid == iQ->reliQ->relid || iQ->baseiQ->relid == iQ->reliQ->baseid )
-            return(iQ->baseiQ->relid);
-    }
-    return(0);
-}
+} *AllQuotes;
 
 void clear_InstantDEX_quoteflags(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 0; }
 void cancel_InstantDEX_quote(struct InstantDEX_quote *iQ) { iQ->closed = iQ->sent = iQ->matched = 1; }
@@ -51,8 +40,20 @@ uint64_t calc_quoteid(struct InstantDEX_quote *iQ)
             Q.relid = iQ->baseid, Q.relamount = iQ->baseamount;
             Q.isask = Q.minperc = 0;
         }
-        return(calc_txid((uint8_t *)&Q+sizeof(Q.quoteid),sizeof(Q)-sizeof(Q.quoteid)));
+        return(calc_txid((uint8_t *)((long)&Q + sizeof(Q.hh) + sizeof(Q.quoteid)),sizeof(Q) - sizeof(Q.hh) - sizeof(Q.quoteid)));
     } return(iQ->quoteid);
+}
+
+uint64_t get_iQ_jumpasset(struct InstantDEX_quote *iQ)
+{
+    if ( iQ->baseiQ != 0 && iQ->reliQ != 0 )
+    {
+        if ( iQ->baseiQ->baseid == iQ->reliQ->baseid || iQ->baseiQ->baseid == iQ->reliQ->relid )
+            return(iQ->baseiQ->baseid);
+        else if ( iQ->baseiQ->relid == iQ->reliQ->relid || iQ->baseiQ->relid == iQ->reliQ->baseid )
+            return(iQ->baseiQ->relid);
+    }
+    return(0);
 }
 
 int _decreasing_quotes(const void *a,const void *b)

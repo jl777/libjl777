@@ -37,17 +37,17 @@ int32_t ramchain_idle(struct plugin_info *plugin)
         if ( (coin= COINS.LIST[i]) != 0 )
         {
             ramchain = &coin->ramchain;
-            //printf("packed.%p ledger.%p\n",coin->packed,ramchain->activeledger);
-            if ( ramchain->readyflag != 0 )//&& (ledger= ramchain->activeledger) != 0 )//&& ledger->blocknum <= coin->readahead )
+            if ( ramchain->readyflag != 0 && milliseconds() > ramchain->lastupdate+6000 )
             {
                 flag += ramchain_update(coin,ramchain);
+                ramchain->lastupdate = milliseconds();
             }
         }
     }
     return(flag);
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *coinstr,*resultstr,*methodstr;
     struct coin777 *coin = 0;

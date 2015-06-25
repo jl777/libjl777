@@ -498,9 +498,9 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
 
 char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
 {
-    static char *retstr = 0;
+    //static char *retstr = 0;
     struct daemon_info *dp;
-    char retbuf[8192],methodbuf[1024],*str,*methodsstr;
+    char retbuf[8192],methodbuf[1024],*str,*methodsstr,*retstr;
     uint64_t tag;
     cJSON *json,*argjson;
     struct relayargs *args = 0;
@@ -509,6 +509,7 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
     async = (timeout == 0 || retstrp != 0);
     if ( retstrp == 0 )
         retstrp = &retstr;
+    *retstrp = 0;
     if ( localaccess < 0 )
     {
         localaccess = 0;
@@ -559,7 +560,6 @@ char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method
         else
         {
 //fprintf(stderr,"send_to_daemon.(%s).%d\n",origargstr,len);
-            *retstrp = 0;
             if ( (tag= send_to_daemon(args,retstrp,dp->name,daemonid,instanceid,origargstr,len,localaccess)) == 0 )
             {
 fprintf(stderr,"null tag from send_to_daemon\n");
@@ -567,14 +567,22 @@ fprintf(stderr,"null tag from send_to_daemon\n");
                 return(*retstrp);
             }
             else if ( async != 0 )
-                return(0);//override == 0 ? clonestr("{\"error\":\"request sent to plugin async\"}") : 0);
+                return(0);
 //fprintf(stderr,"wait_for_daemon\n");
             if ( ((*retstrp)= wait_for_daemon(retstrp,tag,timeout,10)) == 0 || (*retstrp)[0] == 0 )
             {
-                str = stringifyM(origargstr);
-                sprintf(retbuf,"{\"error\":\"\",\"args\":%s}",str);
-                free(str);
-                return(clonestr(retbuf));
+                if ( (json= cJSON_Parse(origargstr)) != 0 )
+                {
+                    cJSON_AddItemToObject(json,"result",cJSON_CreateString("submitted"));
+                    str = cJSON_Print(json), _stripwhite(str,' ');
+                    printf("timedout.(%s)\n",str);
+                    free_json(json);
+                    *retstrp = str;
+                } else *retstrp = clonestr("{\"error\":\"cant parse command\"}");
+                //str = stringifyM(origargstr);
+                //sprintf(retbuf,"{\"error\":\"\",\"args\":%s}",str);
+                //free(str);
+                //*retstrp = clonestr(retbuf);
             }
         }
         return(*retstrp);

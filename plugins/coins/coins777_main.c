@@ -34,15 +34,17 @@ int32_t coins_idle(struct plugin_info *plugin)
         {
             if ( (coin= COINS.LIST[i]) != 0 )
             {
-                if ( coin->mgw.assetidstr[0] != 0 && milliseconds() > coin->mgw.lastupdate+60000 )
+                if ( SUPERNET.gatewayid >= 0 )
                 {
-                    uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 *coin);
-                    char smallestaddr[128],smallestaddrB[128];
-                    update_NXT_assettransfers(&coin->mgw);
-                    if ( SUPERNET.gatewayid >= 0 && coin->ramchain.readyflag != 0 )
-                        mgw_calc_unspent(smallestaddr,smallestaddrB,coin);
-                    coin->mgw.lastupdate = milliseconds();
-                   // nn_send(MGW.all.socks.both.bus,"FINISHED update_NXT_assettransfers\n",(int32_t)strlen("FINISHED update_NXT_assettransfers\n"),0);
+                    if ( coin->mgw.assetidstr[0] != 0 && milliseconds() > coin->mgw.lastupdate+60000 )
+                    {
+                        uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 *coin);
+                        char smallestaddr[128],smallestaddrB[128];
+                        update_NXT_assettransfers(&coin->mgw);
+                        if ( coin->ramchain.readyflag != 0 )
+                            mgw_calc_unspent(smallestaddr,smallestaddrB,coin);
+                        coin->mgw.lastupdate = milliseconds();
+                    }
                 }
             }
         }
@@ -290,9 +292,9 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate)
     return(0);
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char *resultstr,sender[MAX_JSON_FIELD],*methodstr,zerobuf[1],*coinstr,*str = 0;
+    char *resultstr,*methodstr,zerobuf[1],*coinstr,*str = 0;
     cJSON *array,*item;
     int32_t i,n,j = 0;
     struct coin777 *coin;

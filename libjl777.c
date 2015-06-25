@@ -1272,7 +1272,10 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 #include "plugins/utils/files777.c"
 #undef DEFINES_ONLY
 
-int32_t SuperNET_idle(struct plugin_info *plugin) { return(0); }
+int32_t SuperNET_idle(struct plugin_info *plugin)
+{
+    return(0);
+}
 
 STRUCTNAME SUPERNET;
 int32_t Debuglevel;
@@ -1470,7 +1473,7 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     return 1; //ok - we are mapped:)
 }
 
-int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json);
     char *retstr,*resultstr,*methodstr,*destplugin,buf[1024],myipaddr[512];
@@ -1485,6 +1488,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
         SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
         SUPERNET.NXTconfirms = get_API_int(cJSON_GetObjectItem(json,"NXTconfirms"),10);
+        copy_cJSON(SUPERNET.NXTAPIURL,cJSON_GetObjectItem(json,"NXTAPIURL"));
         if ( SUPERNET.NXTAPIURL[0] == 0 )
         {
             if ( SUPERNET.usessl == 0 )
@@ -1511,7 +1515,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( SUPERNET.myipaddr[0] != 0 )
             SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
         if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
-            SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1);
+            SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
         else SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
         copy_cJSON(SUPERNET.hostname,cJSON_GetObjectItem(json,"hostname"));
         SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),7777);
@@ -1577,7 +1581,7 @@ int32_t PLUGNAME(_process_json)(struct plugin_info *plugin,uint64_t tag,char *re
         if ( SUPERNET.UPNP != 0 )
         {
             char portstr[16];
-            for (i=0; i<10; i++)
+            for (i=0; i<12; i++)
             {
                 sprintf(portstr,"%d",SUPERNET.port+i);
                 upnpredirect(portstr,portstr,"TCP","SuperNET");

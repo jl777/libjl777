@@ -25,6 +25,8 @@
 #define NUM_BLOOMPRIMES 8
 
 struct bloombits { uint8_t hashbits[NUM_BLOOMPRIMES][79997/8 + 1],pad[sizeof(uint64_t)]; };
+union _bits128 { uint8_t bytes[16]; uint16_t ushorts[8]; uint32_t uints[4]; uint64_t ulongs[2]; uint64_t txid; };
+typedef union _bits128 bits128;
 union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
 typedef union _bits256 bits256;
 union _bits384 { bits256 sig; uint8_t bytes[48]; uint16_t ushorts[24]; uint32_t uints[12]; uint64_t ulongs[6]; uint64_t txid; };
@@ -43,6 +45,7 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len);
 void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,unsigned char *src2,int32_t len2);
 uint64_t calc_txid(unsigned char *buf,int32_t len);
+bits128 calc_md5(char digeststr[33],void *buf,int32_t len);
 
 #endif
 #else

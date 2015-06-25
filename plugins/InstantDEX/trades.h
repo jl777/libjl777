@@ -186,7 +186,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
     return(retjson);
 }
 
-char *tradehistory_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *tradehistory_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char *retstr;
     cJSON *history,*json;//,*openorders = 0;
@@ -272,7 +272,7 @@ cJSON *jumptrades_json()
     return(json);
 }
 
-char *jumptrades_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *jumptrades_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char *retstr;
     cJSON *json;

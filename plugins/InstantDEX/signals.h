@@ -61,7 +61,7 @@ int32_t scan_exchange_prices(void (*process_quote)(void *ptr,int32_t arg,struct 
     return(n);
 }
 
-char *allsignals_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *allsignals_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     cJSON *array,*item,*json = cJSON_CreateObject();
     char *retstr;
@@ -151,7 +151,7 @@ int32_t conv_sigstr(char *sigstr)
     return(-1);
 }
 
-char *getsignal_func(int32_t localaccess,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
+char *getsignal_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     char sigstr[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD],*retstr;
     uint32_t width,resolution,now = (uint32_t)time(NULL);

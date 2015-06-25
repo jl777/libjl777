@@ -572,12 +572,12 @@ int32_t SuperNET_broadcast(char *msg,int32_t duration) { return(0); }
 int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { return(0); }
 #endif
 
-
 #include <stdio.h>
 #define DEFINES_ONLY
 #include "cJSON.h"
 #include "utils777.c"
 #include "files777.c"
+#include "system777.c"
 #include "plugins/plugins.h"
 #undef DEFINES_ONLY
 
@@ -613,7 +613,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
     char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],*bstr,*retstr;
     uint64_t daemonid,instanceid,tag;
-    int32_t timeout,broadcastflag = 0,n = 1;
+    int32_t timeout,broadcastflag = 0;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -640,9 +640,7 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
             if ( plugin[0] == 0 && set_first_plugin(plugin,method) < 0 )
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
-        n = get_API_int(cJSON_GetObjectItem(json,"iters"),1);
         timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),SUPERNET.PLUGINTIMEOUT);
-//printf("call process_user_json.(%s)\n",jsonstr);
         return(process_user_json(plugin,method,jsonstr,broadcastflag,timeout));
         //return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
     } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
@@ -786,7 +784,7 @@ void SuperNET_apiloop(void *ipaddr)
                         if ( plugin[0] == 0 )
                             copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
                         copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
-                        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),0);
+                        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),SUPERNET.PLUGINTIMEOUT);
                         fprintf(stderr,"API RECV.(%s)\n",jsonstr);
                         if ( (ptr->retind= nn_connect(sock,apitag)) < 0 )
                             fprintf(stderr,"error connecting to (%s)\n",apitag);
@@ -861,6 +859,23 @@ int main(int argc,const char *argv[])
     int32_t i;
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
+#ifdef __APPLE__
+    if ( 0 )
+    {
+        bits128 calc_md5(char digeststr[33],void *buf,int32_t len);
+        char digeststr[33],*str = "abc";
+        calc_md5(digeststr,str,(int32_t)strlen(str));
+        printf("(%s) -> (%s)\n",str,digeststr);
+        getchar();
+    }
+    while ( 0 )
+    {
+        uint32_t nonce,failed; int32_t leverage;
+        nonce = nonce_func(&leverage,"test string","allrelays",3000,0);
+        failed = nonce_func(&leverage,"test string","allrelays",0,nonce);
+        printf("nonce.%u failed.%u\n",nonce,failed);
+    }
+#endif
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");
     else if ( (json= cJSON_Parse(jsonstr)) == 0 )
@@ -894,7 +909,6 @@ int main(int argc,const char *argv[])
         char line[1024];
         if ( getline777(line,sizeof(line)-1) > 0 )
             process_userinput(line);
-        //update_NXT_assettransfers("15344649963748848799");
     }
     return(0);
 }

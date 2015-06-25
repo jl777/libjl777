@@ -114,7 +114,7 @@ struct ramchain
 {
     uint64_t minted,addrsum; double calc_elapsed,startmilli,lastgetinfo;
     uint32_t latestblocknum,blocknum,numsyncs,RTblocknum,startblocknum,endblocknum,needbackup,num,syncfreq,readyflag,paused,RTmode;
-    struct coin_offsets latest; long totalsize;
+    struct coin_offsets latest; long totalsize; double lastupdate;
     struct env777 DBs;
     struct coin777_state *sps[16],txidDB,addrDB,scriptDB,hashDB,ledger,addrtx,blocks,txoffsets,txidbits,unspents,spends,addrinfos;
     struct alloc_space tmpMEM;

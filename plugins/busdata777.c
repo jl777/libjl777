@@ -18,16 +18,13 @@
 #include "NXT777.c"
 #include "plugin777.c"
 #include "SaM.c"
-//#include "gen1block.c"
 #undef DEFINES_ONLY
 
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret)
 {
-    char cmd[4096],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1],*jsontxt; cJSON *tokenobj,*json; //uint8_t hash[32];
+    char cmd[4096],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1],*jsontxt; cJSON *tokenobj,*json;
     encoded[0] = 0;
-    //calc_sha256(hashstr,hash,(uint8_t *)key,(int32_t)strlen(key));
     sprintf(cmd,"requestType=generateToken&website=%s&secretPhrase=%s",key,secret);
-    // printf("cmd.(%s)\n",cmd);
     if ( (jsontxt= issue_NXTPOST(cmd)) != 0 )
     {
         //printf("(%s) -> (%s)\n",cmd,jsontxt);
@@ -38,75 +35,87 @@ int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret)
             copy_cJSON(token,tokenobj);
             if ( encoded != 0 )
                 strcpy(encoded,token);
+            free_json(json);
         }
         free(jsontxt);
     }
     return(-1);
 }
 
-uint32_t calc_nonce(char *str,int32_t leverage,int32_t maxmillis)
+uint32_t calc_nonce(char *str,int32_t leverage,int32_t maxmillis,uint32_t nonce)
 {
-    struct SaMhdr *hdr; uint32_t nonce; uint64_t hit,threshold; int32_t len;
+    uint64_t hit,threshold; bits384 sig; double endmilli; int32_t len,numrounds = 10;
     len = (int32_t)strlen(str);
-    nonce = 0;
     if ( leverage != 0 )
     {
-        hdr = (struct SaMhdr *)calloc(1,len + sizeof(*hdr));
-        hdr->numrounds = 1;
-        memcpy(&hdr[1],str,len);
         threshold = calc_SaMthreshold(leverage);
-        len += (int32_t)(sizeof(*hdr) - sizeof(hdr->sig));
         if ( maxmillis == 0 )
         {
-            hit = SaMnonce(&hdr->sig,&hdr->nonce,(uint8_t *)((long)hdr + sizeof(hdr->sig)),len,hdr->numrounds,threshold,0,maxmillis);
-            if ( hit > (1L << 32) )
-                nonce = 0xffffffff;
-            else nonce = (uint32_t)hit;
+            if ( (hit= calc_SaM(&sig,(void *)str,len,(void *)&nonce,sizeof(nonce),numrounds)) >= threshold )
+            {
+                printf("nonce failure hit.%llu >= threshold.%llu\n",(long long)hit,(long long)threshold);
+                if ( (threshold - hit) > (1L << 32) )
+                    return(0xffffffff);
+                else return((uint32_t)(threshold - hit));
+            }
         }
         else
         {
-            while ( (hit= SaMnonce(&hdr->sig,&hdr->nonce,(uint8_t *)((long)hdr + sizeof(hdr->sig)),len,hdr->numrounds,threshold,0,maxmillis)) == 0 )
-                fprintf(stderr,"searching for nonce\n");
-            nonce = hdr->nonce;
+            endmilli = (milliseconds() + maxmillis);
+            while ( milliseconds() < endmilli )
+            {
+                randombytes((void *)&nonce,sizeof(nonce));
+                if ( (hit= calc_SaM(&sig,(void *)str,len,(void *)&nonce,sizeof(nonce),numrounds)) < threshold )
+                    return(nonce);
+            }
         }
-        free(hdr);
     }
-    return(nonce);
+    return(0);
 }
 
-uint32_t nonce_func(char *str,char *broadcaststr,int32_t maxmillis)
+uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce)
 {
-    int32_t leverage;
-    return(0);
-    leverage = 0;
-    if ( strcmp(broadcaststr,"allnodes") == 0 )
-        leverage = 7;
-    else if ( strcmp(broadcaststr,"allrelays") == 0 )
-        leverage = 5;
-    if ( leverage != 0 )
-        return(calc_nonce(str,leverage,maxmillis));
-    return(0);
+    int32_t leverage = 2;
+    if ( broadcaststr != 0 && broadcaststr[0] != 0 )
+    {
+        if ( strcmp(broadcaststr,"allnodes") == 0 )
+            leverage = 6;
+        else if ( strcmp(broadcaststr,"allrelays") == 0 )
+            leverage = 4;
+    }
+    if ( maxmillis == 0 && *leveragep != leverage )
+        return(0xffffffff);
+    *leveragep = leverage;
+    return(calc_nonce(str,leverage,maxmillis,nonce));
 }
 
 int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode)
 {
-    char encoded[2*NXT_TOKEN_LEN+1],broadcaststr[512]; uint32_t nonce;
-    msleep(500);
-    if ( broadcastmode != 0 && broadcastmode[0] != 0 )
-    {
-        nonce = nonce_func(cmdjson,broadcaststr,SUPERNET.PLUGINTIMEOUT/3);
-        //sprintf(broadcaststr,",\"broadcast\":\"%s\",\"usedest\":\"yes\",\"nonce\":\"%u\"",broadcastmode,nonce);
-        sprintf(broadcaststr,",\"broadcast\":\"%s\",\"usedest\":\"yes\"",broadcastmode);
-    }
-    else broadcaststr[0] = 0;
+    char encoded[2*NXT_TOKEN_LEN+1],broadcaststr[512]; uint32_t nonce,nonceerr; int32_t i,leverage;
+    if ( broadcastmode == 0 )
+        broadcastmode = "";
     _stripwhite(cmdjson,' ');
+    for (i=0; i<100; i++)
+    {
+        if ( (nonce= nonce_func(&leverage,cmdjson,broadcastmode,5000,0)) != 0 )
+            break;
+        printf("iter.%d nonce.%u failed, try again\n",i,nonce);
+    }
+    if ( (nonceerr= nonce_func(&leverage,cmdjson,broadcastmode,0,nonce)) != 0 )
+    {
+        printf("error validating nonce.%u -> %u\n",nonce,nonceerr);
+        tokenized[0] = 0;
+        return(0);
+    }
+    sprintf(broadcaststr,",\"broadcast\":\"%s\",\"usedest\":\"yes\",\"nonce\":\"%u\",\"leverage\":\"%u\"",broadcastmode,nonce,leverage);
+    //sprintf(broadcaststr,",\"broadcast\":\"%s\",\"usedest\":\"yes\"",broadcastmode);
+    //printf("GEN.(%s).(%s) -> (%s) len.%d crc.%u\n",broadcastmode,cmdjson,broadcaststr,(int32_t)strlen(cmdjson),_crc32(0,(void *)cmdjson,(int32_t)strlen(cmdjson)));
     issue_generateToken(encoded,cmdjson,NXTACCTSECRET);
     encoded[NXT_TOKEN_LEN] = 0;
     if ( SUPERNET.iamrelay == 0 )
         sprintf(tokenized,"[%s, {\"token\":\"%s\"%s}]",cmdjson,encoded,broadcaststr);
     else sprintf(tokenized,"[%s, {\"token\":\"%s\",\"forwarder\":\"%s\"%s}]",cmdjson,encoded,SUPERNET.NXTADDR,broadcaststr);
     return((int32_t)strlen(tokenized)+1);
-    // printf("(%s) -> (%s) _tokbuf.[%s]\n",NXTaddr,otherNXTaddr,_tokbuf);
 }
 
 int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN])
@@ -141,7 +150,7 @@ int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char e
 
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
 {
-    cJSON *array=0,*firstitem=0,*tokenobj,*obj; int64_t timeval,diff = 0; int32_t valid,retcode = -13;
+    cJSON *array=0,*firstitem=0,*tokenobj,*obj; uint32_t nonce; int64_t timeval,diff = 0; int32_t valid,leverage,retcode = -13;
     char buf[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],broadcaststr[MAX_JSON_FIELD],*firstjsontxt = 0; unsigned char encoded[4096];
     array = cJSON_Parse(tokenizedtxt);
     NXTaddr[0] = pubkey[0] = forwarder[0] = 0;
@@ -164,7 +173,7 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
         else
         {
             strcpy(NXTaddr,buf);
-            //printf("decoded.(%s)\n",NXTaddr);
+//printf("decoded.(%s)\n",NXTaddr);
             if ( strictflag != 0 )
             {
                 timeval = get_cJSON_int(firstitem,"time");
@@ -180,7 +189,7 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
             if ( retcode != -5 )
             {
                 firstjsontxt = cJSON_Print(firstitem), _stripwhite(firstjsontxt,' ');
-                //printf("(%s)\n",firstjsontxt);
+//printf("(%s)\n",firstjsontxt);
                 tokenobj = cJSON_GetArrayItem(array,1);
                 obj = cJSON_GetObjectItem(tokenobj,"token");
                 copy_cJSON((char *)encoded,obj);
@@ -193,28 +202,36 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
                         strcpy(NXTaddr,sender);
                     if ( strcmp(sender,NXTaddr) == 0 )
                     {
+                        nonce = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"nonce"),0);
+                        leverage = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"leverage"),0);
                         copy_cJSON(broadcaststr,cJSON_GetObjectItem(tokenobj,"broadcast"));
-                        if ( nonce_func(firstjsontxt,broadcaststr,0) != 0 )
+                        retcode = valid;
+                        //int32_t len = (int32_t)strlen(firstjsontxt);
+                        if ( nonce_func(&leverage,firstjsontxt,broadcaststr,0,nonce) != 0 )
+                        {
+                            //printf("(%s) -> (%s) leverage.%d len.%d crc.%u\n",broadcaststr,firstjsontxt,leverage,len,_crc32(0,(void *)firstjsontxt,len));
                             retcode = -4;
-                        else retcode = valid;
+                        }
                         if ( Debuglevel > 2 )
                             printf("signed by valid NXT.%s valid.%d diff.%lld forwarder.(%s)\n",sender,valid,(long long)diff,forwarder);
                     }
                     else
                     {
-                        printf("diff sender.(%s) vs NXTaddr.(%s)\n",sender,NXTaddr);
-                        if ( strcmp(NXTaddr,buf) == 0 )
-                            retcode = valid;
+                        printf("valid.%d diff sender.(%s) vs NXTaddr.(%s)\n",valid,sender,NXTaddr);
+                        //if ( strcmp(NXTaddr,buf) == 0 )
+                        //    retcode = valid;
+                        retcode = -7;
                     }
                 } else printf("decode error\n");
                 if ( retcode < 0 )
-                    printf("err: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld, buf.(%s)\n",sender,NXTaddr,valid,(long long)diff,buf);
+                    printf("err.%d: signed by invalid sender.(%s) NXT.%s valid.%d or timediff too big diff.%lld, buf.(%s)\n",retcode,sender,NXTaddr,valid,(long long)diff,tokenizedtxt);
                 free(firstjsontxt);
             }
         }
     } else printf("decode arraysize.%d\n",cJSON_GetArraySize(array));
     if ( array != 0 )
         free_json(array);
+    //printf("validate retcode.%d\n",retcode);
     return(retcode);
 }
 
@@ -290,7 +307,7 @@ char *lb_serviceprovider(struct service_provider *sp,uint8_t *data,int32_t datal
 char *busdata_addpending(char *destNXT,char *sender,char *key,uint32_t timestamp,cJSON *json,char *forwarder,cJSON *origjson)
 {
     cJSON *argjson; struct busdata_item *ptr = calloc(1,sizeof(*ptr));
-    struct service_provider *sp; int32_t i,sendtimeout,recvtimeout,retrymillis;
+    struct service_provider *sp; int32_t i,sendtimeout,recvtimeout,retrymillis,maxmillis;
     char submethod[512],endpoint[512],destplugin[512],retbuf[128],servicename[512],*hashstr,*str,*retstr;
     if ( key == 0 || key[0] == 0 )
         key = "0";
@@ -320,14 +337,16 @@ char *busdata_addpending(char *destNXT,char *sender,char *key,uint32_t timestamp
             sp = calloc(1,sizeof(*sp));
             HASH_ADD_KEYPTR(hh,Service_providers,servicename,strlen(servicename),sp);
             sp->sock = nn_socket(AF_SP,NN_REQ);
-            sendtimeout = 1000, recvtimeout = 10000, retrymillis = 10000;
+            sendtimeout = 1000, recvtimeout = 10000, maxmillis = 1000, retrymillis = 25;
             if ( sendtimeout > 0 && nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
                 fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
             else if ( recvtimeout > 0 && nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
                 fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
-            else if ( nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&retrymillis,sizeof(retrymillis)) < 0 )
+            else if ( nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
                 fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
-            fprintf(stderr,"create servicename.(%s) sock.%d <-> (%s) (%s)\n",servicename,sp->sock,endpoint,cJSON_Print(json));
+            else if ( nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
+                fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+            fprintf(stderr,"create servicename.(%s) sock.%d <-> (%s)\n",servicename,sp->sock,endpoint);
         }
         sp->endpoints = realloc(sp->endpoints,sizeof(*sp->endpoints) * (sp->numendpoints + 1));
         sp->endpoints[sp->numendpoints++] = clonestr(endpoint);
@@ -357,7 +376,7 @@ char *busdata_addpending(char *destNXT,char *sender,char *key,uint32_t timestamp
             return(clonestr("{\"result\":\"no response from provider\"}"));
         }
     }
-    printf("%s -> %s add pending.(%s) %llx\n",sender,destNXT,cJSON_Print(json),(long long)ptr->hash.txid);
+    printf("%s -> %s add pending %llx\n",sender,destNXT,(long long)ptr->hash.txid);
     queue_enqueue("busdata",&busdataQ[0],&ptr->DL);
     return(0);
 }
@@ -425,12 +444,13 @@ char *busdata_matchquery(char *response,char *destNXT,char *sender,char *key,uin
     return(retstr);
 }
 
-char *busdata(int32_t validated,char *forwarder,char *sender,char *key,uint32_t timestamp,uint8_t *msg,int32_t datalen,cJSON *origjson)
+char *busdata(char *forwarder,char *sender,int32_t valid,char *key,uint32_t timestamp,uint8_t *msg,int32_t datalen,cJSON *origjson)
 {
     cJSON *json; char destNXT[64],response[1024],*retstr = 0;
-    if ( SUPERNET.iamrelay != 0 && validated != 0 )
+    //printf("busdata\n");
+    if ( SUPERNET.iamrelay != 0 && valid > 0 )
     {
-        if ( (json= busdata_decode(destNXT,validated,sender,msg,datalen)) != 0 )
+        if ( (json= busdata_decode(destNXT,valid,sender,msg,datalen)) != 0 )
         {
             copy_cJSON(response,cJSON_GetObjectItem(json,"response"));
             if ( response[0] == 0 )
@@ -454,89 +474,107 @@ char *busdata(int32_t validated,char *forwarder,char *sender,char *key,uint32_t 
     return(retstr);
 }
 
-char *nn_busdata_processor(struct relayargs *args,uint8_t *msg,int32_t len)
+int32_t busdata_validate(char *forwarder,char *sender,uint32_t *timestamp,uint8_t *databuf,int32_t *datalenp,void *msg,cJSON *json)
 {
-    int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
-    cJSON *json,*argjson,*second; uint32_t timestamp; int32_t valid,datalen; bits256 hash; uint8_t databuf[8192]; uint64_t tag;
-    char forwarder[65],pubkey[256],usedest[128],sender[65],hexstr[65],sha[65],src[64],datastr[8192],key[MAX_JSON_FIELD],plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],*str,*jsonstr=0,*retstr = 0;
+    char pubkey[256],hexstr[65],sha[65],datastr[8192]; int32_t valid; cJSON *argjson; bits256 hash;
+    *timestamp = *datalenp = 0;
+    //printf("busdata_validate.(%s)\n",msg);
+    if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
+    {
+        argjson = cJSON_GetArrayItem(json,0);
+        *timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"time"),0);
+        sender[0] = 0;
+        if ( (valid= validate_token(forwarder,pubkey,sender,msg,(*timestamp != 0) * MAXTIMEDIFF)) <= 0 )
+            return(valid);
+        copy_cJSON(sha,cJSON_GetObjectItem(argjson,"H"));
+        copy_cJSON(datastr,cJSON_GetObjectItem(argjson,"data"));
+        decode_hex(databuf,(int32_t)(strlen(datastr)+1)>>1,datastr);
+        *datalenp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"n"),0);
+        calc_sha256(hexstr,hash.bytes,databuf,*datalenp);
+        //printf("valid.%d sender.(%s) (%s) datalen.%d %llx [%llx]\n",valid,sender,databuf,*datalenp,(long long)hash.txid,(long long)databuf);
+        if ( strcmp(hexstr,sha) == 0 )
+            return(1);
+    }
+    return(-1);
+}
+
+char *busdata_deref(char *forwarder,char *sender,int32_t valid,char *databuf,cJSON *json)
+{
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],*broadcaststr,*str,*retstr = 0;
+    cJSON *dupjson,*second,*argjson; uint64_t forwardbits;
+    if ( SUPERNET.iamrelay != 0 && (broadcaststr= cJSON_str(cJSON_GetObjectItem(cJSON_GetArrayItem(json,1),"broadcast"))) != 0 )
+    {
+        dupjson = cJSON_Duplicate(json,1);
+        second = cJSON_GetArrayItem(dupjson,1);
+        ensure_jsonitem(second,"forwarder",SUPERNET.NXTADDR);
+        if ( (forwardbits= conv_acctstr(forwarder)) == 0 && cJSON_GetObjectItem(second,"stop") == 0 )
+        {
+            ensure_jsonitem(second,"stop","end");
+            str = cJSON_Print(dupjson), _stripwhite(str,' ');
+            printf("broadcast.(%s) forwarder.%llu vs %s\n",str,(long long)forwardbits,SUPERNET.NXTADDR);
+            if ( strcmp(broadcaststr,"allrelays") == 0 )
+                nn_send(RELAYS.bus.sock,str,(int32_t)strlen(str)+1,0);
+            else if ( strcmp(broadcaststr,"allnodes") == 0 )
+                nn_send(RELAYS.pubsock,str,(int32_t)strlen(str)+1,0);
+            free(str);
+        } else printf("forwardbits.%llu stop.%p\n",(long long)forwardbits,cJSON_GetObjectItem(second,"stop"));
+        free_json(dupjson);
+    }
+    if ( (argjson= cJSON_Parse(databuf)) != 0 )
+    {
+        copy_cJSON(method,cJSON_GetObjectItem(argjson,"submethod"));
+        copy_cJSON(plugin,cJSON_GetObjectItem(argjson,"destplugin"));
+        cJSON_ReplaceItemInObject(argjson,"method",cJSON_CreateString(method));
+        cJSON_ReplaceItemInObject(argjson,"plugin",cJSON_CreateString(plugin));
+        cJSON_DeleteItemFromObject(argjson,"submethod");
+        cJSON_DeleteItemFromObject(argjson,"destplugin");  //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
+        str = cJSON_Print(argjson), _stripwhite(str,' ');
+        printf("call (%s %s) (%s)\n",plugin,method,str);
+        retstr = plugin_method(0,0,plugin,method,0,0,str,(int32_t)strlen(str)+1,SUPERNET.PLUGINTIMEOUT/2);
+        free_json(argjson);
+        free(str);
+    }
+    return(retstr);
+}
+
+char *nn_busdata_processor(uint8_t *msg,int32_t len)
+{
+    cJSON *json,*argjson; uint32_t timestamp; int32_t datalen,valid; uint8_t databuf[8192];
+    char usedest[128],key[MAX_JSON_FIELD],src[MAX_JSON_FIELD],forwarder[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],*retstr = 0;
+    //printf("nn_busdata_processor\n");
     if ( (json= cJSON_Parse((char *)msg)) != 0 )
     {
-        if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
+        if ( (valid= busdata_validate(forwarder,sender,&timestamp,databuf,&datalen,msg,json)) > 0 )
         {
             argjson = cJSON_GetArrayItem(json,0);
-            second = cJSON_GetArrayItem(json,1);
-            timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"time"),0);
-            jsonstr = cJSON_Print(argjson), _stripwhite(jsonstr,' ');
-            sender[0] = 0;
-            valid = validate_token(forwarder,pubkey,sender,(char *)msg,(timestamp != 0)*3);
             copy_cJSON(src,cJSON_GetObjectItem(argjson,"NXT"));
             copy_cJSON(key,cJSON_GetObjectItem(argjson,"key"));
-            copy_cJSON(sha,cJSON_GetObjectItem(argjson,"H"));
-            copy_cJSON(datastr,cJSON_GetObjectItem(argjson,"data"));
-            tag = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"tag"));
-            decode_hex(databuf,(int32_t)(strlen(datastr)+1)>>1,datastr);
-            datalen = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"n"),0);
-            calc_sha256(hexstr,hash.bytes,(uint8_t *)databuf,datalen);
-//printf("valid.%d sender.(%s) (%s) datalen.%d len.%d %llx [%llx]\n",valid,sender,databuf,datalen,len,(long long)hash.txid,(long long)databuf);
-            if ( strcmp(hexstr,sha) == 0 )
-            {
-                copy_cJSON(usedest,cJSON_GetObjectItem(second,"usedest"));
-                if ( usedest[0] != 0 )
-                {
-                    char forwarder[1024],*broadcaststr; cJSON *dupjson; uint64_t forwardbits;
-                    if ( SUPERNET.iamrelay != 0 && (broadcaststr= cJSON_str(cJSON_GetObjectItem(second,"broadcast"))) != 0 )
-                    {
-                        dupjson = cJSON_Duplicate(json,1);
-                        second = cJSON_GetArrayItem(dupjson,1);
-                        copy_cJSON(forwarder,cJSON_GetObjectItem(second,"forwarder"));
-                        ensure_jsonitem(second,"forwarder",SUPERNET.NXTADDR);
-                        if ( (forwardbits= conv_acctstr(forwarder)) == 0 && cJSON_GetObjectItem(second,"stop") == 0 )
-                        {
-                            ensure_jsonitem(second,"stop","end");
-                            str = cJSON_Print(dupjson), _stripwhite(str,' ');
-                            printf("broadcast.(%s) forwarder.%llu vs %s\n",str,(long long)forwardbits,SUPERNET.NXTADDR);
-                            if ( strcmp(broadcaststr,"allrelays") == 0 )
-                                nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(str)+1,0);
-                            else if ( strcmp(broadcaststr,"allnodes") == 0 )
-                                nn_send(RELAYS.pubsock,jsonstr,(int32_t)strlen(str)+1,0);
-                            free(str);
-                        } else printf("forwardbits.%llu stop.%p\n",(long long)forwardbits,cJSON_GetObjectItem(second,"stop"));
-                        free_json(dupjson);
-                    }
-                    if ( (argjson= cJSON_Parse((char *)databuf)) != 0 )
-                    {
-                        copy_cJSON(method,cJSON_GetObjectItem(argjson,"submethod"));
-                        copy_cJSON(plugin,cJSON_GetObjectItem(argjson,"destplugin"));
-                        cJSON_ReplaceItemInObject(argjson,"method",cJSON_CreateString(method));
-                        cJSON_ReplaceItemInObject(argjson,"plugin",cJSON_CreateString(plugin));
-                        cJSON_DeleteItemFromObject(argjson,"submethod");
-                        cJSON_DeleteItemFromObject(argjson,"destplugin");  //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
-                        str = cJSON_Print(argjson), _stripwhite(str,' ');
-                        printf("call (%s %s) (%s)\n",plugin,method,str);
-                        retstr = plugin_method(0,0,plugin,method,0,0,str,(int32_t)strlen(str)+1,5000);
-                        free(str);
-                    }
-                } else retstr = busdata(valid,forwarder,src,key,timestamp,databuf,datalen,json);
-                //printf("valid.%d forwarder.(%s) NXT.%-24s key.(%s) sha.(%s) datalen.%d origlen.%d\n",valid,forwarder,src,key,hexstr,datalen,origlen);
-            }
-            else retstr = clonestr("{\"error\":\"hashes dont match\"}");
-            free(jsonstr);
-        }
+            copy_cJSON(usedest,cJSON_GetObjectItem(cJSON_GetArrayItem(json,1),"usedest"));
+            if ( usedest[0] != 0 )
+                retstr = busdata_deref(forwarder,sender,valid,(char *)databuf,json);
+            else retstr = busdata(forwarder,sender,valid,key,timestamp,databuf,datalen,json);
+            //printf("valid.%d forwarder.(%s) NXT.%-24s key.(%s) datalen.%d\n",valid,forwarder,src,key,datalen);
+        } else retstr = clonestr("{\"error\":\"busdata doesnt validate\"}");
         free_json(json);
     } else retstr = clonestr("{\"error\":\"couldnt parse busdata\"}");
-    printf("BUSDATA.(%s) (%x)\n",retstr,*(int32_t *)msg);
+   // printf("BUSDATA.(%s) (%s)\n",msg,retstr);
     return(retstr);
 }
 
 char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
 {
-    //int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET);
-    char key[MAX_JSON_FIELD],method[MAX_JSON_FIELD],plugin[MAX_JSON_FIELD],endpoint[128],hexstr[65],numstr[65],*str,*tokbuf = 0,*tmp; bits256 hash;
-    uint64_t nxt64bits,tag; uint32_t timestamp; cJSON *datajson,*json; int32_t tlen,datalen = 0;
+    char key[MAX_JSON_FIELD],method[MAX_JSON_FIELD],plugin[MAX_JSON_FIELD],endpoint[128],hexstr[65],numstr[65],*str,*str2,*tokbuf = 0,*tmp;
+    bits256 hash; uint64_t nxt64bits,tag; uint32_t timestamp; cJSON *datajson,*json; int32_t tlen,datalen = 0;
     *datalenp = 0;
+    //printf("create_busdata\n");
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
-        sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
+        if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
+        {
+            *datalenp = (int32_t)strlen(jsonstr) + 1;
+            free_json(json);
+            return(jsonstr);
+        }
         if ( broadcastmode != 0 && broadcastmode[0] != 0 )
         {
             copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
@@ -544,9 +582,14 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
             cJSON_ReplaceItemInObject(json,"method",cJSON_CreateString("busdata"));
             cJSON_ReplaceItemInObject(json,"plugin",cJSON_CreateString("relay"));
             cJSON_AddItemToObject(json,"submethod",cJSON_CreateString(method));
-            cJSON_AddItemToObject(json,"destplugin",cJSON_CreateString(plugin));
+            if ( strcmp(plugin,"relay") != 0 )
+                cJSON_AddItemToObject(json,"destplugin",cJSON_CreateString(plugin));
         }
-        cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));
+        else
+        {
+            sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
+            cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));
+        }
         randombytes((uint8_t *)&tag,sizeof(tag));
         sprintf(numstr,"%llu",(long long)tag), cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
         timestamp = (uint32_t)time(NULL);
@@ -563,18 +606,17 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
         init_hexbytes_noT(tmp,(uint8_t *)str,datalen);
         cJSON_AddItemToObject(datajson,"data",cJSON_CreateString(tmp));
         calc_sha256(hexstr,hash.bytes,(uint8_t *)str,datalen);
-        free(str);
         cJSON_AddItemToObject(datajson,"n",cJSON_CreateNumber(datalen));
         cJSON_AddItemToObject(datajson,"H",cJSON_CreateString(hexstr));
-        str = cJSON_Print(datajson), _stripwhite(str,' ');
-        tokbuf = calloc(1,strlen(str) + 1024);
-        tlen = construct_tokenized_req(tokbuf,str,SUPERNET.NXTACCTSECRET,broadcastmode);
-        free(str);
-        free(tmp);
-printf("created busdata.(%s) tlen.%d\n",tokbuf,tlen);
+        str2 = cJSON_Print(datajson), _stripwhite(str2,' ');
+        tokbuf = calloc(1,strlen(str2) + 1024);
+        tlen = construct_tokenized_req(tokbuf,str2,SUPERNET.NXTACCTSECRET,broadcastmode);
+//printf("created busdata.(%s) -> (%s) tlen.%d\n",str,tokbuf,tlen);
+        free(tmp), free(str), free(str2), str = str2 = 0;
         *datalenp = tlen;
-        if ( SUPERNET.iamrelay != 0 && (str= nn_busdata_processor(0,(uint8_t *)tokbuf,tlen)) != 0 )
+        if ( SUPERNET.iamrelay != 0 && (str= nn_busdata_processor((uint8_t *)tokbuf,tlen)) != 0 )
             free(str);
+        free_json(json);
     } else printf("couldnt parse busdata json.(%s)\n",jsonstr);
     return(tokbuf);
 }
@@ -582,6 +624,7 @@ printf("created busdata.(%s) tlen.%d\n",tokbuf,tlen);
 char *busdata_sync(char *jsonstr,char *broadcastmode)
 {
     int32_t datalen,sendlen = 0; char *data,*retstr;
+    //printf("busdata_sync.(%s) (%s)\n",jsonstr,broadcastmode==0?"":broadcastmode);
     if ( (data= create_busdata(&datalen,jsonstr,broadcastmode)) != 0 )
     {
         if ( SUPERNET.iamrelay != 0 )
@@ -596,13 +639,17 @@ char *busdata_sync(char *jsonstr,char *broadcastmode)
                     return(clonestr("{\"error\":\"couldnt send to bus\"}"));
                 } else printf("PUB.(%s)\n",data);
             }
-            free(data);
+            if ( data != jsonstr )
+                free(data);
             return(clonestr("{\"result\":\"sent to bus\"}"));
         }
         else
         {
             retstr = nn_loadbalanced((uint8_t *)data,datalen);
-            free(data);
+            //if ( retstr != 0 )
+            //    printf("busdata nn_loadbalanced retstr.(%s)\n",retstr);
+            if ( data != jsonstr )
+                free(data);
             return(retstr);
         }
     }
@@ -611,7 +658,7 @@ char *busdata_sync(char *jsonstr,char *broadcastmode)
 
 void busdata_init(int32_t sendtimeout,int32_t recvtimeout)
 {
-    char endpoint[512]; int32_t iter,sock,type,portoffset;
+    char endpoint[512]; int32_t iter,sock,type,portoffset,retrymillis,maxmillis;
     type = NN_REP, portoffset = -2;
     for (iter=0; iter<1+SUPERNET.iamrelay; iter++)
     {
@@ -623,10 +670,15 @@ void busdata_init(int32_t sendtimeout,int32_t recvtimeout)
             expand_epbits(endpoint,calc_epbits(SUPERNET.transport,(uint32_t)calc_ipbits(SUPERNET.myipaddr),SUPERNET.port + portoffset,type));
             nn_bind(sock,endpoint);
             printf("SERVICE BIND.(%s)\n",endpoint);
+            maxmillis = 1000, retrymillis = 25;
             if ( sendtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
                 fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
             else if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
                 fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+            else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
+                fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+            else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
+                fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
         }
         type = NN_PUB;
         portoffset = nn_portoffset(NN_BUS);
@@ -641,7 +693,7 @@ void busdata_poll()
     {
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            if ( (str= nn_busdata_processor(0,(uint8_t *)jsonstr,len)) != 0 )
+            if ( (str= nn_busdata_processor((uint8_t *)jsonstr,len)) != 0 )
             {
                 nn_send(sock,str,(int32_t)strlen(str)+1,0);
                 free(str);
