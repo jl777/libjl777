@@ -199,7 +199,7 @@ int32_t baserelcmp(char *base,uint64_t *baseequivs,int32_t numbase,char *rel,uin
 
 uint64_t _obookid(uint64_t baseid,uint64_t relid) { return(baseid ^ relid); }
 
-struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui)
+struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,uint32_t oldest,char *gui,char *exchange)
 {
     int32_t i,j,iter,numbids,numasks,numbooks,polarity,numbase,numrel;
     char obookstr[64],_base[16],_rel[16];
@@ -248,7 +248,7 @@ struct orderbook *create_orderbook(char *base,uint64_t refbaseid,char *rel,uint6
                 rb = obooks[i];
                 if ( Debuglevel > 2 )
                     printf("%s numquotes.%d: (%s).%llu (%s).%llu | (%s).%llu (%s).%llu | equiv.(%d %d) match.%d %d\n",rb->exchange,rb->numquotes,rb->base,(long long)rb->assetids[0],rb->rel,(long long)rb->assetids[1],op->base,(long long)op->baseid,op->rel,(long long)op->relid,numbase,numrel,op->baseid == rb->assetids[0] && op->relid == rb->assetids[1],op->baseid == rb->assetids[1] && op->relid == rb->assetids[0]);
-                if ( rb->numquotes == 0 )
+                if ( rb->numquotes == 0 || (exchange != 0 && exchange[0] != 0 && strcmp(exchange,rb->exchange) != 0) )
                 {
                     continue;
                 }
@@ -372,7 +372,7 @@ struct orderbook *merge_books(char *base,uint64_t refbaseid,char *rel,uint64_t r
     return(op);
 }
 
-struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,int32_t maxdepth,uint32_t oldest,char *gui)
+struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,uint64_t refbaseid,char *rel,uint64_t refrelid,int32_t maxdepth,uint32_t oldest,char *gui,char *exchange)
 {
     uint64_t jumpassets[] = { NXT_ASSETID, BTC_ASSETID, BTCD_ASSETID, USD_ASSETID, CNY_ASSETID };
     struct orderbook *op=0,*baseop,*relop,*rawop,*jumpop,*jumpbooks[sizeof(jumpassets)/sizeof(*jumpassets) + 1];
@@ -388,15 +388,15 @@ struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,
         for (r=0; r<numrel; r++)
         {
             baseid = baseequivs[b], relid = relequivs[r];
-            if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui)) != 0 )
+            if ( (rawop= create_orderbook(0,baseid,0,relid,oldest,gui,exchange)) != 0 )
                 jumpbooks[m++] = obooks[n++] = rawop;
             for (i=0; i<(int32_t)(sizeof(jumpassets)/sizeof(*jumpassets)); i++)
             {
                 if ( baseid != jumpassets[i] && relid != jumpassets[i] )
                 {
-                    if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui)) != 0 )
+                    if ( (baseop= create_orderbook(0,baseid,0,jumpassets[i],oldest,gui,exchange)) != 0 )
                         obooks[n++] = baseop;
-                    if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui)) != 0 )
+                    if ( (relop= create_orderbook(0,relid,0,jumpassets[i],oldest,gui,exchange)) != 0 )
                         obooks[n++] = relop;
                     if ( baseop != 0 && relop != 0 && (jumpop= make_jumpbook(base,baseid,jumpassets[i],rel,relid,relop,baseop,gui,0,maxdepth)) != 0 )
                         jumpbooks[m++] = obooks[n++] = jumpop;
@@ -482,7 +482,7 @@ void update_ramparse(struct exchange_info *exchange,struct rambook_info *bids,st
     exchange->lastaccess = (uint32_t)time(NULL);
 }
 
-void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char *gui,int32_t showall)
+void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char *gui,int32_t showall,char *name)
 {
     int32_t cleared_with_nxtae(int32_t);
     uint64_t assetids[8192];
@@ -496,7 +496,7 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
         baseid = assetids[i*3], relid = assetids[i*3+1], exchangeid = (int32_t)assetids[i*3+2];
         if ( maxdepth > 0 && (exchange= &Exchanges[exchangeid]) != 0 && exchangeid < MAX_EXCHANGES && exchangeid != INSTANTDEX_EXCHANGEID )
         {
-            if ( showall != 0 || (exchange->trade != 0 || cleared_with_nxtae(exchangeid) != 0) )
+            if ( (name == 0 || strcmp(exchange->name,name) == 0) && (showall != 0 || (exchange->trade != 0 || cleared_with_nxtae(exchangeid) != 0)) )
             {
                 bids = get_rambook(0,baseid,0,relid,(exchangeid<<1),gui);
                 asks = get_rambook(0,baseid,0,relid,(exchangeid<<1) | 1,gui);
@@ -518,9 +518,10 @@ char *orderbook_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs
     struct orderbook *op,*obooks[1024];
     int32_t allflag,maxdepth,showall; uint32_t oldest;
     uint64_t mult,baseid,relid,nxt64bits = calc_nxt64bits(SUPERNET.NXTADDR);
-    char gui[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],*retstr = 0;
+    char gui[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],exchange[MAX_JSON_FIELD],*retstr = 0;
     baseid = get_API_nxt64bits(objs[0]), relid = get_API_nxt64bits(objs[1]), allflag = get_API_int(objs[2],0), oldest = get_API_int(objs[3],0);
-    maxdepth = get_API_int(objs[4],DEFAULT_MAXDEPTH), copy_cJSON(base,objs[5]), copy_cJSON(rel,objs[6]), copy_cJSON(gui,objs[7]), gui[sizeof(iQ->gui)-1] = 0, showall = get_API_int(objs[8],1);
+    maxdepth = get_API_int(objs[4],DEFAULT_MAXDEPTH), copy_cJSON(base,objs[5]), copy_cJSON(rel,objs[6]);
+    copy_cJSON(gui,objs[7]), gui[sizeof(iQ->gui)-1] = 0, showall = get_API_int(objs[8],1), copy_cJSON(exchange,objs[9]);
     retstr = 0;
     if ( maxdepth <= 0 )
         maxdepth = DEFAULT_MAXDEPTH;
@@ -532,8 +533,8 @@ char *orderbook_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs
     else set_assetname(&mult,rel,relid);
     if ( baseid != 0 && relid != 0 )
     {
-        update_rambooks(baseid,relid,maxdepth,gui,showall);
-        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui);
+        update_rambooks(baseid,relid,maxdepth,gui,showall,exchange);
+        op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,exchange);
         retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag);
         free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
     }

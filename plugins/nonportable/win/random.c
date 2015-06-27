@@ -1,28 +1,40 @@
-
+#include <inttypes.h>
 #include <windows.h>
 #include <wincrypt.h>
+#include <stdio.h>
+#include <process.h>
+#include <tlhelp32.h>
 
-int32_t OS_getppid() { int32_t parent_pid; return(parent_pid); }
+int32_t OS_getppid() { 
+    int pid, ppid = -1;
+    HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    PROCESSENTRY32 pe = { 0 };
+    pe.dwSize = sizeof(PROCESSENTRY32);
+    pid = GetCurrentProcessId();
 
-int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags) { return(waitpid(childpid,statusp,flags)); }
-
-int32_t OS_launch_process(char *args[])
-{
-    pid_t child_pid;
-    if ( (child_pid= fork()) >= 0 )
-    {
-        if ( child_pid == 0 )
-        {
-            printf("plugin PID =  %d, parent pid = %d (%s, %s, %s, %s, %s)\n",getpid(),getppid(),args[0],args[1],args[2],args[3],args[4]);
-            return(execv(args[0],args));
-        }
-        else
-        {
-            printf("parent PID =  %d, child pid = %d\n",getpid(),child_pid);
-            return(child_pid);
-        }
+    if( Process32First(h, &pe)) {
+    	do {
+    		if (pe.th32ProcessID == pid) {
+    			ppid = pe.th32ParentProcessID;
+                break;
+    		}
+    	} while( Process32Next(h, &pe));
     }
-    else return(-1);
+
+    CloseHandle(h);
+    return ppid;
+}
+
+int32_t OS_waitpid(int32_t pid, int32_t *statusp, int32_t flags) {
+    _cwait (statusp, pid, WAIT_CHILD);
+}
+
+int32_t  OS_launch_process(char *args[])
+{
+    int32_t pid;
+    pid = _spawnl( _P_NOWAIT, args[0], args[0], 
+                             NULL, NULL );
+    return pid;
 }
 
 // from tweetnacl
@@ -33,7 +45,3 @@ void randombytes(unsigned char *x,long xlen)
     CryptGenRandom(prov, xlen, x);
     CryptReleaseContext(prov, 0);
 }
-
-
-
-

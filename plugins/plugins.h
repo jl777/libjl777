@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
-#include <sys/wait.h>
+#include <nonportable.h>
 #include <stdlib.h>
 
 #define DAEMONFREE_MARGIN_SECONDS 13

@@ -13,9 +13,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <arpa/inet.h>
+#include <nonportable.h>
 #include <sys/types.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include "../includes/miniupnp/miniwget.h"
 #include "../includes/miniupnp/miniupnpc.h"

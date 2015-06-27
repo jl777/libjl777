@@ -49,6 +49,7 @@ long stripstr(char *buf,long len);
 char safechar64(int32_t x);
 uint64_t stringbits(char *str);
 int32_t has_backslash(char *str);
+void escape_code(char *escaped,char *str);
 
 char *_mbstr(double n);
 char *_mbstr2(double n);
@@ -162,6 +163,25 @@ int32_t safecopy(char *dest,char *src,long len)
         dest[i] = 0;
     }
     return(i);
+}
+
+void escape_code(char *escaped,char *str)
+{
+    int32_t i,j,c; char esc[16];
+    for (i=j=0; str[i]!=0; i++)
+    {
+        if ( ((c= str[i]) >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') )
+            escaped[j++] = c;
+        else
+        {
+            sprintf(esc,"%%%02X",c);
+            //sprintf(esc,"\\\\%c",c);
+            strcpy(escaped + j,esc);
+            j += strlen(esc);
+        }
+    }
+    escaped[j] = 0;
+    //printf("escape_code: (%s) -> (%s)\n",str,escaped);
 }
 
 int32_t is_zeroes(char *str)

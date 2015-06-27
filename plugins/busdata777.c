@@ -22,9 +22,15 @@
 
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret)
 {
-    char cmd[4096],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1],*jsontxt; cJSON *tokenobj,*json;
+    char cmd[16384],secretstr[8192],token[MAX_JSON_FIELD+2*NXT_TOKEN_LEN+1],*jsontxt; cJSON *tokenobj,*json;
     encoded[0] = 0;
-    sprintf(cmd,"requestType=generateToken&website=%s&secretPhrase=%s",key,secret);
+    if ( strlen(secretstr) >= sizeof(secretstr)/3-1 )
+    {
+        fprintf(stderr,"secret too long!\n");
+        return(-1);
+    }
+    escape_code(secretstr,secret);
+    sprintf(cmd,"requestType=generateToken&website=%s&secretPhrase=%s",key,secretstr);
     if ( (jsontxt= issue_NXTPOST(cmd)) != 0 )
     {
         //printf("(%s) -> (%s)\n",cmd,jsontxt);
@@ -527,7 +533,7 @@ char *busdata_deref(char *forwarder,char *sender,int32_t valid,char *databuf,cJS
         cJSON_ReplaceItemInObject(argjson,"method",cJSON_CreateString(method));
         cJSON_ReplaceItemInObject(argjson,"plugin",cJSON_CreateString(plugin));
         cJSON_DeleteItemFromObject(argjson,"submethod");
-        cJSON_DeleteItemFromObject(argjson,"destplugin");  //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
+        cJSON_DeleteItemFromObject(argjson,"destplugin");
         str = cJSON_Print(argjson), _stripwhite(str,' ');
         printf("call (%s %s) (%s)\n",plugin,method,str);
         retstr = plugin_method(0,0,plugin,method,0,0,str,(int32_t)strlen(str)+1,SUPERNET.PLUGINTIMEOUT/2);

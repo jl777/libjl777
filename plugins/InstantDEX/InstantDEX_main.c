@@ -68,33 +68,32 @@ char *respondtx_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs
 
 char *InstantDEX_parser(char *forwarder,char *sender,int32_t valid,char *origargstr,cJSON *origargjson)
 {
-    static char *allorderbooks[] = { (char *)allorderbooks_func, "allorderbooks", "V", 0 };
-    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "V", "baseid", "relid", "allfields", "oldest", "maxdepth", "base", "rel", "gui", "showall", 0 };
-    static char *lottostats[] = { (char *)lottostats_func, "lottostats", "V", "timestamp", 0 };
-    static char *cancelquote[] = { (char *)cancelquote_func, "cancelquote", "V", "quoteid", 0 };
-    static char *openorders[] = { (char *)openorders_func, "openorders", "V", 0 };
-    static char *placebid[] = { (char *)placebid_func, "placebid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", 0 };
-    static char *placeask[] = { (char *)placeask_func, "placeask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", ",gui", "automatch", "minperc", "duration", "exchange", 0 };
-    static char *bid[] = { (char *)bid_func, "bid", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", 0 };
-    static char *ask[] = { (char *)ask_func, "ask", "V", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", 0 };
-    static char *makeoffer3[] = { (char *)makeoffer3_func, "makeoffer3", "V", "baseid", "relid", "quoteid", "perc", "deprecated", "baseiQ", "reliQ", "askoffer", "price", "volume", "exchange", "baseamount", "relamount", "offerNXT", "minperc", "jumpasset", 0 };
-    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "cmd", "assetid", "quantityQNT", "priceNQT", "triggerhash", "quoteid", "sig", "data", "minperc", "offerNXT", "otherassetid", "otherqty", 0 };
-    static char *jumptrades[] = { (char *)jumptrades_func, "jumptrades", "V", 0 };
-    static char *tradehistory[] = { (char *)tradehistory_func, "tradehistory", "V", "timestamp", 0 };
+    static char *allorderbooks[] = { (char *)allorderbooks_func, "allorderbooks", "", 0 };
+    static char *orderbook[] = { (char *)orderbook_func, "orderbook", "", "baseid", "relid", "allfields", "oldest", "maxdepth", "base", "rel", "gui", "showall", "exchange", 0 };
+    static char *lottostats[] = { (char *)lottostats_func, "lottostats", "", "timestamp", 0 };
+    static char *cancelquote[] = { (char *)cancelquote_func, "cancelquote", "", "quoteid", 0 };
+    static char *openorders[] = { (char *)openorders_func, "openorders", "", 0 };
+    static char *placebid[] = { (char *)placebid_func, "placebid", "", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", "offerNXT", 0 };
+    static char *placeask[] = { (char *)placeask_func, "placeask", "", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", ",gui", "automatch", "minperc", "duration", "exchange", "offerNXT", 0 };
+    static char *bid[] = { (char *)bid_func, "bid", "", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", "offerNXT", 0 };
+    static char *ask[] = { (char *)ask_func, "ask", "", "baseid", "relid", "volume", "price", "timestamp", "baseamount", "relamount", "gui", "automatch", "minperc", "duration", "exchange", "offerNXT", 0 };
+    static char *makeoffer3[] = { (char *)makeoffer3_func, "makeoffer3", "", "baseid", "relid", "quoteid", "perc", "deprecated", "baseiQ", "reliQ", "askoffer", "price", "volume", "exchange", "baseamount", "relamount", "offerNXT", "minperc", "jumpasset", 0 };
+    static char *respondtx[] = { (char *)respondtx_func, "respondtx", "", "cmd", "assetid", "quantityQNT", "priceNQT", "triggerhash", "quoteid", "sig", "data", "minperc", "offerNXT", "otherassetid", "otherqty", 0 };
+    static char *jumptrades[] = { (char *)jumptrades_func, "jumptrades", "", 0 };
+    static char *tradehistory[] = { (char *)tradehistory_func, "tradehistory", "", "timestamp", 0 };
     static char **commands[] = { allorderbooks, lottostats, cancelquote, respondtx, jumptrades, tradehistory, openorders, makeoffer3, placebid, bid, placeask, ask, orderbook };
-    int32_t i,j,localaccess;
+    int32_t i,j,localaccess = 0;
     cJSON *argjson,*obj,*nxtobj,*secretobj,*objs[64];
-    char NXTaddr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],command[MAX_JSON_FIELD],**cmdinfo,*argstr,*retstr=0;
+    char NXTaddr[MAX_JSON_FIELD],NXTACCTSECRET[MAX_JSON_FIELD],command[MAX_JSON_FIELD],offerNXT[MAX_JSON_FIELD],**cmdinfo,*argstr,*retstr=0;
     memset(objs,0,sizeof(objs));
     command[0] = 0;
+    valid = 1;
     memset(NXTaddr,0,sizeof(NXTaddr));
     if ( is_cJSON_Array(origargjson) != 0 )
     {
         argjson = cJSON_GetArrayItem(origargjson,0);
         argstr = cJSON_Print(argjson), _stripwhite(argstr,' ');
-    }
-    else argjson = origargjson, argstr = origargstr;
-    localaccess = 0;
+    } else argjson = origargjson, argstr = origargstr;
     NXTACCTSECRET[0] = 0;
     if ( argjson != 0 )
     {
@@ -103,7 +102,23 @@ char *InstantDEX_parser(char *forwarder,char *sender,int32_t valid,char *origarg
         nxtobj = cJSON_GetObjectItem(argjson,"NXT");
         secretobj = cJSON_GetObjectItem(argjson,"secret");
         copy_cJSON(NXTaddr,nxtobj);
-        if ( strcmp(NXTaddr,SUPERNET.NXTADDR) == 0 )
+        copy_cJSON(offerNXT,cJSON_GetObjectItem(argjson,"offerNXT"));
+        if ( NXTaddr[0] == 0 && offerNXT[0] == 0 )
+        {
+            strcpy(NXTaddr,SUPERNET.NXTADDR);
+            strcpy(offerNXT,SUPERNET.NXTADDR);
+            strcpy(sender,SUPERNET.NXTADDR);
+            ensure_jsonitem(argjson,"NXT",NXTaddr);
+            ensure_jsonitem(argjson,"offerNXT",offerNXT);
+        }
+        else if ( offerNXT[0] == 0 && strcmp(NXTaddr,SUPERNET.NXTADDR) == 0 )
+        {
+            strcpy(offerNXT,SUPERNET.NXTADDR);
+            strcpy(sender,SUPERNET.NXTADDR);
+            ensure_jsonitem(argjson,"offerNXT",offerNXT);
+        }
+        else strcpy(sender,offerNXT);
+        if ( strcmp(offerNXT,SUPERNET.NXTADDR) == 0 )
             localaccess = 1;
         if ( localaccess != 0 && strcmp(NXTaddr,SUPERNET.NXTADDR) != 0 )
         {
@@ -111,6 +126,7 @@ char *InstantDEX_parser(char *forwarder,char *sender,int32_t valid,char *origarg
             ensure_jsonitem(argjson,"NXT",NXTaddr);
             //printf("subsititute NXT.%s\n",NXTaddr);
         }
+        //printf("localaccess.%d myaddr.(%s) NXT.(%s) offerNXT.(%s)\n",localaccess,SUPERNET.NXTADDR,NXTaddr,offerNXT);
         copy_cJSON(command,obj);
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 )
@@ -126,9 +142,9 @@ char *InstantDEX_parser(char *forwarder,char *sender,int32_t valid,char *origarg
         for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
         {
             cmdinfo = commands[i];
-            //printf("needvalid.(%c) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
             if ( strcmp(cmdinfo[1],command) == 0 )
             {
+                //printf("needvalid.(%c) valid.%d %d of %d: cmd.(%s) vs command.(%s)\n",cmdinfo[2][0],valid,i,(int32_t)(sizeof(commands)/sizeof(*commands)),cmdinfo[1],command);
                 if ( cmdinfo[2][0] != 0 && valid <= 0 )
                     return(0);
                 for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
@@ -151,32 +167,12 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
-/*int32_t should_forward(char *sender,char *origargstr)
-{
-    char forwarder[64],plugin[MAX_JSON_FIELD]; uint8_t *buf; int32_t len;
-    if ( validate_sender(forwarder,sender,origargstr) > 0 )
-    {
-        //printf("sender.(%s) forwarder.(%s)\n",sender,forwarder);
-        if ( strcmp(forwarder,sender) == 0 )
-        {
-            len = (int32_t)strlen(origargstr) + 1;
-            if ( (buf= replace_forwarder(plugin,(uint8_t *)origargstr,&len)) != 0 )
-            {
-                nn_publish(buf,len,1);
-                if ( buf != (uint8_t *)origargstr )
-                    free(buf);
-            }
-            return(1);
-        }
-    }
-    return(0);
-}*/
-
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
     char echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*retstr = 0;
     retbuf[0] = 0;
-//fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+    if ( Debuglevel > 2 )
+        fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
         // configure settings

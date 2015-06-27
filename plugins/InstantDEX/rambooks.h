@@ -16,22 +16,34 @@ struct InstantDEX_quote *find_iQ(uint64_t quoteid)
     return(iQ);
 }
 
-struct InstantDEX_quote *create_iQ(struct InstantDEX_quote iQ)
+struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ)
 {
     struct InstantDEX_quote *newiQ;
-    if ( (newiQ= find_iQ(iQ.quoteid)) != 0 )
+    if ( (newiQ= find_iQ(iQ->quoteid)) != 0 )
         return(newiQ);
     newiQ = calloc(1,sizeof(*newiQ));
-    *newiQ = iQ;
+    *newiQ = *iQ;
     HASH_ADD(hh,AllQuotes,quoteid,sizeof(newiQ->quoteid),newiQ);
+    {
+        struct InstantDEX_quote *checkiQ;
+        if ( (checkiQ= find_iQ(iQ->quoteid)) == 0 || memcmp(checkiQ,iQ,sizeof(*iQ)) != 0 )
+            printf("error finding iQ after adding %llu vs %llu\n",(long long)checkiQ->quoteid,(long long)iQ->quoteid);
+    }
     return(newiQ);
 }
 
 struct InstantDEX_quote *findquoteid(uint64_t quoteid,int32_t evenclosed)
 {
     struct InstantDEX_quote *iQ;
-    if ( (iQ= find_iQ(quoteid)) != 0 && ((evenclosed != 0 || iQ->closed == 0) && calc_quoteid(iQ) == quoteid) )
-        return(iQ);
+    if ( (iQ= find_iQ(quoteid)) != 0 )
+    {
+        if ( evenclosed != 0 || iQ->closed == 0 )
+        {
+            if ( calc_quoteid(iQ) == quoteid )
+                return(iQ);
+            else printf("calc_quoteid %llu vs %llu\n",(long long)calc_quoteid(iQ),(long long)quoteid);
+        } //else printf("quoteid.%llu closed.%d\n",(long long)quoteid,iQ->closed);
+    } else printf("couldnt find %llu\n",(long long)quoteid);
     return(0);
     /*struct rambook_info **obooks,*rb;
      int32_t i,j,numbooks;
@@ -54,6 +66,22 @@ struct InstantDEX_quote *findquoteid(uint64_t quoteid,int32_t evenclosed)
      free(obooks);
      }
      return(0);*/
+}
+
+int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
+{
+    struct InstantDEX_quote *iQ;
+    char nxtaddr[64];
+    if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->nxt64bits == calc_nxt64bits(NXTaddr) && iQ->baseiQ == 0 && iQ->reliQ == 0 && iQ->exchangeid == INSTANTDEX_EXCHANGEID )
+    {
+        expand_nxt64bits(nxtaddr,iQ->nxt64bits);
+        if ( strcmp(NXTaddr,nxtaddr) == 0 && calc_quoteid(iQ) == quoteid )
+        {
+            cancel_InstantDEX_quote(iQ);
+            return(1);
+        }
+    }
+    return(0);
 }
 
 void add_user_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
@@ -83,9 +111,7 @@ void add_user_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
             rb->quotes = realloc(rb->quotes,rb->maxquotes * sizeof(*rb->quotes));
             memset(&rb->quotes[i],0,incr * sizeof(*rb->quotes));
         }
-        rb->quotes[rb->numquotes] = calloc(1,sizeof(*iQ));
-        memcpy(rb->quotes[rb->numquotes],iQ,sizeof(*iQ));
-        rb->numquotes++;
+        rb->quotes[rb->numquotes] = create_iQ(iQ), rb->numquotes++;
         portable_mutex_unlock(&mutex);
     }
     rb->updated = 1;
@@ -129,6 +155,7 @@ uint64_t purge_oldest_order(struct rambook_info *rb,struct InstantDEX_quote *iQ)
     }
     if ( oldi >= 0 )
     {
+        cancel_InstantDEX_quote(rb->quotes[oldi]);
         rb->quotes[oldi] = rb->quotes[--rb->numquotes];
         memset(&rb->quotes[rb->numquotes],0,sizeof(rb->quotes[rb->numquotes]));
         expand_nxt64bits(NXTaddr,nxt64bits);
@@ -286,7 +313,7 @@ struct rambook_info *add_rambook_quote(char *exchangestr,struct InstantDEX_quote
         //printf("add.(%llu %llu) %llu/%llu\n",(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount);
         if ( (rb= get_rambook(0,baseid,0,relid,(exchange->exchangeid<<1) | (dir<0),gui)) != 0 )
         {
-            //printf("add.(%llu %llu) %llu/%llu\n",(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount);
+            printf("add.(%llu %llu) %llu/%llu price %.8f vol %.8f\n",(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount,price,volume);
             if ( _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseid,baseamount,relid,relamount,gui,quoteid,duration) != 0 )
             {
                 save_InstantDEX_quote(rb,iQ);
@@ -299,11 +326,12 @@ struct rambook_info *add_rambook_quote(char *exchangestr,struct InstantDEX_quote
 
 char *allorderbooks_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    cJSON *json;
-    char *jsonstr;
+    cJSON *exchanges_json();
+    cJSON *json; char *jsonstr;
    // printf("all orderbooks\n");
     if ( (json= all_orderbooks()) != 0 )
     {
+        cJSON_AddItemToObject(json,"exchanges",exchanges_json());
         cJSON_AddItemToObject(json,"NXTAPIURL",cJSON_CreateString(SUPERNET.NXTAPIURL));
         jsonstr = cJSON_Print(json);
         free_json(json);
@@ -372,31 +400,13 @@ char *openorders_func(int32_t localaccess,int32_t valid,char *sender,cJSON **obj
     return(clonestr("{\"error\":\"no openorders\"}"));
 }
 
-int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
-{
-    struct InstantDEX_quote *iQ;
-    char nxtaddr[64];
-    if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->nxt64bits == calc_nxt64bits(NXTaddr) && iQ->baseiQ == 0 && iQ->reliQ == 0 && iQ->exchangeid == INSTANTDEX_EXCHANGEID )
-    {
-        expand_nxt64bits(nxtaddr,iQ->nxt64bits);
-        if ( strcmp(NXTaddr,nxtaddr) == 0 && calc_quoteid(iQ) == quoteid )
-        {
-            cancel_InstantDEX_quote(iQ);
-            return(1);
-        }
-    }
-    return(0);
-}
-
 char *cancelquote_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     struct InstantDEX_quote *iQ;
     uint64_t quoteid; char *retstr;
-    printf("inside cancelquote\n");
     if ( localaccess == 0 )
         return(0);
     quoteid = get_API_nxt64bits(objs[0]);
-    printf("cancelquote %llu\n",(long long)quoteid);
     if ( (retstr= cancel_orderid(SUPERNET.NXTADDR,quoteid)) != 0 )
     {
         if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->nxt64bits == calc_nxt64bits(SUPERNET.NXTADDR) )

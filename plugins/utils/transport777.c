@@ -6,36 +6,9 @@
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 #include "crypto777.h"
-
-char *conv_ipv6(char *ipv6addr)
-{
-    static unsigned char IPV4CHECK[10]; // 80 ZERO BITS for testing
-    char ipv4str[4096];
-    struct sockaddr_in6 ipv6sa;
-    in_addr_t *ipv4bin;
-    unsigned char *bytes;
-    int32_t isok;
-    strcpy(ipv4str,ipv6addr);
-    //isok = !uv_inet_pton(AF_INET,(const char*)ipv6addr,&ipv6sa.sin6_addr);
-    //printf("isok.%d\n",isok);
-    isok = inet_pton(AF_INET6,ipv6addr,&ipv6sa.sin6_addr);
-    if ( isok == 0 )
-    {
-        bytes = ((struct sockaddr_in6 *)&ipv6sa)->sin6_addr.s6_addr;
-        if ( memcmp(bytes,IPV4CHECK,sizeof(IPV4CHECK)) != 0 ) // check its IPV4 really
-        {
-            bytes += 12;
-            ipv4bin = (in_addr_t *)bytes;
-#ifndef _WIN32
-            if ( inet_ntop(AF_INET,ipv4bin,ipv4str,sizeof(ipv4str)) == 0 )
+#ifdef _WIN32
+#define in_addr_t uint32_t
 #endif
-                isok = 0;
-        } else isok = 0;
-    }
-    if ( isok != 0 )
-        strcpy(ipv6addr,ipv4str);
-    return(ipv6addr); // it is ipv4 now
-}
 
 struct crypto777_transport *crypto777_transport(struct crypto777_node *nn,char *ip_port,char *type)
 {

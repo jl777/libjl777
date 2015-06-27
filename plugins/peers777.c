@@ -72,7 +72,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         {
             char *nn_directconnect(char *ipaddr);
             int32_t i,n; cJSON *item,*retjson,*array; char otheripaddr[2048],*connectstr,*str;
-            if ( ipaddr != 0 && strcmp(ipaddr,SUPERNET.myipaddr) == 0 )
+            if ( strcmp(ipaddr,SUPERNET.myipaddr) == 0 )
             {
                 if ( (retstr= nn_directconnect(myipaddr)) != 0 )
                 {

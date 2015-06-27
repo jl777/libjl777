@@ -37,7 +37,7 @@ int32_t ramchain_idle(struct plugin_info *plugin)
         if ( (coin= COINS.LIST[i]) != 0 )
         {
             ramchain = &coin->ramchain;
-            if ( ramchain->readyflag != 0 && milliseconds() > ramchain->lastupdate+6000 )
+            if ( ramchain->readyflag != 0 && (SUPERNET.gatewayid >= 0 || milliseconds() > ramchain->lastupdate+6000) )
             {
                 flag += ramchain_update(coin,ramchain);
                 ramchain->lastupdate = milliseconds();

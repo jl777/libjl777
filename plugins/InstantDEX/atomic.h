@@ -573,9 +573,9 @@ char *tweak_offer(struct pending_offer *offer,int32_t dir,double refprice,double
     baseqty = offer->baseamount / offer->basemult;
     relqty = offer->relamount / offer->relmult;
     price = calc_price_volume(&volume,baseqty * offer->basemult,relqty * offer->relmult);
-    if ( fabs(price/refprice - 1.) > 0.01 || fabs(volume/refvolume) > 0.1 )
+    if ( fabs(price/refprice - 1.) > 0.01 || fabs(volume/refvolume - 1.) > 0.1 )
     {
-        printf("refprice %.8f -> price %.8f, refvolume %.8f -> %.8f\n",refprice,price,refvolume,volume);
+        printf("refprice %.8f -> price %.8f %f, %f refvolume %.8f -> %.8f\n",refprice,price,fabs(price/refprice - 1.),fabs(volume/refvolume),refvolume,volume);
         return(clonestr("{\"error\":\"asset decimals dont allow this\"}"));
     }
     price = calc_price_volume(&volume,offer->baseamount,offer->relamount);
@@ -635,7 +635,7 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
     offer->nxt64bits = calc_nxt64bits(NXTaddr);
     if ( offer->nxt64bits == offerNXT )
         return(clonestr("{\"error\":\"cant match your own offer\"}"));
-    if ( perc <= 0 || perc >= 100 )
+    if ( perc <= 0 || perc > 100 )
     {
         offer->ratio = 1.;
         offer->volume = volume;
@@ -644,8 +644,10 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
     }
     else
     {
-        offer->ratio = perc / 100.;
+        offer->ratio = (double)perc / 100.;
         offer->volume = volume * offer->ratio;
+        printf("perc.%d ratio %f volume %f -> %f\n",perc,offer->ratio,volume,offer->volume);
+        volume = offer->volume;
         offer->baseamount = baseamount * offer->ratio;
         offer->relamount = relamount * offer->ratio;
     }

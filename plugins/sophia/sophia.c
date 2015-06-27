@@ -49,9 +49,140 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <sys/uio.h>
 #include <sys/mman.h>
+#else
+#include <windows.h>
+#include <sys/mman.h>
+#include <inttypes.h>
+#include <unistd.h>
+struct iovec
+{
+    void	*iov_base;  /* Base address of a memory region for input or output */
+    size_t	 iov_len;   /* The size of the memory pointed to by iov_base */
+};
+ssize_t writev(int fildes, const struct iovec *iov, int iovcnt)
+{
+    int i;
+    DWORD bytes_written = 0;
+    for (i = 0; i < iovcnt; i++)
+    {
+        int len = send((SOCKET)fildes, iov[i].iov_base, iov[i].iov_len, 0);
+        if (len == SOCKET_ERROR)
+        {
+            DWORD err = GetLastError();
+            errno = win_to_posix_error(err);
+            bytes_written = -1;
+            break;
+        }
+        bytes_written += len;
+    }
+
+    return bytes_written;
+}
+#endif
 #include <sys/time.h>
+#ifdef _WIN32
+void _nanosleep(__int64 usec) 
+{ 
+    HANDLE timer; 
+    LARGE_INTEGER ft; 
+
+    ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
+
+    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
+    WaitForSingleObject(timer, INFINITE); 
+    CloseHandle(timer); 
+}
+#include <io.h>
+int pread(unsigned int fd, char *buf, size_t count, int offset)
+{
+    if (_lseek(fd, offset, SEEK_SET) != offset) {
+        return -1;
+    }
+    return read(fd, buf, count);
+}
+int lstat(const char * path, struct stat * buf)
+{
+    return stat(path, buf);
+}
+int win_to_posix_error(DWORD winerr)
+{
+    switch (winerr)
+    {
+        case ERROR_FILE_NOT_FOUND:      return ENOENT;
+        case ERROR_PATH_NOT_FOUND:      return ENOENT;
+        case ERROR_ACCESS_DENIED:       return EACCES;
+        case ERROR_INVALID_HANDLE:      return EBADF;
+        case ERROR_NOT_ENOUGH_MEMORY:   return ENOMEM;
+        case ERROR_INVALID_DATA:        return EINVAL;
+        case ERROR_OUTOFMEMORY:         return ENOMEM;
+        case ERROR_INVALID_DRIVE:       return ENODEV;
+        case ERROR_NOT_SAME_DEVICE:     return EXDEV;
+        case ERROR_WRITE_PROTECT:       return EROFS;
+        case ERROR_BAD_UNIT:            return ENODEV;
+        case ERROR_SHARING_VIOLATION:   return EACCES;
+        case ERROR_LOCK_VIOLATION:      return EACCES;
+        case ERROR_SHARING_BUFFER_EXCEEDED: return ENOLCK;
+        case ERROR_HANDLE_DISK_FULL:    return ENOSPC;
+        case ERROR_NOT_SUPPORTED:       return ENOSYS;
+        case ERROR_FILE_EXISTS:         return EEXIST;
+        case ERROR_CANNOT_MAKE:         return EPERM;
+        case ERROR_INVALID_PARAMETER:   return EINVAL;
+        case ERROR_NO_PROC_SLOTS:       return EAGAIN;
+        case ERROR_BROKEN_PIPE:         return EPIPE;
+        case ERROR_OPEN_FAILED:         return EIO;
+        case ERROR_NO_MORE_SEARCH_HANDLES:  return ENFILE;
+        case ERROR_CALL_NOT_IMPLEMENTED:    return ENOSYS;
+        case ERROR_INVALID_NAME:        return ENOENT;
+        case ERROR_WAIT_NO_CHILDREN:    return ECHILD;
+        case ERROR_CHILD_NOT_COMPLETE:  return EBUSY;
+        case ERROR_DIR_NOT_EMPTY:       return ENOTEMPTY;
+        case ERROR_SIGNAL_REFUSED:      return EIO;
+        case ERROR_BAD_PATHNAME:        return ENOENT;
+        case ERROR_SIGNAL_PENDING:      return EBUSY;
+        case ERROR_MAX_THRDS_REACHED:   return EAGAIN;
+        case ERROR_BUSY:                return EBUSY;
+        case ERROR_ALREADY_EXISTS:      return EEXIST;
+        case ERROR_NO_SIGNAL_SENT:      return EIO;
+        case ERROR_FILENAME_EXCED_RANGE:    return EINVAL;
+        case ERROR_META_EXPANSION_TOO_LONG: return EINVAL;
+        case ERROR_INVALID_SIGNAL_NUMBER:   return EINVAL;
+        case ERROR_THREAD_1_INACTIVE:   return EINVAL;
+        case ERROR_BAD_PIPE:            return EINVAL;
+        case ERROR_PIPE_BUSY:           return EBUSY;
+        case ERROR_NO_DATA:             return EPIPE;
+        case ERROR_MORE_DATA:           return EAGAIN;
+        case ERROR_DIRECTORY:           return ENOTDIR;
+        case ERROR_PIPE_CONNECTED:      return EBUSY;
+        case ERROR_NO_TOKEN:            return EINVAL;
+        case ERROR_PROCESS_ABORTED:     return EFAULT;
+        case ERROR_BAD_DEVICE:          return ENODEV;
+        case ERROR_BAD_USERNAME:        return EINVAL;
+        case ERROR_OPEN_FILES:          return EAGAIN;
+        case ERROR_ACTIVE_CONNECTIONS:  return EAGAIN;
+        case ERROR_DEVICE_IN_USE:       return EAGAIN;
+        case ERROR_INVALID_AT_INTERRUPT_TIME:   return EINTR;
+        case ERROR_IO_DEVICE:           return EIO;
+        case ERROR_NOT_OWNER:           return EPERM;
+        case ERROR_END_OF_MEDIA:        return ENOSPC;
+        case ERROR_EOM_OVERFLOW:        return ENOSPC;
+        case ERROR_BEGINNING_OF_MEDIA:  return ESPIPE;
+        case ERROR_SETMARK_DETECTED:    return ESPIPE;
+        case ERROR_NO_DATA_DETECTED:    return ENOSPC;
+        case ERROR_POSSIBLE_DEADLOCK:   return EDEADLOCK;
+        case ERROR_CRC:                 return EIO;
+        case ERROR_NEGATIVE_SEEK:       return EINVAL;
+        case ERROR_DISK_FULL:           return ENOSPC;
+        case ERROR_NOACCESS:            return EFAULT;
+        case ERROR_FILE_INVALID:        return ENXIO;
+    }
+
+    return winerr;
+}
+#endif
 #include <unistd.h>
 #include <time.h>
 #include <fcntl.h>
@@ -3144,7 +3275,11 @@ int sr_fileexists(char *path)
 
 int sr_filemkdir(char *path)
 {
+#ifndef _WIN32
 	return mkdir(path, 0750);
+#else
+    return mkdir(path);
+#endif
 }
 
 static inline int
@@ -3219,7 +3354,9 @@ int sr_fileclose(srfile *f)
 
 int sr_filesync(srfile *f)
 {
-#if defined(__APPLE__)
+#ifdef _WIN32
+        return _commit(f->fd);
+#elif defined(__APPLE__)
 	return fcntl(f->fd, F_FULLFSYNC);
 #elif defined(__FreeBSD__)
 	return fsync(f->fd);
@@ -9423,7 +9560,11 @@ void sr_sleep(uint64_t ns)
 	struct timespec ts;
 	ts.tv_sec  = 0;
 	ts.tv_nsec = ns;
+#ifndef _WIN32
 	nanosleep(&ts, NULL);
+#else
+    _nanosleep(ns);
+#endif
 }
 
 uint64_t sr_utime(void)
@@ -22088,7 +22229,11 @@ si_recoverindex(si *i, sr *r)
 	rc = si_trackdir(&track, r, i);
 	if (srunlikely(rc == -1))
 		goto error;
+    #ifndef _WIN32
 	if (srunlikely(track.count == 0)) {
+    #else
+    if( track.count != 0 ) {
+    #endif
 		sr_malfunction(r->e, "corrupted database repository: %s",
 		               i->conf->path);
 		goto error;
@@ -27842,3 +27987,4 @@ SP_API void *sp_type(void *o, ...)
 /* vim: foldmethod=marker
 */
 /* }}} */
+

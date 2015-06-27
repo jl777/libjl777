@@ -71,8 +71,11 @@ int32_t init_pluginhostsocks(struct daemon_info *dp,int32_t permanentflag,char *
     else socks = &dp->wss.socks;
     if ( Debuglevel > 2 )
         printf("<<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",bindaddr,connectaddr);
+#ifdef _WIN32
+    if ( (socks->both.bus= init_socket("","bus",NN_BUS,bindaddr,0,1)) < 0 ) errs++;
+#else
     if ( (socks->both.pair= init_socket(".pair","pair",NN_PAIR,bindaddr,0,1)) < 0 ) errs++;
-    //if ( (socks->both.bus= init_socket("","bus",NN_BUS,bindaddr,0,1)) < 0 ) errs++;
+#endif
     //if ( (socks->send.push= init_socket(".pipeline","push",NN_PUSH,bindaddr,0,1)) < 0 ) errs++;
     //if ( (socks->send.rep= init_socket(".reqrep","rep",NN_REP,0,connectaddr,1)) < 0 ) errs++;
     //if ( (socks->send.pub= init_socket(".pubsub","pub",NN_PUB,bindaddr,0,1)) < 0 ) errs++;

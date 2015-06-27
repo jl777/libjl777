@@ -807,7 +807,7 @@ char *nn_allrelays_processor(struct relayargs *args,uint8_t *msg,int32_t len)
 {
     char plugin[MAX_JSON_FIELD],*retstr = 0; uint8_t *buf;
     if ( (buf= replace_forwarder(plugin,msg,&len)) != 0 )
-        retstr = plugin_method(0,-1,plugin==0?"peers":plugin,(char *)args,0,0,(char *)msg,len,500);
+        retstr = plugin_method(0,-1,plugin[0]==0?"peers":plugin,(char *)args,0,0,(char *)msg,len,500);
     else retstr = clonestr("{\"error\":\"couldnt parse request\"}");
     if ( buf != msg )
         free(buf);

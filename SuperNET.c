@@ -697,7 +697,7 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"db777","",0,0,1,(char *)"db777",jsonargs,call_system);
     while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"db777",0,0) == 0 )
          poll_daemons();
-    if ( SUPERNET.gatewayid >= 0 )
+    if ( 1 || SUPERNET.gatewayid >= 0 )
     {
         strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
         while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
