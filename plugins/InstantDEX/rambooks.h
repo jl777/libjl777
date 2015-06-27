@@ -27,7 +27,16 @@ struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ)
     {
         struct InstantDEX_quote *checkiQ;
         if ( (checkiQ= find_iQ(iQ->quoteid)) == 0 || memcmp(checkiQ,iQ,sizeof(*iQ)) != 0 )
+        {
+            int32_t i;
+            for (i=0; i<sizeof(*iQ); i++)
+                printf("%02x ",((uint8_t *)iQ)[i]);
+            printf("iQ\n");
+            for (i=0; i<sizeof(*checkiQ); i++)
+                printf("%02x ",((uint8_t *)checkiQ)[i]);
+            printf("checkiQ\n");
             printf("error finding iQ after adding %llu vs %llu\n",(long long)checkiQ->quoteid,(long long)iQ->quoteid);
+        }
     }
     return(newiQ);
 }
