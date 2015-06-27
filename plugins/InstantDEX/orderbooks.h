@@ -490,13 +490,15 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
     uint64_t baseid,relid;
     struct exchange_info *exchange;
     int32_t i,n,exchangeid;
+    if ( name == 0 )
+        name == "";
     n = gen_assetpair_list(assetids,sizeof(assetids)/sizeof(*assetids),refbaseid,refrelid);
     for (i=0; i<n; i++)
     {
         baseid = assetids[i*3], relid = assetids[i*3+1], exchangeid = (int32_t)assetids[i*3+2];
         if ( maxdepth > 0 && (exchange= &Exchanges[exchangeid]) != 0 && exchangeid < MAX_EXCHANGES && exchangeid != INSTANTDEX_EXCHANGEID )
         {
-            if ( (name == 0 || strcmp(exchange->name,name) == 0) && (showall != 0 || (exchange->trade != 0 || cleared_with_nxtae(exchangeid) != 0)) )
+            if ( (name[0] == 0 || strcmp(exchange->name,name) == 0) && (showall != 0 || (exchange->trade != 0 || cleared_with_nxtae(exchangeid) != 0)) )
             {
                 bids = get_rambook(0,baseid,0,relid,(exchangeid<<1),gui);
                 asks = get_rambook(0,baseid,0,relid,(exchangeid<<1) | 1,gui);
