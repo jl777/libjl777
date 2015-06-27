@@ -21,7 +21,7 @@ CC=x86_64-w64-mingw32.static-gcc
 OS=win
 
 
-CFLAGS=-w -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I. -I.. -I../includes -I../../includes -Imxe/usr/bin -Imxe/usr/x86_64-w64-mingw32.static/include -Iplugins/nonportable/$(OS) -Iplugins -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DMINIUPNP_STATICLIB -DCURL_STATICLIB
+CFLAGS= -Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I. -I.. -I../includes -I../../includes -Imxe/usr/bin -Imxe/usr/x86_64-w64-mingw32.static/include -Iplugins/nonportable/$(OS) -Iplugins -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DMINIUPNP_STATICLIB -DCURL_STATICLIB
 
 
 TARGET	= libjl777.a

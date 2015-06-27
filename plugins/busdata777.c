@@ -591,7 +591,7 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
             if ( strcmp(plugin,"relay") != 0 )
                 cJSON_AddItemToObject(json,"destplugin",cJSON_CreateString(plugin));
         }
-        else
+        else if ( 0 )
         {
             sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
             cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));

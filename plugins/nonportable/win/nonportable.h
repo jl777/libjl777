@@ -6,12 +6,13 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <in6addr.h>
+#include <ws2tcpip.h>
 #include <io.h>
 #include <errno.h>
 #include <fcntl.h> /*  _O_BINARY */
 
 //Type Definitions
-
+#define in_addr_t uint32_t
 
 
 //Data Structures

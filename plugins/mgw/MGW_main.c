@@ -1479,6 +1479,8 @@ char *mgw_OP_RETURN(int32_t opreturn,char *rawtx,int32_t do_opreturn,uint64_t re
         if ( do_opreturn != 0 )
         {
             mgw_encode_OP_RETURN(scriptstr,redeemtxid);
+            vout->value = 0;
+            vout->coinaddr[0] = 0;
             safecopy(vout->script,scriptstr,sizeof(vout->script));
             printf("opreturn vout.%d (%s)\n",opreturn,vout->script);
         }
@@ -1570,10 +1572,16 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
         cJSON_AddItemToArray(array,cJSON_Duplicate(vinsobj,1));
         cJSON_AddItemToArray(array,cJSON_Duplicate(voutsobj,1));
         paramstr = cJSON_Print(array), free_json(array), _stripwhite(paramstr,' ');
-        if ( Debuglevel > 2 )
+        if ( Debuglevel > 1 )
             fprintf(stderr,"len.%ld calc_rawtransaction.%llu txbytes.(%s) params.(%s)\n",strlen(txbytes),(long long)redeemtxid,txbytes,paramstr);
         txbytes = bitcoind_passthru(coinstr,serverport,userpass,"createrawtransaction",paramstr);
         free(paramstr);
+        if ( txbytes == 0 )
+        {
+            free(txbytes);
+            return(0);
+        }
+        printf("got txbytes.(%s)\n",txbytes);
         if ( opreturn >= 0 )
         {
             if ( (txbytes2= mgw_OP_RETURN(opreturn,txbytes,do_opreturn,redeemtxid,oldtx_format)) == 0 )
@@ -1584,6 +1592,7 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
             }
             free(txbytes);
             txbytes = txbytes2, txbytes2 = 0;
+            printf("opreturn txbytes.(%s)\n",txbytes);
         }
         array = cJSON_CreateArray();
         if ( (flags= mgw_other_redeems(signedtxs,redeemtxid)) != 0 )
@@ -1633,6 +1642,8 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
         if ( voutsobj != 0 )
             free_json(voutsobj);
     }
+    if ( txbytes != 0 )
+        free(txbytes);
     return(rettx);
 }
 
@@ -1735,10 +1746,13 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
         strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
         cointx->outputs[numoutputs++].value = value - MGWfee - opreturn_amount - mgw->txfee;
     }
-    opreturn_output = numoutputs;
-    //printf("opreturn (%s)\n",coin->mgw.opreturnmarker);
-    strcpy(cointx->outputs[numoutputs].coinaddr,mgw->opreturnmarker);
-    cointx->outputs[numoutputs++].value = opreturn_amount;
+    if ( opreturn_amount != 0 )
+    {
+        opreturn_output = numoutputs;
+        //printf("opreturn (%s)\n",coin->mgw.opreturnmarker);
+        strcpy(cointx->outputs[numoutputs].coinaddr,mgw->opreturnmarker);
+        cointx->outputs[numoutputs++].value = opreturn_amount;
+    }
     cointx->numoutputs = numoutputs;
     cointx->amount = amount = value - mgw->txfee;//(MGWfee + value + opreturn_amount + mgw->txfee);
     if ( mgw->balance >= 0 )
@@ -1760,6 +1774,13 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
                     cointx->outputs[cointx->numoutputs].value = cointx->change;
                     cointx->numoutputs++;
                 } else cointx->outputs[0].value += cointx->change;
+            }
+            if ( opreturn_amount == 0 )
+            {
+                opreturn_output = numoutputs;
+                //printf("opreturn (%s)\n",coin->mgw.opreturnmarker);
+                strcpy(cointx->outputs[numoutputs].coinaddr,coin->mgw.opreturnmarker);
+                cointx->outputs[numoutputs++].value = coin->minoutput;
             }
             if ( SUPERNET.gatewayid >= 0 )
             {

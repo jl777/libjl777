@@ -25,7 +25,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#ifdef _WIN32
+#include <nonportable.h>
+#else
 #include "nonportable.h"
+#endif
+
 
 #endif
 #else
