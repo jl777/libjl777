@@ -1581,7 +1581,7 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
             free(txbytes);
             return(0);
         }
-        printf("got txbytes.(%s)\n",txbytes);
+        printf("got txbytes.(%s) opreturn.%d\n",txbytes,opreturn);
         if ( opreturn >= 0 )
         {
             if ( (txbytes2= mgw_OP_RETURN(opreturn,txbytes,do_opreturn,redeemtxid,oldtx_format)) == 0 )
@@ -1626,8 +1626,8 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
                 {
                     strcpy(rettx->cointxid,cointxid);
                     free(cointxid);
+                    NXT_mark_withdrawdone(mgw,redeemtxid);
                 }
-                NXT_mark_withdrawdone(mgw,redeemtxid);
                 printf(">>>>>>>>>>>>> BROADCAST.(%s) (%s) cointxid.%s\n",signedtx,paramstr,rettx->cointxid);
             }
             free(signedtx);
@@ -1721,7 +1721,7 @@ int64_t coin777_inputs(uint64_t *changep,uint32_t *nump,struct coin777 *coin,str
 struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint64_t value,uint64_t redeemtxid,char *smallest,char *smallestB)
 {
     //int64 nPayFee = nTransactionFee * (1 + (int64)nBytes / 1000);
-    char *changeaddr; int64_t MGWfee,amount,opreturn_amount; int32_t opreturn_output,numoutputs = 0; struct cointx_info *cointx,TX,*rettx = 0; struct mgw777 *mgw;
+    char *changeaddr; int64_t MGWfee,amount,opreturn_amount; int32_t opreturn_output=-1; struct cointx_info *cointx,TX,*rettx = 0; struct mgw777 *mgw;
     mgw = &coin->mgw;
     cointx = &TX, memset(cointx,0,sizeof(*cointx));
     if ( coin->minoutput == 0 )
@@ -1737,23 +1737,22 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
         printf("%s redeem.%llu withdraw %.8f < MGWfee %.8f + minoutput %.8f + txfee %.8f\n",coin->name,(long long)redeemtxid,dstr(value),dstr(MGWfee),dstr(opreturn_amount),dstr(mgw->txfee));
         return(0);
     }
-    strcpy(cointx->outputs[numoutputs].coinaddr,mgw->marker);
+    strcpy(cointx->outputs[cointx->numoutputs].coinaddr,mgw->marker);
     if ( strcmp(destaddr,mgw->marker) == 0 )
-        cointx->outputs[numoutputs++].value = value - opreturn_amount - mgw->txfee;
+        cointx->outputs[cointx->numoutputs++].value = value - opreturn_amount - mgw->txfee;
     else
     {
-        cointx->outputs[numoutputs++].value = MGWfee;
-        strcpy(cointx->outputs[numoutputs].coinaddr,destaddr);
-        cointx->outputs[numoutputs++].value = value - MGWfee - opreturn_amount - mgw->txfee;
+        cointx->outputs[cointx->numoutputs++].value = MGWfee;
+        strcpy(cointx->outputs[cointx->numoutputs].coinaddr,destaddr);
+        cointx->outputs[cointx->numoutputs++].value = value - MGWfee - opreturn_amount - mgw->txfee;
     }
     if ( opreturn_amount != 0 )
     {
-        opreturn_output = numoutputs;
+        opreturn_output = cointx->numoutputs;
         //printf("opreturn (%s)\n",coin->mgw.opreturnmarker);
-        strcpy(cointx->outputs[numoutputs].coinaddr,mgw->opreturnmarker);
-        cointx->outputs[numoutputs++].value = opreturn_amount;
+        strcpy(cointx->outputs[cointx->numoutputs].coinaddr,mgw->opreturnmarker);
+        cointx->outputs[cointx->numoutputs++].value = opreturn_amount;
     }
-    cointx->numoutputs = numoutputs;
     cointx->amount = amount = value - mgw->txfee;//(MGWfee + value + opreturn_amount + mgw->txfee);
     if ( mgw->balance >= 0 )
     {
@@ -1777,10 +1776,10 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
             }
             if ( opreturn_amount == 0 )
             {
-                opreturn_output = numoutputs;
-                //printf("opreturn (%s)\n",coin->mgw.opreturnmarker);
-                strcpy(cointx->outputs[numoutputs].coinaddr,coin->mgw.opreturnmarker);
-                cointx->outputs[numoutputs++].value = coin->minoutput;
+                opreturn_output = cointx->numoutputs;
+                printf("SET opreturn.%d (%s)\n",opreturn_output,coin->mgw.opreturnmarker);
+                strcpy(cointx->outputs[cointx->numoutputs].coinaddr,coin->mgw.opreturnmarker);
+                cointx->outputs[cointx->numoutputs++].value = coin->minoutput;
             }
             if ( SUPERNET.gatewayid >= 0 )
             {
