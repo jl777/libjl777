@@ -650,7 +650,7 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
     if ( assetidbits == NXT_ASSETID )
         sprintf(cmd,"requestType=sendMoney&amountNQT=%lld",(long long)quantity);
     else sprintf(cmd,"requestType=transferAsset&asset=%s&quantityQNT=%lld&messageIsPrunable=false",asset,(long long)quantity);
-    sprintf(cmd+strlen(cmd),"&secretPhrase='%s'&recipient=%s&feeNQT=%lld&deadline=%d",secret,recipient,(long long)feeNQT,deadline);
+    sprintf(cmd+strlen(cmd),"&secretPhrase=%s&recipient=%s&feeNQT=%lld&deadline=%d",secretstr,recipient,(long long)feeNQT,deadline);
     if ( destpubkey != 0 )
         sprintf(cmd+strlen(cmd),"&recipientPublicKey=%s",destpubkey);
     if ( comment != 0 )
@@ -663,7 +663,7 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
     jsontxt = issue_NXTPOST(cmd);
     if ( jsontxt != 0 )
     {
-        //printf("(%s) -> (%s)\n",cmd,jsontxt);
+        printf("(%s) -> (%s)\n",cmd,jsontxt);
        //printf(" transferAsset.(%s) -> %s\n",cmd,jsontxt);
         //if ( field != 0 && strcmp(field,"transactionId") == 0 )
         //    printf("jsonstr.(%s)\n",jsonstr);

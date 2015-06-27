@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
-#include <nonportable.h>
 #include <stdlib.h>
+#include "nonportable.h"
 
 #define DAEMONFREE_MARGIN_SECONDS 13
 #define NUM_PLUGINTAGS 8192

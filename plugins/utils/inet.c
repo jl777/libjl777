@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-#include <nonportable.h>
+#include "nonportable.h"
 
 #endif
 #else
