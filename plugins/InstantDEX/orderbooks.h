@@ -491,7 +491,7 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
     struct exchange_info *exchange;
     int32_t i,n,exchangeid;
     if ( name == 0 )
-        name == "";
+        name = "";
     n = gen_assetpair_list(assetids,sizeof(assetids)/sizeof(*assetids),refbaseid,refrelid);
     for (i=0; i<n; i++)
     {

@@ -34,6 +34,8 @@
 #include "bus.h"
 #include "pair.h"
 
+#define SUPERNET_PORT 7777
+
 #define nn_errstr() nn_strerror(nn_errno())
 
 extern int32_t Debuglevel;

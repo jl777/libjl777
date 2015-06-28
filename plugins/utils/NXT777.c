@@ -663,7 +663,7 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
     jsontxt = issue_NXTPOST(cmd);
     if ( jsontxt != 0 )
     {
-        printf("(%s) -> (%s)\n",cmd,jsontxt);
+        //printf("(%s) -> (%s)\n",cmd,jsontxt);
        //printf(" transferAsset.(%s) -> %s\n",cmd,jsontxt);
         //if ( field != 0 && strcmp(field,"transactionId") == 0 )
         //    printf("jsonstr.(%s)\n",jsonstr);

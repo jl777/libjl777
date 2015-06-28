@@ -165,7 +165,7 @@ struct coin777
     char name[16],serverport[512],userpass[4096],*jsonstr; cJSON *argjson;
     struct ramchain ramchain;
     struct mgw777 mgw;
-    int32_t minconfirms; uint64_t minoutput;
+    int32_t minconfirms,verified,lag; uint64_t minoutput;
 };
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
@@ -1848,7 +1848,8 @@ int32_t coin777_parse(struct coin777 *coin,uint32_t RTblocknum,int32_t syncflag,
             if ( dispflag != 0 )
             {
                 extern int32_t Duplicate,Mismatch,Added,Linked,Numgets;
-                printf("%.3f %-5s [lag %-5d] %-6u %.8f %.8f (%.8f) [%.8f] %13.8f | dur %.2f %.2f %.2f | len.%-5d %s %.1f | H%d E%d R%d W%d %08x\n",coin->ramchain.calc_elapsed/1000.,coin->name,RTblocknum-blocknum,blocknum,dstr(oldsupply),dstr(coin->ramchain.addrsum),dstr(oldsupply)-dstr(coin->ramchain.addrsum),dstr(supply)-dstr(oldsupply),dstr(coin->ramchain.minted != 0 ? coin->ramchain.minted : (supply - oldsupply)),elapsed,elapsed+(RTblocknum-blocknum)*coin->ramchain.calc_elapsed/60000,elapsed+estimate,allocsize,_mbstr(coin->ramchain.totalsize),(double)coin->ramchain.totalsize/blocknum,Duplicate,Mismatch,Numgets,Added,ledgerhash);
+                coin->lag = RTblocknum - blocknum;
+                printf("%.3f %-5s [lag %-5d] %-6u %.8f %.8f (%.8f) [%.8f] %13.8f | dur %.2f %.2f %.2f | len.%-5d %s %.1f | H%d E%d R%d W%d %08x\n",coin->ramchain.calc_elapsed/1000.,coin->name,coin->lag,blocknum,dstr(oldsupply),dstr(coin->ramchain.addrsum),dstr(oldsupply)-dstr(coin->ramchain.addrsum),dstr(supply)-dstr(oldsupply),dstr(coin->ramchain.minted != 0 ? coin->ramchain.minted : (supply - oldsupply)),elapsed,elapsed+(RTblocknum-blocknum)*coin->ramchain.calc_elapsed/60000,elapsed+estimate,allocsize,_mbstr(coin->ramchain.totalsize),(double)coin->ramchain.totalsize/blocknum,Duplicate,Mismatch,Numgets,Added,ledgerhash);
             }
             coin->ramchain.blocknum++;
             return(1);

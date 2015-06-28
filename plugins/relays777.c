@@ -25,7 +25,7 @@ int32_t relay_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME RELAYS;
 char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
-char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "serviceprovider" }; // list of supported methods
 char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
@@ -219,7 +219,7 @@ int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port
     return(n);
 }
 
-int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAME],int32_t num)
+int32_t nn_addservers(uint16_t port,int32_t priority,int32_t sock,char servers[][MAX_SERVERNAME],int32_t num)
 {
     int32_t i; char endpoint[512]; struct endpoint epbits; uint32_t ipbits;
     if ( num > 0 && servers != 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDPRIO,&priority,sizeof(priority)) >= 0 )
@@ -231,14 +231,14 @@ int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAM
                 printf("null ipbits.(%s)\n",servers[i]);
                 continue;
             }
-            epbits = calc_epbits("tcp",ipbits,SUPERNET.port + nn_portoffset(NN_REP),NN_REP);
+            epbits = calc_epbits("tcp",ipbits,port + nn_portoffset(NN_REP),NN_REP);
             expand_epbits(endpoint,epbits);
             //printf("epbits.%llx ipbits.%x %s\n",*(long long *)&epbits,(uint32_t)ipbits,endpoint);
             if ( ismyaddress(servers[i]) == 0 && nn_connect(sock,endpoint) >= 0 )
             {
                 printf("+%s ",endpoint);
                 add_relay(&RELAYS.lb,epbits);
-                //set_endpointaddr("ws",endpoint,servers[i],SUPERNET.port,NN_REP);
+                //set_endpointaddr("ws",endpoint,servers[i],port,NN_REP);
                 //nn_connect(sock,endpoint);
             }
         }
@@ -247,7 +247,7 @@ int32_t nn_addservers(int32_t priority,int32_t sock,char servers[][MAX_SERVERNAM
     return(priority);
 }
 
-int32_t _lb_socket(int32_t maxmillis,char servers[][MAX_SERVERNAME],int32_t num,char backups[][MAX_SERVERNAME],int32_t numbacks,char failsafes[][MAX_SERVERNAME],int32_t numfailsafes)
+int32_t _lb_socket(uint16_t port,int32_t maxmillis,char servers[][MAX_SERVERNAME],int32_t num,char backups[][MAX_SERVERNAME],int32_t numbacks,char failsafes[][MAX_SERVERNAME],int32_t numfailsafes)
 {
     int32_t lbsock,timeout,retrymillis,priority = 1;
     if ( (lbsock= nn_socket(AF_SP,NN_REQ)) >= 0 )
@@ -265,11 +265,11 @@ int32_t _lb_socket(int32_t maxmillis,char servers[][MAX_SERVERNAME],int32_t num,
         if ( nn_setsockopt(lbsock,NN_SOL_SOCKET,NN_SNDTIMEO,&timeout,sizeof(timeout)) < 0 )
             printf("error setting NN_SOL_SOCKET NN_SNDTIMEO socket %s\n",nn_errstr());
         if ( num > 0 )
-            priority = nn_addservers(priority,lbsock,servers,num);
+            priority = nn_addservers(port,priority,lbsock,servers,num);
         if ( numbacks > 0 )
-            priority = nn_addservers(priority,lbsock,backups,numbacks);
+            priority = nn_addservers(port,priority,lbsock,backups,numbacks);
         if ( numfailsafes > 0 )
-            priority = nn_addservers(priority,lbsock,failsafes,numfailsafes);
+            priority = nn_addservers(port,priority,lbsock,failsafes,numfailsafes);
     } else printf("error getting req socket %s\n",nn_errstr());
     //printf("RELAYS.lb.num %d\n",RELAYS.lb.num);
     return(lbsock);
@@ -286,7 +286,7 @@ int32_t nn_lbsocket(int32_t maxmillis,int32_t port)
     //if ( europeflag != 0 )
     //    lbsock = nn_loadbalanced_socket(retrymillis,Bservers,m,Cservers,n,failsafes,numfailsafes);
     //else lbsock = nn_loadbalanced_socket(retrymillis,Cservers,n,Bservers,m,failsafes,numfailsafes);
-    lbsock = _lb_socket(maxmillis,Bservers,0*m,Cservers,0*n,failsafes,numfailsafes);
+    lbsock = _lb_socket(port,maxmillis,Bservers,0*m,Cservers,0*n,failsafes,numfailsafes);
     return(lbsock);
 }
 
@@ -1025,7 +1025,7 @@ void serverloop(void *_args)
     peerargs = &RELAYS.args[n++], RELAYS.peer.sock = launch_responseloop(peerargs,"NN_RESPONDENT",NN_RESPONDENT,0,nn_allrelays_processor);
     pubsock = nn_createsocket(endpoint,1,"NN_PUB",NN_PUB,SUPERNET.port,sendtimeout,-1);
     RELAYS.sub.sock = launch_responseloop(&RELAYS.args[n++],"NN_SUB",NN_SUB,0,nn_pubsub_processor);
-    RELAYS.lb.sock = lbargs->sock = lbsock = nn_lbsocket(1000,SUPERNET.port); // NN_REQ
+    RELAYS.lb.sock = lbargs->sock = lbsock = nn_lbsocket(1000,SUPERNET_PORT); // NN_REQ
     //bussock = -1;
     busdata_init(sendtimeout,10);
     if ( SUPERNET.iamrelay != 0 )

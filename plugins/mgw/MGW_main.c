@@ -1166,8 +1166,8 @@ int32_t mgw_encode_OP_RETURN(char *scriptstr,uint64_t redeemtxid)
     uint8_t script[256],revbuf[8]; int32_t j; long offset;
     scriptstr[0] = 0;
     script[0] = OP_RETURN_OPCODE;
-    script[1] = 'M', script[2] = 'G', script[3] = 'W';
-    offset = 4;
+    script[1] = (sizeof(uint64_t) + 3), script[2] = 'M', script[3] = 'G', script[4] = 'W';
+    offset = 5;
     for (j=0; j<sizeof(uint64_t); j++)
         revbuf[j] = ((uint8_t *)&redeemtxid)[j];
     memcpy(&redeemtxid,revbuf,sizeof(redeemtxid));
@@ -1342,7 +1342,10 @@ int32_t mgw_markunspent(char *txidstr,int32_t vout,int32_t status)
 
 int32_t mgw_isrealtime(struct coin777 *coin)
 {
-    return(1);
+    printf("verified.%d lag.%d (coin->ramchain.RTblocknum - coin->ramchain.blocknum) <= coin->minconfirms %d vs %d\n",coin->verified,coin->lag,(coin->ramchain.RTblocknum - coin->ramchain.blocknum),coin->minconfirms);
+    if ( (coin->lag > 0 && coin->lag <= coin->minconfirms) && coin->verified != 0 )
+        return(1);
+    return(0);
 }
 
 uint64_t mgw_unspentsfunc(struct coin777 *coin,void *args,uint32_t addrind,struct addrtx_info *unspents,int32_t num,uint64_t balance)
@@ -1442,12 +1445,12 @@ char *mgw_sign_rawbytes(uint32_t *completedp,char *signedbytes,int32_t max,char 
         {
             if ( (compobj= cJSON_GetObjectItem(json,"complete")) != 0 )
                 *completedp = ((compobj->type&0xff) == cJSON_True);
-            if ( (hexstr = cJSON_str(cJSON_GetObjectItem(json,"hex"))) != 0 )
+            if ( (hexstr= cJSON_str(cJSON_GetObjectItem(json,"hex"))) != 0 )
             {
                 if ( strlen(hexstr) > max )
                     printf("sign_rawbytes: strlen(hexstr) %ld > %d destize (%s)\n",strlen(hexstr),max,retstr), free(retstr), retstr = 0;
                 else strcpy(signedbytes,hexstr);
-            }
+            } else printf("no hex.(%s)\n",retstr);
             free_json(json);
         } else printf("json parse error.(%s)\n",retstr);
     } else printf("error signing rawtx\n");
@@ -1464,7 +1467,7 @@ char *mgw_sign_localtx_plus2(uint32_t *completedp,char *coinstr,char *serverport
     batchsigned[1] = '"';
     if ( (retstr= mgw_sign_rawbytes(completedp,batchsigned+2,batchsize*16 + 512,coinstr,serverport,userpass,signparams)) != 0 )
     {
-        //printf("mgw_sign_localtx_plus2.(%s) -> (%s)\n",signparams,retstr);
+        printf("mgw_sign_localtx_plus2.(%s) -> (%s)\n",signparams,retstr);
         free(retstr);
     }
     return(batchsigned+2);
@@ -1612,7 +1615,7 @@ struct cointx_info *mgw_createrawtransaction(struct mgw777 *mgw,char *coinstr,ch
         if ( (signedtx= mgw_sign_localtx_plus2(&cointx->completed,coinstr,serverport,userpass,paramstr,gatewayid,numgateways)) != 0 )
         {
             allocsize = (int32_t)(sizeof(*rettx) + strlen(signedtx) + 1);
-            //printf("signedtx returns.(%s) allocsize.%d\n",signedtx,allocsize);
+            printf("signedtx returns.(%s) allocsize.%d\n",signedtx,allocsize);
             rettx = calloc(1,allocsize);
             *rettx = *cointx;
             rettx->allocsize = allocsize;
@@ -1841,8 +1844,8 @@ uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 
     mgw->circulation = circulation = calc_circulation(0,mgw,0);
     mgw->unspent = unspent;
     balance = (unspent - circulation - mgw->withdrawsum);
-    printf("%s circulation %.8f vs unspents %.8f numwithdraws.%d withdrawsum %.8f [%.8f] nummsigs.%d\n",coin->name,dstr(circulation),dstr(unspent),mgw->numwithdraws,dstr(mgw->withdrawsum),dstr(balance),m);
-    if ( balance >= 0 && mgw->numwithdraws > 0 && mgw_isrealtime(coin) != 0 )
+    printf("%s circulation %.8f vs unspents %.8f numwithdraws.%d withdrawsum %.8f [balance %.8f] nummsigs.%d\n",coin->name,dstr(circulation),dstr(unspent),mgw->numwithdraws,dstr(mgw->withdrawsum),dstr(balance),m);
+    if ( balance >= -SATOSHIDEN && mgw->numwithdraws > 0 && mgw_isrealtime(coin) != 0 )
     {
         struct cointx_info *cointx;
         for (i=0; i<mgw->numwithdraws; i++)
@@ -1853,7 +1856,7 @@ uint64_t mgw_calc_unspent(char *smallestaddr,char *smallestaddrB,struct coin777 
             else
             {
                 cointx = mgw_cointx_withdraw(coin,extra->coindata,extra->amount,extra->txidbits,smallestaddr,smallestaddrB);
-                printf("height.%u PENDING WITHDRAW: (%llu %.8f -> %s) inputsum %.8f numinputs.%d change %.8f miners %.8f\n",extra->height,(long long)extra->txidbits,dstr(extra->amount),extra->coindata,dstr(cointx->inputsum),cointx->numinputs,dstr(cointx->change),dstr(cointx->inputsum)-dstr(cointx->change));
+                printf("%p height.%u PENDING WITHDRAW: (%llu %.8f -> %s) inputsum %.8f numinputs.%d change %.8f miners %.8f\n",cointx,extra->height,(long long)extra->txidbits,dstr(extra->amount),extra->coindata,dstr(cointx->inputsum),cointx->numinputs,dstr(cointx->change),dstr(cointx->inputsum)-dstr(cointx->change));
                 if ( cointx != 0 )
                 {
                     if ( (json= mgw_stdjson(coin->name,SUPERNET.NXTADDR,SUPERNET.gatewayid,"redeemtxid")) != 0 )

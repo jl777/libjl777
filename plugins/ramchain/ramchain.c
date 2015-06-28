@@ -89,7 +89,7 @@ uint32_t ramchain_prepare(struct coin777 *coin,struct ramchain *ramchain)
         {
             coin777_initmmap(coin,ramchain->startblocknum,txidind,addrind,scriptind,numrawvouts,numrawvins,totaladdrtx);
             printf("t%u u%u s%u a%u c%u x%u initialized in %.3f seconds\n",txidind,numrawvouts,numrawvins,addrind,scriptind,totaladdrtx,(milliseconds() - ramchain->startmilli)/1000.);
-            coin777_verify(coin,numrawvouts,numrawvins,credits,debits,addrind,1,&totaladdrtx);
+            coin->verified = !coin777_verify(coin,numrawvouts,numrawvins,credits,debits,addrind,1,&totaladdrtx);
         }
         ramchain->paused = 0;
     }
@@ -130,7 +130,6 @@ int32_t ramchain_init(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ra
     if ( endblocknum == 0 )
         ramchain->endblocknum = endblocknum = 1000000000;
     return(ramchain_resume(retbuf,maxlen,coin,ramchain,argjson,startblocknum,endblocknum));
-    return(-1);
 }
 
 //ramchain notify {"coin":"BTCD","list":["RFKYx6N8ENFiSrC7w8BJXzwkwg8XkyWYHy"]}

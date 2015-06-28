@@ -325,6 +325,7 @@ char *busdata_addpending(char *destNXT,char *sender,char *key,uint32_t timestamp
     copy_cJSON(submethod,cJSON_GetObjectItem(json,"submethod"));
     copy_cJSON(destplugin,cJSON_GetObjectItem(json,"destplugin"));
     copy_cJSON(servicename,cJSON_GetObjectItem(json,"servicename"));
+    printf("addpending.(%s %s).%s\n",destplugin,servicename,submethod);
     if ( strcmp(submethod,"serviceprovider") == 0 )
     {
         copy_cJSON(endpoint,cJSON_GetObjectItem(json,"endpoint"));
@@ -453,7 +454,7 @@ char *busdata_matchquery(char *response,char *destNXT,char *sender,char *key,uin
 char *busdata(char *forwarder,char *sender,int32_t valid,char *key,uint32_t timestamp,uint8_t *msg,int32_t datalen,cJSON *origjson)
 {
     cJSON *json; char destNXT[64],response[1024],*retstr = 0;
-    //printf("busdata\n");
+    printf("busdata.(%s)\n",msg);
     if ( SUPERNET.iamrelay != 0 && valid > 0 )
     {
         if ( (json= busdata_decode(destNXT,valid,sender,msg,datalen)) != 0 )
@@ -506,7 +507,7 @@ int32_t busdata_validate(char *forwarder,char *sender,uint32_t *timestamp,uint8_
 
 char *busdata_deref(char *forwarder,char *sender,int32_t valid,char *databuf,cJSON *json)
 {
-    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],*broadcaststr,*str,*retstr = 0;
+    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],buf[MAX_JSON_FIELD],*broadcaststr,*str,*retstr = 0;
     cJSON *dupjson,*second,*argjson; uint64_t forwardbits;
     if ( SUPERNET.iamrelay != 0 && (broadcaststr= cJSON_str(cJSON_GetObjectItem(cJSON_GetArrayItem(json,1),"broadcast"))) != 0 )
     {
@@ -528,8 +529,15 @@ char *busdata_deref(char *forwarder,char *sender,int32_t valid,char *databuf,cJS
     }
     if ( (argjson= cJSON_Parse(databuf)) != 0 )
     {
-        copy_cJSON(method,cJSON_GetObjectItem(argjson,"submethod"));
         copy_cJSON(plugin,cJSON_GetObjectItem(argjson,"destplugin"));
+        copy_cJSON(method,cJSON_GetObjectItem(argjson,"submethod"));
+        copy_cJSON(buf,cJSON_GetObjectItem(argjson,"servicename"));
+        printf("(%s %s).%s\n",plugin,method,buf);
+        if ( buf[0] != 0 && (strcmp(method,"serviceprovider") == 0 || strcmp(method,"servicename") == 0) )
+        {
+            free_json(argjson);
+            return(0);
+        }
         cJSON_ReplaceItemInObject(argjson,"method",cJSON_CreateString(method));
         cJSON_ReplaceItemInObject(argjson,"plugin",cJSON_CreateString(plugin));
         cJSON_DeleteItemFromObject(argjson,"submethod");
@@ -558,7 +566,8 @@ char *nn_busdata_processor(uint8_t *msg,int32_t len)
             copy_cJSON(usedest,cJSON_GetObjectItem(cJSON_GetArrayItem(json,1),"usedest"));
             if ( usedest[0] != 0 )
                 retstr = busdata_deref(forwarder,sender,valid,(char *)databuf,json);
-            else retstr = busdata(forwarder,sender,valid,key,timestamp,databuf,datalen,json);
+            if ( retstr == 0 )
+                retstr = busdata(forwarder,sender,valid,key,timestamp,databuf,datalen,json);
             //printf("valid.%d forwarder.(%s) NXT.%-24s key.(%s) datalen.%d\n",valid,forwarder,src,key,datalen);
         } else retstr = clonestr("{\"error\":\"busdata doesnt validate\"}");
         free_json(json);
@@ -581,20 +590,20 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
             free_json(json);
             return(jsonstr);
         }
+        copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
+        copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
+        if ( cJSON_GetObjectItem(json,"endpoint") != 0 )
+        {
+            sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
+            cJSON_ReplaceItemInObject(json,"endpoint",cJSON_CreateString(endpoint));
+        }
         if ( broadcastmode != 0 && broadcastmode[0] != 0 )
         {
-            copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
-            copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
             cJSON_ReplaceItemInObject(json,"method",cJSON_CreateString("busdata"));
             cJSON_ReplaceItemInObject(json,"plugin",cJSON_CreateString("relay"));
             cJSON_AddItemToObject(json,"submethod",cJSON_CreateString(method));
             if ( strcmp(plugin,"relay") != 0 )
                 cJSON_AddItemToObject(json,"destplugin",cJSON_CreateString(plugin));
-        }
-        else if ( 0 )
-        {
-            sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
-            cJSON_AddItemToObject(json,"endpoint",cJSON_CreateString(endpoint));
         }
         randombytes((uint8_t *)&tag,sizeof(tag));
         sprintf(numstr,"%llu",(long long)tag), cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
