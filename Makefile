@@ -270,22 +270,6 @@ onetime: doesntexist; \
     #go get golang.org/x/tools/cmd; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get golang.org/x/tools;\
     #cd go/gocode/src; mkdir github.com; cd github.com; mkdir joewalnes; cd joewalnes; git clone https://github.com/joewalnes/websocketd; cd websocketd; go build; cp websocketd ../../../../../../libs; cd ../../../../../..;
 
-
-winpatch: doesntexist; \
-   sh make_windows.sh;
-
-winexe: doesntexist; \
-    sh quick_win.sh;
-
-winpatch64: doesntexist; \
-   sh make_windows64.sh;
-
-winexe64: doesntexist; \
-    sh quick_win64.sh;
-
-winbtcd64: doesntexist; \
-	sh make_btcd_win64.sh
-
 count:
 	@echo "Core:"
 	@cat $(SRCS) *.h | grep -v '^[ 	]*/\*' | grep -v '^[ 	]*$$' | wc

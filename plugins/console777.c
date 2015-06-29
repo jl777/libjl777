@@ -55,7 +55,9 @@ int32_t getline777(char *line,int32_t max)
     }
     return((int32_t)strlen(line));
 #else
-    return(0);
+    fgets(line, max, stdin);
+    line[strlen(line)-1] = 0;
+    return((int32_t)strlen(line));
 #endif
 }
 

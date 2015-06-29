@@ -12,16 +12,16 @@ else
 endif
 endif
 
-PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a  -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 ../libs/libmman.a -lz -lssp -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DCURL_STATICLIB#-lssl -lcrypto
+PLIBS := ../libs/libjl777.a ../libs/libminiupnpc-x64-win.a ../nanomsg/.libs/libnanomsg.a  -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 ../libs/libmman.a -lz -lssp -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DCURL_STATICLIB#-lssl -lcrypto
 
-LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 libs/libmman.a -lz -lssp #-lssl -lcrypto
+LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc-x64-win.a -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 libs/libmman.a -lz -lssp #-lssl -lcrypto
 
 
 CC=x86_64-w64-mingw32.static-gcc
 OS=win
 
 
-CFLAGS= -Wall -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I. -I.. -I../includes -I../../includes -Imxe/usr/bin -Imxe/usr/x86_64-w64-mingw32.static/include -Iplugins/nonportable/$(OS) -Iplugins -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DMINIUPNP_STATICLIB -DCURL_STATICLIB
+CFLAGS= -w -O2  -pedantic -g -fPIC -Iplugins/includes  -Iplugins/utils -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I. -I.. -I../includes -I../../includes -Imxe/usr/bin -Imxe/usr/x86_64-w64-mingw32.static/include -Iplugins/nonportable/$(OS) -Iplugins -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2 -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DMINIUPNP_STATICLIB -DCURL_STATICLIB
 
 
 TARGET	= libjl777.a
@@ -264,7 +264,7 @@ patch2: doesntexist; \
     #cd ..; \
 
 dependencies: doesntexist; \
-    sudo apt-get install make clang-3.4 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
+    sudo apt-get install autopoint bison bzip2 cmake flex gcc g++ gperf intltool libtool ruby scons wine zlib1g-dev libffi-dev;
 
 onetime: doesntexist; \
     cd nanomsg; ./autogen.sh; ./configure; make; cd ..; \
