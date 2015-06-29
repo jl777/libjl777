@@ -7,7 +7,7 @@
 // make API to get list of service providers and sync relays
 // and then also to make sure adding relays on the fly syncs up to the current set of serviceproviders
 // way to remove serviceprovider node
-// encryption 
+// encryption
 
 // "servicesecret" in SuperNET.conf
 // register: ./BitcoinDarkd SuperNET '{"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"serviceprovider","servicename":"echo","endpoint":""}'
@@ -676,7 +676,7 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
         copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
         if ( cJSON_GetObjectItem(json,"endpoint") != 0 )
         {
-            sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port - 2);
+            sprintf(endpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.serviceport);
             cJSON_ReplaceItemInObject(json,"endpoint",cJSON_CreateString(endpoint));
             if ( SUPERNET.SERVICESECRET[0] != 0 && issue_generateToken(servicetoken,endpoint,SUPERNET.SERVICESECRET) == 0 )
                 cJSON_AddItemToObject(json,"servicetoken",cJSON_CreateString(servicetoken));
