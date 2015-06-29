@@ -1,6 +1,6 @@
 //
 //  echodemo.c
-//  SuperNET API extension example plugin
+//  SuperNET API extension example agent
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.

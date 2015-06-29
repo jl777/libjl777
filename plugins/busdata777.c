@@ -1,6 +1,5 @@
 //
 //  relays777.c
-//  SuperNET API extension example plugin
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
