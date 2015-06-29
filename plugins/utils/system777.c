@@ -264,6 +264,9 @@ int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRE
 char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode);
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
 uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce);
+int32_t nonce_leverage(char *broadcaststr);
+char *get_broadcastmode(cJSON *json,char *broadcastmode);
+
 #define MAXTIMEDIFF 10
 
 #endif

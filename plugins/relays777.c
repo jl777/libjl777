@@ -532,7 +532,7 @@ char *nn_publish(uint8_t *publishstr,int32_t len,int32_t nostr)
     {
         if ( (sendlen= nn_send(RELAYS.pubsock,publishstr,len,0)) != len )
             printf("nn_publish warning: send.%d vs %d for (%s) sock.%d %s\n",sendlen,len,publishstr,RELAYS.pubsock,nn_errstr());
-        else printf("nn_publish.(%s) %d bytes\n",len<1400?(char *)publishstr:"<big string>",len);
+        // else printf("nn_publish.(%s) %d bytes\n",len<1400?(char *)publishstr:"<big string>",len);
         sprintf(retbuf,"{\"result\":\"published\",\"len\":%d,\"sendlen\":%d,\"crc\":%u}",len,sendlen,_crc32(0,publishstr,len));
         if ( nostr != 0 )
             return(0);

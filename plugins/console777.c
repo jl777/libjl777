@@ -230,7 +230,7 @@ char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcast
     {
         if ( strcmp(method,"busdata") == 0 )
             retstr = busdata_sync(cmdstr,broadcastflag==0?0:"allnodes");
-        else retstr = clonestr("{\"error\":\"direct load balanced calls deprecated, use busdata\"}");//nn_loadbalanced((uint8_t *)cmdstr,len);
+        else retstr = clonestr("{\"error\":\"direct load balanced calls deprecated, use busdata\"}");
     }
     //else if ( strcmp(plugin,"peers") == 0 )
     //    retstr = nn_allrelays((uint8_t *)cmdstr,len,timeout,0);
