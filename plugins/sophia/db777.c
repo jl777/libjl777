@@ -60,7 +60,7 @@ void db777_path(char *path,char *coinstr,char *subdir,int32_t useramdisk);
 int32_t db777_write(void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen);
 
 extern struct db777_info SOPHIA;
-extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades;
+extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades,*DB_services;
 
 #endif
 #else
