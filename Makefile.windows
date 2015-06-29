@@ -1,20 +1,20 @@
 ifneq (,$(findstring /cygdrive/,$(PATH)))
     OS := win
-    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg-x64-win.a -lpthread -lanl -lm
 else
 ifneq (,$(findstring WINDOWS,$(PATH)))
     OS := win
-    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/NXT777.c utils/files777.c utils/bitcoind_RPC.c utils/bitcoind.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg-x64-win.a -lpthread -lanl -lm
 else
     OS := $(shell uname -s)
-    #PLIBS := ../libs/libjl777.a ../libs/libnanomsg.a -lpthread -lanl -lm
+    #PLIBS := ../libs/libjl777.a ../libs/libnanomsg-x64-win.a -lpthread -lanl -lm
     #PLIBS := utils/bits777.c utils/system777.c utils/cJSON.c utils/files777.c utils/utils777.c nonportable/$(OS)/files.c nonportable/$(OS)/random.c ../libs/libnanomsg.a -lpthread -lanl -lm
 endif
 endif
 
-PLIBS := ../libs/libjl777.a ../libs/libminiupnpc-x64-win.a ../nanomsg/.libs/libnanomsg.a  -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 ../libs/libmman.a -lz -lssp -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DCURL_STATICLIB#-lssl -lcrypto
+PLIBS := ../libs/libjl777.a ../libs/libminiupnpc-x64-win.a ../libs/libnanomsg-x64-win.a  -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 ../libs/libmman.a -lz -lssp -D_WIN32 -DNN_EXPORTS -DNN_HAVE_MINGW -DNN_HAVE_WINDOWS -DNN_USE_LITERAL_IFADDR=1 -DSTATICLIB -DCURL_STATICLIB#-lssl -lcrypto
 
-LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc-x64-win.a -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 libs/libmman.a -lz -lssp #-lssl -lcrypto
+LIBS= libs/libjl777.a libs/libnanomsg-x64-win.a libs/libminiupnpc-x64-win.a -lpthread -lcurl -lm -liphlpapi -lws2_32 -lwsock32 libs/libmman.a -lz -lssp #-lssl -lcrypto
 
 
 CC=x86_64-w64-mingw32.static-gcc

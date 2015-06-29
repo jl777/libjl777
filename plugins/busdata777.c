@@ -7,6 +7,7 @@
 // make API to get list of service providers and sync relays
 // and then also to make sure adding relays on the fly syncs up to the current set of serviceproviders
 // way to remove serviceprovider node
+// encryption 
 
 // "servicesecret" in SuperNET.conf
 // register: ./BitcoinDarkd SuperNET '{"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"serviceprovider","servicename":"echo","endpoint":""}'

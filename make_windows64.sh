@@ -1,5 +1,4 @@
 echo ">>>>>>>>>>>>>>>>>>Building mxe. This may take a while."
-sudo apt-get install autopoint bison bzip2 cmake flex gcc g++ gperf intltool libtool ruby scons wine zlib1g-dev libffi-dev
 cd mxe
 make pkgconf MXE_TARGETS='x86_64-w64-mingw32.static'
 make binutils MXE_TARGETS='x86_64-w64-mingw32.static'
@@ -33,7 +32,7 @@ echo ">>>>>>>>>>>>>>>>>>building nanomsg"
 sh ./autogen.sh
 CC=x86_64-w64-mingw32.static-gcc CXX=x86_64-w64-mingw32.static-g++ ./configure --disable-replication --enable-cxx --host x86_64-w64-mingw32.static
 make
-cp .libs/libnanomsg.a ../libs/libnanomsg.a
+cp .libs/libnanomsg.a ../libs/libnanomsg-x64-win.a
 cd ../
 rm mxe/usr/x86_64-w64-mingw32.static/include/objidl.h
 cp mxe/objidl.h mxe/usr/x86_64-w64-mingw32.static/include/objidl.h

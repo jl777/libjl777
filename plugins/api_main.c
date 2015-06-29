@@ -10,6 +10,9 @@
 #include "cJSON.h"
 #include "pair.h"
 #include "pipeline.h"
+#ifdef _WIN32
+#define setenv(x, y, z) _putenv_s(x, y)
+#endif
 uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 long _stripwhite(char *buf,int accept);
 #define nn_errstr() nn_strerror(nn_errno())

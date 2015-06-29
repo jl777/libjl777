@@ -38,6 +38,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "ccgi.h"
+#ifdef _WIN32
+#define mkstemp(name) _mktemp_s(name, sizeof(name))
+#endif
 
 /* CGI_val is an entry in a list of variable values */
 
