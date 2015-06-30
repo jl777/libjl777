@@ -4,10 +4,12 @@
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
-// make API to get list of service providers and sync relays
+// sync relays
 // and then also to make sure adding relays on the fly syncs up to the current set of serviceproviders
 // way to remove serviceprovider node
 // encryption
+// ipv6
+// btc38
 
 // "servicesecret" in SuperNET.conf
 // register: ./BitcoinDarkd SuperNET '{"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"serviceprovider","servicename":"echo","endpoint":""}'
@@ -93,13 +95,23 @@ int32_t nonce_leverage(char *broadcaststr)
     if ( broadcaststr != 0 && broadcaststr[0] != 0 )
     {
         if ( strcmp(broadcaststr,"allnodes") == 0 )
-            leverage = 7;
-        else if ( strcmp(broadcaststr,"servicerequest") == 0 )
-            leverage = 6;
-        else if ( strcmp(broadcaststr,"allrelays") == 0 )
             leverage = 5;
+        else if ( strcmp(broadcaststr,"servicerequest") == 0 )
+            leverage = 4;
+        else if ( strcmp(broadcaststr,"allrelays") == 0 )
+            leverage = 3;
     }
     return(leverage);
+}
+
+char *get_broadcastmode(cJSON *json,char *broadcastmode)
+{
+    char servicename[MAX_JSON_FIELD];
+    copy_cJSON(servicename,cJSON_GetObjectItem(json,"servicename"));
+    if ( servicename[0] != 0 )
+        broadcastmode = "servicerequest";
+    //printf("(%s) get_broadcastmode.(%s) servicename.[%s]\n",cJSON_Print(json),broadcastmode!=0?broadcastmode:"",servicename);
+    return(broadcastmode);
 }
 
 uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce)
@@ -173,7 +185,7 @@ int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char e
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag)
 {
     cJSON *array=0,*firstitem=0,*tokenobj,*obj; uint32_t nonce; int64_t timeval,diff = 0; int32_t valid,leverage,retcode = -13;
-    char buf[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],broadcaststr[MAX_JSON_FIELD],*firstjsontxt = 0; unsigned char encoded[4096];
+    char buf[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],broadcaststr[MAX_JSON_FIELD],*broadcastmode,*firstjsontxt = 0; unsigned char encoded[4096];
     array = cJSON_Parse(tokenizedtxt);
     NXTaddr[0] = pubkey[0] = forwarder[0] = 0;
     if ( array == 0 )
@@ -227,9 +239,9 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
                         nonce = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"nonce"),0);
                         leverage = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"leverage"),0);
                         copy_cJSON(broadcaststr,cJSON_GetObjectItem(tokenobj,"broadcast"));
+                        broadcastmode = get_broadcastmode(firstitem,broadcaststr);
                         retcode = valid;
-                        //int32_t len = (int32_t)strlen(firstjsontxt);
-                        if ( nonce_func(&leverage,firstjsontxt,broadcaststr,0,nonce) != 0 )
+                        if ( nonce_func(&leverage,firstjsontxt,broadcastmode,0,nonce) != 0 )
                         {
                             //printf("(%s) -> (%s) leverage.%d len.%d crc.%u\n",broadcaststr,firstjsontxt,leverage,len,_crc32(0,(void *)firstjsontxt,len));
                             retcode = -4;
@@ -253,7 +265,8 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
     } else printf("decode arraysize.%d\n",cJSON_GetArraySize(array));
     if ( array != 0 )
         free_json(array);
-    //printf("validate retcode.%d\n",retcode);
+    if ( retcode < 0 )
+        printf("signed by valid NXT.%s valid.%d diff.%lld forwarder.(%s)\n",sender,valid,(long long)diff,forwarder);
     return(retcode);
 }
 
@@ -271,7 +284,8 @@ void nn_syncbus(cJSON *json)
         forwardbits = conv_acctstr(forwarder), nxt64bits = conv_acctstr(SUPERNET.NXTADDR);
         if ( forwardbits == 0 )//|| forwardbits == nxt64bits )
         {
-            printf("BUS-SEND.(%s) forwarder.%llu vs %llu\n",jsonstr,(long long)forwardbits,(long long)nxt64bits);
+            if ( Debuglevel > 2 )
+                printf("BUS-SEND.(%s) forwarder.%llu vs %llu\n",jsonstr,(long long)forwardbits,(long long)nxt64bits);
             nn_send(RELAYS.bus.sock,jsonstr,(int32_t)strlen(jsonstr)+1,0);
         }
         free(jsonstr);
@@ -312,17 +326,18 @@ char *lb_serviceprovider(struct service_provider *sp,uint8_t *data,int32_t datal
     for (i=0; i<10; i++)
         if ( (nn_socket_status(sp->sock,1) & NN_POLLOUT) != 0 )
             break;
-    printf("lb_serviceprovider.(%s)\n",data);
+    if ( Debuglevel > 2 )
+        printf("lb_serviceprovider.(%s)\n",data);
     if ( (sendlen= nn_send(sp->sock,data,datalen,0)) == datalen )
     {
-        for (i=0; i<1000; i++)
+        for (i=0; i<10; i++)
             if ( (nn_socket_status(sp->sock,1) & NN_POLLIN) != 0 )
                 break;
         if ( (recvlen= nn_recv(sp->sock,&msg,NN_MSG,0)) > 0 )
         {
             jsonstr = clonestr((char *)msg);
             nn_freemsg(msg);
-        }
+        } else printf("lb_serviceprovider timeout\n");
     } else printf("sendlen.%d != datalen.%d\n",sendlen,datalen);
     return(jsonstr);
 }
@@ -371,6 +386,30 @@ int32_t add_service_provider(char *serviceNXT,char *servicename,char *endpoint)
     return(0);
 }
 
+cJSON *serviceprovider_json()
+{
+    struct serviceprovider **sps; int32_t i,num; cJSON *json,*item,*array; char numstr[64];
+    json = cJSON_CreateObject();
+    array = cJSON_CreateArray();
+    if ( (sps= (struct serviceprovider **)db777_copy_all(&num,DB_services,"key",0)) != 0 )
+    {
+        for (i=0; i<num; i++)
+        {
+            if ( sps[i] != 0 )
+            {
+                item = cJSON_CreateObject();
+                cJSON_AddItemToObject(item,sps[i]->name,cJSON_CreateString(sps[i]->endpoint));
+                sprintf(numstr,"%llu",(long long)sps[i]->servicebits), cJSON_AddItemToObject(item,"serviceNXT",cJSON_CreateString(numstr));
+                free(sps[i]);
+                cJSON_AddItemToArray(array,item);
+            }
+        }
+        free(sps);
+    }
+    cJSON_AddItemToObject(json,"services",array);
+    return(json);
+}
+
 struct service_provider *find_servicesock(char *servicename,char *endpoint)
 {
     struct service_provider *sp; struct serviceprovider **sps; int32_t i,num,sendtimeout,recvtimeout,retrymillis,maxmillis;
@@ -380,7 +419,7 @@ struct service_provider *find_servicesock(char *servicename,char *endpoint)
         sp = calloc(1,sizeof(*sp));
         HASH_ADD_KEYPTR(hh,Service_providers,servicename,strlen(servicename),sp);
         sp->sock = nn_socket(AF_SP,NN_REQ);
-        sendtimeout = 1000, recvtimeout = 10000, maxmillis = 1000, retrymillis = 25;
+        sendtimeout = 1000, recvtimeout = 10000, maxmillis = 3000, retrymillis = 100;
         if ( sendtimeout > 0 && nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
             fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
         else if ( recvtimeout > 0 && nn_setsockopt(sp->sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
@@ -462,6 +501,8 @@ char *busdata_addpending(char *destNXT,char *sender,char *key,uint32_t timestamp
             if ( (retstr= lb_serviceprovider(sp,(uint8_t *)str,(int32_t)strlen(str)+1)) != 0 )
             {
                 free(str);
+                if ( Debuglevel > 2 )
+                    printf("LBS.(%s)\n",retstr);
                 return(retstr);
             }
             free(str);
@@ -539,7 +580,6 @@ char *busdata_matchquery(char *response,char *destNXT,char *sender,char *key,uin
 char *busdata(char *forwarder,char *sender,int32_t valid,char *key,uint32_t timestamp,uint8_t *msg,int32_t datalen,cJSON *origjson)
 {
     cJSON *json; char destNXT[64],response[1024],*retstr = 0;
-    printf("busdata.(%s) valid.%d\n",msg,valid);
     if ( SUPERNET.iamrelay != 0 && valid > 0 )
     {
         if ( (json= busdata_decode(destNXT,valid,sender,msg,datalen)) != 0 )
@@ -563,6 +603,8 @@ char *busdata(char *forwarder,char *sender,int32_t valid,char *key,uint32_t time
             free_json(json);
         } else printf("couldnt decode.(%s)\n",msg);
     }
+    if ( Debuglevel > 2 )
+        printf("busdata.(%s) valid.%d -> (%s)\n",msg,valid,retstr!=0?retstr:"");
     return(retstr);
 }
 
@@ -577,16 +619,18 @@ int32_t busdata_validate(char *forwarder,char *sender,uint32_t *timestamp,uint8_
         *timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"time"),0);
         sender[0] = 0;
         if ( (valid= validate_token(forwarder,pubkey,sender,msg,(*timestamp != 0) * MAXTIMEDIFF)) <= 0 )
+        {
+            printf("error valid.%d sender.(%s) forwarder.(%s)\n",valid,sender,forwarder);
             return(valid);
+        }
         copy_cJSON(sha,cJSON_GetObjectItem(argjson,"H"));
         copy_cJSON(datastr,cJSON_GetObjectItem(argjson,"data"));
         decode_hex(databuf,(int32_t)(strlen(datastr)+1)>>1,datastr);
         *datalenp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"n"),0);
         calc_sha256(hexstr,hash.bytes,databuf,*datalenp);
-        //printf("valid.%d sender.(%s) (%s) datalen.%d %llx [%llx]\n",valid,sender,databuf,*datalenp,(long long)hash.txid,(long long)databuf);
         if ( strcmp(hexstr,sha) == 0 )
             return(1);
-    }
+    } else printf("busdata_validate not array\n");
     return(-1);
 }
 
@@ -645,7 +689,8 @@ char *nn_busdata_processor(uint8_t *msg,int32_t len)
 {
     cJSON *json,*argjson; uint32_t timestamp; int32_t datalen,valid; uint8_t databuf[8192];
     char usedest[128],key[MAX_JSON_FIELD],src[MAX_JSON_FIELD],forwarder[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],*retstr = 0;
-    printf("nn_busdata_processor.(%s)\n",msg);
+    if ( Debuglevel > 2 )
+        printf("nn_busdata_processor.(%s)\n",msg);
     if ( (json= cJSON_Parse((char *)msg)) != 0 )
     {
         if ( (valid= busdata_validate(forwarder,sender,&timestamp,databuf,&datalen,msg,json)) > 0 )
@@ -662,18 +707,9 @@ char *nn_busdata_processor(uint8_t *msg,int32_t len)
         } else retstr = clonestr("{\"error\":\"busdata doesnt validate\"}");
         free_json(json);
     } else retstr = clonestr("{\"error\":\"couldnt parse busdata\"}");
-   // printf("BUSDATA.(%s) (%s)\n",msg,retstr);
+    if ( Debuglevel > 2 )
+        printf("BUSDATA.(%s) (%s)\n",msg,retstr);
     return(retstr);
-}
-
-char *get_broadcastmode(cJSON *json,char *broadcastmode)
-{
-    char servicename[MAX_JSON_FIELD];
-    copy_cJSON(servicename,cJSON_GetObjectItem(json,"servicename"));
-    if ( servicename[0] != 0 )
-        broadcastmode = "servicerequest";
-    printf("(%s) get_broadcastmode.(%s) servicename.[%s]\n",cJSON_Print(json),broadcastmode!=0?broadcastmode:"",servicename);
-    return(broadcastmode);
 }
 
 char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
@@ -741,12 +777,23 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
 
 char *busdata_sync(char *jsonstr,char *broadcastmode)
 {
-    int32_t datalen,sendlen = 0; char *data,*retstr;
+    int32_t datalen,sendlen = 0; char *data,*retstr; cJSON *json;
     //printf("busdata_sync.(%s) (%s)\n",jsonstr,broadcastmode==0?"":broadcastmode);
     if ( (data= create_busdata(&datalen,jsonstr,broadcastmode)) != 0 )
     {
         if ( SUPERNET.iamrelay != 0 )
         {
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( strcmp(broadcastmode,"publicaccess") == 0 )
+                {
+                    retstr = nn_busdata_processor((uint8_t *)data,datalen);
+                    if ( data != jsonstr )
+                        free(data);
+                    free_json(json);
+                    return(retstr);
+                } else free_json(json);
+            }
             if ( RELAYS.bus.sock >= 0 )
             {
                 if( (sendlen= nn_send(RELAYS.bus.sock,data,datalen,0)) != datalen )
@@ -755,7 +802,7 @@ char *busdata_sync(char *jsonstr,char *broadcastmode)
                         printf("sendlen.%d vs datalen.%d (%s) %s\n",sendlen,datalen,(char *)data,nn_errstr());
                     free(data);
                     return(clonestr("{\"error\":\"couldnt send to bus\"}"));
-                } else printf("PUB.(%s)\n",data);
+                } else printf("PUB.(%s) sendlen.%d datalen.%d\n",data,sendlen,datalen);
             }
             if ( data != jsonstr )
                 free(data);
@@ -764,8 +811,8 @@ char *busdata_sync(char *jsonstr,char *broadcastmode)
         else
         {
             retstr = nn_loadbalanced((uint8_t *)data,datalen);
-            //if ( retstr != 0 )
-            //    printf("busdata nn_loadbalanced retstr.(%s)\n",retstr);
+            if ( retstr != 0 )
+                printf("busdata nn_loadbalanced retstr.(%s)\n",retstr);
             if ( data != jsonstr )
                 free(data);
             return(retstr);
@@ -805,19 +852,21 @@ void busdata_init(int32_t sendtimeout,int32_t recvtimeout)
 
 void busdata_poll()
 {
-    char *str,*jsonstr; cJSON *json; int32_t len,sock;
+    char tokenized[65536],*str,*jsonstr; cJSON *json; int32_t len,sock;
     sock = RELAYS.servicesock;
     if ( sock >= 0 )
     {
         if ( (len= nn_recv(sock,&jsonstr,NN_MSG,0)) > 0 )
         {
-            //printf("SERVICESOCK.%d recv.%d (%s)\n",sock,len,jsonstr);
+            if ( Debuglevel > 2 )
+                printf("SERVICESOCK.%d recv.%d (%s)\n",sock,len,jsonstr);
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
             {
                 if ( (str= nn_busdata_processor((uint8_t *)jsonstr,len)) != 0 )
                 {
+                    len = construct_tokenized_req(tokenized,str,SUPERNET.SERVICESECRET,0);
                     printf("servicereturn.(%s)\n",str);
-                    nn_send(sock,str,(int32_t)strlen(str)+1,0);
+                    nn_send(sock,tokenized,len,0);
                     free(str);
                 } else nn_send(sock,"{\"error\":\"null return\"}",(int32_t)strlen("{\"error\":\"null return\"}")+1,0);
                 free_json(json);

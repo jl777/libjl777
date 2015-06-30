@@ -286,7 +286,7 @@ int32_t poll_daemons() // the only thread that is allowed to modify Daemoninfos[
 
 int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char *jsonargs)
 {
-    char *args[8],cmdstr[1024],daemonstr[64],portstr[8192],flagstr[3];
+    char *args[8],cmdstr[1024],daemonstr[64],portstr[8192],flagstr[3],pidstr[16];
     int32_t i,n = 0;
     if ( dp == 0 )
     {
@@ -304,7 +304,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
     if ( dp->websocket != 0 && permanentflag == 0 )
     {
         args[n++] = SUPERNET.WEBSOCKETD;
-        sprintf(portstr,"--port=%d",dp->websocket), args[n++] = portstr;
+        sprintf(portstr,"--sameorigin=true --port=%d",dp->websocket), args[n++] = portstr;
         if ( Debuglevel > 0 )
             args[n++] = "--devconsole";
     }
@@ -323,6 +323,8 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
     }
     if ( dp->jsonargs != 0 && dp->jsonargs[0] != 0 )
         args[n++] = dp->jsonargs;
+    sprintf(pidstr,"%d",OS_getpid());
+    args[n++] = pidstr;
     args[n++] = 0;
     if ( dp->bundledflag != 0 && permanentflag != 0 && dp->websocket == 0 )
     {

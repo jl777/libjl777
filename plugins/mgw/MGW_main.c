@@ -409,7 +409,7 @@ int32_t ensure_NXT_msigaddr(char *msigjsonstr,char *coinstr,char *NXTaddr,char *
 
 int32_t process_acctpubkey(int32_t *havemsigp,cJSON *item,int32_t gatewayid,uint64_t gatewaybits)
 {
-    uint64_t gbits,nxt64bits; int32_t buyNXT,g,updated;
+    uint64_t gbits,nxt64bits; int32_t buyNXT,g,updated = 0;
     char msigjsonstr[MAX_JSON_FIELD],userNXTpubkey[MAX_JSON_FIELD],NXTaddr[MAX_JSON_FIELD],coinaddr[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD];
     *havemsigp = 0;
     copy_cJSON(coinstr,cJSON_GetObjectItem(item,"coin"));
@@ -428,10 +428,12 @@ int32_t process_acctpubkey(int32_t *havemsigp,cJSON *item,int32_t gatewayid,uint
             return(0);
         }
     }
-    nxt64bits = calc_nxt64bits(NXTaddr);
-    //printf("%s.G%d +(%s %s): ",coinstr,g,coinaddr,pubkey);
-    updated = add_NXT_coininfo(gatewaybits,nxt64bits,coinstr,coinaddr,pubkey);
-    *havemsigp = ensure_NXT_msigaddr(msigjsonstr,coinstr,NXTaddr,userNXTpubkey,buyNXT);
+    if ( (nxt64bits= conv_acctstr(NXTaddr)) != 0 )
+    {
+        //printf("%s.G%d +(%s %s): ",coinstr,g,coinaddr,pubkey);
+        updated = add_NXT_coininfo(gatewaybits,nxt64bits,coinstr,coinaddr,pubkey);
+        *havemsigp = ensure_NXT_msigaddr(msigjsonstr,coinstr,NXTaddr,userNXTpubkey,buyNXT);
+    }
     return(updated);
 }
 
@@ -647,15 +649,17 @@ char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass)
 char *devMGW_command(char *jsonstr,cJSON *json)
 {
     int32_t i,buyNXT; uint64_t nxt64bits; cJSON *item = 0; struct coin777 *coin;
-    char nxtaddr[64],userNXTpubkey[MAX_JSON_FIELD],msigjsonstr[MAX_JSON_FIELD],NXTaddr[MAX_JSON_FIELD],coinstr[1024],*str;
+    char nxtaddr[64],userNXTpubkey[MAX_JSON_FIELD],msigjsonstr[MAX_JSON_FIELD],NXTaddr[MAX_JSON_FIELD],coinstr[1024],*str,*addr;
     if ( SUPERNET.gatewayid >= 0 )
     {
         copy_cJSON(NXTaddr,cJSON_GetObjectItem(json,"userNXT"));
         if ( NXTaddr[0] != 0 )
         {
-            nxt64bits = conv_acctstr(NXTaddr);
-            expand_nxt64bits(nxtaddr,nxt64bits);
+            if ( (nxt64bits= conv_acctstr(NXTaddr)) != 0 )
+                expand_nxt64bits(nxtaddr,nxt64bits);
         } else nxt64bits = 0;
+        if ( nxt64bits == 0 )
+            return(clonestr("{\"error\":\"illegal NXT addr\"}"));
         //printf("NXTaddr.(%s) %llu\n",nxtaddr,(long long)nxt64bits);
         copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
         copy_cJSON(userNXTpubkey,cJSON_GetObjectItem(json,"userpubkey"));
@@ -663,11 +667,15 @@ char *devMGW_command(char *jsonstr,cJSON *json)
         printf("NXTaddr.(%s) %llu %s\n",nxtaddr,(long long)nxt64bits,coinstr);
         if ( nxtaddr[0] != 0 && coinstr != 0 && (coin= coin777_find(coinstr,0)) != 0 )
         {
-            for (i=0; i<3; i++)
+            for (i=0; i<1; i++)
             {
-                ensure_NXT_msigaddr(msigjsonstr,coinstr,nxtaddr,userNXTpubkey,buyNXT);
-                if ( i == SUPERNET.gatewayid )
+                if ( ensure_NXT_msigaddr(msigjsonstr,coinstr,nxtaddr,userNXTpubkey,buyNXT) > 0 )
+                {
                     item = cJSON_Parse(msigjsonstr);
+                    if ( (addr= cJSON_str(cJSON_GetObjectItem(item,"address"))) != 0 )
+                        break;
+                }
+                //msleep(250);
             }
             fix_msigaddr(coin,nxtaddr,"myacctpubkeys");
         }
