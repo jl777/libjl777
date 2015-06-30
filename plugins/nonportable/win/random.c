@@ -5,13 +5,15 @@
 #include <process.h>
 #include <tlhelp32.h>
 
-int32_t OS_getppid() { 
+int32_t OS_getpid() { return(GetCurrentProcessId()); }
+
+int32_t OS_getppid()
+{
     int pid, ppid = -1;
     HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     PROCESSENTRY32 pe = { 0 };
     pe.dwSize = sizeof(PROCESSENTRY32);
     pid = GetCurrentProcessId();
-
     if( Process32First(h, &pe)) {
     	do {
     		if (pe.th32ProcessID == pid) {
@@ -32,8 +34,7 @@ int32_t OS_waitpid(int32_t pid, int32_t *statusp, int32_t flags) {
 int32_t  OS_launch_process(char *args[])
 {
     int32_t pid;
-    pid = _spawnl( _P_NOWAIT, args[0], args[0], 
-                             NULL, NULL );
+    pid = _spawnl( _P_NOWAIT, args[0], args[0],  NULL, NULL );
     return pid;
 }
 

@@ -207,10 +207,10 @@ uint64_t send_to_daemon(struct relayargs *args,char **retstrp,char *name,uint64_
         }
         if ( len == 0 )
             len = (int32_t)strlen(jsonstr) + 1;
-        if ( localaccess != 0 )
+        if ( localaccess != 0 && is_cJSON_Array(json) == 0 )
         {
             tokbuf = calloc(1,len + 1024);
-            printf("jsonstr.(%s)\n",jsonstr);
+            //printf("jsonstr.(%s)\n",jsonstr);
             broadcastmode = get_broadcastmode(json,cJSON_str(cJSON_GetObjectItem(json,"broadcast")));
             len = construct_tokenized_req(tokbuf,jsonstr,SUPERNET.NXTACCTSECRET,broadcastmode);
             if ( flag != 0 )

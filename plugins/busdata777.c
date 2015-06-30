@@ -266,7 +266,7 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
     if ( array != 0 )
         free_json(array);
     if ( retcode < 0 )
-        printf("signed by valid NXT.%s valid.%d diff.%lld forwarder.(%s)\n",sender,valid,(long long)diff,forwarder);
+        printf("ret.%d signed by valid NXT.%s valid.%d diff.%lld forwarder.(%s)\n",retcode,sender,valid,(long long)diff,forwarder);
     return(retcode);
 }
 
@@ -768,8 +768,6 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
 //printf("created busdata.(%s) -> (%s) tlen.%d\n",str,tokbuf,tlen);
         free(tmp), free(str), free(str2), str = str2 = 0;
         *datalenp = tlen;
-        if ( SUPERNET.iamrelay != 0 && (str= nn_busdata_processor((uint8_t *)tokbuf,tlen)) != 0 )
-            free(str);
         free_json(json);
     } else printf("couldnt parse busdata json.(%s)\n",jsonstr);
     return(tokbuf);
@@ -778,7 +776,7 @@ char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode)
 char *busdata_sync(char *jsonstr,char *broadcastmode)
 {
     int32_t datalen,sendlen = 0; char *data,*retstr; cJSON *json;
-    //printf("busdata_sync.(%s) (%s)\n",jsonstr,broadcastmode==0?"":broadcastmode);
+// printf("busdata_sync.(%s) (%s)\n",jsonstr,broadcastmode==0?"":broadcastmode);
     if ( (data= create_busdata(&datalen,jsonstr,broadcastmode)) != 0 )
     {
         if ( SUPERNET.iamrelay != 0 )
