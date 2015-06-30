@@ -416,6 +416,7 @@ struct service_provider *find_servicesock(char *servicename,char *endpoint)
     HASH_FIND(hh,Service_providers,servicename,strlen(servicename),sp);
     if ( sp == 0 )
     {
+        printf("Couldnt find service.(%s)\n",servicename);
         sp = calloc(1,sizeof(*sp));
         HASH_ADD_KEYPTR(hh,Service_providers,servicename,strlen(servicename),sp);
         sp->sock = nn_socket(AF_SP,NN_REQ);
