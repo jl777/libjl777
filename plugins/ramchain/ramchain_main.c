@@ -109,7 +109,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             //printf("RAMCHAIN RETURNS.(%s)\n",retbuf);
         }
     }
-    return((int32_t)strlen(retbuf));
+    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
 }
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)

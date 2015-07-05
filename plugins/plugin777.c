@@ -36,10 +36,11 @@
 
 struct plugin_info
 {
-    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64];
+    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64],SERVICENXT[64];
     uint64_t daemonid,myid,nxt64bits;
-    union endpoints all;
-    uint32_t permanentflag,ppid,transportid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
+    //union endpoints all;
+    int32_t pushsock,pullsock;
+    uint32_t permanentflag,ppid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
     uint16_t port;
     portable_mutex_t mutex;
     uint8_t pluginspace[];
@@ -57,26 +58,43 @@ int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 #undef DEFINES_ONLY
 #endif
 
-static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,char *bindaddr,char *connectaddr,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
+static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
-    int32_t errs = 0;
-    struct allendpoints *socks = &plugin->all.socks;
-    if ( Debuglevel > 2 )
-        printf("%s.%p <<<<<<<<<<<<< init_permpairsocks bind.(%s) connect.(%s)\n",plugin->name,plugin,bindaddr,connectaddr);
-#ifdef _WIN32
-    if ( (socks->both.bus= init_socket("","bus",NN_BUS,0,connectaddr,timeout)) < 0 ) errs++;
-#else
-    if ( (socks->both.pair= init_socket(".pair","pair",NN_PAIR,0,connectaddr,timeout)) < 0 ) errs++;
-#endif
-    //if ( (socks->send.push= init_socket(".pipeline","push",NN_PUSH,bindaddr,0,timeout)) < 0 ) errs++;
-    //if ( (socks->send.rep= init_socket(".reqrep","rep",NN_REP,bindaddr,connectaddr,timeout)) < 0 ) errs++;
-    //if ( (socks->send.pub= init_socket(".pubsub","pub",NN_PUB,bindaddr,0,timeout)) < 0 ) errs++;
-    //if ( (socks->send.survey= init_socket(".survey","surveyor",NN_SURVEYOR,bindaddr,0,timeout)) < 0 ) errs++;
-    //if ( (socks->recv.pull= init_socket(".pipeline","pull",NN_PULL,0,connectaddr,0)) < 0 ) errs++;
-    //if ( (socks->recv.req= init_socket(".reqrep","req",NN_REQ,0,connectaddr,timeout)) < 0 ) errs++;
-    //if ( (socks->recv.sub= init_socket(".pubsub","sub",NN_SUB,0,connectaddr,0)) < 0 ) errs++;
-    //if ( (socks->recv.respond= init_socket(".survey","respondent",NN_RESPONDENT,0,connectaddr,0)) < 0 ) errs++;
-    return(errs);
+//#ifdef _WIN32
+//    sprintf(plugin->connectaddr,"tcp://127.0.0.1:7774");
+//#endif
+    if ( (plugin->pushsock= nn_socket(AF_SP,NN_PUSH)) < 0 )
+    {
+        printf("error creating plugin->pushsock %s\n",nn_strerror(nn_errno()));
+        return(-1);
+    }
+    else if ( nn_settimeouts(plugin->pushsock,10,1) < 0 )
+    {
+        printf("error setting plugin->pushsock timeouts %s\n",nn_strerror(nn_errno()));
+        return(-1);
+    }
+    else if ( nn_connect(plugin->pushsock,plugin->connectaddr) < 0 )
+    {
+        printf("error connecting plugin->pushsock.%d to %s %s\n",plugin->pushsock,plugin->connectaddr,nn_strerror(nn_errno()));
+        return(-1);
+    }
+    if ( (plugin->pullsock= nn_socket(AF_SP,NN_BUS)) < 0 )
+    {
+        printf("error creating plugin->pullsock %s\n",nn_strerror(nn_errno()));
+        return(-1);
+    }
+    else if ( nn_settimeouts(plugin->pullsock,10,1) < 0 )
+    {
+        printf("error setting plugin->pullsock timeouts %s\n",nn_strerror(nn_errno()));
+        return(-1);
+    }
+    else if ( nn_bind(plugin->pullsock,plugin->bindaddr) < 0 )
+    {
+        printf("error connecting plugin->pullsock.%d to %s %s\n",plugin->pullsock,plugin->bindaddr,nn_strerror(nn_errno()));
+        return(-1);
+    }
+    printf("%s bind.(%s) %d and connected.(%s) %d\n",plugin->name,plugin->bindaddr,plugin->pullsock,plugin->connectaddr,plugin->pushsock);
+    return(0);
 }
 
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
@@ -133,27 +151,47 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     return(retval);
 }
 
+static int32_t set_nxtaddrs(char *NXTaddr,char *serviceNXT)
+{
+    FILE *fp; cJSON *json; char confname[512],buf[65536],secret[4096],servicesecret[4096]; uint8_t mysecret[32],mypublic[32];
+    strcpy(confname,"SuperNET.conf"), os_compatible_path(confname);
+    NXTaddr[0] = serviceNXT[0] = 0;
+    if ( (fp= fopen(confname,"rb")) != 0 )
+    {
+        if ( fread(buf,1,sizeof(buf),fp) > 0 )
+        {
+            if ( (json= cJSON_Parse(buf)) != 0 )
+            {
+                copy_cJSON(secret,cJSON_GetObjectItem(json,"secret"));
+                copy_cJSON(servicesecret,cJSON_GetObjectItem(json,"SERVICESECRET"));
+                expand_nxt64bits(NXTaddr,conv_NXTpassword(mysecret,mypublic,(uint8_t *)secret,(int32_t)strlen(secret)));
+                expand_nxt64bits(serviceNXT,conv_NXTpassword(mysecret,mypublic,(uint8_t *)servicesecret,(int32_t)strlen(servicesecret)));
+                free_json(json);
+            } else fprintf(stderr,"set_nxtaddrs parse error.(%s)\n",buf);
+        } else fprintf(stderr,"set_nxtaddrs error reading.(%s)\n",confname);
+        fclose(fp);
+    } else fprintf(stderr,"set_nxtaddrs cant open.(%s)\n",confname);
+    return((int32_t)strlen(NXTaddr));
+}
+
 static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
-    char tagstr[128],*NXTaddr; cJSON *json;
+    char tagstr[128]; cJSON *json; int32_t len;
 //printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
-    if ( (json= cJSON_Parse(retbuf)) != 0 )
+    tagstr[0] = 0;
+    len = (int32_t)strlen(retbuf);
+    if ( len > 4 && retbuf[len-1] != ']' && (json= cJSON_Parse(retbuf)) != 0 )
     {
         if ( tag != 0 && get_API_nxt64bits(cJSON_GetObjectItem(json,"tag")) == 0 )
             sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
-        else tagstr[0] = 0;
-        NXTaddr = cJSON_str(cJSON_GetObjectItem(json,"NXT"));
-        if ( NXTaddr == 0 || NXTaddr[0] == 0 )
-            NXTaddr = SUPERNET.NXTADDR;
-        sprintf(retbuf+strlen(retbuf)-1,",\"NXT\":\"%s\"}",NXTaddr);
         if ( allfields != 0 )
         {
              if ( SUPERNET.iamrelay != 0 )
                  sprintf(retbuf+strlen(retbuf)-1,",\"myipaddr\":\"%s\"}",plugin->ipaddr);
             sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
-            sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
+            sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"daemonid\":\"%llu\",\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->daemonid,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
          }
-         else sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
+         else sprintf(retbuf+strlen(retbuf)-1,",\"daemonid\":\"%llu\",\"myid\":\"%llu\",\"allowremote\":%d%s}",(long long)plugin->daemonid,(long long)plugin->myid,plugin->allowremote,tagstr);
     }
 }
 
@@ -198,12 +236,31 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     if ( plugin->sleepmillis == 0 )
         plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
+    char NXTaddr[512],serviceNXT[512],tmpstrA[512],tmpstrB[512];
+    copy_cJSON(NXTaddr,cJSON_GetObjectItem(json,"NXT"));
+    copy_cJSON(serviceNXT,cJSON_GetObjectItem(json,"serviceNXT"));
+    if ( NXTaddr[0] == 0 || serviceNXT[0] == 0 )
+    {
+        set_nxtaddrs(tmpstrA,tmpstrB);
+        if ( NXTaddr[0] == 0 )
+            strcpy(NXTaddr,tmpstrA);
+        if ( serviceNXT[0] == 0 )
+            strcpy(serviceNXT,tmpstrB);
+    }
+    strcpy(plugin->NXTADDR,NXTaddr);
+    strcpy(plugin->SERVICENXT,serviceNXT);
+    if ( cJSON_GetObjectItem(json,"NXT") == 0 )
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
+    else cJSON_ReplaceItemInObject(json,"NXT",cJSON_CreateString(NXTaddr));
+    if ( cJSON_GetObjectItem(json,"serviceNXT") == 0 )
+        cJSON_AddItemToObject(json,"serviceNXT",cJSON_CreateString(serviceNXT));
+    else cJSON_ReplaceItemInObject(json,"serviceNXT",cJSON_CreateString(serviceNXT));
     jsonstr = cJSON_Print(json), free_json(json);
     _stripwhite(jsonstr,' ');
     strcpy(retbuf,jsonstr), free(jsonstr);
     append_stdfields(retbuf,max,plugin,0,1);
     if ( Debuglevel > 2 )
-        printf(">>>>>>>>>>> ret.(%s)\n",retbuf);
+        printf(">>>>>>>>>>> register return.(%s)\n",retbuf);
     return((int32_t)strlen(retbuf));
 }
 
@@ -269,26 +326,6 @@ printf("process_plugin_json: couldnt parse.(%s)\n",jsonstr);
     return((int32_t)strlen(retbuf));
 }
 
-static int32_t get_newinput(char *messages[],uint32_t *numrecvp,uint32_t numsent,int32_t permanentflag,union endpoints *socks,int32_t timeoutmillis,void (*funcp)(char *line))
-{
-    char line[8192];
-    int32_t len,n = 0;
-    line[0] = 0;
-    if ( (n= poll_local_endpoints(messages,numrecvp,numsent,socks,timeoutmillis)) <= 0 && permanentflag == 0 && getline777(line,sizeof(line)-1) > 0 )
-    {
-        len = (int32_t)strlen(line);
-        if ( line[len-1] == '\n' )
-            line[--len] = 0;
-        if ( len > 0 )
-        {
-            if ( funcp != 0 )
-                (*funcp)(line);
-            else messages[0] = clonestr(line), n = 1;
-        }
-    }
-    return(n);
-}
-
 #ifdef BUNDLED
 int32_t PLUGNAME(_main)
 #else
@@ -296,12 +333,12 @@ int32_t main
 #endif
 (int argc,const char *argv[])
 {
-    char *retbuf,registerbuf[MAX_JSON_FIELD];
-    struct plugin_info *plugin;
-    double startmilli;
-    cJSON *argjson;
-    int32_t i,n,bundledflag,max,sendflag,sleeptime=1,len = 0;
-    char *messages[16],*line,*jsonargs,*transportstr;
+    char *retbuf,*line,*jsonargs,*transportstr,registerbuf[MAX_JSON_FIELD];
+    struct plugin_info *plugin; double startmilli; cJSON *argjson;
+    int32_t bundledflag,max,sendflag,sleeptime=1,len = 0;
+#ifndef BUNDLED
+    OS_init();
+#endif
     milliseconds();
     max = 1000000;
     retbuf = malloc(max+1);
@@ -329,36 +366,21 @@ int32_t main
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
     plugin->permanentflag = atoi(argv[1]);
     plugin->daemonid = atol(argv[2]);
-    memset(&plugin->all,0xff,sizeof(plugin->all));
-//printf("calling get_localtransport\n");
     plugin->bundledflag = bundledflag = is_bundled_plugin(plugin->name);
     transportstr = get_localtransport(plugin->bundledflag);
-    if ( plugin->permanentflag != 0 )
-    {
-        if ( plugin->ipaddr[0] != 0 || plugin->port != 0 )
-        {
-            if ( plugin->ipaddr[0] == 0 || plugin->port == 0 )
-                plugin->port = wait_for_myipaddr(plugin->ipaddr);
-        }
-        if ( plugin->ipaddr[0] != 0 && plugin->port != 0 )
-        {
-            plugin->transportid = 'G';
-            plugin_transportaddr(plugin->bindaddr,"tcp",plugin->ipaddr,plugin->port + 1*OFFSET_ENABLED);
-        } else plugin_transportaddr(plugin->bindaddr,transportstr,0,plugin->daemonid + 1*OFFSET_ENABLED);
-    } else plugin_transportaddr(plugin->bindaddr,transportstr,0,plugin->daemonid + 1*OFFSET_ENABLED);
-    plugin_transportaddr(plugin->connectaddr,transportstr,0,plugin->daemonid+2*OFFSET_ENABLED);
+    sprintf(plugin->connectaddr,"%s://SuperNET",transportstr);
+    sprintf(plugin->bindaddr,"%s://%llu",transportstr,(long long)plugin->daemonid);
     jsonargs = (argc >= 3) ? ((char *)argv[3]) : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);
     printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu NXT.%s\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,plugin->NXTADDR);//,jsonargs!=0?jsonargs:"");
-    if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->bindaddr,plugin->connectaddr,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
+    if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
     {
         argjson = cJSON_Parse(jsonargs);
         if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin,argjson)) > 0 )
         {
             if ( Debuglevel > 2 )
-                fprintf(stderr,">>>>>>>>>>>>>>> plugin sends REGISTER SEND.(%s)\n",registerbuf);
-            nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
-            //nn_send(plugin->sock,plugin->registerbuf,len+1,0); // send the null terminator too
+                fprintf(stderr,">>>>>>>>>>>>>>> plugin.(%s) sends REGISTER SEND.(%s)\n",plugin->name,registerbuf);
+            nn_local_broadcast(plugin->pushsock,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
         } else printf("error register API\n");
         if ( argjson != 0 )
             free_json(argjson);
@@ -366,29 +388,25 @@ int32_t main
     while ( OS_getppid() == plugin->ppid )
     {
         retbuf[0] = 0;
-        if ( (n= get_newinput(messages,&plugin->numrecv,plugin->numsent,plugin->permanentflag,&plugin->all,plugin->timeout,0)) > 0 )
+        if ( (len= nn_recv(plugin->pullsock,&line,NN_MSG,0)) > 0 )
         {
-            for (i=0; i<n; i++)
+            len = (int32_t)strlen(line);
+            if ( Debuglevel > 2 )
+                printf("(s%d r%d) <<<<<<<<<<<<<< %s.RECEIVED (%s).%d -> bind.(%s) connect.(%s) %s\n",plugin->numsent,plugin->numrecv,plugin->name,line,len,plugin->bindaddr,plugin->connectaddr,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET"), fflush(stdout);
+            if ( (len= process_plugin_json(retbuf,max,&sendflag,plugin,plugin->permanentflag,plugin->daemonid,plugin->myid,line)) > 0 )
             {
-                line = messages[i], len = (int32_t)strlen(line);
-                if ( Debuglevel > 2 )
-                    printf("(s%d r%d) <<<<<<<<<<<<<< RECEIVED (%s).%d -> bind.(%s) connect.(%s) %s\n",plugin->numsent,plugin->numrecv,line,len,plugin->bindaddr,plugin->connectaddr,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET"), fflush(stdout);
-                if ( (len= process_plugin_json(retbuf,max,&sendflag,plugin,plugin->permanentflag,plugin->daemonid,plugin->myid,line)) > 0 )
+                if ( plugin->bundledflag == 0 )
+                    printf("%s\n",retbuf), fflush(stdout);
+                if ( sendflag != 0 )
                 {
-                    if ( plugin->bundledflag == 0 )
-                        printf("%s\n",retbuf), fflush(stdout);
-                    if ( sendflag != 0 )
-                    {
-                        nn_local_broadcast(&plugin->all.socks,0,0,(uint8_t *)retbuf,(int32_t)strlen(retbuf)+1), plugin->numsent++;
-                        if ( Debuglevel > 2 )
-                            fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
-                        //nn_send(plugin->sock,retbuf,len+1,0); // send the null terminator too
-                    }
-                } //else printf("null return from process_plugin_json\n");
-                free(line);
-            }
+                    nn_local_broadcast(plugin->pushsock,0,0,(uint8_t *)retbuf,(int32_t)strlen(retbuf)+1), plugin->numsent++;
+                    if ( Debuglevel > 2 )
+                        fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
+                }
+            } //else printf("null return from process_plugin_json\n");
+            nn_freemsg(line);
         }
-        if ( n == 0 )
+        else
         {
             startmilli = milliseconds();
             if ( PLUGNAME(_idle)(plugin) == 0 )
@@ -404,7 +422,9 @@ int32_t main
         }
     } fprintf(stderr,"ppid.%d changed to %d\n",plugin->ppid,OS_getppid());
     PLUGNAME(_shutdown)(plugin,len); // rc == 0 -> parent process died
-    shutdown_plugsocks(&plugin->all);
+    nn_shutdown(plugin->pushsock,0);
+    if ( plugin->pushsock != plugin->pullsock )
+        nn_shutdown(plugin->pullsock,0);
     free(plugin);
     return(len);
 }

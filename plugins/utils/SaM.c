@@ -12,32 +12,35 @@
 #include <stdio.h>
 #include <memory.h>
 
-#define TRIT char
-#define TRIT_FALSE -1
+#define TRIT signed char
+
+#define TRIT_FALSE 1
 #define TRIT_UNKNOWN 0
-#define TRIT_TRUE 1
+#define TRIT_TRUE -1
 
 #define SAM_HASH_SIZE 243
 #define SAM_STATE_SIZE (SAM_HASH_SIZE * 3)
-#define SAM_MAGIC_NUMBER 10
+#define SAM_NUMBER_OF_ROUNDS 9
+#define SAM_DELTA 254
+
 #define SAMHIT_LIMIT 7625597484987 // 3 ** 27
 #define MAX_CRYPTO777_HIT ((1LL << 62) / 1000)
 
 #include "bits777.c"
 #include "utils777.c"
 #include "system777.c"
-#define MAX_INPUT_SIZE ((int32_t)(4096 - sizeof(bits256) - 2*sizeof(uint32_t)))
+#define MAX_INPUT_SIZE ((int32_t)(65536 - sizeof(bits256) - 2*sizeof(uint32_t)))
 
-struct SaM_info { TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; bits384 bits; int SAM_INDICES[SAM_STATE_SIZE]; };
+struct SaM_info { TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; bits384 bits; };
 struct SaMhdr { bits384 sig; uint32_t timestamp,nonce; uint8_t numrounds,leverage; };
 
 void SaM_Initialize(struct SaM_info *state);
-int32_t SaM_Absorb(struct SaM_info *state,uint64_t numrounds,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2);
-bits384 SaM_emit(struct SaM_info *state,uint64_t numrounds);
+int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2);
+bits384 SaM_emit(struct SaM_info *state);
 uint64_t calc_SaMthreshold(int32_t leverage);
-bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxiter,int32_t numrounds);
-uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2,uint64_t numrounds);
-uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t numrounds,uint64_t threshold,uint32_t rseed,int32_t maxmillis);
+bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxite);
+uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2);
+uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis);
 #endif
 #else
 #ifndef crypto777_SaM_c
@@ -49,98 +52,78 @@ uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64
 #undef DEFINES_ONLY
 #endif
 
-static const TRIT SAM_TRITS[729] = {
-    -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1
-};
-//static int SAM_INDICES[SAM_STATE_SIZE];
+static int32_t SAM_INDICES[SAM_STATE_SIZE];
 
-void SaM_PrepareIndices(struct SaM_info *state)
+void SaM_PrepareIndices()
 {
-    int32_t i,nextIndex,currentIndex = 0;
-    for (i=0; i<SAM_STATE_SIZE; i++)
+	int32_t i,nextIndex,currentIndex = 0;
+	for (i=0; i<SAM_STATE_SIZE; i++)
     {
-        nextIndex = ((currentIndex + 1) * SAM_MAGIC_NUMBER) % SAM_STATE_SIZE;
-        state->SAM_INDICES[currentIndex] = nextIndex;
-        currentIndex = nextIndex;
-    }
+		nextIndex = (currentIndex + SAM_DELTA) % SAM_STATE_SIZE;
+		SAM_INDICES[i] = nextIndex;
+		currentIndex = nextIndex;
+	}
 }
 
-void SaM_Initialize(struct SaM_info *state)
-{
-    //if ( SAM_INDICES[0] == 0 )
-    SaM_PrepareIndices(state);//, printf("SAM_INDICES[0] -> %d\n",SAM_INDICES[0]);
-    memset(state->hash,0,sizeof(state->hash));
-    memcpy(state->trits,SAM_TRITS,sizeof(state->trits));
-}
+TRIT SaM_Bias(const TRIT a, const TRIT b) { return a == 0 ? 0 : (a == -b ? a : -a); }
+TRIT SaM_Sum(const TRIT a, const TRIT b) { return a == b ? -a : (a + b); }
 
-static TRIT SaM_Bias(const TRIT a, const TRIT b) { return a == 0 ? 0 : a == -b ? a : -a; }
-
-void SaM_SplitAndMerge(struct SaM_info *state,uint64_t numrounds)
+void SaM_SplitAndMerge(struct SaM_info *state)
 {
-    //static const TRIT SAMANY[3][3] = { { -1, -1, 0, }, { -1, 0, 1, }, { 0, 1, 1, } };
     static const TRIT SAMSUM[3][3] = { { 1, -1, 0, }, { -1, 0, 1, }, { 0, 1, -1, } };
     static const TRIT SAMBIAS[3][3] = { { 1, 1, -1, }, { 0, 0, 0, }, { 1, -1, -1, } };
-    struct SaM_info leftPart,rightPart;
-    uint64_t round;
-	int32_t i,nextIndex,current,next,currentIndex = 0;
-    if ( 0 )
-    {
-        int a,b;
-        for (a=-1; a<=1; a++)
-        {
-            printf("{ ");
-            for (b=-1; b<=1; b++)
-                printf("%d, ",SaM_Bias(a,b));
-            printf("}, ");
-        }
-        getchar();
-    }
-    if ( numrounds <= 0 )
-        return;
-	for (round=1; round<=numrounds; round++)
+	struct SaM_info leftPart,rightPart;
+	int32_t i,nextIndex,round,currentIndex = 0;
+	for (round=0; round<SAM_NUMBER_OF_ROUNDS; round++)
     {
 		for (i=0; i<SAM_STATE_SIZE; i++)
         {
-            nextIndex = state->SAM_INDICES[currentIndex];
-            current = state->trits[currentIndex] + 1, next = state->trits[nextIndex] + 1;
-            leftPart.trits[i] = SAMBIAS[current][next];//SaM_Bias(current,next);;//
-            rightPart.trits[i] = SAMBIAS[next][current];//SaM_Bias(next,current);//
-            currentIndex = state->SAM_INDICES[nextIndex];
- 		}
+			nextIndex = SAM_INDICES[i];
+			//leftPart.trits[i] = SaM_Bias(state->trits[currentIndex],state->trits[nextIndex]);
+			//rightPart.trits[i] = SaM_Bias(state->trits[nextIndex],state->trits[currentIndex]);
+			leftPart.trits[i] = SAMBIAS[state->trits[currentIndex]+1][1+state->trits[nextIndex]];
+			rightPart.trits[i] = SAMBIAS[state->trits[nextIndex]+1][1+state->trits[currentIndex]];
+			currentIndex = nextIndex;
+		}
 		for (i=0; i<SAM_STATE_SIZE; i++)
         {
-            nextIndex = state->SAM_INDICES[currentIndex];
-			state->trits[i] = SAMSUM[leftPart.trits[currentIndex]+1][rightPart.trits[nextIndex]+1];
-			currentIndex = state->SAM_INDICES[nextIndex];
+			nextIndex = SAM_INDICES[i];
+			//state->trits[i] = SaM_Sum(leftPart.trits[currentIndex],rightPart.trits[nextIndex]);
+			state->trits[i] = SAMSUM[leftPart.trits[currentIndex]+1][1+rightPart.trits[nextIndex]];
+			currentIndex = nextIndex;
 		}
 	}
 }
 
-void _SaM_Absorb(struct SaM_info *state,TRIT *input,uint32_t inputSize,uint64_t numrounds)
+void SaM_Initialize(struct SaM_info *state)
 {
-    int32_t i,n,offset = 0;
-    if ( numrounds < 2 )
-        numrounds = 2;
-    n = (inputSize / SAM_HASH_SIZE);
-    if ( n > 0 )
-    {
-        for (i=0; i<n; i++,offset+=SAM_HASH_SIZE)
-        {
-            memcpy(state->trits,&input[offset],SAM_HASH_SIZE * sizeof(TRIT));
-            SaM_SplitAndMerge(state,numrounds);
-        }
-    }
-	if ( (i= (inputSize % SAM_HASH_SIZE)) != 0 )
-    {
-		memcpy(state->trits,&input[offset],i * sizeof(TRIT));
-		SaM_SplitAndMerge(state,numrounds);
-	}
-    //for (i=0; i<SAM_HASH_SIZE; i++)
-    //    printf("%d ",state->trits[i]);
-    //printf("input trits\n");
+    int32_t i;
+    for (i=SAM_HASH_SIZE; i<SAM_STATE_SIZE; i++)
+		state->trits[i] = (i & 1) ? TRIT_FALSE : TRIT_TRUE;
 }
 
-int32_t SaM_Absorb(struct SaM_info *state,uint64_t numrounds,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2)
+void SaM_Squeeze(struct SaM_info *state,TRIT *output)
+{
+	memcpy(output,state->trits,SAM_HASH_SIZE * sizeof(TRIT));
+	SaM_SplitAndMerge(state);
+}
+
+void _SaM_Absorb(struct SaM_info *state,const TRIT *input,const int32_t inputSize)
+{
+	int32_t size,i,remainder = inputSize;
+	do
+    {
+		size = remainder >= SAM_HASH_SIZE ? SAM_HASH_SIZE : remainder;
+		memcpy(state->trits,&input[inputSize - remainder],size);
+		remainder -= SAM_HASH_SIZE;
+        if ( size < SAM_HASH_SIZE )
+            for (i=size; i<SAM_HASH_SIZE; i++)
+                state->trits[i] = (i & 1) ? TRIT_FALSE : TRIT_TRUE;
+		SaM_SplitAndMerge(state);
+	} while ( remainder > 0 );
+}
+
+int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2)
 {
     TRIT output[(MAX_INPUT_SIZE + sizeof(struct SaMhdr)) << 3];
     int32_t i,n = 0;
@@ -155,40 +138,32 @@ int32_t SaM_Absorb(struct SaM_info *state,uint64_t numrounds,const uint8_t *inpu
             output[n++] = ((input2[i >> 3] & (1 << (i & 7))) != 0);
     }
     if ( state != 0 )
-        _SaM_Absorb(state,output,n,numrounds);
+        _SaM_Absorb(state,output,n);
     return(n);
 }
 
-void SaM_Squeeze(struct SaM_info *state,TRIT *output,uint64_t numrounds)
-{
-	SaM_SplitAndMerge(state,(numrounds < SAM_MAGIC_NUMBER) ? 2 : numrounds);
-	memcpy(output,state->trits,SAM_HASH_SIZE * sizeof(TRIT));
-	SaM_SplitAndMerge(state,(numrounds < SAM_MAGIC_NUMBER) ? 2 : numrounds);
-}
+static TRIT InputA[] = { 0 }; // zero len
+static TRIT OutputA[] = { 1, -1, 1, 1, -1, -1, 0, -1, 0, 0, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0, 0, 0, 1, 1, -1, -1, 0, 0, 1, -1, -1, 0, 0, -1, 1, -1, 0, 0, -1, -1, -1, -1, 0, 0, 0, -1, 1, 0, 1, 0, -1, -1, -1, -1, 0, 1, -1, 1, -1, 0, 1, 1, 0, 0, -1, 0, 1, 1, -1, 1, 0, 0, 0, 1, 0, -1, 1, 1, 0, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 0, 1, -1, 1, -1, 0, 0, 1, 1, 1, 1, -1, 1, 1, -1, 0, 0, 1, 1, 0, 0, -1, 1, 1, -1, 0, 0, -1, 0, 0, 1, 0, 0, 0, -1, 1, -1, 0, 1, -1, 0, -1, 1, 1, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, -1, -1, 0, -1, -1, 1, 1, 0, 1, 0, 1, -1, 1, -1, -1, 0, 0, -1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, -1, 1, -1, 0, 0, 1, 0, -1, -1, -1, 1, -1, 1, -1, -1, 1, 0, 1, -1, 1, -1, 1, -1, 1, 0, 1, 0, 1, -1, -1, -1, -1, 1, 0, 0, -1, -1, 1, 0, 1, 1, -1, 1, -1, -1, -1, 0, 0, -1, 0, 1, 1, 1, 0, 1, 1, -1, 1, 1, 0, 1, 1, 1, 0, -1, 0, 0, -1, -1, -1 };
 
-int32_t SaM_test()
-{
-/*    extern char testvector[243*3*8],testhash[243];
-    struct SaM_info state;
-    int i;
-    SaM_PrepareIndices();
-    SaM_Initialize(&state);
-    _SaM_Absorb(&state,testvector,243*3,SAM_MAGIC_NUMBER);
-	SaM_SplitAndMerge(&state,SAM_MAGIC_NUMBER);
-    for (i=0; i<243; i++)
-        if ( testhash[i] != state.hash[i] )
-            printf("(%d != %d).%d ",testhash[i],state.hash[i],i);
-    printf("cmp.%d\n",memcmp(testhash,state.hash,243)); getchar();*/
-    return(0);
-}
+static TRIT InputB[] = { 0 };
+static TRIT OutputB[] = { -1, -1, -1, 1, 0, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1, 0, 0, 0, 0, 1, 1, 0, -1, 1, 0, 1, 0, 1, -1, 0, -1, 0, 0, -1, 1, -1, -1, 0, 0, 1, -1, -1, 0, 0, -1, 1, 1, 0, 1, 0, 0, 1, -1, 1, 0, -1, -1, 1, -1, 0, -1, 1, -1, 0, 0, 0, 1, -1, 0, 1, -1, 1, 1, 1, 1, -1, 1, -1, -1, 1, 0, 1, -1, -1, -1, 0, 1, 0, 0, -1, 1, 1, 0, 0, -1, 1, 1, 0, -1, -1, 0, 0, 0, -1, 1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 1, 0, 1, 0, -1, 1, 0, -1, 1, 1, -1, 1, 0, 1, -1, -1, 1, 1, 0, -1, 0, -1, -1, -1, 1, -1, -1, 1, 1, 1, 1, 1, -1, -1, 1, 0, 0, 0, 0, -1, -1, 1, 1, 1, -1, 1, 0, -1, 1, 0, 1, 0, 0, -1, -1, 1, 1, 0, 0, 1, 0, 0, 0, 0, -1, 1, 0, 0, 1, 1, 0, -1, 1, -1, 1, 0, -1, 0, 0, 1, -1, -1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, -1, 1, -1, 1, 1, 1, -1, 0, 1, 0, -1, 1, 0, 1, 1, 0, -1, 1, 1, -1, 0, -1, 1, 1, 0, -1, -1, -1, -1, 1, 0, 0, -1, -1, -1, 0, 1 };
 
-bits384 SaM_emit(struct SaM_info *state,uint64_t numrounds)
+static TRIT InputC[] = { 1 };
+static TRIT OutputC[] = { 1, -1, 1, 1, -1, -1, 0, -1, 0, 0, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0, 0, 0, 1, 1, -1, -1, 0, 0, 1, -1, -1, 0, 0, -1, 1, -1, 0, 0, -1, -1, -1, -1, 0, 0, 0, -1, 1, 0, 1, 0, -1, -1, -1, -1, 0, 1, -1, 1, -1, 0, 1, 1, 0, 0, -1, 0, 1, 1, -1, 1, 0, 0, 0, 1, 0, -1, 1, 1, 0, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 0, 1, -1, 1, -1, 0, 0, 1, 1, 1, 1, -1, 1, 1, -1, 0, 0, 1, 1, 0, 0, -1, 1, 1, -1, 0, 0, -1, 0, 0, 1, 0, 0, 0, -1, 1, -1, 0, 1, -1, 0, -1, 1, 1, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, -1, -1, 0, -1, -1, 1, 1, 0, 1, 0, 1, -1, 1, -1, -1, 0, 0, -1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, -1, 1, -1, 0, 0, 1, 0, -1, -1, -1, 1, -1, 1, -1, -1, 1, 0, 1, -1, 1, -1, 1, -1, 1, 0, 1, 0, 1, -1, -1, -1, -1, 1, 0, 0, -1, -1, 1, 0, 1, 1, -1, 1, -1, -1, -1, 0, 0, -1, 0, 1, 1, 1, 0, 1, 1, -1, 1, 1, 0, 1, 1, 1, 0, -1, 0, 0, -1, -1, -1 };
+
+static TRIT InputD[] = { -1 };
+static TRIT OutputD[] = { -1, 0, 0, 1, 1, 0, -1, 1, 1, 0, 1, 0, -1, 1, -1, 0, 0, 1, 0, -1, 0, -1, 1, 1, 1, 1, -1, 1, -1, 1, -1, 0, 0, 0, -1, -1, 1, 1, -1, 1, -1, 0, -1, 1, -1, 0, 0, -1, 0, 0, 0, -1, -1, 0, -1, 1, -1, 1, 1, 0, -1, 1, -1, 0, 0, 1, -1, 1, -1, 0, 0, 1, 1, -1, -1, -1, -1, 1, 0, 0, -1, 0, 0, -1, 0, 0, 1, -1, -1, -1, -1, 1, 1, 0, 0, -1, 1, -1, 1, 0, 0, -1, 1, -1, 0, 1, 1, -1, 1, -1, 0, -1, -1, 0, 0, 0, -1, 0, 0, -1, 1, -1, 0, -1, 1, -1, 1, 1, -1, -1, 0, 0, 0, -1, 1, -1, 1, -1, 1, 1, 1, 1, -1, 0, -1, 0, 1, 0, 0, -1, 1, -1, 0, 1, 0, 1, 1, -1, 0, 1, 1, 0, 0, -1, -1, -1, -1, 0, 1, 0, -1, -1, 0, 0, 1, 1, 1, 0, 0, -1, 1, -1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, -1, -1, 0, -1, -1, 0, -1, -1, 1, 0, 0, -1, -1, 1, 0, 0, 0, 1, 1, 0, -1, 1, -1, -1, 1, -1, -1, 1, 1, 0, 1, 0, 0, 0, -1, 1, 0, -1, -1, 0, 1, -1, 0, 0, 0, -1, -1, 1, 1 };
+
+static TRIT InputE[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static TRIT OutputE[] = { 0, 1, 0, 1, -1, -1, 1, -1, -1, 0, 0, 1, 1, -1, -1, -1, 0, 1, 0, 0, -1, -1, 1, 1, 1, -1, 0, -1, -1, -1, -1, -1, 1, -1, -1, -1, 0, 0, 1, 1, 0, 1, -1, -1, 0, -1, -1, 1, 1, 1, -1, 1, 1, 0, -1, 0, 1, -1, 1, -1, 1, 1, -1, 1, 0, -1, -1, -1, 0, 0, 1, 1, 0, -1, 0, 0, -1, 0, 0, 1, 1, -1, 0, 1, -1, -1, 1, -1, 1, -1, 0, 1, -1, 1, 0, 1, -1, -1, -1, 0, 1, -1, 0, 1, -1, 1, 0, -1, 1, -1, 1, 0, -1, -1, 1, 0, 1, 0, 0, 1, 1, 1, -1, 1, -1, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1, -1, 1, 0, 0, -1, -1, -1, -1, 0, -1, -1, -1, -1, -1, 1, 0, 0, 1, 0, -1, -1, 0, 0, -1, -1, 1, -1, 0, -1, 1, -1, 0, 1, -1, 0, 1, 1, -1, 1, -1, 1, -1, 0, 0, 0, -1, 0, -1, 1, -1, 1, 1, 1, 1, 1, 0, -1, 0, -1, -1, 0, 0, -1, -1, 1, -1, -1, -1, 1, 0, 0, 0, 1, 0, 1, 0, 1, -1, 0, -1, -1, 1, -1, -1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, -1, -1, -1, -1, 1, 0, -1, 0, 0 };
+
+bits384 SaM_emit(struct SaM_info *state)
 {
     // i.12 531441 81bf1 0.68% numbits.19 mask.7ffff -> bias -0.0005870312
     TRIT *ptr;
     uint64_t bits64;
     uint32_t i,j,rawbits,bits19[20],mask = 0x7ffff;
-	SaM_Squeeze(state,state->hash,numrounds);
+	SaM_Squeeze(state,state->hash);
     ptr = state->hash;
     for (i=0; i<SAM_HASH_SIZE/12; i++)
     {
@@ -211,6 +186,107 @@ bits384 SaM_emit(struct SaM_info *state,uint64_t numrounds)
     return(state->bits);
 }
 
+int32_t _SaM_test(char *msg,TRIT *testvector,int32_t n,TRIT *checkvals)
+{
+    struct SaM_info state; int32_t i,errs;
+    SaM_Initialize(&state);
+    _SaM_Absorb(&state,testvector,n);
+    SaM_emit(&state);
+    for (i=errs=0; i<243; i++)
+    {
+        if ( state.hash[i] != checkvals[i] )
+            errs++;
+    }
+    if ( errs != 0 )
+    {
+        for (i=0; i<243; i++)
+            printf("%2d, ",state.hash[i]);
+        printf("\nSaM_test.%s errs.%d vs output\n",msg,errs);
+    }
+    return(errs);
+}
+
+int32_t SaM_test()
+{
+    int32_t i,j,wt,iter,totalset,totalclr,setcount[48*8],clrcount[48*8],histo[16]; bits256 seed;
+    struct SaM_info state;
+    uint8_t buf[4096*2],bits[2][10][48];
+    double startmilli = milliseconds();
+    for (i=0; i<1000; i++)
+    {
+        _SaM_test("A",InputA,0,OutputA);
+        _SaM_test("B",InputB,sizeof(InputB),OutputB);
+        _SaM_test("C",InputC,sizeof(InputC),OutputC);
+        _SaM_test("D",InputD,sizeof(InputD),OutputD);
+        _SaM_test("E",InputE,sizeof(InputE),OutputE);
+    }
+    printf("per SaM %.3f\n",(milliseconds() - startmilli) / (5 * i));
+    memset(seed.bytes,0,sizeof(seed));
+    memcpy(seed.bytes,(uint8_t *)"12345678901",11);
+    for (i=0; i<243*2; i++)
+        buf[i] = 0;
+    randombytes(buf,sizeof(buf));
+    for (iter=0; iter<2; iter++)
+    {
+        memset(&state,0,sizeof(state));
+        SaM_Initialize(&state);
+        SaM_Absorb(&state,buf,243*2,0,0);
+        memset(setcount,0,sizeof(setcount));
+        memset(clrcount,0,sizeof(clrcount));
+        memset(histo,0,sizeof(histo));
+        for (i=0; i<5; i++)
+        {
+            if ( 0 && (i % 100) == 99 )
+            {
+                for (j=0; j<32; j++)
+                    seed.bytes[j] = rand() >> 8;
+                SaM_Absorb(&state,seed.bytes,sizeof(seed),0,0);
+            }
+            memset(bits[iter][i],0,sizeof(bits[iter][i]));
+            SaM_emit(&state);
+            memcpy(bits[iter][i],state.bits.bytes,sizeof(bits[iter][i]));
+            for (j=0; j<48; j++)
+            {
+                histo[bits[iter][i][j] & 0xf]++;
+                histo[(bits[iter][i][j]>>4) & 0xf]++;
+                printf("%02x ",bits[iter][i][j]);
+            }
+            printf("\n");
+            for (j=0; j<48*8; j++)
+            {
+                if ( GETBIT(bits[iter][i],j) != 0 )
+                    setcount[j]++;
+                else clrcount[j]++;
+            }
+        }
+        for (i=0; i<16; i++)
+            printf("%8d ",histo[i]);
+        printf("hex histogram\n");
+        seed.bytes[0] ^= 1;
+        buf[0] ^= 1;
+    }
+    for (i=0; i<5; i++)
+    {
+        for (j=wt=0; j<48; j++)
+        {
+            wt += bitweight(bits[0][i][j] ^ bits[1][i][j]);
+            printf("%02x",bits[0][i][j] ^ bits[1][i][j]);
+        }
+        printf(" i.%d diff.%d\n",i,wt);
+    }
+    //set.19090245 clr.19309755 -0.0057
+    //total set.19200072 clr.19199928 0.0000037500
+    // total set.19191713 clr.19208287 -0.0004316146
+    for (totalset=totalclr=j=0; j<48*8; j++)
+    {
+        totalset += setcount[j];
+        totalclr += clrcount[j];
+        printf("%.2f ",(double)(setcount[j]-clrcount[j])/i);
+    }
+    printf("total set.%d clr.%d %.10f\n",totalset,totalclr,(double)(totalset-totalclr)/(totalset+totalclr));
+    return(0);
+}
+
 uint64_t SaM_hit(struct SaM_info *state)
 {
     int32_t i; uint64_t hit = 0;
@@ -219,20 +295,20 @@ uint64_t SaM_hit(struct SaM_info *state)
     return(hit);
 }
 
-uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2,uint64_t numrounds)
+uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2)
 {
     int32_t verify_SaM(TRIT *newhash,uint8_t *buf,const int n);
     struct SaM_info state;
     SaM_Initialize(&state);
-    SaM_Absorb(&state,numrounds,input,inputSize,input2,inputSize2);
+    SaM_Absorb(&state,input,inputSize,input2,inputSize2);
     //printf("len.%d: ",inputSize+inputSize2);
-    *sigp = SaM_emit(&state,numrounds);
-    if ( 0 && input2 == 0 && numrounds == SAM_MAGIC_NUMBER )
-        verify_SaM(state.hash,(uint8_t *)input,inputSize);
+    *sigp = SaM_emit(&state);
+    //if ( 0 && input2 == 0 && numrounds == SAM_MAGIC_NUMBER )
+    //    verify_SaM(state.hash,(uint8_t *)input,inputSize);
     return(SaM_hit(&state));
 }
 
-bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxiter,int32_t numrounds)
+bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxiter)
 {
     struct SaM_info state;
     int32_t i;
@@ -241,8 +317,8 @@ bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t
     SaM_Initialize(&state);
     for (i=hashi; i<maxiter; i++)
     {
-        SaM_Absorb(&state,numrounds,hash.bytes,sizeof(hash),(uint8_t *)chainid_email,(int32_t)strlen((char *)chainid_email));
-        hash = SaM_emit(&state,numrounds);
+        SaM_Absorb(&state,hash.bytes,sizeof(hash),(uint8_t *)chainid_email,(int32_t)strlen((char *)chainid_email));
+        hash = SaM_emit(&state);
     }
     return(hash);
 }
@@ -259,13 +335,13 @@ uint64_t calc_SaMthreshold(int32_t leverage)
     return(threshold);
 }
 
-uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t numrounds,uint64_t threshold,uint32_t rseed,int32_t maxmillis)
+uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis)
 {
     uint64_t hit = SAMHIT_LIMIT;
     double startmilli = 0;
     if ( maxmillis == 0 )
     {
-        hit = calc_SaM(sigp,buf,len,0,0,numrounds);
+        hit = calc_SaM(sigp,buf,len,0,0);
         if ( hit >= threshold )
         {
             printf("nonce failure hit.%llu >= threshold.%llu\n",(long long)hit,(long long)threshold);
@@ -279,7 +355,7 @@ uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64
         if ( rseed == 0 )
             randombytes((uint8_t *)noncep,sizeof(*noncep));
         else _randombytes((uint8_t *)noncep,sizeof(*noncep),rseed);
-        hit = calc_SaM(sigp,buf,len,0,0,numrounds);
+        hit = calc_SaM(sigp,buf,len,0,0);
         //printf("%llu %.2f%% (%s) len.%d numrounds.%lld threshold.%llu seed.%u\n",(long long)hit,100.*(double)hit/threshold,(char *)buf,len,(long long)numrounds,(long long)threshold,rseed);
         if ( maxmillis != 0 && milliseconds() > (startmilli + maxmillis) )
             return(0);

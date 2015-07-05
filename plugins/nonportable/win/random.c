@@ -46,3 +46,17 @@ void randombytes(unsigned char *x,long xlen)
     CryptGenRandom(prov, xlen, x);
     CryptReleaseContext(prov, 0);
 }
+
+int32_t OS_init()
+{
+    // Initialize Windows Sockets
+    WSADATA wsadata;
+    int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
+    if (ret != NO_ERROR)
+    {
+        printf("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)\n", ret);
+        //printf("%s\n", strError.c_str());
+        return -1;
+    }
+    return(0);
+}

@@ -35,6 +35,10 @@
 #include "pair.h"
 
 #define SUPERNET_PORT 7777
+#define LB_OFFSET 1
+#define PUBGLOBALS_OFFSET 2
+#define PUBRELAYS_OFFSET 3
+#define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
 
 #define nn_errstr() nn_strerror(nn_errno())
 
@@ -59,6 +63,7 @@ int32_t OS_launch_process(char *args[]);
 int32_t OS_getppid();
 int32_t OS_getpid();
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
+char *nn_typestr(int32_t type);
 
 // only OS portable functions in this file
 #define portable_mutex_t struct nn_mutex
@@ -112,14 +117,17 @@ struct env777
 };
 
 #define DEFAULT_APISLEEP 100  // milliseconds
+#define NUM_PLUGINTAGS 8192
+
 struct SuperNET_info
 {
-    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512];
-    char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[4096],SERVICESECRET[4096],userhome[512],hostname[512];
+    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512],SERVICENXT[64];
+    char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[8192],SERVICESECRET[8192],userhome[512],hostname[512];
     uint64_t my64bits;
     uint32_t myipbits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock;
     uint16_t port,serviceport;
+    uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
     cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
@@ -178,9 +186,9 @@ struct InstantDEX_info
 #define MAX_SERVERNAME 128
 struct relayargs
 {
-    char *(*commandprocessor)(struct relayargs *args,uint8_t *msg,int32_t len);
+    //char *(*commandprocessor)(struct relayargs *args,uint8_t *msg,int32_t len);
     char name[16],endpoint[MAX_SERVERNAME];
-    int32_t lbsock,pubsock,subsock,peersock,sock,type,bindflag,sendtimeout,recvtimeout;
+    int32_t sock,type,bindflag,sendtimeout,recvtimeout;
 };
 
 #define CONNECTION_NUMBITS 10
@@ -190,10 +198,9 @@ struct direct_connection { char handler[16]; struct endpoint epbits; int32_t soc
 
 struct relay_info
 {
-    struct relayargs args[16];
-    struct _relay_info lb,peer,sub,pair,bus;
-    int32_t readyflag,pubsock,servicesock,querypeers,surveymillis,pullsock;
-    struct direct_connection directlinks[1 << CONNECTION_NUMBITS];
+    struct _relay_info active;
+    struct nn_pollfd pfd[16];
+    int32_t readyflag,subclient,lbclient,lbserver,servicesock,pubglobal,pubrelays,numservers;
 }; extern struct relay_info RELAYS;
 
 void expand_epbits(char *endpoint,struct endpoint epbits);
@@ -225,8 +232,8 @@ void process_userinput(char *line);
 char *get_localtransport(int32_t bundledflag);
 int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char *_connectaddr,int32_t timeout);
 int32_t shutdown_plugsocks(union endpoints *socks);
-int32_t nn_local_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len);
-int32_t poll_local_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis);
+int32_t nn_local_broadcast(int32_t pushsock,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len);
+//char *poll_local_endpoints(int32_t *lenp,int32_t pullsock);
 struct endpoint nn_directepbits(char *retbuf,char *transport,char *ipaddr,uint16_t port);
 int32_t nn_directsend(struct endpoint epbits,uint8_t *msg,int32_t len);
 
@@ -244,10 +251,10 @@ int32_t ismyaddress(char *server);
 void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t port,int32_t type);
 int32_t nn_portoffset(int32_t type);
 
-char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
-char *nn_direct(char *ipaddr,uint8_t *data,int32_t len);
-char *nn_publish(uint8_t *data,int32_t len,int32_t nostr);
-char *nn_allrelays(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
+char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
+//char *nn_direct(char *ipaddr,uint8_t *data,int32_t len);
+//char *nn_publish(uint8_t *data,int32_t len,int32_t nostr);
+//char *nn_allrelays(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
 char *nn_loadbalanced(uint8_t *data,int32_t len);
 char *relays_jsonstr(char *jsonstr,cJSON *argjson);
 struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
@@ -257,8 +264,8 @@ uint8_t *replace_forwarder(char *pluginbuf,uint8_t *data,int32_t *datalenp);
 int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis);
 
 char *nn_busdata_processor(uint8_t *msg,int32_t len);
-void busdata_init(int32_t sendtimeout,int32_t recvtimeout);
-void busdata_poll();
+void busdata_init(int32_t sendtimeout,int32_t recvtimeout,int32_t firstiter);
+int32_t busdata_poll();
 char *busdata_sync(char *jsonstr,char *broadcastmode);
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
@@ -268,8 +275,12 @@ uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxm
 int32_t nonce_leverage(char *broadcaststr);
 char *get_broadcastmode(cJSON *json,char *broadcastmode);
 cJSON *serviceprovider_json();
+int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,uint16_t port,int32_t sendtimeout,int32_t recvtimeout);
+int32_t nn_lbsocket(int32_t maxmillis,int32_t port,uint16_t globalport,uint16_t relaysport);
+int32_t OS_init();
+int32_t nn_settimeouts(int32_t sock,int32_t sendtimeout,int32_t recvtimeout);
 
-#define MAXTIMEDIFF 10
+#define MAXTIMEDIFF 60
 
 #endif
 #else
@@ -508,129 +519,22 @@ int32_t ismyaddress(char *server)
     return(0);
 }
 
-int32_t report_err(char *typestr,int32_t err,char *nncall,int32_t type,char *bindaddr,char *connectaddr)
-{
-    printf("%s error %d type.%d nn_%s err.%s bind.(%s) connect.(%s)\n",typestr,err,type,nncall,nn_strerror(nn_errno()),bindaddr,connectaddr!=0?connectaddr:"");
-    return(-1);
-}
-
 char *get_localtransport(int32_t bundledflag) { return(OFFSET_ENABLED ? "ipc" : "inproc"); }
 
-int32_t init_socket(char *suffix,char *typestr,int32_t type,char *_bindaddr,char *_connectaddr,int32_t timeout)
+int32_t nn_local_broadcast(int32_t sock,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len)
 {
-    int32_t sock,err = 0;
-    char bindaddr[512],connectaddr[512];
-    //printf("%s.%s bind.(%s) connect.(%s)\n",typestr,suffix,_bindaddr,_connectaddr);
-    bindaddr[0] = connectaddr[0] = 0;
-    if ( _bindaddr != 0 && _bindaddr[0] != 0 )
-        strcpy(bindaddr,_bindaddr), strcat(bindaddr,suffix);
-    if ( _connectaddr != 0 && _connectaddr[0] != 0 )
-        strcpy(connectaddr,_connectaddr), strcat(connectaddr,suffix);
-    if ( (sock= nn_socket(AF_SP,type)) < 0 )
-        return(report_err(typestr,sock,"nn_socket",type,bindaddr,connectaddr));
-    if ( bindaddr[0] != 0 )
+    int32_t i,sendlen,errs = 0;
+    if ( sock >= 0 )
     {
-        //printf("bind\n");
-        if ( (err= nn_bind(sock,bindaddr)) < 0 )
-            return(report_err(typestr,err,"nn_bind",type,bindaddr,connectaddr));
-    }
-    if ( connectaddr[0] != 0 )
-    {
-        //printf("nn_connect\n");
-        if ( (err= nn_connect(sock,connectaddr)) < 0 )
-            return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
-        else if ( type == NN_SUB && (err= nn_setsockopt(sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0)) < 0 )
-            return(report_err(typestr,err,"nn_setsockopt subscribe",type,bindaddr,connectaddr));
-    }
-    if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&timeout,sizeof(timeout)) < 0 )
-        return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
-    if ( timeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&timeout,sizeof(timeout)) < 0 )
-        return(report_err(typestr,err,"nn_connect",type,bindaddr,connectaddr));
-    if ( Debuglevel > 2 )
-        printf("%s.%s socket.%d bind.(%s) connect.(%s)\n",typestr,suffix,sock,bindaddr,connectaddr);
-    return(sock);
-}
-
-int32_t shutdown_plugsocks(union endpoints *socks)
-{
-    int32_t i,errs = 0;
-    for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
-        if ( socks->all[i] >= 0 && nn_shutdown(socks->all[i],0) != 0 )
-            errs++, printf("error (%s) nn_shutdown.%d\n",nn_strerror(nn_errno()),i);
-    return(errs);
-}
-
-int32_t nn_local_broadcast(struct allendpoints *socks,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len)
-{
-    int32_t i,sock,errs = 0;
-    for (i=0; i<(int32_t)(sizeof(socks->send)/sizeof(int32_t))+2; i++)
-    {
-        if ( i < 2 )
-            sock = (i == 0) ? socks->both.bus : socks->both.pair;
-        else sock = ((int32_t *)&socks->send)[i - 2];
-        if ( sock >= 0 )
-        {
-            if ( (len= nn_send(sock,(char *)retstr,len,0)) <= 0 )
-                errs++, printf("error %d sending to socket.%d send.%d len.%d (%s)\n",len,sock,i,len,nn_strerror(nn_errno()));
-            else if ( Debuglevel > 2 )
-                printf("nn_local_broadcast SENT.(%s) len.%d vs strlen.%ld instanceid.%llu -> sock.%d\n",retstr,len,strlen((char *)retstr),(long long)instanceid,sock);
-        }
+        for (i=0; i<10; i++)
+            if ( (nn_socket_status(sock,1) & NN_POLLOUT) != 0 )
+                break;
+        if ( (sendlen= nn_send(sock,(char *)retstr,len,0)) <= 0 )
+            errs++, printf("sending to socket.%d sendlen.%d len.%d (%s) [%s]\n",sock,sendlen,len,nn_strerror(nn_errno()),retstr);
+        else if ( Debuglevel > 2 )
+            printf("nn_local_broadcast SENT.(%s) len.%d sendlen.%d vs strlen.%ld instanceid.%llu -> sock.%d\n",retstr,len,sendlen,strlen((char *)retstr),(long long)instanceid,sock);
     }
     return(errs);
-}
-
-int32_t poll_local_endpoints(char *messages[],uint32_t *numrecvp,uint32_t numsent,union endpoints *socks,int32_t timeoutmillis)
-{
-    struct nn_pollfd pfd[sizeof(struct allendpoints)/sizeof(int32_t)];
-    int32_t len,received=0,rc,i,n = 0;
-    char *str,*msg;
-    memset(pfd,0,sizeof(pfd));
-    for (i=0; i<(int32_t)(sizeof(socks->all)/sizeof(*socks->all)); i++)
-    {
-        if ( (pfd[n].fd= socks->all[i]) >= 0 )
-            pfd[n++].events = NN_POLLIN | NN_POLLOUT;
-    }
-    if ( n > 0 )
-    {
-        if ( (rc= nn_poll(pfd,n,timeoutmillis)) > 0 )
-        {
-            for (i=0; i<n; i++)
-            {
-               // printf("n.%d i.%d check socket.%d:%d revents.%d\n",n,i,pfd[i].fd,socks->all[i],pfd[i].revents);
-                if ( (pfd[i].revents & NN_POLLIN) != 0 && (len= nn_recv(pfd[i].fd,&msg,NN_MSG,0)) > 0 )
-                {
-                    (*numrecvp)++;
-                    str = clonestr(msg);
-                    nn_freemsg(msg);
-                    messages[received++] = str;
-                    if ( Debuglevel > 2 )
-                        printf("(%d %d) %d %.6f RECEIVED.%d i.%d/%ld (%s)\n",*numrecvp,numsent,received,milliseconds(),n,i,sizeof(socks->all)/sizeof(*socks->all),str);
-                }
-            }
-        }
-        else if ( rc < 0 )
-            printf("%s Error.%d polling %d daemons [0] == %d\n",nn_strerror(nn_errno()),rc,n,pfd[0].fd);
-    }
-    //if ( n != 0 || received != 0 )
-    //   printf("n.%d: received.%d\n",n,received);
-    return(received);
-}
-
-void MGW_loop()
-{
-    int32_t poll_daemons(); char *SuperNET_JSON(char *JSONstr);
-    int i,n,timeoutmillis = 10;
-    char *messages[100],*msg;
-    poll_daemons();
-    if ( (n= poll_local_endpoints(messages,&MGW.numrecv,MGW.numsent,&MGW.all,timeoutmillis)) > 0 )
-    {
-        for (i=0; i<n; i++)
-        {
-            msg = SuperNET_JSON(messages[i]);
-            printf("%d of %d: (%s)\n",i,n,msg);
-            free(messages[i]);
-        }
-    }
 }
 
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag)

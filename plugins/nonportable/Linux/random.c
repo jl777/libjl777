@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+int32_t OS_init() { return(0); }
 int32_t OS_getpid() { return(getpid()); }
 int32_t OS_getppid() { return(getppid()); }
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags) { return(waitpid(childpid,statusp,flags)); }

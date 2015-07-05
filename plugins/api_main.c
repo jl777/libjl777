@@ -30,8 +30,8 @@ void process_json(cJSON *json,int32_t publicaccess)
     apitag = _crc32(0,jsonstr,len);
     sprintf(endpoint,"ipc://api.%u",apitag);
     free(jsonstr);
-    recvtimeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),10000);
-    sendtimeout = 5000;
+    recvtimeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),30000);
+    sendtimeout = 30000;
     randombytes(&tag,sizeof(tag));
     if ( cJSON_GetObjectItem(json,"tag") == 0 )
         cJSON_AddItemToObject(json,"tag",cJSON_CreateNumber(tag));
@@ -92,8 +92,10 @@ fprintf(stderr,"set NXTAPIURL.(%s)\n",urlbuf);
 
 int main(int argc, char **argv)
 {
+    int32_t OS_init();
     CGI_varlist *varlist; const char *name; CGI_value  *value;  int i,j,iter,publicaccess = 0,portflag = 0; cJSON *json; long offset;
     char urlbuf[512],namebuf[512],postbuf[65536],*retstr,*delim,*url = 0;
+    OS_init();
     setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
     json = cJSON_CreateObject();
     for (i=j=0; argv[0][i]!=0; i++)
@@ -154,6 +156,7 @@ fprintf(stderr,"namebuf.(%s)\n",namebuf);
     fputs("Access-Control-Allow-Headers: Authorization, Content-Type\r\n",stdout);
     fputs("Access-Control-Allow-Credentials: true\r\n",stdout);
     fputs("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n",stdout);
+    fputs("Cache-Control: no-cache, no-store, must-revalidate\r\n",stdout);
     fputs("Content-type: text/plain\r\n",stdout);
     if ( url != 0 )
     {

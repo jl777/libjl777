@@ -581,6 +581,8 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 #include "plugins/plugins.h"
 #undef DEFINES_ONLY
 
+struct pending_cgi { struct queueitem DL; char apitag[24],*jsonstr; cJSON *json; int32_t sock,retind; };
+
 char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
 {
     char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*str,*retstr;
@@ -608,12 +610,114 @@ char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
 
 int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_newpeer.(%s)\n",ip_port); return(0); }
 
+void *issue_cgicall(void *_ptr)
+{
+    char apitag[1024],plugin[1024],method[1024],*str = 0,*broadcaststr; int32_t checklen,retlen,timeout; struct pending_cgi *ptr =_ptr;
+    copy_cJSON(apitag,cJSON_GetObjectItem(ptr->json,"apitag"));
+    safecopy(ptr->apitag,apitag,sizeof(ptr->apitag));
+    copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"agent"));
+    if ( plugin[0] == 0 )
+        copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"plugin"));
+    copy_cJSON(method,cJSON_GetObjectItem(ptr->json,"method"));
+    timeout = get_API_int(cJSON_GetObjectItem(ptr->json,"timeout"),SUPERNET.PLUGINTIMEOUT);
+    broadcaststr = cJSON_str(cJSON_GetObjectItem(ptr->json,"broadcast"));
+    fprintf(stderr,"sock.%d (%s) API RECV.(%s)\n",ptr->sock,broadcaststr!=0?broadcaststr:"",ptr->jsonstr);
+    if ( ptr->sock >= 0 && (ptr->retind= nn_connect(ptr->sock,apitag)) < 0 )
+        fprintf(stderr,"error connecting to (%s)\n",apitag);
+    else
+    {
+        if ( strcmp(plugin,"relay") == 0 || (broadcaststr != 0 && strcmp(broadcaststr,"publicaccess") == 0) || cJSON_str(cJSON_GetObjectItem(ptr->json,"servicename")) != 0 )
+        {
+            //printf("call busdata_sync\n");
+            str = busdata_sync(ptr->jsonstr,broadcaststr);
+            //printf("got.(%s)\n",str);
+        }
+        else
+        {
+            //printf("call plugin_method.(%s)\n",ptr->jsonstr);
+            /*ptr->retstr = 0;
+            if ( 0 )
+            {
+                str = plugin_method(ptr->sock,&ptr->retstr,1,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout);
+                if ( str != 0 )
+                    free(str);
+                while ( ptr->retstr == 0 )
+                    msleep(10);
+                str = ptr->retstr, ptr->retstr = 0;
+            }
+            else */str = plugin_method(ptr->sock,0,1,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout);
+        }
+        if ( str != 0 )
+        {
+            int32_t busdata_validate(char *forwarder,char *sender,uint32_t *timestamp,uint8_t *databuf,int32_t *datalenp,void *msg,cJSON *json);
+            char forwarder[512],sender[512],methodstr[512]; uint32_t timestamp = 0; uint8_t databuf[8192]; int32_t valid=-1,datalen; cJSON *retjson,*argjson;
+            forwarder[0] = sender[0] = 0;
+            if ( (retjson= cJSON_Parse(str)) != 0 )
+            {
+                if ( is_cJSON_Array(retjson) != 0 && cJSON_GetArraySize(retjson) == 2 )
+                {
+                    argjson = cJSON_GetArrayItem(retjson,0);
+                    copy_cJSON(methodstr,cJSON_GetObjectItem(argjson,"method"));
+                    if ( strcmp(methodstr,"busdata") == 0 )
+                    {
+                        //fprintf(stderr,"call validate\n");
+                        if ( (valid= busdata_validate(forwarder,sender,&timestamp,databuf,&datalen,str,retjson)) > 0 )
+                        {
+                            if ( datalen > 0 )
+                            {
+                                free(str);
+                                str = malloc(datalen);
+                                memcpy(str,databuf,datalen);
+                            }
+                        }
+                    }
+                }
+                free_json(retjson);
+            }
+            //fprintf(stderr,"sock.%d mainstr.(%s) valid.%d sender.(%s) forwarder.(%s) time.%u\n",ptr->sock,str,valid,sender,forwarder,timestamp);
+            if ( ptr->sock >= 0 )
+            {
+                retlen = (int32_t)strlen(str) + 1;
+                if ( (checklen= nn_send(ptr->sock,str,retlen,0)) != retlen )
+                    fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
+                free(str), str = 0;
+            }
+        } else printf("null str returned\n");
+    }
+    if ( ptr->sock >= 0 )
+    {
+        //nn_freemsg(ptr->jsonstr);
+        nn_shutdown(ptr->sock,ptr->retind);
+        if ( str != 0 )
+            free(str), str = 0;
+    }
+    free_json(ptr->json);
+    free(ptr);
+    return(str);
+}
+
+char *process_nn_message(int32_t sock,char *jsonstr)
+{
+    cJSON *json; struct pending_cgi *ptr; char *retstr = 0;
+    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+    {
+        ptr = calloc(1,sizeof(*ptr));
+        ptr->sock = sock;
+        ptr->json = json;
+        ptr->jsonstr = jsonstr;
+        if ( sock >= 0 )
+            portable_thread_create((void *)issue_cgicall,ptr);
+        else retstr = issue_cgicall(ptr);
+    } //else if ( sock >= 0 ) free(jsonstr);
+    return(retstr);
+}
+
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],*bstr,*retstr;
+    char buf[65536],plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],*bstr,*retstr;
     uint64_t daemonid,instanceid,tag;
-    int32_t timeout,broadcastflag = 0;
+    int32_t broadcastflag = 0;
     cJSON *json;
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
@@ -640,10 +744,13 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
             if ( plugin[0] == 0 && set_first_plugin(plugin,method) < 0 )
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
-        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),SUPERNET.PLUGINTIMEOUT);
-        return(process_user_json(plugin,method,jsonstr,broadcastflag,timeout));
-        //return(plugin_method(0,previpaddr==0,plugin,method,daemonid,instanceid,jsonstr,0,timeout));
-    } else return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
+        if ( strlen(jsonstr) < sizeof(buf)-1)
+        {
+            strcpy(buf,jsonstr);
+            return(process_nn_message(-1,buf));
+        }
+    }
+    return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 
 char *SuperNET_JSON(char *jsonstr) // BTCD's entry point
@@ -697,7 +804,7 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"db777","",0,0,1,(char *)"db777",jsonargs,call_system);
     while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"db777",0,0) == 0 )
          poll_daemons();
-    if ( 1 || SUPERNET.gatewayid >= 0 )
+    if ( SUPERNET.gatewayid >= 0 )
     {
         strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
         while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
@@ -706,19 +813,22 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
     while ( COINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 )
         poll_daemons();
-    strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
-    while ( RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )
-        poll_daemons();
+    if ( SUPERNET.gatewayid >= 0 )
+    {
+        strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
+        while ( RAMCHAINS.readyflag == 0 || find_daemoninfo(&ind,"ramchain",0,0) == 0 )
+            poll_daemons();
+    }
     strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
     while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 )
         poll_daemons();
-    strs[n++] = language_func((char *)"peers","",0,0,1,(char *)"peers",jsonargs,call_system);
+    /*strs[n++] = language_func((char *)"peers","",0,0,1,(char *)"peers",jsonargs,call_system);
     while ( PEERS.readyflag == 0 || find_daemoninfo(&ind,"peers",0,0) == 0 )
         poll_daemons();
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
     while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
-        poll_daemons();
-    if ( SUPERNET.disableNXT == 0 && SUPERNET.iamrelay == 0 )
+        poll_daemons();*/
+    if ( SUPERNET.iamrelay <= 1 )
     {
         strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
         while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
@@ -737,77 +847,30 @@ void SuperNET_loop(void *ipaddr)
     serverloop(0);
 }
 
-#define SUPERNET_APIENDPOINT "tcp://127.0.0.1:7776"
-struct pending_cgi { struct queueitem DL; char apitag[24],*retstr,*jsonstr; cJSON *json; int32_t sock,retind; };
-/*queue_t cgiQ[2];
-
-int32_t SuperNET_apireturn(int32_t retsock,int32_t retind,char *apitag,char *retstr)
-{
-    int32_t retlen,checklen;
-    retlen = (int32_t)strlen(retstr) + 1;
-    //if ( (ind= nn_connect(sock,apitag)) < 0 )
-    //    fprintf(stderr,"error connecting to (%s)\n",apitag);
-    //else
-    {
-        if ( (checklen= nn_send(retsock,retstr,retlen,0)) != retlen )
-            fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
-        return(nn_shutdown(retsock,retind));
-    }
-    return(-1);
-}*/
-
-void *issue_cgicall(void *_ptr)
-{
-    char apitag[1024],plugin[1024],method[1024],*str,*broadcaststr; int32_t checklen,retlen,timeout; struct pending_cgi *ptr =_ptr;
-    copy_cJSON(apitag,cJSON_GetObjectItem(ptr->json,"apitag"));
-    safecopy(ptr->apitag,apitag,sizeof(ptr->apitag));
-    copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"agent"));
-    if ( plugin[0] == 0 )
-        copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"plugin"));
-    copy_cJSON(method,cJSON_GetObjectItem(ptr->json,"method"));
-    timeout = get_API_int(cJSON_GetObjectItem(ptr->json,"timeout"),SUPERNET.PLUGINTIMEOUT);
-    broadcaststr = cJSON_str(cJSON_GetObjectItem(ptr->json,"broadcast"));
-    fprintf(stderr,"(%s) API RECV.(%s)\n",broadcaststr!=0?broadcaststr:"",ptr->jsonstr);
-    if ( (ptr->retind= nn_connect(ptr->sock,apitag)) < 0 )
-        fprintf(stderr,"error connecting to (%s)\n",apitag);
-    else if ( (str= busdata_sync(ptr->jsonstr,broadcaststr)) != 0 )
-    {
-        retlen = (int32_t)strlen(str) + 1;
-        if ( (checklen= nn_send(ptr->sock,str,retlen,0)) != retlen )
-            fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
-    }
-    nn_shutdown(ptr->sock,ptr->retind);
-    free_json(ptr->json);
-    nn_freemsg(ptr->jsonstr);
-    free(ptr);
-    return(0);
-}
-
 void SuperNET_apiloop(void *ipaddr)
 {
-    char *jsonstr; int32_t sock,len,recvtimeout; cJSON *json; struct pending_cgi *ptr;
+    char buf[65536],*jsonstr,*str; int32_t sock,len;
     if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
     {
         if ( nn_bind(sock,SUPERNET_APIENDPOINT) < 0 )
-            fprintf(stderr,"error binding to relaypoint sock.%d type.%d (%s) %s\n",sock,NN_PAIR,SUPERNET_APIENDPOINT,nn_errstr());
+            fprintf(stderr,"error binding to relaypoint sock.%d type.%d (%s) %s\n",sock,NN_BUS,SUPERNET_APIENDPOINT,nn_errstr());
         else
         {
-            recvtimeout = 1;
-            if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
+            if ( nn_settimeouts(sock,10,1) < 0 )
                 fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
-            fprintf(stderr,"BIND.(%s)\n",SUPERNET_APIENDPOINT);
+            fprintf(stderr,"BIND.(%s) sock.%d\n",SUPERNET_APIENDPOINT,sock);
             while ( 1 )
             {
                 if ( (len= nn_recv(sock,&jsonstr,NN_MSG,0)) > 0 )
                 {
-                    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                    fprintf(stderr,"apirecv.(%s)\n",jsonstr);
+                    if ( strlen(jsonstr) < sizeof(buf) )
                     {
-                        ptr = calloc(1,sizeof(*ptr));
-                        ptr->sock = sock;
-                        ptr->json = json;
-                        ptr->jsonstr = jsonstr;
-                        portable_thread_create((void *)issue_cgicall,ptr);
-                    } else nn_freemsg(jsonstr);
+                        strcpy(buf,jsonstr);
+                        nn_freemsg(jsonstr);
+                        if ( (str= process_nn_message(sock,buf)) != 0 )
+                            free(str);
+                    }
                 }
             }
         }
@@ -815,88 +878,16 @@ void SuperNET_apiloop(void *ipaddr)
     }
 }
     
-    /*
-    
-                        copy_cJSON(apitag,cJSON_GetObjectItem(json,"apitag"));
-                        safecopy(ptr->apitag,apitag,sizeof(ptr->apitag));
-                        copy_cJSON(plugin,cJSON_GetObjectItem(json,"agent"));
-                        if ( plugin[0] == 0 )
-                            copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
-                        copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
-                        timeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),SUPERNET.PLUGINTIMEOUT);
-                        broadcaststr = cJSON_str(cJSON_GetObjectItem(json,"broadcast"));
-                        fprintf(stderr,"(%s) API RECV.(%s)\n",broadcaststr!=0?broadcaststr:"",jsonstr);
-                        if ( (ptr->retind= nn_connect(sock,apitag)) < 0 )
-                            fprintf(stderr,"error connecting to (%s)\n",apitag);
-                        else
-                        {
-                            if ( 1 )
-                            {
-                                str = busdata_sync(jsonstr,broadcaststr);
-                                if ( str != 0 )
-                                {
-                                    free_json(json);
-                                    SuperNET_apireturn(sock,ptr->retind,apitag,str);
-                                    nn_freemsg(jsonstr);
-                                    free(ptr);
-                                    continue;
-                                }
-                            }
-                            else
-                            {
-                                void *data; int32_t datalen;
-                                //retstr = call_SuperNET_JSON(jsonstr);
-                                //char *plugin_method(char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
-                                if ( (data= create_busdata(&datalen,jsonstr,broadcaststr)) != 0 )
-                                {
-                                    //if ( (str= nn_busdata_processor(data,datalen)) != 0 )
-                                    if ( (str= plugin_method(&ptr->retstr,1,plugin,method,0,0,data,datalen,timeout)) != 0 )
-                                    {
-                                        if ( (retjson= cJSON_Parse(str)) != 0 )
-                                        {
-                                            copy_cJSON(errstr,cJSON_GetObjectItem(retjson,"error"));
-                                            free_json(retjson);
-                                        }
-                                    }
-                                    free(data);
-                                }
-                            }
-                        }
-                        free_json(json);
-                        if ( str != 0 )
-                        {
-                            if ( errstr[0] != 0 )
-                                SuperNET_apireturn(sock,ptr->retind,apitag,str);
-                            free(str);
-                            free(ptr);
-                        } else queue_enqueue("cgiQ",&cgiQ[0],&ptr->DL);
-                    }
-                    nn_freemsg(jsonstr);
-                }
-                for (iter=0; iter<2; iter++)
-                {
-                    if ( (ptr= queue_dequeue(&cgiQ[iter],0)) != 0 )
-                    {
-                        if ( ptr->retstr != 0 )
-                        {
-                            SuperNET_apireturn(sock,ptr->retind,ptr->apitag,ptr->retstr);
-                            free(ptr->retstr);
-                            free(ptr);
-                        } else queue_enqueue("cgiQ2",&cgiQ[iter ^ 1],&ptr->DL);
-                    }
-                }
-            }
-        }
-        nn_shutdown(sock,0);
-    }
-    return;
-}*/
-
 int SuperNET_start(char *fname,char *myip)
 {
+    int32_t init_SUPERNET_pullsock(int32_t sendtimeout,int32_t recvtimeout);
     int32_t parse_ipaddr(char *ipaddr,char *ip_port);
+    void SaM_PrepareIndices();
     char ipaddr[256],*jsonstr = 0;
     uint64_t allocsize;
+    OS_init();
+    SaM_PrepareIndices();
+    init_SUPERNET_pullsock(10,1);
     Debuglevel = 2;
     if ( (jsonstr= loadfile(&allocsize,fname)) == 0 )
         jsonstr = clonestr("{}");
@@ -922,6 +913,12 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
+    //void SaM_PrepareIndices();
+    //int32_t SaM_test();
+    //SaM_PrepareIndices();
+    //SaM_test();
+    //printf("finished SaM_test\n");
+    //getchar();
     if ( 0 )
     {
         bits128 calc_md5(char digeststr[33],void *buf,int32_t len);

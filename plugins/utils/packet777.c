@@ -14,10 +14,10 @@ void crypto777_encrypt(HUFF *dest,HUFF *src,int32_t len,struct crypto777_user *s
     hseek(dest,len << 3,SEEK_SET), hrewind(dest), hseek(src,len << 3,SEEK_SET), hrewind(src);
     calc_sha256cat(hash.bytes,(uint8_t *)&sender->nxt64bits,sizeof(sender->nxt64bits),(uint8_t *)&timestamp,sizeof(timestamp));
     SaM_Initialize(&sender->XORpad);
-    SaM_Absorb(&sender->XORpad,NUMROUNDS_ENCRYPT,hash.bytes,sizeof(hash.bytes),sender->shared_SaM.bytes,sizeof(sender->shared_SaM));
+    SaM_Absorb(&sender->XORpad,hash.bytes,sizeof(hash.bytes),sender->shared_SaM.bytes,sizeof(sender->shared_SaM));
     while ( len >= sizeof(xorpad) )
     {
-        SaM_emit(&sender->XORpad,NUMROUNDS_ENCRYPT);
+        SaM_emit(&sender->XORpad);
         for (i=0; i<6; i++)
             xorpad.ulongs[i] = (sender->XORpad.bits.ulongs[i] ^ ptr[i]);//, printf("%llx ",(long long)xorpad.ulongs[i]);
         ptr += 6;
@@ -25,7 +25,7 @@ void crypto777_encrypt(HUFF *dest,HUFF *src,int32_t len,struct crypto777_user *s
     }
     if ( len > 0 )
     {
-        SaM_emit(&sender->XORpad,NUMROUNDS_ENCRYPT);
+        SaM_emit(&sender->XORpad);
         for (i=0; i<len; i++)
             xorpad.bytes[i] = (sender->XORpad.bits.bytes[i] ^ ((uint8_t *)ptr)[i]);//, printf("%2x ",xorpad.bytes[i]);
         hmemcpy(0,xorpad.bytes,dest,len), len -= sizeof(xorpad);
@@ -69,7 +69,7 @@ struct crypto777_packet *crypto777_packet(struct crypto777_link *conn,uint32_t *
         bufs->threshold = calc_SaMthreshold(leverage);
         len += (int32_t)(sizeof(*hdr) - sizeof(hdr->sig));
         //printf("+= %d | %ld = (%ld - %ld)\n",len,sizeof(*hdr) - sizeof(hdr->sig),sizeof(*hdr),sizeof(hdr->sig));
-        if ( (hit = SaMnonce(&hdr->sig,&hdr->nonce,&bufs->origmsg[sizeof(hdr->sig)],len,hdr->numrounds,bufs->threshold,rseed,maxmillis)) == 0 )
+        if ( (hit = SaMnonce(&hdr->sig,&hdr->nonce,&bufs->origmsg[sizeof(hdr->sig)],len,bufs->threshold,rseed,maxmillis)) == 0 )
         {
             printf("crypto777_packet cant find nonce: numrounds.%d leverage.%d\n",hdr->numrounds,leverage);
             free(bufs);
@@ -112,7 +112,7 @@ struct crypto777_packet *crypto777_packet(struct crypto777_link *conn,uint32_t *
         {
             bufs->threshold = calc_SaMthreshold(leverage);
             len = bufs->recvlen - sizeof(hdr->sig);
-            hit = calc_SaM(&checksig,&bufs->recvbuf[sizeof(hdr->sig)],len,0,0,numrounds);
+            hit = calc_SaM(&checksig,&bufs->recvbuf[sizeof(hdr->sig)],len,0,0);
             len -= (sizeof(*hdr) - sizeof(hdr->sig));
             if ( hit >= bufs->threshold || memcmp(checksig.bytes,hdr->sig.bytes,sizeof(checksig)) != 0 )
             {

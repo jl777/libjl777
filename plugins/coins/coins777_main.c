@@ -44,6 +44,13 @@ int32_t coins_idle(struct plugin_info *plugin)
                             mgw_calc_unspent(smallestaddr,smallestaddrB,coin);
                         coin->mgw.lastupdate = milliseconds();
                     }
+                    /*if ( coin->mgw.marker[0] != 0 && coin->ramchain.startmilli == 0 && coin->ramchain.readyflag == 0 )
+                    {
+                        uint32_t ramchain_prepare(struct coin777 *coin,struct ramchain *ramchain);
+                        ramchain_prepare(coin,&coin->ramchain);
+                        coin->ramchain.readyflag = 1;
+                        coin->ramchain.paused = 0;
+                    }*/
                 }
             }
         }
@@ -145,6 +152,7 @@ void set_coinconfname(char *fname,char *coinstr,char *userhome,char *coindir,cha
         confname = buf;
         sprintf(confname,"%s.conf",buf);
     }
+    printf("userhome.(%s) coindir.(%s) confname.(%s)\n",userhome,coindir,confname);
     sprintf(fname,"%s/%s/%s",userhome,coindir,confname);
 }
 
@@ -217,8 +225,8 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         coin->mgw.issuerbits = conv_acctstr(coin->mgw.issuer);
         printf(">>>>>>>>>>>> a issuer.%s %llu assetid.%llu minoutput.%llu\n",coin->mgw.issuer,(long long)coin->mgw.issuerbits,(long long)coin->mgw.assetidbits,(long long)coin->minoutput);
         uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits);
-        set_assetname(0,coin->mgw.assetname,calc_nxt64bits(coin->mgw.assetidstr));
-        coin->mgw.ap_mult = assetmult(coin->mgw.assetidstr);
+        set_assetname(&coin->mgw.ap_mult,coin->mgw.assetname,coin->mgw.assetidbits);
+        printf("assetname.(%s) mult.%llu\n",coin->mgw.assetname,coin->mgw.ap_mult);
         strcpy(coin->mgw.coinstr,coinstr);
         if ( (coin->mgw.special= cJSON_GetObjectItem(argjson,"special")) == 0 )
             coin->mgw.special = cJSON_GetObjectItem(COINS.argjson,"special");
@@ -235,7 +243,6 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         coin->mgw.NXTfee_equiv = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"NXTfee_equiv_satoshis"));
         if ( coin->mgw.NXTfee_equiv == 0 )
             coin->mgw.NXTfee_equiv = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(argjson,"NXTfee_equiv")));
-        copy_cJSON(coin->mgw.marker,cJSON_GetObjectItem(argjson,"marker"));
         copy_cJSON(coin->mgw.opreturnmarker,cJSON_GetObjectItem(argjson,"opreturnmarker"));
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
         copy_cJSON(coin->mgw.marker2,cJSON_GetObjectItem(argjson,"marker2"));
@@ -249,6 +256,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
             if ( coin->mgw.NXTfee_equiv != 0 && coin->mgw.txfee != 0 )
                 coin->mgw.NXTconvrate = ((double)coin->mgw.NXTfee_equiv / coin->mgw.txfee);
         }
+        copy_cJSON(coin->mgw.marker,cJSON_GetObjectItem(argjson,"marker"));
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
     }
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
@@ -380,7 +388,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
     }
     //printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s slice.%d\n",SUPERNET.myNXTaddr,initflag,plugin->name,COINS.slicei);
-    return((int32_t)strlen(retbuf));
+    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

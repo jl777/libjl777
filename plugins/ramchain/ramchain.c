@@ -103,6 +103,7 @@ int32_t ramchain_resume(char *retbuf,int32_t maxlen,struct coin777 *coin,struct 
         ramchain_prepare(coin,ramchain);
     ramchain->readyflag = 1;
     ramchain->paused = 0;
+    sprintf(retbuf,"{\"result\":\"success\"}");
     return(0);
 }
 

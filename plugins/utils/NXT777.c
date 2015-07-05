@@ -178,6 +178,8 @@ int32_t get_assetdecimals(uint64_t assetid);
 uint64_t get_assetmult(uint64_t assetid);
 double get_minvolume(uint64_t assetid);
 uint64_t min_asset_amount(uint64_t assetid);
+uint64_t RS_decode(char *rs);
+int32_t RS_encode(char *rsaddr,uint64_t id);
 
 #endif
 #else
@@ -190,10 +192,11 @@ uint64_t min_asset_amount(uint64_t assetid);
 #undef DEFINES_ONLY
 #endif
 #include "tweetnacl.c"
-#if __i686__ || __i386__
-#include "curve25519-donna.c"
-#else
+//__i686__ || __i386__
+#if __amd64__
 #include "curve25519-donna-c64.c"
+#else
+#include "curve25519-donna.c"
 #endif
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
@@ -458,8 +461,9 @@ uint64_t issue_broadcastTransaction(int32_t *errcodep,char **retstrp,char *txbyt
 {
     cJSON *json,*errjson;
     uint64_t txid = 0;
-    char cmd[4096],*retstr;
-    sprintf(cmd,"requestType=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",NXTACCTSECRET,txbytes);
+    char cmd[4096],secret[8192],*retstr;
+    escape_code(secret,NXTACCTSECRET);
+    sprintf(cmd,"requestType=broadcastTransaction&secretPhrase=%s&transactionBytes=%s",secret,txbytes);
     retstr = issue_NXTPOST(cmd);
     *errcodep = -1;
     if ( retstrp != 0 )
@@ -490,8 +494,9 @@ uint64_t issue_broadcastTransaction(int32_t *errcodep,char **retstrp,char *txbyt
 
 char *issue_signTransaction(char *txbytes,char *NXTACCTSECRET)
 {
-    char cmd[4096];
-    sprintf(cmd,"requestType=signTransaction&secretPhrase=%s&unsignedTransactionBytes=%s",NXTACCTSECRET,txbytes);
+    char cmd[4096],secret[8192];
+    escape_code(secret,NXTACCTSECRET);
+    sprintf(cmd,"requestType=signTransaction&secretPhrase=%s&unsignedTransactionBytes=%s",secret,txbytes);
     return(issue_NXTPOST(cmd));
 }
 
@@ -560,12 +565,13 @@ uint64_t _get_AEquote(char *str,uint64_t orderid)
 
 char *cancel_orderid(char *NXTaddr,uint64_t orderid)
 {
-    uint64_t nxt64bits; char cmd[1025],*str = "Bid",*retstr = 0;
+    uint64_t nxt64bits; char cmd[1025],secret[8192],*str = "Bid",*retstr = 0;
     if ( (nxt64bits= _get_AEquote(str,orderid)) == 0 )
         str = "Ask", nxt64bits = _get_AEquote(str,orderid);
     if ( nxt64bits == calc_nxt64bits(NXTaddr) )
     {
-        sprintf(cmd,"requestType=cancel%sOrder&secretPhrase=%s&feeNQT=%lld&deadline=%d&order=%llu",str,SUPERNET.NXTACCTSECRET,(long long)MIN_NQTFEE,DEFAULT_NXT_DEADLINE,(long long)orderid);
+        escape_code(secret,SUPERNET.NXTACCTSECRET);
+        sprintf(cmd,"requestType=cancel%sOrder&secretPhrase=%s&feeNQT=%lld&deadline=%d&order=%llu",str,secret,(long long)MIN_NQTFEE,DEFAULT_NXT_DEADLINE,(long long)orderid);
         retstr = issue_NXTPOST(cmd);
         //printf("(%s) -> (%s)\n",cmd,retstr);
     }
@@ -1438,6 +1444,122 @@ uint64_t calc_txid(unsigned char *buf,int32_t len)
     //printf("calc_txid.(%llu)\n",(long long)txid);
     //return(hash[0] ^ hash[1] ^ hash[2] ^ hash[3]);
     return(txid);
+}
+
+/*
+ NXT address converter,
+ Ported from original javascript (nxtchg)
+ To C by Jones
+ */
+
+int32_t gexp[] = {1, 2, 4, 8, 16, 5, 10, 20, 13, 26, 17, 7, 14, 28, 29, 31, 27, 19, 3, 6, 12, 24, 21, 15, 30, 25, 23, 11, 22, 9, 18, 1};
+int32_t glog[] = {0, 0, 1, 18, 2, 5, 19, 11, 3, 29, 6, 27, 20, 8, 12, 23, 4, 10, 30, 17, 7, 22, 28, 26, 21, 25, 9, 16, 13, 14, 24, 15};
+int32_t cwmap[] = {3, 2, 1, 0, 7, 6, 5, 4, 13, 14, 15, 16, 12, 8, 9, 10, 11};
+char alphabet[] = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+int32_t gmult(int32_t a,int32_t b)
+{
+    if ( a == 0 || b == 0 )
+        return 0;
+    int32_t idx = (glog[a] + glog[b]) % 31;
+    return gexp[idx];
+}
+
+int32_t letterval(char letter)
+{
+    int32_t ret = 0;
+    if ( letter < '9' )
+        ret = letter - '2';
+    else
+    {
+        ret = letter - 'A' + 8;
+        if ( letter > 'I' )
+            ret--;
+        if ( letter > 'O' )
+            ret--;
+    }
+    return ret;
+}
+
+uint64_t RS_decode(char *rs)
+{
+    int32_t code[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int32_t i,p = 4;
+    if ( strncmp("NXT-",rs,4) != 0 )
+        return(0);
+    for (i=0; i<17; i++)
+    {
+        code[cwmap[i]] = letterval(rs[p]);
+        p++;
+        if ( rs[p] == '-' )
+            p++;
+    }
+    uint64_t out = 0;
+    for (i=12; i>=0; i--)
+        out = out * 32 + code[i];
+    return out;
+}
+
+int32_t RS_encode(char *rsaddr,uint64_t id)
+{
+    int32_t a,code[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int32_t inp[32],out[32],i,pos = 0,len = 0;
+    char acc[64];
+    sprintf(acc,"%lld",(long long)id);
+    for (a=0; *(acc+a) != '\0'; a++)
+        len ++;
+    if ( len == 20 && *acc != '1' )
+    {
+        strcpy(rsaddr,"error");
+        return(-1);
+    }
+    for (i=0; i<len; i++)
+        inp[i] = (int32_t)*(acc+i) - (int32_t)'0';
+    int32_t divide = 0;
+    int32_t newlen = 0;
+    do // base 10 to base 32 conversion
+    {
+        divide = 0;
+        newlen = 0;
+        for (i=0; i<len; i++)
+        {
+            divide = divide * 10 + inp[i];
+            if (divide >= 32)
+            {
+                inp[newlen++] = divide >> 5;
+                divide &= 31;
+            }
+            else if ( newlen > 0 )
+                inp[newlen++] = 0;
+        }
+        len = newlen;
+        out[pos++] = divide;
+    } while ( newlen != 0 );
+    for (i=0; i<13; i++) // copy to code in reverse, pad with 0's
+        code[i] = (--pos >= 0 ? out[i] : 0);
+    int32_t p[] = {0, 0, 0, 0};
+    for (i=12; i>=0; i--)
+    {
+        int32_t fb = code[i] ^ p[3];
+        p[3] = p[2] ^ gmult(30, fb);
+        p[2] = p[1] ^ gmult(6, fb);
+        p[1] = p[0] ^ gmult(9, fb);
+        p[0] = gmult(17, fb);
+    }
+    code[13] = p[0];
+    code[14] = p[1];
+    code[15] = p[2];
+    code[16] = p[3];
+    strcpy(rsaddr,"NXT-");
+    int32_t j=4;
+    for (i=0; i<17; i++)
+    {
+        rsaddr[j++] = alphabet[code[cwmap[i]]];
+        if ( (j % 5) == 3 && j < 20 )
+            rsaddr[j++] = '-';
+    }
+    rsaddr[j] = 0;
+    return(0);
 }
 
 #endif

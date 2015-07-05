@@ -492,7 +492,7 @@ char *bid_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32
 {
     char offerNXT[MAX_JSON_FIELD];
     copy_cJSON(offerNXT,objs[12]);
-    printf("%s vs %s\n",SUPERNET.NXTADDR,offerNXT);
+    printf("bid_func %s vs offerNXT %s\n",SUPERNET.NXTADDR,offerNXT);
     if ( strcmp(SUPERNET.NXTADDR,offerNXT) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,0,1,sender,valid,objs,numobjs,origargstr));
     else return(0);
@@ -502,7 +502,7 @@ char *ask_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32
 {
     char offerNXT[MAX_JSON_FIELD];
     copy_cJSON(offerNXT,objs[12]);
-    printf("%s vs %s\n",SUPERNET.NXTADDR,offerNXT);
+    printf("ask_func %s vs offerNXT %s\n",SUPERNET.NXTADDR,offerNXT);
     if ( strcmp(SUPERNET.NXTADDR,offerNXT) != 0 )
         return(placequote_func(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,0,-1,sender,valid,objs,numobjs,origargstr));
     else return(0);

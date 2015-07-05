@@ -126,7 +126,7 @@ char *InstantDEX_parser(char *forwarder,char *sender,int32_t valid,char *origarg
             ensure_jsonitem(argjson,"NXT",NXTaddr);
             //printf("subsititute NXT.%s\n",NXTaddr);
         }
-        //printf("localaccess.%d myaddr.(%s) NXT.(%s) offerNXT.(%s)\n",localaccess,SUPERNET.NXTADDR,NXTaddr,offerNXT);
+//printf("localaccess.%d myaddr.(%s) NXT.(%s) offerNXT.(%s)\n",localaccess,SUPERNET.NXTADDR,NXTaddr,offerNXT);
         copy_cJSON(command,obj);
         copy_cJSON(NXTACCTSECRET,secretobj);
         if ( NXTACCTSECRET[0] == 0 )
@@ -169,7 +169,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
 {
-    char echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*retstr = 0;
+    char *resultstr,*methodstr,*retstr = 0;
     retbuf[0] = 0;
     if ( Debuglevel > 2 )
         fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
@@ -190,7 +190,6 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         if ( (methodstr= cJSON_str(cJSON_GetObjectItem(json,"method"))) == 0 )
             methodstr = cJSON_str(cJSON_GetObjectItem(json,"requestType"));
-        copy_cJSON(echostr,cJSON_GetObjectItem(json,"echostr"));
         retbuf[0] = 0;
         if ( methodstr == 0 || methodstr[0] == 0 )
         {
@@ -222,7 +221,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         else if ( SUPERNET.iamrelay == 0 )
         {
             retstr = InstantDEX_parser(forwarder,sender,valid,jsonstr,json);
-            //printf("InstantDEX_parser return.(%s)\n",retstr);
+//printf("InstantDEX_parser return.(%s)\n",retstr);
         } else retstr = clonestr("{\"result\":\"relays only relay\"}");
         if ( retstr != 0 )
         {
@@ -234,7 +233,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         //else sprintf(retbuf,"{\"error\":\"method %s not found\"}",methodstr);
         portable_mutex_unlock(&plugin->mutex);
     }
-    return((int32_t)strlen(retbuf));
+    return((int32_t)strlen(retbuf) + retbuf[0]!=0);
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

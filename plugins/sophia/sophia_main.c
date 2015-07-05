@@ -569,7 +569,7 @@ int32_t env777_start(int32_t dispflag,struct env777 *DBs,uint32_t RTblocknum)
     {
         DB = &DBs->dbs[i];
         DB->start_RTblocknum = RTblocknum;
-        DB->reqsock = RELAYS.lb.sock;
+        DB->reqsock = RELAYS.lbclient;
         if ( db777_dbopen(DBs->ctl,DB) == 0 )
         {
             if ( db777_matrixalloc(DB) != 0 )
@@ -742,7 +742,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             sprintf(retbuf,"{\"error\":\"null return\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
         else sprintf(retbuf + strlen(retbuf) - 1,",\"tag\":%llu}",(long long)tag);
     }
-    return((int32_t)strlen(retbuf));
+    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

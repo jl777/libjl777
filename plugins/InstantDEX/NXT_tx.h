@@ -78,7 +78,7 @@ int32_t NXTutxcmp(struct NXT_tx *ref,struct NXT_tx *tx,double myshare)
 cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXTACCTSECRET,uint64_t nxt64bits)
 {
     cJSON *json = 0;
-    char cmd[MAX_JSON_FIELD],destNXTaddr[64],assetidstr[64],*retstr;
+    char secret[8192],cmd[MAX_JSON_FIELD],destNXTaddr[64],assetidstr[64],*retstr;
     if ( utx->senderbits == nxt64bits )
     {
         expand_nxt64bits(destNXTaddr,utx->recipientbits);
@@ -104,7 +104,8 @@ cJSON *gen_NXT_tx_json(struct NXT_tx *utx,char *reftxid,double myshare,char *NXT
             strcat(cmd,"&referencedTransactionFullHash="),strcat(cmd,reftxid);
         if ( cmd[0] != 0 )
         {
-            sprintf(cmd+strlen(cmd),"&deadline=%u&feeNQT=%lld&secretPhrase=%s&recipient=%s&broadcast=false",utx->deadline,(long long)utx->feeNQT,NXTACCTSECRET,destNXTaddr);
+            escape_code(secret,NXTACCTSECRET);
+            sprintf(cmd+strlen(cmd),"&deadline=%u&feeNQT=%lld&secretPhrase=%s&recipient=%s&broadcast=false",utx->deadline,(long long)utx->feeNQT,secret,destNXTaddr);
             if ( reftxid != 0 && reftxid[0] != 0 )
                 sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",reftxid);
             //printf("generated cmd.(%s) reftxid.(%s)\n",cmd,reftxid);
@@ -342,13 +343,14 @@ uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,ui
 {
     int32_t deadline = 1 + time_to_nextblock(2)/60;
     uint64_t txid = 0;
-    char cmd[4096],errstr[MAX_JSON_FIELD],*jsonstr;
+    char cmd[4096],secret[8192],errstr[MAX_JSON_FIELD],*jsonstr;
     cJSON *json;
     if ( retjsonstrp != 0 )
         *retjsonstrp = 0;
     if ( triggerheight != 0 )
         deadline = DEFAULT_NXT_DEADLINE;
-    sprintf(cmd,"requestType=%s&secretPhrase=%s&feeNQT=%llu&deadline=%d",bidask,NXTACCTSECRET,(long long)MIN_NQTFEE,deadline);
+    escape_code(secret,NXTACCTSECRET);
+    sprintf(cmd,"requestType=%s&secretPhrase=%s&feeNQT=%llu&deadline=%d",bidask,secret,(long long)MIN_NQTFEE,deadline);
     sprintf(cmd+strlen(cmd),"&%s=%llu&%s=%llu",is_MS!=0?"units":"quantityQNT",(long long)qty,is_MS!=0?"currency":"asset",(long long)assetid);
     if ( NXTprice != 0 )
     {

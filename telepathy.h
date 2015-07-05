@@ -459,7 +459,7 @@ void init_telepathy_contact(struct contact_info *contact)
     {
         randbits = cp->srvpubnxtbits;
         while ( bitweight(randbits ^ cp->srvpubnxtbits) < KADEMLIA_MAXTHRESHOLD)
-            randbits ^= (1L << ((rand()>>8) & 63));
+            randbits ^= (1LL << ((rand()>>8) & 63));
         contact->mydrop = randbits;
     }
     telepathic_transmit(retbuf,contact,0,0,0);
