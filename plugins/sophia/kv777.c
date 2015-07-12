@@ -110,7 +110,7 @@ struct dKV777 **dKVs;
 struct kv777 *kv777_find(char *name)
 {
     int32_t i;
-    if ( Num_kvs > 0 )
+    if ( name != 0 && Num_kvs > 0 )
     {
         for (i=0; i<Num_kvs; i++)
             if ( strcmp(KVS[i]->name,name) == 0 )
@@ -657,6 +657,78 @@ cJSON *dKV_json(struct dKV777 *dKV)
     return(array);
 }
 
+cJSON *dKV_approvals_json(struct dKV777 *dKV)
+{
+    char numstr[64]; int32_t i; uint64_t txid; cJSON *array = cJSON_CreateArray();
+    for (i=0; i<(sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo)); i++)
+    {
+        if ( dKV->lastfifoi == dKV->fifoind || (txid= dKV->approvalfifo[i]) == 0 )
+            break;
+        sprintf(numstr,"%llu",(long long)txid), cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
+    }
+    return(array);
+}
+
+void dKV777_approval(struct dKV777 *dKV,uint64_t nxt64bits,char *peerstr)
+{
+    char hexstr[512]; bits256 sha; int32_t len = (int32_t)strlen(peerstr) + 1;
+    calc_sha256(hexstr,(void *)&sha.bytes,(void *)peerstr,len);
+    if ( dKV != 0 && kv777_read(dKV->approvals,(void *)&sha.bytes,sizeof(sha.bytes),0,0) == 0 )
+    {
+        if ( kv777_write(dKV->approvals,(void *)&sha.bytes,sizeof(sha.bytes),peerstr,len) == 0 )
+            printf("dKV777_approval error writing approval for (%s)\n",peerstr);
+        else dKV->approvalfifo[dKV->fifoind++ % (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo))] = sha.txid;
+        printf("NEW.");
+    }
+    printf("[%s approve %s] ",dKV->name,hexstr);
+}
+
+void dKV777_gotapproval(struct dKV777 *dKV,uint64_t senderbits,uint64_t txid)
+{
+    uint32_t count,paircount; int32_t size; uint64_t key[2];
+    key[0] = txid, key[1] = senderbits;
+    if ( dKV != 0 )
+    {
+        size = sizeof(paircount);
+        if ( kv777_read(dKV->approvals,(void *)key,sizeof(key),(void *)&paircount,&size) == 0 )
+        {
+            size = sizeof(count);
+            if ( kv777_read(dKV->approvals,(void *)&txid,sizeof(txid),&count,&size) == 0 || size != sizeof(count) )
+            {
+                count = 1;
+                if ( kv777_write(dKV->approvals,(void *)&txid,sizeof(txid),&count,sizeof(count)) == 0 )
+                    printf("dKV777_gotapproval error writing approval txid.%llu count.%u\n",(long long)txid,count);
+                else printf("dKV777_gotapproval created txid.%llu\n",(long long)txid);
+            }
+            else
+            {
+                count++;
+                if ( kv777_write(dKV->approvals,(void *)&txid,sizeof(txid),&count,sizeof(count)) == 0 )
+                    printf("dKV777_gotapproval error writing approval txid.%llu update count.%u\n",(long long)txid,count);
+                else printf("dKV777_gotapproval updated txid.%llu count.%u\n",(long long)txid,count);
+            }
+            size = sizeof(count);
+            if ( kv777_read(dKV->approvals,(void *)&senderbits,sizeof(senderbits),&count,&size) == 0 || size != sizeof(count) )
+            {
+                count = 1;
+                if ( kv777_write(dKV->approvals,(void *)&senderbits,sizeof(senderbits),&count,sizeof(count)) == 0 )
+                    printf("dKV777_gotapproval error writing approval senderbits.%llu count.%u\n",(long long)senderbits,count);
+                else printf("dKV777_gotapproval created senderbits.%llu\n",(long long)senderbits);
+            }
+            else
+            {
+                count++;
+                if ( kv777_write(dKV->approvals,(void *)&senderbits,sizeof(senderbits),&count,sizeof(count)) == 0 )
+                    printf("dKV777_gotapproval error writing approval senderbits.%llu update count.%u\n",(long long)senderbits,count);
+                else printf("dKV777_gotapproval updated senderbits.%llu count.%u\n",(long long)senderbits,count);
+            }
+            paircount++;
+        } else paircount = 1;
+        if ( kv777_write(dKV->approvals,(void *)key,sizeof(key),&paircount,sizeof(paircount)) == 0 )
+            printf("dKV777_gotapproval error writing approval txid.%llu for (NXT.%llu) paircount.%d\n",(long long)txid,(long long)senderbits,paircount);
+    }
+}
+
 int32_t dKV777_connect(struct dKV777 *dKV,struct endpoint *ep)
 {
     int32_t j; char endpoint[512];
@@ -693,26 +765,19 @@ int32_t dKV777_addnode(struct dKV777 *dKV,struct endpoint *ep)
     return(0);
 }
 
-void dKV777_approval(char *dKVname,uint64_t nxt64bits,char *peerstr)
-{
-    struct dKV777 *dKV; char hexstr[512]; bits256 sha; int32_t len = (int32_t)strlen(peerstr) + 1;
-    calc_sha256(hexstr,(void *)&sha.bytes,(void *)peerstr,len);
-    if ( (dKV= dKV777_find(dKVname)) != 0 && kv777_read(dKV->approvals,(void *)&sha.bytes,sizeof(sha.bytes),0,0) == 0 )
-    {
-        if ( kv777_write(dKV->approvals,(void *)&sha.bytes,sizeof(sha.bytes),peerstr,len) == 0 )
-            printf("KV777 error writing approval for (%s)\n",peerstr);
-        else dKV->approvalfifo[dKV->fifoind++ % (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo))] = sha.txid;
-        printf("NEW.");
-    }
-    printf("[%s approve %s] ",dKVname,hexstr);
-}
-
 char *dKV777_processping(cJSON *json,char *origjsonstr,char *sender,char *tokenstr)
 {
-    cJSON *array; uint64_t nxt64bits; int32_t i,j,n,size; uint16_t port; struct endpoint endpoint,*ep;
+    cJSON *array; uint64_t nxt64bits,senderbits; int32_t i,j,n,size; uint16_t port; struct endpoint endpoint,*ep; struct dKV777 *dKV;
     char ipaddr[64],buf[512],*endpointstr,*nxtaddr,*peerstr = 0;
     if ( SUPERNET.relays == 0 )
         return(clonestr("{\"error\":\"no relays KV777\"}"));
+    senderbits = conv_acctstr(sender);
+    dKV = dKV777_find(cJSON_str(cJSON_GetObjectItem(json,"dKVname")));
+    if ( dKV != 0 && senderbits != 0 && (array= cJSON_GetObjectItem(json,"approvals")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+    {
+        for (i=0; i<n; i++)
+            dKV777_gotapproval(dKV,senderbits,get_API_nxt64bits(cJSON_GetArrayItem(array,i)));
+    }
     if ( (array= cJSON_GetObjectItem(json,"peers")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
         peerstr = cJSON_Print(array), _stripwhite(peerstr,' ');
@@ -741,8 +806,8 @@ char *dKV777_processping(cJSON *json,char *origjsonstr,char *sender,char *tokens
             }
         }
     }
-    if ( peerstr != 0 && (nxtaddr= cJSON_str(cJSON_GetObjectItem(json,"NXT"))) != 0 && (nxt64bits= conv_acctstr(nxtaddr)) == conv_acctstr(sender) )
-        dKV777_approval(cJSON_str(cJSON_GetObjectItem(json,"dKVname")),nxt64bits,peerstr);
+    if ( dKV != 0 && senderbits != 0 && peerstr != 0 && (nxtaddr= cJSON_str(cJSON_GetObjectItem(json,"NXT"))) != 0 && (nxt64bits= conv_acctstr(nxtaddr)) == senderbits )
+        dKV777_approval(dKV,nxt64bits,peerstr);
     printf("KV777 GOT.(%s) from.(%s) [%s]\n",origjsonstr,sender,tokenstr);
     if ( peerstr != 0 )
         free(peerstr);
@@ -772,6 +837,7 @@ int32_t dKV777_ping(struct dKV777 *dKV)
         }
     }
     cJSON_AddItemToObject(json,"peers",array);
+    cJSON_AddItemToObject(json,"approvals",dKV_approvals_json(dKV));
     cJSON_AddItemToObject(json,"kvs",dKV_json(dKV));
     jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' '), free_json(json);
     if ( (retstr= busdata_sync(&nonce,jsonstr,"allrelays",0)) != 0 )
