@@ -659,12 +659,15 @@ cJSON *dKV_json(struct dKV777 *dKV)
 
 cJSON *dKV_approvals_json(struct dKV777 *dKV)
 {
-    char numstr[64]; int32_t i; uint64_t txid; cJSON *array = cJSON_CreateArray();
-    for (i=0; i<(sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo)); i++)
+    char numstr[64]; int32_t i,fifosize; uint64_t txid; cJSON *array = cJSON_CreateArray();
+    fifosize = (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo));
+    for (i=0; i<fifosize; i++)
     {
-        if ( dKV->lastfifoi == dKV->fifoind || (txid= dKV->approvalfifo[i]) == 0 )
+        ind = (dKV->lastfifoi + i) % fifosize;
+        if ( (dKV->lastfifoi % fifosize) == (dKV->fifoind % fifosize) || (txid= dKV->approvalfifo[ind]) == 0 )
             break;
         sprintf(numstr,"%llu",(long long)txid), cJSON_AddItemToArray(array,cJSON_CreateString(numstr));
+        dKV->approvalfifo[ind] = 0;
     }
     return(array);
 }
