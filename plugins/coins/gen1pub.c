@@ -11,8 +11,8 @@
 #define crypto777_gen1pub_h
 #include <stdio.h>
 #include <stdint.h>
-#include "cJSON.h"
-#include "system777.c"
+#include "../includes/cJSON.h"
+#include "../utils/system777.c"
 #include "gen1.c"
 #include "coins777.c"
 

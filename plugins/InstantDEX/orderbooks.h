@@ -536,8 +536,11 @@ char *orderbook_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs
     if ( baseid != 0 && relid != 0 )
     {
         update_rambooks(baseid,relid,maxdepth,gui,showall,exchange);
+        printf("updated\n");
         op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,exchange);
+        printf("made\n");
         retstr = orderbook_jsonstr(nxt64bits,op,base,rel,maxdepth,allflag);
+        printf("free\n");
         free_orderbooks(obooks,sizeof(obooks)/sizeof(*obooks),op);
     }
     return(retstr);

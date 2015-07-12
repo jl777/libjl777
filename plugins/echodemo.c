@@ -38,7 +38,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
     char echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*addr;
     retbuf[0] = 0;
@@ -83,14 +83,17 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                 if ( strlen(addr) > 4 )
                 {
                     if ( strncmp(addr,"NXT-",4) == 0 )
-                        nxt64bits = RS_decode(addr), strcpy(rsaddr,addr);
+                    {
+                        nxt64bits = RS_decode(addr);
+                        sprintf(retbuf,"{\"result\":\"success\",\"accountRS\":\"%s\",\"account\":\"%llu\"}",addr,(long long)nxt64bits);
+                    }
                     else if ( is_decimalstr(addr) != 0 )
+                    {
                         nxt64bits = calc_nxt64bits(addr), RS_encode(rsaddr,nxt64bits);
-                    if ( nxt64bits != 0 )
                         sprintf(retbuf,"{\"result\":\"success\",\"account\":\"%llu\",\"accountRS\":\"%s\"}",(long long)nxt64bits,rsaddr);
+                    }
                 }
-                if ( nxt64bits == 0 )
-                    sprintf(retbuf,"{\"error\":\"illegal addr field\",\"addr\":\"%s\"}",addr);
+                else sprintf(retbuf,"{\"error\":\"illegal addr field\",\"addr\":\"%s\"}",addr);
             }
             else sprintf(retbuf,"{\"error\":\"no addr field\"}");
         }

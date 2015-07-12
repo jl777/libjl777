@@ -13,13 +13,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
-#include "cJSON.h"
-#include "uthash.h"
-#include "db777.c"
-#include "bits777.c"
-#include "utils777.c"
-#include "system777.c"
-#include "coins777.c"
+#include "../includes/cJSON.h"
+#include "../uthash.h"
+#include "../utils/bits777.c"
+#include "../utils/utils777.c"
+#include "../utils/system777.c"
+#include "../coins/coins777.c"
 
 #include "tweetnacl.h"
 int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
@@ -169,7 +168,7 @@ int32_t get_assettype(int32_t *decimals,char *assetidstr);
 
 int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN]);
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret);
-int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
+int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
 char *cancel_orderid(char *NXTaddr,uint64_t orderid);
 
@@ -180,6 +179,16 @@ double get_minvolume(uint64_t assetid);
 uint64_t min_asset_amount(uint64_t assetid);
 uint64_t RS_decode(char *rs);
 int32_t RS_encode(char *rsaddr,uint64_t id);
+
+
+struct nodestats *get_nodestats(uint64_t nxt64bits);
+int32_t get_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey);
+int32_t add_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *acctcoinaddr,char *pubkey);
+cJSON *http_search(char *destip,char *type,char *file);
+struct NXT_acct *get_NXTacct(int32_t *createdp,char *NXTaddr);
+int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sender);
+struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits);
+int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *origsecret);
 
 #endif
 #else
@@ -723,17 +732,6 @@ uint64_t get_sender(uint64_t *amountp,char *txidstr)
     return(senderbits);
 }
 
-uint64_t conv_acctstr(char *acctstr)
-{
-    uint64_t nxt64bits = 0;
-    int32_t len;
-    if ( (len= is_decimalstr(acctstr)) > 0 && len < 24 )
-        nxt64bits = calc_nxt64bits(acctstr);
-    else if ( strncmp("NXT-",acctstr,4) == 0 )
-        nxt64bits = conv_rsacctstr(acctstr,0);
-    return(nxt64bits);
-}
-
 cJSON *NXT_convjson(cJSON *array)
 {
     char acctstr[1024],nxtaddr[64]; int32_t i,n; uint64_t nxt64bits; cJSON *json = cJSON_CreateArray();
@@ -812,37 +810,6 @@ int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *ra
     if ( Debuglevel > 2 )
         printf("NXT.%s NXTsecret.(%s)\n",NXTaddr,NXTsecret);
     return(0);
-}
-
-void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
-{
-    static uint8_t zerokey[256>>3];
-    struct nodestats *stats;
-    struct NXT_acct *np;
-    char NXTaddr[64];
-    uint64_t nxt64bits;
-    int32_t createdflag;
-    bits256 pubkey;
-    if ( NXTpubkey != 0 )
-        NXTpubkey[0] = 0;
-    if ( NXTacct == 0 || NXTacct[0] == 0 )
-        return;
-    nxt64bits = conv_rsacctstr(NXTacct,0);
-    expand_nxt64bits(NXTaddr,nxt64bits);
-    np = get_NXTacct(&createdflag,NXTaddr);
-    stats = &np->stats;
-    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
-    {
-        pubkey = issue_getpubkey(0,NXTacct);
-        if ( memcmp(&pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
-            memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
-    } else memcpy(&pubkey,stats->pubkey,sizeof(pubkey));
-    db777_add(0,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits),np,sizeof(*np));
-    if ( NXTpubkey != 0 )
-    {
-        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
-        init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
-    }
 }
 
 int32_t _in_specialNXTaddrs(struct mgw777 *mgw,char *NXTaddr)
@@ -1560,6 +1527,77 @@ int32_t RS_encode(char *rsaddr,uint64_t id)
     }
     rsaddr[j] = 0;
     return(0);
+}
+
+uint64_t conv_acctstr(char *acctstr)
+{
+    uint64_t nxt64bits = 0;
+    int32_t len;
+    if ( acctstr != 0 )
+    {
+        if ( (len= is_decimalstr(acctstr)) > 0 && len < 24 )
+            nxt64bits = calc_nxt64bits(acctstr);
+        else if ( strncmp("NXT-",acctstr,4) == 0 )
+            nxt64bits = RS_decode(acctstr);
+    }
+    return(nxt64bits);
+}
+
+void set_NXTpubkey(char *NXTpubkey,char *NXTacct)
+{
+    static uint8_t zerokey[256>>3];
+    struct nodestats *stats;
+    struct NXT_acct *np;
+    char NXTaddr[64];
+    uint64_t nxt64bits;
+    int32_t createdflag;
+    bits256 pubkey;
+    if ( NXTpubkey != 0 )
+        NXTpubkey[0] = 0;
+    if ( NXTacct == 0 || NXTacct[0] == 0 )
+        return;
+    nxt64bits = conv_rsacctstr(NXTacct,0);
+    expand_nxt64bits(NXTaddr,nxt64bits);
+    np = get_NXTacct(&createdflag,NXTaddr);
+    stats = &np->stats;
+    if ( memcmp(stats->pubkey,zerokey,sizeof(stats->pubkey)) == 0 )
+    {
+        pubkey = issue_getpubkey(0,NXTacct);
+        if ( memcmp(&pubkey,zerokey,sizeof(stats->pubkey)) != 0 )
+            memcpy(stats->pubkey,&pubkey,sizeof(stats->pubkey));
+    } else memcpy(&pubkey,stats->pubkey,sizeof(pubkey));
+    if ( DB_NXTaccts != 0 )
+        db777_add(0,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits),np,sizeof(*np));
+    else kv777_write(SUPERNET.NXTaccts,&nxt64bits,sizeof(nxt64bits),np,sizeof(*np));
+    if ( NXTpubkey != 0 )
+    {
+        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+        init_hexbytes_noT(NXTpubkey,pubkey.bytes,sizeof(pubkey));
+    }
+}
+
+struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits)
+{
+    static struct NXT_acct N,*np;
+    int32_t len = sizeof(N);
+    if ( DB_NXTaccts != 0 )
+        np = db777_get(&N,&len,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits));
+    else np = kv777_read(SUPERNET.NXTaccts,&nxt64bits,sizeof(nxt64bits),&N,&len);
+    if ( np == 0 )
+    {
+        np = calloc(1,sizeof(*np));
+        np->nxt64bits = nxt64bits, expand_nxt64bits(np->NXTaddr,nxt64bits);
+        if ( DB_NXTaccts != 0 )
+            db777_add(1,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits),np,sizeof(*np));
+        else kv777_write(SUPERNET.NXTaccts,&nxt64bits,sizeof(nxt64bits),&N,sizeof(*np));
+       *createdp = 1;
+    } else *createdp = 0;
+    return(np);
+}
+
+struct NXT_acct *get_NXTacct(int32_t *createdp,char *NXTaddr)
+{
+    return(get_nxt64bits(createdp,calc_nxt64bits(NXTaddr)));
 }
 
 #endif

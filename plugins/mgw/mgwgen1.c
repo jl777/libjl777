@@ -14,10 +14,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "cJSON.h"
-#include "uthash.h"
-#include "utils777.c"
-#include "msig.c"
+#include "../includes/cJSON.h"
+#include "../includes/uthash.h"
+#include "../utils/utils777.c"
+#include "../coins/msig.c"
 
 char *_sign_and_sendmoney(char *cointxid,struct ramchain_info *ram,struct cointx_info *cointx,char *othersignedtx,uint64_t *redeems,uint64_t *amounts,int32_t numredeems);
 void ram_update_MGWunspents(struct ramchain_info *ram,char *addr,int32_t vout,uint32_t txid_rawind,uint32_t script_rawind,uint64_t value);

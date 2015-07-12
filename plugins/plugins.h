@@ -57,11 +57,9 @@ void update_Daemoninfos()
     struct daemon_info *dp;
     double currentmilli = milliseconds();
     int32_t i,n;
-#ifndef _WIN32
     if ( didinit == 0 )
         portable_mutex_init(&mutex), didinit = 1;
     portable_mutex_lock(&mutex);
-#endif
     for (i=n=0; i<Numdaemons; i++)
     {
         if ( (dp= Daemoninfos[i]) != 0 )
@@ -88,9 +86,7 @@ void update_Daemoninfos()
         printf("dequeued new daemon.(%s)\n",dp->name);
         Daemoninfos[Numdaemons++] = dp;
     }
-#ifndef _WIN32
     portable_mutex_unlock(&mutex);
-#endif
 }
 
 struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid)
@@ -192,7 +188,7 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         permflag = get_API_int(cJSON_GetObjectItem(json,"permanentflag"),0);
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"myid"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"));
-        if ( dp->readyflag == 0 )
+        if ( dp->readyflag == 0 || Debuglevel > 2 )
             printf("HOST: process_plugin_message.(%s) instanceid.%llu allowremote.%d pushsock.%d\n",str,(long long)instanceid,dp->allowremote,dp->pushsock);
         dp->readyflag = 1;
         if ( permflag == 0 && instanceid != 0 )
@@ -219,7 +215,7 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         }
         free_json(json);
     } else printf("parse error.(%s)\n",str);
-    //printf("tag.%llu str.%p retstr.%p\n",(long long)tag,str,retstr);
+//printf("tag.%llu str.%p retstr.%p\n",(long long)tag,str,retstr);
     if ( tag != 0 )
     {
         if ( (dest= get_tagstr(&retsock,dp,tag)) != 0 )
@@ -301,7 +297,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
     {
         int32_t ramchain_main(int32_t,char *args[]);
         int32_t MGW_main(int32_t,char *args[]);
-        int32_t db777_main(int32_t,char *args[]);
+        int32_t kv777_main(int32_t,char *args[]);
         int32_t SuperNET_main(int32_t,char *args[]);
         int32_t coins_main(int32_t,char *args[]);
         //int32_t peers_main(int32_t,char *args[]);
@@ -310,7 +306,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t InstantDEX_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
-        else if ( strcmp(dp->name,"db777") == 0 ) return(db777_main(n,args));
+        else if ( strcmp(dp->name,"kv777") == 0 ) return(kv777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
         //else if ( strcmp(dp->name,"peers") == 0 ) return(peers_main(n,args));
         //else if ( strcmp(dp->name,"subscriptions") == 0 ) return(subscriptions_main(n,args));
@@ -324,7 +320,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"db777") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 || strcmp(plugin,"relay") == 0 )//|| strcmp(plugin,"peers") == 0 || strcmp(plugin,"subscriptions") == 0 )
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 || strcmp(plugin,"relay") == 0 )//|| strcmp(plugin,"peers") == 0 || strcmp(plugin,"subscriptions") == 0 )
         return(1);
     else return(0);
 }
@@ -469,10 +465,11 @@ char *register_daemon(char *plugin,uint64_t daemonid,uint64_t instanceid,cJSON *
     return(clonestr("{\"error\":\"cant register inactive plugin\"}"));
 }
 
-char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout)
+char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout,char *tokenstr)
 {
     struct daemon_info *dp; char retbuf[8192],*str,*methodsstr,*retstr; uint64_t tag; cJSON *json; int32_t ind,async;
-//printf("localaccess.%d origargstr.(%s).%d retstrp.%p\n",localaccess,origargstr,len,retstrp);
+    if ( Debuglevel > 2 )
+        printf("localaccess.%d origargstr.(%s).%d retstrp.%p token.(%s)\n",localaccess,origargstr,len,retstrp,tokenstr!=0?tokenstr:"");
     async = (timeout == 0 || retstrp != 0);
     if ( retstrp == 0 )
         retstrp = &retstr;
@@ -515,8 +512,9 @@ char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin
         }
         else
         {
-//fprintf(stderr,"B send_to_daemon.(%s).%d\n",origargstr,len);
-            if ( (tag= send_to_daemon(sock,retstrp,dp->name,daemonid,instanceid,origargstr,len,localaccess)) == 0 )
+            if ( Debuglevel > 2 )
+                fprintf(stderr,"B send_to_daemon.(%s).%d\n",origargstr,len);
+            if ( (tag= send_to_daemon(sock,retstrp,dp->name,daemonid,instanceid,origargstr,len,localaccess,tokenstr)) == 0 )
             {
 fprintf(stderr,"null tag from send_to_daemon\n");
                 *retstrp = clonestr("{\"error\":\"null tag from send_to_daemon\"}");

@@ -14,15 +14,15 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "uthash.h"
-#include "cJSON.h"
-#include "db777.c"
-#include "bits777.c"
-#include "NXT777.c"
-#include "system777.c"
-#include "storage.c"
-#include "cointx.c"
-#include "gen1auth.c"
+#include "../includes/uthash.h"
+#include "../includes/cJSON.h"
+#include "../sophia/db777.c"
+#include "../utils/bits777.c"
+#include "../utils/NXT777.c"
+#include "../utils/system777.c"
+#include "../sophia/kv777.c"
+#include "../coins/cointx.c"
+#include "../coins/gen1auth.c"
 
 struct multisig_addr *alloc_multisig_addr(char *coinstr,int32_t m,int32_t n,char *NXTaddr,char *userpubkey,char *sender);
 

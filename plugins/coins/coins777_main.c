@@ -14,13 +14,13 @@
 
 
 #define DEFINES_ONLY
-#include "cJSON.h"
+#include "../includes/cJSON.h"
 #include "../plugin777.c"
-#include "files777.c"
-#include "NXT777.c"
+#include "../utils/files777.c"
+#include "../utils/NXT777.c"
 #include "coins777.c"
 #include "gen1auth.c"
-#include "msig.c"
+#include "../coins/msig.c"
 #undef DEFINES_ONLY
 
 int32_t coins_idle(struct plugin_info *plugin)
@@ -299,7 +299,7 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate)
     return(0);
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
     char *resultstr,*methodstr,zerobuf[1],*coinstr,*str = 0;
     cJSON *array,*item;

@@ -10,7 +10,7 @@
 #ifndef crypto777_gen1auth_h
 #define crypto777_gen1auth_h
 #include <stdio.h>
-#include "cJSON.h"
+#include "../includes/cJSON.h"
 #include "coins777.c"
 #include "cointx.c"
 

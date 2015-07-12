@@ -15,9 +15,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "cJSON.h"
-#include "db777.c"
-#include "system777.c"
+#include "includes/cJSON.h"
+#include "sophia/kv777.c"
+#include "utils/system777.c"
 
 #endif
 #else
@@ -87,12 +87,12 @@ void update_alias(char *line)
     printf("i.%d alias.(%s) value.(%s)\n",i,alias,value);
     if ( value[0] == 0 )
         printf("warning value for %s is null\n",alias);
-    db777_findstr(retbuf,sizeof(retbuf),DB_nodestats,alias);
+    kv777_findstr(retbuf,sizeof(retbuf),SUPERNET.alias,alias);
     if ( strcmp(retbuf,value) == 0 )
         printf("UNCHANGED ");
     else printf("%s ",retbuf[0] == 0 ? "CREATE" : "UPDATE");
     printf(" (%s) -> (%s)\n",alias,value);
-    if ( (err= db777_addstr(DB_nodestats,alias,value)) != 0 )
+    if ( (err= kv777_addstr(SUPERNET.alias,alias,value)) != 0 )
         printf("error.%d updating alias database\n",err);
 }
 
@@ -113,7 +113,7 @@ char *expand_aliases(char *_expanded,char *_expanded2,int32_t max,char *line)
                     continue;
                 i += k;
                 alias[0] = '#';
-                if ( db777_findstr(value,sizeof(value),DB_nodestats,alias) > 0 )
+                if ( kv777_findstr(value,sizeof(value),SUPERNET.alias,alias) != 0 )
                 {
                     if ( value[0] != 0 )
                         for (k=0; value[k]!=0; k++)
@@ -179,7 +179,7 @@ char *localcommand(char *line)
 
 char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,int32_t broadcastflag)
 {
-    int32_t i,j; char numstr[64],*pubstr,*cmdstr = 0; cJSON *json;
+    int32_t i,j; char numstr[64],*pubstr,*cmdstr = 0; cJSON *json; uint64_t tag;
     for (i=0; i<512&&line[i]!=' '&&line[i]!=0; i++)
         plugin[i] = line[i];
     plugin[i] = 0;
@@ -200,7 +200,7 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
         if ( strcmp("direct",method) == 0 && cJSON_GetObjectItem(json,"myipaddr") == 0 )
             cJSON_AddItemToObject(json,"myipaddr",cJSON_CreateString(SUPERNET.myipaddr));
         if ( cJSON_GetObjectItem(json,"tag") == 0 )
-            sprintf(numstr,"%llu",((long long)rand()<<32) | rand()),cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
+            randombytes((void *)&tag,sizeof(tag)), sprintf(numstr,"%llu",(long long)tag), cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
         //if ( cJSON_GetObjectItem(json,"NXT") == 0 )
         //    cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(SUPERNET.NXTADDR));
         *timeoutp = get_API_int(cJSON_GetObjectItem(json,"timeout"),0);
@@ -223,13 +223,13 @@ char *parse_expandedline(char *plugin,char *method,int32_t *timeoutp,char *line,
 char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout)
 {
     struct daemon_info *find_daemoninfo(int32_t *indp,char *name,uint64_t daemonid,uint64_t instanceid);
-    int32_t tmp,len; char *retstr;//,tokenized[8192];
+    uint32_t nonce; int32_t tmp,len; char *retstr;//,tokenized[8192];
     len = (int32_t)strlen(cmdstr) + 1;
 //printf("userjson.(%s).%d plugin.(%s) broadcastflag.%d method.(%s)\n",cmdstr,len,plugin,broadcastflag,method);
     if ( broadcastflag != 0 || strcmp(plugin,"relay") == 0 )
     {
         if ( strcmp(method,"busdata") == 0 )
-            retstr = busdata_sync(cmdstr,broadcastflag==0?0:"allnodes");
+            retstr = busdata_sync(&nonce,cmdstr,broadcastflag==0?0:"allnodes",0);
         else retstr = clonestr("{\"error\":\"direct load balanced calls deprecated, use busdata\"}");
     }
     //else if ( strcmp(plugin,"peers") == 0 )
@@ -238,7 +238,7 @@ char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcast
     {
         //len = construct_tokenized_req(tokenized,cmdstr,SUPERNET.NXTACCTSECRET,broadcastflag!=0?"allnodes":0);
         //printf("console.(%s)\n",tokenized);
-        retstr = plugin_method(-1,0,1,plugin,method,0,0,cmdstr,len,timeout != 0 ? timeout : 0);
+        retstr = plugin_method(-1,0,1,plugin,method,0,0,cmdstr,len,timeout != 0 ? timeout : 0,0);
     }
     else retstr = clonestr("{\"error\":\"invalid command\"}");
     return(retstr);
@@ -258,8 +258,10 @@ void process_userinput(char *_line)
         broadcastflag = 1, line++;
     if ( (json= cJSON_Parse(line)) != 0 )
     {
+        char *process_nn_message(int32_t sock,char *jsonstr);
         free_json(json);
-        retstr = nn_loadbalanced((uint8_t *)line,(int32_t)strlen(line)+1);
+        retstr = process_nn_message(-1,line);
+        //retstr = nn_loadbalanced((uint8_t *)line,(int32_t)strlen(line)+1);
         printf("console.(%s) -> (%s)\n",line,retstr);
         return;
     }

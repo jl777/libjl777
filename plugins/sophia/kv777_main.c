@@ -1,13 +1,13 @@
 //
-//  echodemo.c
+//  kv777_main
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 
 #define BUNDLED
-#define PLUGINSTR "db777"
-#define PLUGNAME(NAME) db777 ## NAME
+#define PLUGINSTR "kv777"
+#define PLUGNAME(NAME) kv777 ## NAME
 #define STRUCTNAME struct PLUGNAME(_info)
 #define STRINGIFY(NAME) #NAME
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
@@ -18,18 +18,19 @@
 #include "db777.c"
 #undef DEFINES_ONLY
 
-struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades,*DB_services;
+struct db777 *DB_msigs,*DB_NXTaccts,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades;
+struct db777_info SOPHIA;
+STRUCTNAME KV777;
 
-STRUCTNAME SOPHIA;
-char *PLUGNAME(_methods)[] = { "stats" };
-char *PLUGNAME(_pubmethods)[] = { "stats" };
-char *PLUGNAME(_authmethods)[] = { "stats", "create", "close", "add", "find",
+char *PLUGNAME(_methods)[] = { "getPM", "ping" };
+char *PLUGNAME(_pubmethods)[] = { "getPM", "ping" };
+char *PLUGNAME(_authmethods)[] = { "getPM", "ping",
 #ifdef BUNDLED
     "get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
 #endif
 };
 
-int32_t db777_idle(struct plugin_info *plugin) { return(0); }
+int32_t db777_idle(struct plugin_info *plugin) { return(kv777_idle()); }
 
 // env = sp_env(void);
 // ctl = sp_ctl(env): get an environment control object.
@@ -389,9 +390,9 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     strcpy(DB->name,dbname);
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
-    if ( SOPHIA.PATH[0] == '.' && (SOPHIA.PATH[1] == '/' || SOPHIA.PATH[1] == '\\') )
-        strcpy(path,SOPHIA.PATH+2);
-    else strcpy(path,SOPHIA.PATH);
+    if ( KV777.PATH[0] == '.' && (KV777.PATH[1] == '/' || KV777.PATH[1] == '\\') )
+        strcpy(path,KV777.PATH+2);
+    else strcpy(path,KV777.PATH);
     ensure_directory(path);
     if ( specialpath != 0 )
     {
@@ -632,9 +633,9 @@ int32_t env777_close(struct env777 *DBs,int32_t reopenflag)
     return(errs);
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char *method,*name,*resultstr,*path,*subdir; //*key,*value,
+    char *method,*resultstr,*path,*subdir,*pmstr,*retstr = 0; int32_t ind,len;
     //struct db777 *DB;
     //int32_t len,offset;
     retbuf[0] = 0;
@@ -643,104 +644,59 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     {
         // configure settings
         ensure_directory(SOPHIA.PATH);
+        ensure_directory(KV777.PATH);
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
-        SOPHIA.readyflag = 1;
+        KV777.readyflag = 1;
+        plugin->allowremote = 1;
         //Debuglevel = 3;
     }
     else
     {
-        name = cJSON_str(cJSON_GetObjectItem(json,"name"));
         if ( plugin_result(retbuf,json,tag) > 0 )
             return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         method = cJSON_str(cJSON_GetObjectItem(json,"method"));
         path = cJSON_str(cJSON_GetObjectItem(json,"path"));
         subdir = cJSON_str(cJSON_GetObjectItem(json,"subdir"));
-        if ( method == 0 || name == 0 || name[0] == 0 )
+        if ( method == 0 )
         {
-            printf("(%s) has not method or dbname\n",jsonstr);
+            printf("(%s) has not method\n",jsonstr);
             return(0);
         }
-        printf("SOPHIA.(%s) for (%s)\n",method,name);
+        //printf("kv777.(%s)\n",method);
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
-        /*else if ( strcmp(method,"create") == 0 )
+        else if ( strcmp(method,"ping") == 0 )
         {
-            if ( strstr("../",name) != 0 || strstr("..\\",name) != 0 || name[0] == '/' || name[0] == '\\' || strcmp(name,"..") == 0  || strcmp(name,"*") == 0 )
-                strcpy(retbuf,"{\"error\":\"no funny filenames\"}");
-            else if ( path != 0 && (strcmp(path,"RAMCHAINS") != 0 || strcmp(path,"MGW") != 0 || strcmp(path,"DATADIR") != 0) )
-                strcpy(retbuf,"{\"error\":\"only RAMCHAINS/MGW/DATADIR path allowed\"}");
-            else
+            char *dKV777_processping(cJSON *json,char *jsonstr,char *sender,char *tokenstr);
+            retstr = dKV777_processping(json,jsonstr,sender,tokenstr);
+        }
+        else if ( strcmp(method,"getPM") == 0 )
+        {
+            ind = get_API_int(cJSON_GetObjectItem(json,"ind"),-1);
+            if ( SUPERNET.PM != 0 )
             {
-                compression = cJSON_str(cJSON_GetObjectItem(json,"compression"));
-                if ( (DB= db777_create(path,subdir,name,compression,0)) != 0 )
+                sprintf(retbuf,"{\"result\":\"success\",\"numkeys\":%d}",SUPERNET.PM->numkeys);
+                if ( ind >= 0 )
                 {
-                    strcpy(retbuf,"{\"result\":\"opened database\"}");
+                    if ( (pmstr= kv777_read(SUPERNET.PM,(void *)&ind,sizeof(ind),0,&len)) != 0 )
+                        sprintf(retbuf + strlen(retbuf) - 1,",\"ind\":%u,\"PM\":\"%s\",\"len\":%d}",ind,pmstr,len);
                 }
-                else strcpy(retbuf,"{\"error\":\"couldnt create database\"}");
-            }
+            } else sprintf(retbuf,"{\"error\":\"no PM database\"}");
+            //printf("retbuf.(%s)\n",retbuf);
         }
-        else if ( strcmp(method,"add") == 0 )
+        else sprintf(retbuf,"{\"error\":\"invalid kv777 method\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
+        if ( retstr != 0 )
         {
-            key = cJSON_str(cJSON_GetObjectItem(json,"key"));
-            value = cJSON_str(cJSON_GetObjectItem(json,"value"));
-            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(name)) != 0 )
-                sophia_retintstr(retbuf,"add",db777_addstr(DB,key,value));
-            else strcpy(retbuf,"{\"error\":\"couldnt find database\"}");
+            strcpy(retbuf,retstr);
+            free(retstr);
         }
-        else if ( strcmp(method,"find") == 0 )
-        {
-            key = cJSON_str(cJSON_GetObjectItem(json,"key"));
-            if ( key != 0 && key[0] != 0 && (DB= db777_getDB(name)) != 0 )
-            {
-                strcpy(retbuf,"{\"method\":\"find\",\"result\":\"");
-                offset = (int32_t)strlen(retbuf);
-                if ( (len= db777_findstr(retbuf + offset,maxlen - offset,DB,key)) > 0 )
-                    retbuf[offset + len] = 0, sprintf(retbuf + strlen(retbuf),"\",\"len\":%d}",len);
-                else strcpy(retbuf,"{\"error\":\"couldnt find key\"}");
-            }
-        }
-        else if ( strcmp(method,"close") == 0 )
-        {
-            if ( (DB= db777_getDB(name)) != 0 )
-                sophia_retintstr(retbuf,"close",db777_close(DB));
-            else strcpy(retbuf,"{\"error\":\"couldnt find dbname\"}");
-        }*/
-#ifdef BUNDLED
-        else if ( strcmp(method,"object") == 0 )
-            sophia_object(retbuf,maxlen,json);
-        else if ( strcmp(method,"env") == 0 )
-            sophia_env(retbuf,maxlen,json);
-        else if ( strcmp(method,"ctl") == 0 )
-            sophia_ctl(retbuf,maxlen,json);
-        else if ( strcmp(method,"open") == 0 )
-            sophia_open(retbuf,maxlen,json);
-        else if ( strcmp(method,"destroy") == 0 )
-            sophia_destroy(retbuf,maxlen,json);
-        else if ( strcmp(method,"error") == 0 )
-            sophia_error(retbuf,maxlen,json);
-        else if ( strcmp(method,"delete") == 0 )
-            sophia_delete(retbuf,maxlen,json);
-        else if ( strcmp(method,"async") == 0 )
-            sophia_async(retbuf,maxlen,json);
-        else if ( strcmp(method,"drop") == 0 )
-            sophia_drop(retbuf,maxlen,json);
-        else if ( strcmp(method,"cursor") == 0 )
-            sophia_cursor(retbuf,maxlen,json);
-        else if ( strcmp(method,"begin") == 0 )
-            sophia_begin(retbuf,maxlen,json);
-        else if ( strcmp(method,"commit") == 0 )
-            sophia_commit(retbuf,maxlen,json);
-        else if ( strcmp(method,"type") == 0 )
-            sophia_type(retbuf,maxlen,json);
-#endif
-        else sprintf(retbuf,"{\"error\":\"invalid sophia method\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
         if ( retbuf[0] == 0 )
             sprintf(retbuf,"{\"error\":\"null return\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
-        else sprintf(retbuf + strlen(retbuf) - 1,",\"tag\":%llu}",(long long)tag);
+        else sprintf(retbuf + strlen(retbuf) - 1,",\"tag\":\"%llu\"}",(long long)tag);
     }
     return((int32_t)strlen(retbuf) + retbuf[0] != 0);
 }

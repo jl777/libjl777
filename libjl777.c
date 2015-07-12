@@ -904,9 +904,7 @@ char *init_NXTservices(char *JSON_or_fname,char *myipaddr)
 
 char *call_SuperNET_JSON(char *JSONstr)
 {
-    cJSON *json,*array;
-    int32_t valid;
-    char NXTaddr[64],_tokbuf[2*MAX_JSON_FIELD],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
+    cJSON *json,*array; int32_t valid; uint64_t tag; char NXTaddr[64],numstr[64],_tokbuf[2*MAX_JSON_FIELD],encoded[NXT_TOKEN_LEN+1],*cmdstr,*retstr = 0;
     struct coin_info *cp = get_coin_info("BTCD");
     if ( Finished_init == 0 )
     {
@@ -924,7 +922,10 @@ char *call_SuperNET_JSON(char *JSONstr)
         if ( cJSON_GetObjectItem(json,"timestamp") == 0 )
             cJSON_AddItemToObject(json,"timestamp",cJSON_CreateNumber(time(NULL)));
         if ( cJSON_GetObjectItem(json,"tag") == 0 )
-            cJSON_AddItemToObject(json,"tag",cJSON_CreateNumber(rand()));
+        {
+            randombytes((void *)&tag,sizeof(tag));
+            sprintf(numstr,"%llu",(long long)tag), cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
+        }
         cmdstr = cJSON_Print(json);
         if ( cmdstr != 0 )
         {
@@ -1267,7 +1268,8 @@ int SuperNET_start(char *JSON_or_fname,char *myipaddr)
 
 #define DEFINES_ONLY
 #include "plugins/plugin777.c"
-#include "plugins/sophia/storage.c"
+#include "plugins/sophia/kv777.c"
+#include "plugins/utils/NXT777.c"
 #include "plugins/utils/system777.c"
 #include "plugins/utils/files777.c"
 #undef DEFINES_ONLY
@@ -1287,7 +1289,6 @@ char *PLUGNAME(_authmethods)[] = { "setpass" }; // list of supported methods
 uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t max,cJSON *argjson,char *coinstr,char *serverport,char *userpass)
 {
     uint64_t allocsize,nxt64bits;
-    uint8_t mysecret[32],mypublic[32];
     char coinaddr[MAX_JSON_FIELD],*str,*privkey;
     NXTaddr[0] = 0;
     extract_cJSON_str(secret,max,argjson,"secret");
@@ -1318,12 +1319,11 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
     }
     else if ( strcmp(secret,"randvals") == 0 )
         gen_randomacct(33,NXTaddr,secret,"randvals");
-    nxt64bits = conv_NXTpassword(mysecret,mypublic,(uint8_t *)secret,(int32_t)strlen(secret));
+    nxt64bits = conv_NXTpassword(SUPERNET.myprivkey,SUPERNET.mypubkey,(uint8_t *)secret,(int32_t)strlen(secret));
     expand_nxt64bits(NXTaddr,nxt64bits);
     if ( 1 )
         conv_rsacctstr(NXTacct,nxt64bits);
     printf("(%s) (%s) (%s)\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>");
-    //escape_code(secret,secretstr);
     return(nxt64bits);
 }
 
@@ -1474,13 +1474,13 @@ int upnpredirect(const char* eport, const char* iport, const char* proto, const 
     return 1; //ok - we are mapped:)
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
     char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json);
     char *retstr,*resultstr,*methodstr,*destplugin,buf[1024],myipaddr[512];
     uint8_t mysecret[32],mypublic[32];
     FILE *fp;
-    int32_t i,len;
+    int32_t len;
     retbuf[0] = 0;
     //printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s)! (%s) initflag.%d process %s\n",plugin->name,jsonstr,initflag,plugin->name);
     if ( initflag > 0 )
@@ -1517,12 +1517,20 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             strcpy(SUPERNET.myipaddr,myipaddr);
         if ( SUPERNET.myipaddr[0] != 0 )
             SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
-        if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
-            SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
-        else SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
+        SUPERNET.mmapflag = get_API_int(cJSON_GetObjectItem(json,"mmapflag"),0);
+        //if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
+        //    SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
+        //else
+            SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
         copy_cJSON(SUPERNET.hostname,cJSON_GetObjectItem(json,"hostname"));
         SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),SUPERNET_PORT);
         SUPERNET.serviceport = get_API_int(cJSON_GetObjectItem(json,"serviceport"),SUPERNET_PORT - 2);
+        copy_cJSON(SUPERNET.transport,cJSON_GetObjectItem(json,"transport"));
+        if ( SUPERNET.transport[0] == 0 )
+            strcpy(SUPERNET.transport,SUPERNET.UPNP == 0 ? "tcp" : "ws");
+        sprintf(SUPERNET.lbendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + LB_OFFSET);
+        sprintf(SUPERNET.relayendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + PUBRELAYS_OFFSET);
+        sprintf(SUPERNET.globalendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + PUBGLOBALS_OFFSET);
         copy_cJSON(SUPERNET.SERVICESECRET,cJSON_GetObjectItem(json,"SERVICESECRET"));
         expand_nxt64bits(SUPERNET.SERVICENXT,conv_NXTpassword(mysecret,mypublic,(uint8_t *)SUPERNET.SERVICESECRET,(int32_t)strlen(SUPERNET.SERVICESECRET)));
         printf("SERVICENXT.%s\n",SUPERNET.SERVICENXT);
@@ -1533,9 +1541,6 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         SUPERNET.gatewayid = get_API_int(cJSON_GetObjectItem(json,"gatewayid"),-1);
         SUPERNET.numgateways = get_API_int(cJSON_GetObjectItem(json,"numgateways"),3);
         SUPERNET.UPNP = get_API_int(cJSON_GetObjectItem(json,"UPNP"),SUPERNET.UPNP);
-        copy_cJSON(SUPERNET.transport,cJSON_GetObjectItem(json,"transport"));
-        if ( SUPERNET.transport[0] == 0 )
-            strcpy(SUPERNET.transport,SUPERNET.UPNP == 0 ? "tcp" : "ws");
         SUPERNET.APISLEEP = get_API_int(cJSON_GetObjectItem(json,"APISLEEP"),DEFAULT_APISLEEP);
         SUPERNET.PLUGINTIMEOUT = get_API_int(cJSON_GetObjectItem(json,"PLUGINTIMEOUT"),10000);
         if ( SUPERNET.APISLEEP <= 1 )
@@ -1553,11 +1558,15 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         copy_cJSON(SUPERNET.BACKUPS,cJSON_GetObjectItem(json,"backups"));
         if ( SUPERNET.BACKUPS[0] == 0 )
             strcpy(SUPERNET.BACKUPS,"/tmp");
+        copy_cJSON(KV777.PATH,cJSON_GetObjectItem(json,"KV777"));
         copy_cJSON(SOPHIA.PATH,cJSON_GetObjectItem(json,"SOPHIA"));
         copy_cJSON(SOPHIA.RAMDISK,cJSON_GetObjectItem(json,"RAMDISK"));
         if ( SOPHIA.PATH[0] == 0 )
             strcpy(SOPHIA.PATH,"./DB");
-        os_compatible_path(SOPHIA.PATH);
+        if ( KV777.PATH[0] == 0 )
+            strcpy(KV777.PATH,"./DB");
+        os_compatible_path(SOPHIA.PATH), ensure_directory(SOPHIA.PATH);
+        os_compatible_path(KV777.PATH), ensure_directory(KV777.PATH);
         MGW.port = get_API_int(cJSON_GetObjectItem(json,"MGWport"),7643);
         copy_cJSON(MGW.PATH,cJSON_GetObjectItem(json,"MGWPATH"));
         if ( MGW.PATH[0] == 0 )
@@ -1568,34 +1577,44 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         sprintf(buf,"%s/sent",MGW.PATH), ensure_directory(buf);
         sprintf(buf,"%s/deposit",MGW.PATH), ensure_directory(buf);
         printf("MGWport.%u >>>>>>>>>>>>>>>>>>> INIT ********************** (%s) (%s) (%s) SUPERNET.port %d UPNP.%d NXT.%s ip.(%s) iamrelay.%d pullnode.(%s)\n",MGW.port,SOPHIA.PATH,MGW.PATH,SUPERNET.NXTSERVER,SUPERNET.port,SUPERNET.UPNP,SUPERNET.NXTADDR,SUPERNET.myipaddr,SUPERNET.iamrelay,RAMCHAINS.pullnode);
-        if ( DB_NXTaccts == 0 )
-            DB_NXTaccts = db777_create(0,0,"NXTaccts",0,0);
-        if ( DB_nodestats == 0 )
-            DB_nodestats = db777_create(0,0,"nodestats",0,0);
-        if ( DB_busdata == 0 )
-            DB_busdata = db777_create(0,0,"busdata",0,0);
-        if ( DB_NXTtxids == 0 )
-            DB_NXTtxids = db777_create(0,0,"NXT_txids",0,0);
-        if ( DB_redeems == 0 )
-            DB_redeems = db777_create(0,0,"redeems",0,0);
-        if ( DB_MGW == 0 )
-            DB_MGW = db777_create(0,0,"MGW",0,0);
-        if ( DB_msigs == 0 )
-            DB_msigs = db777_create(0,0,"msigs",0,0);
-        if ( DB_NXTtrades == 0 )
-            DB_NXTtrades = db777_create(0,0,"NXT_trades",0,0);
-        if ( DB_services == 0 )
-            DB_services = db777_create(0,0,"services",0,0);
+        if ( SUPERNET.gatewayid >= 0 )
+        {
+            if ( DB_NXTaccts == 0 )
+                DB_NXTaccts = db777_create(0,0,"NXTaccts",0,0);
+            //if ( DB_nodestats == 0 )
+            //    DB_nodestats = db777_create(0,0,"nodestats",0,0);
+            //if ( DB_busdata == 0 )
+            //    DB_busdata = db777_create(0,0,"busdata",0,0);
+            if ( DB_NXTtxids == 0 )
+                DB_NXTtxids = db777_create(0,0,"NXT_txids",0,0);
+            if ( DB_redeems == 0 )
+                DB_redeems = db777_create(0,0,"redeems",0,0);
+            if ( DB_MGW == 0 )
+                DB_MGW = db777_create(0,0,"MGW",0,0);
+            if ( DB_msigs == 0 )
+                DB_msigs = db777_create(0,0,"msigs",0,0);
+            if ( DB_NXTtrades == 0 )
+                DB_NXTtrades = db777_create(0,0,"NXT_trades",0,0);
+            //if ( DB_services == 0 )
+            //    DB_services = db777_create(0,0,"services",0,0);
+        }
+        SUPERNET.PM = kv777_init("PM",0);
+        SUPERNET.alias = kv777_init("alias",0);
+        SUPERNET.channels = kv777_init("channels",0);
+        SUPERNET.NXTaccts = kv777_init("NXTaccts",0);
+        SUPERNET.rawPM = kv777_init("rawPM",0);
+        SUPERNET.services = kv777_init("services",0);
         SUPERNET.readyflag = 1;
         if ( SUPERNET.UPNP != 0 )
         {
-            char portstr[16];
-            for (i=0; i<12; i++)
-            {
-                sprintf(portstr,"%d",SUPERNET.port+i);
-                upnpredirect(portstr,portstr,"TCP","SuperNET");
-            }
+            char portstr[64];
+            sprintf(portstr,"%d",SUPERNET.serviceport), upnpredirect(portstr,portstr,"TCP","SuperNET");
+            sprintf(portstr,"%d",SUPERNET.port + LB_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
+            sprintf(portstr,"%d",SUPERNET.port + PUBGLOBALS_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
+            sprintf(portstr,"%d",SUPERNET.port + PUBRELAYS_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
         }
+        
+        //void kv777_test(); kv777_test();
     }
     else
     {

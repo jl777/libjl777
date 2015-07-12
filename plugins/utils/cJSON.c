@@ -761,9 +761,9 @@ void add_satoshis_json(cJSON *json,char *field,uint64_t satoshis)
 
 char *cJSON_str(cJSON *json)
 {
-    if ( is_cJSON_String(json) != 0 )
+    if ( json != 0 && is_cJSON_String(json) != 0 )
         return(json->valuestring);
-    else return(0);
+    return(0);
 }
 
 char *get_cJSON_fieldname(cJSON *obj)

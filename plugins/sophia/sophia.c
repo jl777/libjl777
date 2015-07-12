@@ -22229,11 +22229,11 @@ si_recoverindex(si *i, sr *r)
 	rc = si_trackdir(&track, r, i);
 	if (srunlikely(rc == -1))
 		goto error;
-    #ifndef _WIN32
+#if __amd64__
 	if (srunlikely(track.count == 0)) {
-    #else
+#else
     if( track.count != 0 ) {
-    #endif
+#endif
 		sr_malfunction(r->e, "corrupted database repository: %s",
 		               i->conf->path);
 		goto error;

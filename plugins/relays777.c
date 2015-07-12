@@ -13,19 +13,18 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
-#include "system777.c"
-#include "NXT777.c"
-#include "plugin777.c"
-//#include "gen1block.c"
+#include "../utils/system777.c"
+#include "../utils/NXT777.c"
+#include "../plugin777.c"
 #undef DEFINES_ONLY
 #define NN_WS -4
 
 int32_t relay_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME RELAYS;
-char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices" }; // list of supported methods
-char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "serviceprovider", "allservices", "nonce" }; // list of supported methods
-char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "PM" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "serviceprovider", "allservices", "nonce", "PM" }; // list of supported methods
+char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "PM" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
 char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2", "tbd3" };
@@ -140,37 +139,6 @@ int32_t add_relay(struct _relay_info *list,struct endpoint epbits)
         printf("add_relay warning num.%d > %ld\n",list->num,(sizeof(list->connections)/sizeof(*list->connections)));
     return(list->num);
 }
-
-/*int32_t update_serverbits(struct _relay_info *list,char *transport,uint32_t ipbits,uint16_t port,int32_t type)
-{
-    char endpoint[1024]; struct endpoint epbits;
-    if ( ipbits == SUPERNET.myipbits )
-        return(-1);
-    if ( list->sock < 0 )
-    {
-        printf("illegal list sock.%d\n",list->sock);
-        return(-1);
-    }
-//printf("%p update_serverbits sock.%d type.%d num.%d ipbits.%llx\n",list,list->sock,type,list->num,(long long)ipbits);
-    epbits = find_epbits(list,ipbits,port,type);
-    if ( epbits.ipbits == 0 )
-    {
-        epbits = calc_epbits(transport,ipbits,port,type);
-        expand_epbits(endpoint,epbits);
-        if ( nn_connect(list->sock,endpoint) < 0 )
-            printf("error connecting to (%s) %s\n",endpoint,nn_errstr());
-        else
-        {
-            if ( type == NN_PUB )
-            {
-                printf("subscribed to (%s)\n",endpoint);
-                nn_setsockopt(list->sock,NN_SUB,NN_SUB_SUBSCRIBE,"",0);
-            }
-            //add_relay(list,epbits);
-        }
-    }
-    return(list->num);
-}*/
 
 int32_t nn_add_lbservers(uint16_t port,uint16_t globalport,uint16_t relaysport,int32_t priority,int32_t sock,char servers[][MAX_SERVERNAME],int32_t num)
 {
@@ -352,12 +320,13 @@ int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis)
 
 void add_standard_fields(char *request)
 {
-    cJSON *json;
+    cJSON *json; uint64_t tag;
     if ( (json= cJSON_Parse(request)) != 0 )
     {
         if ( get_API_nxt64bits(cJSON_GetObjectItem(json,"NXT")) == 0 )
         {
-            sprintf(request + strlen(request) - 1,",\"NXT\":\"%s\",\"tag\":\"%llu\"}",SUPERNET.NXTADDR,(((long long)rand() << 32) | (uint32_t)rand()));
+            randombytes((void *)&tag,sizeof(tag));
+            sprintf(request + strlen(request) - 1,",\"NXT\":\"%s\",\"tag\":\"%llu\"}",SUPERNET.NXTADDR,(long long)tag);
             if ( SUPERNET.iamrelay != 0 && (SUPERNET.hostname[0] != 0 || SUPERNET.myipaddr[0] != 0) )
                 sprintf(request + strlen(request) - 1,",\"iamrelay\":\"%s\"}",SUPERNET.hostname[0]!=0?SUPERNET.hostname:SUPERNET.myipaddr);
         }
@@ -374,7 +343,7 @@ char *nn_loadbalanced(uint8_t *data,int32_t len)
     for (i=0; i<10; i++)
         if ( (nn_socket_status(lbsock,1) & NN_POLLOUT) != 0 )
             break;
-//printf("sock.%d NN_LBSEND.(%s)\n",lbsock,data);
+printf("sock.%d NN_LBSEND.(%s)\n",lbsock,data);
     if ( (sendlen= nn_send(lbsock,data,len,0)) == len )
     {
         for (i=0; i<10; i++)
@@ -389,7 +358,7 @@ char *nn_loadbalanced(uint8_t *data,int32_t len)
         }
         else
         {
-            printf("got recvlen.%d %s\n",recvlen,nn_errstr());
+            printf("nn_loadbalanced got recvlen.%d %s\n",recvlen,nn_errstr());
             jsonstr = clonestr("{\"error\":\"lb recv error, probably timeout\"}");
         }
     } else printf("got sendlen.%d instead of %d %s\n",sendlen,len,nn_errstr()), jsonstr = clonestr("{\"error\":\"lb send error\"}");
@@ -411,8 +380,8 @@ cJSON *relay_json(struct _relay_info *list)
     }
     json = cJSON_CreateObject();
     cJSON_AddItemToObject(json,"endpoints",array);
-    cJSON_AddItemToObject(json,"type",cJSON_CreateString(nn_typestr(list->mytype)));
-    cJSON_AddItemToObject(json,"dest",cJSON_CreateString(nn_typestr(list->desttype)));
+    //cJSON_AddItemToObject(json,"type",cJSON_CreateString(nn_typestr(list->mytype)));
+    //cJSON_AddItemToObject(json,"dest",cJSON_CreateString(nn_typestr(list->desttype)));
     cJSON_AddItemToObject(json,"total",cJSON_CreateNumber(list->num));
     return(json);
 }
@@ -464,32 +433,100 @@ void serverloop(void *_args)
 
 void calc_nonces(char *destpoint)
 {
-    char buf[8192],endpoint[8192],*str; int32_t n = 0; double endmilli = milliseconds() + 60000;
+    char buf[8192],*str; int32_t n = 0; double endmilli = milliseconds() + 60000;
     //printf("calc_nonces.(%s)\n",destpoint);
-    expand_epbits(endpoint,calc_epbits("tcp",(uint32_t)calc_ipbits(SUPERNET.myipaddr),SUPERNET.port+PUBRELAYS_OFFSET,NN_PUB));
-    while ( milliseconds() < endmilli )
+    memset(SUPERNET.nonces,0,sizeof(SUPERNET.nonces));
+    SUPERNET.numnonces = 0;
+    while ( milliseconds() < endmilli && n < sizeof(SUPERNET.nonces)/sizeof(*SUPERNET.nonces) )
     {
-        sprintf(buf,"{\"plugin\":\"relay\",\"counter\":\"%d\",\"destplugin\":\"relay\",\"method\":\"nonce\",\"broadcast\":\"8\",\"myendpoint\":\"%s\",\"destpoint\":\"%s\",\"NXT\":\"%s\"}",n,endpoint,destpoint,SUPERNET.NXTADDR);
-        n++;
-        if ( (str= busdata_sync(buf,"8")) != 0 )
+        sprintf(buf,"{\"plugin\":\"relay\",\"counter\":\"%d\",\"destplugin\":\"relay\",\"method\":\"nonce\",\"broadcast\":\"8\",\"lbendpoint\":\"%s\",\"relaypoint\":\"%s\",\"globalpoint\":\"%s\",\"destpoint\":\"%s\",\"NXT\":\"%s\"}",n,SUPERNET.lbendpoint,SUPERNET.relayendpoint,SUPERNET.globalendpoint,destpoint,SUPERNET.NXTADDR);
+        if ( (str= busdata_sync(&SUPERNET.nonces[n],buf,"8",0)) != 0 )
         {
-            fprintf(stderr,"send.(%s)\n",buf);
+            //fprintf(stderr,"send.(%s)\n",buf);
             free(str);
+            n++;
         }
     }
+    SUPERNET.numnonces = n;
     SUPERNET.noncing = 0;
     printf("finished noncing for (%s)\n",destpoint);
     free(destpoint);
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *origjsonstr,cJSON *origjson,int32_t initflag)
+void recv_nonces(void *_ptr)
 {
-    char buf[8192],endpoint[128],tagstr[512],*resultstr,*retstr = 0,*methodstr,*jsonstr; cJSON *retjson,*json;
+    int32_t i,j,n; cJSON *json,*item,*array,*nonces; char *jsonstr; struct applicant_info A,*ptr = _ptr;
+    if ( ptr->startflag != 0 )
+    {
+        double endmilli = milliseconds() + 60000;
+        printf("start receiving nonces\n");
+        SUPERNET.numnonces = 0;
+        while ( milliseconds() < endmilli )
+            sleep(1);
+        printf("finished.%d recv_nonces\n",SUPERNET.numnonces);
+        free(ptr);
+        if ( (n= SUPERNET.numnonces) > 0 )
+        {
+            json = cJSON_CreateObject();
+            array = cJSON_CreateArray();
+            while ( n > 0 )
+            {
+                A = SUPERNET.responses[0];
+                item = cJSON_CreateObject();
+                nonces = cJSON_CreateArray();
+                SUPERNET.responses[0] = SUPERNET.responses[--n];
+                for (i=0; i<=n; i++)
+                {
+                    if ( strcmp(A.lbendpoint,SUPERNET.responses[i].lbendpoint) == 0 )
+                    {
+                        cJSON_AddItemToArray(nonces,cJSON_CreateNumber(SUPERNET.responses[i].nonce));
+                        memset(&SUPERNET.responses[i],0,sizeof(SUPERNET.responses[i]));
+                    }
+                }
+                for (j=0,i=1; i<n; i++)
+                    if ( SUPERNET.responses[i].senderbits != 0 )
+                        SUPERNET.responses[j++] = SUPERNET.responses[i];
+                n = j;
+                cJSON_AddItemToObject(item,"lbendpoint",cJSON_CreateString(A.lbendpoint));
+                cJSON_AddItemToObject(item,"relaypoint",cJSON_CreateString(A.relayendpoint));
+                cJSON_AddItemToObject(item,"glboalpoint",cJSON_CreateString(A.globalendpoint));
+                cJSON_AddItemToObject(item,"nonces",nonces);
+                cJSON_AddItemToArray(array,item);
+            }
+            cJSON_AddItemToObject(json,"peers",array);
+            cJSON_AddItemToObject(json,"lbendpoint",cJSON_CreateString(SUPERNET.lbendpoint));
+            cJSON_AddItemToObject(json,"relaypoint",cJSON_CreateString(SUPERNET.relayendpoint));
+            cJSON_AddItemToObject(json,"glboalpoint",cJSON_CreateString(SUPERNET.globalendpoint));
+            jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
+            printf("%s\n",jsonstr);
+            if ( SUPERNET.peersjson != 0 )
+                free_json(SUPERNET.peersjson);
+            SUPERNET.peersjson = json;
+        }
+        SUPERNET.noncing = 0;
+        SUPERNET.numnonces = 0;
+    }
+    else
+    {
+        SUPERNET.responses = realloc(SUPERNET.responses,(sizeof(*SUPERNET.responses) * (SUPERNET.numnonces + 1)));
+        SUPERNET.responses[SUPERNET.numnonces++] = *ptr;
+        fprintf(stderr,"%d: got nonce.%u from %llu %s/%s/%s\n",SUPERNET.numnonces,ptr->nonce,(long long)ptr->senderbits,ptr->lbendpoint,ptr->relayendpoint,ptr->globalendpoint);
+    }
+}
+
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *origjsonstr,cJSON *origjson,int32_t initflag,char *tokenstr)
+{
+    char endpoint[128],tagstr[512],*resultstr,*retstr = 0,*methodstr,*jsonstr,*destplugin,*submethod;
+    cJSON *retjson,*json,*tokenobj; uint32_t nonce;
+    struct applicant_info apply;
     retbuf[0] = 0;
+    if ( tokenstr == 0 )
+        tokenstr = "";
     if ( is_cJSON_Array(origjson) != 0 && cJSON_GetArraySize(origjson) == 2 )
         json = cJSON_GetArrayItem(origjson,0), jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
     else json = origjson, jsonstr = origjsonstr;
-    //printf("<<<<<<<<<<<< INSIDE relays PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
+    if ( Debuglevel > 2 )
+        printf("<<<<<<<<<<<< INSIDE relays PLUGIN! process %s [(%s).(%s)]\n",plugin->name,jsonstr,tokenstr);
     if ( initflag > 0 )
     {
         // configure settings
@@ -503,6 +540,8 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
+        destplugin = cJSON_str(cJSON_GetObjectItem(json,"destplugin"));
+        submethod = cJSON_str(cJSON_GetObjectItem(json,"submethod"));
         if ( methodstr == 0 || methodstr[0] == 0 )
         {
             printf("(%s) has not method\n",jsonstr);
@@ -525,8 +564,16 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             strcpy(retbuf,"{\"result\":\"relay command under construction\"}");
             if ( strcmp(methodstr,"list") == 0 )
                 retstr = relays_jsonstr(jsonstr,json);
+            else if ( strcmp(methodstr,"PM") == 0 )
+            {
+                sprintf(retbuf,"%s",jsonstr);
+                // {"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"join","broadcast":"join","endpoint":""}
+            }
             else if ( strcmp(methodstr,"busdata") == 0 )
-                retstr = busdata_sync(jsonstr,cJSON_str(cJSON_GetObjectItem(json,"broadcast")));
+            {
+                retstr = busdata_sync(&nonce,jsonstr,cJSON_str(cJSON_GetObjectItem(json,"broadcast")),0);
+                // {"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"join","broadcast":"join","endpoint":""}
+            }
             else if ( strcmp(methodstr,"allservices") == 0 )
             {
                 if ( (retjson= serviceprovider_json()) != 0 )
@@ -536,28 +583,45 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                     //printf("got.(%s)\n",retstr);
                 } else printf("null serviceprovider_json()\n");
             }
-            else if ( strcmp(methodstr,"join") == 0 || strcmp(methodstr,"nonce") == 0  )
+            else if ( strcmp(methodstr,"join") == 0 )
             {
-                if ( SUPERNET.iamrelay != 0 && SUPERNET.noncing == 0 )
+                if ( SUPERNET.noncing == 0 )
                 {
                     copy_cJSON(tagstr,cJSON_GetObjectItem(json,"tag"));
                     copy_cJSON(endpoint,cJSON_GetObjectItem(json,"endpoint"));
-                    //nn_connect(RELAYS.subclient,endpoint);
-                    if ( strcmp(methodstr,"join") == 0 )
+                    SUPERNET.noncing = 1;
+                    if ( SUPERNET.iamrelay != 0 )
                     {
-                        SUPERNET.noncing = 1;
                         portable_thread_create((void *)calc_nonces,clonestr(endpoint));
                         sprintf(retbuf,"{\"result\":\"noncing\",\"endpoint\":\"%s\"}",endpoint);
-                    } else sprintf(retbuf,"{\"result\":\"nonce stats\",\"endpoint\":\"%s\"}",endpoint);
-                    fprintf(stderr,"join or nonce.(%s)\n",retbuf);
+                    }
+                    //fprintf(stderr,"join or nonce.(%s)\n",retbuf);
                 }
-                else
+            }
+            else if ( strcmp(methodstr,"nonce") == 0 )
+            {
+                char endpoint[512],sender[64],destpoint[512],relaypoint[512],globalpoint[512],noncestr[512];
+                memset(&apply,0,sizeof(apply));
+                copy_cJSON(destpoint,cJSON_GetObjectItem(json,"destpoint"));
+                copy_cJSON(endpoint,cJSON_GetObjectItem(json,"lbendpoint"));
+                copy_cJSON(relaypoint,cJSON_GetObjectItem(json,"relaypoint"));
+                copy_cJSON(globalpoint,cJSON_GetObjectItem(json,"globalpoint"));
+                copy_cJSON(sender,cJSON_GetObjectItem(json,"NXT"));
+                if ( SUPERNET.noncing != 0 && strcmp(SUPERNET.lbendpoint,destpoint) == 0 )
                 {
-                    char endpoint[512],sender[64];
-                    copy_cJSON(endpoint,cJSON_GetObjectItem(json,"myendpoint"));
-                    copy_cJSON(sender,cJSON_GetObjectItem(json,"NXT"));
-                    sprintf(buf,"{\"result\":\"gotnonce\",\"endpoint\":\"%s\",\"NXT\":\"%s\"}",endpoint,sender);
-                    fprintf(stderr,"received.(%s) from (%s)\n",origjsonstr,sender);
+                    if ( endpoint[0] != 0 && tokenstr[0] != 0 && (tokenobj= cJSON_Parse(tokenstr)) != 0 )
+                    {
+                        strcpy(apply.lbendpoint,endpoint);
+                        strcpy(apply.relayendpoint,relaypoint);
+                        strcpy(apply.globalendpoint,globalpoint);
+                        apply.senderbits = calc_nxt64bits(sender);
+                        copy_cJSON(noncestr,cJSON_GetObjectItem(tokenobj,"nonce"));
+                        if ( noncestr[0] != 0 )
+                            apply.nonce = (uint32_t)calc_nxt64bits(noncestr);
+                        //printf("tokenobj.(%s) -> nonce.%u\n",tokenstr,apply.nonce);
+                        free_json(tokenobj);
+                        recv_nonces(&apply);
+                    }
                 }
             }
         }

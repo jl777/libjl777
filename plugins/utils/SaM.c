@@ -31,7 +31,7 @@
 #include "system777.c"
 #define MAX_INPUT_SIZE ((int32_t)(65536 - sizeof(bits256) - 2*sizeof(uint32_t)))
 
-struct SaM_info { TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; bits384 bits; };
+struct SaM_info {  bits384 bits; TRIT trits[SAM_STATE_SIZE],hash[SAM_HASH_SIZE]; };
 struct SaMhdr { bits384 sig; uint32_t timestamp,nonce; uint8_t numrounds,leverage; };
 
 void SaM_Initialize(struct SaM_info *state);
@@ -123,10 +123,17 @@ void _SaM_Absorb(struct SaM_info *state,const TRIT *input,const int32_t inputSiz
 	} while ( remainder > 0 );
 }
 
-int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2)
+int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,uint32_t inputSize,const uint8_t *input2,uint32_t inputSize2)
 {
     TRIT output[(MAX_INPUT_SIZE + sizeof(struct SaMhdr)) << 3];
     int32_t i,n = 0;
+    if ( inputSize + inputSize2 > sizeof(output) )
+    {
+        printf("SaM overflow (%d + %d) > %ld\n",inputSize,inputSize2,sizeof(output));
+        if ( inputSize > MAX_INPUT_SIZE )
+            inputSize = MAX_INPUT_SIZE;
+        inputSize2 = 0;
+    }
     if ( input != 0 && inputSize != 0 )
     {
         for (i=0; i<(inputSize << 3); i++)

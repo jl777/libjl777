@@ -21,10 +21,10 @@
 
 #define DEFINES_ONLY
 #include "../plugin777.c"
-#include "storage.c"
-#include "system777.c"
-#include "NXT777.c"
-#include "ramchain.c"
+#include "../sophia/kv777.c"
+#include "../utils/system777.c"
+#include "../utils/NXT777.c"
+#include "../ramchain/ramchain.c"
 #undef DEFINES_ONLY
 
 int32_t MGW_idle(struct plugin_info *plugin)
@@ -1995,7 +1995,7 @@ int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][
     return(sock);
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
     char NXTaddr[64],nxtaddr[64],ipaddr[64],*resultstr,*coinstr,*methodstr,*retstr = 0; int32_t i,j,n; cJSON *array; uint64_t nxt64bits;
     retbuf[0] = 0;

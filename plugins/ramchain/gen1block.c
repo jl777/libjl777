@@ -13,9 +13,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "coins777.c"
-#include "system777.c"
-#include "pass1.c"
+#include "../coins/coins777.c"
+#include "../utils/system777.c"
+#include "../coins/pass1.c"
 
 struct ledger_blockinfo
 {

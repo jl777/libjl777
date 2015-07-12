@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <curl/curl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -31,8 +32,9 @@
 #include "survey.h"
 #include "pair.h"
 #include "pubsub.h"
-#include "cJSON.h"
-#include "system777.c"
+#include "includes/cJSON.h"
+#include "sophia/kv777.c"
+#include "utils/system777.c"
 
 struct plugin_info
 {
@@ -100,7 +102,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
     void *loadfile(uint64_t *allocsizep,char *fname);
-    char filename[1024],*myipaddr,*jsonstr = 0;
+    char filename[1024],*myipaddr,tokenstr[MAX_JSON_FIELD],*jsonstr = 0;
     cJSON *obj=0,*tmp,*json = 0;
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
@@ -108,8 +110,11 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     if ( jsonargs != 0 && (json= cJSON_Parse(jsonargs)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
+        {
             obj = cJSON_GetArrayItem(json,0);
-        else obj = json;
+            copy_cJSON(tokenstr,cJSON_GetArrayItem(json,1));
+        }
+        else obj = json, tokenstr[0] = 0;
         copy_cJSON(filename,cJSON_GetObjectItem(obj,"filename"));
         if ( filename[0] != 0 && (jsonstr= loadfile(&allocsize,filename)) != 0 )
         {
@@ -124,14 +129,16 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     if ( obj != 0 )
     {
 //printf("jsonargs.(%s)\n",jsonargs);
-        if ( (nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
-        {
-            plugin->nxt64bits = nxt64bits;
-            expand_nxt64bits(plugin->NXTADDR,plugin->nxt64bits);
-        }
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
         if ( initflag > 0 )
         {
+            if ( (nxt64bits= get_API_nxt64bits(cJSON_GetObjectItem(obj,"NXT"))) != 0 )
+            {
+                plugin->nxt64bits = nxt64bits;
+                expand_nxt64bits(plugin->NXTADDR,plugin->nxt64bits);
+            }
+            if ( (nxt64bits= get_API_nxt64bits(cJSON_GetObjectItem(obj,"serviceNXT"))) != 0 )
+                expand_nxt64bits(plugin->SERVICENXT,nxt64bits);
             myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
             if ( is_ipaddr(myipaddr) != 0 )
                 strcpy(plugin->ipaddr,myipaddr);
@@ -140,7 +147,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
-        retval = PLUGNAME(_process_json)(0,0,1,plugin,tag,retbuf,max,jsonstr,obj,initflag);
+        retval = PLUGNAME(_process_json)(0,0,1,plugin,tag,retbuf,max,jsonstr,obj,initflag,tokenstr);
     else printf("error with JSON.(%s)\n",jsonstr);//, getchar();
     //fprintf(stderr,"done tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 )
@@ -151,7 +158,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     return(retval);
 }
 
-static int32_t set_nxtaddrs(char *NXTaddr,char *serviceNXT)
+/*static int32_t set_nxtaddrs(char *NXTaddr,char *serviceNXT)
 {
     FILE *fp; cJSON *json; char confname[512],buf[65536],secret[4096],servicesecret[4096]; uint8_t mysecret[32],mypublic[32];
     strcpy(confname,"SuperNET.conf"), os_compatible_path(confname);
@@ -172,11 +179,11 @@ static int32_t set_nxtaddrs(char *NXTaddr,char *serviceNXT)
         fclose(fp);
     } else fprintf(stderr,"set_nxtaddrs cant open.(%s)\n",confname);
     return((int32_t)strlen(NXTaddr));
-}
+}*/
 
 static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
-    char tagstr[128]; cJSON *json; int32_t len;
+    char tagstr[512]; cJSON *json; int32_t len;
 //printf("APPEND.(%s) (%s)\n",retbuf,plugin->name);
     tagstr[0] = 0;
     len = (int32_t)strlen(retbuf);
@@ -184,6 +191,10 @@ static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin
     {
         if ( tag != 0 && get_API_nxt64bits(cJSON_GetObjectItem(json,"tag")) == 0 )
             sprintf(tagstr,",\"tag\":\"%llu\"",(long long)tag);
+        if ( cJSON_GetObjectItem(json,"serviceNXT") == 0 && plugin->SERVICENXT[0] != 0 )
+            sprintf(tagstr+strlen(tagstr),",\"serviceNXT\":\"%s\"",plugin->SERVICENXT);
+        if ( cJSON_GetObjectItem(json,"NXT") == 0 )
+            sprintf(tagstr+strlen(tagstr),",\"NXT\":\"%s\"",plugin->NXTADDR);
         if ( allfields != 0 )
         {
              if ( SUPERNET.iamrelay != 0 )
@@ -236,7 +247,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     if ( plugin->sleepmillis == 0 )
         plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
-    char NXTaddr[512],serviceNXT[512],tmpstrA[512],tmpstrB[512];
+    /*char NXTaddr[512],serviceNXT[512],tmpstrA[512],tmpstrB[512];
     copy_cJSON(NXTaddr,cJSON_GetObjectItem(json,"NXT"));
     copy_cJSON(serviceNXT,cJSON_GetObjectItem(json,"serviceNXT"));
     if ( NXTaddr[0] == 0 || serviceNXT[0] == 0 )
@@ -246,15 +257,15 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
             strcpy(NXTaddr,tmpstrA);
         if ( serviceNXT[0] == 0 )
             strcpy(serviceNXT,tmpstrB);
-    }
-    strcpy(plugin->NXTADDR,NXTaddr);
-    strcpy(plugin->SERVICENXT,serviceNXT);
+        strcpy(plugin->NXTADDR,NXTaddr);
+        strcpy(plugin->SERVICENXT,serviceNXT);
+    }*/
     if ( cJSON_GetObjectItem(json,"NXT") == 0 )
-        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(NXTaddr));
-    else cJSON_ReplaceItemInObject(json,"NXT",cJSON_CreateString(NXTaddr));
+        cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));
+    else cJSON_ReplaceItemInObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));
     if ( cJSON_GetObjectItem(json,"serviceNXT") == 0 )
-        cJSON_AddItemToObject(json,"serviceNXT",cJSON_CreateString(serviceNXT));
-    else cJSON_ReplaceItemInObject(json,"serviceNXT",cJSON_CreateString(serviceNXT));
+        cJSON_AddItemToObject(json,"serviceNXT",cJSON_CreateString(plugin->SERVICENXT));
+    else cJSON_ReplaceItemInObject(json,"serviceNXT",cJSON_CreateString(plugin->SERVICENXT));
     jsonstr = cJSON_Print(json), free_json(json);
     _stripwhite(jsonstr,' ');
     strcpy(retbuf,jsonstr), free(jsonstr);
@@ -280,8 +291,8 @@ static void plugin_transportaddr(char *addr,char *transportstr,char *ipaddr,uint
 
 static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,struct plugin_info *plugin,int32_t permanentflag,uint64_t daemonid,uint64_t myid,char *jsonstr)
 {
-    uint32_t timestamp; int32_t valid = -11,len = (int32_t)strlen(jsonstr); cJSON *json,*obj; uint64_t tag = 0;
-    char name[MAX_JSON_FIELD],destname[MAX_JSON_FIELD],forwarder[MAX_JSON_FIELD],pubkey[MAX_JSON_FIELD],sender[MAX_JSON_FIELD];
+    int32_t valid = -11,len = (int32_t)strlen(jsonstr); cJSON *json,*obj,*tokenobj; uint64_t tag = 0;
+    char name[MAX_JSON_FIELD],destname[MAX_JSON_FIELD],forwarder[MAX_JSON_FIELD],tokenstr[MAX_JSON_FIELD],sender[MAX_JSON_FIELD];
     retbuf[0] = *sendflagp = 0;
     if ( Debuglevel > 2 )
         printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
@@ -290,11 +301,14 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         if ( is_cJSON_Array(json) != 0 )
         {
             obj = cJSON_GetArrayItem(json,0);
-            timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(obj,"time"),0);
-            sender[0] = 0;
-            valid = validate_token(forwarder,pubkey,sender,jsonstr,(timestamp != 0)*MAXTIMEDIFF);
+            jsonstr = cJSON_Print(obj), _stripwhite(jsonstr,' ');
+            tokenobj = cJSON_GetArrayItem(json,1), _stripwhite(tokenstr,' ');
+            copy_cJSON(tokenstr,tokenobj);
+            copy_cJSON(forwarder,cJSON_GetObjectItem(tokenobj,"forwarder"));
+            copy_cJSON(sender,cJSON_GetObjectItem(tokenobj,"sender"));
+            valid = get_API_int(cJSON_GetObjectItem(tokenobj,"valid"),valid);
         }
-        else obj = json;
+        else obj = json, tokenstr[0] = forwarder[0] = sender[0] = 0;
         copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
         if ( name[0] == 0 )
             copy_cJSON(name,cJSON_GetObjectItem(obj,"agent"));
@@ -302,7 +316,7 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         if ( destname[0] == 0 )
             copy_cJSON(destname,cJSON_GetObjectItem(obj,"destagent"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
-        if ( (strcmp(name,plugin->name) == 0 || strcmp(destname,plugin->name) == 0) && (len= PLUGNAME(_process_json)(forwarder,sender,valid,plugin,tag,retbuf,max,jsonstr,obj,0)) > 0 )
+        if ( (strcmp(name,plugin->name) == 0 || strcmp(destname,plugin->name) == 0) && (len= PLUGNAME(_process_json)(forwarder,sender,valid,plugin,tag,retbuf,max,jsonstr,obj,0,tokenstr)) > 0 )
         {
             *sendflagp = 1;
             if ( retbuf[0] == 0 )
@@ -337,13 +351,13 @@ int32_t main
     struct plugin_info *plugin; double startmilli; cJSON *argjson;
     int32_t bundledflag,max,sendflag,sleeptime=1,len = 0;
 #ifndef BUNDLED
-    OS_init();
+    portable_OS_init();
 #endif
     milliseconds();
     max = 1000000;
     retbuf = malloc(max+1);
-    plugin = calloc(1,sizeof(*plugin) + PLUGIN_EXTRASIZE);
-    plugin->extrasize = PLUGIN_EXTRASIZE;
+    plugin = calloc(1,sizeof(*plugin));// + PLUGIN_EXTRASIZE);
+    //plugin->extrasize = PLUGIN_EXTRASIZE;
     plugin->ppid = OS_getppid();
     strcpy(plugin->name,PLUGINSTR);
     if ( 0 )
@@ -365,14 +379,14 @@ int32_t main
     }
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
     plugin->permanentflag = atoi(argv[1]);
-    plugin->daemonid = atol(argv[2]);
+    plugin->daemonid = calc_nxt64bits(argv[2]);
     plugin->bundledflag = bundledflag = is_bundled_plugin(plugin->name);
     transportstr = get_localtransport(plugin->bundledflag);
     sprintf(plugin->connectaddr,"%s://SuperNET",transportstr);
     sprintf(plugin->bindaddr,"%s://%llu",transportstr,(long long)plugin->daemonid);
     jsonargs = (argc >= 3) ? ((char *)argv[3]) : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);
-    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu NXT.%s\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,plugin->NXTADDR);//,jsonargs!=0?jsonargs:"");
+    printf("CONFIGURED.(%s) argc.%d: %s myid.%llu daemonid.%llu NXT.%s serviceNXT.%s\n",plugin->name,argc,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET",(long long)plugin->myid,(long long)plugin->daemonid,plugin->NXTADDR,plugin->SERVICENXT);//,jsonargs!=0?jsonargs:"");
     if ( init_pluginsocks(plugin,plugin->permanentflag,plugin->myid,plugin->daemonid,plugin->timeout) == 0 )
     {
         argjson = cJSON_Parse(jsonargs);

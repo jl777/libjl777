@@ -45,7 +45,7 @@ S = plugins/sophia
 I = plugins/InstantDEX
 
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
-SOPHIA = $(S)/sophia.c $(S)/sophia_main.c $(S)/db777.c $(S)/storage.c
+SOPHIA = $(S)/sophia.c $(S)/kv777_main.c $(S)/db777.c $(S)/kv777.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 COINS = $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
@@ -72,7 +72,7 @@ PINCLUDES := -Iincludes -I../nanomsg/src -I../nanomsg/src/utils -I../mxe/usr/x86
 
 _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
-_api := rm cgi/*; $(CC) -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/echodemo 
+_api := rm cgi/*; $(CC) -o cgi/api.exe -O2 $(PINCLUDES) api_main.c ccgi.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api.exe cgi/nxt.exe; ln cgi/api.exe cgi/nxts.exe; ln cgi/api.exe cgi/port.exe; ln cgi/api.exe cgi/ports.exe; ln cgi/api.exe cgi/InstantDEX.exe; ln cgi/api.exe cgi/echodemo.exe 
 
 _msc := rm agents/msc; gcc -o agents/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
 
@@ -266,14 +266,6 @@ patch2: doesntexist; \
 dependencies: doesntexist; \
     sudo apt-get install autopoint bison bzip2 cmake flex gcc g++ gperf intltool libtool ruby scons wine zlib1g-dev libffi-dev;
 
-onetime: doesntexist; \
-    cd nanomsg; ./autogen.sh; ./configure; make; cd ..; \
-    cd miniupnpc; make; cp libminiupnpc.a ../libs; cd ..; \
-    git clone https://github.com/joewalnes/websocketd; cd websocketd; make; cp websocketd ../libs; cd ..; \
-    #git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \
-    #mkdir go/gocode; mkdir go/gocode/src; export GOPATH=`pwd`/go/gocode;  export GOROOT=`pwd`/go; echo $$GOPATH; echo $$GOROOT; \
-    #go get golang.org/x/tools/cmd; go get golang.org/x/crypto; go get golang.org/x/image; go get golang.org/x/sys; go get golang.org/x/net; go get golang.org/x/text; go get golang.org/x/tools;\
-    #cd go/gocode/src; mkdir github.com; cd github.com; mkdir joewalnes; cd joewalnes; git clone https://github.com/joewalnes/websocketd; cd websocketd; go build; cp websocketd ../../../../../../libs; cd ../../../../../..;
 
 
 winpatch: doesntexist; \
@@ -342,4 +334,4 @@ plugins/InstantDEX/InstantDEX_main.o: plugins/InstantDEX/InstantDEX_main.c plugi
 
 plugins/cgi/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
 
-lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/storage.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c
+lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/kv777.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c

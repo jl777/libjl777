@@ -14,10 +14,10 @@
 #include <stdint.h>
 #include <math.h>
 #include "sophia.h"
-#include "cJSON.h"
-#include "system777.c"
-#include "coins777.c"
-#include "storage.c"
+#include "../includes/cJSON.h"
+#include "../utils/system777.c"
+#include "../coins/coins777.c"
+#include "kv777.c"
 
 #define DB777_RAM 1
 #define DB777_HDD 2
@@ -60,7 +60,7 @@ void db777_path(char *path,char *coinstr,char *subdir,int32_t useramdisk);
 int32_t db777_write(void *transactions,struct db777 *DB,void *key,int32_t keylen,void *value,int32_t valuelen);
 
 extern struct db777_info SOPHIA;
-extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_nodestats,*DB_busdata,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades,*DB_services;
+extern struct db777 *DB_msigs,*DB_NXTaccts,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades;
 
 #endif
 #else

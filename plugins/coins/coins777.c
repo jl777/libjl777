@@ -12,14 +12,14 @@
 #ifndef crypto777_coins777_h
 #define crypto777_coins777_h
 #include <stdio.h>
-#include "uthash.h"
-#include "cJSON.h"
-#include "huffstream.c"
-#include "system777.c"
-#include "storage.c"
-#include "db777.c"
-#include "files777.c"
-#include "utils777.c"
+#include "../uthash.h"
+#include "../cJSON.h"
+#include "../utils/huffstream.c"
+#include "../utils/system777.c"
+#include "../sophia/kv777.c"
+#include "../sophia/db777.c"
+#include "../utils/files777.c"
+#include "../utils/utils777.c"
 #include "gen1pub.c"
 
 #define OP_RETURN_OPCODE 0x6a
@@ -1847,7 +1847,7 @@ int32_t coin777_parse(struct coin777 *coin,uint32_t RTblocknum,int32_t syncflag,
             elapsed = (milliseconds() - coin->ramchain.startmilli)/60000.;
             if ( dispflag != 0 )
             {
-                extern int32_t Duplicate,Mismatch,Added,Linked,Numgets;
+                extern int32_t Duplicate,Mismatch,Added,Numgets;
                 coin->lag = RTblocknum - blocknum;
                 printf("%.3f %-5s [lag %-5d] %-6u %.8f %.8f (%.8f) [%.8f] %13.8f | dur %.2f %.2f %.2f | len.%-5d %s %.1f | H%d E%d R%d W%d %08x\n",coin->ramchain.calc_elapsed/1000.,coin->name,coin->lag,blocknum,dstr(oldsupply),dstr(coin->ramchain.addrsum),dstr(oldsupply)-dstr(coin->ramchain.addrsum),dstr(supply)-dstr(oldsupply),dstr(coin->ramchain.minted != 0 ? coin->ramchain.minted : (supply - oldsupply)),elapsed,elapsed+(RTblocknum-blocknum)*coin->ramchain.calc_elapsed/60000,elapsed+estimate,allocsize,_mbstr(coin->ramchain.totalsize),(double)coin->ramchain.totalsize/blocknum,Duplicate,Mismatch,Numgets,Added,ledgerhash);
             }

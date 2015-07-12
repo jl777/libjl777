@@ -573,11 +573,12 @@ int32_t SuperNET_narrowcast(char *destip,unsigned char *msg,int32_t len) { retur
 #endif
 
 #include <stdio.h>
+#include <curl/curl.h>
 #define DEFINES_ONLY
-#include "cJSON.h"
-#include "utils777.c"
-#include "files777.c"
-#include "system777.c"
+#include "plugins/includes/cJSON.h"
+#include "plugins/utils/utils777.c"
+#include "plugins/utils/files777.c"
+#include "plugins/utils/system777.c"
 #include "plugins/plugins.h"
 #undef DEFINES_ONLY
 
@@ -612,7 +613,7 @@ int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_new
 
 void *issue_cgicall(void *_ptr)
 {
-    char apitag[1024],plugin[1024],method[1024],*str = 0,*broadcaststr; int32_t checklen,retlen,timeout; struct pending_cgi *ptr =_ptr;
+    char apitag[1024],plugin[1024],method[1024],*str = 0,*broadcaststr,*destNXT; uint32_t nonce; int32_t checklen,retlen,timeout; struct pending_cgi *ptr =_ptr;
     copy_cJSON(apitag,cJSON_GetObjectItem(ptr->json,"apitag"));
     safecopy(ptr->apitag,apitag,sizeof(ptr->apitag));
     copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"agent"));
@@ -626,26 +627,20 @@ void *issue_cgicall(void *_ptr)
         fprintf(stderr,"error connecting to (%s)\n",apitag);
     else
     {
+        destNXT = cJSON_str(cJSON_GetObjectItem(ptr->json,"destNXT"));
         if ( strcmp(plugin,"relay") == 0 || (broadcaststr != 0 && strcmp(broadcaststr,"publicaccess") == 0) || cJSON_str(cJSON_GetObjectItem(ptr->json,"servicename")) != 0 )
         {
-            //printf("call busdata_sync\n");
-            str = busdata_sync(ptr->jsonstr,broadcaststr);
+            if ( Debuglevel > 1 )
+                printf("call busdata_sync.(%s)\n",ptr->jsonstr);
+            //printf("destNXT.(%s)\n",destNXT!=0?destNXT:"");
+            str = busdata_sync(&nonce,ptr->jsonstr,broadcaststr,destNXT);
             //printf("got.(%s)\n",str);
         }
         else
         {
-            //printf("call plugin_method.(%s)\n",ptr->jsonstr);
-            /*ptr->retstr = 0;
-            if ( 0 )
-            {
-                str = plugin_method(ptr->sock,&ptr->retstr,1,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout);
-                if ( str != 0 )
-                    free(str);
-                while ( ptr->retstr == 0 )
-                    msleep(10);
-                str = ptr->retstr, ptr->retstr = 0;
-            }
-            else */str = plugin_method(ptr->sock,0,1,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout);
+            if ( Debuglevel > 2 )
+                fprintf(stderr,"call plugin_method.(%s)\n",ptr->jsonstr);
+            str = plugin_method(ptr->sock,0,1,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout,0);
         }
         if ( str != 0 )
         {
@@ -801,8 +796,8 @@ void SuperNET_loop(void *ipaddr)
     }
     sleep(1);
     sprintf(jsonargs,"{\"filename\":\"SuperNET.conf\"}");
-    strs[n++] = language_func((char *)"db777","",0,0,1,(char *)"db777",jsonargs,call_system);
-    while ( SOPHIA.readyflag == 0 || find_daemoninfo(&ind,"db777",0,0) == 0 )
+    strs[n++] = language_func((char *)"kv777","",0,0,1,(char *)"kv777",jsonargs,call_system);
+    while ( KV777.readyflag == 0 || find_daemoninfo(&ind,"kv777",0,0) == 0 )
          poll_daemons();
     if ( SUPERNET.gatewayid >= 0 )
     {
@@ -828,7 +823,7 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
     while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
         poll_daemons();*/
-    if ( SUPERNET.iamrelay <= 1 )
+    if ( SUPERNET.gatewayid < 0 )
     {
         strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
         while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
@@ -882,18 +877,17 @@ int SuperNET_start(char *fname,char *myip)
 {
     int32_t init_SUPERNET_pullsock(int32_t sendtimeout,int32_t recvtimeout);
     int32_t parse_ipaddr(char *ipaddr,char *ip_port);
-    void SaM_PrepareIndices();
     char ipaddr[256],*jsonstr = 0;
     uint64_t allocsize;
-    OS_init();
-    SaM_PrepareIndices();
+    printf("myip.(%s)\n",myip);
+    portable_OS_init();
     init_SUPERNET_pullsock(10,1);
     Debuglevel = 2;
     if ( (jsonstr= loadfile(&allocsize,fname)) == 0 )
         jsonstr = clonestr("{}");
     parse_ipaddr(ipaddr,myip);
     strcpy(SUPERNET.myipaddr,ipaddr);
-    printf("SuperNET_start ipaddr.(%s)\n",ipaddr);
+    printf("SuperNET_start myip.(%s) -> ipaddr.(%s)\n",myip!=0?myip:"",ipaddr);
     language_func("SuperNET","",0,0,1,"SuperNET",jsonstr,call_system);
     if ( jsonstr != 0 )
         free(jsonstr);
@@ -918,6 +912,8 @@ int main(int argc,const char *argv[])
     //SaM_PrepareIndices();
     //SaM_test();
     //printf("finished SaM_test\n");
+    void kv777_test(int32_t n);
+    //kv777_test(10000);
     //getchar();
     if ( 0 )
     {
@@ -963,6 +959,8 @@ int main(int argc,const char *argv[])
             if ( is_bundled_plugin((char *)argv[i]) != 0 )
                 language_func((char *)argv[i],"",0,0,1,(char *)argv[i],jsonstr,call_system);
     }
+    sleep(60);
+
     while ( 1 )
     {
         char line[1024];

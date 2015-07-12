@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <curl/curl.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include "../includes/miniupnp/miniwget.h"
@@ -20,8 +21,8 @@
 #include "../includes/miniupnp/upnpcommands.h"
 #include "../includes/miniupnp/upnperrors.h"
 #include "nonportable.h"
-#include "uthash.h"
-#include "cJSON.h"
+#include "../includes/uthash.h"
+#include "../includes/cJSON.h"
 #include "utils777.c"
 #include "inet.c"
 #include "mutex.h"
@@ -116,19 +117,24 @@ struct env777
     uint32_t start_RTblocknum;
 };
 
+struct kv777_info { char PATH[1024]; int32_t readyflag; }; extern struct kv777_info KV777;
+
 #define DEFAULT_APISLEEP 100  // milliseconds
 #define NUM_PLUGINTAGS 8192
+struct applicant_info { uint64_t senderbits; uint32_t nonce; char startflag,lbendpoint[128],relayendpoint[128],globalendpoint[128]; };
 
 struct SuperNET_info
 {
     char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512],SERVICENXT[64];
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[8192],SERVICESECRET[8192],userhome[512],hostname[512];
-    uint64_t my64bits;
-    uint32_t myipbits;
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock;
+    uint64_t my64bits; uint8_t myprivkey[32],mypubkey[32];
+    uint32_t myipbits,nonces[512],numnonces; struct applicant_info *responses; cJSON *peersjson; char lbendpoint[128],relayendpoint[128],globalendpoint[128];
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,mmapflag;
     uint16_t port,serviceport;
     uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
+    struct kv777 *PM,*rawPM,*channels,*alias,*NXTaccts,*services;
+    struct dKV777 *relays;
     cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
 
@@ -251,7 +257,7 @@ int32_t ismyaddress(char *server);
 void set_endpointaddr(char *transport,char *endpoint,char *domain,uint16_t port,int32_t type);
 int32_t nn_portoffset(int32_t type);
 
-char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout);
+char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin,char *method,uint64_t daemonid,uint64_t instanceid,char *origargstr,int32_t len,int32_t timeout,char *tokenstr);
 //char *nn_direct(char *ipaddr,uint8_t *data,int32_t len);
 //char *nn_publish(uint8_t *data,int32_t len,int32_t nostr);
 //char *nn_allrelays(uint8_t *data,int32_t len,int32_t timeoutmillis,char *localresult);
@@ -266,10 +272,9 @@ int32_t nn_socket_status(int32_t sock,int32_t timeoutmillis);
 char *nn_busdata_processor(uint8_t *msg,int32_t len);
 void busdata_init(int32_t sendtimeout,int32_t recvtimeout,int32_t firstiter);
 int32_t busdata_poll();
-char *busdata_sync(char *jsonstr,char *broadcastmode);
+char *busdata_sync(uint32_t *noncep,char *jsonstr,char *broadcastmode,char *destNXTaddr);
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
-int32_t construct_tokenized_req(char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
-char *create_busdata(int32_t *datalenp,char *jsonstr,char *broadcastmode);
+int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
 uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce);
 int32_t nonce_leverage(char *broadcaststr);
@@ -279,6 +284,8 @@ int32_t nn_createsocket(char *endpoint,int32_t bindflag,char *name,int32_t type,
 int32_t nn_lbsocket(int32_t maxmillis,int32_t port,uint16_t globalport,uint16_t relaysport);
 int32_t OS_init();
 int32_t nn_settimeouts(int32_t sock,int32_t sendtimeout,int32_t recvtimeout);
+int32_t is_duplicate_tag(uint64_t tag);
+void portable_OS_init();
 
 #define MAXTIMEDIFF 60
 
@@ -606,5 +613,12 @@ void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
     return(ptr);
 }
 
+void portable_OS_init()
+{
+    void SaM_PrepareIndices();
+    OS_init();
+    curl_global_init(CURL_GLOBAL_ALL); //init the curl session
+    SaM_PrepareIndices();
+}
 #endif
 #endif

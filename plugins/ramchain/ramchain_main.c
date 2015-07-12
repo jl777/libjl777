@@ -15,8 +15,8 @@
 
 #define DEFINES_ONLY
 #include "../plugin777.c"
-#include "storage.c"
-#include "system777.c"
+#include "../sophia/kv777.c"
+#include "../utils/system777.c"
 //#include "ledger777.c"
 #include "ramchain.c"
 #undef DEFINES_ONLY
@@ -47,7 +47,7 @@ int32_t ramchain_idle(struct plugin_info *plugin)
     return(flag);
 }
 
-int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag)
+int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
     char *coinstr,*resultstr,*methodstr;
     struct coin777 *coin = 0;

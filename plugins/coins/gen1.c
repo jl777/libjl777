@@ -15,10 +15,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "cJSON.h"
-#include "uthash.h"
+#include "../includes/cJSON.h"
+#include "../includes/uthash.h"
 #include "cointx.c"
-#include "utils777.c"
+#include "../utils/utils777.c"
 #include "coins777.c"
 
 int32_t bitcoin_assembler(char *script);
