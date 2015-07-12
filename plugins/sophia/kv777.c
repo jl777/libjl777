@@ -659,7 +659,7 @@ cJSON *dKV_json(struct dKV777 *dKV)
 
 cJSON *dKV_approvals_json(struct dKV777 *dKV)
 {
-    char numstr[64]; int32_t i,fifosize; uint64_t txid; cJSON *array = cJSON_CreateArray();
+    char numstr[64]; int32_t i,ind,fifosize; uint64_t txid; cJSON *array = cJSON_CreateArray();
     fifosize = (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo));
     for (i=0; i<fifosize; i++)
     {
