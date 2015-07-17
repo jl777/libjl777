@@ -380,15 +380,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                     printf("GOTMSIG.(%s)\n",jsonstr);
             }
             else sprintf(retbuf,"{\"error\":\"unsupported method\",\"method\":\"%s\"}",methodstr);
-            if ( str != 0 )
-            {
-                strcpy(retbuf,str);
-                free(str);
-            }
         }
     }
     //printf("<<<<<<<<<<<< INSIDE PLUGIN.(%s) initflag.%d process %s slice.%d\n",SUPERNET.myNXTaddr,initflag,plugin->name,COINS.slicei);
-    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
+    return(plugin_copyretstr(retbuf,maxlen,str));
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

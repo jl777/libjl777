@@ -723,6 +723,7 @@ uint64_t get_API_nxt64bits(cJSON *obj)
     }
     return(nxt64bits);
 }
+uint64_t j64bits(cJSON *json,char *field) { return(get_API_nxt64bits(cJSON_GetObjectItem(json,field))); }
 
 uint64_t get_satoshi_obj(cJSON *json,char *field)
 {
@@ -765,6 +766,8 @@ char *cJSON_str(cJSON *json)
         return(json->valuestring);
     return(0);
 }
+
+char *jstr(cJSON *json,char *field) { return(cJSON_str(cJSON_GetObjectItem(json,field))); }
 
 char *get_cJSON_fieldname(cJSON *obj)
 {
@@ -812,6 +815,7 @@ int32_t get_API_int(cJSON *obj,int32_t val)
     }
     return(val);
 }
+int32_t jint(cJSON *json,char *field) { return(get_API_int(cJSON_GetObjectItem(json,field),0)); }
 
 uint32_t get_API_uint(cJSON *obj,uint32_t val)
 {
@@ -825,6 +829,7 @@ uint32_t get_API_uint(cJSON *obj,uint32_t val)
     }
     return(val);
 }
+uint32_t juint(cJSON *json,char *field) { return(get_API_uint(cJSON_GetObjectItem(json,field),0)); }
 
 
 double get_API_float(cJSON *obj)
@@ -840,6 +845,10 @@ double get_API_float(cJSON *obj)
     }
     return(val);
 }
+double jdouble(cJSON *json,char *field) { return(get_API_float(cJSON_GetObjectItem(json,field))); }
+cJSON *jobj(cJSON *json,char *field) { return(cJSON_GetObjectItem(json,field)); }
+cJSON *jitem(cJSON *array,int32_t i) { if ( is_cJSON_Array(array) != 0 ) return(cJSON_GetArrayItem(array,i)); return(0); }
+cJSON *jarray(int32_t *nump,cJSON *json,char *field) { cJSON *array; if ( (array= cJSON_GetObjectItem(json,field)) != 0 && (*nump= is_cJSON_Array(array)) > 0 ) return(array); *nump = 0; return(0); }
 
 int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
 {

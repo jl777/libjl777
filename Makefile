@@ -67,6 +67,8 @@ PINCLUDES := -Iincludes -Inonportable/$(OS)  -I../nanomsg/src -I../nanomsg/src/u
 
 _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) echodemo.c $(PLIBS)
 
+_rps := rm agents/rps; gcc -o agents/rps -O2 $(PINCLUDES) rps777.c $(PLIBS)
+
 _api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/echodemo;  ln cgi/api cgi/public
 
 _msc := rm agents/msc; gcc -o agents/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
@@ -79,12 +81,15 @@ _two := rm agents/two; gcc -o agents/two -O2 $(PINCLUDES) two/two.c $(PLIBS)
 
 _stockfish := cd stockfish; rm stockfish; make build ARCH=x86-64-modern; cp stockfish ../agents; cd ..
 
-agents: plugins/agents/echodemo plugins/agents/stockfish plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
+agents: plugins/agents/rps plugins/agents/echodemo plugins/agents/stockfish plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
 	cd plugins; \
     $(_echodemo); \
-    $(_stockfish); \
+    $(_rps); \
     $(_api); \
     cd ..
+
+rps: plugins/agents/rps; \
+ 	cd plugins; $(_rps); cd ..
 
 echodemo: plugins/agents/echodemo; \
  	cd plugins; $(_echodemo); cd ..
@@ -313,6 +318,7 @@ plugins/agents/sophia: plugins/sophia/sophia.c plugins/sophia/sophia_main.c
 plugins/agents/echodemo: plugins/echodemo.c
 #plugins/nonportable/$(OS)/files.o: plugins/nonportable/$(OS)/files.c
 #plugins/nonportable/$(OS)/random.o: plugins/nonportable/$(OS)/random.c
+plugins/agents/rps: plugins/rps777.c
 plugins/agents/eth: plugins/two/eth.c
 plugins/agents/msc: plugins/two/msc.c
 plugins/agents/nxt: plugins/two/nxt.c

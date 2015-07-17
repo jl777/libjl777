@@ -117,8 +117,6 @@ struct env777
     uint32_t start_RTblocknum;
 };
 
-struct kv777_info { char PATH[1024]; int32_t readyflag; }; extern struct kv777_info KV777;
-
 #define DEFAULT_APISLEEP 100  // milliseconds
 #define NUM_PLUGINTAGS 8192
 struct applicant_info { uint64_t senderbits; uint32_t nonce; char startflag,lbendpoint[128],relayendpoint[128],globalendpoint[128]; };
@@ -129,11 +127,11 @@ struct SuperNET_info
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[8192],SERVICESECRET[8192],userhome[512],hostname[512];
     uint64_t my64bits; uint8_t myprivkey[32],mypubkey[32];
     uint32_t myipbits,nonces[512],numnonces; struct applicant_info *responses; cJSON *peersjson; char lbendpoint[128],relayendpoint[128],globalendpoint[128];
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,mmapflag;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,telepathicdelay;
     uint16_t port,serviceport;
     uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
-    struct kv777 *PM,*rawPM,*channels,*alias,*NXTaccts,*services;
+    struct kv777 *PM,*rawPM,*protocols,*alias,*NXTaccts,*services,*invoices;
     struct dKV777 *relays;
     cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
@@ -173,16 +171,19 @@ struct ramchain_info
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct ramchain_info RAMCHAINS;
 
-struct peers_info
+/*struct peers_info
 {
     int32_t readyflag;
-}; extern struct peers_info PEERS;
+}; extern struct peers_info PEERS;*/
 
-struct subscriptions_info
+#define DEFAULT_PEGGYDAYS 21
+#define PEGGY_LOCK 1
+#define PEGGY_REDEEM 2
+struct teleport_info
 {
-    char **publications;
-    int32_t readyflag,numpubs;
-}; extern struct subscriptions_info SUBSCRIPTIONS;
+    uint64_t availablemilli;
+    int32_t readyflag;
+}; extern struct teleport_info TELEPORT;
 
 struct InstantDEX_info
 {
@@ -286,6 +287,11 @@ int32_t OS_init();
 int32_t nn_settimeouts(int32_t sock,int32_t sendtimeout,int32_t recvtimeout);
 int32_t is_duplicate_tag(uint64_t tag);
 void portable_OS_init();
+void telepathic_PM(char *destNXT,char *PM);
+extern queue_t TelepathyQ;
+uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retbuf,char *endpoint,uint16_t default_port);
+cJSON *protocols_json(char *protocol);
+int32_t dKV777_poll();
 
 #define MAXTIMEDIFF 60
 

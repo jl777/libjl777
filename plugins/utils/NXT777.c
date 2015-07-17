@@ -1470,8 +1470,11 @@ uint64_t RS_decode(char *rs)
 int32_t RS_encode(char *rsaddr,uint64_t id)
 {
     int32_t a,code[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int32_t inp[32],out[32],i,pos = 0,len = 0;
+    int32_t inp[32],out[32],i,j,fb,pos = 0,len = 0;
     char acc[64];
+    memset(inp,0,sizeof(inp));
+    memset(out,0,sizeof(out));
+    memset(acc,0,sizeof(acc));
     sprintf(acc,"%lld",(long long)id);
     for (a=0; *(acc+a) != '\0'; a++)
         len ++;
@@ -1507,7 +1510,7 @@ int32_t RS_encode(char *rsaddr,uint64_t id)
     int32_t p[] = {0, 0, 0, 0};
     for (i=12; i>=0; i--)
     {
-        int32_t fb = code[i] ^ p[3];
+        fb = code[i] ^ p[3];
         p[3] = p[2] ^ gmult(30, fb);
         p[2] = p[1] ^ gmult(6, fb);
         p[1] = p[0] ^ gmult(9, fb);
@@ -1518,7 +1521,7 @@ int32_t RS_encode(char *rsaddr,uint64_t id)
     code[15] = p[2];
     code[16] = p[3];
     strcpy(rsaddr,"NXT-");
-    int32_t j=4;
+    j=4;
     for (i=0; i<17; i++)
     {
         rsaddr[j++] = alphabet[code[cwmap[i]]];
@@ -1538,7 +1541,10 @@ uint64_t conv_acctstr(char *acctstr)
         if ( (len= is_decimalstr(acctstr)) > 0 && len < 24 )
             nxt64bits = calc_nxt64bits(acctstr);
         else if ( strncmp("NXT-",acctstr,4) == 0 )
-            nxt64bits = RS_decode(acctstr);
+        {
+            //nxt64bits = RS_decode(acctstr);
+            nxt64bits = conv_rsacctstr(acctstr,0);
+        }
     }
     return(nxt64bits);
 }
@@ -1582,7 +1588,7 @@ struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits)
     int32_t len = sizeof(N);
     if ( DB_NXTaccts != 0 )
         np = db777_get(&N,&len,0,DB_NXTaccts,&nxt64bits,sizeof(nxt64bits));
-    else np = kv777_read(SUPERNET.NXTaccts,&nxt64bits,sizeof(nxt64bits),&N,&len);
+    else np = kv777_read(SUPERNET.NXTaccts,&nxt64bits,sizeof(nxt64bits),&N,&len,0);
     if ( np == 0 )
     {
         np = calloc(1,sizeof(*np));

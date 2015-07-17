@@ -22,9 +22,9 @@
 int32_t relay_idle(struct plugin_info *plugin) { return(0); }
 
 STRUCTNAME RELAYS;
-char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "PM" }; // list of supported methods
-char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "serviceprovider", "allservices", "nonce", "PM" }; // list of supported methods
-char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "PM" }; // list of supported methods
+char *PLUGNAME(_methods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "telepathy" }; // list of supported methods
+char *PLUGNAME(_pubmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "serviceprovider", "allservices", "nonce", "telepathy" }; // list of supported methods
+char *PLUGNAME(_authmethods)[] = { "list", "add", "direct", "join", "busdata", "msigaddr", "allservices", "telepathy" }; // list of supported methods
 
 int32_t nn_typelist[] = { NN_REP, NN_REQ, NN_RESPONDENT, NN_SURVEYOR, NN_PUB, NN_SUB, NN_PULL, NN_PUSH, NN_BUS, NN_PAIR };
 char *nn_transports[] = { "tcp", "ws", "ipc", "inproc", "tcpmux", "tbd1", "tbd2", "tbd3" };
@@ -514,6 +514,19 @@ void recv_nonces(void *_ptr)
     }
 }
 
+void protocols_register(char *NXTaddr,char *protocol,char *endpoint,int32_t disconnect)
+{
+    char bigkey[1024]; long len,len2; uint64_t nxt64bits = conv_acctstr(NXTaddr);
+    len = strlen(protocol) + 1, len2 = strlen(endpoint) + 1;
+    memcpy(bigkey,protocol,len);
+    memcpy(&bigkey[len],endpoint,len2);
+    if ( disconnect == 0 )
+    {
+        dKV777_write(SUPERNET.relays,SUPERNET.protocols,nxt64bits,protocol,(int32_t)strlen(protocol)+1);
+        dKV777_write(SUPERNET.relays,SUPERNET.protocols,nxt64bits,bigkey,(int32_t)(len + len2));
+    } else dKV777_delete(SUPERNET.relays,SUPERNET.protocols,nxt64bits,bigkey,(int32_t)(len + len2));
+}
+
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *origjsonstr,cJSON *origjson,int32_t initflag,char *tokenstr)
 {
     char endpoint[128],tagstr[512],*resultstr,*retstr = 0,*methodstr,*jsonstr,*destplugin,*submethod;
@@ -564,10 +577,9 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             strcpy(retbuf,"{\"result\":\"relay command under construction\"}");
             if ( strcmp(methodstr,"list") == 0 )
                 retstr = relays_jsonstr(jsonstr,json);
-            else if ( strcmp(methodstr,"PM") == 0 )
+            else if ( strcmp(methodstr,"telepathy") == 0 )
             {
                 sprintf(retbuf,"%s",jsonstr);
-                // {"plugin":"relay","method":"busdata","destplugin":"relay","submethod":"join","broadcast":"join","endpoint":""}
             }
             else if ( strcmp(methodstr,"busdata") == 0 )
             {
@@ -582,6 +594,16 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                     free_json(retjson);
                     //printf("got.(%s)\n",retstr);
                 } else printf("null serviceprovider_json()\n");
+            }
+            else if ( strcmp(methodstr,"protocol") == 0 || strcmp(methodstr,"allprotocols") == 0 )
+            {
+                if ( strcmp(methodstr,"protocol") == 0 && valid > 0 )
+                    protocols_register(sender,jstr(json,"protocol"),jstr(json,"endpoint"),jint(json,"disconnect"));
+                if ( (retjson= protocols_json(jstr(json,"protocol"))) != 0 )
+                {
+                    retstr = cJSON_Print(retjson), _stripwhite(retstr,' ');
+                    free_json(retjson);
+                } else printf("null protocols_json()\n");
             }
             else if ( strcmp(methodstr,"join") == 0 )
             {
@@ -625,13 +647,8 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                 }
             }
         }
-        if ( retstr != 0 )
-        {
-            strcpy(retbuf,retstr);
-            free(retstr);
-        }
     }
-    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
+    return(plugin_copyretstr(retbuf,maxlen,retstr));
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

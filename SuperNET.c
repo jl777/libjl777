@@ -36,7 +36,7 @@ int32_t recvsock;
 #include "plugins/utils/utils777.c"
 #undef DEFINES_ONLY
 
-#include "cJSON.h"
+#include "plugins/includes/cJSON.h"
 #define NUM_GATEWAYS 3
 
 cJSON *SuperAPI(char *cmd,char *field0,char *arg0,char *field1,char *arg1)
@@ -797,17 +797,17 @@ void SuperNET_loop(void *ipaddr)
     sleep(1);
     sprintf(jsonargs,"{\"filename\":\"SuperNET.conf\"}");
     strs[n++] = language_func((char *)"kv777","",0,0,1,(char *)"kv777",jsonargs,call_system);
-    while ( KV777.readyflag == 0 || find_daemoninfo(&ind,"kv777",0,0) == 0 )
+    while ( find_daemoninfo(&ind,"kv777",0,0) == 0 )
          poll_daemons();
+    strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
+    while ( COINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 )
+        poll_daemons();
     if ( SUPERNET.gatewayid >= 0 )
     {
         strs[n++] = language_func((char *)"MGW","",0,0,1,(char *)"MGW",jsonargs,call_system);
         while ( MGW.readyflag == 0 || find_daemoninfo(&ind,"MGW",0,0) == 0 )
             poll_daemons();
     }
-    strs[n++] = language_func((char *)"coins","",0,0,1,(char *)"coins",jsonargs,call_system);
-    while ( COINS.readyflag == 0 || find_daemoninfo(&ind,"coins",0,0) == 0 )
-        poll_daemons();
     if ( SUPERNET.gatewayid >= 0 )
     {
         strs[n++] = language_func((char *)"ramchain","",0,0,1,(char *)"ramchain",jsonargs,call_system);
@@ -817,18 +817,16 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
     while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 )
         poll_daemons();
-    /*strs[n++] = language_func((char *)"peers","",0,0,1,(char *)"peers",jsonargs,call_system);
-    while ( PEERS.readyflag == 0 || find_daemoninfo(&ind,"peers",0,0) == 0 )
+    strs[n++] = language_func((char *)"teleport","",0,0,1,(char *)"teleport",jsonargs,call_system);
+    while ( TELEPORT.readyflag == 0 || find_daemoninfo(&ind,"teleport",0,0) == 0 )
         poll_daemons();
-    strs[n++] = language_func((char *)"subscriptions","",0,0,1,(char *)"subscriptions",jsonargs,call_system);
-    while ( SUBSCRIPTIONS.readyflag == 0 || find_daemoninfo(&ind,"subscriptions",0,0) == 0 )
-        poll_daemons();*/
     if ( SUPERNET.gatewayid < 0 )
     {
         strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
         while ( INSTANTDEX.readyflag == 0 || find_daemoninfo(&ind,"InstantDEX",0,0) == 0 )
             poll_daemons();
     }
+    strs[n++] = language_func((char *)"rps","",0,0,1,(char *)"rps",jsonargs,call_system);
     for (i=0; i<n; i++)
     {
         printf("%s ",strs[i]);
@@ -907,6 +905,7 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
+    //void peggy_test(); peggy_test();
     //void SaM_PrepareIndices();
     //int32_t SaM_test();
     //SaM_PrepareIndices();

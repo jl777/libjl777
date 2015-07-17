@@ -98,7 +98,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             else sprintf(retbuf,"{\"error\":\"no addr field\"}");
         }
     }
-    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
+    return(plugin_copyretstr(retbuf,maxlen,0));
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

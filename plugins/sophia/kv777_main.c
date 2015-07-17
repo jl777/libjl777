@@ -20,17 +20,16 @@
 
 struct db777 *DB_msigs,*DB_NXTaccts,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades;
 struct db777_info SOPHIA;
-STRUCTNAME KV777;
 
-char *PLUGNAME(_methods)[] = { "getPM", "ping" };
-char *PLUGNAME(_pubmethods)[] = { "getPM", "ping" };
-char *PLUGNAME(_authmethods)[] = { "getPM", "ping",
+char *PLUGNAME(_methods)[] = { "getPM", "getrawPM", "ping" };
+char *PLUGNAME(_pubmethods)[] = { "getPM", "getrawPM", "ping" };
+char *PLUGNAME(_authmethods)[] = { "getPM", "getrawPM", "ping",
 #ifdef BUNDLED
     "get", "set", "object", "env", "ctl","open", "destroy", "error", "delete", "async", "drop", "cursor", "begin", "commit", "type",
 #endif
 };
 
-int32_t db777_idle(struct plugin_info *plugin) { return(kv777_idle()); }
+//int32_t db777_idle(struct plugin_info *plugin) { return(kv777_idle("*")); }
 
 // env = sp_env(void);
 // ctl = sp_ctl(env): get an environment control object.
@@ -390,9 +389,9 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     strcpy(DB->name,dbname);
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
-    if ( KV777.PATH[0] == '.' && (KV777.PATH[1] == '/' || KV777.PATH[1] == '\\') )
-        strcpy(path,KV777.PATH+2);
-    else strcpy(path,KV777.PATH);
+    if ( KV777->PATH[0] == '.' && (KV777->PATH[1] == '/' || KV777->PATH[1] == '\\') )
+        strcpy(path,KV777->PATH+2);
+    else strcpy(path,KV777->PATH);
     ensure_directory(path);
     if ( specialpath != 0 )
     {
@@ -644,9 +643,13 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     {
         // configure settings
         ensure_directory(SOPHIA.PATH);
-        ensure_directory(KV777.PATH);
+        if ( KV777 == 0 )
+            KV777 = calloc(1,sizeof(*KV777));
+        if ( KV777->PATH[0] == 0 )
+            strcpy(KV777->PATH,"DB"), ensure_directory(KV777->PATH);
+        set_KV777_globals(&SUPERNET.relays,SUPERNET.transport,SUPERNET.NXTADDR,(int32_t)strlen(SUPERNET.NXTADDR),SUPERNET.SERVICENXT,SUPERNET.relayendpoint);
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
-        KV777.readyflag = 1;
+        KV777->readyflag = 1;
         plugin->allowremote = 1;
         //Debuglevel = 3;
     }
@@ -682,10 +685,24 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                 sprintf(retbuf,"{\"result\":\"success\",\"numkeys\":%d}",SUPERNET.PM->numkeys);
                 if ( ind >= 0 )
                 {
-                    if ( (pmstr= kv777_read(SUPERNET.PM,(void *)&ind,sizeof(ind),0,&len)) != 0 )
+                    if ( (pmstr= kv777_read(SUPERNET.PM,(void *)&ind,sizeof(ind),0,&len,0)) != 0 )
                         sprintf(retbuf + strlen(retbuf) - 1,",\"ind\":%u,\"PM\":\"%s\",\"len\":%d}",ind,pmstr,len);
                 }
             } else sprintf(retbuf,"{\"error\":\"no PM database\"}");
+            //printf("retbuf.(%s)\n",retbuf);
+        }
+        else if ( strcmp(method,"getrawPM") == 0 )
+        {
+            ind = get_API_int(cJSON_GetObjectItem(json,"ind"),-1);
+            if ( SUPERNET.rawPM != 0 )
+            {
+                sprintf(retbuf,"{\"result\":\"success\",\"numkeys\":%d}",SUPERNET.rawPM->numkeys);
+                if ( ind >= 0 )
+                {
+                    if ( (pmstr= kv777_read(SUPERNET.rawPM,(void *)&ind,sizeof(ind),0,&len,0)) != 0 )
+                        sprintf(retbuf + strlen(retbuf) - 1,",\"ind\":%u,\"rawPM\":\"%s\",\"len\":%d}",ind,pmstr,len);
+                }
+            } else sprintf(retbuf,"{\"error\":\"no rawPM database\"}");
             //printf("retbuf.(%s)\n",retbuf);
         }
         else sprintf(retbuf,"{\"error\":\"invalid kv777 method\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
@@ -698,7 +715,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             sprintf(retbuf,"{\"error\":\"null return\",\"method\":\"%s\",\"tag\":\"%llu\"}",method,(long long)tag);
         else sprintf(retbuf + strlen(retbuf) - 1,",\"tag\":\"%llu\"}",(long long)tag);
     }
-    return((int32_t)strlen(retbuf) + retbuf[0] != 0);
+    return(plugin_copyretstr(retbuf,maxlen,0));
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

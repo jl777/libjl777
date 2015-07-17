@@ -485,6 +485,78 @@ char *conv_ipv6(char *ipv6addr)
     return(ipv6addr); // it is ipv4 now
 }
 
+uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retbuf,char *endpoint,uint16_t default_port)
+{
+    char *valids[] = { "tcp", "ws", "ipc", "inproc", "tcpmux" };
+    char tmp[128],*inet = 0,*ipaddr = 0; uint64_t ipbits; int32_t i,j,n,port = 0;
+    ipbuf[0] = retbuf[0] = 0;
+    *ip6flagp = 0;
+    if ( endpoint != 0 && strlen(endpoint) > 6 )
+    {
+        for (i=0; i<sizeof(valids)/sizeof(*valids); i++)
+            if ( strncmp(endpoint,valids[i],strlen(valids[i])) == 0 )
+            {
+                n = (int32_t)strlen(valids[i]);
+                ipaddr = &endpoint[n];
+                if ( ipaddr[0] == '[' )
+                {
+                    *ip6flagp = 1;
+                    inet = "ip6";
+                    for (j=n-1; j>0; j--)
+                    {
+                        if ( ipaddr[j] == ':' )
+                        {
+                            if ( (port= atoi(ipaddr + j + 1)) < 0 || port >= (1 << 16) )
+                            {
+                                if ( ipaddr[j-1] == ']' )
+                                    ipaddr[j] = 0;
+                                else ipaddr = 0;
+                                break;
+                            }
+                        }
+                        else if ( ipaddr[j] == ']' )
+                        {
+                            if ( j == n-1 )
+                                port = default_port;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    inet = "ip4";
+                    for (j=n-1; j>0; j--)
+                    {
+                        if ( ipaddr[j] == ':' )
+                        {
+                            if ( (port= atoi(ipaddr + j + 1)) < 0 || port >= (1 << 16) )
+                                ipaddr = 0;
+                            break;
+                        }
+                    }
+                }
+                if ( ipaddr != 0 )
+                {
+                    ipbits = calc_ipbits(ipaddr);
+                    expand_ipbits(tmp,ipbits);
+                    if ( strcmp(tmp,ipaddr) != 0 )
+                        ipaddr = 0, sprintf(retbuf,"{\"result\":\"illegal ipaddr\",\"endpoint\":\"%s\",\"ipaddr\":\"%s\",\"checkaddr\":\"%s\"}",endpoint,ipaddr,tmp);
+                }
+                if ( inet != 0 && ipaddr != 0 && port != 0 )
+                {
+                    sprintf(retbuf,"{\"result\":\"ip6 endpoint\",\"endpoint\":\"%s\",\"transport\":\"%s\",\"ipaddr\":\"%s\",\"port\":%d}",endpoint,valids[i],ipaddr,port);
+                    if ( transport[0] == 0 )
+                        strcpy(transport,valids[i]);
+                    strcpy(ipbuf,ipaddr);
+                    return(port);
+                }
+            }
+        sprintf(retbuf,"{\"result\":\"illegal endpoint\",\"endpoint\":\"%s\"}",endpoint);
+    } else sprintf(retbuf,"{\"error\":\"no mode specified\"}");
+    *ip6flagp = 0;
+    return(0);
+}
+
 #endif
 #endif
 

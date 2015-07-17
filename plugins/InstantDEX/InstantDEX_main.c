@@ -223,17 +223,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             retstr = InstantDEX_parser(forwarder,sender,valid,jsonstr,json);
 //printf("InstantDEX_parser return.(%s)\n",retstr);
         } else retstr = clonestr("{\"result\":\"relays only relay\"}");
-        if ( retstr != 0 )
-        {
-            if ( strlen(retstr) >= maxlen-1 )
-                retstr[maxlen-1] = 0;
-            strcpy(retbuf,retstr);
-            free(retstr);
-        }
         //else sprintf(retbuf,"{\"error\":\"method %s not found\"}",methodstr);
         portable_mutex_unlock(&plugin->mutex);
     }
-    return((int32_t)strlen(retbuf) + retbuf[0]!=0);
+    return(plugin_copyretstr(retbuf,maxlen,retstr));
 }
 
 int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)

@@ -36,11 +36,20 @@
 #include "sophia/kv777.c"
 #include "utils/system777.c"
 
+struct protocol_info
+{
+    struct dKV777 *protocol_relays; struct kv777 *protocol_coins;
+    struct endpoint connections[8192],myendpoint;
+    char name[64],agent[512],path[512],transport[16],ipaddr[64],NXTADDR[64],endpointstr[512]; uint8_t NXTACCTSECRET[2048];
+    int32_t ip6flag,subsock; uint64_t ipbits;
+    uint16_t port;
+};
+
 struct plugin_info
 {
     char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64],SERVICENXT[64];
     uint64_t daemonid,myid,nxt64bits;
-    //union endpoints all;
+    struct protocol_info protocol;
     int32_t pushsock,pullsock;
     uint32_t permanentflag,ppid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
     uint16_t port;
@@ -48,6 +57,11 @@ struct plugin_info
     uint8_t pluginspace[];
 };
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
+static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr);
+static void agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret);
+static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
+
+static char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
 
 #endif
 #else
@@ -59,6 +73,7 @@ int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 #include "plugin777.c"
 #undef DEFINES_ONLY
 #endif
+int32_t protocols_init(int32_t sock,struct endpoint *connections,char *protocol);
 
 static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
@@ -97,6 +112,78 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
     }
     printf("%s bind.(%s) %d and connected.(%s) %d\n",plugin->name,plugin->bindaddr,plugin->pullsock,plugin->connectaddr,plugin->pushsock);
     return(0);
+}
+
+static void agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret)
+{
+    cJSON *argjson; char buf[512]; int32_t n; struct protocol_info *prot = &plugin->protocol;
+    if ( path == 0 )
+        path = protocol;
+    ensure_directory(path);
+    strcpy(prot->name,protocol), strcpy(prot->agent,agent), strcpy(prot->path,path);
+    if ( (argjson= jobj(json,agent)) != 0 )
+    {
+        if ( nxtsecret == 0 || nxtsecret[0] == 0 )
+            copy_cJSON((void *)prot->NXTACCTSECRET,jobj(argjson,"secret"));
+        else strcpy((void *)prot->NXTACCTSECRET,nxtsecret);
+        copy_cJSON((void *)prot->transport,jobj(argjson,"transport"));
+        copy_cJSON((void *)prot->ipaddr,jobj(argjson,"myipaddr"));
+        prot->port = juint(argjson,"port");
+        printf("found %s path.(%s) protocol.(%s) json secret.(%s) %s:port.%d\n",agent,path,protocol,(void *)prot->NXTACCTSECRET,prot->ipaddr,prot->port);
+    }
+    if ( prot->NXTACCTSECRET[0] == 0 )
+    {
+        sprintf(buf,"%s/randvals",path);
+        gen_randomacct(33,prot->NXTADDR,(void *)prot->NXTACCTSECRET,buf);
+    }
+    if ( prot->port == 0 )
+        prot->port = SUPERNET_PORT + ((((uint16_t)protocol[0] << 8) | agent[0]) % 777);
+#ifndef BUNDLED
+    strcpy(KV777->PATH,path), os_compatible_path(KV777->PATH), ensure_directory(KV777->PATH);
+#endif
+    prot->protocol_coins = kv777_init("coins",0);
+    buf[0] = 0, prot->subsock = nn_createsocket(buf,0,"NN_SUB",NN_SUB,0,10,1);
+    n = protocols_init(prot->subsock,prot->connections,protocol);
+    prot->protocol_relays = dKV777_init("protocol",protocol,&prot->protocol_coins,1,0,-1,prot->subsock,prot->connections,n,(int32_t)(sizeof(prot->connections)/sizeof(*prot->connections)),prot->port,pingmillis);
+    set_KV777_globals(&prot->protocol_relays,prot->transport,prot->NXTACCTSECRET,(int32_t)strlen((void *)prot->NXTACCTSECRET),plugin->SERVICENXT,KV777->relayendpoint);
+    strcpy(plugin->NXTADDR,KV777->NXTADDR);
+}
+
+static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid)
+{
+    char *endpoint;
+    if ( (endpoint= jstr(json,"endpoint")) == 0 || endpoint[0] == 0 || strcmp(endpoint,"disconnect") == 0 )
+    {
+        memset(prot->endpointstr,0,sizeof(prot->endpointstr));
+        memset(&prot->myendpoint,0,sizeof(prot->myendpoint));
+        sprintf(retbuf,"{\"result\":\"endpoint cleared\"}");
+    }
+    else
+    {
+        prot->port = parse_endpoint(&prot->ip6flag,prot->transport,prot->ipaddr,retbuf,jstr(json,"endpoint"),prot->port);
+        prot->ipbits = calc_ipbits(prot->ipaddr) | ((uint64_t)prot->port << 32);
+        prot->myendpoint = calc_epbits(prot->transport,(uint32_t)prot->ipbits,prot->port,NN_PUB);
+        expand_epbits(prot->endpointstr,prot->myendpoint);
+        sprintf(retbuf,"{\"result\":\"endpoint set\",\"endpoint\":\"%s\"}",prot->endpointstr);
+    }
+    strcpy(prot->protocol_relays->endpointstr,prot->endpointstr);
+    return(0);
+}
+
+char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid)
+{
+    return(dKV777_ping(prot->protocol_relays));
+}
+
+static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr)
+{
+    if ( retstr != 0 )
+    {
+        strncpy(retbuf,retstr,maxlen-1);
+        retbuf[maxlen-1] = 0;
+        free(retstr);
+    }// else strcpy(retbuf,"{\"error\":\"under construction\"}");
+    return((int32_t)strlen(retbuf) + (retbuf[0] != 0));
 }
 
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
@@ -157,29 +244,6 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     printf("%s\n",retbuf), fflush(stdout);
     return(retval);
 }
-
-/*static int32_t set_nxtaddrs(char *NXTaddr,char *serviceNXT)
-{
-    FILE *fp; cJSON *json; char confname[512],buf[65536],secret[4096],servicesecret[4096]; uint8_t mysecret[32],mypublic[32];
-    strcpy(confname,"SuperNET.conf"), os_compatible_path(confname);
-    NXTaddr[0] = serviceNXT[0] = 0;
-    if ( (fp= fopen(confname,"rb")) != 0 )
-    {
-        if ( fread(buf,1,sizeof(buf),fp) > 0 )
-        {
-            if ( (json= cJSON_Parse(buf)) != 0 )
-            {
-                copy_cJSON(secret,cJSON_GetObjectItem(json,"secret"));
-                copy_cJSON(servicesecret,cJSON_GetObjectItem(json,"SERVICESECRET"));
-                expand_nxt64bits(NXTaddr,conv_NXTpassword(mysecret,mypublic,(uint8_t *)secret,(int32_t)strlen(secret)));
-                expand_nxt64bits(serviceNXT,conv_NXTpassword(mysecret,mypublic,(uint8_t *)servicesecret,(int32_t)strlen(servicesecret)));
-                free_json(json);
-            } else fprintf(stderr,"set_nxtaddrs parse error.(%s)\n",buf);
-        } else fprintf(stderr,"set_nxtaddrs error reading.(%s)\n",confname);
-        fclose(fp);
-    } else fprintf(stderr,"set_nxtaddrs cant open.(%s)\n",confname);
-    return((int32_t)strlen(NXTaddr));
-}*/
 
 static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin,uint64_t tag,int32_t allfields)
 {
@@ -247,19 +311,6 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     if ( plugin->sleepmillis == 0 )
         plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
-    /*char NXTaddr[512],serviceNXT[512],tmpstrA[512],tmpstrB[512];
-    copy_cJSON(NXTaddr,cJSON_GetObjectItem(json,"NXT"));
-    copy_cJSON(serviceNXT,cJSON_GetObjectItem(json,"serviceNXT"));
-    if ( NXTaddr[0] == 0 || serviceNXT[0] == 0 )
-    {
-        set_nxtaddrs(tmpstrA,tmpstrB);
-        if ( NXTaddr[0] == 0 )
-            strcpy(NXTaddr,tmpstrA);
-        if ( serviceNXT[0] == 0 )
-            strcpy(serviceNXT,tmpstrB);
-        strcpy(plugin->NXTADDR,NXTaddr);
-        strcpy(plugin->SERVICENXT,serviceNXT);
-    }*/
     if ( cJSON_GetObjectItem(json,"NXT") == 0 )
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));
     else cJSON_ReplaceItemInObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));
@@ -272,7 +323,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     append_stdfields(retbuf,max,plugin,0,1);
     if ( Debuglevel > 2 )
         printf(">>>>>>>>>>> register return.(%s)\n",retbuf);
-    return((int32_t)strlen(retbuf));
+    return((int32_t)strlen(retbuf) + (retbuf[0] != 0));
 }
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)

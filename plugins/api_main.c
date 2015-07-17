@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "ccgi.h"
 #include "nn.h"
-#include "cJSON.h"
+#include "includes/cJSON.h"
 #include "pair.h"
 #include "pipeline.h"
 #ifdef _WIN32

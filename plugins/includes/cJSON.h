@@ -158,8 +158,15 @@ extern "C"
 #define cJSON_SetIntValue(object,val)			((object)?(object)->valueint=(object)->valuedouble=(val):(val))
     
     char *cJSON_str(cJSON *json);
- 
-void copy_cJSON(char *dest,cJSON *obj);
+    char *jstr(cJSON *json,char *field);
+    int32_t jint(cJSON *json,char *field);
+    uint32_t juint(cJSON *json,char *field);
+    double jdouble(cJSON *json,char *field);
+    cJSON *jobj(cJSON *json,char *field);
+    cJSON *jarray(int32_t *nump,cJSON *json,char *field);
+    cJSON *jitem(cJSON *array,int32_t i);
+    
+    void copy_cJSON(char *dest,cJSON *obj);
     cJSON *gen_list_json(char **list);
     int32_t extract_cJSON_str(char *dest,int32_t max,cJSON *json,char *field);
 
