@@ -310,7 +310,7 @@ double calc_asset_QNT(struct pendinghalf *half,uint64_t nxt64bits,int32_t checkf
         else if ( half->price == 0. )*/
             half->price = calc_price_volume(&half->vol,half->baseamount,half->relamount);
         balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
-        printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | (%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)half->T.priceNQT,(long long)half->T.qty,assetidstr,half->vol,half->price,SATOSHIDEN,(long long)ap_mult);
+        printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | (%f * %f) * (%lld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)half->T.priceNQT,(long long)half->T.qty,assetidstr,half->vol,half->price,(long long)SATOSHIDEN,(long long)ap_mult);
         // getchar();
         if ( checkflag != 0 && (balance < half->T.qty || unconfirmed < half->T.qty) )
             return(0);

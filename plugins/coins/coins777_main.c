@@ -1,5 +1,5 @@
 //
-//  echodemo.c
+//  coins777_main.c
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
@@ -15,12 +15,12 @@
 
 #define DEFINES_ONLY
 #include "../includes/cJSON.h"
-#include "../plugin777.c"
+#include "../agents/plugin777.c"
 #include "../utils/files777.c"
 #include "../utils/NXT777.c"
 #include "coins777.c"
-#include "gen1auth.c"
-#include "../coins/msig.c"
+//#include "gen1auth.c"
+//#include "msig.c"
 #undef DEFINES_ONLY
 
 int32_t coins_idle(struct plugin_info *plugin)
@@ -365,6 +365,8 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                         strcpy(retbuf,"{\"result\":\"need to specify coin\"}");
                     else if ( (coin= coin777_find(coinstr,1)) != 0 )
                     {
+                        int32_t MGW_publish_acctpubkeys(char *coinstr,char *str);
+                        char *get_msig_pubkeys(char *coinstr,char *serverport,char *userpass);
                         if ( (str= get_msig_pubkeys(coin->name,coin->serverport,coin->userpass)) != 0 )
                         {
                             MGW_publish_acctpubkeys(coin->name,str);
@@ -404,4 +406,4 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
-#include "../plugin777.c"
+#include "../agents/plugin777.c"

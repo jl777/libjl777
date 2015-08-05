@@ -8,11 +8,7 @@ struct sha512_state {
 #endif
 
 #ifdef LTC_SHA256
-struct sha256_state {
-    ulong64 length;
-    ulong32 state[8], curlen;
-    unsigned char buf[64];
-};
+
 #endif
 
 #ifdef LTC_SHA1
@@ -114,6 +110,8 @@ typedef union Hash_state {
     struct sha512_state sha512;
 #endif
 #ifdef LTC_SHA256
+#include "../includes/sha256.h"
+    
     struct sha256_state sha256;
 #endif
 #ifdef LTC_SHA1

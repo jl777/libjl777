@@ -13,7 +13,7 @@
 
 #include "../includes/cJSON.h"
 #define DEFINES_ONLY
-#include "../utils/system777.c"
+#include "../common/system777.c"
 #include "../utils/utils777.c"
 //#undef DEFINES_ONLY
 

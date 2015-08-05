@@ -14,11 +14,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../includes/cJSON.h"
-#include "../common/system777.c"
+#include "../utils/system777.c"
 #include "../coins/coins777.c"
 //#include "pass1.c"
 //#include "ledger777.c"
-#define DB777_MATRIXROW 10000
 
 int32_t ramchain_init(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ramchain *ramchain,cJSON *argjson,char *coinstr,char *serverport,char *userpass,uint32_t startblocknum,uint32_t endblocknum,uint32_t minconfirms);
 int32_t ramchain_update(struct coin777 *coin,struct ramchain *ramchain);

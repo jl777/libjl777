@@ -17,7 +17,7 @@
 #include "../uthash.h"
 #include "../utils/bits777.c"
 #include "../utils/utils777.c"
-#include "../utils/system777.c"
+#include "../common/system777.c"
 #include "../coins/coins777.c"
 
 #include "tweetnacl.h"

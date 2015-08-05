@@ -36,18 +36,24 @@ LIBTOM = libtom/yarrow.c libtom/aes.c libtom/cast5.c libtom/khazad.c libtom/rc2.
 U = plugins/utils
 C = plugins/coins
 R = plugins/ramchain
+P = plugins/peggy
 S = plugins/sophia
 I = plugins/InstantDEX
+K = plugins/KV
 
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/system777.c $(U)/files777.c $(U)/utils777.c
-SOPHIA = $(S)/sophia.c $(S)/kv777_main.c $(S)/db777.c $(S)/kv777.c
+#SOPHIA = $(S)/sophia.c $(S)/kv777_main.c $(S)/db777.c $(S)/kv777.c
+PEGGY = $(P)/peggy777.c $(P)/quotes777.c $(P)/serdes777.c $(P)/accts777.c #$(P)/peggytx.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
+KV = $(K)/kv777_main.c $(K)/kv777.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
-COINS = $(C)/gen1auth.c $(C)/gen1pub.c $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c
+COINS = $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c #$(C)/gen1auth.c $(C)/gen1pub.c 
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c $(U)/peer777.c $(U)/user777.c $(U)/node777.c $(U)/SaM.c $(U)/transport777.c $(U)/crypto777.c $(U)/packet777.c $(U)/tom_md5.c
 INSTANTDEX = $(I)/InstantDEX_main.c
+COMMON = plugins/busdata777.c plugins/relays777.c plugins/console777.c plugins/prices777.c plugins/cashier777.c plugins/txnet777.c plugins/opreturn777.c $(C)/bitcoind_RPC.c plugins/opreturns777.c plugins/txind777.c
+MGW = plugins/mgw/MGW_main.c $(S)/sophia.c $(S)/db777.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(SOPHIA) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) plugins/mgw/MGW_main.c plugins/busdata777.c plugins/relays777.c plugins/console777.c plugins/prices777.c plugins/cashier777.c plugins/txnet777.c plugins/peggy777.c plugins/opreturn777.c $(C)/bitcoind_RPC.c
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) $(PEGGY) $(KV)
  
 OBJS	:= $(SRCS:%.c=%.o)
 

@@ -284,7 +284,7 @@ int sha256_done(hash_state * md, unsigned char *out)
     return CRYPT_OK;
 }
 
-void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len)
+void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t *src,int32_t len)
 {
     hash_state md;
     sha256_init(&md);
@@ -292,12 +292,12 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
     sha256_done(&md,hash);
     if ( hashstr != 0 )
     {
-        int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+        int32_t init_hexbytes_noT(char *hexbytes,uint8_t *message,long len);
         init_hexbytes_noT(hashstr,hash,256 >> 3);
     }
 }
 
-void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,unsigned char *src2,int32_t len2)
+void calc_sha256cat(uint8_t hash[256 >> 3],uint8_t *src,int32_t len,uint8_t *src2,int32_t len2)
 {
     hash_state md;
     sha256_init(&md);
@@ -307,7 +307,7 @@ void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,
     sha256_done(&md,hash);
 }
 
-void update_sha256(unsigned char hash[256 >> 3],struct sha256_state *state,unsigned char *src,int32_t len)
+void update_sha256(uint8_t hash[256 >> 3],struct sha256_state *state,uint8_t *src,int32_t len)
 {
     hash_state md;
     memset(&md,0,sizeof(md));

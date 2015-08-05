@@ -13,14 +13,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
-#include "system777.c"
-
-
-/**/
 
 #define SMALLVAL 0.000000000000001
-#define SATOSHIDEN 100000000L
-#define OP_RETURN_OPCODE 0x6a
 
 #define SETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
 #define GETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
@@ -271,6 +265,7 @@ bits256 acct777_lockhash(bits256 pubkey,int32_t lockdays,uint8_t chainlen)
 
 bits256 acct777_invoicehash(bits256 *invoicehash,uint16_t lockdays,uint8_t chainlen)
 {
+    void randombytes(unsigned char *x,long xlen);
     int32_t i; bits256 lockhash,privkey;
     randombytes(privkey.bytes,sizeof(privkey)); // both privkey and pubkey are sensitive. pubkey allows verification, privkey proves owner
     lockhash = privkey;

@@ -17,9 +17,6 @@
 #include "bits777.c"
 #include "system777.c"
 
-#define SATOSHIDEN 100000000L
-#define dstr(x) ((double)(x) / SATOSHIDEN)
-
 struct alloc_space { void *ptr; long used,size; int32_t alignflag; uint8_t space[4]; };
 
 int32_t portable_pton(int32_t af,char *src,void *dst);
@@ -30,7 +27,6 @@ void _randombytes(uint8_t *buf,int32_t n,uint32_t seed);
 char *stringifyM(char *str);
 #define replace_backslashquotes unstringify
 char *unstringify(char *str);
-int32_t safecopy(char *dest,char *src,long len);
 int64_t conv_floatstr(char *numstr);
 
 void touppercase(char *str);
@@ -39,21 +35,12 @@ char hexbyte(int32_t c);
 int32_t is_zeroes(char *str);
 int32_t is_hexstr(char *str);
 unsigned char _decode_hex(char *hex);
-int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
-int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
 
-int init_base32(char *tokenstr,uint8_t *token,int32_t len);
-int decode_base32(uint8_t *token,uint8_t *tokenstr,int32_t len);
-
-long _stripwhite(char *buf,int accept);
-char *clonestr(char *str);
-uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr);
-int32_t is_decimalstr(char *str);
 long stripstr(char *buf,long len);
 char safechar64(int32_t x);
-uint64_t stringbits(char *str);
 int32_t has_backslash(char *str);
 void escape_code(char *escaped,char *str);
+uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr);
 
 char *_mbstr(double n);
 char *_mbstr2(double n);
@@ -108,8 +95,6 @@ int32_t extract_datenum(int32_t *yearp,int32_t *monthp,int32_t *dayp,int32_t dat
 int32_t expand_datenum(char *date,int32_t datenum);
 int32_t calc_datenum(int32_t year,int32_t month,int32_t day);
 int32_t conv_date(int32_t *secondsp,char *date);
-uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second);
-int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp);
 int32_t ecb_decrdate(int32_t *yearp,int32_t *monthp,int32_t *dayp,char *date,int32_t datenum);
 extern int32_t smallprimes[168];
 

@@ -20,12 +20,11 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
-#include "../agents/plugin777.c"
-#include "../KV/kv777.c"
-#include "../common/system777.c"
+#include "../plugin777.c"
+#include "../sophia/kv777.c"
+#include "../utils/system777.c"
 #include "../utils/NXT777.c"
 #include "../ramchain/ramchain.c"
-#include "db777.c"
 #undef DEFINES_ONLY
 
 int32_t MGW_idle(struct plugin_info *plugin)
@@ -2124,4 +2123,4 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     }
     return(retcode);
 }
-#include "../agents/plugin777.c"
+#include "../plugin777.c"

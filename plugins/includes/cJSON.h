@@ -33,7 +33,7 @@
 #include <memory.h>
 #include <sys/time.h>
 
-#define SATOSHIDEN 100000000L
+#define SATOSHIDEN ((uint64_t)100000000L)
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 #define MAX_JSON_FIELD 2048 // on the big side
 

@@ -15,16 +15,14 @@
 #include "../includes/cJSON.h"
 #include "../utils/utils777.c"
 #include "coins777.c"
-#include "../utils/system777.c"
-#include "gen1auth.c"
-#include "../coins/msig.c"
+#include "../common/system777.c"
+//#include "gen1auth.c"
+//#include "../coins/msig.c"
 
 struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
 int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx);
 //char *_createsignraw_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys,int32_t gatewayid,int32_t numgateways);
 //char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways);
-int32_t hcalc_varint(uint8_t *buf,uint64_t x);
-long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize);
 void disp_cointx(struct cointx_info *cointx);
 
 #endif
@@ -38,7 +36,6 @@ void disp_cointx(struct cointx_info *cointx);
 #undef DEFINES_ONLY
 #endif
 
-int32_t _map_msigaddr(char *redeemScript,char *coinstr,char *serverport,char *userpass,char *normaladdr,char *msigaddr,int32_t gatewayid,int32_t numgateways); //could map to rawind, but this is rarely called
 
 long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize)
 {
@@ -311,49 +308,6 @@ struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx)
     _validate_decoderawtransaction(hexstr,cointx,oldtx);
     return(cointx);
 }
-
-/*
-cJSON *_create_vouts_json_params(struct cointx_info *cointx)
-{
-    int32_t i;
-    cJSON *json,*obj;
-    json = cJSON_CreateObject();
-    for (i=0; i<cointx->numoutputs; i++)
-    {
-        obj = cJSON_CreateNumber(dstr(cointx->outputs[i].value));
-        if ( strcmp(cointx->outputs[i].coinaddr,"OP_RETURN") != 0 )
-            cJSON_AddItemToObject(json,cointx->outputs[i].coinaddr,obj);
-        else
-        {
-            // int32_t ram_make_OP_RETURN(char *scriptstr,uint64_t *redeems,int32_t numredeems)
-            cJSON_AddItemToObject(json,cointx->outputs[0].coinaddr,obj);
-        }
-    }
-    printf("numdests.%d (%s)\n",cointx->numoutputs,cJSON_Print(json));
-    return(json);
-}
-
-char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways)
-{
-    char *paramstr = 0;
-    cJSON *array,*vinsobj,*voutsobj;
-    vinsobj = _create_vins_json_params(0,coinstr,serverport,userpass,cointx,gatewayid,numgateways);
-    if ( vinsobj != 0 )
-    {
-        voutsobj = _create_vouts_json_params(cointx);
-        if ( voutsobj != 0 )
-        {
-            array = cJSON_CreateArray();
-            cJSON_AddItemToArray(array,vinsobj);
-            cJSON_AddItemToArray(array,voutsobj);
-            paramstr = cJSON_Print(array);
-            free_json(array);   // this frees both vinsobj and voutsobj
-        }
-        else free_json(vinsobj);
-    } else printf("_error create_vins_json_params\n");
-//printf("_createrawtxid_json_params.%s\n",paramstr);
-    return(paramstr);
-}*/
 
 #endif
 #endif

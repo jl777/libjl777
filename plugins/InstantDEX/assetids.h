@@ -318,7 +318,7 @@ uint64_t calc_asset_qty(uint64_t *availp,uint64_t *priceNQTp,char *NXTaddr,int32
             priceNQT = (price * ap_mult + (ap_mult/2)/SATOSHIDEN);
             quantityQNT = (vol * SATOSHIDEN) / ap_mult;
             balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
-            printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | price_vol.(%f * %f) * (%ld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,price,vol,SATOSHIDEN,(long long)ap_mult);
+            printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | price_vol.(%f * %f) * (%lld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,price,vol,(long long)SATOSHIDEN,(long long)ap_mult);
             //getchar();
             if ( checkflag != 0 && (balance < quantityQNT || unconfirmed < quantityQNT) )
             {

@@ -7,6 +7,7 @@
 //
 // code goes so fast, might need to change /proc/sys/net/ipv4/tcp_tw_recycle to have a 1 in it
 //
+#define INSIDE_MGW
 
 #ifdef DEFINES_ONLY
 #ifndef crypto777_coins777_h
@@ -15,13 +16,15 @@
 #include "../uthash.h"
 #include "../cJSON.h"
 #include "../utils/huffstream.c"
-#include "../utils/system777.c"
-#include "../sophia/kv777.c"
-#include "../sophia/db777.c"
+#include "../common/system777.c"
+#include "../KV/kv777.c"
 #include "../utils/files777.c"
 #include "../utils/utils777.c"
 #include "../utils/bits777.c"
-#include "gen1pub.c"
+#include "gen1.c"
+#ifdef INSIDE_MGW
+#include "../mgw/db777.c"
+#endif
 
 #define OP_RETURN_OPCODE 0x6a
 #define RAMCHAIN_PTRSBUNDLE 4096
@@ -60,16 +63,6 @@ struct cointx_info
     // end bitcoin txcalc_nxt64bits
     char signedtx[];
 };
-
-#ifndef sha256_state_defined
-#define sha256_state_defined
-struct sha256_state
-{
-    uint64_t length;
-    uint32_t state[8],curlen;
-    uint8_t buf[64];
-};
-#endif
 
 struct coin777_state
 {
@@ -180,7 +173,6 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate);
 int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *userpass,uint32_t blocknum);
 void rawblock_patch(struct rawblock *raw);
 
-void update_sha256(unsigned char hash[256 >> 3],struct sha256_state *state,unsigned char *src,int32_t len);
 struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize);
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 void coin777_disprawblock(struct rawblock *raw);
