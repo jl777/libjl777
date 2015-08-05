@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <string.h>
+#include <memory.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/time.h>
