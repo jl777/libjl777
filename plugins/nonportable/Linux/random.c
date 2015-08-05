@@ -10,6 +10,8 @@
 #include <sys/time.h>
 #include <time.h>
 
+int32_t conv_date(int32_t *secondsp,char *buf);
+
 int32_t OS_init() { return(0); }
 int32_t OS_getpid() { return(getpid()); }
 int32_t OS_getppid() { return(getppid()); }
