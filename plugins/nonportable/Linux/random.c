@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <time.h>
 
 int32_t OS_init() { return(0); }
 int32_t OS_getpid() { return(getpid()); }
