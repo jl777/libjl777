@@ -5,6 +5,7 @@
 #include <memory.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <time.h>
 
 uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second) // datenum+H:M:S -> unix time
 {
