@@ -2537,7 +2537,8 @@ int32_t prices777_matrix(double pricevals[32][MAX_SPLINES],uint64_t *maskp,doubl
     ensure_directory("ECB");
     if ( (fp= fopen("ECB/splines","rb")) != 0 )
     {
-        fread(BUNDLE.splines,1,sizeof(BUNDLE.splines),fp);
+        if ( fread(BUNDLE.splines,1,sizeof(BUNDLE.splines),fp) != sizeof(BUNDLE.splines) )
+            printf("splines read error\n");
         fclose(fp);
         return(OS_conv_unixtime(&seconds,BUNDLE.splines[0].utc32[0] + 3600*24*2));
     }

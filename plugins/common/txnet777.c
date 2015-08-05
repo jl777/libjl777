@@ -35,9 +35,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "cJSON.h"
-#include "SaM.c"
-#include "kv777.c"
+#include "../includes/cJSON.h"
+#include "../utils/SaM.c"
+#include "../KV/kv777.c"
 
 #define TXNET_PUBKEYBATCH 777
 #define TXNET_FUTUREGAP 3
