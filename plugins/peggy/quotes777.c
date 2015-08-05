@@ -8,7 +8,7 @@
 #include <memory.h>
 #include "serdes777.c"
 #include "peggy777.c"
-#include "files777.c"
+#include "../utils/files777.c"
 
 #endif
 #else
