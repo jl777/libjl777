@@ -238,7 +238,7 @@ struct prices777 *prices777_initpair(int32_t needfunc,void (*updatefunc)(struct 
 uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT,uint32_t triggerheight);
 int32_t prices777_basenum(char *base);
 
-#include "InstantDEX/exchange_trades.h"
+#include "../InstantDEX/exchange_trades.h"
 
 #define dto64(x) ((int64_t)((x) * (double)SATOSHIDEN * SATOSHIDEN))
 #define dto32(x) ((int32_t)((x) * (double)SATOSHIDEN))
