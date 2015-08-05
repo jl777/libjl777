@@ -12,10 +12,10 @@
 #define STRINGIFY(NAME) #NAME
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
-#include "sophia.h"
+#include "../mgw/old/sophia.h"
 #define DEFINES_ONLY
 #include "../agents/plugin777.c"
-#include "db777.c"
+#include "../mgw/old/db777.c"
 #undef DEFINES_ONLY
 
 struct db777 *DB_msigs,*DB_NXTaccts,*DB_NXTtxids,*DB_MGW,*DB_redeems,*DB_NXTtrades;
