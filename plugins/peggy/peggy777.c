@@ -126,7 +126,7 @@ extern int32_t Debuglevel;
 
 int32_t prices777_mindenomination(int32_t);
 
-#include "txind777.c"
+//#include "txind777.c"
 #include "serdes777.c"
 #include "accts777.c"
 
