@@ -82,7 +82,7 @@
 
 #define DEFINES_ONLY
 #include <math.h>
-#include "plugin777.c"
+#include "../agents/plugin777.c"
 #undef DEFINES_ONLY
 
 #define calc_predisplinex(startweekind,clumpsize,weekind) (((weekind) - (startweekind))/(clumpsize))
