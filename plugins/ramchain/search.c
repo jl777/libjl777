@@ -77,7 +77,7 @@ char *ram_searchpermind(struct ramchain_hashtable *hash,uint32_t permind)
 dbobj ram_addhash(struct ramchain_hashtable *hash,char *key,void *value,int32_t len)
 {
     dbobj obj = 0;
-    char numstr[16];
+    char numstr[64];
     int32_t rawind;
     db777_add(hash->DB,key,value,len);
     obj = db777_find(hash->DB,key);

@@ -9,6 +9,7 @@
 #define xcode_orderbooks_h
 
 #define DEFAULT_POLLGAP 15
+#define DEFAULT_MAXDEPTH 25
 
 struct orderbook
 {
@@ -17,6 +18,78 @@ struct orderbook
     struct InstantDEX_quote *bids,*asks;
     int32_t numbids,numasks;
 };
+struct exchange_info *get_exchange(int32_t exchangeid);
+struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr);
+
+int32_t emit_orderbook_changes(struct rambook_info *rb,struct InstantDEX_quote *oldquotes,int32_t numold)
+{
+    void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ);
+    double vol;
+    int32_t i,j,numchanges = 0;
+    struct InstantDEX_quote *iQ;
+    if ( rb->numquotes == 0 || numold == 0 )
+        return(0);
+    if ( 0 && numold != 0 )
+    {
+        for (j=0; j<numold; j++)
+            printf("%llu ",(long long)oldquotes[j].baseamount);
+        printf("%s %s_%s OLD.%d\n",rb->exchange,rb->base,rb->rel,numold);
+    }
+    for (i=0; i<rb->numquotes; i++)
+    {
+        if ( (iQ= rb->quotes[i]) != 0 )
+        {
+            if ( Debuglevel > 2 )
+                fprintf(stderr,"(%llu/%llu %.8f) ",(long long)iQ->baseamount,(long long)iQ->relamount,calc_price_volume(&vol,iQ->baseamount,iQ->relamount));
+            if ( numold > 0 )
+            {
+                for (j=0; j<numold; j++)
+                {
+                    //printf("%s %s_%s %d of %d: %llu/%llu vs %llu/%llu\n",rb->exchange,rb->base,rb->rel,j,numold,(long long)iQ->baseamount,(long long)iQ->relamount,(long long)oldquotes[j].baseamount,(long long)oldquotes[j].relamount);
+                    if ( iQcmp(iQ,&oldquotes[j]) == 0 )
+                        break;
+                }
+            } else j = 0;
+            if ( j == numold )
+                numchanges++;//, emit_iQ(rb,iQ);
+        }
+    }
+    if ( Debuglevel > 2 )
+        fprintf(stderr,"%s %s_%s NEW.%d\n\n",rb->exchange,rb->base,rb->rel,rb->numquotes);
+    if ( oldquotes != 0 )
+        free(oldquotes);
+    return(numchanges);
+}
+
+void convram_NXT_Uquotejson(uint64_t assetid)
+{
+    struct NXT_tx *txptrs[MAX_TXPTRS]; struct NXT_tx *tx; int32_t i,dir,flip,numptrs; uint64_t baseamount,relamount,ap_mult;
+    struct InstantDEX_quote iQ; char assetidstr[64];
+    expand_nxt64bits(assetidstr,assetid);
+    if ( (ap_mult= assetmult(assetidstr)) == 0 )
+        return;
+    memset(txptrs,0,sizeof(txptrs));
+    if ( (numptrs= update_iQ_flags(txptrs,sizeof(txptrs)/sizeof(*txptrs),assetid)) == 0 )
+        return;
+    for (i=0; i<numptrs; i++)
+    {
+        tx = txptrs[i];
+        for (flip=0; flip<2; flip++)
+        {
+            if ( tx->assetidbits == assetid && tx->type == 2 && tx->subtype == (3 - flip) && tx->refhash.txid == 0 )
+            {
+                if ( flip == 0 )
+                    dir = 1;
+                else dir = -1;
+                printf("i.%d: assetid.%llu type.%d subtype.%d time.%u\n",i,(long long)tx->assetidbits,tx->type,tx->subtype,tx->timestamp);
+                baseamount = (tx->U.quantityQNT * ap_mult);
+                relamount = (tx->U.quantityQNT * tx->priceNQT);
+                add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,tx->senderbits,tx->timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,0,0,0);
+            }
+        }
+    }
+    free_txptrs(txptrs,numptrs);
+}
 
 void free_orderbook(struct orderbook *op)
 {
@@ -419,42 +492,6 @@ struct orderbook *make_orderbook(struct orderbook *obooks[],long max,char *base,
     return(op);
 }
 
-int32_t add_halfbooks(uint64_t *assetids,int32_t n,uint64_t refid,uint64_t baseid,uint64_t relid,int32_t exchangeid)
-{
-    if ( baseid != refid )
-        n = add_exchange_assetid(assetids,n,baseid,refid,exchangeid);
-    if ( relid != refid )
-        n = add_exchange_assetid(assetids,n,relid,refid,exchangeid);
-    return(n);
-}
-
-int32_t gen_assetpair_list(uint64_t *assetids,long max,uint64_t baseid,uint64_t relid)
-{
-    int32_t exchangeid,n = 0;
-    struct exchange_info *exchange;
-    n = add_exchange_assetid(assetids,n,baseid,relid,INSTANTDEX_EXCHANGEID);
-    n = add_exchange_assetid(assetids,n,relid,baseid,INSTANTDEX_EXCHANGEID);
-    n = add_halfbooks(assetids,n,NXT_ASSETID,baseid,relid,INSTANTDEX_EXCHANGEID);
-    n = add_halfbooks(assetids,n,BTC_ASSETID,baseid,relid,INSTANTDEX_EXCHANGEID);
-    n = add_halfbooks(assetids,n,BTCD_ASSETID,baseid,relid,INSTANTDEX_EXCHANGEID);
-    if ( Debuglevel > 2 )
-        printf("genpairs.(%llu %llu) starts with n.%d\n",(long long)baseid,(long long)relid,n);
-    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
-    {
-        if ( exchangeid == INSTANTDEX_UNCONFID )
-            continue;
-        exchange = &Exchanges[exchangeid];
-        if ( exchange->name[0] != 0 )
-        {
-            if ( exchange->ramsupports != 0 && exchange->ramparse != ramparse_stub )
-                n = (*exchange->ramsupports)(exchangeid,assetids,n,baseid,relid);
-        } else break;
-    }
-    if ( (n % 3) != 0 || n > max )
-        printf("gen_assetpair_list: baseid.%llu relid.%llu -> n.%d??? mod.%d\n",(long long)baseid,(long long)relid,n,n%3);
-    return(n/3);
-}
-
 struct InstantDEX_quote *clone_quotes(int32_t *nump,struct rambook_info *rb)
 {
     struct InstantDEX_quote *quotes = 0;
@@ -468,7 +505,7 @@ struct InstantDEX_quote *clone_quotes(int32_t *nump,struct rambook_info *rb)
     return(quotes);
 }
 
-void update_ramparse(struct exchange_info *exchange,struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+/*void update_ramparse(struct exchange_info *exchange,struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
 {
     struct InstantDEX_quote *prevbids,*prevasks;
     int32_t numoldbids,numoldasks;
@@ -512,7 +549,7 @@ void update_rambooks(uint64_t refbaseid,uint64_t refrelid,int32_t maxdepth,char 
             }
         }
     }
-}
+}*/
 
 char *orderbook_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
 {
@@ -535,7 +572,7 @@ char *orderbook_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs
     else set_assetname(&mult,rel,relid);
     if ( baseid != 0 && relid != 0 )
     {
-        update_rambooks(baseid,relid,maxdepth,gui,showall,exchange);
+        //update_rambooks(baseid,relid,maxdepth,gui,showall,exchange);
         printf("updated\n");
         op = make_orderbook(obooks,sizeof(obooks)/sizeof(*obooks),base,baseid,rel,relid,maxdepth,oldest,gui,exchange);
         printf("made\n");

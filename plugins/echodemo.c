@@ -51,21 +51,22 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     }
     else
     {
-        if ( plugin_result(retbuf,json,tag) > 0 )
-            return((int32_t)strlen(retbuf));
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
         copy_cJSON(echostr,cJSON_GetObjectItem(json,"echostr"));
         retbuf[0] = 0;
-        if ( methodstr == 0 || methodstr[0] == 0 )
-        {
-            printf("(%s) has not method\n",jsonstr);
-            return(0);
-        }
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
+            return((int32_t)strlen(retbuf));
+        }
+        if ( plugin_result(retbuf,json,tag) > 0 )
+            return((int32_t)strlen(retbuf));
+        if ( methodstr == 0 || methodstr[0] == 0 )
+        {
+            printf("(%s) has not method\n",jsonstr);
+            return(0);
         }
         else if ( strcmp(methodstr,"echo") == 0 )
         {

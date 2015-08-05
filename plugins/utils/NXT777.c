@@ -35,9 +35,12 @@ int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
 #define MAX_NXTADDR_LEN MAX_NXT_STRLEN
 
 #define GENESISACCT "1739068987193023818"  // NXT-MRCC-2YLS-8M54-3CMAJ
-#define GENESISBLOCK "2680262203532249785"
-#define NXT_GENESISTIME 1385294400
+#define GENESISPUBKEYSTR "1259ec21d31a30898d7cd1609f80d9668b4778e3d97e941044b39f0c44d2e51b"
+#define GENESISPRIVKEYSTR "1259ec21d31a30898d7cd1609f80d9668b4778e3d97e941044b39f0c44d2e51b"
 #define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
+#define GENESISBLOCK "2680262203532249785"
+
+#define NXT_GENESISTIME 1385294400
 
 #define DEFAULT_NXT_DEADLINE 720
 #define issue_curl(cmdstr) bitcoind_RPC(0,"curl",cmdstr,0,0,0)
@@ -190,6 +193,8 @@ int32_t update_msig_info(struct multisig_addr *msig,int32_t syncflag,char *sende
 struct NXT_acct *get_nxt64bits(int32_t *createdp,uint64_t nxt64bits);
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *origsecret);
 
+extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
+
 #endif
 #else
 #ifndef crypto777_NXT777_c
@@ -207,6 +212,8 @@ int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *origsecr
 #else
 #include "curve25519-donna.c"
 #endif
+
+bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
 
 bits256 curve25519(bits256 mysecret,bits256 theirpublic)
 {
@@ -1351,7 +1358,7 @@ int32_t update_NXT_assettransfers(struct mgw777 *mgw)
         for (i=1; i<=count; i++)
         {
             NXT_revassettxid(&extra,mgw->assetidbits,i);
-            if ( (extra.flags & MGW_PENDINGREDEEM) != 0 && (extra.flags & MGW_WITHDRAWDONE) == 0 )
+            if ( SUPERNET.gatewayid >= 0 && (extra.flags & MGW_PENDINGREDEEM) != 0 && (extra.flags & MGW_WITHDRAWDONE) == 0 )
             {
                 int32_t mgw_update_redeem(struct mgw777 *mgw,struct extra_info *extra);
                 expand_nxt64bits(nxt_txid,extra.txidbits);
@@ -1366,10 +1373,6 @@ int32_t update_NXT_assettransfers(struct mgw777 *mgw)
         //fprintf(stderr,"sequential tx.%d\n",count);
         NXT_revassettxid(&extra,mgw->assetidbits,count);
         mostrecent = extra.txidbits;
-        //NXT_revassettxid(&extra,mgw->assetidbits,count+1);
-        //if ( extra.txidbits != 0 )
-        //    mostrecent = extra.txidbits;
-        //printf("mostrecent.%llu count.%d\n",(long long)mostrecent,count);
         for (i=0; i<sizeof(txids)/sizeof(*txids); i++)
         {
             if ( NXT_assettransfers(mgw,&txids[i],1,i,i) == 1 && txids[i] == mostrecent )
@@ -1606,6 +1609,112 @@ struct NXT_acct *get_NXTacct(int32_t *createdp,char *NXTaddr)
     return(get_nxt64bits(createdp,calc_nxt64bits(NXTaddr)));
 }
 
+void teststuff()
+{
+    if ( 0 )
+    {
+        int i,j; bits256 seed,privkeys[12],pubkeys[12],shared[8][8],shared2[8][8],basepoint,tmp3,tmp,BAc,BCa,CAb,CBa,ACb,ABc,a,b,c,A,B,C,Ca,Cb,Ba,Ab,Ac,Bc,tmp4,D,E,F,G,H,d,e,f,g,h,De,Ed,tmp2,X,Y,x,y,Z,Q,z,q;
+        bits256 curve25519(bits256,bits256);
+        memset(&basepoint,0,sizeof(basepoint));
+        basepoint.bytes[0] = 9;
+        for (i=0; i<10; i++)
+        {
+            randombytes(seed.bytes,sizeof(seed));
+            calc_sha256(0,privkeys[i].bytes,seed.bytes,sizeof(seed));
+            privkeys[i].bytes[0] &= 248, privkeys[i].bytes[31] &= 127, privkeys[i].bytes[31] |= 64;
+            curve25519_donna(pubkeys[i].bytes,privkeys[i].bytes,basepoint.bytes);
+        }
+        A = privkeys[0], a = pubkeys[0];
+        B = privkeys[1], b = pubkeys[1];
+        C = privkeys[2], c = pubkeys[2];
+        D = privkeys[3], d = pubkeys[3];
+        E = privkeys[4], e = pubkeys[4];
+        F = privkeys[5], f = pubkeys[5];
+        G = privkeys[6], g = pubkeys[6];
+        H = privkeys[7], h = pubkeys[7];
+        X = privkeys[8], x = pubkeys[8];
+        Y = privkeys[9], y = pubkeys[9];
+        Z = privkeys[10], z = pubkeys[10];
+        Q = privkeys[11], q = pubkeys[11];
+        
+        Ab = curve25519(A,b);
+        Ac = curve25519(A,c);
+        Ca = curve25519(C,a);
+        Cb = curve25519(C,b);
+        Bc = curve25519(B,c);
+        Ba = curve25519(B,a);
+        
+        ACb = curve25519(A,Cb);
+        ABc = curve25519(A,Bc);
+        BAc = curve25519(B,Ac);
+        BCa = curve25519(B,Ca);
+        CAb = curve25519(C,Ab);
+        CBa = curve25519(C,Ba);
+        
+        De = curve25519(D,e);
+        Ed = curve25519(E,d);
+        //tmp = curve25519(Ab,De);
+        //tmp2 = curve25519(Ba,De);
+        //tmp = curve25519(ABc,De);
+        //tmp2 = curve25519(BCa,De);
+        //tmp = curve25519(TRIO(A,B,c),TRIO(H,G,f));
+        //tmp2 = curve25519(TRIO(B,A,c),TRIO(G,H,f));
+#define DUO(X,y) curve25519(X,y)
+#define TRIO(X,Y,z) curve25519(X,DUO(Y,z))
+#define SIX(A,B,C,H,G,a,c,f) curve25519(TRIO(A,B,c),TRIO(H,G,f))
+        tmp = curve25519(curve25519(ABc,De),DUO(G,f));
+        tmp2 = curve25519(curve25519(BCa,De),DUO(G,f));
+        
+        tmp = curve25519(curve25519(curve25519(ABc,De),DUO(G,f)),DUO(X,y));
+        tmp2 = curve25519(curve25519(curve25519(BCa,De),DUO(G,f)),DUO(X,y));
+        
+        tmp = curve25519(curve25519(curve25519(curve25519(curve25519(A,curve25519(B,c)),curve25519(D,e)),curve25519(G,f)),curve25519(X,y)),curve25519(Z,q));
+        tmp2 = curve25519(curve25519(curve25519(curve25519(curve25519(B,curve25519(A,c)),curve25519(D,e)),curve25519(G,f)),curve25519(X,y)),curve25519(Z,q));
+        
+        tmp3 = curve25519(curve25519(curve25519(curve25519(curve25519(A,curve25519(B,c)),curve25519(G,f)),curve25519(D,e)),curve25519(X,y)),curve25519(Z,q));
+        tmp4 = curve25519(curve25519(curve25519(curve25519(curve25519(B,curve25519(A,c)),curve25519(G,f)),curve25519(D,e)),curve25519(X,y)),curve25519(Z,q));
+        //tmp2 = curve25519(curve25519(curve25519(curve25519(BCa,De),DUO(G,f)),DUO(X,y)),DUO(Z,q));
+        printf("Ab.%08x Ac.%08x Ba.%08x Bc.%08x Ca.%08x Cb.%08x | ACb.%08x ABc.%08x BAc.%08x BCa.%08x | %08x %08x %08x %08x\n",(uint32_t)Ab.txid,(uint32_t)Ac.txid,(uint32_t)Ba.txid,(uint32_t)Bc.txid,(uint32_t)Ca.txid,(uint32_t)Cb.txid,(uint32_t)ACb.txid,(uint32_t)ABc.txid,(uint32_t)BAc.txid,(uint32_t)BCa.txid,(uint32_t)tmp.txid,(uint32_t)tmp2.txid,(uint32_t)tmp3.txid,(uint32_t)tmp.txid);
+        getchar();
+        for (i=0; i<8; i++)
+        {
+            tmp = privkeys[i];
+            memset(tmp4.bytes,0,sizeof(tmp4));
+            for (j=0; j<8; j++)
+            {
+                if ( i != j )
+                {
+                    curve25519_donna(shared[i][j].bytes,privkeys[i].bytes,pubkeys[j].bytes);
+                    //curve25519_donna(tmp3.bytes,privkeys[i].bytes,pubkeys[(j+1)%8].bytes);
+                    printf("%08x ",(uint32_t)shared[i][j].txid);
+                    //tmp4.txid ^= tmp2.txid;
+                    //curve25519_donna(tmp4.bytes,tmp2.bytes,tmp3.bytes);
+                    //tmp = tmp2;
+                }
+            }
+            printf("pubkey.%llx privkey.%llx\n",(long long)pubkeys[i].txid,(long long)privkeys[i].txid);
+        }
+        printf("\n");
+        for (i=0; i<8; i++)
+        {
+            tmp = privkeys[i];
+            memset(tmp4.bytes,0,sizeof(tmp4));
+            for (j=0; j<8; j++)
+            {
+                if ( i != j )
+                {
+                    curve25519_donna(shared2[i][j].bytes,shared[i][j].bytes,shared[i][(j+1)%8].bytes);
+                    printf("%08x ",(uint32_t)shared2[i][j].txid);
+                }
+            }
+            printf("pubkey.%llx privkey.%llx\n",(long long)pubkeys[i].txid,(long long)privkeys[i].txid);
+        }
+        getchar();
+        for (j=0; j<8; j++)
+        {
+        }
+    }
+}
 #endif
 #endif
 

@@ -24,7 +24,7 @@ uint64_t calc_generator(struct crypto777_generator *gen,uint64_t stake,char *ema
     memset(gen,0,sizeof(*gen));
     strncpy(gen->email,email,sizeof(gen->email)-1);
     gen->timestamp = timestamp;
-    hit = calc_SaM(&gen->hash,(uint8_t *)&prevgen,(int32_t)sizeof(prevgen),(uint8_t *)email,(int32_t)strlen(email));
+    hit = SaM(&gen->hash,(uint8_t *)&prevgen,(int32_t)sizeof(prevgen),(uint8_t *)email,(int32_t)strlen(email));
     if ( (gen->hit= (stake / (hit + 1))) > MAX_CRYPTO777_HIT )
     {
         printf("clip to max\n");
@@ -117,7 +117,7 @@ struct crypto777_block *sign_block(struct crypto777_node *nn,struct crypto777_ge
     block->gen = *gen;
     if ( rawblock != 0 && rawblocklen != 0 )
         memcpy(block->rawblock,rawblock,rawblocklen);
-    calc_SaM(&blockhash,(uint8_t *)block,blocksize,0,0);
+    SaM(&blockhash,(uint8_t *)block,blocksize,0,0);
     block->hash = blockhash;
     //calc_SaM(&block->blocksig,blockhash.bytes,sizeof(blockhash),nn->broadcast.shared_curve25519.bytes,sizeof(bits256),SAM_MAGIC_NUMBER);
     block->sig.txid = nn->nodeid;

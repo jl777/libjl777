@@ -38,10 +38,10 @@
 
 struct protocol_info
 {
-    struct dKV777 *protocol_relays; struct kv777 *protocol_coins;
+    struct dKV777 *protocol_relays; //struct kv777 *coins,*accounts;
     struct endpoint connections[8192],myendpoint;
     char name[64],agent[512],path[512],transport[16],ipaddr[64],NXTADDR[64],endpointstr[512]; uint8_t NXTACCTSECRET[2048];
-    int32_t ip6flag,subsock; uint64_t ipbits;
+    int32_t ip6flag,subsock,leverage; uint64_t ipbits;
     uint16_t port;
 };
 
@@ -58,10 +58,11 @@ struct plugin_info
 };
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr);
-static void agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret);
+static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps);
 static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
 
 static char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
+int32_t protocols_init(int32_t sock,struct endpoint *connections,char *protocol);
 
 #endif
 #else
@@ -73,7 +74,6 @@ static char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,c
 #include "plugin777.c"
 #undef DEFINES_ONLY
 #endif
-int32_t protocols_init(int32_t sock,struct endpoint *connections,char *protocol);
 
 static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
@@ -114,7 +114,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
     return(0);
 }
 
-static void agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret)
+static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps)
 {
     cJSON *argjson; char buf[512]; int32_t n; struct protocol_info *prot = &plugin->protocol;
     if ( path == 0 )
@@ -139,35 +139,14 @@ static void agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agen
     if ( prot->port == 0 )
         prot->port = SUPERNET_PORT + ((((uint16_t)protocol[0] << 8) | agent[0]) % 777);
 #ifndef BUNDLED
-    strcpy(KV777->PATH,path), os_compatible_path(KV777->PATH), ensure_directory(KV777->PATH);
+    strcpy(KV777.PATH,path), os_compatible_path(KV777.PATH), ensure_directory(KV777.PATH);
 #endif
-    prot->protocol_coins = kv777_init("coins",0);
     buf[0] = 0, prot->subsock = nn_createsocket(buf,0,"NN_SUB",NN_SUB,0,10,1);
     n = protocols_init(prot->subsock,prot->connections,protocol);
-    prot->protocol_relays = dKV777_init("protocol",protocol,&prot->protocol_coins,1,0,-1,prot->subsock,prot->connections,n,(int32_t)(sizeof(prot->connections)/sizeof(*prot->connections)),prot->port,pingmillis);
-    set_KV777_globals(&prot->protocol_relays,prot->transport,prot->NXTACCTSECRET,(int32_t)strlen((void *)prot->NXTACCTSECRET),plugin->SERVICENXT,KV777->relayendpoint);
-    strcpy(plugin->NXTADDR,KV777->NXTADDR);
-}
-
-static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid)
-{
-    char *endpoint;
-    if ( (endpoint= jstr(json,"endpoint")) == 0 || endpoint[0] == 0 || strcmp(endpoint,"disconnect") == 0 )
-    {
-        memset(prot->endpointstr,0,sizeof(prot->endpointstr));
-        memset(&prot->myendpoint,0,sizeof(prot->myendpoint));
-        sprintf(retbuf,"{\"result\":\"endpoint cleared\"}");
-    }
-    else
-    {
-        prot->port = parse_endpoint(&prot->ip6flag,prot->transport,prot->ipaddr,retbuf,jstr(json,"endpoint"),prot->port);
-        prot->ipbits = calc_ipbits(prot->ipaddr) | ((uint64_t)prot->port << 32);
-        prot->myendpoint = calc_epbits(prot->transport,(uint32_t)prot->ipbits,prot->port,NN_PUB);
-        expand_epbits(prot->endpointstr,prot->myendpoint);
-        sprintf(retbuf,"{\"result\":\"endpoint set\",\"endpoint\":\"%s\"}",prot->endpointstr);
-    }
-    strcpy(prot->protocol_relays->endpointstr,prot->endpointstr);
-    return(0);
+    prot->protocol_relays = dKV777_init("protocol",protocol,kps,numkps,0,-1,prot->subsock,prot->connections,n,(int32_t)(sizeof(prot->connections)/sizeof(*prot->connections)),prot->port,pingmillis);
+    set_KV777_globals(&prot->protocol_relays,prot->transport,prot->NXTACCTSECRET,(int32_t)strlen((void *)prot->NXTACCTSECRET),plugin->SERVICENXT,KV777.relayendpoint);
+    strcpy(plugin->NXTADDR,KV777.NXTADDR);
+    return(prot->protocol_relays);
 }
 
 char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid)

@@ -34,17 +34,17 @@ struct kv777_item { UT_hash_handle hh; struct kv777_item *next,*prev; long offse
 struct kv777_flags { char rw,hdd,threadsafe,writebehind,mmap,tbd0,tbd1,tbd2; };
 struct kv777
 {
-    char name[64],fname[512];
+    char name[64],fname[512],path[512];
     portable_mutex_t mutex;
     struct kv777_item *table,*hddlist;
     struct kv777_flags flags;
     FILE *fp; void *fileptr; uint64_t mapsize,offset;
     long totalkeys,totalvalues;
-    int32_t numkeys,netkeys,netvalues,dontrelay;
+    int32_t numkeys,netkeys,netvalues,dontrelay,dispflag;
 };
 
 void kv777_defaultflags(struct kv777_flags *flags);
-struct kv777 *kv777_init(char *name,struct kv777_flags *flags); // kv777_init IS NOT THREADSAFE!
+struct kv777 *kv777_init(char *path,char *name,struct kv777_flags *flags); // kv777_init IS NOT THREADSAFE!
 struct kv777_item *kv777_write(struct kv777 *kv,void *key,int32_t keysize,void *value,int32_t valuesize);
 void *kv777_read(struct kv777 *kv,void *key,int32_t keysize,void *value,int32_t *valuesizep,int32_t retitem);
 int32_t kv777_addstr(struct kv777 *kv,char *key,char *value);
@@ -66,6 +66,7 @@ struct dKV777
     uint64_t approvalfifo[256];
     struct endpoint *connections;
     double pinggap,lastping;
+    portable_mutex_t mutex;
     int32_t pubsock,subsock,num,max,numkvs,fifoind,lastfifoi; uint32_t totalnodes,ind,keysize,flags; uint16_t port;
 };
 
@@ -74,8 +75,13 @@ int32_t dKV777_addnode(struct dKV777 *dKV,struct endpoint *ep);
 int32_t dKV777_removenode(struct dKV777 *dKV,struct endpoint *ep);
 int32_t dKV777_blacklist(struct dKV777 *dKV,struct endpoint *ep,int32_t penalty);
 char *dKV777_ping(struct dKV777 *dKV);
-uint32_t dKV777_write(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *value,int32_t valuesize);
-void *dKV777_read(struct dKV777 *dKV,struct kv777 *kv,void *key,int32_t keysize,void *value,int32_t *valuesizep);
+
+uint32_t dKV777_write(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize,void *value,int32_t valuesize);
+void *dKV777_read(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize,void *value,int32_t *valuesizep);
+void dKV777_deleteind(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,uint32_t ind);
+void dKV777_delete(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize);
+//void dKV777_deleteowner(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits);
+
 void set_KV777_globals(struct dKV777 **relaysptr,char *transport,void *NXTACCTSECRET,int32_t secretlen,char *SERVICESECRET,char *relayendpoint);
 
 struct kv777_info
@@ -86,7 +92,7 @@ struct kv777_info
     uint64_t nxt64bits,service64bits;
     double Last_kvupdate;
     int32_t Num_kvs,Num_dKVs,mmapflag,readyflag,secretlen,servicelen;
-}; extern struct kv777_info *KV777;
+}; extern struct kv777_info KV777;
 
 #endif
 #else
@@ -94,7 +100,7 @@ struct kv777_info
 #define crypto777_storage_c
 
 
-struct kv777_info *KV777;
+struct kv777_info KV777;
 uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 
 #ifndef crypto777_storage_h
@@ -107,11 +113,11 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size);
 struct kv777 *kv777_find(char *name)
 {
     int32_t i;
-    if ( name != 0 && KV777->Num_kvs > 0 )
+    if ( name != 0 && KV777.Num_kvs > 0 )
     {
-        for (i=0; i<KV777->Num_kvs; i++)
-            if ( strcmp(KV777->KVS[i]->name,name) == 0 )
-                return(KV777->KVS[i]);
+        for (i=0; i<KV777.Num_kvs; i++)
+            if ( strcmp(KV777.KVS[i]->name,name) == 0 )
+                return(KV777.KVS[i]);
     }
     return(0);
 }
@@ -119,8 +125,9 @@ struct kv777 *kv777_find(char *name)
 void kv777_defaultflags(struct kv777_flags *flags)
 {
     memset(flags,0,sizeof(*flags));
-    flags->rw = flags->hdd = flags->threadsafe = flags->writebehind = 1;
-    flags->mmap = KV777->mmapflag;
+    flags->rw = flags->hdd = flags->threadsafe = 1;
+    flags->writebehind = 0;
+    flags->mmap = 0;//KV777.mmapflag;
 }
 
 void kv777_lock(struct kv777 *kv)
@@ -264,7 +271,15 @@ int32_t kv777_update(struct kv777 *kv,struct kv777_item *ptr)
         return(retval);
     }
     else if ( ptr->offset < 0 )
+    {
         ptr->offset = ftell(kv->fp);
+        if ( fwrite(ptr->item,1,ptr->itemsize,kv->fp) != ptr->itemsize )
+        {
+            printf("fwrite.%s error at fpos.%ld\n",kv->name,ftell(kv->fp));
+            exit(-1);
+        }
+        return(0);
+    }
     else
     {
         fseek(kv->fp,ptr->offset,SEEK_SET);
@@ -286,32 +301,29 @@ int32_t kv777_update(struct kv777 *kv,struct kv777_item *ptr)
             printf("fwrite.%s error at fpos.%ld\n",kv->name,ftell(kv->fp));
             exit(-1);
         }
+        if ( 0 && kv->dispflag != 0 )
+        {
+            for (int i=0; i<ptr->itemsize; i++)
+                fprintf(stderr,"%02x ",((uint8_t *)ptr->item)[i]);
+            fprintf(stderr,"(%s).(%s)\n",kv->path,kv->name);
+        }
         fseek(kv->fp,savepos,SEEK_SET);
         return(0);
     }
-    //for (int i=0; i<ptr->itemsize; i++)
-    //    printf("%02x ",((uint8_t *)item)[i]);
-    //printf("-> itemsize.%d | %p value.%p %d key.%p %d (%s %s)\n",ptr->itemsize,item,item->value,item->valuesize,kv777_itemkey(item),item->keysize,item->value,kv777_itemkey(item));
-    if ( fwrite(ptr->item,1,ptr->itemsize,kv->fp) != ptr->itemsize )
-    {
-        printf("fwrite.%s error at fpos.%ld\n",kv->name,ftell(kv->fp));
-        exit(-1);
-    }
-    else retval = 0;
-    return(retval);
-}
+     //printf("-> itemsize.%d | %p value.%p %d key.%p %d (%s %s)\n",ptr->itemsize,item,item->value,item->valuesize,kv777_itemkey(item),item->keysize,item->value,kv777_itemkey(item));
+ }
 
 int32_t KV777_idle(char *protocol)
 {
     double gap; struct kv777_item *ptr; struct kv777 *kv; int32_t i,n = 0;
-    gap = (milliseconds() - KV777->Last_kvupdate);
-    if ( KV777->Num_kvs > 0 && (gap < 100 || gap > 1000) )
+    gap = (milliseconds() - KV777.Last_kvupdate);
+    if ( KV777.Num_kvs > 0 && (gap < 100 || gap > 1000) )
     {
-        for (i=0; i<KV777->Num_kvs; i++)
+        for (i=0; i<KV777.Num_kvs; i++)
         {
-            if ( strcmp(KV777->protocol,protocol) == 0 )
+            if ( strcmp(KV777.protocol,protocol) == 0 )
             {
-                kv = KV777->KVS[i];
+                kv = KV777.KVS[i];
                 kv777_lock(kv);
                 if ( (ptr= kv->hddlist) != 0 )
                     DL_DELETE(kv->hddlist,ptr);
@@ -320,7 +332,7 @@ int32_t KV777_idle(char *protocol)
                 {
                     kv777_update(kv,ptr);
                     n++;
-                    KV777->Last_kvupdate = milliseconds();
+                    KV777.Last_kvupdate = milliseconds();
                 }
             }
         }
@@ -330,19 +342,19 @@ int32_t KV777_idle(char *protocol)
 
 int32_t kv777_idle()
 {
-    return(dKV777_poll() + KV777_idle("*"));
+    return(KV777_idle("*"));
 }
 
 void kv777_flush(char *protocol)
 {
     int32_t i; struct kv777 *kv;
-    if ( KV777->Num_kvs > 0 )
+    if ( KV777.Num_kvs > 0 )
     {
         while ( KV777_idle(protocol) > 0 )
             ;
-        for (i=0; i<KV777->Num_kvs; i++)
+        for (i=0; i<KV777.Num_kvs; i++)
         {
-            kv = KV777->KVS[i];
+            kv = KV777.KVS[i];
             if ( kv->fp != 0 )
                 fflush(kv->fp);
 #ifndef _WIN32
@@ -361,7 +373,12 @@ void kv777_counters(struct kv777 *kv,int32_t polarity,uint32_t keysize,uint32_t 
     {
         if ( kv->flags.writebehind != 0 )
             DL_APPEND(kv->hddlist,ptr);
-        else kv777_update(kv,ptr);
+        else if ( kv->fp != 0 )
+        {
+            kv777_update(kv,ptr);
+            fflush(kv->fp);
+            //printf("flushed.(%s).(%s)\n",kv->path,kv->name);
+        }
     }
 }
 
@@ -377,6 +394,8 @@ void kv777_clear(struct kv777 *kv)
 
 void kv777_add(struct kv777 *kv,struct kv777_item *ptr,int32_t updatehdd)
 {
+    if ( kv->dispflag != 0 )
+        printf("add.(%s).(%s) kv->numkeys.%d\n",kv->path,kv->name,kv->numkeys);
     kv->numkeys++;
     HASH_ADD_KEYPTR(hh,kv->table,kv777_itemkey(ptr->item),ptr->item->keysize,ptr);
     kv777_counters(kv,1,ptr->item->keysize,ptr->item->valuesize,updatehdd != 0 ? ptr : 0);
@@ -407,30 +426,41 @@ struct kv777_item *kv777_write(struct kv777 *kv,void *key,int32_t keysize,void *
     struct kv777_item *ptr = 0;
     if ( kv == 0 )
         return(0);
-    //if ( kv == KV777.PM )
-    //fprintf(stderr,"kv777_write kv.%p table.%p write key.%s size.%d, value.(%s) size.%d\n",kv,kv->table,key,keysize,value,valuesize);
+    if ( kv->dispflag != 0 )
+        fprintf(stderr,"kv777_write kv.%p table.%p write key.%s size.%d, value.(%llx) size.%d\n",kv,kv->table,key,keysize,*(long long *)value,valuesize);
     kv777_lock(kv);
     HASH_FIND(hh,kv->table,key,keysize,ptr);
     if ( ptr != 0 )
     {
         if ( ptr->item != 0 )
         {
-            if ( valuesize == ptr->item->valuesize && memcmp(ptr->item->value,value,valuesize) == 0 )
+            if ( valuesize == ptr->item->valuesize )
             {
-                if ( Debuglevel > 3 )
-                    fprintf(stderr,"%d IDENTICAL.%p val.%s %s vs %s val.%s\n",kv->netkeys,ptr,ptr->item->value,kv777_itemkey(ptr->item),key,value);
+                if ( memcmp(ptr->item->value,value,valuesize) != 0 )
+                {
+                    memcpy(ptr->item->value,value,valuesize);
+                    ptr->item->crc = _crc32(0,(void *)((long)ptr->item + sizeof(ptr->item->crc)),kv777_itemsize(keysize,valuesize) - sizeof(ptr->item->crc));
+                    if ( kv->fp != 0 )
+                        kv777_update(kv,ptr), fflush(kv->fp);
+#ifndef _WIN32
+                    else if ( kv->fileptr != 0 && kv->mapsize != 0 )
+                            msync(kv->fileptr,kv->mapsize,MS_SYNC);
+#endif
+                } else if ( Debuglevel > 1 )
+                    fprintf(stderr,"%d IDENTICAL.%p val.%s %s vs %s\n",kv->netkeys,ptr,ptr->item->value,kv777_itemkey(ptr->item),key);
                 kv777_unlock(kv);
                 return(ptr);
             }
-            else if ( Debuglevel > 3 )
-                printf("kv777_write (%s) != (%s)\n",ptr->item->value,value);
+            else if ( Debuglevel > 3 || kv->dispflag != 0 )
+                printf("kv777_write (%llx) != (%llx)\n",*(long long *)ptr->item->value,*(long long *)value);
             kv777_counters(kv,-1,ptr->item->keysize,ptr->item->valuesize,0);
             kv777_free(kv,ptr,0);
         } else printf("kv777_write: null item?\n");
-        if ( Debuglevel > 3 )
-            fprintf(stderr,"%d REPLACE.%p val.%s %s vs %s val.%s\n",kv->netkeys,ptr,ptr->item->value,kv777_itemkey(ptr->item),key,value);
         if ( kv777_itemsize(keysize,valuesize) > ptr->itemsize )
+        {
+            printf("DOESNT FIT: itemsize.%d > existing.%d offset.%ld -> -1\n",kv777_itemsize(keysize,valuesize),ptr->itemsize,ptr->offset);
             ptr->offset = -1;
+        }
         if ( (ptr->item= kv777_hdditem(&ptr->itemsize,0,0,key,keysize,value,valuesize)) != 0 )
             kv777_counters(kv,1,keysize,valuesize,ptr);
         else if ( Debuglevel > 3 )
@@ -444,7 +474,8 @@ struct kv777_item *kv777_write(struct kv777 *kv,void *key,int32_t keysize,void *
         {
             printf("kv777_write: couldnt create item.(%s) %s ind.%d offset.%ld\n",key,value,kv->numkeys,ftell(kv->fp));
             free(ptr), ptr = 0;
-        } else  kv777_add(kv,ptr,1);
+        }
+        else  kv777_add(kv,ptr,1);
         if ( Debuglevel > 3 )
             fprintf(stderr,"%d CREATE.%p val.%s %s vs %s val.%s\n",kv->netkeys,ptr,ptr->item->value,kv777_itemkey(ptr->item),key,value);
     }
@@ -494,16 +525,16 @@ void *kv777_iterate(struct kv777 *kv,void *args,int32_t allitems,void *(*iterato
     struct kv777_item *ptr,*tmp; void *retval = 0;
     if ( kv == 0 )
         return(0);
-    kv777_lock(kv);
+    //kv777_lock(kv);
     HASH_ITER(hh,kv->table,ptr,tmp)
     {
         if ( (allitems != 0 || kv777_isdeleted(ptr->item) == 0) && (retval= (*iterator)(kv,args!=0?args:ptr,kv777_itemkey(ptr->item),ptr->item->keysize,ptr->item->value,ptr->item->valuesize)) != 0 )
         {
-            kv777_unlock(kv);
+            //kv777_unlock(kv);
             return(retval);
         }
     }
-    kv777_unlock(kv);
+    //kv777_unlock(kv);
     return(0);
 }
 
@@ -527,30 +558,35 @@ int32_t kv777_purge(struct kv777 *kv)
     return(0);
 }
 
-struct kv777 *kv777_init(char *name,struct kv777_flags *flags) // kv777_init IS NOT THREADSAFE!
+struct kv777 *kv777_init(char *path,char *name,struct kv777_flags *flags) // kv777_init IS NOT THREADSAFE!
 {
-    long offset = 0; struct kv777_hdditem *item; uint32_t i,itemsize,allocflag; struct kv777_flags F;
+    long offset = 0; struct kv777_item *checkitem; struct kv777_hdditem *item; uint32_t i,itemsize,allocflag; struct kv777_flags F;
     struct kv777_item *ptr; struct kv777 *kv;
+    ensure_directory(path);
+    printf("kv777_init.(%s/%s)\n",path,name);
     if ( flags == 0 )
         flags = &F, kv777_defaultflags(flags);
 #ifdef _WIN32
     flags->mmap = 0;
 #endif
-    if ( KV777->Num_kvs > 0 )
+    if ( KV777.Num_kvs > 0 )
     {
-        for (i=0; i<KV777->Num_kvs; i++)
-            if ( strcmp(KV777->KVS[i]->name,name) == 0 )
-                return(KV777->KVS[i]);
+        for (i=0; i<KV777.Num_kvs; i++)
+            if ( strcmp(KV777.KVS[i]->name,name) == 0 && strcmp(KV777.KVS[i]->path,path) == 0 )
+                return(KV777.KVS[i]);
     }
     kv = calloc(1,sizeof(*kv));
+    //if ( strcmp(name,"state") == 0 )
+    //    kv->dispflag = 1;
+    safecopy(kv->path,path,sizeof(kv->path));
     safecopy(kv->name,name,sizeof(kv->name));
     portable_mutex_init(&kv->mutex);
-    kv->flags = *flags, kv->flags.mmap *= KV777->mmapflag, kv->flags.threadsafe = 0;
-    if ( KV777->PATH[0] == 0 )
-        strcpy(KV777->PATH,"DB");
-    sprintf(kv->fname,"%s/%s",KV777->PATH,kv->name), os_compatible_path(kv->fname);
+    kv->flags = *flags, kv->flags.mmap *= KV777.mmapflag, kv->flags.threadsafe = 0;
+    sprintf(kv->fname,"%s/%s",path,kv->name), os_compatible_path(kv->fname);
     if ( flags->hdd != 0 && (kv->fp= fopen(kv->fname,"rb+")) == 0 )
         kv->fp = fopen(kv->fname,"wb+");
+    if ( kv->fp == 0 )
+        printf("kv->fp.%p for %s: RAM only mode hdd.%d\n",kv->fp,kv->fname,flags->hdd), flags->hdd = 0;
     if ( kv->fp != 0 )
     {
         if ( kv->flags.mmap != 0 )
@@ -562,28 +598,35 @@ struct kv777 *kv777_init(char *name,struct kv777_flags *flags) // kv777_init IS 
         rewind(kv->fp);
         while ( (item= kv777_load(&allocflag,&itemsize,kv)) != 0 )
         {
-            //printf("%d: item.%p itemsize.%d\n",kv->numkeys,item,itemsize);
+            if ( kv->dispflag != 0 )
+                printf("%d: item.%p itemsize.%d\n",kv->numkeys,item,itemsize);
             if ( kv777_isdeleted(item) != 0 && allocflag != 0 )
                 free(item);
             else
             {
+                if ( (checkitem= kv777_read(kv,kv777_itemkey(item),item->keysize,0,0,1)) != 0 )
+                {
+                    printf("init.(%s).(%s): duplicate key.[%llx] found\n",kv->path,kv->name,*(long long *)kv777_itemkey(item));
+                    kv777_delete(kv,kv777_itemkey(item),item->keysize);
+                }
                 ptr = calloc(1,sizeof(*ptr));
                 ptr->itemsize = itemsize, ptr->item = item, ptr->offset = offset, ptr->ind = kv->numkeys;
                 kv777_add(kv,ptr,0);
-                //fprintf(stderr,"[%s] add item.%d crc.%u valuesize.%d keysize.%d [%s]\n",item->value,kv->numkeys,item->crc,item->valuesize,item->keysize,kv777_itemkey(item));
+                if ( kv->dispflag != 0 )
+                    fprintf(stderr,"%p [%llx] add item.%d crc.%u valuesize.%d keysize.%d [%s]\n",item->value,*(long long *)item->value,ptr->ind,item->crc,item->valuesize,item->keysize,kv777_itemkey(item));
             }
             offset = kv->offset; //ftell(kv->fp);
         }
     }
-    printf("kv777.%s fpos.%ld -> goodpos.%ld fileptr.%p mapsize.%ld | numkeys.%d netkeys.%d netvalues.%d\n",kv->name,kv->fp != 0 ? ftell(kv->fp) : 0,offset,kv->fileptr,(long)kv->mapsize,kv->numkeys,kv->netkeys,kv->netvalues);
+    printf("%s/kv777.%s fpos.%ld -> goodpos.%ld fileptr.%p mapsize.%ld | numkeys.%d netkeys.%d netvalues.%d\n",kv->path,kv->name,kv->fp != 0 ? ftell(kv->fp) : 0,offset,kv->fileptr,(long)kv->mapsize,kv->numkeys,kv->netkeys,kv->netvalues);
     if ( kv->fp != 0 && offset != ftell(kv->fp) )
     {
         printf("strange position?, seek\n");
         fseek(kv->fp,offset,SEEK_SET);
     }
     kv->flags.threadsafe = flags->threadsafe;
-    KV777->KVS = realloc(KV777->KVS,sizeof(*KV777->KVS) * (KV777->Num_kvs + 1));
-    KV777->KVS[KV777->Num_kvs++] = kv;
+    KV777.KVS = realloc(KV777.KVS,sizeof(*KV777.KVS) * (KV777.Num_kvs + 1));
+    KV777.KVS[KV777.Num_kvs++] = kv;
     return(kv);
 }
 
@@ -592,12 +635,12 @@ void kv777_test(int32_t n)
     struct kv777 *kv; void *rval; int32_t errors,iter,i=1,j,len,keylen,valuesize; uint8_t key[32],value[32],result[1024]; double startmilli;
     struct kv777_flags flags;
     kv777_defaultflags(&flags);
-    KV777->mmapflag = 1;
+    KV777.mmapflag = 1;
     //Debuglevel = 3;
     for (iter=errors=0; iter<3; iter++)
     {
         startmilli = milliseconds();
-        if ( (kv= kv777_init("test",&flags)) != 0 )
+        if ( (kv= kv777_init("DB","test",&flags)) != 0 )
         {
             srand(777);
             for (i=0; i<n; i++)
@@ -713,29 +756,14 @@ void dKV777_gotapproval(struct dKV777 *dKV,uint64_t senderbits,uint64_t txid)
     }
 }
 
-bits256 dKV777_approval(struct dKV777 *dKV,uint64_t nxt64bits,void *ptr,int32_t len)
-{
-    char hexstr[512]; bits256 hash;
-    calc_sha256(hexstr,(void *)&hash.bytes,ptr,len);
-    if ( dKV != 0 && kv777_read(dKV->approvals,(void *)&hash.bytes,sizeof(hash.bytes),0,0,0) == 0 )
-    {
-        if ( kv777_write(dKV->approvals,(void *)&hash.bytes,sizeof(hash.bytes),ptr,len) == 0 )
-            printf("dKV777_approval error writing approval for (%s)\n",ptr);
-        else dKV->approvalfifo[dKV->fifoind++ % (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo))] = hash.txid;
-        printf("NEW.");
-    }
-    printf("[%s approve %s].%llu ",dKV->name,hexstr,(long long)hash.txid);
-    return(hash);
-}
-
 struct dKV777 *dKV777_find(char *name,char *protocol)
 {
     int32_t i;
-    if ( name != 0 && KV777->Num_dKVs > 0 )
+    if ( name != 0 && KV777.Num_dKVs > 0 )
     {
-        for (i=0; i<KV777->Num_dKVs; i++)
-            if ( strcmp(KV777->dKVs[i]->name,name) == 0 && (protocol == 0 || strcmp(protocol,KV777->dKVs[i]->protocol) == 0) )
-                return(KV777->dKVs[i]);
+        for (i=0; i<KV777.Num_dKVs; i++)
+            if ( strcmp(KV777.dKVs[i]->name,name) == 0 && (protocol == 0 || strcmp(protocol,KV777.dKVs[i]->protocol) == 0) )
+                return(KV777.dKVs[i]);
     }
     return(0);
 }
@@ -752,75 +780,140 @@ struct kv777 *dKV777_findkv(struct dKV777 *dKV,struct kv777 *kv)
     return(0);
 }
 
-void *dKV777_read(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize,void *value,int32_t *valuesizep)
+bits256 dKV777_approval(struct dKV777 *dKV,uint64_t nxt64bits,void *ptr,int32_t len)
 {
-    bits256 hash;
-    if ( dKV777_findkv(dKV,kv) == kv )
+    char hexstr[512]; bits256 hash;
+    calc_sha256(hexstr,(void *)&hash.bytes,ptr,len);
+    if ( dKV != 0 && kv777_read(dKV->approvals,(void *)&hash.bytes,sizeof(hash.bytes),0,0,0) == 0 )
     {
-        hash = dKV777_approval(dKV,ownerbits,value,valuesize);
-        return(kv777_read(kv,hash.bytes,sizeof(hash),value,valuesizep));
+        if ( kv777_write(dKV->approvals,(void *)&hash.bytes,sizeof(hash.bytes),ptr,len) == 0 )
+            printf("dKV777_approval error writing approval for (%s)\n",ptr);
+        else dKV->approvalfifo[dKV->fifoind++ % (sizeof(dKV->approvalfifo)/sizeof(*dKV->approvalfifo))] = hash.txid;
+        printf("NEW.");
     }
-    return(0);
+    printf("[%s approve %s].%llu ",dKV->name,hexstr,(long long)hash.txid);
+    return(hash);
 }
 
-uint32_t dKV777_write(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *value,int32_t valuesize)
+void *dKV777_bigkey(int32_t *bigkeysizep,uint64_t ownerbits,void *key,int32_t keysize)
 {
-    uint64_t key[2]; bits256 hash; struct kv777_item *ptr;
+    uint8_t *bigkey = malloc(keysize + sizeof(ownerbits));
+    memcpy(bigkey,&ownerbits,sizeof(ownerbits));
+    memcpy(&bigkey[sizeof(ownerbits)],key,keysize);
+    *bigkeysizep = (int32_t)(keysize + sizeof(ownerbits));
+    return(bigkey);
+}
+
+void *dKV777_bigvalue(int32_t *bigvaluesizep,uint32_t rawind,void *value,int32_t valuesize)
+{
+    uint8_t *bigvalue = malloc(valuesize + sizeof(rawind));
+    memcpy(bigvalue,&rawind,sizeof(rawind));
+    memcpy(&bigvalue[sizeof(rawind)],value,valuesize);
+    *bigvaluesizep = (int32_t)(valuesize + sizeof(rawind));
+    return(bigvalue);
+}
+
+struct key_hash { uint64_t key[2]; bits256 hash;  };
+uint32_t dKV777_write(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize,void *value,int32_t valuesize)
+{
+    struct kv777_item *valueptr; struct key_hash KH; int32_t bigkeysize,bigvaluesize,savedsize; uint32_t rawind = 0; uint8_t *bigkey,*bigvalue;
+    memset(&KH,0,sizeof(KH));
     if ( dKV777_findkv(dKV,kv) == kv )
     {
-        hash = dKV777_approval(dKV,ownerbits,value,valuesize);
-        if ( (ptr= kv777_read(kv,hash.bytes,sizeof(hash),0,0,1)) == 0 )
+        bigkey = dKV777_bigkey(&bigkeysize,ownerbits,key,keysize);
+        if ( (valueptr= kv777_read(kv,bigkey,bigkeysize,0,&savedsize,1)) != 0 )
+        {
+            memcpy(&rawind,valueptr->item->value,sizeof(valueptr->ind));
+            KH.key[0] = ownerbits, KH.key[1] = valueptr->ind;
+            kv777_write(kv,KH.key,sizeof(KH.key),key,keysize);
+            bigvalue = dKV777_bigvalue(&bigvaluesize,valueptr->ind,value,valuesize);
+        }
+        else
         {
             if ( kv->dontrelay == 0 && dKV->pubsock >= 0 )
                 nn_send(dKV->pubsock,value,valuesize,0);
-            key[0] = ownerbits, key[1] = kv->numkeys;
-            kv777_write(kv,key,sizeof(key),hash.bytes,sizeof(hash));
-            kv777_write(kv,hash.bytes,sizeof(hash),value,valuesize);
-            return((uint32_t)key[1]);
+            KH.key[0] = ownerbits, KH.key[1] = rawind = kv->numkeys;
+            kv777_write(kv,KH.key,sizeof(KH.key),key,keysize);
+            bigvalue = dKV777_bigvalue(&bigvaluesize,rawind,value,valuesize);
+            kv777_write(kv,bigkey,bigkeysize,bigvalue,bigvaluesize);
         }
-        return(ptr->ind);
+        KH.hash = dKV777_approval(dKV,ownerbits,bigvalue,bigvaluesize);
+        free(bigkey), free(bigvalue);
     }
-    return(0);
-}
-struct kv777_item *dKV777_delete(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *value,int32_t valuesize)
-{
-    int32_t i; uint64_t key[2]; bits256 hash; struct kv777_item *ptr;
-    hash = dKV777_approval(dKV,senderbits,value,valuesize);
-    if ( dKV->numkvs > 0 )
-    {
-        for (i=0; i<dKV->numkvs; i++)
-            if ( dKV->kvs[i] == kv )
-            {
-                if ( (ptr= kv777_read(kv,hash.bytes,sizeof(hash),0,0)) == 0 )
-                {
-                    if ( kv->dontrelay == 0 && dKV->pubsock >= 0 )
-                        nn_send(dKV->pubsock,value,valuesize,0);
-                    key[0] = senderbits, key[1] = kv->numkeys;
-                    kv777_write(kv,key,sizeof(key),hash.bytes,sizeof(hash));
-                    return(kv777_write(kv,hash.bytes,sizeof(hash),value,valuesize));
-                } return(ptr);
-            }
-    }
-    return(0);
+    return(rawind);
 }
 
-int32_t dKV777_poll()
+void *dKV777_read(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize,void *value,int32_t *valuesizep)
+{
+    int32_t bigkeysize; uint8_t *bigkey; void *valueptr = 0;
+    if ( dKV777_findkv(dKV,kv) == kv )
+    {
+        bigkey = dKV777_bigkey(&bigkeysize,ownerbits,key,keysize);
+        valueptr = kv777_read(kv,bigkey,bigkeysize,value,valuesizep,0);
+        free(bigkey);
+    }
+    return(valueptr);
+}
+
+void dKV777_deleteind(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,uint32_t rawind)
+{
+    struct key_hash KH; uint8_t *key,*bigkey,*bigvalue; int32_t keysize,bigvaluesize,bigkeysize;
+    KH.key[0] = ownerbits, KH.key[1] = rawind;
+    if ( dKV777_findkv(dKV,kv) == kv )
+    {
+        if ( (key= kv777_read(kv,KH.key,sizeof(KH.key),0,&keysize,1)) != 0 )
+        {
+            bigkey = dKV777_bigkey(&bigkeysize,ownerbits,key,keysize);
+            bigvalue = kv777_read(kv,bigkey,bigkeysize,0,&bigvaluesize,1);
+            KH.hash = dKV777_approval(dKV,ownerbits,&bigvalue[sizeof(rawind)],(int32_t)(bigvaluesize-sizeof(rawind)));
+            kv777_delete(kv,KH.key,sizeof(KH.key));
+            kv777_delete(kv,bigkey,bigkeysize);
+            kv777_delete(dKV->approvals,(void *)&KH.hash,sizeof(KH.hash));
+            free(bigkey);
+        }
+    }
+}
+
+void dKV777_delete(struct dKV777 *dKV,struct kv777 *kv,uint64_t ownerbits,void *key,int32_t keysize)
+{
+    struct key_hash KH; uint8_t *bigkey; struct kv777_item *valueptr; int32_t bigvaluesize,bigkeysize; uint32_t rawind;
+    if ( dKV777_findkv(dKV,kv) == kv )
+    {
+        bigkey = dKV777_bigkey(&bigkeysize,ownerbits,key,keysize);
+        if ( (valueptr= kv777_read(kv,bigkey,bigkeysize,0,&bigvaluesize,1)) != 0 )
+        {
+            memcpy(&rawind,valueptr->item->value,sizeof(valueptr->ind));
+            KH.key[0] = ownerbits, KH.key[1] = rawind;
+            KH.hash = dKV777_approval(dKV,ownerbits,&valueptr->item->value[sizeof(rawind)],(int32_t)(bigvaluesize-sizeof(rawind)));
+            kv777_delete(kv,KH.key,sizeof(KH.key));
+            kv777_delete(kv,bigkey,bigkeysize);
+            kv777_delete(dKV->approvals,(void *)&KH.hash,sizeof(KH.hash));
+        }
+        free(bigkey);
+    }
+}
+
+/*int32_t dKV777_poll()
 {
     int32_t i,j,recvlen,n = 0; struct dKV777 *dKV; char *msg,*retstr,*str;
-    if ( KV777->Num_dKVs > 0 )
+    if ( KV777.Num_dKVs > 0 )
     {
-        for (i=0; i<KV777->Num_dKVs; i++)
+        //portable_mutex_lock(&dKV->mutex);
+        for (i=0; i<KV777.Num_dKVs; i++)
         {
-            if ( (dKV= KV777->dKVs[i]) != 0 )
+            if ( (dKV= KV777.dKVs[i]) != 0 )
             {
                 for (j=0; j<dKV->numkvs; j++)
                 {
                     if ( dKV->subsock != RELAYS.pubrelays && dKV->subsock >= 0 && (recvlen= nn_recv(dKV->subsock,&msg,NN_MSG,0)) > 0 )
                     {
+                        printf("dKV777_poll.(%s).%d RECV.(%s).%d\n",dKV->name,j,msg,recvlen);
                         retstr = nn_busdata_processor((uint8_t *)msg,recvlen);
-                        printf("dKV777_poll.(%s).%d RECV.(%s).%d -> [%s]\n",dKV->name,j,msg,recvlen,retstr!=0?retstr:"");
                         if ( retstr != 0 )
+                        {
+                            printf("retstr.(%s)\n",retstr);
                             free(retstr);
+                        }
                         n++;
                         nn_freemsg(msg);
                     }
@@ -833,9 +926,10 @@ int32_t dKV777_poll()
                 free(str);
             dKV->lastping = milliseconds();
         }
+        //portable_mutex_unlock(&dKV->mutex);
     }
     return(n);
-}
+}*/
 
 int32_t dKV777_connect(struct dKV777 *dKV,struct endpoint *ep)
 {
@@ -877,7 +971,7 @@ char *dKV777_processping(cJSON *json,char *origjsonstr,char *sender,char *tokens
 {
     cJSON *array; uint64_t nxt64bits,senderbits; int32_t i,j,n,size; uint16_t port; struct endpoint endpoint,*ep; struct dKV777 *dKV,*relays;
     char ipaddr[64],buf[512],*endpointstr,*nxtaddr,*peerstr = 0;
-    if ( KV777->relays_handle == 0 || (relays= *KV777->relays_handle) == 0 )
+    if ( KV777.relays_handle == 0 || (relays= *KV777.relays_handle) == 0 )
         return(clonestr("{\"error\":\"no relays KV777\"}"));
     if ( (dKV= dKV777_find(jstr(json,"dKVname"),jstr(json,"protocol"))) == 0 )
         return(clonestr("{\"error\":\"unsupported protocol or cant find dKV\"}"));
@@ -897,20 +991,19 @@ char *dKV777_processping(cJSON *json,char *origjsonstr,char *sender,char *tokens
                 for (j=0; j<relays->nodes->numkeys; j++)
                 {
                     size = sizeof(endpoint);
-                    if ( (ep= kv777_read(relays->nodes,&j,sizeof(j),&endpoint,&size)) != 0 && size == sizeof(endpoint) )
+                    if ( (ep= kv777_read(relays->nodes,&j,sizeof(j),&endpoint,&size,0)) != 0 && size == sizeof(endpoint) )
                     {
                         expand_epbits(buf,*ep);
                         if ( strcmp(buf,endpointstr) == 0 )
                             break;
                     }
                 }
-                if ( j == relays->nodes->numkeys && strcmp(endpointstr,KV777->relayendpoint) != 0 )
+                if ( j == relays->nodes->numkeys && strcmp(endpointstr,KV777.relayendpoint) != 0 )
                 {
                     port = parse_ipaddr(ipaddr,endpointstr+6);
                     printf("ipaddr.(%s):%d\n",ipaddr,port);
-                    endpoint = calc_epbits(KV777->transport,(uint32_t)calc_ipbits(ipaddr),port,NN_PUB);
-                    dKV777_connect(relays,&endpoint);
-                    dKV777_addnode(relays,&endpoint);
+                    endpoint = calc_epbits(KV777.transport,(uint32_t)calc_ipbits(ipaddr),port,NN_PUB);
+                    dKV777_connect(relays,&endpoint), dKV777_addnode(relays,&endpoint);
                 }
             }
         }
@@ -943,7 +1036,7 @@ char *dKV777_ping(struct dKV777 *dKV)
     for (i=0; i<dKV->nodes->numkeys; i++)
     {
         size = sizeof(endpoint);
-        if ( (ep= kv777_read(dKV->nodes,&i,sizeof(i),&endpoint,&size)) != 0 && size == sizeof(endpoint) )
+        if ( (ep= kv777_read(dKV->nodes,&i,sizeof(i),&endpoint,&size,0)) != 0 && size == sizeof(endpoint) )
         {
             expand_epbits(buf,*ep);
             cJSON_AddItemToArray(array,cJSON_CreateString(buf));
@@ -975,12 +1068,13 @@ struct dKV777 *dKV777_init(char *name,char *protocol,struct kv777 **kvs,int32_t 
     struct endpoint endpoint,*ep; char buf[512]; int32_t i,size,sendtimeout=10,recvtimeout=1;
     if ( protocol == 0 || protocol[0] == 0 )
         protocol = "*";
-    if ( KV777->protocol[0] == 0 )
-        strcpy(KV777->protocol,protocol);
+    if ( KV777.protocol[0] == 0 )
+        strcpy(KV777.protocol,protocol);
+    portable_mutex_init(&dKV->mutex);
     dKV->port = port; dKV->connections = connections, dKV->num = num, dKV->max = max, dKV->flags = flags, dKV->kvs = kvs, dKV->numkvs = numkvs;
     safecopy(dKV->name,name,sizeof(dKV->name));
-    safecopy(dKV->NXTADDR,KV777->NXTADDR,sizeof(dKV->NXTADDR));
-    memcpy(dKV->NXTACCTSECRET,(void *)KV777->NXTACCTSECRET,KV777->secretlen);
+    safecopy(dKV->NXTADDR,KV777.NXTADDR,sizeof(dKV->NXTADDR));
+    memcpy(dKV->NXTACCTSECRET,(void *)KV777.NXTACCTSECRET,KV777.secretlen);
     safecopy(dKV->protocol,protocol,sizeof(dKV->protocol));
     if ( (dKV->pinggap= pinggap) == 0. )
         dKV->pinggap = 600000;
@@ -1001,47 +1095,48 @@ struct dKV777 *dKV777_init(char *name,char *protocol,struct kv777 **kvs,int32_t 
         free(dKV);
         return(0);
     }
-    sprintf(buf,"%s.nodes",name), dKV->nodes = kv777_init(buf,0);
-    sprintf(buf,"%s.approvals",name), dKV->approvals = kv777_init(buf,0);
+    sprintf(buf,"%s.nodes",name), dKV->nodes = kv777_init(KV777.PATH,buf,0);
+    sprintf(buf,"%s.approvals",name), dKV->approvals = kv777_init(KV777.PATH,buf,0);
     for (i=0; i<dKV->nodes->numkeys; i++) // connect all nodes in DB that are not already connected
     {
         printf("dKV.%d check\n",i);
         size = sizeof(endpoint);
-        if ( (ep= kv777_read(dKV->nodes,&i,sizeof(i),&endpoint,&size)) != 0 && size == sizeof(endpoint) )
+        if ( (ep= kv777_read(dKV->nodes,&i,sizeof(i),&endpoint,&size,0)) != 0 && size == sizeof(endpoint) )
             dKV777_connect(dKV,ep);
     }
     for (i=0; i<num; i++) // add all nodes not in DB to DB
     {
         printf("CONN.%d check\n",i);
         expand_epbits(buf,connections[i]);
-        if ( kv777_read(dKV->nodes,&connections[i],sizeof(connections[i]),0,0) == 0 )
+        if ( kv777_read(dKV->nodes,&connections[i],sizeof(connections[i]),0,0,0) == 0 )
         {
             if ( dKV777_addnode(dKV,&connections[i]) != 0 )
                 printf("KV777_init warning: error adding node to (%s)\n",buf);
         }
     }
-    KV777->dKVs = realloc(KV777->dKVs,sizeof(*KV777->dKVs) * (KV777->Num_dKVs + 1));
-    KV777->dKVs[KV777->Num_dKVs] = dKV, KV777->Num_dKVs++;
+    KV777.dKVs = realloc(KV777.dKVs,sizeof(*KV777.dKVs) * (KV777.Num_dKVs + 1));
+    KV777.dKVs[KV777.Num_dKVs] = dKV, KV777.Num_dKVs++;
     return(dKV);
 }
 
 void set_KV777_globals(struct dKV777 **relays_handle,char *transport,void *NXTACCTSECRET,int32_t secretlen,char *SERVICENXT,char *relayendpoint)
 {
     int32_t i;
-    memcpy(KV777->NXTACCTSECRET,NXTACCTSECRET,secretlen), KV777->secretlen = secretlen;
-    KV777->nxt64bits = conv_NXTpassword(KV777->mysecret,KV777->mypubkey,NXTACCTSECRET,secretlen), expand_nxt64bits(KV777->NXTADDR,KV777->nxt64bits);
-    KV777->service64bits = calc_nxt64bits(KV777->SERVICENXT);
+    memcpy(KV777.NXTACCTSECRET,NXTACCTSECRET,secretlen), KV777.secretlen = secretlen;
+    KV777.nxt64bits = conv_NXTpassword(KV777.mysecret,KV777.mypubkey,NXTACCTSECRET,secretlen), expand_nxt64bits(KV777.NXTADDR,KV777.nxt64bits);
+    if ( SERVICENXT != 0 && SERVICENXT[0] != 0 )
+        KV777.service64bits = calc_nxt64bits(KV777.SERVICENXT);
     if ( transport != 0 )
     {
         for (i=0; i<transport[i]!=0; i++)
-            KV777->transport[i] = transport[i];
+            KV777.transport[i] = transport[i];
     }
     if ( relayendpoint != 0 )
     {
         for (i=0; i<relayendpoint[i]!=0; i++)
-            KV777->relayendpoint[i] = relayendpoint[i];
+            KV777.relayendpoint[i] = relayendpoint[i];
     }
-    KV777->relays_handle = relays_handle;
+    KV777.relays_handle = relays_handle;
 }
 #endif
 #endif

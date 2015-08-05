@@ -8,6 +8,7 @@
 #ifndef xcode_InstantDEX_h
 #define xcode_InstantDEX_h
 
+// placeorder assetA, then for assetB causes timeouts
 #define _issue_curl(curl_handle,label,url) bitcoind_RPC(curl_handle,label,url,0,0,0)
 
 #define ORDERBOOK_EXPIRATION 3600
@@ -44,104 +45,9 @@ struct rambook_info
     uint8_t updated;
 } *Rambooks;
 
-struct exchange_info
-{
-    void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui);
-    int32_t (*ramsupports)(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid);
-    uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
-    uint64_t nxt64bits;
-    struct libwebsocket *wsi;
-    char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD],userid[MAX_JSON_FIELD];
-    uint32_t num,exchangeid,lastblock,lastaccess,pollgap;
-    float lastmilli;
-} Exchanges[MAX_EXCHANGES];
-
-struct exchange_info *find_exchange(char *exchangestr,void (*ramparse)(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui),int32_t (*ramparse_supports)(int32_t exchangeid,uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid));
-
-/*uint64_t find_best_market_maker(int32_t *totalticketsp,int32_t *numticketsp,char *refNXTaddr,uint32_t timestamp)
-{
-    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],*jsonstr;
-    cJSON *json,*array,*txobj;
-    int32_t i,n,createdflag,totaltickets = 0;
-    struct NXT_acct *np,*maxnp = 0;
-    uint64_t amount,senderbits;
-    uint32_t now = (uint32_t)time(NULL);
-    if ( timestamp == 0 )
-        timestamp = 38785003;
-    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,timestamp);
-    //printf("cmd.(%s)\n",cmdstr);
-    if ( (jsonstr= bitcoind_RPC(0,"curl",NXTAPIURL,0,0,cmdstr)) != 0 )
-    {
-        // printf("jsonstr.(%s)\n",jsonstr);
-        // mm string.({"requestProcessingTime":33,"transactions":[{"fullHash":"2a2aab3b84dadf092cf4cedcd58a8b5a436968e836338e361c45651bce0ef97e","confirmations":203,"signatureHash":"52a4a43d9055fe4861b3d13fbd03a42fecb8c9ad4ac06a54da7806a8acd9c5d1","transaction":"711527527619439146","amountNQT":"1100000000","transactionIndex":2,"ecBlockHeight":360943,"block":"6797727125503999830","recipientRS":"NXT-74VC-NKPE-RYCA-5LMPT","type":0,"feeNQT":"100000000","recipient":"4383817337783094122","version":1,"sender":"423766016895692955","timestamp":38929220,"ecBlockId":"10121077683890606382","height":360949,"subtype":0,"senderPublicKey":"4e5bbad625df3d536fa90b1e6a28c3f5a56e1fcbe34132391c8d3fd7f671cb19","deadline":1440,"blockTimestamp":38929430,"senderRS":"NXT-8E6V-YBWH-5VMR-26ESD","signature":"4318f36d9cf68ef0a8f58303beb0ed836b670914065a868053da5fe8b096bc0c268e682c0274e1614fc26f81be4564ca517d922deccf169eafa249a88de58036"}]})
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-        {
-            if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-            {
-                for (i=0; i<n; i++)
-                {
-                    txobj = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(receiverstr,cJSON_GetObjectItem(txobj,"recipient"));
-                    if ( strcmp(receiverstr,INSTANTDEX_ACCT) == 0 )
-                    {
-                        if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
-                        {
-                            expand_nxt64bits(NXTaddr,senderbits);
-                            np = get_NXTacct(&createdflag,NXTaddr);
-                            amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
-                            if ( np->timestamp != now )
-                            {
-                                np->quantity = 0;
-                                np->timestamp = now;
-                            }
-                            if ( amount == INSTANTDEX_FEE )
-                                totaltickets++;
-                            else if ( amount >= 2*INSTANTDEX_FEE )
-                                totaltickets += 2;
-                            np->quantity += amount;
-                            if ( maxnp == 0 || np->quantity > maxnp->quantity )
-                                maxnp = np;
-                        }
-                    }
-                }
-            }
-            free_json(json);
-        }
-        free(jsonstr);
-    }
-    if ( refNXTaddr != 0 )
-    {
-        np = get_NXTacct(&createdflag,refNXTaddr);
-        if ( numticketsp != 0 )
-            *numticketsp = (int32_t)(np->quantity / INSTANTDEX_FEE);
-    }
-    if ( totalticketsp != 0 )
-        *totalticketsp = totaltickets;
-    if ( maxnp != 0 )
-    {
-        printf("Best MM %llu total %.8f\n",(long long)maxnp->H.nxt64bits,dstr(maxnp->quantity));
-        return(maxnp->H.nxt64bits);
-    }
-    return(0);
-}
-
-int32_t get_top_MMaker(struct pserver_info **pserverp)
-{
-    static uint64_t bestMMbits;
-    struct nodestats *stats;
-    char ipaddr[64];
-    *pserverp = 0;
-    if ( bestMMbits == 0 )
-        bestMMbits = find_best_market_maker(0,0,0,38785003);
-    if ( bestMMbits != 0 )
-    {
-        stats = get_nodestats(bestMMbits);
-        expand_ipbits(ipaddr,stats->ipbits);
-        (*pserverp) = get_pserver(0,ipaddr,0,0);
-        return(0);
-    }
-    return(-1);
-}*/
+char *exchange_str(int32_t exchangeid);
+struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr);
+void prices777_poll(uint64_t baseid,uint64_t relid);
 
 void ramparse_stub(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
 {
@@ -214,12 +120,12 @@ char *fill_nxtae(uint64_t nxt64bits,int32_t dir,double price,double volume,uint6
 }
 
 #include "rambooks.h"
-#include "exchanges.h"
+//#include "exchanges.h"
 #include "orderbooks.h"
 #include "trades.h"
 #include "atomic.h"
-#include "bars.h"
-#include "signals.h"
+//#include "bars.h"
+//#include "signals.h"
 
 char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote *refiQ) // called by placequote, should autofill
 {
@@ -227,7 +133,7 @@ char *check_ordermatch(char *NXTaddr,char *NXTACCTSECRET,struct InstantDEX_quote
     uint64_t assetA,amountA,assetB,amountB; char jumpstr[1024],otherNXTaddr[64],exchange[64],*retstr = 0;
     double refprice,refvol,price,vol,metric,perc,bestmetric = 0.;
     //struct InstantDEX_quote { uint64_t nxt64bits,baseamount,relamount,type; uint32_t timestamp; char exchange[9]; uint8_t closed:1,sent:1,matched:1,isask:1; };
-    update_rambooks(refiQ->baseid,refiQ->relid,DEFAULT_MAXDEPTH,refiQ->gui,1,0);
+    //update_rambooks(refiQ->baseid,refiQ->relid,DEFAULT_MAXDEPTH,refiQ->gui,1,0);
     set_assetname(&mult,base,refiQ->baseid), set_assetname(&mult,rel,refiQ->relid);
     besti = -1;
     if ( refiQ->isask != 0 )
@@ -357,17 +263,11 @@ char *submitquote_str(int32_t localaccess,struct InstantDEX_quote *iQ,uint64_t b
 
 char *placequote_func(char *NXTaddr,char *NXTACCTSECRET,int32_t localaccess,int32_t dir,char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
-    uint64_t baseamount,relamount,nxt64bits,baseid,relid,quoteid = 0;
-    double price,volume,minbasevol,minrelvol;
-    uint32_t timestamp,nonce;
-    uint8_t minperc;
-    struct exchange_info *xchg;
-    struct InstantDEX_quote iQ;
-    struct exchange_info *exchange;
-    int32_t remoteflag,automatch,duration;
-    struct rambook_info *rb;
+    uint64_t baseamount,relamount,nxt64bits,baseid,relid,quoteid = 0; double price,volume,minbasevol,minrelvol; uint32_t timestamp,nonce;
+    uint8_t minperc; struct exchange_info *xchg; struct InstantDEX_quote iQ;
+    int32_t remoteflag,automatch,duration,exchangeid; struct rambook_info *rb;
     char buf[MAX_JSON_FIELD],offerNXT[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],exchangestr[MAX_JSON_FIELD],base[16],rel[16],*str,*jsonstr,*retstr = 0;
-    if ( (xchg= find_exchange(INSTANTDEX_NAME,0,0)) == 0 || xchg->exchangeid != INSTANTDEX_EXCHANGEID )
+    if ( (xchg= find_exchange(&exchangeid,INSTANTDEX_NAME)) == 0 || exchangeid != INSTANTDEX_EXCHANGEID )
         return(clonestr("{\"error\":\"unexpected InstantDEX exchangeid\"}"));
     remoteflag = (localaccess == 0);
     nxt64bits = calc_nxt64bits(sender);
@@ -409,24 +309,16 @@ printf("placequote localaccess.%d dir.%d exchangestr.(%s)\n",localaccess,dir,exc
             return(fill_nxtae(nxt64bits,dir,price,volume,baseid,relid));
         else if ( strcmp(exchangestr,"InstantDEX") != 0 )
         {
+            char *prices777_trade(char *exchangestr,char *base,char *rel,int32_t dir,double price,double volume);
             if ( is_native_crypto(base,baseid) > 0 && is_native_crypto(rel,relid) > 0 && price > 0 && volume > 0 && dir != 0 )
-            {
-                printf("check %s/%s\n",base,rel);
-                if ( (exchange= find_exchange(exchangestr,0,0)) != 0 )
-                {
-                    if ( exchange->trade != 0 )
-                    {
-                        printf(" issue dir.%d %s/%s price %f vol %f -> %s\n",dir,base,rel,price,volume,exchangestr);
-                        (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume);
-                        return(retstr);
-                    } else return(clonestr("{\"error\":\"no trade function for exchange\"}\n"));
-                } else return(clonestr("{\"error\":\"exchange not active, check SuperNET.conf exchanges array\"}\n"));
-            } else return(clonestr("{\"error\":\"illegal parameter baseid or relid not crypto or invalid price\"}\n"));
+                return(prices777_trade(exchangestr,base,rel,dir,price,volume));
+            else return(clonestr("{\"error\":\"illegal parameter baseid or relid not crypto or invalid price\"}\n"));
         } //else printf("alternate else case.(%s)\n",exchangestr);
     }
     if ( Debuglevel > 1 )
         printf("NXT.%s t.%u placequote dir.%d sender.(%s) valid.%d price %.8f vol %.8f %llu/%llu\n",NXTaddr,timestamp,dir,sender,valid,price,volume,(long long)baseamount,(long long)relamount);
-    update_rambooks(baseid,relid,0,0,0,0);
+    memset(base,0,sizeof(base)), memset(rel,0,sizeof(rel)), is_native_crypto(base,baseid), is_native_crypto(rel,relid);
+    prices777_poll(baseid,relid);
     minbasevol = get_minvolume(baseid), minrelvol = get_minvolume(relid);
     if ( volume < minbasevol || (volume * price) < minrelvol )
     {
@@ -797,7 +689,8 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
         return;
     }
     price = (baseprice / relprice);
-    update_rambooks(refbaseid,refrelid,maxdepth,gui,1,0);
+    //update_rambooks(refbaseid,refrelid,maxdepth,gui,1,0);
+    prices777_poll(refbaseid,refrelid);
     baseid = refbaseid, relid = refrelid;
     volume = 1.;
     printf("price %f = (%f / %f) vol %f\n",price,baseprice,relprice,volume);
@@ -805,7 +698,8 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
     {
         set_assetname(&mult,base,baseid);
         set_assetname(&mult,rel,relid);
-        update_rambooks(baseid,relid,maxdepth,gui,1,0);
+        prices777_poll(baseid,relid);
+        //update_rambooks(baseid,relid,maxdepth,gui,1,0);
         minbasevol = get_minvolume(baseid);
         minrelvol = get_minvolume(relid);
         printf("base.(%s %.8f) rel.(%s %.8f)\n",base,minbasevol,rel,minrelvol);
@@ -875,77 +769,23 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
     if ( LWScontext != 0 )
         return(libwebsocket_client_connect(LWScontext,addr,port,use_ssl,"/",addr,addr,"echo",-1));
     else return(0);
-}*/
-
-void init_exchange(cJSON *json)
-{
-    static void *exchangeptrs[][5] =
-    {
-        { (void *)"poloniex", (void *)ramparse_poloniex, (void *)poloniex_supports, (void *)poloniex_trade, },
-        { (void *)"bittrex", (void *)ramparse_bittrex, (void *)bittrex_supports, (void *)bittrex_trade },
-        { (void *)"bter", (void *)ramparse_bter, (void *)bter_supports, (void *)bter_trade },
-        { (void *)"btce", (void *)ramparse_btce, (void *)btce_supports, (void *)btce_trade },
-        { (void *)"bitfinex", (void *)ramparse_bitfinex, (void *)bitfinex_supports, 0 },
-        { (void *)"bitstamp", (void *)ramparse_bitstamp, (void *)bitstamp_supports, 0 },
-        { (void *)"okcoin", (void *)ramparse_okcoin, (void *)okcoin_supports, 0 },
-        { (void *)"huobi", (void *)ramparse_huobi, (void *)huobi_supports, 0 },
-        { (void *)"bityes", (void *)ramparse_bityes, (void *)bityes_supports, 0 },
-        { (void *)"lakebtc", (void *)ramparse_lakebtc, (void *)lakebtc_supports, 0 },
-        { (void *)"exmo", (void *)ramparse_exmo, (void *)exmo_supports, 0 },
-        { (void *)"btc38", (void *)ramparse_btc38, (void *)btc38_supports, (void *)btc38_trade },
-    };
-    struct exchange_info *exchange;
-    char name[MAX_JSON_FIELD];
-    void *parse=0,*supports=0,*trade=0;
-    int32_t i;
-    extract_cJSON_str(name,sizeof(name),json,"name");
-    if ( name[0] != 0 && strlen(name) < 16 )
-    {
-        for (i=0; i<(int32_t)(sizeof(exchangeptrs)/sizeof(*exchangeptrs)); i++)
-        {
-            if ( strcmp(exchangeptrs[i][0],name) == 0 )
-            {
-                *(void **)&parse = exchangeptrs[i][1];
-                *(void **)&supports = exchangeptrs[i][2];
-                *(void **)&trade = exchangeptrs[i][3];
-                break;
-            }
-        }
-        if ( parse != 0 && (exchange= find_exchange(name,(void (*)(struct rambook_info *, struct rambook_info *, int32_t, char *))parse,(int32_t (*)(int32_t, uint64_t *, int32_t, uint64_t, uint64_t))supports)) != 0 )
-        {
-            exchange->pollgap = get_API_int(cJSON_GetObjectItem(json,"pollgap"),DEFAULT_POLLGAP);
-            extract_cJSON_str(exchange->apikey,sizeof(exchange->apikey),json,"key");
-            extract_cJSON_str(exchange->userid,sizeof(exchange->userid),json,"userid");
-            extract_cJSON_str(exchange->apisecret,sizeof(exchange->apisecret),json,"secret");
-            *(void **)&exchange->trade = trade;
-            /*if ( exchangeptrs[i][4] != 0 )
-            {
-                int libwebsocket_rx_flow_control(struct libwebsocket *wsi,int enable);
-                int err;
-                if ( (exchange->wsi= init_exchangewss(exchangeptrs[i][4])) != 0 )
-                {
-                    err = libwebsocket_rx_flow_control(exchange->wsi,1);
-                }
-                printf("got wsi.%p | err.%d\n",exchange->wsi,err); getchar();
-            }*/
-        }
-    }
 }
+*/
 
 void init_exchanges()
 {
-    cJSON *exchanges;
-    int32_t i,n;
-    find_exchange(INSTANTDEX_NAME,ramparse_stub,0);
-    find_exchange(INSTANTDEX_NXTAEUNCONF,ramparse_stub,0);
-    find_exchange(INSTANTDEX_NXTAENAME,ramparse_NXT,NXT_supports);
+    //cJSON *exchanges;
+    //int32_t i,n;
+    find_exchange(0,INSTANTDEX_NAME);
+    find_exchange(0,INSTANTDEX_NXTAEUNCONF);
+    find_exchange(0,INSTANTDEX_NXTAENAME);
     //POLLGAP = get_API_int(cJSON_GetObjectItem(MGWconf,"POLLGAP"),10);
     //DEFAULT_MAXDEPTH = get_API_int(cJSON_GetObjectItem(MGWconf,"DEFAULT_MAXDEPTH"),DEFAULT_MAXDEPTH);
-    if ( (exchanges= cJSON_GetObjectItem(SUPERNET.argjson,"exchanges")) != 0 && (n= cJSON_GetArraySize(exchanges)) > 0 )
+    /*if ( (exchanges= cJSON_GetObjectItem(SUPERNET.argjson,"exchanges")) != 0 && (n= cJSON_GetArraySize(exchanges)) > 0 )
     {
         for (i=0; i<n; i++)
             init_exchange(cJSON_GetArrayItem(exchanges,i));
-    }
+    }*/
 }
 
 char *trollbox_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
@@ -957,11 +797,13 @@ char *trollbox_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,
 
 void init_InstantDEX(uint64_t nxt64bits,int32_t testflag)
 {
+    int32_t a,b;
     init_pingpong_queue(&Pending_offersQ,"pending_offers",process_Pending_offersQ,0,0);
     Pending_offersQ.offset = 0;
     init_exchanges();
-    if ( find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid != INSTANTDEX_NXTAEID || find_exchange(INSTANTDEX_NAME,0,0)->exchangeid != INSTANTDEX_EXCHANGEID )
-        printf("invalid exchangeid %d, %d\n",find_exchange(INSTANTDEX_NXTAENAME,0,0)->exchangeid,find_exchange(INSTANTDEX_NAME,0,0)->exchangeid);
+    find_exchange(&a,INSTANTDEX_NXTAENAME), find_exchange(&b,INSTANTDEX_NAME);
+    if ( a != INSTANTDEX_NXTAEID || b != INSTANTDEX_EXCHANGEID )
+        printf("invalid exchangeid %d, %d\n",a,b);
     printf("NXT-> %llu BTC -> %llu\n",(long long)stringbits("NXT"),(long long)stringbits("BTC"));
 #ifdef __APPLE__
     if ( 0 && testflag != 0 )

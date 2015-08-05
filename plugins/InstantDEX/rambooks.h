@@ -54,27 +54,6 @@ struct InstantDEX_quote *findquoteid(uint64_t quoteid,int32_t evenclosed)
         } //else printf("quoteid.%llu closed.%d\n",(long long)quoteid,iQ->closed);
     } else printf("couldnt find %llu\n",(long long)quoteid);
     return(0);
-    /*struct rambook_info **obooks,*rb;
-     int32_t i,j,numbooks;
-     if ( (obooks= get_allrambooks(&numbooks)) != 0 )
-     {
-     for (i=0; i<numbooks; i++)
-     {
-     rb = obooks[i];
-     if ( rb->numquotes == 0 )
-     continue;
-     for (j=0; j<rb->numquotes; j++)
-     {
-     if ( (iQ= rb->quotes[j]) != 0 && ((evenclosed != 0 || iQ->closed == 0) && calc_quoteid(iQ) == quoteid) )
-     {
-     free(obooks);
-     return(iQ);
-     }
-     }
-     }
-     free(obooks);
-     }
-     return(0);*/
 }
 
 int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
@@ -202,7 +181,7 @@ struct rambook_info *get_rambook(char *_base,uint64_t baseid,char *_rel,uint64_t
     if ( (rb= find_rambook(assetids)) == 0 )
     {
         rb = calloc(1,sizeof(*rb));
-        strncpy(rb->exchange,Exchanges[exchangeid].name,sizeof(rb->exchange)-1);
+        strncpy(rb->exchange,exchange_str(exchangeid),sizeof(rb->exchange)-1);
         strcpy(rb->base,base), strcpy(rb->rel,rel);
         if ( gui != 0 )
             strcpy(rb->gui,gui);
@@ -211,7 +190,7 @@ struct rambook_info *get_rambook(char *_base,uint64_t baseid,char *_rel,uint64_t
         for (i=0; i<3; i++)
             rb->assetids[i] = assetids[i];
         if ( Debuglevel > 1 )
-            printf("CREATE RAMBOOK.(%llu -> %llu).%d name.(%s) (%s) (%s) gui.(%s)\n",(long long)baseid,(long long)relid,(int)exchangebits,Exchanges[exchangeid].name,rb->base,rb->rel,gui!=0?"":gui);
+            printf("CREATE RAMBOOK.(%llu -> %llu).%d name.(%s) (%s) (%s) gui.(%s)\n",(long long)baseid,(long long)relid,(int)exchangebits,exchange_str(exchangeid),rb->base,rb->rel,gui!=0?"":gui);
         HASH_ADD(hh,Rambooks,assetids,sizeof(rb->assetids),rb);
     }
     if ( rb->gui[0] == 0 && gui != 0 )
@@ -313,20 +292,19 @@ struct rambook_info *_add_rambook_quote(struct InstantDEX_quote *iQ,struct rambo
 
 struct rambook_info *add_rambook_quote(char *exchangestr,struct InstantDEX_quote *iQ,uint64_t nxt64bits,uint32_t timestamp,int32_t dir,uint64_t baseid,uint64_t relid,double price,double volume,uint64_t baseamount,uint64_t relamount,char *gui,uint64_t quoteid,int32_t duration)
 {
-    void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ);
-    struct exchange_info *exchange;
-    struct rambook_info *rb = 0;
+    //void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ);
+    struct exchange_info *exchange; int32_t exchangeid; struct rambook_info *rb = 0;
     memset(iQ,0,sizeof(*iQ));
-    if ( (exchange= find_exchange(exchangestr,0,0)) != 0 )
+    if ( (exchange= find_exchange(&exchangeid,exchangestr)) != 0 )
     {
         //printf("add.(%llu %llu) %llu/%llu\n",(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount);
-        if ( (rb= get_rambook(0,baseid,0,relid,(exchange->exchangeid<<1) | (dir<0),gui)) != 0 )
+        if ( (rb= get_rambook(0,baseid,0,relid,(exchangeid<<1) | (dir<0),gui)) != 0 )
         {
             //printf("add.(%llu %llu) %llu/%llu price %.8f vol %.8f\n",(long long)baseid,(long long)relid,(long long)baseamount,(long long)relamount,price,volume);
             if ( _add_rambook_quote(iQ,rb,nxt64bits,timestamp,dir,price,volume,baseid,baseamount,relid,relamount,gui,quoteid,duration) != 0 )
             {
                 save_InstantDEX_quote(rb,iQ);
-                emit_iQ(rb,iQ);
+                //emit_iQ(rb,iQ);
             } else return(0);
         }
     } else printf("add_rambook_quote cant find.(%s)\n",exchangestr);

@@ -37,10 +37,11 @@ struct SaMhdr { bits384 sig; uint32_t timestamp,nonce; uint8_t numrounds,leverag
 void SaM_Initialize(struct SaM_info *state);
 int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,const uint32_t inputSize,const uint8_t *input2,const uint32_t inputSize2);
 bits384 SaM_emit(struct SaM_info *state);
-uint64_t calc_SaMthreshold(int32_t leverage);
-bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxite);
-uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2);
-uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis);
+bits384 SaM_encrypt(uint8_t *dest,uint8_t *src,int32_t len,bits384 password,uint32_t timestamp);
+uint64_t SaM_threshold(int32_t leverage);
+uint64_t SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2);
+uint32_t SaM_nonce(void *data,int32_t datalen,int32_t leverage,int32_t maxmillis,uint32_t nonce);
+//uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis);
 #endif
 #else
 #ifndef crypto777_SaM_c
@@ -125,27 +126,31 @@ void _SaM_Absorb(struct SaM_info *state,const TRIT *input,const int32_t inputSiz
 
 int32_t SaM_Absorb(struct SaM_info *state,const uint8_t *input,uint32_t inputSize,const uint8_t *input2,uint32_t inputSize2)
 {
-    TRIT output[(MAX_INPUT_SIZE + sizeof(struct SaMhdr)) << 3];
-    int32_t i,n = 0;
-    if ( inputSize + inputSize2 > sizeof(output) )
+    //TRIT output[(MAX_INPUT_SIZE + sizeof(struct SaMhdr)) << 3];
+    TRIT *trits,tritbuf[4096];
+    int32_t i,size,n = 0;
+    /*if ( inputSize + inputSize2 > sizeof(output) )
     {
         printf("SaM overflow (%d + %d) > %ld\n",inputSize,inputSize2,sizeof(output));
         if ( inputSize > MAX_INPUT_SIZE )
             inputSize = MAX_INPUT_SIZE;
         inputSize2 = 0;
-    }
+    }*/
+    size = (inputSize + inputSize2) << 3;
+    trits = (size < sizeof(tritbuf)) ? tritbuf : malloc(size);
     if ( input != 0 && inputSize != 0 )
     {
         for (i=0; i<(inputSize << 3); i++)
-            output[n++] = ((input[i >> 3] & (1 << (i & 7))) != 0);
+            trits[n++] = ((input[i >> 3] & (1 << (i & 7))) != 0);
     }
     if ( input2 != 0 && inputSize2 != 0 )
     {
         for (i=0; i<(inputSize2 << 3); i++)
-            output[n++] = ((input2[i >> 3] & (1 << (i & 7))) != 0);
+            trits[n++] = ((input2[i >> 3] & (1 << (i & 7))) != 0);
     }
-    if ( state != 0 )
-        _SaM_Absorb(state,output,n);
+    _SaM_Absorb(state,trits,n);
+    if ( trits != tritbuf )
+        free(trits);
     return(n);
 }
 
@@ -177,7 +182,7 @@ bits384 SaM_emit(struct SaM_info *state)
         for (j=rawbits=0; j<12; j++)
             rawbits = (rawbits * 3 + *ptr++ + 1);
         bits19[i] = ((((uint64_t)rawbits<<19)/531441) & mask); // 3^12 == 531441 //bits19[i] = (rawbits & mask);
-        //printf("%5x ",bits19[i]);
+        //printf("%05x ",bits19[i]);
     }
     for (i*=12,rawbits=0; i<SAM_HASH_SIZE; i++) // 3 trits -> 27
         rawbits = (rawbits * 3 + *ptr++ + 1);
@@ -294,6 +299,23 @@ int32_t SaM_test()
     return(0);
 }
 
+bits384 SaM_encrypt(uint8_t *dest,uint8_t *src,int32_t len,bits384 password,uint32_t timestamp)
+{
+    bits384 xorpad; int32_t i;  struct SaM_info XORpad;
+    SaM_Initialize(&XORpad), SaM_Absorb(&XORpad,password.bytes,sizeof(password),(void *)&timestamp,sizeof(timestamp));
+    while ( len >= 0 )
+    {
+        SaM_emit(&XORpad);
+        for (i=0; i<sizeof(xorpad) && len>=0; i++,len--)
+        {
+            xorpad.bytes[i] = (XORpad.bits.bytes[i] ^ *src++);
+            if ( dest != 0 )
+                *dest++ = xorpad.bytes[i];
+        }
+    }
+    return(xorpad);
+}
+
 uint64_t SaM_hit(struct SaM_info *state)
 {
     int32_t i; uint64_t hit = 0;
@@ -302,7 +324,7 @@ uint64_t SaM_hit(struct SaM_info *state)
     return(hit);
 }
 
-uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2)
+uint64_t SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2,int32_t inputSize2)
 {
     int32_t verify_SaM(TRIT *newhash,uint8_t *buf,const int n);
     struct SaM_info state;
@@ -315,22 +337,7 @@ uint64_t calc_SaM(bits384 *sigp,uint8_t *input,int32_t inputSize,uint8_t *input2
     return(SaM_hit(&state));
 }
 
-bits384 SaM_chain(char *email,bits384 hash,int32_t chainid,int32_t hashi,int32_t maxiter)
-{
-    struct SaM_info state;
-    int32_t i;
-    char chainid_email[512];
-    sprintf(chainid_email,"%s.%d",email,chainid);
-    SaM_Initialize(&state);
-    for (i=hashi; i<maxiter; i++)
-    {
-        SaM_Absorb(&state,hash.bytes,sizeof(hash),(uint8_t *)chainid_email,(int32_t)strlen((char *)chainid_email));
-        hash = SaM_emit(&state);
-    }
-    return(hash);
-}
-
-uint64_t calc_SaMthreshold(int32_t leverage)
+uint64_t SaM_threshold(int32_t leverage)
 {
     int32_t i;
     uint64_t threshold,divisor = 1;
@@ -342,7 +349,37 @@ uint64_t calc_SaMthreshold(int32_t leverage)
     return(threshold);
 }
 
-uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis)
+uint32_t SaM_nonce(void *data,int32_t datalen,int32_t leverage,int32_t maxmillis,uint32_t nonce)
+{
+    uint64_t hit,threshold; bits384 sig; double endmilli;
+    if ( leverage != 0 )
+    {
+        threshold = SaM_threshold(leverage);
+        if ( maxmillis == 0 )
+        {
+            if ( (hit= SaM(&sig,data,datalen,(void *)&nonce,sizeof(nonce))) >= threshold )
+            {
+                printf("nonce failure hit.%llu >= threshold.%llu\n",(long long)hit,(long long)threshold);
+                if ( (threshold - hit) > ((uint64_t)1L << 32) )
+                    return(0xffffffff);
+                else return((uint32_t)(threshold - hit));
+            }
+        }
+        else
+        {
+            endmilli = (milliseconds() + maxmillis);
+            while ( milliseconds() < endmilli )
+            {
+                randombytes((void *)&nonce,sizeof(nonce));
+                if ( (hit= SaM(&sig,data,datalen,(void *)&nonce,sizeof(nonce))) < threshold )
+                    return(nonce);
+            }
+        }
+    }
+    return(0);
+}
+
+/*uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64_t threshold,uint32_t rseed,int32_t maxmillis)
 {
     uint64_t hit = SAMHIT_LIMIT;
     double startmilli = 0;
@@ -371,7 +408,7 @@ uint64_t SaMnonce(bits384 *sigp,uint32_t *noncep,uint8_t *buf,int32_t len,uint64
     }
     //printf("%5.1f %14llu %7.2f%% numrounds.%lld threshold.%llu seed.%u\n",milliseconds()-startmilli,(long long)hit,100.*(double)hit/threshold,(long long)numrounds,(long long)threshold,rseed);
     return(hit);
-}
+}*/
 
 #endif
 #endif

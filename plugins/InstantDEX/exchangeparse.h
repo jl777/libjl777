@@ -10,47 +10,7 @@
 #include <curl/curl.h>
 #define DEFAULT_MAXDEPTH 25
 void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1,char *hdr2);
-
-int32_t emit_orderbook_changes(struct rambook_info *rb,struct InstantDEX_quote *oldquotes,int32_t numold)
-{
-    void emit_iQ(struct rambook_info *rb,struct InstantDEX_quote *iQ);
-    double vol;
-    int32_t i,j,numchanges = 0;
-    struct InstantDEX_quote *iQ;
-    if ( rb->numquotes == 0 || numold == 0 )
-        return(0);
-    if ( 0 && numold != 0 )
-    {
-        for (j=0; j<numold; j++)
-            printf("%llu ",(long long)oldquotes[j].baseamount);
-        printf("%s %s_%s OLD.%d\n",rb->exchange,rb->base,rb->rel,numold);
-    }
-    for (i=0; i<rb->numquotes; i++)
-    {
-        if ( (iQ= rb->quotes[i]) != 0 )
-        {
-            if ( Debuglevel > 2 )
-                fprintf(stderr,"(%llu/%llu %.8f) ",(long long)iQ->baseamount,(long long)iQ->relamount,calc_price_volume(&vol,iQ->baseamount,iQ->relamount));
-            if ( numold > 0 )
-            {
-                for (j=0; j<numold; j++)
-                {
-                    //printf("%s %s_%s %d of %d: %llu/%llu vs %llu/%llu\n",rb->exchange,rb->base,rb->rel,j,numold,(long long)iQ->baseamount,(long long)iQ->relamount,(long long)oldquotes[j].baseamount,(long long)oldquotes[j].relamount);
-                    if ( iQcmp(iQ,&oldquotes[j]) == 0 )
-                        break;
-                }
-            } else j = 0;
-            if ( j == numold )
-                emit_iQ(rb,iQ), numchanges++;
-        }
-    }
-    if ( Debuglevel > 2 )
-        fprintf(stderr,"%s %s_%s NEW.%d\n\n",rb->exchange,rb->base,rb->rel,rb->numquotes);
-    if ( oldquotes != 0 )
-        free(oldquotes);
-    return(numchanges);
-}
-
+/*
 cJSON *inner_json(double price,double vol,uint32_t timestamp,uint64_t quoteid,uint64_t nxt64bits)
 {
     cJSON *inner = cJSON_CreateArray();
@@ -61,36 +21,6 @@ cJSON *inner_json(double price,double vol,uint32_t timestamp,uint64_t quoteid,ui
     sprintf(numstr,"%llu",(long long)quoteid), cJSON_AddItemToArray(inner,cJSON_CreateString(numstr));
     sprintf(numstr,"%llu",(long long)nxt64bits), cJSON_AddItemToArray(inner,cJSON_CreateString(numstr));
     return(inner);
-}
-
-void convram_NXT_Uquotejson(uint64_t assetid)
-{
-    struct NXT_tx *txptrs[MAX_TXPTRS]; struct NXT_tx *tx; int32_t i,dir,flip,numptrs; uint64_t baseamount,relamount,ap_mult;
-    struct InstantDEX_quote iQ; char assetidstr[64];
-    expand_nxt64bits(assetidstr,assetid);
-    if ( (ap_mult= assetmult(assetidstr)) == 0 )
-        return;
-    memset(txptrs,0,sizeof(txptrs));
-    if ( (numptrs= update_iQ_flags(txptrs,sizeof(txptrs)/sizeof(*txptrs),assetid)) == 0 )
-        return;
-    for (i=0; i<numptrs; i++)
-    {
-        tx = txptrs[i];
-        for (flip=0; flip<2; flip++)
-        {
-            if ( tx->assetidbits == assetid && tx->type == 2 && tx->subtype == (3 - flip) && tx->refhash.txid == 0 )
-            {
-                if ( flip == 0 )
-                    dir = 1;
-                else dir = -1;
-                printf("i.%d: assetid.%llu type.%d subtype.%d time.%u\n",i,(long long)tx->assetidbits,tx->type,tx->subtype,tx->timestamp);
-                baseamount = (tx->U.quantityQNT * ap_mult);
-                relamount = (tx->U.quantityQNT * tx->priceNQT);
-                add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,tx->senderbits,tx->timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,0,0,0);
-            }
-        }
-    }
-    free_txptrs(txptrs,numptrs);
 }
 
 void convram_NXT_quotejson(uint64_t assetid,int32_t flip,cJSON *json,char *fieldname,uint64_t ap_mult,int32_t maxdepth,char *gui)
@@ -381,7 +311,7 @@ void ramparse_btc38(struct rambook_info *bids,struct rambook_info *asks,int32_t 
         sprintf(bids->url,"http://api.btc38.com/v1/depth.php?c=%s&mk_type=%s",bids->lbase,bids->lrel);
     printf("btc38.(%s)\n",bids->url);
     ramparse_standard("btc38",bids->url,bids,asks,0,0,maxdepth,gui);
-}
+}*/
 
 /*void ramparse_kraken(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
 {

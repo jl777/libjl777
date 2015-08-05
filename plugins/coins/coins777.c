@@ -20,6 +20,7 @@
 #include "../sophia/db777.c"
 #include "../utils/files777.c"
 #include "../utils/utils777.c"
+#include "../utils/bits777.c"
 #include "gen1pub.c"
 
 #define OP_RETURN_OPCODE 0x6a
@@ -60,12 +61,15 @@ struct cointx_info
     char signedtx[];
 };
 
+#ifndef sha256_state_defined
+#define sha256_state_defined
 struct sha256_state
 {
     uint64_t length;
     uint32_t state[8],curlen;
     uint8_t buf[64];
 };
+#endif
 
 struct coin777_state
 {
@@ -1308,7 +1312,7 @@ uint64_t coin777_ledgerhash(char *ledgerhash,struct coin777_hashes *H)
     bits256 hashbits;
     if ( H != 0 )
     {
-        calc_sha256(0,hashbits.bytes,(uint8_t *)(void *)((uint64_t)H + sizeof(H->ledgerhash)),sizeof(*H) - sizeof(H->ledgerhash));
+        calc_sha256(0,hashbits.bytes,(uint8_t *)(void *)((uint64_t)H + sizeof(H->ledgerhash)),(int32_t)(sizeof(*H) - sizeof(H->ledgerhash)));
         H->ledgerhash = hashbits.txid;
         if ( ledgerhash != 0 )
             ledgerhash[0] = 0, init_hexbytes_noT(ledgerhash,hashbits.bytes,sizeof(hashbits));

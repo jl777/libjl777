@@ -389,9 +389,9 @@ struct db777 *db777_create(char *specialpath,char *subdir,char *name,char *compr
     strcpy(DB->name,dbname);
     DB->env = sp_env();
     DB->ctl = sp_ctl(DB->env);
-    if ( KV777->PATH[0] == '.' && (KV777->PATH[1] == '/' || KV777->PATH[1] == '\\') )
-        strcpy(path,KV777->PATH+2);
-    else strcpy(path,KV777->PATH);
+    if ( KV777.PATH[0] == '.' && (KV777.PATH[1] == '/' || KV777.PATH[1] == '\\') )
+        strcpy(path,KV777.PATH+2);
+    else strcpy(path,KV777.PATH);
     ensure_directory(path);
     if ( specialpath != 0 )
     {
@@ -643,13 +643,11 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     {
         // configure settings
         ensure_directory(SOPHIA.PATH);
-        if ( KV777 == 0 )
-            KV777 = calloc(1,sizeof(*KV777));
-        if ( KV777->PATH[0] == 0 )
-            strcpy(KV777->PATH,"DB"), ensure_directory(KV777->PATH);
+        if ( KV777.PATH[0] == 0 )
+            strcpy(KV777.PATH,"DB"), ensure_directory(KV777.PATH);
         set_KV777_globals(&SUPERNET.relays,SUPERNET.transport,SUPERNET.NXTADDR,(int32_t)strlen(SUPERNET.NXTADDR),SUPERNET.SERVICENXT,SUPERNET.relayendpoint);
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
-        KV777->readyflag = 1;
+        KV777.readyflag = 1;
         plugin->allowremote = 1;
         //Debuglevel = 3;
     }

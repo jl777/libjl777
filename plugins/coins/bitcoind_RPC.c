@@ -172,7 +172,7 @@ try_again:
             free(s.ptr);
             return(0);
         }
-        else if ( numretries >= 10 )
+        else if ( numretries >= 2 )
         {
             fprintf(stderr,"Maximum number of retries exceeded!\n");
             free(s.ptr);

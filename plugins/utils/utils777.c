@@ -41,6 +41,10 @@ int32_t is_hexstr(char *str);
 unsigned char _decode_hex(char *hex);
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
 int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+
+int init_base32(char *tokenstr,uint8_t *token,int32_t len);
+int decode_base32(uint8_t *token,uint8_t *tokenstr,int32_t len);
+
 long _stripwhite(char *buf,int accept);
 char *clonestr(char *str);
 uint8_t *conv_datastr(int32_t *datalenp,uint8_t *data,char *datastr);
@@ -78,6 +82,36 @@ void tolowercase(char *str);
 double _pairaved(double valA,double valB);
 double _pairave(float valA,float valB);
 
+int32_t conv_base32(int32_t val5);
+int expand_base32(uint8_t *tokenstr,uint8_t *token,int32_t len);
+
+int32_t find_uint64(int32_t *emptyslotp,uint64_t *nums,long max,uint64_t val);
+int32_t add_uint64(uint64_t *nums,long max,uint64_t val);
+int32_t remove_uint64(uint64_t *nums,long max,uint64_t val);
+
+int32_t find_uint32(int32_t *emptyslotp,uint32_t *nums,long max,uint32_t val);
+int32_t add_uint32(uint32_t *nums,long max,uint32_t val);
+int32_t remove_uint32(uint32_t *nums,long max,uint32_t val);
+
+int32_t find_uint16(int32_t *emptyslotp,uint16_t *nums,long max,uint16_t val);
+int32_t add_uint16(uint16_t *nums,long max,uint16_t val);
+int32_t remove_uint16(uint16_t *nums,long max,uint16_t val);
+
+
+long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize);
+int32_t hcalc_varint(uint8_t *buf,uint64_t x);
+long _emit_uint(uint8_t *data,long offset,uint64_t x,int32_t size);
+long _decode_uint(void *destp,int32_t size,uint8_t *data,long offset);
+
+int32_t is_DST(int32_t datenum);
+int32_t extract_datenum(int32_t *yearp,int32_t *monthp,int32_t *dayp,int32_t datenum);
+int32_t expand_datenum(char *date,int32_t datenum);
+int32_t calc_datenum(int32_t year,int32_t month,int32_t day);
+int32_t conv_date(int32_t *secondsp,char *date);
+uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second);
+int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp);
+int32_t ecb_decrdate(int32_t *yearp,int32_t *monthp,int32_t *dayp,char *date,int32_t datenum);
+extern int32_t smallprimes[168];
 
 #endif
 #else
@@ -89,6 +123,27 @@ double _pairave(float valA,float valB);
 #include "utils777.c"
 #undef DEFINES_ONLY
 #endif
+
+int32_t smallprimes[168] =
+{
+	2,      3,      5,      7,     11,     13,     17,     19,     23,     29,
+	31,     37,     41,     43,     47,     53,     59,     61,     67,     71,
+	73,     79,     83,     89,     97,    101,    103,    107,    109,    113,
+	127,    131,    137,    139,    149,    151,    157,    163,    167,    173,
+	179,    181,    191,    193,    197,    199,    211,    223,    227,    229,
+	233,    239,    241,    251,    257,    263,    269,    271,    277,    281,
+	283,    293,    307,    311,    313,    317,    331,    337,    347,    349,
+	353,    359,    367,    373,    379,    383,    389,    397,    401,    409,
+	419,    421,    431,    433,    439,    443,    449,    457,    461,    463,
+	467,    479,    487,    491,    499,    503,    509,    521,    523,    541,
+	547,    557,    563,    569,    571,    577,    587,    593,    599,    601,
+	607,    613,    617,    619,    631,    641,    643,    647,    653,    659,
+	661,    673,    677,    683,    691,    701,    709,    719,    727,    733,
+	739,    743,    751,    757,    761,    769,    773,    787,    797,    809,
+	811,    821,    823,    827,    829,    839,    853,    857,    859,    863,
+	877,    881,    883,    887,    907,    911,    919,    929,    937,    941,
+	947,    953,    967,    971,    977,    983,    991,    997
+};
 
 void _randombytes(uint8_t *buf,int32_t n,uint32_t seed) { int32_t i; if ( seed != 0 ) srand(seed); for (i=0; i<n; i++) buf[i] = (rand() >> 8); } // low entropy pseudo-random bytes
 
@@ -321,6 +376,61 @@ int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
     return((int32_t)len*2+1);
 }
 
+int32_t base32byte(int32_t val)
+{
+    if ( val < 26 )
+        return('A' + val);
+    else if ( val < 32 )
+        return('2' + val - 26);
+    else return(-1);
+}
+
+int32_t unbase32(char c)
+{
+    if ( c >= 'A' && c <= 'Z' )
+        return(c - 'A');
+    else if ( c >= '2' && c <= '7' )
+        return(c - '2' + 26);
+    else return(-1);
+}
+
+int init_base32(char *tokenstr,uint8_t *token,int32_t len)
+{
+    int32_t i,j,n,val5,offset = 0;
+    for (i=n=0; i<len; i++)
+    {
+        for (j=val5=0; j<5; j++,offset++)
+            if ( GETBIT(token,offset) != 0 )
+                SETBIT(&val5,offset);
+        tokenstr[n++] = base32byte(val5);
+    }
+    tokenstr[n] = 0;
+    return(n);
+}
+
+int decode_base32(uint8_t *token,uint8_t *tokenstr,int32_t len)
+{
+    int32_t i,j,n,val5,offset = 0;
+    for (i=n=0; i<len; i++)
+    {
+        if ( (val5= unbase32(tokenstr[i])) >= 0 )
+        {
+            for (j=val5=0; j<5; j++,offset++)
+            {
+                if ( GETBIT(&val5,j) != 0 )
+                    SETBIT(token,offset);
+                else CLEARBIT(token,offset);
+            }
+        } else return(-1);
+    }
+    while ( (offset & 7) != 0 )
+    {
+        CLEARBIT(token,offset);
+        offset++;
+    }
+    return(offset);
+}
+
 long _stripwhite(char *buf,int accept)
 {
     int32_t i,j,c;
@@ -426,6 +536,8 @@ void tolowercase(char *str)
 uint64_t stringbits(char *str)
 {
     uint64_t bits = 0;
+    if ( str == 0 )
+        return(0);
     int32_t i,n = (int32_t)strlen(str);
     if ( n > 8 )
         n = 8;
@@ -433,6 +545,84 @@ uint64_t stringbits(char *str)
         bits = (bits << 8) | (str[i] & 0xff);
     //printf("(%s) -> %llx %llu\n",str,(long long)bits,(long long)bits);
     return(bits);
+}
+
+int32_t find_uint32(int32_t *emptyslotp,uint32_t *nums,long max,uint32_t val)
+{
+    int32_t i;
+    *emptyslotp = -1;
+    for (i=0; i<max; i++)
+    {
+        if ( nums[i] == 0 )
+        {
+            *emptyslotp = i;
+            break;
+        } else if ( nums[i] == val )
+            return(i);
+    }
+    return(-1);
+}
+
+int32_t add_uint32(uint32_t *nums,long max,uint32_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint32(&emptyslot,nums,max,val)) >= 0 )
+        return(i);
+    else if ( emptyslot >= 0 )
+    {
+        nums[emptyslot] = val;
+        return(emptyslot);
+    } else return(-1);
+}
+
+int32_t remove_uint32(uint32_t *nums,long max,uint32_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint32(&emptyslot,nums,max,val)) >= 0 )
+    {
+        nums[i] = 0;
+        return(i);
+    }
+    return(-1);
+}
+
+int32_t find_uint16(int32_t *emptyslotp,uint16_t *nums,long max,uint16_t val)
+{
+    int32_t i;
+    *emptyslotp = -1;
+    for (i=0; i<max; i++)
+    {
+        if ( nums[i] == 0 )
+        {
+            *emptyslotp = i;
+            break;
+        } else if ( nums[i] == val )
+            return(i);
+    }
+    return(-1);
+}
+
+int32_t add_uint16(uint16_t *nums,long max,uint16_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint16(&emptyslot,nums,max,val)) >= 0 )
+        return(i);
+    else if ( emptyslot >= 0 )
+    {
+        nums[emptyslot] = val;
+        return(emptyslot);
+    } else return(-1);
+}
+
+int32_t remove_uint16(uint16_t *nums,long max,uint16_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint16(&emptyslot,nums,max,val)) >= 0 )
+    {
+        nums[i] = 0;
+        return(i);
+    }
+    return(-1);
 }
 
 double _kb(double n) { return(n / 1024.); }
@@ -717,6 +907,184 @@ double _pairave(float valA,float valB)
 		return((valA + valB) / 2.);
 	else if ( valA != 0.f ) return(valA);
 	else return(valB);
+}
+
+long _emit_uint(uint8_t *data,long offset,uint64_t x,int32_t size)
+{
+    int32_t i;
+    for (i=0; i<size; i++,x>>=8)
+        data[offset + i] = (x & 0xff);
+    offset += size;
+    return(offset);
+}
+
+long _decode_uint(void *destp,int32_t size,uint8_t *data,long offset)
+{
+    int32_t i; uint64_t x = 0;
+    if ( size == 1 )
+        ((uint8_t *)destp)[0] = data[offset++];
+    else
+    {
+        for (i=0; i<size; i++)
+            x <<= 8, x |= data[offset + size - i];
+        offset += size;
+        switch ( size )
+        {
+            case sizeof(uint16_t): ((uint16_t *)destp)[0] = (uint16_t)x; break;
+            case sizeof(uint32_t): ((uint32_t *)destp)[0] = (uint32_t)x; break;
+            case sizeof(uint64_t): ((uint64_t *)destp)[0] = (uint64_t)x; break;
+            default: return(-1);
+        }
+    }
+    return(offset);
+}
+
+int32_t find_uint64(int32_t *emptyslotp,uint64_t *nums,long max,uint64_t val)
+{
+    int32_t i;
+    *emptyslotp = -1;
+    for (i=0; i<max; i++)
+    {
+        if ( nums[i] == 0 )
+        {
+            *emptyslotp = i;
+            break;
+        }
+        else if ( nums[i] == val )
+        {
+            if ( Debuglevel > 2 )
+                printf("found in slot[%d] %llx\n",i,(long long)val);
+            return(i);
+        }
+    }
+    if ( Debuglevel > 2 )
+        printf("emptyslot[%d] for %llx\n",i,(long long)val);
+    return(-1);
+}
+
+int32_t add_uint64(uint64_t *nums,long max,uint64_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint64(&emptyslot,nums,max,val)) >= 0 )
+        return(i);
+    else if ( emptyslot >= 0 )
+    {
+        nums[emptyslot] = val;
+        return(emptyslot);
+    } else return(-1);
+}
+
+int32_t remove_uint64(uint64_t *nums,long max,uint64_t val)
+{
+    int32_t i,emptyslot;
+    if ( (i= find_uint64(&emptyslot,nums,max,val)) >= 0 )
+    {
+        nums[i] = 0;
+        return(i);
+    }
+    return(-1);
+}
+
+int32_t is_DST(int32_t datenum)
+{
+    int32_t year,month,day;
+    year = datenum / 10000, month = (datenum / 100) % 100, day = (datenum % 100);
+    if ( month >= 4 && month <= 9 )
+        return(1);
+    else if ( month == 3 && day >= 29 )
+        return(1);
+    else if ( month == 10 && day < 25 )
+        return(1);
+    return(0);
+}
+
+int32_t extract_datenum(int32_t *yearp,int32_t *monthp,int32_t *dayp,int32_t datenum)
+{
+    *yearp = datenum / 10000, *monthp = (datenum / 100) % 100, *dayp = (datenum % 100);
+    if ( *yearp >= 2000 && *yearp <= 2038 && *monthp >= 1 && *monthp <= 12 && *dayp >= 1 && *dayp <= 31 )
+        return(datenum);
+    else return(-1);
+}
+
+int32_t expand_datenum(char *date,int32_t datenum) { int32_t year,month,day; date[0] = 0; if ( extract_datenum(&year,&month,&day,datenum) != datenum) return(-1); sprintf(date,"%d-%02d-%02d",year,month,day); return(0); }
+
+int32_t calc_datenum(int32_t year,int32_t month,int32_t day) { return((year * 10000) + (month * 100) + day); }
+
+int32_t conv_date(int32_t *secondsp,char *date)
+{
+    char origdate[64],tmpdate[64]; int32_t year,month,day,hour,min,sec,len;
+    strcpy(origdate,date), strcpy(tmpdate,date), tmpdate[8 + 2] = 0;
+    year = atoi(tmpdate), month = atoi(tmpdate+5), day = atoi(tmpdate+8);
+    *secondsp = 0;
+    if ( (len= (int32_t)strlen(date)) <= 10 )
+        hour = min = sec = 0;
+    if ( len >= 18 )
+    {
+        tmpdate[11 + 2] = 0, tmpdate[14 + 2] = 0, tmpdate[17 + 2] = 0;
+        hour = atoi(tmpdate+11), min = atoi(tmpdate + 14), sec = atoi(tmpdate+17);
+        if ( hour >= 0 && hour < 24 && min >= 0 && min < 60 && sec >= 0 && sec < 60 )
+            *secondsp = (3600*hour + 60*min + sec);
+        else printf("ERROR: seconds.%d %d %d %d, len.%d\n",*secondsp,hour,min,sec,len);
+    }
+    sprintf(origdate,"%d-%02d-%02d",year,month,day); //2015-07-25T22:34:31Z
+    if ( strcmp(tmpdate,origdate) != 0 )
+    {
+        printf("conv_date date conversion error (%s) -> (%s)\n",origdate,date);
+        return(-1);
+    }
+    return((year * 10000) + (month * 100) + day);
+}
+
+int32_t ecb_decrdate(int32_t *yearp,int32_t *monthp,int32_t *dayp,char *date,int32_t datenum)
+{
+    static int lastday[13] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    int32_t year,month,day;
+    year = datenum / 10000, month = (datenum / 100) % 100, day = (datenum % 100);
+    //printf("%d -> %d %d %d\n",datenum,year,month,day);
+    if ( --day <= 0 )
+    {
+        if ( --month <= 0 )
+        {
+            if ( --year < 2000 )
+            {
+                printf("reached epoch start\n");
+                return(-1);
+            }
+            month = 12;
+        }
+        day = lastday[month];
+        if ( month == 2 && (year % 4) == 0 )
+            day++;
+    }
+    sprintf(date,"%d-%02d-%02d",year,month,day);
+    //printf("%d -> %d %d %d (%s)\n",datenum,year,month,day,date);
+    *yearp = year, *monthp = month, *dayp = day;
+    return((year * 10000) + (month * 100) + day);
+}
+
+double init_emamult(double *emamult,double den)
+{
+	int32_t j; double smoothfactor,remainder,sum,sum2;
+	remainder = 1.;
+	smoothfactor = exp(1) / den;
+	sum = 0.;
+	for (j=0; j<16; j++)
+	{
+		emamult[j] = remainder * smoothfactor;
+		sum += emamult[j];
+		printf("%9.6f ",emamult[j]);
+		remainder *= (1. - smoothfactor);
+	}
+	printf("-> emasum %f\n",sum);
+	sum2 = 0.;
+	for (j=0; j<16; j++)
+	{
+		emamult[j] /= sum;
+		printf("%11.7f ",emamult[j]);
+		sum2 += emamult[j];
+	}
+    printf("-> emasum2 %.20f\n",sum2);
+	return(sum2);
 }
 
 #endif

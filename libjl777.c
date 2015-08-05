@@ -1486,8 +1486,6 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     if ( initflag > 0 )
     {
         SUPERNET.ppid = OS_getppid();
-        if ( KV777 == 0 )
-            KV777 = calloc(1,sizeof(*KV777));
         SUPERNET.argjson = cJSON_Duplicate(json,1);
         SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
         SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
@@ -1519,7 +1517,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             strcpy(SUPERNET.myipaddr,myipaddr);
         if ( SUPERNET.myipaddr[0] != 0 )
             SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
-        KV777->mmapflag = get_API_int(cJSON_GetObjectItem(json,"mmapflag"),0);
+        KV777.mmapflag = get_API_int(cJSON_GetObjectItem(json,"mmapflag"),0);
         //if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
         //    SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
         //else
@@ -1561,7 +1559,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         copy_cJSON(SUPERNET.BACKUPS,cJSON_GetObjectItem(json,"backups"));
         if ( SUPERNET.BACKUPS[0] == 0 )
             strcpy(SUPERNET.BACKUPS,"/tmp");
-        copy_cJSON(KV777->PATH,cJSON_GetObjectItem(json,"KV777"));
+        copy_cJSON(KV777.PATH,cJSON_GetObjectItem(json,"KV777"));
+        if ( KV777.PATH[0] == 0 )
+            strcpy(KV777.PATH,"./DB");
+        os_compatible_path(KV777.PATH), ensure_directory(KV777.PATH);
         copy_cJSON(SOPHIA.PATH,cJSON_GetObjectItem(json,"SOPHIA"));
         copy_cJSON(SOPHIA.RAMDISK,cJSON_GetObjectItem(json,"RAMDISK"));
         if ( SOPHIA.PATH[0] == 0 )
@@ -1598,13 +1599,17 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             //if ( DB_services == 0 )
             //    DB_services = db777_create(0,0,"services",0,0);
         }
-        SUPERNET.PM = kv777_init("PM",0);
-        SUPERNET.alias = kv777_init("alias",0);
-        SUPERNET.NXTaccts = kv777_init("NXTaccts",0);
-        SUPERNET.protocols = kv777_init("protocols",0);
-        SUPERNET.rawPM = kv777_init("rawPM",0);
-        SUPERNET.services = kv777_init("services",0);
-        SUPERNET.invoices = kv777_init("invoices",0);
+        else
+        {
+            SUPERNET.NXTaccts = kv777_init(KV777.PATH,"NXTaccts",0);
+            SUPERNET.NXTtxids = kv777_init(KV777.PATH,"NXT_txids",0);
+        }
+        SUPERNET.PM = kv777_init(KV777.PATH,"PM",0);
+        SUPERNET.alias = kv777_init(KV777.PATH,"alias",0);
+        SUPERNET.protocols = kv777_init(KV777.PATH,"protocols",0);
+        SUPERNET.rawPM = kv777_init(KV777.PATH,"rawPM",0);
+        SUPERNET.services = kv777_init(KV777.PATH,"services",0);
+        SUPERNET.invoices = kv777_init(KV777.PATH,"invoices",0);
         SUPERNET.readyflag = 1;
         if ( SUPERNET.UPNP != 0 )
         {

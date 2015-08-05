@@ -132,12 +132,12 @@ struct crypto777_node *crypto777_node(char *url,char *email,bits384 mypassword,c
         crypto777_transport(nn,url,type);
         strncpy(nn->email,email,sizeof(nn->email)-1);
         nn->mypassword = mypassword;
-        calc_SaM(&nn->emailhash,(uint8_t *)email,(int32_t)strlen(email),0,0);
-        hit = calc_SaM(&nn->nxtpass,(uint8_t *)email,(int32_t)strlen(email),mypassword.bytes,(int32_t)sizeof(nn->mypassword));
+        SaM(&nn->emailhash,(uint8_t *)email,(int32_t)strlen(email),0,0);
+        hit = SaM(&nn->nxtpass,(uint8_t *)email,(int32_t)strlen(email),mypassword.bytes,(int32_t)sizeof(nn->mypassword));
         init_hexbytes_noT(nxtpassphrase,nn->nxtpass.bytes,sizeof(nn->nxtpass));
         nn->nxt64bits = conv_NXTpassword(nn->nxtsecret.bytes,nn->nxtpubkey.bytes,(uint8_t *)nxtpassphrase,(int32_t)strlen(nxtpassphrase));
         nn->pubkeychainid = 0, nn->revealed = 3;
-        nn->mypubkey = SaM_chain(email,mypassword,nn->pubkeychainid,0,nn->revealed);
+       // nn->mypubkey = SaM_chain(mypassword,nn->pubkeychainid,0,nn->revealed);
         crypto777_publish(nn);
         crypto777_link(nn->nxt64bits,&nn->broadcast,nn->nxtpass,other64bits,0,0);
         nn->broadcast.recv.nxt64bits = nn->broadcast.send.nxt64bits = 0;

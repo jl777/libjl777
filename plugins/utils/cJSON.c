@@ -1,3 +1,4 @@
+
 /*
  Copyright (c) 2009 Dave Gamble
  
@@ -723,7 +724,8 @@ uint64_t get_API_nxt64bits(cJSON *obj)
     }
     return(nxt64bits);
 }
-uint64_t j64bits(cJSON *json,char *field) { return(get_API_nxt64bits(cJSON_GetObjectItem(json,field))); }
+uint64_t j64bits(cJSON *json,char *field) { if ( field == 0 ) return(get_API_nxt64bits(json)); return(get_API_nxt64bits(cJSON_GetObjectItem(json,field))); }
+uint64_t j64bitsi(cJSON *json,int32_t i) { return(get_API_nxt64bits(cJSON_GetArrayItem(json,i))); }
 
 uint64_t get_satoshi_obj(cJSON *json,char *field)
 {
@@ -767,13 +769,29 @@ char *cJSON_str(cJSON *json)
     return(0);
 }
 
-char *jstr(cJSON *json,char *field) { return(cJSON_str(cJSON_GetObjectItem(json,field))); }
+void jadd(cJSON *json,char *field,cJSON *item) { cJSON_AddItemToObject(json,field,item); }
+void jaddstr(cJSON *json,char *field,char *str) { cJSON_AddItemToObject(json,field,cJSON_CreateString(str)); }
+void jaddnum(cJSON *json,char *field,double num) { cJSON_AddItemToObject(json,field,cJSON_CreateNumber(num)); }
+void jadd64bits(cJSON *json,char *field,uint64_t nxt64bits) { char numstr[64]; sprintf(numstr,"\"%llu\"",(long long)nxt64bits), jaddstr(json,field,numstr); }
+void jaddi(cJSON *json,cJSON *item) { cJSON_AddItemToArray(json,item); }
+void jaddistr(cJSON *json,char *str) { cJSON_AddItemToArray(json,cJSON_CreateString(str)); }
+void jaddinum(cJSON *json,double num) { cJSON_AddItemToArray(json,cJSON_CreateNumber(num)); }
+void jaddi64bits(cJSON *json,uint64_t nxt64bits) { char numstr[64]; sprintf(numstr,"\"%llu\"",(long long)nxt64bits), jaddistr(json,numstr); }
+char *jstr(cJSON *json,char *field) { if ( field == 0 ) return(cJSON_str(json)); return(cJSON_str(cJSON_GetObjectItem(json,field))); }
+
+char *jstri(cJSON *json,int32_t i) { return(cJSON_str(cJSON_GetArrayItem(json,i))); }
+char *jprint(cJSON *json,int32_t freeflag) { char *str; str = cJSON_Print(json), _stripwhite(str,' '); if ( freeflag != 0 ) free_json(json); return(str); }
 
 char *get_cJSON_fieldname(cJSON *obj)
 {
-    if ( obj != 0 && obj->child != 0 && obj->child->string != 0 )
-        return(obj->child->string);
-    else return((char *)"<no cJSON string field>");
+    if ( obj != 0 )
+    {
+        if ( obj->child != 0 && obj->child->string != 0 )
+            return(obj->child->string);
+        else if ( obj->string != 0 )
+            return(obj->string);
+    }
+    return((char *)"<no cJSON string field>");
 }
 
 void ensure_jsonitem(cJSON *json,char *field,char *value)
@@ -815,7 +833,8 @@ int32_t get_API_int(cJSON *obj,int32_t val)
     }
     return(val);
 }
-int32_t jint(cJSON *json,char *field) { return(get_API_int(cJSON_GetObjectItem(json,field),0)); }
+int32_t jint(cJSON *json,char *field) { if ( field == 0 ) return(get_API_int(json,0)); return(get_API_int(cJSON_GetObjectItem(json,field),0)); }
+int32_t jinti(cJSON *json,int32_t i) { return(get_API_int(cJSON_GetArrayItem(json,i),0)); }
 
 uint32_t get_API_uint(cJSON *obj,uint32_t val)
 {
@@ -829,8 +848,8 @@ uint32_t get_API_uint(cJSON *obj,uint32_t val)
     }
     return(val);
 }
-uint32_t juint(cJSON *json,char *field) { return(get_API_uint(cJSON_GetObjectItem(json,field),0)); }
-
+uint32_t juint(cJSON *json,char *field) { if ( field == 0 ) return(get_API_uint(json,0)); return(get_API_uint(cJSON_GetObjectItem(json,field),0)); }
+uint32_t juinti(cJSON *json,int32_t i) { return(get_API_uint(cJSON_GetArrayItem(json,i),0)); }
 
 double get_API_float(cJSON *obj)
 {
@@ -845,10 +864,11 @@ double get_API_float(cJSON *obj)
     }
     return(val);
 }
-double jdouble(cJSON *json,char *field) { return(get_API_float(cJSON_GetObjectItem(json,field))); }
+double jdouble(cJSON *json,char *field) { if ( field == 0 ) return(get_API_float(json)); return(get_API_float(cJSON_GetObjectItem(json,field))); }
+double jdoublei(cJSON *json,int32_t i) { return(get_API_float(cJSON_GetArrayItem(json,i))); }
 cJSON *jobj(cJSON *json,char *field) { return(cJSON_GetObjectItem(json,field)); }
 cJSON *jitem(cJSON *array,int32_t i) { if ( is_cJSON_Array(array) != 0 ) return(cJSON_GetArrayItem(array,i)); return(0); }
-cJSON *jarray(int32_t *nump,cJSON *json,char *field) { cJSON *array; if ( (array= cJSON_GetObjectItem(json,field)) != 0 && (*nump= is_cJSON_Array(array)) > 0 ) return(array); *nump = 0; return(0); }
+cJSON *jarray(int32_t *nump,cJSON *json,char *field) { cJSON *array; if ( field == 0 ) array = json; else array = cJSON_GetObjectItem(json,field); if ( array != 0 && is_cJSON_Array(array) != 0 && (*nump= cJSON_GetArraySize(array)) > 0 ) return(array); *nump = 0; return(0); }
 
 int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
 {

@@ -27,7 +27,7 @@ int32_t hgetbit(HUFF *hp);
 int32_t hwrite(uint64_t codebits,int32_t numbits,HUFF *hp);
 uint64_t hread(int32_t *numbitsp,int32_t numbits,HUFF *hp);
 int32_t hmemcpy(void *dest,void *src,HUFF *hp,int32_t datalen);
-int32_t hcalc_bitsize(uint32_t x);
+int32_t hcalc_bitsize(uint64_t x);
 int32_t hconv_bitlen(uint32_t bitlen);
 
 #endif
@@ -99,6 +99,7 @@ void hclear(HUFF *hp,int32_t clearbuf)
 int32_t hgetbit(HUFF *hp)
 {
     int32_t bit = 0;
+    //printf("hp.%p ptr.%ld buf.%ld maski.%d\n",hp,(long)hp->ptr-(long)hp->buf,(long)hp->buf-(long)hp,hp->maski);
     if ( hp->bitoffset < hp->endpos )
     {
         if ( (*hp->ptr & huffmasks[hp->maski++]) != 0 )
@@ -106,7 +107,7 @@ int32_t hgetbit(HUFF *hp)
         hp->bitoffset++;
         if ( hp->maski == 8 )
             hp->maski = 0, hp->ptr++;
-        //printf("<-%d ",bit);
+        //fprintf(stderr,"<-%d ",bit);
         return(bit);
     }
     printf("hgetbit past EOF: %d >= %d\n",hp->bitoffset,hp->endpos), getchar();
@@ -180,13 +181,13 @@ int32_t hmemcpy(void *dest,void *src,HUFF *hp,int32_t datalen)
     return(datalen);
 }
 
-int32_t hcalc_bitsize(uint32_t x)
+int32_t hcalc_bitsize(uint64_t x)
 {
-    uint32_t mask = (1 << 31);
+    uint64_t mask = ((uint64_t)1 << 63);
     int32_t i;
     if ( x == 0 )
         return(1);
-    for (i=31; i>=0; i--,mask>>=1)
+    for (i=63; i>=0; i--,mask>>=1)
     {
         if ( (mask & x) != 0 )
             return(i+1);

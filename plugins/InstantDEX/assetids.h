@@ -37,8 +37,6 @@ char *MGWassets[][3] =
 
 char *identicalassets[][8] = { { "7474435909229872610", "6220108297598959542" } };
 
-char *bterassets[][8] = { { "UNITY", "12071612744977229797" },  { "ATOMIC", "11694807213441909013" },  { "DICE", "18184274154437352348" },  { "MRKT", "134138275353332190" },  { "MGW", "10524562908394749924" } };
-char *poloassets[][8] = { { "UNITY", "12071612744977229797" },  { "JLH", "6932037131189568014" },  { "XUSD", "12982485703607823902" },  { "LQD", "4630752101777892988" },  { "NXTI", "14273984620270850703" }, { "CNMT", "7474435909229872610", "6220108297598959542" } };
 
 int32_t unstringbits(char *buf,uint64_t bits)
 {
@@ -126,6 +124,97 @@ int32_t is_native_crypto(char *name,uint64_t bits)
         return(1);
     }
     return(0);
+}
+
+int32_t add_exchange_assetid(uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid,int32_t exchangeid)
+{
+    int32_t i;
+    if ( n > 0 )
+    {
+        for (i=0; i<n; i+=3)
+        {
+            if ( baseid == assetids[i] && relid == assetids[i+1] && exchangeid == assetids[i+2] )
+            {
+                //printf("SKIP: %llu %llu %d %s\n",(long long)baseid,(long long)relid,exchangeid,Exchanges[exchangeid].name);
+                return(n);
+            }
+        }
+    }
+    if ( Debuglevel > 2 )
+        printf("ADD: %llu %llu %d %s\n",(long long)baseid,(long long)relid,exchangeid,exchange_str(exchangeid));
+    assetids[n++] = baseid, assetids[n++] = relid, assetids[n++] = exchangeid;
+    return(n);
+}
+
+int32_t _add_related(uint64_t *assetids,int32_t n,uint64_t refbaseid,uint64_t refrelid,int32_t exchangeid,uint64_t baseid,uint64_t relid)
+{
+    if ( baseid == refbaseid || baseid == refrelid || relid == refbaseid || relid == refrelid )
+        n = add_exchange_assetid(assetids,n,refbaseid,refrelid,exchangeid);
+    return(n);
+}
+
+int32_t add_related(uint64_t *assetids,int32_t n,uint64_t supported[][2],long num,int32_t exchangeid,uint64_t baseid,uint64_t relid)
+{
+    int32_t i;
+    for (i=0; i<num; i++)
+        n = _add_related(assetids,n,supported[i][0],supported[i][1],exchangeid,baseid,relid);
+    return(n);
+}
+
+int32_t add_exchange_symbolmap(uint64_t *assetids,int32_t n,uint64_t refbits,uint64_t assetid,int32_t exchangeid,char *symbolmap[][8],int32_t numsymbols)
+{
+    int32_t i,j;
+    char assetidstr[64];
+    uint64_t namebits;
+    expand_nxt64bits(assetidstr,assetid);
+    for (i=0; i<numsymbols; i++)
+    {
+        namebits = stringbits(symbolmap[i][0]);
+        for (j=1; j<8; j++)
+        {
+            if ( symbolmap[i][j] == 0 || symbolmap[i][j][0] == 0 )
+                break;
+            //printf("{%s %s} ",symbolmap[i][j],assetidstr);
+            if ( strcmp(symbolmap[i][j],assetidstr) == 0 )
+                n = add_exchange_assetid(assetids,n,namebits,refbits,exchangeid);
+        }
+    }
+    //printf("(assetsearch.%s) numsymbols.%d\n",assetidstr,numsymbols);
+    return(n);
+}
+
+int32_t add_exchange_assetids(uint64_t *assetids,int32_t n,uint64_t refassetid,uint64_t baseid,uint64_t relid,int32_t exchangeid,char *symbolmap[][8],int32_t numsymbols)
+{
+    char name[64];
+    //printf("(%s) ref.%llu (%llu/%llu) numsymbols.%d\n",Exchanges[exchangeid].name,(long long)refassetid,(long long)baseid,(long long)relid,numsymbols);
+    if ( baseid != refassetid )
+    {
+        if ( symbolmap != 0 && numsymbols > 0 )
+            n = add_exchange_symbolmap(assetids,n,refassetid,baseid,exchangeid,symbolmap,numsymbols);
+        if ( is_native_crypto(name,baseid) > 0 )
+            n = add_exchange_assetid(assetids,n,baseid,refassetid,exchangeid);
+    }
+    if ( relid != refassetid )
+    {
+        if ( symbolmap != 0 && numsymbols > 0 )
+            n = add_exchange_symbolmap(assetids,n,refassetid,relid,exchangeid,symbolmap,numsymbols);
+        if ( is_native_crypto(name,relid) > 0 )
+            n = add_exchange_assetid(assetids,n,relid,refassetid,exchangeid);
+    }
+    return(n);
+}
+
+int32_t add_NXT_assetids(uint64_t *assetids,int32_t n,uint64_t assetid)
+{
+    int32_t i,m;
+    uint64_t equivids[256];
+    if ( (m= get_equivalent_assetids(equivids,assetid)) > 0 )
+    {
+        for (i=0; i<m; i++)
+            n = add_exchange_assetid(assetids,n,assetid,NXT_ASSETID,INSTANTDEX_NXTAEID);
+    }
+    else n = add_exchange_assetid(assetids,n,assetid,NXT_ASSETID,INSTANTDEX_NXTAEID);
+    return(n);
 }
 
 uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits)

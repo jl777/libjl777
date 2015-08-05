@@ -820,6 +820,12 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"teleport","",0,0,1,(char *)"teleport",jsonargs,call_system);
     while ( TELEPORT.readyflag == 0 || find_daemoninfo(&ind,"teleport",0,0) == 0 )
         poll_daemons();
+    strs[n++] = language_func((char *)"prices","",0,0,1,(char *)"prices",jsonargs,call_system);
+    while ( PRICES.readyflag == 0 || find_daemoninfo(&ind,"prices",0,0) == 0 )
+        poll_daemons();
+    strs[n++] = language_func((char *)"cashier","",0,0,1,(char *)"cashier",jsonargs,call_system);
+    while ( CASHIER.readyflag == 0 || find_daemoninfo(&ind,"cashier",0,0) == 0 )
+        poll_daemons();
     if ( SUPERNET.gatewayid < 0 )
     {
         strs[n++] = language_func((char *)"InstantDEX","",0,0,1,(char *)"InstantDEX",jsonargs,call_system);
@@ -870,7 +876,10 @@ void SuperNET_apiloop(void *ipaddr)
         nn_shutdown(sock,0);
     }
 }
-    
+
+void crypto_update0();
+void crypto_update1();
+
 int SuperNET_start(char *fname,char *myip)
 {
     int32_t init_SUPERNET_pullsock(int32_t sendtimeout,int32_t recvtimeout);
@@ -891,6 +900,8 @@ int SuperNET_start(char *fname,char *myip)
         free(jsonstr);
     portable_thread_create((void *)SuperNET_loop,myip);
     portable_thread_create((void *)SuperNET_apiloop,myip);
+    portable_thread_create((void *)crypto_update0,myip);
+    portable_thread_create((void *)crypto_update1,myip);
     return(0);
 }
 
@@ -905,13 +916,18 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
+    //void txnet777_test(char *protocol,char *path,char *agent);
+    //int pegs[64];
+    //int32_t peggy_test(int32_t *pegs,int32_t numprices,int32_t maxdays,double apr,int32_t spreadmillis);
+    //peggy_test(pegs,64,90,2.5,2000);
+    //txnet777_test("rps","RPS","rps");
     //void peggy_test(); peggy_test();
     //void SaM_PrepareIndices();
     //int32_t SaM_test();
     //SaM_PrepareIndices();
     //SaM_test();
     //printf("finished SaM_test\n");
-    void kv777_test(int32_t n);
+    //void kv777_test(int32_t n);
     //kv777_test(10000);
     //getchar();
     if ( 0 )
@@ -925,8 +941,8 @@ int main(int argc,const char *argv[])
     while ( 0 )
     {
         uint32_t nonce,failed; int32_t leverage;
-        nonce = nonce_func(&leverage,"test string","allrelays",3000,0);
-        failed = nonce_func(&leverage,"test string","allrelays",0,nonce);
+        nonce = busdata_nonce(&leverage,"test string","allrelays",3000,0);
+        failed = busdata_nonce(&leverage,"test string","allrelays",0,nonce);
         printf("nonce.%u failed.%u\n",nonce,failed);
     }
 #endif

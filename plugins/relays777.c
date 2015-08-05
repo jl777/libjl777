@@ -516,15 +516,10 @@ void recv_nonces(void *_ptr)
 
 void protocols_register(char *NXTaddr,char *protocol,char *endpoint,int32_t disconnect)
 {
-    char bigkey[1024]; long len,len2; uint64_t nxt64bits = conv_acctstr(NXTaddr);
-    len = strlen(protocol) + 1, len2 = strlen(endpoint) + 1;
-    memcpy(bigkey,protocol,len);
-    memcpy(&bigkey[len],endpoint,len2);
+    uint64_t nxt64bits = conv_acctstr(NXTaddr);
     if ( disconnect == 0 )
-    {
-        dKV777_write(SUPERNET.relays,SUPERNET.protocols,nxt64bits,protocol,(int32_t)strlen(protocol)+1);
-        dKV777_write(SUPERNET.relays,SUPERNET.protocols,nxt64bits,bigkey,(int32_t)(len + len2));
-    } else dKV777_delete(SUPERNET.relays,SUPERNET.protocols,nxt64bits,bigkey,(int32_t)(len + len2));
+        dKV777_write(SUPERNET.relays,SUPERNET.protocols,nxt64bits,protocol,(int32_t)strlen(protocol)+1,endpoint,(int32_t)strlen(endpoint)+1);
+    else dKV777_delete(SUPERNET.relays,SUPERNET.protocols,nxt64bits,protocol,(int32_t)strlen(protocol)+1);
 }
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *origjsonstr,cJSON *origjson,int32_t initflag,char *tokenstr)

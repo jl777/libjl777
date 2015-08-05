@@ -15,8 +15,12 @@
 #include <math.h>
 #include "system777.c"
 
+
+/**/
+
 #define SMALLVAL 0.000000000000001
 #define SATOSHIDEN 100000000L
+#define OP_RETURN_OPCODE 0x6a
 
 #define SETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
 #define GETBIT(bits,bitoffset) (((uint8_t *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
@@ -31,6 +35,7 @@ union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uin
 typedef union _bits256 bits256;
 union _bits384 { bits256 sig; uint8_t bytes[48]; uint16_t ushorts[24]; uint32_t uints[12]; uint64_t ulongs[6]; uint64_t txid; };
 typedef union _bits384 bits384;
+struct acct777_sig { bits256 sigbits,pubkey; uint64_t signer64bits; };
 
 int32_t bitweight(uint64_t x);
 int wt384(bits384 a,bits384 b);
@@ -46,6 +51,17 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],u
 void calc_sha256cat(unsigned char hash[256 >> 3],unsigned char *src,int32_t len,unsigned char *src2,int32_t len2);
 uint64_t calc_txid(unsigned char *buf,int32_t len);
 bits128 calc_md5(char digeststr[33],void *buf,int32_t len);
+
+bits256 acct777_pubkey(bits256 privkey);
+uint64_t acct777_nxt64bits(bits256 pubkey);
+bits256 acct777_hashiter(bits256 privkey,bits256 pubkey,int32_t lockdays,uint8_t chainlen);
+bits256 acct777_lockhash(bits256 pubkey,int32_t lockdays,uint8_t chainlen);
+bits256 acct777_invoicehash(bits256 *invoicehash,uint16_t lockdays,uint8_t chainlen);
+uint64_t acct777_sign(struct acct777_sig *sig,bits256 privkey,bits256 otherpubkey,uint32_t timestamp,uint8_t *data,int32_t datalen);
+uint64_t acct777_validate(struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen);
+uint64_t acct777_signtx(struct acct777_sig *sig,bits256 privkey,uint32_t timestamp,uint8_t *data,int32_t datalen);
+uint64_t acct777_swaptx(bits256 privkey,struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen);
+uint64_t conv_acctstr(char *acctstr);
 
 #endif
 #else
@@ -213,6 +229,94 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size)
 	return crc ^ ~0U;
 }
 
+extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
+int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
+bits256 curve25519(bits256 mysecret,bits256 theirpublic);
+
+bits256 acct777_pubkey(bits256 privkey)
+{
+    static uint8_t basepoint[32] = {9};
+    bits256 pubkey;
+    privkey.bytes[0] &= 248, privkey.bytes[31] &= 127, privkey.bytes[31] |= 64;
+    curve25519_donna(pubkey.bytes,privkey.bytes,basepoint);
+    return(pubkey);
+}
+
+uint64_t acct777_nxt64bits(bits256 pubkey)
+{
+    bits256 acct;
+    calc_sha256(0,acct.bytes,pubkey.bytes,sizeof(pubkey));
+    return(acct.txid);
+}
+
+bits256 acct777_hashiter(bits256 privkey,bits256 pubkey,int32_t lockdays,uint8_t chainlen)
+{
+    uint16_t lockseed,signlen = 0; uint8_t signbuf[16]; bits256 shared,lockhash;
+    lockseed = chainlen | (lockdays << 6);
+    signlen = 0, signbuf[signlen++] = lockseed & 0xff, signbuf[signlen++] = (lockseed >> 8) & 0xff;
+    
+    privkey.bytes[0] &= 248, privkey.bytes[31] &= 127, privkey.bytes[31] |= 64;
+    shared = curve25519(privkey,pubkey);
+    calc_sha256cat(lockhash.bytes,shared.bytes,sizeof(shared),signbuf,signlen);
+    return(lockhash);
+}
+
+bits256 acct777_lockhash(bits256 pubkey,int32_t lockdays,uint8_t chainlen)
+{
+    bits256 lockhash = GENESIS_PRIVKEY;
+    while ( chainlen > 0 )
+        lockhash = acct777_hashiter(lockhash,pubkey,lockdays,chainlen--);
+    return(lockhash);
+}
+
+bits256 acct777_invoicehash(bits256 *invoicehash,uint16_t lockdays,uint8_t chainlen)
+{
+    int32_t i; bits256 lockhash,privkey;
+    randombytes(privkey.bytes,sizeof(privkey)); // both privkey and pubkey are sensitive. pubkey allows verification, privkey proves owner
+    lockhash = privkey;
+    for (i=0; i<chainlen; i++)
+        lockhash = acct777_hashiter(lockhash,GENESIS_PUBKEY,chainlen - i,lockdays);
+    *invoicehash = lockhash;
+    return(privkey);
+}
+
+uint64_t acct777_sign(struct acct777_sig *sig,bits256 privkey,bits256 otherpubkey,uint32_t timestamp,uint8_t *data,int32_t datalen)
+{
+    int32_t i; bits256 shared; uint8_t buf[sizeof(shared) + sizeof(timestamp)]; uint32_t t = timestamp;
+    for (i=0; i<sizeof(t); i++,t>>=8)
+        buf[i] = (t & 0xff);
+    shared = curve25519(privkey,otherpubkey);
+    memcpy(&buf[sizeof(timestamp)],shared.bytes,sizeof(shared));
+    calc_sha256cat(sig->sigbits.bytes,buf,sizeof(buf),data,datalen);
+    sig->pubkey = acct777_pubkey(privkey), sig->signer64bits = acct777_nxt64bits(sig->pubkey);
+    //printf(" calcsig.%llx pubkey.%llx signer.%llu | t%u crc.%08x len.%d shared.%llx <- %llx * %llx\n",(long long)sig->sigbits.txid,(long long)sig->pubkey.txid,(long long)sig->signer64bits,timestamp,_crc32(0,data,datalen),datalen,(long long)shared.txid,(long long)privkey.txid,(long long)otherpubkey.txid);
+    return(sig->signer64bits);
+}
+
+uint64_t acct777_validate(struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen)
+{
+    struct acct777_sig checksig;
+    acct777_sign(&checksig,GENESIS_PRIVKEY,sig->pubkey,timestamp,data,datalen);
+    if ( memcmp(checksig.sigbits.bytes,sig->sigbits.bytes,sizeof(checksig.sigbits)) != 0 )
+    {
+        printf("sig compare error using sig->pub from %llu\n",(long long)acct777_nxt64bits(sig->pubkey));
+        return(0);
+    }
+    return(acct777_nxt64bits(sig->pubkey));
+}
+
+uint64_t acct777_signtx(struct acct777_sig *sig,bits256 privkey,uint32_t timestamp,uint8_t *data,int32_t datalen)
+{
+    return(acct777_sign(sig,privkey,GENESIS_PUBKEY,timestamp,data,datalen));
+}
+
+uint64_t acct777_swaptx(bits256 privkey,struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen)
+{
+    uint64_t othernxt;
+    if ( (othernxt= acct777_validate(sig,timestamp,data,datalen)) != sig->signer64bits )
+        return(0);
+    return(acct777_sign(sig,privkey,GENESIS_PUBKEY,timestamp,data,datalen));
+}
 
 #endif
 #endif

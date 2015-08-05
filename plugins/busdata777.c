@@ -52,37 +52,6 @@ int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *origsecr
     return(-1);
 }
 
-uint32_t calc_nonce(char *str,int32_t leverage,int32_t maxmillis,uint32_t nonce)
-{
-    uint64_t hit,threshold; bits384 sig; double endmilli; int32_t len;
-    len = (int32_t)strlen(str);
-    if ( leverage != 0 )
-    {
-        threshold = calc_SaMthreshold(leverage);
-        if ( maxmillis == 0 )
-        {
-            if ( (hit= calc_SaM(&sig,(void *)str,len,(void *)&nonce,sizeof(nonce))) >= threshold )
-            {
-                printf("nonce failure hit.%llu >= threshold.%llu\n",(long long)hit,(long long)threshold);
-                if ( (threshold - hit) > ((uint64_t)1L << 32) )
-                    return(0xffffffff);
-                else return((uint32_t)(threshold - hit));
-            }
-        }
-        else
-        {
-            endmilli = (milliseconds() + maxmillis);
-            while ( milliseconds() < endmilli )
-            {
-                randombytes((void *)&nonce,sizeof(nonce));
-                if ( (hit= calc_SaM(&sig,(void *)str,len,(void *)&nonce,sizeof(nonce))) < threshold )
-                    return(nonce);
-            }
-        }
-    }
-    return(0);
-}
-
 int32_t nonce_leverage(char *broadcaststr)
 {
     int32_t leverage = 4;
@@ -114,13 +83,13 @@ char *get_broadcastmode(cJSON *json,char *broadcastmode)
     return(broadcastmode);
 }
 
-uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce)
+uint32_t busdata_nonce(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce)
 {
     int32_t leverage = nonce_leverage(broadcaststr);
     if ( maxmillis == 0 && *leveragep != leverage )
         return(0xffffffff);
     *leveragep = leverage;
-    return(calc_nonce(str,leverage,maxmillis,nonce));
+    return(SaM_nonce(str,(int32_t)strlen(str),leverage,maxmillis,nonce));
 }
 
 int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode)
@@ -132,11 +101,11 @@ int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,c
     _stripwhite(cmdjson,' ');
     for (i=0; i<n; i++)
     {
-        if ( (nonce= nonce_func(&leverage,cmdjson,broadcastmode,5000,0)) != 0 )
+        if ( (nonce= busdata_nonce(&leverage,cmdjson,broadcastmode,5000,0)) != 0 )
             break;
         printf("iter.%d of %d couldnt find nonce, try again\n",i,n);
     }
-    if ( (nonceerr= nonce_func(&leverage,cmdjson,broadcastmode,0,nonce)) != 0 )
+    if ( (nonceerr= busdata_nonce(&leverage,cmdjson,broadcastmode,0,nonce)) != 0 )
     {
         printf("error validating nonce.%u -> %u\n",nonce,nonceerr);
         tokenized[0] = 0;
@@ -250,7 +219,7 @@ int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenize
                     copy_cJSON(broadcaststr,cJSON_GetObjectItem(tokenobj,"broadcast"));
                     broadcastmode = get_broadcastmode(firstitem,broadcaststr);
                     retcode = valid;
-                    if ( nonce_func(&leverage,firstjsontxt,broadcastmode,0,nonce) != 0 )
+                    if ( busdata_nonce(&leverage,firstjsontxt,broadcastmode,0,nonce) != 0 )
                     {
                         //printf("(%s) -> (%s) leverage.%d len.%d crc.%u\n",broadcaststr,firstjsontxt,leverage,len,_crc32(0,(void *)firstjsontxt,len));
                         retcode = -4;
@@ -765,7 +734,7 @@ char *busdata_duppacket(cJSON *json)
 char *busdata_deref(char *tokenstr,char *forwarder,char *sender,int32_t valid,char *databuf,cJSON *json)
 {
     char plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],buf[MAX_JSON_FIELD],servicename[MAX_JSON_FIELD],*broadcaststr,*str=0,*retstr = 0;
-    cJSON *dupjson,*second,*argjson,*origjson; uint64_t forwardbits;
+    cJSON *dupjson,*second,*argjson,*origjson; uint64_t forwardbits; uint32_t timestamp = (uint32_t)time(NULL);
     if ( SUPERNET.iamrelay != 0 && (broadcaststr= cJSON_str(cJSON_GetObjectItem(cJSON_GetArrayItem(json,1),"broadcast"))) != 0 )
     {
         dupjson = cJSON_Duplicate(json,1);
@@ -791,7 +760,8 @@ char *busdata_deref(char *tokenstr,char *forwarder,char *sender,int32_t valid,ch
                         if ( SUPERNET.rawPM != 0 )
                         {
                             printf("RELAYSAVE.(%s)\n",str);
-                            dKV777_write(SUPERNET.relays,SUPERNET.rawPM,calc_nxt64bits(sender),str,(int32_t)strlen(str)+1), kv777_flush("*");
+                            dKV777_write(SUPERNET.relays,SUPERNET.rawPM,calc_nxt64bits(sender),&timestamp,sizeof(timestamp),str,(int32_t)strlen(str)+1);
+                            kv777_flush("*");
                         }
                         free(str);
                         free_json(dupjson);
@@ -819,7 +789,8 @@ char *busdata_deref(char *tokenstr,char *forwarder,char *sender,int32_t valid,ch
             if ( SUPERNET.rawPM != 0 )
             {
                 printf("RELAYSAVE2.(%s)\n",str);
-                dKV777_write(SUPERNET.relays,SUPERNET.rawPM,calc_nxt64bits(sender),str,(int32_t)strlen(str)+1), kv777_flush("*");
+                dKV777_write(SUPERNET.relays,SUPERNET.rawPM,calc_nxt64bits(sender),&timestamp,sizeof(timestamp),str,(int32_t)strlen(str)+1);
+                kv777_flush("*");
             }
             free(str);
             return(clonestr("{\"result\":\"success\",\"action\":\"privatemessage ignored\"}"));

@@ -66,15 +66,15 @@ struct crypto777_packet *crypto777_packet(struct crypto777_link *conn,uint32_t *
         hdr = (struct SaMhdr *)bufs->origmsg;
         memcpy(&bufs->origmsg[sizeof(*hdr)],msg,len);
         hdr->timestamp = *timestamp, hdr->leverage = leverage, hdr->numrounds = defnumrounds;
-        bufs->threshold = calc_SaMthreshold(leverage);
+        bufs->threshold = SaM_threshold(leverage);
         len += (int32_t)(sizeof(*hdr) - sizeof(hdr->sig));
         //printf("+= %d | %ld = (%ld - %ld)\n",len,sizeof(*hdr) - sizeof(hdr->sig),sizeof(*hdr),sizeof(hdr->sig));
-        if ( (hit = SaMnonce(&hdr->sig,&hdr->nonce,&bufs->origmsg[sizeof(hdr->sig)],len,bufs->threshold,rseed,maxmillis)) == 0 )
+        /*if ( (hit = SaMnonce(&hdr->sig,&hdr->nonce,&bufs->origmsg[sizeof(hdr->sig)],len,bufs->threshold,rseed,maxmillis)) == 0 )
         {
             printf("crypto777_packet cant find nonce: numrounds.%d leverage.%d\n",hdr->numrounds,leverage);
             free(bufs);
             return(0);
-        }
+         }*/printf("deprecated SaMnonce\n"); while ( 1 ) sleep(60);
         if ( Debuglevel > 0 )
             printf(">>>>>>>>>>>> outbound timestamp.%u nonce.%u hit.%llu (%s) | sig.%llx\n",hdr->timestamp,hdr->nonce,(long long)hit,&bufs->origmsg[sizeof(*hdr)],(long long)hdr->sig.txid);
         rseed = (uint32_t)(hdr->sig.txid ^ hit);
@@ -110,9 +110,9 @@ struct crypto777_packet *crypto777_packet(struct crypto777_link *conn,uint32_t *
             printf("<<<<<<<< nonce.%u len.%d leverage.%d numrounds.%d\n",hdr->nonce,len,leverage,(int)numrounds);
         if ( leverage < CRYPTO777_MAXLEVERAGE && numrounds == defnumrounds )
         {
-            bufs->threshold = calc_SaMthreshold(leverage);
+            bufs->threshold = SaM_threshold(leverage);
             len = bufs->recvlen - sizeof(hdr->sig);
-            hit = calc_SaM(&checksig,&bufs->recvbuf[sizeof(hdr->sig)],len,0,0);
+            hit = SaM(&checksig,&bufs->recvbuf[sizeof(hdr->sig)],len,0,0);
             len -= (sizeof(*hdr) - sizeof(hdr->sig));
             if ( hit >= bufs->threshold || memcmp(checksig.bytes,hdr->sig.bytes,sizeof(checksig)) != 0 )
             {

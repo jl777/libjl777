@@ -131,7 +131,7 @@ struct SuperNET_info
     uint16_t port,serviceport;
     uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
-    struct kv777 *PM,*rawPM,*protocols,*alias,*NXTaccts,*services,*invoices;
+    struct kv777 *PM,*rawPM,*protocols,*alias,*NXTaccts,*services,*invoices,*NXTtxids;
     struct dKV777 *relays;
     cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
@@ -171,10 +171,15 @@ struct ramchain_info
     // this will be at the end of the plugins structure and will be called with all zeros to _init
 }; extern struct ramchain_info RAMCHAINS;
 
-/*struct peers_info
+struct cashier_info
 {
     int32_t readyflag;
-}; extern struct peers_info PEERS;*/
+}; extern struct cashier_info CASHIER;
+
+struct prices_info
+{
+    int32_t readyflag;
+}; extern struct prices_info PRICES;
 
 #define DEFAULT_PEGGYDAYS 21
 #define PEGGY_LOCK 1
@@ -218,7 +223,11 @@ void queue_enqueue(char *name,queue_t *queue,struct queueitem *item);
 void *queue_dequeue(queue_t *queue,int32_t offsetflag);
 int32_t queue_size(queue_t *queue);
 struct queueitem *queueitem(char *str);
+struct queueitem *queuedata(void *data,int32_t datalen);
 void free_queueitem(void *itemptr);
+void *queue_delete(queue_t *queue,struct queueitem *copy,int32_t copysize);
+void *queue_free(queue_t *queue);
+void *queue_clone(queue_t *clone,queue_t *queue,int32_t size);
 
 int upnpredirect(const char* eport, const char* iport, const char* proto, const char* description);
 
@@ -277,7 +286,7 @@ char *busdata_sync(uint32_t *noncep,char *jsonstr,char *broadcastmode,char *dest
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
-uint32_t nonce_func(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce);
+uint32_t busdata_nonce(int32_t *leveragep,char *str,char *broadcaststr,int32_t maxmillis,uint32_t nonce);
 int32_t nonce_leverage(char *broadcaststr);
 char *get_broadcastmode(cJSON *json,char *broadcastmode);
 cJSON *serviceprovider_json();
@@ -291,7 +300,19 @@ void telepathic_PM(char *destNXT,char *PM);
 extern queue_t TelepathyQ;
 uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retbuf,char *endpoint,uint16_t default_port);
 cJSON *protocols_json(char *protocol);
-int32_t dKV777_poll();
+
+uint64_t millistamp();
+uint32_t calc_timeslot(int32_t millidiff,int32_t timeres);
+
+int32_t _add_related(uint64_t *assetids,int32_t n,uint64_t refbaseid,uint64_t refrelid,int32_t exchangeid,uint64_t baseid,uint64_t relid);
+int32_t add_related(uint64_t *assetids,int32_t n,uint64_t supported[][2],long num,int32_t exchangeid,uint64_t baseid,uint64_t relid);
+int32_t add_NXT_assetids(uint64_t *assetids,int32_t n,uint64_t assetid);
+int32_t add_exchange_assetid(uint64_t *assetids,int32_t n,uint64_t baseid,uint64_t relid,int32_t exchangeid);
+int32_t add_exchange_assetids(uint64_t *assetids,int32_t n,uint64_t refassetid,uint64_t baseid,uint64_t relid,int32_t exchangeid,char *symbolmap[][8],int32_t numsymbols);
+uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second);
+double prices777_baseprice(uint32_t timestamp,int32_t basenum);
+int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp);
+
 
 #define MAXTIMEDIFF 60
 
@@ -384,6 +405,13 @@ struct queueitem *queueitem(char *str)
     return(item);
 }
 
+struct queueitem *queuedata(void *data,int32_t datalen)
+{
+    struct queueitem *item = calloc(1,sizeof(struct queueitem) + datalen);
+    memcpy((char *)((long)item + sizeof(struct queueitem)),data,datalen);
+    return(item);
+}
+
 void free_queueitem(void *itemptr) { free((void *)((long)itemptr - sizeof(struct queueitem))); }
 
 void lock_queue(queue_t *queue)
@@ -425,6 +453,61 @@ void *queue_dequeue(queue_t *queue,int32_t offsetflag)
     if ( item != 0 && offsetflag != 0 )
         return((void *)((long)item + sizeof(struct queueitem)));
     else return(item);
+}
+
+void *queue_delete(queue_t *queue,struct queueitem *copy,int32_t copysize)
+{
+    struct queueitem *item = 0;
+    lock_queue(queue);
+    if ( queue->list != 0 )
+    {
+        DL_FOREACH(queue->list,item)
+        {
+            if ( memcmp((void *)((long)item + sizeof(struct queueitem)),(void *)((long)item + sizeof(struct queueitem)),copysize) == 0 )
+            {
+                DL_DELETE(queue->list,item);
+                return(item);
+            }
+        }
+        //printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
+    }
+	portable_mutex_unlock(&queue->mutex);
+    return(0);
+}
+
+void *queue_free(queue_t *queue)
+{
+    struct queueitem *item = 0;
+    lock_queue(queue);
+    if ( queue->list != 0 )
+    {
+        DL_FOREACH(queue->list,item)
+        {
+            DL_DELETE(queue->list,item);
+            free(item);
+        }
+        //printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
+    }
+	portable_mutex_unlock(&queue->mutex);
+    return(0);
+}
+
+void *queue_clone(queue_t *clone,queue_t *queue,int32_t size)
+{
+    struct queueitem *ptr,*item = 0;
+    lock_queue(queue);
+    if ( queue->list != 0 )
+    {
+        DL_FOREACH(queue->list,item)
+        {
+            ptr = calloc(1,sizeof(*ptr));
+            memcpy(ptr,item,size);
+            queue_enqueue(queue->name,clone,ptr);
+        }
+        //printf("name.(%s) dequeue.%p list.%p\n",queue->name,item,queue->list);
+    }
+	portable_mutex_unlock(&queue->mutex);
+    return(0);
 }
 
 int32_t queue_size(queue_t *queue)
@@ -619,9 +702,32 @@ void *memalloc(struct alloc_space *mem,long size,int32_t clearflag)
     return(ptr);
 }
 
+uint64_t millistamp() { return(time(NULL)*1000 + ((uint64_t)milliseconds() % 1000)); }
+uint32_t calc_timeslot(int32_t millidiff,int32_t timeres) { return(((uint32_t)(millistamp() + (timeres>>1) + millidiff) / timeres)); }
+
+#define GENESISACCT "1739068987193023818"  // NXT-MRCC-2YLS-8M54-3CMAJ
+#define GENESISPUBKEYSTR "1259ec21d31a30898d7cd1609f80d9668b4778e3d97e941044b39f0c44d2e51b"
+#define GENESISPRIVKEYSTR "88a71671a6edd987ad9e9097428fc3f169decba3ac8f10da7b24e0ca16803b70"
+#define GENESIS_SECRET "It was a bright cold day in April, and the clocks were striking thirteen."
+
 void portable_OS_init()
 {
+    uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
+    char hexstr[65]; bits256 privkey,pubkey; uint64_t nxt64bits; extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
     void SaM_PrepareIndices();
+    decode_hex(GENESIS_PUBKEY.bytes,sizeof(GENESIS_PUBKEY),GENESISPUBKEYSTR);
+    decode_hex(GENESIS_PRIVKEY.bytes,sizeof(GENESIS_PRIVKEY),GENESISPRIVKEYSTR);
+    nxt64bits = conv_NXTpassword(privkey.bytes,pubkey.bytes,(void *)GENESIS_SECRET,(int32_t)strlen(GENESIS_SECRET));
+    if ( nxt64bits != calc_nxt64bits(GENESISACCT) )
+        printf("GENESIS_ACCT mismatch %llu != %llu\n",(long long)nxt64bits,(long long)calc_nxt64bits(GENESISACCT));
+    if ( memcmp(GENESIS_PUBKEY.bytes,pubkey.bytes,sizeof(pubkey)) != 0 )
+        printf("GENESIS_PUBKEY mismatch %llu != %llu\n",(long long)GENESIS_PUBKEY.txid,(long long)pubkey.txid);
+    if ( memcmp(GENESIS_PRIVKEY.bytes,privkey.bytes,sizeof(privkey)) != 0 )
+    {
+        init_hexbytes_noT(hexstr,privkey.bytes,sizeof(privkey));
+        printf("%s GENESIS_PRIVKEY mismatch %llu != %llu\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)privkey.txid);
+    }
+    printf("%s GENESIS_PRIVKEY %llx GENESIS_PUBKEY %llx\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)GENESIS_PUBKEY.txid);
     OS_init();
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     SaM_PrepareIndices();

@@ -47,6 +47,7 @@ struct pending_offer
     struct pendingpair A,B;
     struct pendinghalf halves[4];
 };
+uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT,char *base,char *rel,double price,double volume,uint32_t triggerheight);
 
 void free_pending_offer(struct pending_offer *offer)
 {
@@ -273,7 +274,7 @@ void poll_pending_offers(char *NXTaddr,char *NXTACCTSECRET)
                 if ( strcmp(obooks[i]->exchange,"nxtae") == 0 )
                 {
                     //printf("obook.%d %llu %llu isask.%d\n",i,(long long)obooks[i]->assetids[0],(long long)obooks[i]->assetids[1],(int)(obooks[i]->assetids[2] & 1));
-                    ramupdate_NXThalf((obooks[i]->assetids[2] & 1) != 0,obooks[i]->assetids[0],50,0);
+                    //ramupdate_NXThalf((obooks[i]->assetids[2] & 1) != 0,obooks[i]->assetids[0],50,0);
                 }
             }
             free(obooks);
@@ -326,7 +327,7 @@ int32_t cleared_with_nxtae(int32_t exchangeid)
 
 uint64_t need_to_submithalf(struct pendinghalf *half,int32_t dir,struct pendingpair *pt,int32_t simpleflag)
 {
-    printf("need_to_submithalf dir.%d (%s) T.sell.%d %llu/%llu %llu\n",dir,Exchanges[half->T.exchangeid].name,half->T.sell,(long long)half->T.assetid,(long long)half->T.relid,(long long)otherasset(half));
+    printf("need_to_submithalf dir.%d (%s) T.sell.%d %llu/%llu %llu\n",dir,exchange_str(half->T.exchangeid),half->T.sell,(long long)half->T.assetid,(long long)half->T.relid,(long long)otherasset(half));
     if ( half->T.exchangeid == INSTANTDEX_EXCHANGEID )
     {
         if ( tradedasset(half) == half->T.assetid )
@@ -371,7 +372,7 @@ int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *
             half->T.closed = 1;
         if ( half->T.myflag != 0 )
         {
-            cJSON_AddItemToObject(item,"action",cJSON_CreateString(Exchanges[half->T.exchangeid].name));
+            cJSON_AddItemToObject(item,"action",cJSON_CreateString(exchange_str(half->T.exchangeid)));
             if ( half->T.closed == 0 )
             {
                 if ( (half->T.txid= submit_to_exchange(half->T.exchangeid,&jsonstr,half->T.assetid,half->T.qty,half->T.priceNQT,dir,offer->nxt64bits,NXTACCTSECRET,offer->triggerhash,offer->comment,otherNXT(half),base,rel,price,volume,triggerheight)) == 0 )
@@ -413,16 +414,16 @@ int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *
 
 int32_t set_pendinghalf(struct pendingpair *pt,int32_t dir,struct pendinghalf *half,uint64_t assetid,uint64_t baseamount,uint64_t relid,uint64_t relamount,uint64_t quoteid,uint64_t buyer,uint64_t seller,char *exchangestr,int32_t closeflag)
 {
-    struct exchange_info *exchange;
+    int32_t exchangeid; struct exchange_info *exchange;
     printf("dir.%d sethalf %llu/%llu buyer.%llu seller.%llu\n",dir,(long long)assetid,(long long)relid,(long long)buyer,(long long)seller);
     half->T.assetid = assetid, half->T.relid = relid, half->baseamount = baseamount, half->relamount = relamount, half->T.quoteid = quoteid;
     if ( dir > 0 )
         half->buyer = buyer, half->seller = seller;
     else half->buyer = seller, half->seller = buyer;
     strcpy(half->exchange,exchangestr);
-    if ( (exchange= find_exchange(half->exchange,0,0)) != 0 )
+    if ( (exchange= find_exchange(&exchangeid,half->exchange)) != 0 )
     {
-        half->T.exchangeid = exchange->exchangeid;
+        half->T.exchangeid = exchangeid;
         if ( dir < 0 )
             half->T.sell = 1;
         half->T.needsubmit = need_to_submithalf(half,dir,pt,closeflag);
@@ -434,7 +435,7 @@ int32_t set_pendinghalf(struct pendingpair *pt,int32_t dir,struct pendinghalf *h
     }
     if ( half->T.closed == 0 )
     {
-        printf("SETERROR (%s).(%s) -> dir.%d sethalf %llu/%llu buyer.%llu seller.%llu\n",half->exchange,Exchanges[(int32_t)half->T.exchangeid].name,dir,(long long)assetid,(long long)relid,(long long)buyer,(long long)seller);
+        printf("SETERROR (%s).(%s) -> dir.%d sethalf %llu/%llu buyer.%llu seller.%llu\n",half->exchange,exchange_str(half->T.exchangeid),dir,(long long)assetid,(long long)relid,(long long)buyer,(long long)seller);
         half->T.error = 1;
         half->T.closed = 1;
     }
@@ -498,13 +499,14 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
 
 void set_basereliQ(struct InstantDEX_quote *iQ,cJSON *obj)
 {
-    char exchange[64];
+    char exchange[64]; int32_t exchangeid;
     iQ->baseamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"baseamount"));
     iQ->relamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"relamount"));
     iQ->quoteid = get_API_nxt64bits(cJSON_GetObjectItem(obj,"quoteid"));
     iQ->nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"offerNXT"));
     copy_cJSON(exchange,cJSON_GetObjectItem(obj,"exchange"));
-    iQ->exchangeid = get_exchangeid(exchange);
+    find_exchange(&exchangeid,exchange);
+    iQ->exchangeid = exchangeid;
 }
 
 // phasing! https://nxtforum.org/index.php?topic=6490.msg171048#msg171048

@@ -100,11 +100,16 @@ int32_t iQcmp(struct InstantDEX_quote *iQA,struct InstantDEX_quote *iQB)
 
 int32_t iQ_exchangestr(char *exchange,struct InstantDEX_quote *iQ)
 {
+    char basexchg[64],relxchg[64];
     if ( iQ->baseiQ != 0 && iQ->reliQ != 0 )
-        sprintf(exchange,"%s_%s",Exchanges[(int32_t)iQ->baseiQ->exchangeid].name,Exchanges[(int32_t)iQ->reliQ->exchangeid].name);
+    {
+        strcpy(basexchg,exchange_str(iQ->baseiQ->exchangeid));
+        strcpy(relxchg,exchange_str(iQ->reliQ->exchangeid));
+        sprintf(exchange,"%s_%s",basexchg,relxchg);
+    }
     else if ( iQ->exchangeid == INSTANTDEX_NXTAEID && iQ->timestamp > time(NULL) )
         strcpy(exchange,INSTANTDEX_NXTAEUNCONF);
-    else strcpy(exchange,Exchanges[(int32_t)iQ->exchangeid].name);
+    else strcpy(exchange,exchange_str(iQ->exchangeid));
     return(0);
 }
 
@@ -117,7 +122,7 @@ void disp_quote(void *ptr,int32_t arg,struct InstantDEX_quote *iQ)
 
 int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,int32_t isask,uint64_t quoteid,double price,double volume,uint64_t baseid,uint64_t baseamount,uint64_t relid,uint64_t relamount,char *exchange,uint64_t nxt64bits,char *gui,struct InstantDEX_quote *baseiQ,struct InstantDEX_quote *reliQ,int32_t duration)
 {
-    struct exchange_info *xchg;
+    struct exchange_info *xchg; int32_t exchangeid;
     memset(iQ,0,sizeof(*iQ));
     if ( baseamount == 0 && relamount == 0 )
         set_best_amounts(&baseamount,&relamount,price,volume);
@@ -136,8 +141,8 @@ int32_t create_InstantDEX_quote(struct InstantDEX_quote *iQ,uint32_t timestamp,i
     strncpy(iQ->gui,gui,sizeof(iQ->gui)-1);
     if ( baseiQ == 0 && reliQ == 0 )
     {
-        if ( (xchg= find_exchange(exchange,0,0)) != 0 )
-            iQ->exchangeid = xchg->exchangeid;
+        if ( (xchg= find_exchange(&exchangeid,exchange)) != 0 )
+            iQ->exchangeid = exchangeid;
         else printf("cant find_exchange(%s)??\n",exchange);
     }
     else iQ->exchangeid = INSTANTDEX_EXCHANGEID;

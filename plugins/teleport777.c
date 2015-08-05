@@ -14,6 +14,7 @@
 
 #define DEFINES_ONLY
 #include "plugin777.c"
+#include "bits777.c"
 #undef DEFINES_ONLY
 
 #define NXTPRIVACY_COINADDR "RELiMDcxPeAT85acmeAEEX3M2omZRax4ft"
@@ -264,9 +265,10 @@ char *teleport_calctxbytes(char *funding,uint64_t nxt64bits,uint16_t minlockdays
             funding = "telepods";
         else if ( strcmp(funding,"any") == 0 )
             funding = 0;
-        if ( peggy_calc_opreturn(stringbits(peggy),opreturnhexstr,nxt64bits,minlockdays,maxlockdays,invoices,PEGGY_LOCK,numunits,paymentaddr) == 0 )
-            return(teleport_paymentstr(coin,funding,paymentaddr,(uint64_t)numunits * SATOSHIDEN,opreturnhexstr));
-        else return(clonestr("{\"error\":\"peggy_calc_opreturn errpr\"}"));
+        //if ( peggy_calc_opreturn(stringbits(peggy),opreturnhexstr,nxt64bits,minlockdays,maxlockdays,invoices,PEGGY_LOCK,numunits,paymentaddr) == 0 )
+        //    return(teleport_paymentstr(coin,funding,paymentaddr,(uint64_t)numunits * SATOSHIDEN,opreturnhexstr));
+        //else
+        return(clonestr("{\"error\":\"peggy_calc_opreturn errpr\"}"));
     } else return(clonestr("{\"error\":\"only BTCD for now\"}"));
 }
 
@@ -299,25 +301,16 @@ cJSON *teleport_invoices(uint8_t *invoicebits)
     return(json);
 }
 
-void calcprefix(uint16_t lockdays,uint8_t *lockPeriodHash,uint8_t *lockPeriodPrefix)
-{
-	uint8_t buffer[32],*ptr; long offset = sizeof(buffer) - sizeof(lockdays);
-    randombytes(buffer,offset);
-    ptr = &buffer[offset], *ptr++ = lockdays & 0xff, *ptr++ = (lockdays >> 8) & 0xff;
-	calc_sha256(0,lockPeriodHash,buffer,sizeof(buffer));
-	memcpy(lockPeriodPrefix,buffer,offset);
-}
-
 cJSON *teleport_calcinvoicebits(int32_t *nump,uint8_t invoicebits[][32],uint8_t claimbits[][32],cJSON **claimsp,int16_t lockdays,int32_t numunits)
 {
-    int32_t peggy_numinvoices(int32_t numunits);
+    /*int32_t peggy_numinvoices(int32_t numunits);
     int32_t incr,n = 0; cJSON *claims,*invoices; char invoicestr[65],claimstr[65];
     claims = cJSON_CreateArray(), invoices = cJSON_CreateArray();
     for (incr=10000; incr>0; incr/=10)
     {
         while ( numunits >= incr )
         {
-            calcprefix(lockdays,invoicebits[n],claimbits[n]);
+            bits777_invoicehash(lockdays,invoicebits[n],claimbits[n]);
             init_hexbytes_noT(claimstr,claimbits[n],32);
             init_hexbytes_noT(invoicestr,invoicebits[n],32);
             cJSON_AddItemToArray(claims,cJSON_CreateString(claimstr));
@@ -332,7 +325,8 @@ cJSON *teleport_calcinvoicebits(int32_t *nump,uint8_t invoicebits[][32],uint8_t 
         free_json(invoices), free_json(claims);
         return(0);
     }
-    return(invoices);
+    return(invoices);*/
+    return(0);
 }
 
 char *teleport_invoicestatus(char *invoicestr)
