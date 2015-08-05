@@ -5,6 +5,7 @@
 //  Created by James on 4/9/15.
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
+#ifdef INSIDE_MGW
 
 #ifdef DEFINES_ONLY
 #ifndef crypto777_db777_h
@@ -792,3 +793,7 @@ int32_t db777_dump(struct db777 *DB,int32_t binarykey,int32_t binaryvalue)
 
 #endif
 #endif
+#endif
+#include <stdint.h>
+extern int32_t Debuglevel;
+

@@ -18,6 +18,7 @@
 */
 
 /* {{{ */
+#ifdef INSIDE_MGW
 
 #define SOPHIA_BUILD ""
 
@@ -27988,3 +27989,6 @@ SP_API void *sp_type(void *o, ...)
 */
 /* }}} */
 
+#endif
+#include <stdint.h>
+extern int32_t Debuglevel;

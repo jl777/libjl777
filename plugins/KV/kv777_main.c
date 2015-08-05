@@ -14,7 +14,7 @@
 
 #include "sophia.h"
 #define DEFINES_ONLY
-#include "../plugin777.c"
+#include "../agents/plugin777.c"
 #include "db777.c"
 #undef DEFINES_ONLY
 
@@ -108,6 +108,7 @@ To delete a snapshot, sp_drop(3) or sp_destroy(3) should be called on snapshot o
 
 // sp_set(ctl, "db.database.lockdetect", a) == 1;
 
+#ifdef INSIDE_MGW
 void *sophia_ptr(char *str)
 {
     void *ptr = 0;
@@ -631,6 +632,7 @@ int32_t env777_close(struct env777 *DBs,int32_t reopenflag)
     }
     return(errs);
 }
+#endif
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
@@ -721,7 +723,10 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     if ( retcode == 0 )  // this means parent process died, otherwise _process_json returned negative value
     {
     }
+#ifdef INSIDE_MGW
     env777_close(&SUPERNET.DBs,0);
+#endif
+    
     return(retcode);
 }
 
@@ -732,4 +737,4 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
 
-#include "../plugin777.c"
+#include "../agents/plugin777.c"
