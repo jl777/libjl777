@@ -1,5 +1,4 @@
 //
-//  echodemo.c
 //  crypto777
 //
 //  Copyright (c) 2015 jl777. All rights reserved.
@@ -8,7 +7,7 @@
 // 17638509709909095430 ~170
 // http://chain.explorebtcd.info/tx/1dc0faf122e64aa46393291f00483f7779b73504573c1776301347545b760ea9
 
-
+#ifdef INSIDE_MGW
 #define DEPOSIT_XFER_DURATION 30
 #define MIN_DEPOSIT_FACTOR 5
 
@@ -44,6 +43,255 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME   *data,cJSON
     uint64_t disableflags = 0;
     printf("init %s size.%ld\n",plugin->name,sizeof(struct MGW_info));
     return(disableflags); // set bits corresponding to array position in _methods[]
+}
+
+char *NXT_txidstr(struct mgw777 *mgw,char *txid,int32_t writeflag,uint32_t ind)
+{
+    void *obj,*value,*result = 0; int32_t slen,len,flag; uint64_t txidbits,savedbits; struct extra_info extra; char *txidjsonstr = 0; cJSON *json,*txobj;
+    printf("NXT_txidstr.(%s) write.%d ind.%d\n",txid,writeflag,ind);
+    if ( txid[0] != 0 && (txidjsonstr= _issue_getTransaction(txid)) != 0 )
+    {
+        flag = writeflag;
+        if ( (json= cJSON_Parse(txidjsonstr)) != 0 )
+        {
+            free(txidjsonstr);
+            cJSON_DeleteItemFromObject(json,"requestProcessingTime");
+            cJSON_DeleteItemFromObject(json,"confirmations");
+            cJSON_DeleteItemFromObject(json,"transactionIndex");
+            txidjsonstr = cJSON_Print(json);
+            free_json(json);
+        } else printf("PARSE ERROR.(%s)\n",txidjsonstr);
+        _stripwhite(txidjsonstr,' ');
+        slen = (int32_t)strlen(txidjsonstr)+1;
+        txidbits = calc_nxt64bits(txid);
+        if ( (obj= sp_object(DB_NXTtxids->db)) != 0 )
+        {
+            if ( sp_set(obj,"key",&txidbits,sizeof(txidbits)) == 0 && (result= sp_get(DB_NXTtxids->db,obj)) != 0 )
+            {
+                value = sp_get(result,"value",&len);
+                if ( value != 0 )
+                {
+                    if ( len != slen || strcmp(value,txidjsonstr) != 0 )
+                        printf("mismatched NXT_txidstr ind.%d for %llu: lens %d vs %d (%s) vs (%s)\n",ind,(long long)txidbits,slen,len,txidjsonstr,value);
+                    else flag = 0;
+                }
+                sp_destroy(result);
+            } //else sp_destroy(obj);
+        }
+        if ( flag != 0 )
+        {
+            int32_t mgw_markunspent(char *txidstr,int32_t vout,int32_t status);
+            NXT_revassettxid(&extra,mgw->assetidbits,ind);
+            savedbits = extra.txidbits;
+            memset(&extra,0,sizeof(extra));
+            if ( (txobj= cJSON_Parse(txidjsonstr)) != 0 )
+            {
+                extra.vout = process_assettransfer(&extra.height,&extra.senderbits,&extra.receiverbits,&extra.amount,&extra.flags,extra.coindata,0,mgw,txobj);
+                free_json(txobj);
+                if ( extra.vout >= 0 )
+                {
+                    mgw_markunspent(extra.coindata,extra.vout,MGW_DEPOSITDONE);
+                    printf("MARK DEPOSITDONE %llu.%d oldval.%llu -> newval flags.%d %llu (%s v%d %.8f)\n",(long long)mgw->assetidbits,ind,(long long)savedbits,extra.flags,(long long)txidbits,extra.coindata,extra.vout,dstr(extra.amount));
+                }
+            } else extra.vout = -1;
+            printf("for %llu.%d oldval.%llu -> newval flags.%d %llu (%s v%d %.8f)\n",(long long)mgw->assetidbits,ind,(long long)savedbits,extra.flags,(long long)txidbits,extra.coindata,extra.vout,dstr(extra.amount));
+            NXT_add_assettxid(mgw->assetidbits,txidbits,txidjsonstr,slen,ind,&extra);
+        }
+    }
+    return(txidjsonstr);
+}
+
+int32_t NXT_assettransfers(struct mgw777 *mgw,uint64_t *txids,long max,int32_t firstindex,int32_t lastindex)
+{
+    char cmd[1024],txid[64],*jsonstr,*txidstr; cJSON *transfers,*array;
+    int32_t i,n = 0; uint64_t txidbits,revkey[2];
+    sprintf(cmd,"requestType=getAssetTransfers&asset=%s",mgw->assetidstr);
+    if ( firstindex >= 0 && lastindex >= firstindex )
+        sprintf(cmd + strlen(cmd),"&firstIndex=%u&lastIndex=%u",firstindex,lastindex);
+    revkey[0] = mgw->assetidbits;
+    //printf("issue.(%s) max.%ld\n",cmd,max);
+    if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
+    {
+        //printf("(%s) -> (%s)\n",cmd,jsonstr);
+        if ( (transfers = cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( (array= cJSON_GetObjectItem(transfers,"transfers")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    copy_cJSON(txid,cJSON_GetObjectItem(cJSON_GetArrayItem(array,i),"assetTransfer"));
+                    if ( txid[0] != 0 && (txidbits= calc_nxt64bits(txid)) != 0 )
+                    {
+                        if ( i < max )
+                            txids[i] = txidbits;
+                        if ( firstindex < 0 && lastindex <= firstindex )
+                        {
+                            if ( (txidstr= NXT_txidstr(mgw,txid,1,n - i)) != 0 )
+                                free(txidstr);
+                        }
+                    }
+                }
+            } free_json(transfers);
+        } free(jsonstr);
+    }
+    //if ( firstindex < 0 || lastindex <= firstindex )
+    //    printf("assetid.(%s) -> %d entries\n",mgw->assetidstr,n);
+    return(n);
+}
+
+int32_t NXT_mark_withdrawdone(struct mgw777 *mgw,uint64_t redeemtxid)
+{
+    int32_t i,count; struct extra_info extra;
+    if ( NXT_revassettxid(&extra,mgw->assetidbits,0) == sizeof(extra) )
+    {
+        //printf("got extra ind.%d\n",extra.ind);
+        count = extra.ind;
+        for (i=1; i<=count; i++)
+        {
+            NXT_revassettxid(&extra,mgw->assetidbits,i);
+            if ( extra.txidbits == redeemtxid != 0 && (extra.flags & MGW_PENDINGREDEEM) != 0 && (extra.flags & MGW_WITHDRAWDONE) == 0 )
+            {
+                extra.flags |= MGW_WITHDRAWDONE;
+                printf("NXT_mark_withdrawdone %s.%llu %.8f\n",mgw->coinstr,(long long)redeemtxid,dstr(extra.amount));
+                NXT_set_revassettxid(mgw->assetidbits,i,&extra);
+                return(i);
+            }
+            //fprintf(stderr,"%llu.%d ",(long long)extra.txidbits,extra.flags);
+        }
+    }
+    return(-1);
+}
+
+int32_t update_NXT_assettransfers(struct mgw777 *mgw)
+{
+    int32_t len,verifyflag = 0;
+    uint64_t txids[100],mostrecent; int32_t i,count = 0; char txidstr[128],nxt_txid[64],*txidjsonstr; struct extra_info extra;
+    mgw->assetidbits = calc_nxt64bits(mgw->assetidstr);
+    mgw->withdrawsum = mgw->numwithdraws = 0;
+    if ( (len= NXT_revassettxid(&extra,mgw->assetidbits,0)) == sizeof(extra) )
+    {
+        //printf("got extra ind.%d\n",extra.ind);
+        count = extra.ind;
+        for (i=1; i<=count; i++)
+        {
+            NXT_revassettxid(&extra,mgw->assetidbits,i);
+            if ( SUPERNET.gatewayid >= 0 && (extra.flags & MGW_PENDINGREDEEM) != 0 && (extra.flags & MGW_WITHDRAWDONE) == 0 )
+            {
+                int32_t mgw_update_redeem(struct mgw777 *mgw,struct extra_info *extra);
+                expand_nxt64bits(nxt_txid,extra.txidbits);
+                if ( in_jsonarray(mgw->limbo,nxt_txid) != 0 || mgw_update_redeem(mgw,&extra) != 0 )
+                {
+                    extra.flags |= MGW_WITHDRAWDONE;
+                    NXT_set_revassettxid(mgw->assetidbits,i,&extra);
+                }
+            }
+            //fprintf(stderr,"%llu.%d ",(long long)extra.txidbits,extra.flags);
+        }
+        //fprintf(stderr,"sequential tx.%d\n",count);
+        NXT_revassettxid(&extra,mgw->assetidbits,count);
+        mostrecent = extra.txidbits;
+        for (i=0; i<sizeof(txids)/sizeof(*txids); i++)
+        {
+            if ( NXT_assettransfers(mgw,&txids[i],1,i,i) == 1 && txids[i] == mostrecent )
+            {
+                if ( i != 0 )
+                    printf("asset.(%s) count.%d i.%d mostrecent.%llu vs %llu\n",mgw->assetidstr,count,i,(long long)mostrecent,(long long)txids[i]);
+                while ( i-- > 0 )
+                {
+                    expand_nxt64bits(txidstr,txids[i]);
+                    if ( (txidjsonstr= NXT_txidstr(mgw,txidstr,1,++count)) != 0 )
+                        free(txidjsonstr);
+                }
+                break;
+            }
+        }
+        if ( i == 100 )
+            count = 0;
+    } else printf("cant get count len.%d\n",len);
+    if ( count == 0 )
+        count = NXT_assettransfers(mgw,txids,sizeof(txids)/sizeof(*txids) - 1,-1,-1);
+    if ( NXT_revassettxid(&extra,mgw->assetidbits,0) != sizeof(extra) || extra.ind != count )
+    {
+        memset(&extra,0,sizeof(extra));
+        extra.ind = count;
+        NXT_set_revassettxid(mgw->assetidbits,0,&extra);
+    }
+    if ( verifyflag != 0 )
+        NXT_assettransfers(mgw,txids,sizeof(txids)/sizeof(*txids) - 1,-1,-1);
+    return(count);
+}
+
+int32_t NXT_set_revassettxid(uint64_t assetidbits,uint32_t ind,struct extra_info *extra)
+{
+    uint64_t revkey[2]; void *obj;
+    if ( (obj= sp_object(DB_NXTtxids->db)) != 0 )
+    {
+        revkey[0] = assetidbits, revkey[1] = ind;
+        //printf("set ind.%d <- txid.%llu\n",ind,(long long)extra->txidbits);
+        if ( sp_set(obj,"key",revkey,sizeof(revkey)) == 0 && sp_set(obj,"value",extra,sizeof(*extra)) == 0 )
+            return(sp_set(DB_NXTtxids->db,obj));
+        else
+        {
+            sp_destroy(obj);
+            printf("error NXT_add_assettxid rev %llu ind.%d\n",(long long)extra->txidbits,ind);
+        }
+    }
+    return(-1);
+}
+
+int32_t NXT_revassettxid(struct extra_info *extra,uint64_t assetidbits,uint32_t ind)
+{
+    void *obj,*result,*value; uint64_t revkey[2]; int32_t len = 0;
+    memset(extra,0,sizeof(*extra));
+    if ( (obj= sp_object(DB_NXTtxids->db)) != 0 )
+    {
+        revkey[0] = assetidbits, revkey[1] = ind;
+        if ( sp_set(obj,"key",revkey,sizeof(revkey)) == 0 && (result= sp_get(DB_NXTtxids->db,obj)) != 0 )
+        {
+            value = sp_get(result,"value",&len);
+            if ( len == sizeof(*extra) )
+                memcpy(extra,value,len);
+            else printf("NXT_revassettxid mismatched len.%d vs %ld\n",len,sizeof(*extra));
+            sp_destroy(result);
+        } //else sp_destroy(obj);
+    }
+    return(len);
+}
+
+int32_t NXT_add_assettxid(uint64_t assetidbits,uint64_t txidbits,void *value,int32_t valuelen,uint32_t ind,struct extra_info *extra)
+{
+    void *obj;
+    if ( value != 0 )
+    {
+        if ( (obj= sp_object(DB_NXTtxids->db)) != 0 )
+        {
+            extra->assetidbits = assetidbits, extra->txidbits = txidbits, extra->ind = ind;
+            if ( sp_set(obj,"key",&txidbits,sizeof(txidbits)) == 0 && sp_set(obj,"value",value,valuelen) == 0 )
+                sp_set(DB_NXTtxids->db,obj);
+            else
+            {
+                sp_destroy(obj);
+                printf("error NXT_add_assettxid %llu ind.%d\n",(long long)txidbits,ind);
+            }
+        }
+        NXT_set_revassettxid(assetidbits,ind,extra);
+    }
+    return(0);
+}
+
+char *NXT_assettxid(uint64_t assettxid)
+{
+    void *obj,*result,*value; int32_t len; char *retstr = 0;
+    if ( (obj= sp_object(DB_NXTtxids->db)) != 0 )
+    {
+        if ( sp_set(obj,"key",&assettxid,sizeof(assettxid)) == 0 && (result= sp_get(DB_NXTtxids->db,obj)) != 0 )
+        {
+            value = sp_get(result,"value",&len);
+            retstr = clonestr(value);
+            sp_destroy(result);
+        }// else sp_destroy(obj);
+    }
+    return(retstr);
 }
 
 int32_t get_NXT_coininfo(uint64_t srvbits,uint64_t nxt64bits,char *coinstr,char *coinaddr,char *pubkey)
@@ -2125,3 +2373,6 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     return(retcode);
 }
 #include "../agents/plugin777.c"
+#endif
+#include <stdint.h>
+extern int32_t Debuglevel;

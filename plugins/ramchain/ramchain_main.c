@@ -6,6 +6,8 @@
 //
 
 
+#ifdef INSIDE_MGW
+
 #define BUNDLED
 #define PLUGINSTR "ramchain"
 #define PLUGNAME(NAME) ramchain ## NAME
@@ -17,7 +19,6 @@
 #include "../agents/plugin777.c"
 #include "../KV/kv777.c"
 #include "../common/system777.c"
-//#include "ledger777.c"
 #include "ramchain.c"
 #undef DEFINES_ONLY
 
@@ -128,3 +129,7 @@ int32_t PLUGNAME(_shutdown)(struct plugin_info *plugin,int32_t retcode)
     return(retcode);
 }
 #include "../agents/plugin777.c"
+
+#endif
+#include <stdint.h>
+extern int32_t Debuglevel;

@@ -1,7 +1,7 @@
 
 #ifdef DEFINES_ONLY
-#ifndef acct777_h
-#define acct777_h
+#ifndef accts777_h
+#define accts777_h
 
 #include <stdio.h>
 #include <stdint.h>
@@ -9,21 +9,8 @@
 #include "../includes/portable777.h"
 #include "../KV/ramkv777.c"
 #include "../utils/bits777.c"
-#include "serdes777.c"
 #include "../common/txind777.c"
-
-struct accts777_info *accts777_init(char *dirname,struct txinds777_info *txinds);
-
-#endif
-#else
-#ifndef acct777_c
-#define acct777_c
-
-#ifndef acct777_h
-#define DEFINES_ONLY
-#include "accts777.c"
-#undef DEFINES_ONLY
-#endif
+#include "serdes777.c"
 
 #define ACCTS777_MAXRAMKVS 8
 #define BTCDADDRSIZE 36
@@ -37,6 +24,22 @@ struct accts777_info
     bits256 peggyhash;
     struct txinds777_info *txinds;
 };
+
+struct accts777_info *accts777_init(char *dirname,struct txinds777_info *txinds);
+
+#endif
+#else
+#ifndef accts777_c
+#define accts777_c
+
+#ifndef accts777_h
+#define DEFINES_ONLY
+#include "accts777.c"
+//#include "../KV/ramkv777.c"
+#undef DEFINES_ONLY
+#endif
+
+#define accts777_getaddrkv(accts,type) ((accts != 0) ? (accts)->addrkvs[type] : 0)
 
 struct accts777_info *accts777_init(char *dirname,struct txinds777_info *txinds)
 {
@@ -254,7 +257,7 @@ int32_t peggy_emit(void *_PEGS,uint8_t opreturndata[MAX_OPRETURNSIZE],struct opr
     char *opreturnstr; int32_t nonz,len = 0; struct peggy_info *PEGS = _PEGS;
     if ( payments != 0 && max > 1 && PEGS->accts != 0 && peggy_payments(&PEGS->accts->PaymentsQ,payments,max,currentblocknum,blocknum,blocktimestamp) < 0 )
         return(-1);
-    if ( opreturndata != 0 && (opreturnstr= peggy_emitprices(&nonz,PEGS,blocknum,blocktimestamp,0)) != 0 )
+    if ( opreturndata != 0 && (opreturnstr= peggy_emitprices(&nonz,PEGS,blocktimestamp,0)) != 0 )
     {
         memset(opreturndata,0,MAX_OPRETURNSIZE);
         len = (int32_t)strlen(opreturnstr) / 2;

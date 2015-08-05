@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include "../includes/portable777.h"
 
 #define SMALLVAL 0.000000000000001
 
@@ -23,12 +24,6 @@
 #define NUM_BLOOMPRIMES 8
 
 struct bloombits { uint8_t hashbits[NUM_BLOOMPRIMES][79997/8 + 1],pad[sizeof(uint64_t)]; };
-union _bits128 { uint8_t bytes[16]; uint16_t ushorts[8]; uint32_t uints[4]; uint64_t ulongs[2]; uint64_t txid; };
-typedef union _bits128 bits128;
-union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
-typedef union _bits256 bits256;
-union _bits384 { bits256 sig; uint8_t bytes[48]; uint16_t ushorts[24]; uint32_t uints[12]; uint64_t ulongs[6]; uint64_t txid; };
-typedef union _bits384 bits384;
 struct acct777_sig { bits256 sigbits,pubkey; uint64_t signer64bits; };
 
 int32_t bitweight(uint64_t x);

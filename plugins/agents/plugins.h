@@ -313,12 +313,14 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         else if ( strcmp(dp->name,"kv777") == 0 ) return(kv777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
         //else if ( strcmp(dp->name,"peers") == 0 ) return(peers_main(n,args));
+        else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
+        //else if ( strcmp(dp->name,"rps") == 0 ) return(rps_main(n,args));
+        //else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
+        //else if ( strcmp(dp->name,"teleport") == 0 ) return(teleport_main(n,args));
+#ifdef INSIDE_MGW
         else if ( strcmp(dp->name,"ramchain") == 0 ) return(ramchain_main(n,args));
         else if ( strcmp(dp->name,"MGW") == 0 ) return(MGW_main(n,args));
-        else if ( strcmp(dp->name,"teleport") == 0 ) return(teleport_main(n,args));
-        else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
-        else if ( strcmp(dp->name,"rps") == 0 ) return(rps_main(n,args));
-        else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
+#endif
         else return(-1);
     }
     else return(OS_launch_process(args));
@@ -326,7 +328,12 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0  || strcmp(plugin,"ramchain") == 0  || strcmp(plugin,"MGW") == 0 || strcmp(plugin,"relay") == 0 || strcmp(plugin,"teleport") == 0 || strcmp(plugin,"rps") == 0 || strcmp(plugin,"prices") == 0 || strcmp(plugin,"cashier") == 0 )
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 ||
+        strcmp(plugin,"cashier") == 0 || strcmp(plugin,"rps") == 0 || strcmp(plugin,"teleport") == 0
+#ifdef INSIDE_MGW
+        || strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0
+#endif
+        )
         return(1);
     else return(0);
 }

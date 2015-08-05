@@ -7,7 +7,7 @@
 //
 // code goes so fast, might need to change /proc/sys/net/ipv4/tcp_tw_recycle to have a 1 in it
 //
-#define INSIDE_MGW
+//#define INSIDE_MGW
 
 #ifdef DEFINES_ONLY
 #ifndef crypto777_coins777_h
@@ -173,7 +173,6 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate);
 int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *userpass,uint32_t blocknum);
 void rawblock_patch(struct rawblock *raw);
 
-struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize);
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 void coin777_disprawblock(struct rawblock *raw);
 
@@ -206,6 +205,10 @@ int32_t coin777_RWaddrtx(int32_t writeflag,struct coin777 *coin,uint32_t addrind
 int32_t NXT_set_revassettxid(uint64_t assetidbits,uint32_t ind,struct extra_info *extra);
 int32_t NXT_revassettxid(struct extra_info *extra,uint64_t assetidbits,uint32_t ind);
 int32_t NXT_mark_withdrawdone(struct mgw777 *mgw,uint64_t redeemtxid);
+
+#ifdef INSIDE_MGW
+struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize);
+#endif
 
 #endif
 #else
@@ -330,6 +333,7 @@ int32_t parse_block(void *state,uint64_t *creditsp,uint64_t *debitsp,uint32_t *t
     return(numtx);
 }
 
+#ifdef INSIDE_MGW
 // coin777 DB funcs
 void *coin777_getDB(void *dest,int32_t *lenp,void *transactions,struct db777 *DB,void *key,int32_t keylen)
 {
@@ -1858,6 +1862,7 @@ int32_t coin777_parse(struct coin777 *coin,uint32_t RTblocknum,int32_t syncflag,
     } else printf("blocknum.%d > RTblocknum.%d - minconfirms.%d\n",blocknum,RTblocknum,minconfirms);
     return(0);
 }
+#endif
 
 #endif
 #endif

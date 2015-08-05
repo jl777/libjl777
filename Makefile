@@ -130,8 +130,8 @@ stockfish: lib/stockfish; \
 sophia: lib/sophia; \
  	cd plugins; $(_sophia); cd ..
 
-MGW: lib/MGW; \
-	cd plugins; $(_MGW); cd ..
+MGW: $(SRCS) $(TARGET); \
+    clang -o MGW -DINSIDE_MGW $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS) 
 
 SuperNET: $(SRCS) $(TARGET); \
     pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS) 

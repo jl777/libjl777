@@ -17,7 +17,7 @@ int32_t peggy_create_prices(uint8_t *txbuf,int32_t len,struct accts777_info *acc
     if ( stakedblock != 0 || nxt64bits != 0 )
     {
         for (i=0; i<price->num; i++)
-            len = txind777_txbuf(txbuf,len,price->feed[i],sizeof(price->feed[i]));//, fprintf(stderr,"%d ",len);
+            len = txind777_txbuf(txbuf,len,price->feed[i],sizeof(price->feed[i]));//, fprintf(stderr,"%d ",price->feed[i]);
         key[0] = blocknum, key[1] = 0;
         ramkv777_write(accts->pricefeeds,key,price->feed,size);
         return(len);
@@ -60,17 +60,17 @@ int32_t peggy_decisionthreshold(struct peggy_info *PEGS,struct peggy *PEG,uint32
 
 int32_t peggy_maxnetbalance(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB)
 {
-    PEG->limits.maxnetbalance = val;
+    PEG->maxnetbalance = val;
     return(0);
 }
 
 int32_t peggy_maxsupply(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB)
 {
-    PEG->limits.maxsupply = val;
+    PEG->maxsupply = val;
     return(0);
 }
 
-int32_t peggy_numtimeframes(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB)
+/*int32_t peggy_numtimeframes(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB)
 {
     PEG->limits.numtimeframes = (int32_t)val;
     return(0);
@@ -88,7 +88,7 @@ int32_t peggy_timescale(struct peggy_info *PEGS,struct peggy *PEG,uint32_t block
     if ( val < PEG->limits.numtimeframes )
         PEG->limits.scales[val] = valB;
     return(0);
-}
+}*/
 
 int32_t peggy_lockdays(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB)
 {
@@ -146,9 +146,7 @@ int32_t peggy_fees(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimes
 
 int32_t (*tunefuncs[])(struct peggy_info *PEGS,struct peggy *PEG,uint32_t blocktimestamp,int32_t actionflag,uint64_t val,uint64_t valB) =
 {
-    peggy_enable, peggy_dailyrate, peggy_quorum, peggy_decisionthreshold, peggy_maxnetbalance, peggy_maxsupply, peggy_numtimeframes,
-    peggy_timeframe, peggy_timescale, peggy_lockdays, peggy_clonesmear, peggy_mixrange, peggy_redemptiongap, peggy_extralockdays,
-    peggy_maxmargin, peggy_mindenomination, peggy_spread
+    peggy_enable, peggy_dailyrate, peggy_quorum, peggy_decisionthreshold, peggy_maxnetbalance, peggy_maxsupply, peggy_lockdays, peggy_clonesmear, peggy_mixrange, peggy_redemptiongap, peggy_extralockdays, peggy_maxmargin, peggy_mindenomination, peggy_spread
 };
 
 uint64_t peggy_onesigner(struct peggy_tx *Ptx)
@@ -283,8 +281,9 @@ int64_t peggy_txind_bets(uint8_t *txbuf,int32_t len,struct accts777_info *accts,
 
 int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint32_t blocknum,uint32_t blocktimestamp,uint64_t signer64bits,uint64_t signer64bitsB,int64_t fundedvalue,struct peggy_input *in,uint32_t ratio,struct peggy_output *out)
 {
-    struct acct777 *acct; int64_t value = 0; int32_t i,chainlen,polarity,peg; uint64_t satoshis,amount = 0,marginamount = 0;
-    struct peggy_unit readU; struct accts777_info *accts; union peggy_addr *addr = &out->dest;
+    struct acct777 *acct; struct ramkv777 *kv; struct ramkv777_item *item;
+    int64_t value = 0; int32_t i,chainlen,polarity,peg; uint32_t rawind; uint64_t satoshis,amount=0,marginamount = 0;
+    struct peggy_unit readU; struct accts777_info *accts; struct peggy_time T; union peggy_addr *addr = &out->dest;
     if ( (accts= PEGS->accts) == 0 )
         return(-1);
     acct = accts777_find(0,accts,addr,out->type);
@@ -292,6 +291,7 @@ int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint
         acct = accts777_create(accts,addr,out->type,blocknum,blocktimestamp);
     if ( acct == 0 )
         return(-1);
+    T.blocknum = blocknum, T.blocktimestamp = blocktimestamp;
     if ( in == 0 && fundedvalue != 0 )
         value = fundedvalue;
     else if ( in != 0 )
@@ -308,7 +308,7 @@ int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint
                 if ( (peg= in->src.newunit.newlock.peg) < 0 )
                     peg = -peg, polarity = -1;
                 else polarity = 1;
-                value = peggy_redeem(PEGS,amount == 0,PEGS->contracts[peg]->name.name,polarity,signer64bits,in->src.sha256,in->src.newunit.newlock.minlockdays,chainlen,blocktimestamp);
+                value = peggy_redeem(PEGS,T,amount == 0,PEGS->contracts[peg]->name.name,polarity,signer64bits,in->src.sha256,in->src.newunit.newlock.minlockdays,chainlen);
             }
             else if ( acct777_balance(accts,blocknum,blocktimestamp,&in->src,in->type) >= in->amount )
                 value = in->amount;
@@ -319,7 +319,10 @@ int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint
                 return(-1);
         } else return(-1);
     }
-    len = txind777_txbuf(txbuf,len,ramkv777_rawind(acct777_getaddrkv(accts,out->type),acct),sizeof(uint32_t));
+    if ( (kv= accts777_getaddrkv(accts,out->type)) != 0 && (item= ramkv777_itemptr(kv,acct)) != 0 )
+        rawind = item->rawind;
+    else rawind = 0;
+    len = txind777_txbuf(txbuf,len,rawind,sizeof(uint32_t));
     if ( out->type == PEGGY_ADDRBTCD )
     {
         if ( acct == 0 || opreturns_queue_payment(&accts->PaymentsQ,blocktimestamp,addr->coinaddr,value) < 0 )
@@ -332,7 +335,7 @@ int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint
             if ( addr->newunit.newlock.margin == 0 )
                 amount = value;
             else marginamount = value;
-            satoshis = peggy_createunit(PEGS,0,accts->peggyhash.txid,blocktimestamp,0,signer64bits,addr->newunit.sha256,&addr->newunit.newlock,amount,marginamount);
+            satoshis = peggy_createunit(PEGS,T,0,accts->peggyhash.txid,0,signer64bits,addr->newunit.sha256,&addr->newunit.newlock,amount,marginamount);
             len = txind777_txbuf_lock(txbuf,len,&addr->newunit.newlock);
             if ( in != 0 && in->type == PEGGY_ADDRUNIT )
             {
@@ -341,7 +344,7 @@ int64_t peggy_txind_send(uint8_t *txbuf,int32_t len,struct peggy_info *PEGS,uint
                 if ( peggy_swap(accts,signer64bits,signer64bitsB,in->src.sha256,addr->newunit.sha256) < 0 )
                     return(-1);
             }
-        } else return((int32_t)peggy_createunit(PEGS,&readU,accts->peggyhash.txid,blocktimestamp,0,signer64bits,addr->newunit.sha256,&addr->newunit.newlock,amount,marginamount));
+        } else return((int32_t)peggy_createunit(PEGS,T,&readU,accts->peggyhash.txid,0,signer64bits,addr->newunit.sha256,&addr->newunit.newlock,amount,marginamount));
     }
     else if ( acct != 0 )
     {
@@ -523,7 +526,7 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
         peggy_thanks_you(PEGS,tipvalue);
     if ( stakedblock != 0 )
     {
-        uint64_t sums[PEGGY_MAXPRICEDPEGS]; struct price_resolution price,aveprice;
+        uint64_t sums[PEGGY_MAXPRICEDPEGS]; struct price_resolution price,aveprice; struct peggy_time T;
         uint32_t key[2],nonz[PEGGY_MAXPRICEDPEGS],i,j,numprices,n,*feed; int32_t len; double startmilli;
         struct peggy_vote vote;//{ struct price_resolution price,tolerance; uint64_t nxt64bits,weight; };
         memset(sums,0,sizeof(sums)), memset(nonz,0,sizeof(nonz));
@@ -541,11 +544,11 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
                 {
                     if ( feed[j] != 0 )
                     {
-                        int32_t den = 1;
-                        if ( PEGS->contracts[j]->name.baseid <= 8 )
-                            den *= 5;
+                        //int32_t den = 1;
+                        //if ( PEGS->contracts[j]->name.baseid <= 8 )
+                        //    den *= 5;
                         memset(&vote,0,sizeof(vote));
-                        vote.pval = feed[j], vote.tolerance = (uint32_t)PEGS->default_spread.Pval / den;//(((uint64_t)PEGS->default_spread.Pval * feed[j])/( PRICE_RESOLUTION));
+                        vote.pval = feed[j], vote.tolerance = (uint32_t)(((uint64_t)3 * PEGS->default_spread.Pval * feed[j])/PRICE_RESOLUTION);
                         PEGS->votes[j][nonz[j]++] = vote;
                         sums[j] += feed[j];
                     }
@@ -563,12 +566,13 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
             aveprice = peggy_scaleprice(price,PEGS->contracts[j]->peggymils);
             if ( j > 0 )
             {
-                price = peggy_priceconsensus(PEGS,PEGS->numopreturns,PEGS->accts->pricefeeds->sha256.txid,j,blocktimestamp,PEGS->votes[j],nonz[j],0,0);
+                T.blocknum = PEGS->numopreturns-1, T.blocktimestamp = blocktimestamp;
+                price = peggy_priceconsensus(PEGS,T,PEGS->accts->pricefeeds->sha256.txid,j,PEGS->votes[j],nonz[j],0,0);
                 price = peggy_scaleprice(price,PEGS->contracts[j]->peggymils);
-                fprintf(stderr,"%10s.{%14.6f} %10.6f\n",PEGS->contracts[j]->name.name,Pval(&price),Pval(&price)-Pval(&aveprice));
+                fprintf(stderr,"%d %10s.{%14.6f} %10.6f\n",T.blocknum,PEGS->contracts[j]->name.name,Pval(&price),Pval(&price)-Pval(&aveprice));
             }
         }
- printf("staked.%u n.%d i.%d blocknum.%d t%u | processed in %.3f microseconds\n",stakedblock,n,i,blocknum,blocktimestamp,1000*(milliseconds() - startmilli));
+ printf("staked.%u n.%d i.%d blocknum.%d t%u | processed in %.3f microseconds | pricehash.%llx\n",stakedblock,n,i,blocknum,blocktimestamp,1000*(milliseconds() - startmilli),(long long)PEGS->accts->pricefeeds->sha256.txid);
     }
     return(txind);
 }
@@ -621,20 +625,21 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
         if ( opporate != 0 )
             n++;
         aprsum += (rate + opporate);
-        price = peggy_lastprice(PEGS,PEG,1,PEG->firsttimestamp,timestamp);
-        shortprice = peggy_lastprice(PEGS,PEG,-1,PEG->firsttimestamp,timestamp);
+        price = PEG->price; //peggy_lastprice(PEGS,PEG,1,PEG->genesistime,timestamp);
+        shortprice = peggy_shortprice(PEG,PEG->price); //peggy_lastprice(PEGS,PEG,-1,PEG->genesistime,timestamp);
         liability.Pval = (PEG->pool.liability.num * price.Pval);
         liabilities.Pval += liability.Pval;
         covercost = peggy_covercost(&num,&pos,&neg,PEGS,PEG,price,shortprice);
         covercosts += covercost, possum += pos, negsum += neg, count += num;
         jaddstr(item,"base",PEG->name.name);
-        jaddnum(item,"maxsupply",dstr(PEG->limits.maxsupply));
-        jaddnum(item,"maxnetbalance",dstr(PEG->limits.maxnetbalance));
+        jaddnum(item,"maxsupply",dstr(PEG->maxsupply));
+        jaddnum(item,"maxnetbalance",dstr(PEG->maxnetbalance));
         jaddnum(item,"numunits",num);
         jaddnum(item,"pendinginterests",dstr(pos));
         jaddnum(item,"pendinginterest_fees",dstr(neg));
         
         jaddnum(item,"price",Pval(&price));
+        jaddnum(item,"dayprice",Pval(&PEG->dayprice));
         jaddnum(item,"longunits",PEG->pool.liability.num);
         jaddnum(item,"liability",Pval(&liability));
         
@@ -653,7 +658,7 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
         depositsum += PEG->pool.funds.deposits;
     }
     jadd(json,"rates",array);
-    datenum = OS_conv_unixtime(&seconds,PEG->firsttimestamp);
+    datenum = OS_conv_unixtime(&seconds,PEG->genesistime);
     jaddnum(json,"start",(uint64_t)datenum*1000000 + (seconds/3600)*10000 + ((seconds%3600)/60)*100 + (seconds%60));
     datenum = OS_conv_unixtime(&seconds,timestamp);
     jaddnum(json,"timestamp",(uint64_t)datenum*1000000 + (seconds/3600)*10000 + ((seconds%3600)/60)*100 + (seconds%60));
@@ -693,4 +698,11 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
     if ( n != 0 )
         aprsum /= n;
     return(aprsum/100.);
+}
+
+void peggy_test()
+{
+    opreturns_init(0,(uint32_t)time(NULL),"PEGS");
+    peggy_tx("{\"txtype\":0,\"outputs\":[{\"lockhash\":\"1259ec21d31a30898d7cd1609f80d9668b4778e3d97e941044b39f0c44d2e51b\",\"type\":1,\"denom\":10,\"margin\":0,\"minlockdays\":7,\"maxlockdays\":20,\"peg\":\"USD\"}],\"privkey\":\"1259ec21d31a30898d7cd1609f80d9668b4778e3d97e941044b39f0c44d2e51b\"}");
+    getchar();
 }

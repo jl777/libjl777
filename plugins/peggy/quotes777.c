@@ -18,7 +18,7 @@
 #ifndef quotes777_h
 #define DEFINES_ONLY
 #include "quotes777.c"
-#include "serdes777.c"
+//#include "serdes777.c"
 #undef DEFINES_ONLY
 #endif
 
@@ -89,50 +89,6 @@ uint64_t peggy_smooth_coeffs[PEGGY_NUMCOEFFS] =	// numprimes.13
  1, 1, 1, 1, 1, 1, 0, 0, // isum 100000000000
 };
 
-struct price_resolution peggy_shortprice(struct peggy *PEG,struct price_resolution price)
-{
-    struct price_resolution shortprice;
-    memset(&shortprice,0,sizeof(shortprice));
-    if ( price.Pval != 0 )
-        shortprice.Pval = ((PRICE_RESOLUTION * PEG->genesisprice.Pval) / price.Pval);
-    return(shortprice);
-}
-
-struct price_resolution peggy_setprice(struct peggy *PEG,struct price_resolution price,int32_t day)
-{
-    if ( price.Pval > PRICE_RESOLUTION_MAXPVAL )
-    {
-        printf("peggy_setprice clip.%lld with %lld\n",(long long)price.Pval,(long long)PRICE_RESOLUTION_MAXPVAL);
-        price.Pval = PRICE_RESOLUTION_MAXPVAL;
-    }
-    else if ( price.Pval < -PRICE_RESOLUTION_MAXPVAL )
-    {
-        printf("peggy_setprice negclip.%lld with %lld\n",(long long)price.Pval,(long long)-PRICE_RESOLUTION_MAXPVAL);
-        price.Pval = -PRICE_RESOLUTION_MAXPVAL;
-    }
-    if ( PEG->name.hasprice != 0 )
-        PEG->baseprices[day] = price;
-    return(peggy_shortprice(PEG,price));
-}
-
-struct price_resolution peggy_price(struct peggy *PEG,int32_t day)
-{
-    struct price_resolution relprice,price;
-    memset(&price,0,sizeof(price));
-    price = PEG->baseprices[day];
-    if ( PEG->name.hasprice == 0 )
-    {
-        relprice = PEG->relprices[day];
-        if ( relprice.Pval != 0 )
-        {
-            if ( price.Pval < PRICE_RESOLUTION_MAXPVAL )
-                price.Pval = (PRICE_RESOLUTION * price.Pval) / relprice.Pval;
-            else price.Pval = PRICE_RESOLUTION_ROOT * ((PRICE_RESOLUTION_ROOT * price.Pval) / relprice.Pval);
-        }
-    }
-    return(price);
-}
-
 char *peggy_contracts[64] =
 {
     "BTCD", "USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "NZD", // major currencies
@@ -172,221 +128,74 @@ uint32_t peggy_mils(int32_t i)
     return(minmils);
 }
 
-struct price_resolution peggy_lastprice(struct peggy_info *PEGS,struct peggy *PEG,int32_t polarity,uint32_t firsttimestamp,uint32_t timestamp)
+int32_t peggy_setprice(struct peggy *PEG,struct price_resolution price,int32_t minute)
 {
-    int32_t day; int64_t prevperc,nextperc,gap; struct price_resolution prevprice,nextprice,price;
-    price.Pval = 0;
-    if ( timestamp >= firsttimestamp )
+    if ( PEG->name.hasprice != 0 )
     {
-        gap = ((timestamp - firsttimestamp) % PEGGY_DAYTICKS);
-        if ( (day= 1*0 + ((timestamp - firsttimestamp) / PEGGY_DAYTICKS)) < 0 )
-            day = 0;
-        nextperc = (PRICE_RESOLUTION * gap) / PRICE_RESOLUTION;
-        prevperc = (PRICE_RESOLUTION - nextperc);
-        //printf("[%d] t0.%u timestamp.%u -> day.%d prevperc.%lld nextperc.%lld\n",timestamp-PEG->firsttimestamp,PEG->firsttimestamp,timestamp,day,(long long)prevperc,(long long)nextperc);
-        while ( day >= 0 )
+        if ( price.Pval > PRICE_RESOLUTION_MAXPVAL )
         {
-            prevprice = peggy_price(PEG,day);//PEG->prices[day];
-            nextprice = peggy_price(PEG,day+1);//PEG->prices[day];
-            if ( nextprice.Pval == 0 )
-                nextprice = prevprice;
-            if ( prevprice.Pval > 0 )
-            {
-                if ( polarity < 0 )
-                {
-                    if ( Debuglevel > 2 )
-                        printf("shortprice of (%.6f %.6f) ",Pval(&prevprice),Pval(&nextprice));
-                    prevprice = peggy_shortprice(PEG,prevprice);
-                    nextprice = peggy_shortprice(PEG,nextprice);
-                }
-                price.Pval = ((prevprice.Pval * prevperc) + (nextprice.Pval * nextperc)) / PRICE_RESOLUTION;
-                if ( Debuglevel > 2 )
-                    printf("t0.%u timestamp.%u -> day.%d prevperc.%lld nextperc.%lld -> (%.6f %.6f) price %.6f %s\n",firsttimestamp,timestamp,day,(long long)prevperc,(long long)nextperc,Pval(&prevprice),Pval(&nextprice),Pval(&price),PEG->name.name);
-                //return(prevprice);
-                return(price);
-                break;
-            }
-            day--;
+            printf("peggy_setdayprice clip.%lld with %lld\n",(long long)price.Pval,(long long)PRICE_RESOLUTION_MAXPVAL);
+            price.Pval = PRICE_RESOLUTION_MAXPVAL;
         }
+        else if ( price.Pval <= 0 )
+        {
+            printf("peggy_setdayprice illegal negative of zeroprice %lld %s\n",(long long)price.Pval,PEG->name.name);
+            price.Pval = 0;
+        }
+        if ( PEG->baseprices[minute] != 0 )
+            price.Pval = (uint32_t)(price.Pval + PEG->baseprices[minute]) >> 1;
+        else if ( minute > PEG->RTminute )
+            PEG->RTminute = minute;
+        PEG->baseprices[minute] = (uint32_t)price.Pval;
+        while ( --minute > 0 && PEG->baseprices[minute] == 0 )
+            PEG->baseprices[minute] = (uint32_t)price.Pval;
+    }
+    return(minute);
+}
+
+struct price_resolution peggy_shortprice(struct peggy *PEG,struct price_resolution price)
+{
+    struct price_resolution shortprice;
+    memset(&shortprice,0,sizeof(shortprice));
+    if ( price.Pval != 0 )
+        shortprice.Pval = ((PRICE_RESOLUTION * PEG->genesisprice.Pval) / price.Pval);
+    return(shortprice);
+}
+
+struct price_resolution peggy_price(struct peggy *PEG,int32_t minute)
+{
+    struct price_resolution relprice,price;
+    memset(&price,0,sizeof(price));
+    if ( minute == PEG->RTminute )
+        minute--;
+    while ( (price.Pval= PEG->baseprices[minute]) == 0 && minute >= 0 )
+        minute--;
+    if ( PEG->name.hasprice == 0 )
+    {
+        relprice.Pval = PEG->relprices[minute];
+        if ( relprice.Pval != 0 )
+        {
+            if ( price.Pval < PRICE_RESOLUTION_MAXPVAL )
+                price.Pval = (PRICE_RESOLUTION * price.Pval) / relprice.Pval;
+            else price.Pval = PRICE_RESOLUTION_ROOT * ((PRICE_RESOLUTION_ROOT * price.Pval) / relprice.Pval);
+        } else price.Pval = 0;
     }
     return(price);
 }
 
-int32_t peggy_lastprices(struct peggy_info *PEGS,struct peggy *PEG,int32_t polarity,struct price_resolution *lastprices,uint32_t firsttimestamp,uint32_t timestamp)
+struct price_resolution peggy_aveprice(struct peggy *PEG,int32_t minute,int32_t width)
 {
-    int32_t i;
-    if ( PEG->name.id == 0 )
-        return(-1);
-    if ( lastprices != 0 )
-        for (i=0; i<PEG->limits.numtimeframes; i++)
-            lastprices[i] = peggy_lastprice(PEGS,PEG,polarity,firsttimestamp,timestamp - PEG->limits.timeframes[i]);
-    //printf("(%u - %u) -> %u, ",timestamp,P->firsttimestamp,(timestamp - P->firsttimestamp)/PEGGY_DAYTICKS);
-    if ( (i=(timestamp - firsttimestamp) / PEGGY_DAYTICKS) < 0 )
-        i = 0;
-    return(i);
-}
-
-struct price_resolution peggy_aveprice(struct peggy_info *PEGS,struct peggy *PEG,uint32_t timestamp,int32_t extradays,int32_t polarity,int32_t numiters)
-{
-    int32_t i,dir,ind,adjust; uint32_t t; struct price_resolution tmp,aveprice;
+    int32_t i,n; struct price_resolution price,aveprice;
     aveprice.Pval = 0;
-    dir = 1;
-    adjust = (numiters * PEGGY_HOURTICKS) / 2;
-    if ( adjust > PEGGY_DAYTICKS/2 )
-        adjust = PEGGY_DAYTICKS/2;
-        for (i=0; i<numiters; i++)
-        {
-            ind = (PEG->lockparms.extralockdays + extradays + dir*(i+1)/2) % PEG->lockparms.extralockdays;
-            if ( ind < 0 )
-                ind = 0;
-            t = timestamp + ind*PEGGY_DAYTICKS + ((i*PEGGY_HOURTICKS) % PEGGY_DAYTICKS) - adjust;
-            tmp = peggy_lastprice(PEGS,PEG,polarity,PEG->firsttimestamp,t);
-            aveprice.Pval += tmp.Pval;
-            printf("(t%u i.%d of %d dir.%d %d %.6f) ",t,i,numiters,dir,dir*(i+1)/2,Pval(&tmp));
-            dir = -dir;
-        }
-    aveprice.Pval /= numiters;
-    printf("-> %.6f\n",Pval(&aveprice));
+    for (i=n=0; i<width; i++,minute++)
+    {
+        price = peggy_price(PEG,minute);
+        if ( price.Pval != 0 )
+            aveprice.Pval += price.Pval, n++;
+    }
+    if ( n != 0 )
+        aveprice.Pval /= n;
     return(aveprice);
-}
-
-uint64_t peggy_gamblers(struct peggy_info *PEGS,uint32_t blocktimestamp,struct price_resolution prevprice,struct price_resolution refprice,uint64_t totalbets,struct peggy_bet *bets,int32_t numbets)
-{
-    int32_t j,match,oppo,numbest = 0; int64_t diff,preddiff,tmp,dist,bestdist;
-    uint64_t bet,payout,losingbets,winningbets,totalpayout,matchbets,oppobets,matchshares;
-    matchshares = matchbets = oppobets = losingbets = winningbets = bestdist = totalpayout = match = oppo = 0;
-    if ( (diff= (refprice.Pval - prevprice.Pval)) < 0 )
-        diff = -1;
-    else if ( diff > 0 )
-        diff = 1;
-    for (j=0; j<numbets; j++)
-    {
-        bets[j].minutes = (blocktimestamp - bets[j].timestamp) / 60;
-        bets[j].shares = bets[j].dist = 0;
-        if ( (bet= bets[j].dirbet) != 0 )
-        {
-            if ( (preddiff= (bets[j].prediction.Pval - prevprice.Pval)) < 0 )
-                preddiff = -1;
-            else if ( preddiff > 0 )
-                preddiff = 1;
-            if ( (tmp= diff*preddiff) > 0 )
-                match++, matchbets += bet, bets[j].shares = (bet * bets[j].minutes), matchshares += (bet * (1 + bets[j].minutes));
-            else if ( tmp < 0 )
-                oppo++, oppobets += bet;
-        }
-        if ( (bet= bets[j].distbet) != 0 )
-        {
-            if ( (dist= ((int64_t)refprice.Pval - bets[j].prediction.Pval)) < 0 )
-                dist = -dist;
-            bets[j].dist = ++dist;
-            if ( bestdist == 0 || dist < bestdist )
-                bestdist = dist;
-        }
-        bets[j].payout = 0;
-    }
-    for (j=0; j<numbets; j++)
-    {
-        if ( bets[j].dist == bestdist )
-            winningbets += bets[j].distbet, numbest++;
-        else losingbets += bets[j].distbet;
-    }
-    winningbets += (winningbets / 100);
-    for (j=0; j<numbets; j++)
-    {
-        if ( bets[j].dist == bestdist )
-            bets[j].payout = bets[j].distbet + ((bets[j].distbet * losingbets) / winningbets);
-    }
-    matchshares += (matchshares / 100);
-    for (payout=j=0; j<numbets; j++)
-    {
-        if ( bets[j].shares != 0 )
-            bets[j].payout = bets[j].dirbet + ((bets[j].shares * oppobets) / matchshares);
-        payout += bets[j].payout;
-    }
-    PEGS->bank.privatebetfees += (totalbets - payout);
-    if ( numbets != 0 )
-        printf("royalty %.8f (%.8f - payout %.8f) numbest.%d winningbets %.8f vs losingbets %.8f | match.%d %.8f, oppo.%d %.8f\n",dstr(totalbets - payout),dstr(totalbets),dstr(payout),numbest,dstr(winningbets),dstr(losingbets),match,dstr(matchbets),oppo,dstr(oppobets));
-    return(totalpayout);
-}
-
-struct price_resolution peggy_newprice(struct peggy_info *PEGS,struct peggy *PEG,int32_t day,struct price_resolution newprice)
-{
-    uint64_t sum,den; int32_t i,j; struct price_resolution price;
-    if ( newprice.Pval != 0 )
-    {
-        sum = den = 0;
-        sum = (((uint64_t)peggy_smooth_coeffs[0]) * newprice.Pval) / PRICE_RESOLUTION_ROOT;
-        den = peggy_smooth_coeffs[0];
-        for (i=1; i<PEGGY_NUMCOEFFS; i++)
-        {
-            j = (day - i);
-            if ( j >= 0 )
-            {
-                price = peggy_price(PEG,(int32_t)j);
-                sum += (((uint64_t)peggy_smooth_coeffs[i]) * price.Pval) / PRICE_RESOLUTION_ROOT;
-                den += peggy_smooth_coeffs[i];
-                //printf("i.%d ind.%d %llu sum %.6f den %.6f %.6f -> %.7f\n",i,(int32_t)ind,(uint64_t)peggy_smooth_coeffs[i],(double)sum/PRICE_RESOLUTION,(double)den/PRICE_RESOLUTION,Pval(&price),(double)sum/(den));
-            } else break;
-        }
-        //printf("i.%d ind.%d %llu sum %.6f den %.6f %.6f -> %.7f || ",i,(int32_t)ind,(uint64_t)peggy_smooth_coeffs[i],(double)sum/SATOSHIDEN,(double)den/SATOSHIDEN,Pval(&price),(double)sum/(den));
-        if ( den != 0 )
-        {
-            price.Pval = sum / (PRICE_RESOLUTION_ROOT * den);
-            newprice = price;
-        }
-        shortprice = peggy_setprice(PEG,newprice,day);
-        peggy_margincalls(PEGS,PEG,newprice,shortprice,blocktimestamp);
-        fprintf(stderr,"t.%u %d day.%-4d new %.8f %.8f %.10f | first %.10f ",blocktimestamp,blocktimestamp - PEG->firsttimestamp,day,Pval(&newprice),Pval(&shortprice),Pval(&price),Pval(&PEG->genesisprice));
-    } //else printf("\n");
-}
-
-struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,uint32_t blocknum,uint64_t seed,int16_t pricedpeg,uint32_t blocktimestamp,struct peggy_vote *votes,uint32_t numvotes,struct peggy_bet *bets,uint32_t numbets)
-{
-    struct peggy_entry entry; int64_t delta,weight,bet,totalwt = 0,totalbets = 0; int32_t i,j,k,day,n,m,incr; struct peggy *PEG;
-    struct price_resolution lastprices[MAX_TIMEFRAMES],price,newprice,shortprice; uint64_t ind,sum,den;
-    shortprice.Pval = newprice.Pval = 0;
-    if ( (PEG= peggy_find(&entry,PEGS,PEGS->contracts[pricedpeg]->name.name,1)) != 0 )
-    {
-        if ( bets != 0 )
-        {
-            for (i=m=0; i<numbets; i++)
-                if ( (bet= (bets[i].dirbet + bets[i].distbet)) != 0 )
-                    totalbets += bet, m++;
-        }
-        for (i=n=0; i<numvotes; i++)
-        {
-            if ( votes[i].pval != 0 )// votes[i].weight != 0 && votes[i].price.Pval != 0 )
-                totalwt += 1, n++;//votes[i].weight, n++;
-        }
-        if ( n < PEG->pool.quorum || totalwt < PEG->pool.decisionthreshold )
-            return(newprice);
-        //if ( (day= peggy_lastprices(PEGS,PEG,1,lastprices,PEG->firsttimestamp,blocktimestamp)) < 0 )
-        //    day = 0;
-        day = blocknum;
-        incr = (numvotes - 1), ind = (pricedpeg * seed);
-        for (k=0; k<numvotes; k++)
-        {
-            i = (int32_t)(ind % numvotes);
-            ind += incr;
-            for (weight=j=0; j<numvotes; j++)
-            {
-                //fprintf(stderr,"%lld ",(long long)(j*incr + seed) % numvotes);
-                if ( (delta= (votes[i].pval - votes[j].pval)) < 0 )//votes[j].price.Pval)) < 0 )
-                    delta = -delta;
-                //printf("(%lld %llu %u).%lld ",(long long)delta,(long long)votes[i].pval,votes[j].tolerance,(long long)weight);
-                if ( delta <= votes[j].tolerance )//votes[j].tolerance.Pval )
-                    weight += 1;//votes[j].weight;
-            }
-            if ( weight > (totalwt >> 1) )
-            {
-                newprice.Pval = votes[i].pval;
-                peggy_gamblers(PEGS,blocktimestamp,lastprices[0],newprice,totalbets,bets,numbets);
-                break;
-            }
-        }
-        fprintf(stderr,"k%-4d %4d-> %-11s %.6f wt.%-4lld/%4lld ",k,i,PEG->name.name,Pval(&newprice),(long long)weight,(long long)totalwt);
-    } else printf("cant find peg.%d\n",pricedpeg);
-    return(newprice);
 }
 
 // init time
@@ -405,7 +214,7 @@ void peggy_descriptions(struct peggy_info *PEGS,struct peggy_description *P,char
         printf("(%s) (%s) (%s) error cant find relid.%d for %llx\n",name,base,P->rel,P->relid,(long long)P->relbits);
 }
 
-int32_t peggy_timeframes(struct peggy_limits *limits,int64_t *scales,uint32_t *timeframes,int32_t numtimeframes,uint64_t maxsupply,uint64_t maxnetbalance)
+/*int32_t peggy_timeframes(struct peggy_limits *limits,int64_t *scales,uint32_t *timeframes,int32_t numtimeframes,uint64_t maxsupply,uint64_t maxnetbalance)
 {
     int32_t i;
     memset(limits,0,sizeof(*limits));
@@ -427,7 +236,7 @@ int32_t peggy_timeframes(struct peggy_limits *limits,int64_t *scales,uint32_t *t
     }
     limits->timeframes[0] = 0;
     return(0);
-}
+}*/
 
 int32_t peggy_lockparms(struct peggy_lock *dest,int32_t peg,struct peggy_lock *lockparms)
 {
@@ -438,29 +247,31 @@ int32_t peggy_lockparms(struct peggy_lock *dest,int32_t peg,struct peggy_lock *l
 	}
     if ( lockparms->mixrange == 0 )
         lockparms->mixrange = PEGGY_MIXRANGE;
-    if ( lockparms->extralockdays < PEGGY_MINEXTRADAYS )
+    if ( lockparms->extralockdays < PEGGY_MINEXTRADAYS * 2 )
         lockparms->extralockdays = PEGGY_MINEXTRADAYS * 2;
     *dest = *lockparms, dest->peg = peg;
     return(0);
 }
 
-int32_t peggy_setvars(struct peggy_info *PEGS,struct peggy *PEG,int16_t baseid,int16_t relid,int32_t peg,struct peggy_limits *limits,struct peggy_lock *lockparms,uint32_t unitincr,int32_t dailyrate,struct price_resolution *initialprices,int32_t numprices,int32_t hasprice)
+int32_t peggy_setvars(struct peggy_info *PEGS,struct peggy *PEG,int16_t baseid,int16_t relid,int32_t peg,uint64_t maxsupply,uint64_t maxnetbalance,struct peggy_lock *lockparms,uint32_t unitincr,int32_t dailyrate,struct price_resolution *initialprices,int32_t numprices,int32_t hasprice)
 {
     int32_t i;
     PEG->name.id = peg, PEG->name.hasprice = hasprice;
-    if ( peggy_timeframes(&PEG->limits,limits->scales,limits->timeframes,limits->numtimeframes,limits->maxsupply,limits->maxnetbalance) < 0 )
-        return(-1);
+    //if ( peggy_timeframes(&PEG->limits,limits->scales,limits->timeframes,limits->numtimeframes,limits->maxsupply,limits->maxnetbalance) < 0 )
+    //    return(-1);
     if ( peggy_lockparms(&PEG->lockparms,peg,lockparms) < 0 )
         return(-1);
     PEG->unitincr = unitincr;
     PEG->maxdailyrate = dailyrate;
+    PEG->maxsupply = maxsupply, PEG->maxnetbalance = maxnetbalance;
+
     if ( initialprices != 0 )
     {
         if ( numprices > 0 )
         {
             //if ( initialprices[0].Pval >= PRICE_RESOLUTION_MAXPVAL )
             //    initialprices[0].Pval = PRICE_RESOLUTION_MAXPVAL;
-            PEG->genesisprice = initialprices[0];
+            PEG->genesisprice = PEG->dayprice = PEG->price = initialprices[0];
             for (i=0; i<numprices; i++)
                 peggy_setprice(PEG,initialprices[i],i);
         }
@@ -476,14 +287,14 @@ struct price_resolution peggy_scaleprice(struct price_resolution price,int64_t p
     return(price);
 }
 
-struct peggy *peggy_createpair(struct peggy_info *PEGS,int64_t quorum,int64_t decisionthreshold,char *name,char *base,char *rel,struct peggy_limits *limits,struct peggy_lock *lockparms,uint32_t unitincr,int32_t maxdailyrate,uint32_t firsttimestamp,struct price_resolution *initialprices,int32_t numprices,struct price_resolution spread,uint16_t maxmargin,struct price_resolution mindenomination,int32_t contractnum,int32_t hasprice,int32_t peggymils)
+struct peggy *peggy_createpair(struct peggy_info *PEGS,int64_t quorum,int64_t decisionthreshold,char *name,char *base,char *rel,uint64_t maxsupply,uint64_t maxnetbalance,struct peggy_lock *lockparms,uint32_t unitincr,int32_t maxdailyrate,uint32_t firsttimestamp,struct price_resolution *initialprices,int32_t numprices,struct price_resolution spread,uint16_t maxmargin,struct price_resolution mindenomination,int32_t contractnum,int32_t hasprice,int32_t peggymils)
 {
     struct peggy *PEG; char *maincurrency; uint64_t assetbits,mainunitsize; int32_t i;
     maincurrency = PEGS->maincurrency, mainunitsize = PEGS->mainunitsize;
     if ( lockparms == 0 )
         lockparms = &PEGS->default_lockparms;
-    if ( limits == 0 )
-        limits = &PEGS->default_limits;
+    //if ( limits == 0 )
+    //    limits = &PEGS->default_limits;
     if ( (PEGS->numpegs == 0 && stringbits(base) != PEGS->mainbits) || maxmargin > PEGGY_MARGINMAX )
     {
         printf("peggy_create: numpegs.%d mismatched maincurrency.(%s) || illegal maxmargin.%d vs %d\n",PEGS->numpegs,maincurrency,maxmargin,PEGGY_MARGINMAX);
@@ -515,12 +326,12 @@ struct peggy *peggy_createpair(struct peggy_info *PEGS,int64_t quorum,int64_t de
     peggy_descriptions(PEGS,&PEG->name,name,base,rel);
     PEG->pool.quorum = (quorum != 0) ? quorum : PEGS->quorum, PEG->pool.decisionthreshold = (decisionthreshold != 0) ? decisionthreshold : PEGS->decisionthreshold;
     PEG->pool.mainunitsize = PEGS->mainunitsize, PEG->pool.mainbits = PEGS->mainbits;
-    PEG->firsttimestamp = firsttimestamp, PEG->name.id = PEGS->numpegs;
+    PEG->genesistime = firsttimestamp, PEG->name.id = PEGS->numpegs;
     PEG->spread = spread, PEG->lockparms.margin = maxmargin, PEG->mindenomination = mindenomination;
     if ( hasprice == 0 )
         PEG->baseprices = PEGS->pricedpegs[PEG->name.baseid].prices, PEG->relprices = PEGS->pricedpegs[PEG->name.relid].prices;
-    else PEG->baseprices = PEGS->pricedpegs[PEG->name.baseid].prices, PEG->relprices = 0;
-    if ( peggy_setvars(PEGS,PEG,PEG->name.baseid,PEG->name.relid,PEGS->numpegs,limits,lockparms,unitincr,maxdailyrate,initialprices,numprices,hasprice) < 0 )
+    else PEG->baseprices = PEGS->pricedpegs[PEG->name.id].prices, PEG->relprices = 0;
+    if ( peggy_setvars(PEGS,PEG,PEG->name.baseid,PEG->name.relid,PEGS->numpegs,maxsupply,maxnetbalance,lockparms,unitincr,maxdailyrate,initialprices,numprices,hasprice) < 0 )
     {
         printf("peggy_create: error init peggy.(%s) base.(%s) rel.(%s)\n",name,base,rel);
         return(0);
@@ -535,25 +346,26 @@ struct peggy *peggy_createpair(struct peggy_info *PEGS,int64_t quorum,int64_t de
     return(PEG);
 }
 
-struct peggy_info *peggy_init(char *path,int32_t maxdays,char *maincurrency,uint64_t maincurrencyunitsize,uint64_t quorum,uint64_t decisionthreshold,struct price_resolution spread,uint32_t dailyrate,struct peggy_limits *default_limits,int32_t interesttenths,int32_t posboost,int32_t negpenalty,int32_t feediv,int32_t feemult,uint32_t firsttimestamp,uint32_t BTCD_price0)
+struct peggy_info *peggy_init(char *path,int32_t maxdays,char *maincurrency,uint64_t maincurrencyunitsize,uint64_t quorum,uint64_t decisionthreshold,struct price_resolution spread,uint32_t dailyrate,int32_t interesttenths,int32_t posboost,int32_t negpenalty,int32_t feediv,int32_t feemult,uint32_t firsttimestamp,uint32_t BTCD_price0)
 {
-    struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
+    //struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
     struct peggy_lock default_lockparms = { 7, 365, 7, 0, 180, 0, -1 };
     struct price_resolution mindenom,price; struct peggy_info *PEGS = calloc(1,sizeof(*PEGS));
-    if ( default_limits != 0 )
-        limits = *default_limits;
+    //if ( default_limits != 0 )
+    //    limits = *default_limits;
     spread.Pval = PERCENTAGE(1);
     ensure_directory(path);
     strcpy(PEGS->maincurrency,maincurrency);
     PEGS->mainbits = stringbits(maincurrency), PEGS->mainunitsize = maincurrencyunitsize, PEGS->quorum = quorum, PEGS->decisionthreshold = decisionthreshold;
     PEGS->default_lockparms = default_lockparms, PEGS->default_lockparms.maxlockdays = maxdays;
-    PEGS->default_limits = limits, PEGS->default_spread = spread, PEGS->default_dailyrate = dailyrate;
+    //PEGS->default_limits = limits,
+    PEGS->default_spread = spread, PEGS->default_dailyrate = dailyrate;
     PEGS->interesttenths = interesttenths, PEGS->posboost = posboost, PEGS->negpenalty = negpenalty, PEGS->feediv = feediv, PEGS->feemult = feemult;
     mindenom.Pval = PRICE_RESOLUTION;
     PEGS->genesistime = firsttimestamp;
     price.Pval = PEGS->BTCD_price0 = BTCD_price0;
     printf("set genesistime.%u BTCD0.%u\n",firsttimestamp,BTCD_price0);
-    peggy_createpair(PEGS,0,0,"BTCD","BTCD",0,&limits,0,SATOSHIDEN,PEGGY_RATE_777,firsttimestamp,&price,1,spread,0,mindenom,0,1,peggy_mils(0));
+    peggy_createpair(PEGS,0,0,"BTCD","BTCD",0,SATOSHIDEN*1000000,SATOSHIDEN*100000,0,SATOSHIDEN,PEGGY_RATE_777,firsttimestamp,&price,1,spread,0,mindenom,0,1,peggy_mils(0));
     PEGS->accts = accts777_init(path,0);
     return(PEGS);
 }
@@ -643,7 +455,7 @@ int32_t peggy_prices(struct price_resolution prices[64],double btcusd,double btc
     return(nonz);
 }
 
-char *peggy_emitprices(int32_t *nonzp,struct peggy_info *PEGS,uint32_t blocknum,uint32_t blocktimestamp,int32_t maxlockdays)
+char *peggy_emitprices(int32_t *nonzp,struct peggy_info *PEGS,uint32_t blocktimestamp,int32_t maxlockdays)
 {
     int32_t prices777_getmatrix(double *basevals,double *btcusdp,double *btcdbtcp,double Hmatrix[32][32],double *RTprices,char *contracts[],int32_t num,uint32_t timestamp);
     double matrix[32][32],RTmatrix[32][32],cprices[64],basevals[64]; struct price_resolution prices[256];
@@ -741,9 +553,10 @@ char *peggy_mapname(char *basebuf,char *relbuf,int32_t i) // sorry it is messy t
 
 struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct peggy_info *PEGS,char *path,uint32_t firsttimestamp,char *opreturnstr)
 {
-    struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
-    struct price_resolution mindenom,spread,price; uint64_t len; long offset; uint8_t opret[1024]; struct peggy_tx Ptx; struct peggy *PEG;
-    int32_t i,c,baseid,relid,peggymils,signedcount,datalen,n=0,maxmargin,numprices,err=-1; uint32_t pval; char name[64],base[64],rel[64];
+    //struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
+    char name[64],base[64],rel[64]; uint8_t opret[1024]; struct peggy_tx Ptx; struct peggy *PEG;
+    struct price_resolution mindenom,spread,price; uint64_t len; long offset; uint64_t maxsupply,maxnetbalance;
+    int32_t i,c,baseid,relid,peggymils,signedcount,datalen,n=0,maxmargin,numprices,err=-1; uint32_t pval;
     numprices = 1;
     datalen = (int32_t)strlen(opreturnstr) / 2;
     decode_hex(opret,datalen,opreturnstr);
@@ -767,7 +580,7 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
                     lookbacks[0] = 0, lookbacks[1] = 1000;
                     if ( PEGS == 0 )
                     {
-                        PEGS = peggy_init(path,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,100,10,spread,PEGGY_RATE_777,0,40,10,2,5,2,Ptx.timestamp,Ptx.details.price.feed[0]);
+                        PEGS = peggy_init(path,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,1,1,spread,PEGGY_RATE_777,40,10,2,5,2,Ptx.timestamp,Ptx.details.price.feed[0]);
                         PEGS->accts = accts777_init(path,0);
                         PEGS->genesis = opreturnstr, opreturnstr = 0;
                     }
@@ -799,9 +612,9 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
             strcpy(name,base);
             if ( strcmp(rel,"BTCD") != 0 && is_decimalstr(base+strlen(base)-2) == 0 && strncmp(rel,"yield",5) != 0 && strcmp(base,"Copper") != 0 && strcmp(base,"NGAS") != 0 && strcmp(base,"UKOil") != 0 && strcmp(base,"USOil") != 0  )
                 strcat(name,rel);
-            limits.maxsupply = SATOSHIDEN * 10000, limits.maxnetbalance = SATOSHIDEN * 1000;
+            maxsupply = SATOSHIDEN * 10000, maxnetbalance = SATOSHIDEN * 1000;
             if ( strcmp(base,"BTC") == 0 || strcmp(base,"NXT") == 0 || strcmp(base,"USD") == 0 || strcmp(base,"CNY") == 0 )
-                limits.maxsupply *= 10, limits.maxnetbalance *= 10;
+                maxsupply *= 10, maxnetbalance *= 10;
             price.Pval = Ptx.details.price.feed[i];
             peggy_mapname(base,rel,i);
             pval = Ptx.details.price.feed[i];
@@ -809,7 +622,7 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
         else if ( i-sizeof(peggy_contracts)/sizeof(*peggy_contracts) < PEGGY_MAXPAIREDPEGS )
         {
             extern short Contract_base[],Contract_rel[];
-            limits.maxsupply = SATOSHIDEN * 10000, limits.maxnetbalance = SATOSHIDEN * 1000;
+            maxsupply = SATOSHIDEN * 10000, maxnetbalance = SATOSHIDEN * 1000;
             mindenom.Pval = PRICE_RESOLUTION * 10;
             c = i - (int32_t)(sizeof(peggy_contracts)/sizeof(*peggy_contracts));
             strcpy(base,CURRENCIES[Contract_base[c]]), strcpy(rel,CURRENCIES[Contract_rel[c]]);
@@ -821,11 +634,11 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
             else printf("mismatched %p base.(%s) baseid.%d (%s) or %p rel.(%s) relid.%d (%s)\n",PEGS->contracts[baseid],PEGS->contracts[baseid]->name.base,baseid,base,PEGS->contracts[relid],PEGS->contracts[relid]->name.base,relid,rel);
             pval = (uint32_t)price.Pval;
         } else printf("peggy_genesis RAN out of space\n");
-        if ( (PEG= peggy_createpair(PEGS,0,0,name,base,rel,&limits,0,SATOSHIDEN*10,PEGGY_RATE_777,firsttimestamp,&price,numprices,spread,maxmargin,mindenom,i,i<sizeof(peggy_contracts)/sizeof(*peggy_contracts),peggymils)) != 0 )
+        if ( (PEG= peggy_createpair(PEGS,0,0,name,base,rel,maxsupply,maxnetbalance,0,SATOSHIDEN*10,PEGGY_RATE_777,firsttimestamp,&price,numprices,spread,maxmargin,mindenom,i,i<sizeof(peggy_contracts)/sizeof(*peggy_contracts),peggymils)) != 0 )
         {
             price = peggy_scaleprice(price,peggymils);
             struct price_resolution x = peggy_price(PEG,0);
-            printf("%9s.(%-8s %5s) %17.10f %.10f %-10d maxmargin %2dx maxsupply %6.0f BTCD maxdiff %7.0f spread %.3f denom %-10.6f mils.%d\n",PEG->name.name,PEG->name.base,PEG->name.rel,Pval(&price),Pval(&x),pval,maxmargin,dstr(limits.maxsupply),dstr(limits.maxnetbalance),Pval(&spread),Pval(&mindenom),PEG->peggymils);
+            printf("%9s.(%-8s %5s) %17.10f %.10f %-10d maxmargin %2dx maxsupply %6.0f BTCD maxdiff %7.0f spread %.3f denom %-10.6f mils.%d\n",PEG->name.name,PEG->name.base,PEG->name.rel,Pval(&price),Pval(&x),pval,maxmargin,dstr(maxsupply),dstr(maxnetbalance),Pval(&spread),Pval(&mindenom),PEG->peggymils);
             n++;
         }
     }
@@ -836,10 +649,10 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
 void peggy()
 {
     int32_t lookbacks[OPRETURNS_CONTEXTS],nonz,num,peggylen; uint32_t timestamp = (uint32_t)time(0);
-    FILE *fp; uint8_t opret[8192]; char fname[512]; struct peggy_info *PEGS = opreturns_context("peggy",0);
+    FILE *fp; uint8_t opret[8192]; char fname[512],*opreturnstr; struct peggy_info *PEGS = opreturns_context("peggy",0);
     if ( PEGS != 0 )
     {
-        char *opreturnstr = peggy_emitprices(&nonz,PEGS,0,timestamp,PEGS->genesis != 0 ? 0 : PEGGY_MAXLOCKDAYS);
+        opreturnstr = peggy_emitprices(&nonz,PEGS,timestamp,PEGS->genesis != 0 ? 0 : PEGGY_MAXLOCKDAYS);
         if ( opreturnstr != 0 )
         {
             printf("update.%d opreturns.(%s) t%u\n",PEGS->numopreturns,opreturnstr,timestamp);
@@ -864,7 +677,7 @@ void peggy()
     }
 }
 
-uint64_t map_apr(struct peggy_limits *limits,uint64_t *spreadp,int32_t maxdays,double apr)
+uint64_t map_apr(uint64_t *spreadp,int32_t maxdays,double apr)
 {
     int64_t bestdiff,diff; int32_t i,n; double err; uint64_t rate,bestsatoshis,satoshis,bestrate = 0,target;
     target = PRICE_RESOLUTION * (1. + apr/100.);
@@ -900,10 +713,10 @@ uint64_t map_apr(struct peggy_limits *limits,uint64_t *spreadp,int32_t maxdays,d
 
 uint64_t peggy_dailyrates()
 {
-    struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
+    //struct peggy_limits limits = { { PERCENTAGE(10), PERCENTAGE(25), PERCENTAGE(33), PERCENTAGE(50) }, SATOSHIDEN * 10000, SATOSHIDEN * 1000, { 0, 30, 90, 180 }, 4 };
     extern int32_t dailyrates[];
     uint64_t satoshis,maxspread; int64_t err,errsum; int32_t i,milliperc;
-    dailyrates[0] = (int32_t)map_apr(&limits,&maxspread,PEGGY_MAXLOCKDAYS,(double)7770/1000);
+    dailyrates[0] = (int32_t)map_apr(&maxspread,PEGGY_MAXLOCKDAYS,(double)7770/1000);
     satoshis = peggy_compound(0,SATOSHIDEN,dailyrates[0],365);
     printf("%.2f%% %d %llu -> %llu %.2f%%\n",(double)7770/1000,dailyrates[0],(long long)SATOSHIDEN,(long long)satoshis,100. * ((double)(satoshis-SATOSHIDEN)/SATOSHIDEN));
     for (errsum=i=0; i<=100; i++)
@@ -922,7 +735,7 @@ uint64_t peggy_dailyrates()
         //int32_t dailyrates[101];
         for (milliperc=100; milliperc<=10000; milliperc+=100)
         {
-            dailyrates[milliperc/100] = (int32_t)map_apr(&limits,&maxspread,PEGGY_MAXLOCKDAYS,(double)milliperc/1000);
+            dailyrates[milliperc/100] = (int32_t)map_apr(&maxspread,PEGGY_MAXLOCKDAYS,(double)milliperc/1000);
             satoshis = peggy_compound(0,SATOSHIDEN,dailyrates[milliperc/100],365);
             printf("%.2f%% %d %llu -> %llu %.3f%%\n",(double)milliperc/1000,dailyrates[milliperc/100],(long long)SATOSHIDEN,(long long)satoshis,100. * ((double)(satoshis-SATOSHIDEN)/SATOSHIDEN));
         }
@@ -938,6 +751,8 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
 {
     int32_t lookbacks[OPRETURNS_CONTEXTS]; uint64_t allocsize,len; int32_t n,signedcount,valid=0; long offset;
     char fname[512]; uint8_t opret[8192]; struct peggy_tx Ptx; struct peggy_info *PEGS = _PEGS;
+    if ( blocknum == 0 )
+        opreturnstr = PEGGY_GENESIS;
     if ( data == 0 )
     {
         data = opret;
@@ -969,12 +784,12 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
                 int32_t j,nonz = 0;
                 for (j=0; j<Ptx.details.price.num; j++)
                     if ( Ptx.details.price.feed[j] != 0 )
-                        nonz++;
+                        nonz++, fprintf(stderr,"%u ",Ptx.details.price.feed[j]);
                 fprintf(stderr,"%d ",nonz);
                 //printf("%d: type.%d %u num.%d\n",i,Ptx.txtype,Ptx.timestamp,Ptx.details.price.num);
                 if ( PEGS == 0 )
                     PEGS = peggy_genesis(lookbacks,PEGS,path,Ptx.timestamp,opreturnstr);
-                else
+                else if ( Ptx.timestamp > PEGS->genesistime )
                 {
                     Ptx.flags |= PEGGY_FLAGS_PEGGYBASE;
                     if ( peggy_process(PEGS,1,Ptx.funding.src.coinaddr,Ptx.funding.amount,&data[offset+3],(int32_t)len-3,blocknum,Ptx.timestamp,blocknum) < 0 )
@@ -999,7 +814,7 @@ struct peggy_info *peggy_lchain(struct txinds777_info *opreturns,char *path)
     for (i=0; i<1000000; i++)
     {
         if ( PEGS == 0 )
-            PEGS = peggy_replay(path,opreturns,PEGS,i,0,0,0);
+            PEGS = peggy_replay(path,opreturns,PEGS,0,0,0,0);
         else if ( (tmp= peggy_replay(path,opreturns,PEGS,i,0,0,0)) != PEGS )
             break;
     }
@@ -1111,10 +926,10 @@ int32_t peggy_init_contexts(struct txinds777_info *opreturns,uint32_t RTblocknum
   //calc_smooth_code(539,13);
     peggy_dailyrates();
     if ( (PEGS= peggy_lchain(opreturns,"opreturns")) == 0 )
-        PEGS = peggy_init(path,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,100,10,spread,PEGGY_RATE_777,0,40,10,2,5,2,0,0);
+        PEGS = peggy_init(path,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,100,10,spread,PEGGY_RATE_777,40,10,2,5,2,0,0);
     globals[0] = PEGS;
     sprintf(buf,"%s_PERM",path);
-    globals[1] = PEGS2 = peggy_init(buf,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,100,10,spread,PEGGY_RATE_777,0,40,10,2,5,2,PEGS->genesistime,PEGS->BTCD_price0);
+    globals[1] = PEGS2 = peggy_init(buf,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,1,1,spread,PEGGY_RATE_777,40,10,2,5,2,PEGS->genesistime,PEGS->BTCD_price0);
     startmilli = milliseconds();
     peggy_clone(buf,PEGS2,PEGS);
     printf("cloned %d in %.3f millis per opreturn\n",PEGS->numopreturns,(milliseconds() - startmilli)/PEGS->numopreturns); sleep(3);
@@ -1123,5 +938,6 @@ int32_t peggy_init_contexts(struct txinds777_info *opreturns,uint32_t RTblocknum
 
 #endif
 #endif
-
+#include <stdint.h>
+extern int32_t Debuglevel;
 

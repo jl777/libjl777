@@ -404,17 +404,21 @@ char *relays_jsonstr(char *jsonstr,cJSON *argjson)
 
 void serverloop(void *_args)
 {
+    int32_t poll_daemons();
+    int32_t n;
+#ifdef INSIDE_MGW
     int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][64],int32_t n);
     int32_t mgw_processbus(char *retbuf,char *jsonstr,cJSON *json);
-    int32_t poll_daemons();
-    int32_t len,n; char retbuf[8192],*jsonstr; cJSON *json;
-    busdata_init(10,1,0);
+    int32_t len; char retbuf[8192],*jsonstr; cJSON *json;
     if ( SUPERNET.gatewayid >= 0 )
         MGW.all.socks.both.bus = make_MGWbus(MGW.port,SUPERNET.myipaddr,MGW.serverips,SUPERNET.numgateways+1*0);
+#endif
+    busdata_init(10,1,0);
     sleep(10);
     while ( OS_getppid() == SUPERNET.ppid )
     {
         n = poll_daemons();
+#ifdef INSIDE_MGW
         if ( SUPERNET.gatewayid >= 0 && (len= nn_recv(MGW.all.socks.both.bus,&jsonstr,NN_MSG,0)) > 0 )
         {
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
@@ -425,6 +429,7 @@ void serverloop(void *_args)
             //printf("MGW bus recv.%d json.%p\n",len,json);
             nn_freemsg(jsonstr);
         }
+#endif
         n += busdata_poll();
         if ( n == 0 && SUPERNET.APISLEEP > 0 )
             msleep(SUPERNET.APISLEEP);
@@ -562,12 +567,14 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
         }
+#ifdef INSIDE_MGW
         else if ( strcmp(methodstr,"msigaddr") == 0 )
         {
             char *devMGW_command(char *jsonstr,cJSON *json);
             if ( SUPERNET.gatewayid >= 0 )
                 retstr = devMGW_command(jsonstr,json);
         }
+#endif
         else
         {
             strcpy(retbuf,"{\"result\":\"relay command under construction\"}");

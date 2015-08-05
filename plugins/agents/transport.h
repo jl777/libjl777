@@ -13,7 +13,7 @@
 #include "survey.h"
 #include "pair.h"
 #include "pubsub.h"
-#include "utils/system777.c"
+#include "../common/system777.c"
 
 #define LOCALCAST 1
 #define BROADCAST 2

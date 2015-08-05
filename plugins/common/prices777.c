@@ -2678,6 +2678,11 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         init_Currencymasks();
         BUNDLE.jsonstr = clonestr(jsonstr);
         BUNDLE.kv = kv777_init("DB","prices",0);
+#define INSIDE_BTCD
+#ifdef INSIDE_BTCD
+        int32_t opreturns_init(uint32_t blocknum,uint32_t blocktimestamp,char *path);
+        opreturns_init(0,(uint32_t)time(NULL),"peggy");
+#endif
         printf("BUNDLE.kv.%p\n",BUNDLE.kv);
         strcpy(retbuf,"{\"result\":\"prices init\"}");
     }

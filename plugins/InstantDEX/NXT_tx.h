@@ -408,6 +408,7 @@ uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash,char *comment
     return(feetxid);
 }
 
+#ifdef INSIDE_MGW
 int32_t NXT_set_revassettrade(uint32_t ind,uint64_t key[2])
 {
     void *obj;
@@ -484,6 +485,63 @@ int32_t NXT_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t in
     }
     return(len);
 }
+#else
+extern struct ramkv777 *DB_revNXTtrades,*DB_NXTtrades;
+int32_t NXT_set_revassettrade(uint32_t ind,uint64_t key[2])
+{
+    //printf("NXT_set_revassettrade\n");
+    if ( DB_revNXTtrades != 0 )
+    {
+        if ( ramkv777_write(DB_revNXTtrades,&ind,key,sizeof(*key)*2) == 0 )
+            printf("error NXT_set_revassettrade ind.%d\n",ind);
+        else return(0);
+    }
+    return(-1);
+}
+
+int32_t NXT_revassettrade(uint64_t key[2],uint32_t ind)
+{
+    void *value; int32_t len = 0;
+    //printf("NXT_revassettrade\n");
+    memset(key,0,sizeof(*key)*2);
+    if ( DB_revNXTtrades != 0 )
+    {
+        if ( (value= ramkv777_read(&len,DB_revNXTtrades,&ind)) != 0 && len == sizeof(*key)*2 )
+            memcpy(key,value,len);
+    }
+    return(len);
+}
+
+int32_t NXT_add_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t ind)
+{
+    uint64_t key[2];
+    //printf("NXT_add_assettrade\n");
+    if ( DB_NXTtrades != 0 )
+    {
+        key[0] = tp->bidorder, key[1] = tp->askorder;
+        if ( ramkv777_write(DB_NXTtrades,key,tp,sizeof(*tp)) != 0 )
+            NXT_set_revassettrade(ind,key);
+        else printf("error writing NXT assettrade\n");
+    }
+    return(0);
+}
+
+int32_t NXT_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t ind)
+{
+    void *value; int32_t len = 0; uint64_t key[2];
+    //printf("NXT_assettrade\n");
+    if ( DB_NXTtrades != 0 )
+    {
+        key[0] = tp->bidorder, key[1] = tp->askorder;
+        value = ramkv777_read(&len,DB_NXTtrades,key);
+        if ( len == sizeof(*dest) )
+            memcpy(dest,value,len);
+        else printf("ERROR unexpected len.%d vs %ld\n",len,sizeof(*dest));
+        return(len);
+    }
+    return(0);
+}
+#endif
 
 int32_t NXT_trade(struct assettrade *tp,uint32_t ind)
 {

@@ -5,6 +5,8 @@
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 
+#ifdef INSIDE_MGW
+
 #ifdef DEFINES_ONLY
 #ifndef crypto777_ramchain_h
 #define crypto777_ramchain_h
@@ -411,6 +413,9 @@ int32_t ramchain_func(char *retbuf,int32_t maxlen,struct coin777 *coin,struct ra
     }
     return(-1);
 }
+#endif
 
 #endif
 #endif
+#include <stdint.h>
+extern int32_t Debuglevel;
