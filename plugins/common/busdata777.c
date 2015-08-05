@@ -22,7 +22,7 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)*/
 
 #define DEFINES_ONLY
-#include "system777.c"
+#include "../common/system777.c"
 #include "../utils/NXT777.c"
 #include "../agents/plugin777.c"
 #include "../utils/SaM.c"

@@ -271,7 +271,7 @@ double prices777_baseprice(uint32_t timestamp,int32_t basenum);
 
 #ifndef crypto777_system777_h
 #define DEFINES_ONLY
-#include "system777.c"
+#include "../common/system777.c"
 #undef DEFINES_ONLY
 #endif
 

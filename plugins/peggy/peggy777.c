@@ -726,8 +726,8 @@ void peggy_margincalls(struct peggy_info *PEGS,struct peggy_time T,struct peggy 
 
 struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct peggy_time T,uint64_t seed,int16_t pricedpeg,struct peggy_vote *votes,uint32_t numvotes,struct peggy_bet *bets,uint32_t numbets)
 {
-    struct peggy_entry entry; struct price_resolution newprice,dayprice; struct peggy *PEG;
-    int64_t delta,weight,totalwt = 0; int32_t i,j,n,day,wts[PEGGY_NUMCOEFFS]; uint32_t start,k; uint64_t ind;
+    struct peggy_entry entry; struct price_resolution newprice,dayprice,tmp; struct peggy *PEG;
+    int64_t delta,weight,totalwt = 0; int32_t i,j,n,minute,day,wts[PEGGY_NUMCOEFFS]; uint32_t start,k; uint64_t ind;
     newprice.Pval = 0;
     if ( (PEG= peggy_find(&entry,PEGS,PEGS->contracts[pricedpeg]->name.name,1)) != 0 )
     {
@@ -786,7 +786,8 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
             dayprice.Pval = 0;
             for (minute=PEG->day*1440,i=n=0; i<1440; i++,minute++)
             {
-                if ( (tmp= peggy_price(PEG,minute)) != 0 )
+                tmp = peggy_price(PEG,minute);
+                if ( tmp.Pval != 0 )
                     dayprice.Pval += tmp.Pval, n++;
             }
             if ( n != 0 )
@@ -794,7 +795,7 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
             PEG->dayprice = dayprice;
             PEG->dayprices[day] = (uint32_t)dayprice.Pval;
             printf(">>>>>>>>>>>> DAY PRICE.%d %s %.8f\n",day,PEG->name.name,Pval(&dayprice));
-            while ( --day > 0 && Peg->dayprices[day].Pval == 0 )
+            while ( --day > 0 && PEG->dayprices[day] == 0 )
                 PEG->dayprices[day] = (uint32_t)dayprice.Pval;
         }
         peggy_margincalls(PEGS,T,PEG,PEG->price,peggy_shortprice(PEG,PEG->price));

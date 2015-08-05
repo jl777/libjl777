@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include "../includes/cJSON.h"
 #include "../KV/kv777.c"
-#include "system777.c"
+#include "../common/system777.c"
 
 #endif
 #else

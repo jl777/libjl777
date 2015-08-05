@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include "system777.c"
+#include "../common/system777.c"
 #include "utils777.c"
 
 // rest of file needs to be OS portable

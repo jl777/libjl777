@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "bits777.c"
-#include "system777.c"
+#include "../common/system777.c"
 
 struct alloc_space { void *ptr; long used,size; int32_t alignflag; uint8_t space[4]; };
 

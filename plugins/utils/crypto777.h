@@ -34,7 +34,7 @@ extern uint64_t MIN_NQTFEE;
 
 #define DEFINES_ONLY
 
-#include "system777.c"
+#include "../common/system777.c"
 #include "bits777.c"
 #include "utils777.c"
 #include "NXT777.c"
