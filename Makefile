@@ -43,7 +43,7 @@ K = plugins/KV
 
 UTILS = $(U)/ramcoder.c $(U)/huffstream.c $(U)/inet.c $(U)/cJSON.c  $(U)/bits777.c $(U)/NXT777.c $(U)/files777.c $(U)/utils777.c
 #SOPHIA = $(S)/sophia.c $(S)/kv777_main.c $(S)/db777.c $(S)/kv777.c
-PEGGY = $(P)/peggy777.c $(P)/quotes777.c $(P)/serdes777.c #$(P)/accts777.c #$(P)/peggytx.c
+PEGGY = $(P)/peggy777.c $(P)/quotes777.c #$(P)/serdes777.c $(P)/accts777.c #$(P)/peggytx.c
 RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 KV = $(K)/kv777_main.c $(K)/kv777.c $(K)/ramkv777.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
