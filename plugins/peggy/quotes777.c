@@ -89,6 +89,8 @@ uint64_t peggy_smooth_coeffs[PEGGY_NUMCOEFFS] =	// numprimes.13
  1, 1, 1, 1, 1, 1, 0, 0, // isum 100000000000
 };
 
+int32_t Peggy_inds[539] = {289, 404, 50, 490, 59, 208, 87, 508, 366, 288, 13, 38, 159, 440, 120, 480, 361, 104, 534, 195, 300, 362, 489, 108, 143, 220, 131, 244, 133, 473, 315, 439, 210, 456, 219, 352, 153, 444, 397, 491, 286, 479, 519, 384, 126, 369, 155, 427, 373, 360, 135, 297, 256, 506, 322, 425, 501, 251, 75, 18, 420, 537, 443, 438, 407, 145, 173, 78, 340, 240, 422, 160, 329, 32, 127, 128, 415, 495, 372, 522, 60, 238, 129, 364, 471, 140, 171, 215, 378, 292, 432, 526, 252, 389, 459, 350, 233, 408, 433, 51, 423, 19, 62, 115, 211, 22, 247, 197, 530, 7, 492, 5, 53, 318, 313, 283, 169, 464, 224, 282, 514, 385, 228, 175, 494, 237, 446, 105, 150, 338, 346, 510, 6, 348, 89, 63, 536, 442, 414, 209, 216, 227, 380, 72, 319, 259, 305, 334, 236, 103, 400, 176, 267, 355, 429, 134, 257, 527, 111, 287, 386, 15, 392, 535, 405, 23, 447, 399, 291, 112, 74, 36, 435, 434, 330, 520, 335, 201, 478, 17, 162, 483, 33, 130, 436, 395, 93, 298, 498, 511, 66, 487, 218, 65, 309, 419, 48, 214, 377, 409, 462, 139, 349, 4, 513, 497, 394, 170, 307, 241, 185, 454, 29, 367, 465, 194, 398, 301, 229, 212, 477, 303, 39, 524, 451, 116, 532, 30, 344, 85, 186, 202, 517, 531, 515, 230, 331, 466, 147, 426, 234, 304, 64, 100, 416, 336, 199, 383, 200, 166, 258, 95, 188, 246, 136, 90, 68, 45, 312, 354, 184, 314, 518, 326, 401, 269, 217, 512, 81, 88, 272, 14, 413, 328, 393, 198, 226, 381, 161, 474, 353, 337, 294, 295, 302, 505, 137, 207, 249, 46, 98, 27, 458, 482, 262, 253, 71, 25, 0, 40, 525, 122, 341, 107, 80, 165, 243, 168, 250, 375, 151, 503, 124, 52, 343, 371, 206, 178, 528, 232, 424, 163, 273, 191, 149, 493, 177, 144, 193, 388, 1, 412, 265, 457, 255, 475, 223, 41, 430, 76, 102, 132, 96, 97, 316, 472, 213, 263, 3, 317, 324, 274, 396, 486, 254, 205, 285, 101, 21, 279, 58, 467, 271, 92, 538, 516, 235, 332, 117, 500, 529, 113, 445, 390, 358, 79, 34, 488, 245, 83, 509, 203, 476, 496, 347, 280, 12, 84, 485, 323, 452, 10, 146, 391, 293, 86, 94, 523, 299, 91, 164, 363, 402, 110, 321, 181, 138, 192, 469, 351, 276, 308, 277, 428, 182, 260, 55, 152, 157, 382, 121, 507, 225, 61, 431, 31, 106, 327, 154, 16, 49, 499, 73, 70, 449, 460, 187, 24, 248, 311, 275, 158, 387, 125, 67, 284, 35, 463, 190, 179, 266, 376, 221, 42, 26, 290, 357, 268, 43, 167, 99, 374, 242, 156, 239, 403, 339, 183, 320, 180, 306, 379, 441, 20, 481, 141, 77, 484, 69, 410, 502, 172, 417, 118, 461, 261, 47, 333, 450, 296, 453, 368, 359, 437, 421, 264, 504, 281, 270, 114, 278, 56, 406, 448, 411, 521, 418, 470, 123, 455, 148, 356, 468, 109, 204, 533, 365, 8, 345, 174, 370, 28, 57, 11, 2, 231, 310, 196, 119, 82, 325, 44, 342, 37, 189, 142, 222, 9, 54, };
+
 char *peggy_contracts[64] =
 {
     "BTCD", "USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "NZD", // major currencies
@@ -183,13 +185,13 @@ struct price_resolution peggy_price(struct peggy *PEG,int32_t minute)
     return(price);
 }
 
-struct price_resolution peggy_aveprice(struct peggy *PEG,int32_t minute,int32_t width)
+struct price_resolution peggy_aveprice(struct peggy *PEG,int32_t day,int32_t width)
 {
     int32_t i,n; struct price_resolution price,aveprice;
     aveprice.Pval = 0;
-    for (i=n=0; i<width; i++,minute++)
+    for (i=n=0; i<width; i++,day++)
     {
-        price = peggy_price(PEG,minute);
+        price.Pval = PEG->dayprices[day];
         if ( price.Pval != 0 )
             aveprice.Pval += price.Pval, n++;
     }
@@ -724,7 +726,7 @@ uint64_t peggy_dailyrates()
         satoshis = peggy_compound(0,SATOSHIDEN,dailyrates[i],365);
         //printf("%.1f%%: %d %llu -> %llu %.3f%%\n",(double)i*.1,dailyrates[i],(long long)PRICE_RESOLUTION,(long long)satoshis,100. * (double)satoshis/PRICE_RESOLUTION - 100.);
         printf("%.2f%% ",100. * (double)satoshis/SATOSHIDEN - 100.);
-        err = 1000. * (1000. * 100. * (((double)satoshis/SATOSHIDEN) - 1.) - (i == 0 ? 7770 : i*100));
+        err = (satoshis - SATOSHIDEN) - (i == 0 ? 7770000 : i*100000);
         errsum += err < 0 ? -err : err;
         //printf("i.%d err %lld sum %lld\n",i,(long long)err,(long long)errsum);
     }
@@ -915,6 +917,26 @@ void calc_smooth_code(int32_t smoothwidth,int32_t _maxprimes)
 	//printf("_Constants size %d\n",(int)__constant_size);
 }
 
+void peggy_geninds()
+{
+    int32_t inds[PEGGY_NUMCOEFFS],tmp,i,n = PEGGY_NUMCOEFFS;
+    for (i=0; i<n; i++)
+        inds[i] = i;
+    printf("int32_t Peggy_inds[%d] = {",PEGGY_NUMCOEFFS);
+    while ( n > 0 )
+    {
+        i = ((rand() >> 8) % n);
+        //printf("(n.%d [%d] i.%d [%d]) ",n,inds[n],i,inds[i]);
+        n--;
+        tmp = inds[n];
+        inds[n] = inds[i];
+        inds[i] = tmp;
+    }
+    for (i=0; i<PEGGY_NUMCOEFFS; i++)
+        printf("%d, ",inds[i]);
+    printf("};\n");
+}
+
 int32_t peggy_init_contexts(struct txinds777_info *opreturns,uint32_t RTblocknum,uint32_t RTblocktimestamp,char *path,void *globals[OPRETURNS_CONTEXTS],int32_t lookbacks[OPRETURNS_CONTEXTS],int32_t maxcontexts)
 {
     double startmilli; char buf[512]; struct price_resolution spread; struct peggy_info *PEGS=0,*PEGS2=0;
@@ -924,6 +946,12 @@ int32_t peggy_init_contexts(struct txinds777_info *opreturns,uint32_t RTblocknum
         exit(-1);
     }
   //calc_smooth_code(539,13);
+    if ( sizeof(Peggy_inds)/sizeof(*Peggy_inds) != PEGGY_NUMCOEFFS )
+    {
+        peggy_geninds();
+        printf("need to update Peggy_inds with above\n");
+        exit(-1);
+    }
     peggy_dailyrates();
     if ( (PEGS= peggy_lchain(opreturns,"opreturns")) == 0 )
         PEGS = peggy_init(path,PEGGY_MAXLOCKDAYS,"BTCD",SATOSHIDEN/100,100,10,spread,PEGGY_RATE_777,40,10,2,5,2,0,0);

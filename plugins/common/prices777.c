@@ -99,7 +99,7 @@ struct prices777
     char url[512],exchange[64],base[64],rel[64],lbase[64],lrel[64],key[64],contract[64],origbase[64],origrel[64];
     uint64_t contractnum,ap_mult; int32_t keysize; double lastupdate,decay,oppodecay;
     uint32_t exchangeid,numquotes,updated,lasttimestamp,RTflag,fifoinds[6];
-    double orderbook[MAX_DEPTH][2][2],prevorderbook[MAX_DEPTH][2][2],prev2orderbook[MAX_DEPTH][2][2];
+    double orderbook[MAX_DEPTH][2][2],prevorderbook[MAX_DEPTH][2][2],prev2orderbook[MAX_DEPTH][2][2],lastprice;
     struct prices777_nxtbooks *nxtbooks;
     float days[DAYS_FIFO],hours[HOURS_FIFO],minutes[MINUTES_FIFO];
 };
@@ -1661,6 +1661,8 @@ void prices777_exchangeloop(void *ptr)
                 if ( milliseconds() > exchange->lastupdate + exchange->pollgap && milliseconds() > prices->lastupdate + 60000 )
                 {
                     (*exchange->updatefunc)(prices,MAX_DEPTH);
+                    if ( prices->orderbook[0][0][0] != 0. && prices->orderbook[0][1][0] != 0 )
+                        prices->lastprice = _pairaved(prices->orderbook[0][0][0],prices->orderbook[0][1][0]);
                     exchange->lastupdate = milliseconds(), prices->lastupdate = milliseconds();
                     kv777_write(BUNDLE.kv,prices->key,prices->keysize,prices,sizeof(*prices));
                     n++;
@@ -1722,12 +1724,12 @@ int32_t prices777_init(char *jsonstr)
         if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,"poloniex","XCP","BTC",0.)) != 0 )
             BUNDLE.num++;
         for (i=0; i<sizeof(btcdexchanges)/sizeof(*btcdexchanges); i++)
-            if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,btcdexchanges[i],"BTCD","BTC",0.)) != 0 )
-                BUNDLE.num++;
-        for (i=0; i<sizeof(btcdexchanges)/sizeof(*btcdexchanges); i++)
             if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,btcusdexchanges[i],"BTC","USD",0.)) != 0 )
                 BUNDLE.num++;
     }
+    for (i=0; i<sizeof(btcdexchanges)/sizeof(*btcdexchanges); i++)
+        if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,btcdexchanges[i],"BTCD","BTC",0.)) != 0 )
+            BUNDLE.num++;
     if ( (json= cJSON_Parse(jsonstr)) != 0 && (exchanges= jarray(&n,json,"prices")) != 0 )
     {
         for (i=0; i<n; i++)
@@ -2024,21 +2026,44 @@ void price777_update(double *btcusdp,double *btcdbtcp)
             }
         }
     }
-    btcdhist = url_json(url);
-    //{"date":1406160000,"high":0.01,"low":0.00125,"open":0.01,"close":0.001375,"volume":1.50179994,"quoteVolume":903.58818412,"weightedAverage":0.00166204},
-    if ( (array= jarray(&n,btcdhist,0)) != 0 )
+    price = 0.;
+    for (i=n=0; i<BUNDLE.num; i++)
     {
-        //printf("GOT.(%s)\n",cJSON_Print(array));
-        for (i=0; i<1; i++)
+        if ( strcmp(BUNDLE.ptrs[i]->lbase,"btcd") == 0 && strcmp(BUNDLE.ptrs[i]->lrel,"btc") == 0 && BUNDLE.ptrs[i]->lastprice != 0. )
         {
-            item = jitem(array,i);
-            timestamp = juint(item,"date"), high = jdouble(item,"high"), low = jdouble(item,"low"), open = jdouble(item,"open");
-            close = jdouble(item,"close"), vol = jdouble(item,"volume"), quotevol = jdouble(item,"quoteVolume"), price = jdouble(item,"weightedAverage");
-            //printf("[%u %f %f %f %f %f %f %f]",timestamp,high,low,open,close,vol,quotevol,price);
-            //printf("[%u %d %f]",timestamp,OS_conv_unixtime(&seconds,timestamp),price);
-            btcddaily = price;
+            price += BUNDLE.ptrs[i]->lastprice;
+            n++;
         }
-        //printf("poloniex.%d\n",n);
+    }
+    if ( n != 0 )
+    {
+        price /= n;
+        *btcdbtcp = price;
+        printf("set BTCD price %f\n",price);
+        BUNDLE.btcdbtc = price;
+    }
+    else
+    {
+        btcdhist = url_json(url);
+        //{"date":1406160000,"high":0.01,"low":0.00125,"open":0.01,"close":0.001375,"volume":1.50179994,"quoteVolume":903.58818412,"weightedAverage":0.00166204},
+        if ( btcdhist != 0 && (array= jarray(&n,btcdhist,0)) != 0 )
+        {
+            //printf("GOT.(%s)\n",cJSON_Print(array));
+            for (i=0; i<1; i++)
+            {
+                item = jitem(array,i);
+                timestamp = juint(item,"date"), high = jdouble(item,"high"), low = jdouble(item,"low"), open = jdouble(item,"open");
+                close = jdouble(item,"close"), vol = jdouble(item,"volume"), quotevol = jdouble(item,"quoteVolume"), price = jdouble(item,"weightedAverage");
+                //printf("[%u %f %f %f %f %f %f %f]",timestamp,high,low,open,close,vol,quotevol,price);
+                //printf("[%u %d %f]",timestamp,OS_conv_unixtime(&seconds,timestamp),price);
+                btcddaily = price;
+                if ( btcddaily != 0 )
+                    BUNDLE.btcdbtc = *btcdbtcp = btcddaily;
+            }
+            //printf("poloniex.%d\n",n);
+        }
+        if ( btcdhist != 0 )
+            free_json(btcdhist);
     }
     // https://blockchain.info/ticker
     /*
@@ -2065,12 +2090,7 @@ void price777_update(double *btcusdp,double *btcdbtcp)
      "BRL" : {"15m" : 944.91, "last" : 944.91, "buy" : 945.95, "sell" : 946.05,  "symbol" : "R$"},
      "RUB" : {"15m" : 16695.05, "last" : 16695.05, "buy" : 16713.58, "sell" : 16715.32,  "symbol" : "RUB"}
      }*/
-    if ( (item= jobj(blockchaininfo,"USD")) != 0 && (price= jdouble(item,"15m")) > SMALLVAL )
-    {
-        //printf("blockchaininfo %f %f\n",btcusd,price);
-        dxblend(&btcusd,price,0.5);
-    }
-    /*{
+     /*{
         "24h_avg": 281.22,
         "ask": 280.12,
         "bid": 279.33,
@@ -2078,27 +2098,32 @@ void price777_update(double *btcusdp,double *btcdbtcp)
         "timestamp": "Sun, 02 Aug 2015 09:36:34 -0000",
         "total_vol": 39625.8
     }*/
-    if ( (price= jdouble(bitcoinave,"24h_avg")) > SMALLVAL )
-    {
-        //printf("bitcoinave %f %f\n",btcusd,price);
-        dxblend(&btcusd,price,0.5);
-    }
   
     if ( bitcoinave != 0 )
+    {
+        if ( (price= jdouble(bitcoinave,"24h_avg")) > SMALLVAL )
+        {
+            //printf("bitcoinave %f %f\n",btcusd,price);
+            dxblend(&btcusd,price,0.5);
+        }
         free_json(bitcoinave);
+    }
     if ( quandl != 0 )
         free_json(quandl);
-    if ( btcdhist != 0 )
-        free_json(btcdhist);
     if ( coindesk != 0 )
         free_json(coindesk);
     if ( blockchaininfo != 0 )
+    {
+        if ( (item= jobj(blockchaininfo,"USD")) != 0 && item != 0 && (price= jdouble(item,"15m")) > SMALLVAL )
+        {
+            //printf("blockchaininfo %f %f\n",btcusd,price);
+            dxblend(&btcusd,price,0.5);
+        }
         free_json(blockchaininfo);
+    }
     if ( btcusd != 0 )
         BUNDLE.btcusd = *btcusdp = btcusd;
     
-    if ( btcddaily != 0 )
-        BUNDLE.btcdbtc = *btcdbtcp = btcddaily;
     
     // https://poloniex.com/public?command=returnChartData&currencyPair=BTC_BTCD&start=1405699200&end=9999999999&period=86400
 

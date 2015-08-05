@@ -527,16 +527,16 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
     if ( stakedblock != 0 )
     {
         uint64_t sums[PEGGY_MAXPRICEDPEGS]; struct price_resolution price,aveprice; struct peggy_time T;
-        uint32_t key[2],nonz[PEGGY_MAXPRICEDPEGS],i,j,numprices,n,*feed; int32_t len; double startmilli;
+        uint32_t key[2],nonz[PEGGY_MAXPRICEDPEGS],i,j,block,numprices,n,*feed; int32_t len; double startmilli;
         struct peggy_vote vote;//{ struct price_resolution price,tolerance; uint64_t nxt64bits,weight; };
         memset(sums,0,sizeof(sums)), memset(nonz,0,sizeof(nonz));
-        if ( blocknum <= 1000 )
-            i = 1;
-        else i = blocknum - 1000;
+        if ( blocknum <= PEGGY_NUMCOEFFS )
+            block = 1;
+        else block = blocknum - PEGGY_NUMCOEFFS + 1;
         startmilli = milliseconds();
-        for (n=0; i<=blocknum; i++)
+        for (n=i=0; block<=blocknum&&i<PEGGY_NUMCOEFFS; i++,block++)
         {
-            key[0] = i, key[1] = 0;
+            key[0] = block, key[1] = 0;
             if ( (feed= ramkv777_read(&len,PEGS->accts->pricefeeds,key)) != 0 )
             {
                 numprices = (uint32_t)(len / sizeof(len));
@@ -569,7 +569,7 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
                 T.blocknum = PEGS->numopreturns-1, T.blocktimestamp = blocktimestamp;
                 price = peggy_priceconsensus(PEGS,T,PEGS->accts->pricefeeds->sha256.txid,j,PEGS->votes[j],nonz[j],0,0);
                 price = peggy_scaleprice(price,PEGS->contracts[j]->peggymils);
-                fprintf(stderr,"%d %10s.{%14.6f} %10.6f\n",T.blocknum,PEGS->contracts[j]->name.name,Pval(&price),Pval(&price)-Pval(&aveprice));
+                fprintf(stderr,"%d %10s.{%14.6f} %7.4f%%\n",T.blocknum,PEGS->contracts[j]->name.name,Pval(&price),(fabs(Pval(&price)/Pval(&aveprice))-1)*100);
             }
         }
  printf("staked.%u n.%d i.%d blocknum.%d t%u | processed in %.3f microseconds | pricehash.%llx\n",stakedblock,n,i,blocknum,blocktimestamp,1000*(milliseconds() - startmilli),(long long)PEGS->accts->pricefeeds->sha256.txid);

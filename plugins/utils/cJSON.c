@@ -833,8 +833,8 @@ int32_t get_API_int(cJSON *obj,int32_t val)
     }
     return(val);
 }
-int32_t jint(cJSON *json,char *field) { if ( field == 0 ) return(get_API_int(json,0)); return(get_API_int(cJSON_GetObjectItem(json,field),0)); }
-int32_t jinti(cJSON *json,int32_t i) { return(get_API_int(cJSON_GetArrayItem(json,i),0)); }
+int32_t jint(cJSON *json,char *field) { if ( json == 0 ) return(0); if ( field == 0 ) return(get_API_int(json,0)); return(get_API_int(cJSON_GetObjectItem(json,field),0)); }
+int32_t jinti(cJSON *json,int32_t i) { if ( json == 0 ) return(0); return(get_API_int(cJSON_GetArrayItem(json,i),0)); }
 
 uint32_t get_API_uint(cJSON *obj,uint32_t val)
 {
@@ -848,8 +848,8 @@ uint32_t get_API_uint(cJSON *obj,uint32_t val)
     }
     return(val);
 }
-uint32_t juint(cJSON *json,char *field) { if ( field == 0 ) return(get_API_uint(json,0)); return(get_API_uint(cJSON_GetObjectItem(json,field),0)); }
-uint32_t juinti(cJSON *json,int32_t i) { return(get_API_uint(cJSON_GetArrayItem(json,i),0)); }
+uint32_t juint(cJSON *json,char *field) { if ( json == 0 ) return(0); if ( field == 0 ) return(get_API_uint(json,0)); return(get_API_uint(cJSON_GetObjectItem(json,field),0)); }
+uint32_t juinti(cJSON *json,int32_t i) { if ( json == 0 ) return(0); return(get_API_uint(cJSON_GetArrayItem(json,i),0)); }
 
 double get_API_float(cJSON *obj)
 {
@@ -864,11 +864,39 @@ double get_API_float(cJSON *obj)
     }
     return(val);
 }
-double jdouble(cJSON *json,char *field) { if ( field == 0 ) return(get_API_float(json)); return(get_API_float(cJSON_GetObjectItem(json,field))); }
-double jdoublei(cJSON *json,int32_t i) { return(get_API_float(cJSON_GetArrayItem(json,i))); }
-cJSON *jobj(cJSON *json,char *field) { return(cJSON_GetObjectItem(json,field)); }
-cJSON *jitem(cJSON *array,int32_t i) { if ( is_cJSON_Array(array) != 0 ) return(cJSON_GetArrayItem(array,i)); return(0); }
-cJSON *jarray(int32_t *nump,cJSON *json,char *field) { cJSON *array; if ( field == 0 ) array = json; else array = cJSON_GetObjectItem(json,field); if ( array != 0 && is_cJSON_Array(array) != 0 && (*nump= cJSON_GetArraySize(array)) > 0 ) return(array); *nump = 0; return(0); }
+double jdouble(cJSON *json,char *field)
+{
+    if ( json != 0 )
+    {
+        if ( field == 0 )
+            return(get_API_float(json));
+        else return(get_API_float(cJSON_GetObjectItem(json,field)));
+    } else return(0.);
+}
+
+double jdoublei(cJSON *json,int32_t i)
+{
+    if ( json != 0 )
+        return(get_API_float(cJSON_GetArrayItem(json,i)));
+    else return(0.);
+}
+
+cJSON *jobj(cJSON *json,char *field) { if ( json != 0 ) return(cJSON_GetObjectItem(json,field)); return(0); }
+cJSON *jitem(cJSON *array,int32_t i) { if ( array != 0 && is_cJSON_Array(array) != 0 && cJSON_GetArraySize(array) > i ) return(cJSON_GetArrayItem(array,i)); return(0); }
+cJSON *jarray(int32_t *nump,cJSON *json,char *field)
+{
+    cJSON *array;
+    if ( json != 0 )
+    {
+        if ( field == 0 )
+            array = json;
+        else array = cJSON_GetObjectItem(json,field);
+        if ( array != 0 && is_cJSON_Array(array) != 0 && (*nump= cJSON_GetArraySize(array)) > 0 )
+            return(array);
+    }
+    *nump = 0;
+    return(0);
+}
 
 int32_t expand_nxt64bits(char *NXTaddr,uint64_t nxt64bits)
 {

@@ -109,6 +109,8 @@ struct price_resolution peggy_shortprice(struct peggy *PEG,struct price_resoluti
 uint32_t peggy_mils(int32_t i);
 struct price_resolution peggy_scaleprice(struct price_resolution price,int64_t peggymils);
 extern uint64_t peggy_smooth_coeffs[PEGGY_NUMCOEFFS];
+extern int32_t Peggy_inds[];
+
 extern int32_t Debuglevel;
 
 #endif
@@ -479,11 +481,9 @@ int64_t peggy_redeemhash(struct peggy_entry *entry,struct peggy_info *PEGS,struc
             return(-1);
         T.blocktimestamp = U->timestamp + (lockdays * PEGGY_DAYTICKS);
         if ( (n= (int32_t)(U->costbasis / PEG->unitincr)) > 0 )
-        {
             T.blocktimestamp -= (n * PEGGY_DAYTICKS) / 2;
-            price = peggy_aveprice(PEG,(T.blocktimestamp - PEG->genesistime) / PEGGY_MINUTE,n * PEGGY_DAYTICKS);
-        }
-        else price = peggy_price(PEG,(T.blocktimestamp - PEG->genesistime) / PEGGY_MINUTE);
+        else n = 1;
+        price = peggy_aveprice(PEG,(T.blocktimestamp - PEG->genesistime) / PEGGY_DAYTICKS,n);
         if ( entry->polarity < 0 )
             oppoprice = peggy_shortprice(PEG,price);
         spread.Pval = peggy_calcspread(PEG->spread.Pval,lockdays);
@@ -654,33 +654,45 @@ uint64_t peggy_gamblers(struct peggy_info *PEGS,struct peggy_time T,struct price
 
 struct price_resolution peggy_newprice(struct peggy_info *PEGS,struct peggy *PEG,struct peggy_time T,uint32_t newpval)
 {
-    uint64_t sum,den; int32_t i,j,minute; struct price_resolution price,shortprice,newprice;
+    uint64_t sum,den,gap; int64_t diff; int32_t i,j,minute,iter; struct price_resolution price,shortprice,newprice;
+    gap = (PEG->spread.Pval * newpval) / PRICE_RESOLUTION;
     if ( (newprice.Pval= newpval) != 0 )
     {
-        sum = den = 0;
-        sum = (((uint64_t)peggy_smooth_coeffs[0]) * newpval);
-        den = peggy_smooth_coeffs[0];
-        minute = (T.blocktimestamp - PEG->genesistime) / PEGGY_MINUTE;
-        //printf("peggy_newprice day.%d: %u sum %lld\n",day,newpval,(long long)sum);
-        for (i=1; i<PEGGY_NUMCOEFFS; i++)
+        for (iter=0; iter<1; iter++)
         {
-            j = (minute - i);
-            if ( j > 0 )
+            sum = den = 0;
+            sum = (((uint64_t)peggy_smooth_coeffs[0]) * newprice.Pval);
+            den = peggy_smooth_coeffs[0];
+            minute = (T.blocktimestamp - PEG->genesistime) / PEGGY_MINUTE;
+            //printf("peggy_newprice day.%d: %u sum %lld\n",day,newpval,(long long)sum);
+            for (i=1; i<PEGGY_NUMCOEFFS; i++)
             {
-                price = peggy_price(PEG,j);
-                if ( price.Pval != 0 )
+                j = (minute - i);
+                if ( j > 0 )
                 {
-                    sum += (((uint64_t)peggy_smooth_coeffs[i]) * price.Pval);
-                    den += peggy_smooth_coeffs[i];
-                }
-                //printf("i.%d ind.%d coeff.%llu add.%lld sum %lld den %lld %.6f -> %.7f\n",i,j,(long long)peggy_smooth_coeffs[i],(long long)price.Pval,(long long)sum,(long long)den,Pval(&price),(double)sum/(den));
-            } else break;
+                    price = peggy_price(PEG,j);
+                    if ( price.Pval != 0 )
+                    {
+                        sum += (((uint64_t)peggy_smooth_coeffs[i]) * price.Pval);
+                        den += peggy_smooth_coeffs[i];
+                    }
+                    //printf("i.%d ind.%d coeff.%llu add.%lld sum %lld den %lld %.6f -> %.7f\n",i,j,(long long)peggy_smooth_coeffs[i],(long long)price.Pval,(long long)sum,(long long)den,Pval(&price),(double)sum/(den));
+                } else break;
+            }
+            price.Pval = newpval;
+            //printf("sum %lld den %lld %.10f -> %.10f || ",(long long)sum,(long long)den,Pval(&price),(double)sum/(den));
+            if ( den != 0 )
+                price.Pval = (sum / den);
+            else break;
+            newprice = price;
+            diff = (newprice.Pval - newpval);
+            if ( diff < 0 )
+                diff = -diff;
+            if ( diff < gap )
+                break;
+            newprice.Pval = (newprice.Pval*7 + newpval) / 8;
+            //printf("%.8f ",Pval(&newprice));
         }
-        price.Pval = newpval;
-        //printf("sum %lld den %lld %.10f -> %.10f || ",(long long)sum,(long long)den,Pval(&price),(double)sum/(den));
-        if ( den != 0 )
-            price.Pval = (sum / den);
-        newprice = price;
         peggy_setprice(PEG,newprice,minute);
         shortprice = peggy_shortprice(PEG,newprice);
         price.Pval = newpval;
@@ -714,38 +726,54 @@ void peggy_margincalls(struct peggy_info *PEGS,struct peggy_time T,struct peggy 
 
 struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct peggy_time T,uint64_t seed,int16_t pricedpeg,struct peggy_vote *votes,uint32_t numvotes,struct peggy_bet *bets,uint32_t numbets)
 {
-    struct peggy_entry entry; struct price_resolution newprice; struct peggy *PEG;
-    int64_t delta,weight,totalwt = 0; int32_t i,j,k,n,incr,day; uint64_t ind;
+    struct peggy_entry entry; struct price_resolution newprice,dayprice; struct peggy *PEG;
+    int64_t delta,weight,totalwt = 0; int32_t i,j,n,day,wts[PEGGY_NUMCOEFFS]; uint32_t start,k; uint64_t ind;
     newprice.Pval = 0;
     if ( (PEG= peggy_find(&entry,PEGS,PEGS->contracts[pricedpeg]->name.name,1)) != 0 )
     {
         for (i=n=0; i<numvotes; i++)
         {
-            if ( votes[i].pval != 0 )// votes[i].weight != 0 && votes[i].price.Pval != 0 )
-                totalwt += 1, n++;//votes[i].weight, n++;
+            if ( votes[i].pval != 0 )
+            {
+                wts[i] = n + 1;
+                n++;
+                totalwt += wts[i];
+            }
         }
         if ( n < PEG->pool.quorum || totalwt < PEG->pool.decisionthreshold )
             return(PEG->price);
-        incr = (numvotes - 1), ind = (pricedpeg * seed);
+        start = (uint32_t)(pricedpeg * seed);
         for (k=0; k<numvotes; k++)
         {
+            if ( numvotes == PEGGY_NUMCOEFFS )
+                ind = Peggy_inds[(k + start) % PEGGY_NUMCOEFFS];
+            else ind = (start + k);
             i = (int32_t)(ind % numvotes);
-            ind += incr;
-            for (weight=j=0; j<numvotes; j++)
+            //fprintf(stderr,"(%d %d) ",i,k);
+            if ( votes[i].pval != 0 )
             {
-                //fprintf(stderr,"%lld ",(long long)(j*incr + seed) % numvotes);
-                if ( (delta= (votes[i].pval - votes[j].pval)) < 0 )//votes[j].price.Pval)) < 0 )
-                    delta = -delta;
-                //printf("(%lld %llu %u).%lld ",(long long)delta,(long long)votes[i].pval,votes[j].tolerance,(long long)weight);
-                if ( delta <= votes[j].tolerance )//votes[j].tolerance.Pval )
-                    weight += 1;//votes[j].weight;
+                for (weight=j=0; j<numvotes; j++)
+                {
+                    if ( votes[j].pval != 0 )
+                    {
+                        //fprintf(stderr,"%lld ",(long long)(j*incr + seed) % numvotes);
+                        if ( (delta= (votes[i].pval - votes[j].pval)) < 0 )//votes[j].price.Pval)) < 0 )
+                            delta = -delta;
+                        //printf("(%lld %llu %u).%lld ",(long long)delta,(long long)votes[i].pval,votes[j].tolerance,(long long)weight);
+                        if ( delta <= votes[j].tolerance )//votes[j].tolerance.Pval )
+                        {
+                            weight += wts[j];
+                            if ( weight > (totalwt >> 1) ) ////votes[j].weight;
+                                break;
+                        }
+                    }
+                }
             }
-            if ( strcmp("SuperNET",PEG->name.name) == 0 )
-                fprintf(stderr,"%d.(%.6f %llu) ",i,(double)votes[i].pval/PRICE_RESOLUTION,(long long)weight);
+            //if ( strcmp("SuperNET",PEG->name.name) == 0 )
+            //    fprintf(stderr,"%d.(%.6f %llu) ",i,(double)votes[i].pval/PRICE_RESOLUTION,(long long)weight);
             if ( weight > (totalwt >> 1) )
             {
-                fprintf(stderr,"%6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",votes[i].tolerance,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
-                //if ( strcmp(PEG->name.name,"BTCCNY") == 0 )
+                fprintf(stderr,"%6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",votes[i].pval,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
                 PEG->price = peggy_newprice(PEGS,PEG,T,votes[i].pval);
                 break;
             }
@@ -755,7 +783,19 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
         if ( (day= (T.blocktimestamp - PEG->genesistime)/PEGGY_DAYTICKS) != PEG->day )
         {
             peggy_gamblers(PEGS,T,PEG->dayprice,PEG->price,bets,numbets);
-            PEG->dayprice = PEG->price, PEG->dayprices[day] = (uint32_t)PEG->price.Pval;
+            dayprice.Pval = 0;
+            for (minute=PEG->day*1440,i=n=0; i<1440; i++,minute++)
+            {
+                if ( (tmp= peggy_price(PEG,minute)) != 0 )
+                    dayprice.Pval += tmp.Pval, n++;
+            }
+            if ( n != 0 )
+                dayprice.Pval /= n;
+            PEG->dayprice = dayprice;
+            PEG->dayprices[day] = (uint32_t)dayprice.Pval;
+            printf(">>>>>>>>>>>> DAY PRICE.%d %s %.8f\n",day,PEG->name.name,Pval(&dayprice));
+            while ( --day > 0 && Peg->dayprices[day].Pval == 0 )
+                PEG->dayprices[day] = (uint32_t)dayprice.Pval;
         }
         peggy_margincalls(PEGS,T,PEG,PEG->price,peggy_shortprice(PEG,PEG->price));
         newprice = PEG->price;
