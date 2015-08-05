@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <time.h>
 
+int32_t conv_date(int32_t *secondsp,char *buf);
+
 uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second) // datenum+H:M:S -> unix time
 {
     struct tm t;
@@ -18,7 +20,6 @@ uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t sec
 
 int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp) // gmtime -> datenum + number of seconds
 {
-    int32_t conv_date(int32_t *secondsp,char *buf);
     struct tm t; int32_t datenum; uint32_t checktime; char buf[64];
     t = *gmtime(&timestamp);
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ",&t); //printf("%s\n",buf);
