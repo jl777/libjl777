@@ -53,7 +53,7 @@ INSTANTDEX = $(I)/InstantDEX_main.c
 COMMON = plugins/common/busdata777.c plugins/common/relays777.c plugins/common/console777.c plugins/common/prices777.c plugins/common/cashier777.c plugins/common/txnet777.c plugins/common/opreturn777.c $(C)/bitcoind_RPC.c plugins/common/txind777.c plugins/common/system777.c
 MGW = plugins/mgw/MGW_main.c $(S)/sophia.c $(S)/db777.c
 
-SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) $(PEGGY) $(KV)
+SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) $(PEGGY) $(KV) $(COMMON)
  
 OBJS	:= $(SRCS:%.c=%.o)
 
@@ -75,7 +75,7 @@ _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) echodem
 
 _rps := rm agents/rps; gcc -o agents/rps -O2 $(PINCLUDES) rps777.c $(PLIBS)
 
-_api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) api_main.c ccgi.c prefork.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/echodemo;  ln cgi/api cgi/public
+_api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) agents/api_main.c ccgi/ccgi.c ccgi/prefork.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/echodemo;  ln cgi/api cgi/public
 
 _msc := rm agents/msc; gcc -o agents/msc -O2 $(PINCLUDES) two/msc.c $(PLIBS)
 
@@ -331,6 +331,6 @@ plugins/agents/nxt: plugins/two/nxt.c
 plugins/agents/two: plugins/two/two.c
 plugins/InstantDEX/InstantDEX_main.o: plugins/InstantDEX/InstantDEX_main.c plugins/InstantDEX/assetids.h plugins/InstantDEX/atomic.h plugins/InstantDEX/bars.h plugins/InstantDEX/exchangepairs.h plugins/InstantDEX/feeds.h plugins/InstantDEX/NXT_tx.h plugins/InstantDEX/orderbooks.h plugins/InstantDEX/quotes.h plugins/InstantDEX/rambooks.h plugins/InstantDEX/signals.h plugins/InstantDEX/tradebot.h plugins/InstantDEX/trades.h plugins/InstantDEX/InstantDEX.h
 
-plugins/cgi/api: plugins/api_main.c plugins/ccgi.c plugins/prefork.c
+plugins/cgi/api: plugins/agents/api_main.c plugins/ccgi/ccgi.c plugins/ccgi/prefork.c
 
 lib/MGW: plugins/mgw/mgw.c plugins/mgw/state.c plugins/mgw/huff.c plugins/ramchain/touch plugins/ramchain/blocks.c plugins/ramchain/kv777.c plugins/ramchain/search.c plugins/ramchain/tokens.c plugins/ramchain/init.c plugins/ramchain/ramchain.c plugins/utils/ramcoder.c plugins/utils/huffstream.c plugins/utils/bitcoind.c
