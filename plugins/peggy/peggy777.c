@@ -793,6 +793,7 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
             if ( n != 0 )
                 dayprice.Pval /= n;
             PEG->dayprice = dayprice;
+            PEG->day = day;
             PEG->dayprices[day] = (uint32_t)dayprice.Pval;
             printf(">>>>>>>>>>>> DAY PRICE.%d %s %.8f\n",day,PEG->name.name,Pval(&dayprice));
             while ( --day > 0 && PEG->dayprices[day] == 0 )
