@@ -286,19 +286,22 @@ int sha256_done(hash_state * md, unsigned char *out)
 
 void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],unsigned char hash[256 >> 3],unsigned char *src,int32_t len)
 {
-    int32_t j;
     hash_state md;
     sha256_init(&md);
     sha256_process(&md,src,len);
     sha256_done(&md,hash);
     if ( hashstr != 0 )
+    {
+        int32_t init_hexbytes(char *hexbytes,unsigned char *message,long len);
         init_hexbytes(hashstr,hash,256 >> 3);
+    }
 }
 
 /**
   Self-test the hash
   @return CRYPT_OK if successful, CRYPT_NOP if self-tests have been disabled
-*/  
+*/
+
 int  sha256_test(void)
 {
  #ifndef LTC_TEST
@@ -322,6 +325,8 @@ int  sha256_test(void)
     },
       { "helloworld", { 0x00 } },
   };
+    void reverse_hexstr(char *str);
+    int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
 
   int i,j;
   unsigned char tmp[32],buf[512];

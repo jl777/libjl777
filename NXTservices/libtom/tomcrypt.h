@@ -9,6 +9,14 @@
 //#include <limits.h>
 
 /* use configuration data */
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <memory.h>
+#define ulong32 uint32_t
+#define zeromem(buf,len) memset(buf,0,len)
+
 #include "tomcrypt_custom.h"
 
 #ifdef __cplusplus

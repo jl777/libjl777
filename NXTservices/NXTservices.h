@@ -9,7 +9,6 @@
 
 #define SYNC_MAXUNREPORTED 32
 #define SYNC_FRAGSIZE 1024
-//#define MAX_MGWCOINS 64
 
 struct NXT_guid
 {
@@ -66,22 +65,14 @@ struct NXT_acct
     double profits;
     // fields for NXTorrent
     double hisfeedbacks[6],myfb_tohim[6];    // stats on feedbacks given
-    // fields for RT comms
-    //portable_udp_t Usock;
-    //int32_t recvid,sentid;
     queue_t incomingQ;
     char *signedtx;
     
-    uint64_t expect;
-    uint32_t *incomingcrcs,gotstatus,numincoming,*statuscrcs,totalcrc;
-    void **incoming,**outbound,**clones;
-    
-    struct sockaddr Uaddr,addr;
+     struct sockaddr Uaddr,addr;
     uint16_t udp_port,tcp_port;
     uv_stream_t *tcp,*connect,*udp;
     char dispname[128],NXTACCTSECRET[128],udp_sender[64],tcp_sender[64],BTCaddr[80],BTCDaddr[80],pNXTaddr[128];
     unsigned char pubkey[crypto_box_PUBLICKEYBYTES];
-    //uint32_t memcrcs[SYNC_MAXUNREPORTED],localcrcs[SYNC_MAXUNREPORTED];
 };
 struct NXT_acct **get_assetaccts(int32_t *nump,char *assetidstr,int32_t maxtimestamp);
 

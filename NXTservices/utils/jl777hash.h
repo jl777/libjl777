@@ -123,17 +123,21 @@ int32_t process_pingpong_queue(struct pingpong_queue *ppq,void *argptr)
                 queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
             else if ( retval < 0 )
             {
-                printf("iter.%d errorqueue %p vs %p\n",iter,ppq->errorqueue,&ppq->pingpong[0]);
+                printf("%s iter.%d errorqueue %p vs %p\n",ppq->name,iter,ppq->errorqueue,&ppq->pingpong[0]);
                 if ( ppq->errorqueue == &ppq->pingpong[0] )
                     queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
-                else queue_enqueue(ppq->errorqueue,ptr);
+                else if ( ppq->errorqueue != 0 )
+                    queue_enqueue(ppq->errorqueue,ptr);
+                else free(ptr);
             }
             else if ( ppq->destqueue != 0 )
             {
-                printf("iter.%d destqueue %p vs %p\n",iter,ppq->destqueue,&ppq->pingpong[0]);
+                printf("%s iter.%d destqueue %p vs %p\n",ppq->name,iter,ppq->destqueue,&ppq->pingpong[0]);
                 if ( ppq->destqueue == &ppq->pingpong[0] )
                     queue_enqueue(&ppq->pingpong[iter ^ 1],ptr);
-                else queue_enqueue(ppq->destqueue,ptr);
+                else if ( ppq->destqueue != 0 )
+                    queue_enqueue(ppq->destqueue,ptr);
+                else free(ptr);
             }
             else free(ptr);
         }
@@ -215,7 +219,7 @@ uint64_t search_hashtable(struct hashtable *hp,char *key)
 {
     void *ptr,**hashtable = hp->hashtable;
     uint64_t i,hashval,ind;
-    if ( hp == 0 )
+    if ( hp == 0 || key == 0 || key[0] == 0 )
         return(HASHSEARCH_ERROR);
     hashval = calc_decimalhash(key);
     //printf("hashval = %ld\n",(unsigned long)hashval);
@@ -293,8 +297,8 @@ void *add_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     {
         printf("%p key.(%s) len.%ld is too big for %s %ld, FATAL\n",key,key,strlen(key),hp->name,hp->keysize);
 #ifdef __APPLE__
-        //while ( 1 ) sleep(1);
-        //return(0);
+        while ( 1 ) sleep(1);
+        return(0);
 #endif
         key = "123456";
     }
@@ -332,7 +336,7 @@ void *MTadd_hashtable(int32_t *createdflagp,struct hashtable **hp_ptr,char *key)
     extern struct NXThandler_info *Global_mp;
     struct hashpacket *ptr;
 #ifdef __APPLE__
-    if ( key == 0 || key[0] == 0 )
+    if ( key == 0 || key[0] == 0 || hp_ptr == 0 || *hp_ptr == 0  || strlen(key) >= (*hp_ptr)->keysize )
     {
         printf("MTadd_hashtable null key??\n");
         while ( 1 )

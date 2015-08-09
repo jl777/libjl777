@@ -560,19 +560,21 @@ char *getpubkey(char *NXTaddr,char *NXTACCTSECRET,char *addr)
     return(clonestr(buf));
 }
 
-char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
+char *publishaddrs(char *NXTACCTSECRET,char *pubNXT,char *pubkey,char *BTCDaddr,char *BTCaddr,char *pNXTaddr)
 {
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
+    char verifiedNXTaddr[64];
     np = get_NXTacct(&createdflag,Global_mp,pubNXT);
-    printf("in publishaddrs.(%s)\n",pubNXT);
+    printf("in publishaddrs.(%s) np.%p %llu\n",pubNXT,np,(long long)np->H.nxt64bits);
     if ( pubkey != 0 && pubkey[0] != 0 )
         decode_hex(np->pubkey,(int32_t)sizeof(np->pubkey),pubkey);
     if ( BTCDaddr[0] != 0 )
     {
         safecopy(np->BTCDaddr,BTCDaddr,sizeof(np->BTCDaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,BTCDaddr),op->nxt64bits = np->H.nxt64bits;
+        printf("op.%p for %s\n",op,BTCDaddr);
     }
     if ( BTCaddr[0] != 0 )
     {
@@ -584,7 +586,9 @@ char *publishaddrs(char *NXTaddr,char *NXTACCTSECRET,char *pubNXT,char *pubkey,c
         safecopy(np->pNXTaddr,pNXTaddr,sizeof(np->pNXTaddr));
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,pNXTaddr),op->nxt64bits = np->H.nxt64bits;
     }
-    return(getpubkey(NXTaddr,NXTACCTSECRET,pubNXT));
+    verifiedNXTaddr[0] = 0;
+    np = find_NXTacct(verifiedNXTaddr,NXTACCTSECRET);
+    return(getpubkey(verifiedNXTaddr,NXTACCTSECRET,pubNXT));
 }
 
 char *checkmessages(char *NXTaddr,char *NXTACCTSECRET,char *senderNXTaddr)

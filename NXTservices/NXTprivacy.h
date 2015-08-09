@@ -16,7 +16,7 @@
 #define IS_TCP_SERVER 1
 #define IS_UDP_SERVER 2
 #define DEFAULT_PRIVACY_SERVER "123456789012345678"
-#define DEFAULT_PRIVACY_SERVERIP "209.126.70.170"
+#define DEFAULT_PRIVACY_SERVERIP "127.0.0.1"
 #define INTRO_SIZE 1400
 
 char *Server_secret,*Server_NXTaddr;
@@ -401,7 +401,8 @@ void on_client_udprecv(uv_udp_t *udp,ssize_t nread,const uv_buf_t *rcvbuf,const 
     {
         strcpy(sender,"unknown");
         port = extract_nameport(sender,sizeof(sender),(struct sockaddr_in *)addr);
-        printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
+        if ( server_xferred == 0 )
+            printf("on_client_udprecv %s/%d nread.%ld flags.%d | total %ld\n",sender,port,nread,flags,server_xferred);
         process_packet(retjsonstr,0,0,(unsigned char *)rcvbuf->base,(int32_t)nread,0,(uv_stream_t *)udp,addr,sender,port);
         server_xferred += nread;
         ASSERT(addr->sa_family == AF_INET);
@@ -796,6 +797,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
     uint64_t nxt64bits;
     char *jsonstr,**whitelist,**blacklist;
     whitelist = blacklist = 0;  // eventually get from config JSON
+    void teleport_idler();
     if ( TCPserver_closed > 0 )
     {
         //printf("idler noticed TCPserver_closed.%d!\n",TCPserver_closed);
@@ -811,9 +813,10 @@ void NXTprivacy_idler(uv_idle_t *handle)
         return;
     }
     millis = ((double)uv_hrtime() / 1000000);
-#ifndef __linux__
+//#ifndef __linux__
     if ( millis > (lastattempt + 500) )
     {
+        teleport_idler();
         if ( privacyServer == 0 )
             privacyServer = pNXT_privacyServer;// != 0) ? pNXT_privacyServer:get_random_privacyServer(whitelist,blacklist);
         if ( privacyServer != 0 && NXTACCTSECRET[0] != 0 )
@@ -895,7 +898,7 @@ void NXTprivacy_idler(uv_idle_t *handle)
             lastping = millis;
         }
     }
-#endif
+//#endif
     if ( tcp != 0 ) // for clients to send to server
     {// deprecated
         /*if ( (jsonstr= queue_dequeue(&RPC_6777)) != 0 )
@@ -918,7 +921,7 @@ void init_NXTprivacy(void *ptr)
 {
     uv_tcp_t *tcp,**tcpptr;
     uv_udp_t *udp,**udpptr;
-#ifdef __linux__
+//#ifdef __linux__
     uint64_t nxt64bits;
     if ( (Server_secret= ptr) == 0 )
         Server_secret = "password";
@@ -926,7 +929,7 @@ void init_NXTprivacy(void *ptr)
     Server_NXTaddr = calloc(1,64);
     expand_nxt64bits(Server_NXTaddr,nxt64bits);
     printf("init_NXTprivacy.(%s) -> %llu (%s)\n",(char *)ptr,(long long)nxt64bits,Server_NXTaddr);
-#endif
+//#endif
     tcp = &Global_mp->Punch_tcp; tcpptr = &tcp;
     udp = &Global_mp->Punch_udp; udpptr = &udp;
     start_libuv_servers(tcpptr,udpptr,4,NXT_PUNCH_PORT);

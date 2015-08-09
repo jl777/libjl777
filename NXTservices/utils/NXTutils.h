@@ -445,10 +445,11 @@ struct NXT_acct *search_addresses(char *addr)
     int32_t createdflag;
     struct NXT_acct *np;
     struct other_addr *op;
-    if ( search_hashtable(*Global_mp->NXTaccts_tablep,addr) == HASHSEARCH_ERROR )
+    NXTaddr[0] = 0;
+    if ( strlen(addr) < MAX_NXTADDR_LEN && search_hashtable(*Global_mp->NXTaccts_tablep,addr) != HASHSEARCH_ERROR )
+        return(get_NXTacct(&createdflag,Global_mp,addr));
+    if ( search_hashtable(*Global_mp->otheraddrs_tablep,addr) != HASHSEARCH_ERROR )
     {
-        if ( search_hashtable(*Global_mp->otheraddrs_tablep,addr) == HASHSEARCH_ERROR )
-            return(0);
         op = MTadd_hashtable(&createdflag,Global_mp->otheraddrs_tablep,addr);
         expand_nxt64bits(NXTaddr,op->nxt64bits);
         np = get_NXTacct(&createdflag,Global_mp,NXTaddr);
@@ -457,7 +458,7 @@ struct NXT_acct *search_addresses(char *addr)
         printf("UNEXPECTED ERROR searching (%s), got NXT.%s but doesnt match (%s) (%s) (%s)\n",addr,np->H.NXTaddr,np->BTCDaddr,np->BTCaddr,np->pNXTaddr);
         return(0);
     }
-    else return(get_NXTacct(&createdflag,Global_mp,addr));
+    return(0);
 }
 
 void clear_NXT_networkinfo(struct NXT_acct *np)
@@ -972,8 +973,8 @@ int32_t set_current_NXTblock(int32_t *isrescanp,CURL *curl_handle,char *blockids
 {
     int32_t numblocks = 0;//,numunlocked = 0;
     union NXTtype retval;
-    cJSON *blockjson;//,*unlocked;//*nextjson,
-    char cmd[256];//,unlockedstr[1024];
+    cJSON *blockjson,*scanjson;//,*unlocked;//*nextjson,
+    char cmd[256],scanstr[256];//,unlockedstr[1024];
     sprintf(cmd,"%s=getState",_NXTSERVER);
     *isrescanp = 0;
     blockidstr[0] = 0;
@@ -981,14 +982,16 @@ int32_t set_current_NXTblock(int32_t *isrescanp,CURL *curl_handle,char *blockids
     if ( retval.json != 0 )
     {
         numblocks = (int32_t)get_cJSON_int(retval.json,"numberOfBlocks");
-        *isrescanp = (int32_t)get_cJSON_int(retval.json,"isScanning");
+        //*isrescanp = (int32_t)get_cJSON_int(retval.json,"isScanning");
+        scanjson = cJSON_GetObjectItem(retval.json,"isScanning");
+        if ( scanjson != 0 )
+        {
+            copy_cJSON(scanstr,scanjson);
+            if ( strcmp(scanstr,"true") == 0 )
+                *isrescanp = 1;
+        }
         blockjson = cJSON_GetObjectItem(retval.json,"lastBlock");
-        //nextjson = cJSON_GetObjectItem(retval.json,"nextBlock");
-        //unlocked = cJSON_GetObjectItem(retval.json,"numberOfUnlockedAccounts");
         copy_cJSON(blockidstr,blockjson);
-        //copy_cJSON(nextblock,nextjson);
-        //copy_cJSON(unlockedstr,unlocked);
-        //numunlocked = atoi(unlockedstr);
         free_json(retval.json);
     }
     return(numblocks);

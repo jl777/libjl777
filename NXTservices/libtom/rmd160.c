@@ -9,6 +9,7 @@
  * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 #include "tomcrypt.h"
+#include <string.h>
 
 /**
    @file rmd160.c
@@ -21,7 +22,7 @@
  * the LibTomCrypt API by Tom St Denis
  */
 
-#ifdef LTC_RIPEMD160
+//#ifdef LTC_RIPEMD160
 
 const struct ltc_hash_descriptor rmd160_desc =
 {
@@ -461,7 +462,7 @@ int rmd160_test(void)
 #endif
 }
 
-#endif
+//#endif
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/rmd160.c,v $ */

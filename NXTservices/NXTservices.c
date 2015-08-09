@@ -441,82 +441,85 @@ int32_t process_NXTtransaction(struct NXThandler_info *mp,char *txid,int32_t hei
             else if ( assetjson != 0 && type == 2 && subtype <= 1 )
             {
                 tp = add_NXT_assettxid(&ap,assetid,mp,assetjson,txid,timestamp);
-                //printf("type.%d subtype.%d tp.%p\n",(int32_t)type,(int32_t)subtype,tp);
-                if ( tp->comment != 0 )
-                    free(tp->comment), tp->comment = 0;
-                tp->timestamp = timestamp;
-                commentobj = cJSON_GetObjectItem(attachment,"comment");
-                copy_cJSON(comment,commentobj);
-                if ( comment[0] != 0 )
-                    tp->comment = replace_backslashquotes(comment);
-                if ( tp != 0 && type == 2 )
+                if ( tp != 0 )
                 {
+                    //printf("type.%d subtype.%d tp.%p\n",(int32_t)type,(int32_t)subtype,tp);
+                    if ( tp->comment != 0 )
+                        free(tp->comment), tp->comment = 0;
+                    tp->timestamp = timestamp;
+                    commentobj = cJSON_GetObjectItem(attachment,"comment");
+                    copy_cJSON(comment,commentobj);
                     if ( comment[0] != 0 )
-                        commentstr = tp->comment = clonestr(comment);
-                    tp->quantity = get_cJSON_int(attachment,"quantityQNT");
-                    assetoshis = tp->quantity;
-                    switch ( subtype )
+                        tp->comment = replace_backslashquotes(comment);
+                    if ( tp != 0 && type == 2 )
                     {
-                        case 0:
-                            if ( strcmp(receiver,GENESISACCT) == 0 )
-                            {
-                                tp->senderbits = calc_nxt64bits(GENESISACCT);
-                                tp->receiverbits = calc_nxt64bits(sender);
-                                tp->completed = 1;
-                               // if ( strcmp(assetid,EX_DIVIDEND_ASSETID) == 0 )
+                        if ( comment[0] != 0 )
+                            commentstr = tp->comment = clonestr(comment);
+                        tp->quantity = get_cJSON_int(attachment,"quantityQNT");
+                        assetoshis = tp->quantity;
+                        switch ( subtype )
+                        {
+                            case 0:
+                                if ( strcmp(receiver,GENESISACCT) == 0 )
+                                {
+                                    tp->senderbits = calc_nxt64bits(GENESISACCT);
+                                    tp->receiverbits = calc_nxt64bits(sender);
+                                    tp->completed = 1;
+                                    // if ( strcmp(assetid,EX_DIVIDEND_ASSETID) == 0 )
                                     printf("AE transfer: GENESIS -> NXT.%s volume %.8f\n",sender,dstr(tp->quantity));
-                                transfer_asset_balance(mp,tp,tp->assetbits,GENESISACCT,sender,tp->quantity);
-                            }
-                            else printf("non-GENESIS sender on Issuer Asset?\n");
-                            break;
-                        case 1:
-                            tp->senderbits = calc_nxt64bits(sender);
-                            tp->receiverbits = calc_nxt64bits(receiver);
-                            if ( tp->comment != 0 && (commentobj= cJSON_Parse(tp->comment)) != 0 )
-                            {
+                                    transfer_asset_balance(mp,tp,tp->assetbits,GENESISACCT,sender,tp->quantity);
+                                }
+                                else printf("non-GENESIS sender on Issuer Asset?\n");
+                                break;
+                            case 1:
+                                tp->senderbits = calc_nxt64bits(sender);
+                                tp->receiverbits = calc_nxt64bits(receiver);
+                                if ( tp->comment != 0 && (commentobj= cJSON_Parse(tp->comment)) != 0 )
+                                {
 #ifdef INSIDE_MGW
-/*                               int32_t coinid;
-                                char cointxid[128];
-                                cJSON *cointxidobj;
-                                cointxidobj = cJSON_GetObjectItem(commentobj,"cointxid");
-                                if ( cointxidobj != 0 )
-                                {
-                                    copy_cJSON(cointxid,cointxidobj);
-                                    //printf("got comment.(%s) cointxidstr.(%s)\n",tp->comment,cointxid);
-                                    if ( cointxid[0] != 0 )
-                                    {
-                                        tp->cointxid = clonestr(cointxid);
-                                        //printf("set cointxid to (%s)\n",cointxid);
-                                    }
-                                }
-                                else if ( strcmp(receiver,NXTISSUERACCT) == 0 )
-                                {
-                                    int32_t conv_coinstr(char *);
-                                    coinid = conv_coinstr(ap->name);
-                                    cointxidobj = cJSON_GetObjectItem(commentobj,"redeem");
-                                    copy_cJSON(cointxid,cointxidobj);
-                                    printf("%s got comment.(%s) gotredeem.(%s) coinid.%d\n",ap->name,tp->comment,cointxid,coinid);
-                                    if ( coinid >= 0 )
-                                    {
-                                        tp->redeemtxid = clonestr(txid);
-                                        if ( ap != 0 )
-                                        {
-                                            void ensure_wp(int32_t coinid,uint64_t amount,char *NXTaddr,char *redeemtxid);
-                                            ensure_wp(coinid,tp->quantity * ap->mult,sender,txid);
-                                        }
-                                    }
-                                }
-                                free_json(commentobj);*/
+                                    /*                               int32_t coinid;
+                                     char cointxid[128];
+                                     cJSON *cointxidobj;
+                                     cointxidobj = cJSON_GetObjectItem(commentobj,"cointxid");
+                                     if ( cointxidobj != 0 )
+                                     {
+                                     copy_cJSON(cointxid,cointxidobj);
+                                     //printf("got comment.(%s) cointxidstr.(%s)\n",tp->comment,cointxid);
+                                     if ( cointxid[0] != 0 )
+                                     {
+                                     tp->cointxid = clonestr(cointxid);
+                                     //printf("set cointxid to (%s)\n",cointxid);
+                                     }
+                                     }
+                                     else if ( strcmp(receiver,NXTISSUERACCT) == 0 )
+                                     {
+                                     int32_t conv_coinstr(char *);
+                                     coinid = conv_coinstr(ap->name);
+                                     cointxidobj = cJSON_GetObjectItem(commentobj,"redeem");
+                                     copy_cJSON(cointxid,cointxidobj);
+                                     printf("%s got comment.(%s) gotredeem.(%s) coinid.%d\n",ap->name,tp->comment,cointxid,coinid);
+                                     if ( coinid >= 0 )
+                                     {
+                                     tp->redeemtxid = clonestr(txid);
+                                     if ( ap != 0 )
+                                     {
+                                     void ensure_wp(int32_t coinid,uint64_t amount,char *NXTaddr,char *redeemtxid);
+                                     ensure_wp(coinid,tp->quantity * ap->mult,sender,txid);
+                                     }
+                                     }
+                                     }
+                                     free_json(commentobj);*/
 #endif
-                            }
-                            transfer_asset_balance(mp,tp,tp->assetbits,sender,receiver,tp->quantity);
-                            break;
-                        case 2:
-                        case 3: // bids and asks, no indication they are filled at this point, so nothing to do
-                            break;
+                                }
+                                transfer_asset_balance(mp,tp,tp->assetbits,sender,receiver,tp->quantity);
+                                break;
+                            case 2:
+                            case 3: // bids and asks, no indication they are filled at this point, so nothing to do
+                                break;
+                        }
                     }
+                    //else add_NXT_assettxid(&ap,assetid,mp,assetjson,txid,timestamp);
                 }
-                //else add_NXT_assettxid(&ap,assetid,mp,assetjson,txid,timestamp);
                 assetidstr = assetid;
             }
         }

@@ -402,17 +402,24 @@ char *teleport_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 {
     //static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", 0 };
     double amount;
+    int32_t M,N;
     struct coin_info *cp;
     char NXTACCTSECRET[512],destaddr[512],minage[512],coinstr[512],*retstr = 0;
+    if ( Historical_done == 0 )
+        return(clonestr("historical processing is not done yet"));
     copy_cJSON(NXTACCTSECRET,objs[1]);
     amount = get_API_float(objs[2]);
     copy_cJSON(destaddr,objs[3]);
     copy_cJSON(coinstr,objs[4]);
     copy_cJSON(minage,objs[5]);
-    printf("amount.(%.8f) minage.(%s) %d\n",amount,minage,atoi(minage));
+    M = get_API_int(objs[6],1);
+    N = get_API_int(objs[7],1);
+    if ( M > N || N >= 0xff || M <= 0 )
+        M = N = 1;
+    printf("amount.(%.8f) minage.(%s) %d | M.%d N.%d\n",amount,minage,atoi(minage),M,N);
     cp = get_coin_info(coinstr);
     if ( cp != 0 && sender[0] != 0 && amount > 0 && valid != 0 && destaddr[0] != 0 )
-        retstr = teleport(sender,NXTACCTSECRET,(uint64_t)(SATOSHIDEN * amount),destaddr,cp,atoi(minage));
+        retstr = teleport(sender,NXTACCTSECRET,(uint64_t)(SATOSHIDEN * amount),destaddr,cp,atoi(minage),M,N);
     else retstr = clonestr("{\"error\":\"invalid teleport request\"}");
     return(retstr);
 }
@@ -462,7 +469,7 @@ char *publishaddrs_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,
     copy_cJSON(BTCaddr,objs[5]);
     copy_cJSON(pNXTaddr,objs[6]);
     if ( sender[0] != 0 && valid != 0 && pubNXT[0] != 0 )
-        retstr = publishaddrs(sender,NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
+        retstr = publishaddrs(NXTACCTSECRET,pubNXT,pubkey,BTCDaddr,BTCaddr,pNXTaddr);
     else retstr = clonestr("{\"result\":\"invalid publishaddrs request\"}");
     return(retstr);
 }
@@ -565,9 +572,12 @@ char *tradebot_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char
 char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t satoshis;
-    uint32_t crc,ind,height,vout;
-    char NXTACCTSECRET[512],coinstr[512],coinaddr[512],txid[512],pubkey[512],privkey[2048],*retstr = 0;
+    struct coin_info *cp;
+    uint32_t crc,ind,height,vout,totalcrc,sharei,M,N;
+    char NXTACCTSECRET[1024],coinstr[512],coinaddr[512],otherpubaddr[512],txid[512],pubkey[512],privkey[2048],privkeyhex[2048],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
     crc = get_API_uint(objs[2],0);
     ind = get_API_uint(objs[3],0);
     height = get_API_uint(objs[4],0);
@@ -577,9 +587,16 @@ char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
     copy_cJSON(txid,objs[8]);
     vout = get_API_uint(objs[9],0);
     copy_cJSON(pubkey,objs[10]);
-    copy_cJSON(privkey,objs[11]);
+    copy_cJSON(privkeyhex,objs[11]);
+    decode_hex((unsigned char *)privkey,(int32_t)strlen(privkeyhex)/2,privkeyhex);
+    privkey[strlen(privkeyhex)/2] = 0;
+    totalcrc = get_API_uint(objs[12],0);
+    sharei = get_API_uint(objs[13],0);
+    M = get_API_uint(objs[14],1);
+    N = get_API_uint(objs[15],1);
+    copy_cJSON(otherpubaddr,objs[16]);
     if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 )
-        retstr = telepod_received(sender,NXTACCTSECRET,coinstr,crc,ind,height,satoshis,coinaddr,txid,vout,pubkey,privkey);
+        retstr = telepod_received(sender,NXTACCTSECRET,coinstr,crc,ind,height,satoshis,coinaddr,txid,vout,pubkey,privkey,totalcrc,sharei,M,N,otherpubaddr);
     else retstr = clonestr("{\"error\":\"invalid telepod received\"}");
     return(retstr);
 }
@@ -587,9 +604,13 @@ char *telepod_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char 
 char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
-    uint32_t totalcrc,minage,height,i,n=0,*crcs = 0;
-    char NXTACCTSECRET[512],coinstr[512],*retstr = 0;
+    struct coin_info *cp;
+    uint8_t sharenrs[255];
+    uint32_t totalcrc,M,N,minage,height,i,n=0,*crcs = 0;
+    char NXTACCTSECRET[1024],sharenrsbuf[1024],coinstr[512],otherpubaddr[512],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
     copy_cJSON(coinstr,objs[2]);
     height = get_API_uint(objs[3],0);
     minage = get_API_uint(objs[4],0);
@@ -601,8 +622,17 @@ char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,c
         for (i=0; i<n; i++)
             crcs[i] = get_API_uint(cJSON_GetArrayItem(objs[7],i),0);
     }
+    M = get_API_int(objs[8],0);
+    N = get_API_int(objs[9],0);
+    copy_cJSON(sharenrsbuf,objs[10]);
+    memset(sharenrs,0,sizeof(sharenrs));
+    if ( M <= N && N < 0xff && M > 0 )
+        decode_hex(sharenrs,N,sharenrsbuf);
+    else M = N = 1;
+    copy_cJSON(otherpubaddr,objs[11]);
+    printf("transporterstatus_func M.%d N.%d [%s] otherpubaddr.(%s)\n",M,N,sharenrsbuf,otherpubaddr);
     if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && n > 0 )
-        retstr = transporter_received(sender,NXTACCTSECRET,coinstr,totalcrc,height,value,minage,crcs,n);
+        retstr = transporter_received(sender,NXTACCTSECRET,coinstr,totalcrc,height,value,minage,crcs,n,M,N,sharenrs,otherpubaddr);
     else retstr = clonestr("{\"error\":\"invalid incoming transporter bundle\"}");
     if ( crcs != 0 )
         free(crcs);
@@ -612,22 +642,42 @@ char *transporter_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,c
 char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t numobjs,char *origargstr)
 {
     uint64_t value;
-    uint32_t totalcrc,status,i,num,n=0,*crcs = 0;
-    char NXTACCTSECRET[512],coinstr[512],*retstr = 0;
+    cJSON *array;
+    struct coin_info *cp;
+    int32_t minage;
+    uint8_t sharenrs[255];
+    uint32_t totalcrc,status,i,sharei,M,N,height,ind,num,n=0,*crcs = 0;
+    char NXTACCTSECRET[1024],sharenrsbuf[1024],otherpubaddr[512],coinstr[512],*retstr = 0;
     copy_cJSON(NXTACCTSECRET,objs[1]);
+    if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
     status = get_API_int(objs[2],0);
     copy_cJSON(coinstr,objs[3]);
     totalcrc = get_API_uint(objs[4],0);
     value = (SATOSHIDEN * get_API_float(objs[5]));
     num = get_API_int(objs[6],0);
-    if ( is_cJSON_Array(objs[7]) != 0 && (n= cJSON_GetArraySize(objs[7])) > 0 )
+    minage = get_API_int(objs[7],0);
+    height = get_API_int(objs[8],0);
+    array = objs[9];
+    if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
         crcs = calloc(n,sizeof(*crcs));
         for (i=0; i<n; i++)
-            crcs[i] = get_API_uint(cJSON_GetArrayItem(objs[7],i),0);
+            crcs[i] = get_API_uint(cJSON_GetArrayItem(array,i),0);
     }
-    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && n > 0 )
-        retstr = got_transporter_status(NXTACCTSECRET,sender,coinstr,totalcrc,value,num,crcs,n);
+    sharei = get_API_int(objs[9],0);
+    M = get_API_int(objs[11],0);
+    N = get_API_int(objs[12],0);
+    copy_cJSON(sharenrsbuf,objs[13]);
+    memset(sharenrs,0,sizeof(sharenrs));
+    if ( M <= N && N < 0xff && M > 0 )
+        decode_hex(sharenrs,N,sharenrsbuf);
+    else M = N = 1;
+    ind = get_API_int(objs[14],0);
+    copy_cJSON(otherpubaddr,objs[15]);
+    //printf("transporterstatus_func sharei.%d M.%d N.%d other.(%s)\n",sharei,M,N,otherpubaddr);
+    if ( coinstr[0] != 0 && sender[0] != 0 && valid != 0 && num > 0 )
+        retstr = got_transporter_status(NXTACCTSECRET,sender,coinstr,status,totalcrc,value,num,crcs,ind,minage,height,sharei,M,N,sharenrs,otherpubaddr);
     else retstr = clonestr("{\"error\":\"invalid incoming transporter status\"}");
     if ( crcs != 0 )
         free(crcs);
@@ -636,10 +686,10 @@ char *transporterstatus_func(char *sender,int32_t valid,cJSON **objs,int32_t num
 
 char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *argjson,char *sender,int32_t valid,char *origargstr)
 {
-    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", 0 };
-    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", 0 };
-    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "NXT", "secret", "coin", "height", "minage", "value", "totalcrc", "telepods", 0 };
-    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "NXT", "secret", "status", "coin", "totalcrc", "value", "num", "crcs", 0 };
+    static char *teleport[] = { (char *)teleport_func, "teleport", "V", "NXT", "secret", "amount", "dest", "coin", "minage", "M", "N", 0 };
+    static char *telepod[] = { (char *)telepod_func, "telepod", "V", "NXT", "secret", "crc", "i", "h", "c", "v", "a", "t", "o", "p", "k", "L", "s", "M", "N", "D", 0 };
+    static char *transporter[] = { (char *)transporter_func, "transporter", "V", "NXT", "secret", "coin", "height", "minage", "value", "totalcrc", "telepods", "M", "N", "sharenrs", "pubaddr", 0 };
+    static char *transporterstatus[] = { (char *)transporterstatus_func, "transporter_status", "V", "NXT", "secret", "status", "coin", "totalcrc", "value", "num", "minage", "height", "crcs", "sharei", "M", "N", "sharenrs", "ind", "pubaddr", 0 };
     static char *tradebot[] = { (char *)tradebot_func, "tradebot", "V", "NXT", "secret", "code", 0 };
     static char *respondtx[] = { (char *)respondtx_func, "respondtx", "V", "NXT", "signedtx", 0 };
     static char *processutx[] = { (char *)processutx_func, "processutx", "V", "NXT", "secret", "utx", "sig", "full", 0 };
@@ -658,7 +708,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
     static char *makeoffer[] = { (char *)makeoffer_func, "makeoffer", "V", "NXT", "secret", "other", "assetA", "qtyA", "assetB", "qtyB", "type", 0 };
     static char **commands[] = { getpubkey, transporterstatus, telepod, transporter, tradebot, respondtx, processutx, publishaddrs, checkmsg, placebid, placeask, makeoffer, sendmsg, orderbook, getorderbooks, sellp, buyp, send, teleport, select  };
     int32_t i,j;
-    cJSON *obj,*nxtobj,*objs[16];
+    cJSON *obj,*nxtobj,*objs[64];
     char NXTaddr[64],command[4096],**cmdinfo,*retstr;
     memset(objs,0,sizeof(objs));
     command[0] = 0;
@@ -671,7 +721,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
         copy_cJSON(command,obj);
         //printf("(%s) command.(%s) NXT.(%s)\n",cJSON_Print(argjson),command,NXTaddr);
     }
-    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d | command.(%s)\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command);
+    printf("%llu pNXT_json_commands sender.(%s) valid.%d | size.%d | command.(%s) orig.(%s)\n",(long long)Global_pNXT->privacyServer,sender,valid,(int32_t)(sizeof(commands)/sizeof(*commands)),command,origargstr);
     for (i=0; i<(int32_t)(sizeof(commands)/sizeof(*commands)); i++)
     {
         cmdinfo = commands[i];
@@ -691,7 +741,7 @@ char *pNXT_json_commands(struct NXThandler_info *mp,struct pNXT_info *gp,cJSON *
             for (j=3; cmdinfo[j]!=0&&j<3+(int32_t)(sizeof(objs)/sizeof(*objs)); j++)
                 objs[j-3] = cJSON_GetObjectItem(argjson,cmdinfo[j]);
             retstr = (*(json_handler)cmdinfo[0])(sender,valid,objs,j-3,origargstr);
-            if ( 1 && retstr != 0 )
+            if ( 0 && retstr != 0 )
                 printf("json_handler returns.(%s)\n",retstr);
             return(retstr);
         }
@@ -720,9 +770,10 @@ char *pNXT_jsonhandler(cJSON **argjsonp,char *argstr,char *verifiedsender)
 {
     struct NXThandler_info *mp = Global_mp;
     long len;
+    struct coin_info *cp;
     int32_t valid,firsttime = 1;
-    cJSON *secretobj,*json;
-    char NXTACCTSECRET[256],sender[64],*origparmstxt,*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
+    cJSON *secretobj = 0,*json;
+    char NXTACCTSECRET[1024],sender[64],*origparmstxt,*parmstxt=0,encoded[NXT_TOKEN_LEN+1],*retstr = 0;
 again:
     sender[0] = 0;
     if ( verifiedsender != 0 && verifiedsender[0] != 0 )
@@ -731,6 +782,14 @@ again:
     //printf("pNXT_jsonhandler argjson.%p\n",*argjsonp);
     if ( *argjsonp != 0 )
     {
+        secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
+        copy_cJSON(NXTACCTSECRET,secretobj);
+        if ( NXTACCTSECRET[0] == 0 && (cp= get_coin_info("BTCD")) != 0 )
+        {
+            safecopy(NXTACCTSECRET,cp->NXTACCTSECRET,sizeof(NXTACCTSECRET));
+            cJSON_ReplaceItemInObject(*argjsonp,"secret",cJSON_CreateString(NXTACCTSECRET));
+            //printf("got cp.%p for BTCD (%s) (%s)\n",cp,cp->NXTACCTSECRET,cJSON_Print(*argjsonp));
+        }
         parmstxt = cJSON_Print(*argjsonp);
         len = strlen(parmstxt);
         stripwhite_ns(parmstxt,len);
@@ -758,48 +817,27 @@ again:
         uint64_t nxt64bits;
         char _tokbuf[4096],NXTaddr[64],buf[1024];//,*str;
         firsttime = 0;
-        secretobj = cJSON_GetObjectItem(*argjsonp,"secret");
         reqobj = cJSON_GetObjectItem(*argjsonp,"requestType");
         copy_cJSON(buf,reqobj);
-        copy_cJSON(NXTACCTSECRET,secretobj);
-        cJSON_AddItemToObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
+        if ( cJSON_GetObjectItem(*argjsonp,"requestType") != 0 )
+            cJSON_ReplaceItemInObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
+        else cJSON_AddItemToObject(*argjsonp,"time",cJSON_CreateNumber(time(NULL)));
         nxt64bits = issue_getAccountId(0,NXTACCTSECRET);
         expand_nxt64bits(NXTaddr,nxt64bits);
         cJSON_ReplaceItemInObject(*argjsonp,"NXT",cJSON_CreateString(NXTaddr));
         printf("replace NXT.(%s)\n",NXTaddr);
-#ifndef __linux__
+//#ifndef __linux__
         if ( strcmp(buf,"teleport") != 0 && strcmp(buf,"tradebot") != 0 && strcmp(buf,"makeoffer") != 0 && strcmp(buf,"select") != 0 && strcmp(buf,"checkmessages") != 0 && Global_pNXT->privacyServer != 0 )
         {
             parmstxt = remove_secret(argjsonp,parmstxt);
             issue_generateToken(mp->curl_handle2,encoded,parmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",parmstxt,encoded);
-            /*if ( 0 )
-            {
-                queue_enqueue(&RPC_6777,clonestr(_tokbuf));
-                n = 0;
-                while ( n++ < 1000 && (retstr= queue_dequeue(&RPC_6777_response)) == 0 )
-                    usleep(10000);
-                while ( 1 )
-                {
-                    if ( (str= queue_dequeue(&RPC_6777_response)) != 0 )
-                        free(retstr), retstr = str;
-                    else break;
-                }
-                if ( n == 1000 )
-                    printf("TIMEOUT: selectserver_func no response\n");
-                printf("SERVER SENT.(%s)\n",retstr);
-            }
-            else*/
-            {
-                retstr = sendmessage(NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
-            }
+            retstr = sendmessage(NXTaddr,NXTACCTSECRET,_tokbuf,(int32_t)strlen(_tokbuf)+1,Global_pNXT->privacyServer_NXTaddr,_tokbuf);
         }
         else
-#endif
+//#endif
         {
-            //if ( strcmp(buf,"sendmessage") == 0 )
-            //    origparmstxt = remove_secret(argjsonp,origparmstxt);
             issue_generateToken(mp->curl_handle2,encoded,origparmstxt,NXTACCTSECRET);
             encoded[NXT_TOKEN_LEN] = 0;
             sprintf(_tokbuf,"[%s,{\"token\":\"%s\"}]",origparmstxt,encoded);

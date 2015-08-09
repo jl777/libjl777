@@ -373,13 +373,18 @@ struct coin_info
 {
     int32_t timestamps[100];
     struct coincache_info CACHE;
-    struct pingpong_queue podQ;
+    //struct pingpong_queue podQ;
     struct hashtable *telepods; void *changepod; uint64_t min_telepod_satoshis;
+    void **logs;
+    cJSON *ciphersobj;
     
-    char name[64],NXTACCTSECRET[256],*userpass,*serverport,assetid[64],*marker,*tradebotfname;
-    uint64_t NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
-    int32_t initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods;
+    char name[64],pubaddr[128],NXTACCTSECRET[2048],coinpubkey[1024],backupdir[512],privacyserver[32];
+    char *userpass,*serverport,assetid[64],*marker,*tradebotfname;
+    uint64_t pubnxt64bits,dust,NXTfee_equiv,txfee,markeramount,lastheighttime,height,blockheight,RTblockheight;
+    int32_t maxevolveiters,initdone,nohexout,use_addmultisig,min_confirms,minconfirms,estblocktime,forkheight,backupcount,enabled,savedtelepods[3],M,N,numlogs,clonesmear;
 };
+
+#define TELEPORT_DEFAULT_SMEARTIME 3600
 
 #define SETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] |= (1 << ((bitoffset) & 7)))
 #define GETBIT(bits,bitoffset) (((unsigned char *)bits)[(bitoffset) >> 3] & (1 << ((bitoffset) & 7)))
@@ -414,10 +419,12 @@ char NXTSERVER[64] = { "http://127.0.0.1:6876/nxt?requestType" };
 //#include "crossplatform.h"
 
 #include "utils/NXTutils.h"
+#include "ciphers.h"
 #include "coins.h"
 //#include "utils/NXTsock.h"
 //#include "punch.h"
 #include "NXTprivacy.h"
 double picoc(int argc,char **argv,char *codestr);
+int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n);
 
 #endif

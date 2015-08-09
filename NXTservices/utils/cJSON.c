@@ -658,7 +658,7 @@ int32_t safecopy(char *dest,char *src,long len)
             dest[i] = src[i];
         if ( i == len )
         {
-            printf("%s too long %ld\n",src,len);
+            printf("%s too long %ld\n",src,len); while ( 1 ) sleep(1);
             return(-1);
         }
         dest[i] = 0;
@@ -741,6 +741,9 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
         if ( c < '0' || c > '9' )
         {
             printf("calc_nxt64bits: illegal char.(%c %d) in (%s).%d\n",c,c,NXTaddr,(int32_t)i);
+#ifdef __APPLE__
+            while ( 1 ) sleep(1);
+#endif
             return(0);
         }
         nxt64bits += mult * (c - '0');

@@ -9,7 +9,7 @@
  * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 #include "tomcrypt.h"
-//#include <signal.h>
+#include <signal.h>
 
 /**
   @file crypt_argchk.c

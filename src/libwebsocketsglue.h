@@ -63,19 +63,16 @@ void run_NXTservices(void *arg)
     while ( 1 ) sleep(60);
 }
 
-void init_NXTservices(int _argc,char **_argv)
+void init_NXTservices(int _argc,char **_argv,char *NXTADDR,char *secret)
 {
-    struct NXThandler_info *mp = calloc(1,sizeof(*mp));    // seems safest place to have main data structure
-    Global_mp = mp;
+    struct NXThandler_info *mp = Global_mp;    // seems safest place to have main data structure
+    //Global_mp = mp;
     char *ipaddr;
     UV_loop = uv_default_loop();
     portable_mutex_init(&mp->hash_mutex);
     portable_mutex_init(&mp->hashtable_queue[0].mutex);
     portable_mutex_init(&mp->hashtable_queue[1].mutex);
-    //mp->curl_handle = curl_easy_init();
-    //mp->curl_handle2 = curl_easy_init();
-    //mp->curl_handle3 = curl_easy_init();
-  
+ 
     init_NXThashtables(mp);
     init_NXTAPI(mp->curl_handle);
     ipaddr = 0;//get_ipaddr();
@@ -84,43 +81,29 @@ void init_NXTservices(int _argc,char **_argv)
         strcpy(MY_IPADDR,get_ipaddr());
         strcpy(mp->ipaddr,MY_IPADDR);
     }
-    /*if ( _argc >= 2 && (strcmp(_argv[1],"server") == 0 || strcmp(mp->ipaddr,EMERGENCY_PUNCH_SERVER) == 0) )
-    {
-#ifndef WIN32
-        //punch_server_main(_argc-1,_argv+1);
-        printf("hole punch server done\n");
-        exit(0);
-#endif
-    }
-    else*/
-    {
-        safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
-        mp->upollseconds = 333333 * 0;
-        mp->pollseconds = POLL_SECONDS;
-        //safecopy(mp->NXTAPISERVER,NXTSERVER,sizeof(mp->NXTAPISERVER));
-        crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
-        init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
-        //mp->accountjson = issue_getAccountInfo(mp->curl_handle,&Global_mp->acctbalance,mp->dispname,PC_USERNAME,mp->NXTADDR,mp->groupname);
-#ifdef __linux__
-        //char NXTADDR[64],NXTACCTSECRET[256];
-        //gen_randomacct(mp->curl_handle,33,NXTADDR,NXTACCTSECRET,"randvals");
-        //printf("(%s) (%s) (%s) (%s) [%s]\n",mp->dispname,PC_USERNAME,NXTADDR,mp->groupname,NXTACCTSECRET);
-#endif
-        //mp->myind = -1;
-        //mp->nxt64bits = calc_nxt64bits(mp->NXTADDR);
-        if ( portable_thread_create(process_hashtablequeues,mp) == 0 )
-            printf("ERROR hist process_hashtablequeues\n");
-        if ( portable_thread_create(getNXTblocks,mp) == 0 )
-            printf("ERROR start_Histloop\n");
-        if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
-            printf("ERROR init_NXTprivacy\n");
-        gen_testforms(_argc>1 ? _argv[1] : 0);
+    safecopy(mp->ipaddr,MY_IPADDR,sizeof(mp->ipaddr));
+    mp->upollseconds = 333333 * 0;
+    mp->pollseconds = POLL_SECONDS;
+    //safecopy(mp->NXTAPISERVER,NXTSERVER,sizeof(mp->NXTAPISERVER));
+    crypto_box_keypair(Global_mp->session_pubkey,Global_mp->session_privkey);
+    init_hexbytes(Global_mp->pubkeystr,Global_mp->session_pubkey,sizeof(Global_mp->session_pubkey));
+    if ( portable_thread_create(process_hashtablequeues,mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    init_MGWconf(NXTADDR,secret,Global_mp);
 
-        printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
-        void run_NXTservices(void *arg);
-        if ( portable_thread_create(run_NXTservices,mp) == 0 )
-            printf("ERROR hist process_hashtablequeues\n");
-    }
+    if ( portable_thread_create(getNXTblocks,mp) == 0 )
+        printf("ERROR start_Histloop\n");
+    if ( portable_thread_create(init_NXTprivacy,_argv[1]) == 0 )
+        printf("ERROR init_NXTprivacy\n");
+    gen_testforms(_argc>1 ? _argv[1] : 0);
+    
+    printf("run_NXTservices >>>>>>>>>>>>>>> %p %s: %s %s\n",mp,mp->dispname,PC_USERNAME,mp->ipaddr);
+    void run_NXTservices(void *arg);
+    if ( portable_thread_create(run_NXTservices,mp) == 0 )
+        printf("ERROR hist process_hashtablequeues\n");
+    void *Coinloop(void *arg);
+    if ( portable_thread_create(Coinloop,mp) == 0 )
+        printf("ERROR Coin_genaddrloop\n");
  }
 
 

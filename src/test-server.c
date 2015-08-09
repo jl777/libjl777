@@ -312,7 +312,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                     if ( URL_changed == 0 && testforms[0] != 0 )
                 {
                     mylen = strlen(testforms);
-                    printf("testforms len %ld\n",(long)mylen);
+                    //printf("testforms len %ld\n",(long)mylen);
                     if ( mylen != 0 )
                     {
                         sprintf((char *)buffer,
@@ -323,7 +323,7 @@ static int callback_http(struct libwebsocket_context *context,struct libwebsocke
                                 "Content-Length: %u\x0d\x0a\x0d\x0a",
                                 (unsigned int)mylen);
                         libwebsocket_write(wsi,buffer,strlen((char *)buffer),LWS_WRITE_HTTP);
-                        printf("html hdr.(%s)\n",buffer);
+                        //printf("html hdr.(%s)\n",buffer);
                         libwebsocket_write(wsi,(unsigned char *)testforms,strlen(testforms),LWS_WRITE_HTTP);
                         return(-1);
                     }
@@ -779,18 +779,13 @@ int main(int argc, char **argv)
         argc = 2;
         argv = _argv;
     }
-    //#ifndef FROM_pNXT
     char NXTADDR[128],secret[256];
+    Global_mp = calloc(1,sizeof(*Global_mp));
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     if ( argc > 1 )
         safecopy(secret,argv[1],sizeof(secret));
-    //#ifdef __APPLE__
-    //    strcpy(secret,"exchanges");
-    //#endif
-    init_MGWconf(NXTADDR,secret,Global_mp);
-    //#endif
     printf("call init_NXTservices sizeof AM %ld argc.%d (%s)\n",sizeof(struct json_AM),argc,_argv[1]);
-    init_NXTservices(argc,argv);
+    init_NXTservices(argc,argv,NXTADDR,secret);
 	memset(&info, 0, sizeof info);
 	info.port = LIBWEBSOCKETS_PORT;
 
