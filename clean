@@ -1,0 +1,9 @@
+cd gzip
+rm *.o
+cd ../libtom
+rm *.o
+cd ../picoc
+make clean
+cd ..
+rm *.a *.so *.o
+

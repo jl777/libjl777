@@ -1,0 +1,16 @@
+pkill SuperNET
+./BitcoinDarkd stop
+pkill SuperNET
+git pull
+sleep 4
+ps aux | grep SuperNET
+ps aux | grep BitcoinDarkd
+echo "there should only be the entries for grep in the above lines"
+rm SuperNET
+make SuperNET
+if make btcdmac; then
+	rm ~/Library/Application\ Support/BitcoinDark/debug.log
+	./BitcoinDarkd
+else
+	echo "error building"
+fi

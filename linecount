@@ -1,0 +1,1 @@
+wc *.c *.h cstdlib/*.c cstdlib/*.h gzip/*.c gzip/*.h includes/*.h libtom/*.c libtom/*.h platform/*.c platform/*.h plugins/*.c plugins/*.h

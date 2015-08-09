@@ -1,0 +1,18 @@
+pkill -15 SuperNET
+./BitcoinDarkd stop
+git pull
+sleep 4
+ps aux | grep SuperNET
+ps aux | grep BitcoinDarkd
+echo "there should only be the entries for grep in the above lines"
+rm SuperNET 
+make SuperNET
+make api
+if make btcd; then
+	rm ~/.BitcoinDark/debug.log
+	./BitcoinDarkd
+	libs/websocketd --sameorigin=true --cgidir=plugins/cgi --port=7777
+	#libs/websocketd --cgidir=plugins/cgi --port=7777
+else
+	echo "error building"
+fi
