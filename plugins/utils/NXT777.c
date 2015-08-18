@@ -894,7 +894,7 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr,uint64_t assetid)
                         {
                             if ( get_cJSON_int(json,"errorCode") != 0 )
                             {
-                                printf("(%s) not asset and not currency (%s)\n",assetidstr,jsonstr), getchar();
+                                printf("(%s) not asset and not currency (%s)\n",assetidstr,jsonstr);//, getchar();
                                 free_json(json), free(jsonstr);
                                 return(-1);
                             }

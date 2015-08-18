@@ -292,11 +292,6 @@ void calc_sha256(char hashstr[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t
     sha256_done(&md,hash);
     if ( hashstr != 0 )
     {
-<<<<<<< HEAD:NXTservices/libtom/sha256.c
-        int32_t init_hexbytes(char *hexbytes,unsigned char *message,long len);
-        init_hexbytes(hashstr,hash,256 >> 3);
-    }
-=======
         int32_t init_hexbytes_noT(char *hexbytes,uint8_t *message,long len);
         init_hexbytes_noT(hashstr,hash,256 >> 3);
     }
@@ -325,7 +320,6 @@ void update_sha256(uint8_t hash[256 >> 3],struct sha256_state *state,uint8_t *sr
     }
     *state = md.sha256;
     sha256_done(&md,hash);
->>>>>>> origin/master:plugins/utils/sha256.c
 }
 
 /**
