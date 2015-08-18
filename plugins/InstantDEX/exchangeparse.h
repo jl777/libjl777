@@ -7,184 +7,210 @@
 
 #ifndef xcode_exchangeparse_h
 #define xcode_exchangeparse_h
-#include <curl/curl.h>
-#define DEFAULT_MAXDEPTH 25
-void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1,char *hdr2);
-/*
-cJSON *inner_json(double price,double vol,uint32_t timestamp,uint64_t quoteid,uint64_t nxt64bits)
+
+char *MGWassets[][3] =
 {
-    cJSON *inner = cJSON_CreateArray();
-    char numstr[64];
-    cJSON_AddItemToArray(inner,cJSON_CreateNumber(price));
-    cJSON_AddItemToArray(inner,cJSON_CreateNumber(vol));
-    cJSON_AddItemToArray(inner,cJSON_CreateNumber(timestamp));
-    sprintf(numstr,"%llu",(long long)quoteid), cJSON_AddItemToArray(inner,cJSON_CreateString(numstr));
-    sprintf(numstr,"%llu",(long long)nxt64bits), cJSON_AddItemToArray(inner,cJSON_CreateString(numstr));
-    return(inner);
+    { "17554243582654188572", "BTC", "8" }, // assetid, name, decimals
+    { "4551058913252105307", "BTC", "8" },
+    { "12659653638116877017", "BTC", "8" },
+    { "11060861818140490423", "BTCD", "4" },
+    { "6918149200730574743", "BTCD", "4" },
+    { "13120372057981370228", "BITS", "6" },
+    { "2303962892272487643", "DOGE", "4" },
+    { "16344939950195952527", "DOGE", "4" },
+    { "6775076774325697454", "OPAL", "8" },
+    { "7734432159113182240", "VPN", "4" },
+    { "9037144112883608562", "VRC", "8" },
+    { "1369181773544917037", "BBR", "8" },
+    { "17353118525598940144", "DRK", "8" },
+    { "2881764795164526882", "LTC", "4" },
+    { "7117580438310874759", "BC", "4" },
+    { "275548135983837356", "VIA", "4" },
+    { "6220108297598959542", "CNMT", "0" },
+    { "7474435909229872610", "CNMT", "0" },
+};
+
+uint64_t is_MGWcoin(char *name)
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+        if ( strcmp(MGWassets[i][1],name) == 0 )
+            return(calc_nxt64bits(MGWassets[i][0]));
+    return(0);
 }
 
-void convram_NXT_quotejson(uint64_t assetid,int32_t flip,cJSON *json,char *fieldname,uint64_t ap_mult,int32_t maxdepth,char *gui)
+char *is_MGWasset(uint64_t *multp,uint64_t assetid)
 {
-    //"priceNQT": "12900",
-    //"asset": "4551058913252105307",
-    //"order": "8128728940342496249",
-    //"quantityQNT": "20000000",
-    uint32_t timestamp; int32_t i,n,dir; uint64_t baseamount,relamount; struct InstantDEX_quote iQ; cJSON *srcobj,*srcitem;
-    if ( ap_mult == 0 )
-        return;
-    if ( flip == 0 )
-        dir = 1;
-    else dir = -1;
-    srcobj = cJSON_GetObjectItem(json,fieldname);
-    if ( srcobj != 0 )
-    {
-        if ( (n= cJSON_GetArraySize(srcobj)) > 0 )
+    int32_t i; char assetidstr[64];
+    expand_nxt64bits(assetidstr,assetid);
+    for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+        if ( strcmp(MGWassets[i][0],assetidstr) == 0 )
         {
-            for (i=0; i<n && i<maxdepth; i++)
+            if ( multp != 0 )
             {
-                srcitem = cJSON_GetArrayItem(srcobj,i);
-                baseamount = (get_satoshi_obj(srcitem,"quantityQNT") * ap_mult);
-                relamount = (get_satoshi_obj(srcitem,"quantityQNT") * get_satoshi_obj(srcitem,"priceNQT"));
-                timestamp = get_blockutime((uint32_t)get_API_int(cJSON_GetObjectItem(srcitem,"height"),0));
-                add_rambook_quote(INSTANTDEX_NXTAENAME,&iQ,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"account")),timestamp,dir,assetid,NXT_ASSETID,0.,0.,baseamount,relamount,gui,get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"order")),0);
-                if ( Debuglevel > 2 && i < 3 )
-                {
-                    double price,volume,tmp;
-                    price = calc_price_volume(&volume,baseamount,relamount);
-                    printf("%-8s %s %llu/%-5s %.8f vol %.8f | invert %.8f vol %.8f | timestmp.%u quoteid.%llu | %llu/%llu = %f\n","nxtae",dir>0?"bid":"ask",(long long)assetid,"NXT",price,volume,1./price,volume*price,timestamp,(long long)get_API_nxt64bits(cJSON_GetObjectItem(srcitem,"order")),(long long)baseamount,(long long)relamount,calc_price_volume(&tmp,baseamount,relamount));
-                }
+                *multp = calc_decimals_mult(atoi(MGWassets[i][2]));
+                //printf("%s -> %d MGW assetmult.%llu\n",MGWassets[i][2],atoi(MGWassets[i][2]),(long long)*multp);
             }
+            return(MGWassets[i][1]);
         }
-    }
+    return(0);
 }
 
-void ramupdate_NXThalf(int32_t flip,uint64_t assetid,int32_t maxdepth,char *gui)
+cJSON *exchanges_json()
 {
-    char url[1024],*str,*cmd,*field; cJSON *json;
-    if ( gui == 0 )
-        gui = "";
-    if ( flip == 0 )
-        cmd = "getBidOrders", field = "bidOrders";
-    else cmd = "getAskOrders", field = "askOrders";
-    sprintf(url,"requestType=%s&asset=%llu&limit=%d",cmd,(long long)assetid,maxdepth);
-    if ( (str= issue_NXTPOST(url)) != 0 )
+    struct exchange_info *exchange; int32_t exchangeid,n = 0; char api[4]; cJSON *item,*array = cJSON_CreateArray();
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
-        //printf("flip.%d update.(%s)\n",flip,url);
-        if ( (json = cJSON_Parse(str)) != 0 )
-            convram_NXT_quotejson(assetid,flip,json,field,get_assetmult(assetid),maxdepth,gui), free_json(json);
-    } else printf("cant get.(%s)\n",url);
-    if ( str != 0 )
-        free(str);
-}
-
-void ramparse_NXT(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
-{
-    uint64_t assetid;
-    if ( NXT_ASSETID != stringbits("NXT") )
-        printf("NXT_ASSETID.%llu != %llu stringbits\n",(long long)NXT_ASSETID,(long long)stringbits("NXT"));
-    if ( bids->assetids[1] != NXT_ASSETID && bids->assetids[0] != NXT_ASSETID )
-        return;
-    //printf("ramparse_NXT %llu/%llu\n",(long long)bids->assetids[0],(long long)bids->assetids[1]);
-    if ( bids->assetids[0] != NXT_ASSETID )
-        assetid = bids->assetids[0];
-    else assetid = bids->assetids[1];
-    convram_NXT_Uquotejson(assetid);
-    if ( maxdepth == 0 || bids->numupdates == 0 || asks->numupdates == 0 )
-    {
-        maxdepth = 25;
-        ramupdate_NXThalf(0,bids->assetids[0],maxdepth,gui);
-        ramupdate_NXThalf(1,asks->assetids[0],maxdepth,gui);
-    }
-}
-
-int32_t parseram_json_quotes(char *exchangestr,int32_t dir,struct rambook_info *rb,cJSON *array,int32_t maxdepth,char *pricefield,char *volfield,char *gui)
-{
-    cJSON *item;
-    int32_t i,n,numitems;
-    uint32_t reftimestamp,timestamp;
-    uint64_t nxt64bits,baseamount,relamount,quoteid = 0;
-    double price,volume,tmp;
-    struct InstantDEX_quote iQ;
-    nxt64bits = stringbits(exchangestr);
-    reftimestamp = (uint32_t)time(NULL);
-    n = cJSON_GetArraySize(array);
-    if ( maxdepth != 0 && n > maxdepth )
-        n = maxdepth;
-    for (i=0; i<n; i++)
-    {
-        quoteid = timestamp = 0;
-        item = cJSON_GetArrayItem(array,i);
-        if ( pricefield != 0 && volfield != 0 )
+        item = cJSON_CreateObject();
+        exchange = &Exchanges[exchangeid];
+        if ( exchange->name[0] == 0 )
+            break;
+        cJSON_AddItemToObject(item,"name",cJSON_CreateString(exchange->name));
+        memset(api,0,sizeof(api));
+        if ( exchange->trade != 0 )
         {
-            price = get_API_float(cJSON_GetObjectItem(item,pricefield));
-            volume = get_API_float(cJSON_GetObjectItem(item,volfield));
+            if ( exchange->apikey[0] != 0 )
+                api[n++] = 'K';
+            if ( exchange->apisecret[0] != 0 )
+                api[n++] = 'S';
+            if ( exchange->userid[0] != 0 )
+                api[n++] = 'U';
+            cJSON_AddItemToObject(item,"trade",cJSON_CreateString(api));
         }
-        else if ( is_cJSON_Array(item) != 0 && (numitems= cJSON_GetArraySize(item)) != 0 ) // big assumptions about order within nested array!
-        {
-            price = get_API_float(cJSON_GetArrayItem(item,0));
-            volume = get_API_float(cJSON_GetArrayItem(item,1));
-        }
-        else
-        {
-            printf("unexpected case in parseram_json_quotes\n");
-            continue;
-        }
-        if ( timestamp == 0 )
-            timestamp = reftimestamp;
-        set_best_amounts(&baseamount,&relamount,price,volume);
-        if ( Debuglevel > 2 && i < 3 )
-            printf("%-8s %s %5s/%-5s %13.8f vol %13.8f | invert %13.8f vol %13.8f | timestmp.%u quoteid.%llu | %llu/%llu = %f\n",rb->exchange,dir>0?"bid":"ask",rb->base,rb->rel,price,volume,1./price,volume*price,timestamp,(long long)quoteid,(long long)baseamount,(long long)relamount,calc_price_volume(&tmp,baseamount,relamount));
-        add_rambook_quote(exchangestr,&iQ,nxt64bits,timestamp,dir,rb->assetids[0],rb->assetids[1],0.,0.,baseamount,relamount,gui,0,0);
-        add_user_order(rb,&iQ);
+        cJSON_AddItemToArray(array,item);
     }
-    return(n);
+    return(array);
 }
 
-void ramparse_json_orderbook(char *exchangestr,struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,cJSON *json,char *resultfield,char *bidfield,char *askfield,char *pricefield,char *volfield,char *gui)
+int32_t is_exchange_nxt64bits(uint64_t nxt64bits)
 {
-    cJSON *obj = 0,*bidobj,*askobj;
-    if ( resultfield == 0 )
-        obj = json;
-    if ( maxdepth == 0 )
-        maxdepth = DEFAULT_MAXDEPTH;
-    if ( resultfield == 0 || (obj= cJSON_GetObjectItem(json,resultfield)) != 0 )
+    int32_t exchangeid;
+    struct exchange_info *exchange = 0;
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
-        if ( (bidobj= cJSON_GetObjectItem(obj,bidfield)) != 0 && is_cJSON_Array(bidobj) != 0 )
-            parseram_json_quotes(exchangestr,1,bids,bidobj,maxdepth,pricefield,volfield,gui);
-        if ( (askobj= cJSON_GetObjectItem(obj,askfield)) != 0 && is_cJSON_Array(askobj) != 0 )
-            parseram_json_quotes(exchangestr,-1,asks,askobj,maxdepth,pricefield,volfield,gui);
+        exchange = &Exchanges[exchangeid];
+        // printf("(%s).(%llu vs %llu) ",exchange->name,(long long)exchange->nxt64bits,(long long)nxt64bits);
+        if ( exchange->name[0] == 0 )
+            return(0);
+        if ( exchange->nxt64bits == nxt64bits )
+            return(1);
     }
+    printf("no exchangebits match\n");
+    return(0);
 }
 
-void ramparse_bittrex(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui) // "BTC-BTCD"
+struct exchange_info *get_exchange(int32_t exchangeid) { return(&Exchanges[exchangeid]); }
+char *exchange_str(int32_t exchangeid) { return(Exchanges[exchangeid].name); }
+
+struct exchange_info *exchange_find(char *exchangestr)
 {
-    cJSON *json,*obj;
-    char *jsonstr,market[128];
-    if ( bids->url[0] == 0 )
+    int32_t exchangeid;
+    struct exchange_info *exchange = 0;
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
-        sprintf(market,"%s-%s",bids->rel,bids->base);
-        sprintf(bids->url,"https://bittrex.com/api/v1.1/public/getorderbook?market=%s&type=both&depth=%d",market,maxdepth);
+        exchange = &Exchanges[exchangeid];
+        if ( strcmp(exchangestr,exchange->name) == 0 )
+            return(exchange);
     }
-    jsonstr = issue_curl(bids->url);
+    return(0);
+}
+
+struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr)
+{
+    int32_t exchangeid;
+    struct exchange_info *exchange = 0;
+    for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
+    {
+        exchange = &Exchanges[exchangeid];
+        //printf("(%s v %s) ",exchangestr,exchange->name);
+        if ( exchange->name[0] == 0 )
+        {
+            portable_mutex_init(&exchange->mutex);
+            strcpy(exchange->name,exchangestr);
+            exchange->exchangeid = exchangeid;
+            exchange->nxt64bits = stringbits(exchangestr);
+            printf("CREATE EXCHANGE.(%s) id.%d %llu\n",exchangestr,exchangeid,(long long)exchange->nxt64bits);
+            //if ( exchangestr[0] == 0 )
+            //    getchar();
+            break;
+        }
+        if ( strcmp(exchangestr,exchange->name) == 0 )
+            break;
+    }
+    if ( exchange != 0 && exchangeidp != 0 )
+        *exchangeidp = exchange->exchangeid;
+    return(exchange);
+}
+
+int32_t InstantDEX_supports(char *base,char *rel) { return(1); }
+
+int32_t NXT_supports(char *base,char *rel)
+{
+    if ( strcmp(rel,"NXT") == 0 )
+        return(1);
+    else if ( strcmp(base,"NXT") == 0 )
+        return(-1);
+    else return(0);
+}
+
+int32_t bittrex_supports(char *base,char *rel)
+{
+    if ( strcmp(rel,"BTC") == 0 )
+        return(1);
+    else if ( strcmp(base,"BTC") == 0 )
+        return(-1);
+    else return(0);
+    //return(add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,0,0));
+}
+
+double prices777_bittrex(struct prices777 *prices,int32_t maxdepth) // "BTC-BTCD"
+{
+    cJSON *json,*obj; char *jsonstr,market[128]; double hbla = 0.;
+    if ( prices->url[0] == 0 )
+    {
+        sprintf(market,"%s-%s",prices->rel,prices->base);
+        sprintf(prices->url,"https://bittrex.com/api/v1.1/public/getorderbook?market=%s&type=both&depth=%d",market,maxdepth);
+    }
+    jsonstr = issue_curl(prices->url);
     if ( jsonstr != 0 )
     {
         if ( (json = cJSON_Parse(jsonstr)) != 0 )
         {
             if ( (obj= cJSON_GetObjectItem(json,"success")) != 0 && is_cJSON_True(obj) != 0 )
-                ramparse_json_orderbook("bittrex",bids,asks,maxdepth,json,"result","buy","sell","Rate","Quantity",gui);
+                hbla = prices777_json_orderbook("bittrex",prices,maxdepth,json,"result","buy","sell","Rate","Quantity");
             free_json(json);
         }
         free(jsonstr);
     }
+    return(hbla);
 }
 
-void ramparse_bter(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t bter_supports(char *base,char *rel)
 {
-    cJSON *json,*obj;
-    char resultstr[MAX_JSON_FIELD],*jsonstr;
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"http://data.bter.com/api/1/depth/%s_%s",bids->base,bids->rel);
-    jsonstr = issue_curl(bids->url);
+    return(0);
+    if ( strcmp(rel,"BTC") == 0 || strcmp(rel,"CNY") == 0 )
+        return(1);
+    else if ( strcmp(base,"BTC") == 0 || strcmp(base,"CNY") == 0 )
+        return(-1);
+    else return(0);
+    /*char *bterassets[][8] = { { "UNITY", "12071612744977229797" },  { "ATOMIC", "11694807213441909013" },  { "DICE", "18184274154437352348" },  { "MRKT", "134138275353332190" },  { "MGW", "10524562908394749924" } };
+     uint64_t unityid = calc_nxt64bits("12071612744977229797");
+     n = add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,bterassets,(int32_t)(sizeof(bterassets)/sizeof(*bterassets)));
+     if ( baseid == unityid || relid == unityid )
+     {
+     n = add_exchange_assetid(assetids,n,unityid,BTC_ASSETID,exchangeid);
+     n = add_exchange_assetid(assetids,n,unityid,NXT_ASSETID,exchangeid);
+     n = add_exchange_assetid(assetids,n,unityid,CNY_ASSETID,exchangeid);
+     }
+     return(n);*/
+}
+
+double prices777_bter(struct prices777 *prices,int32_t maxdepth)
+{
+    cJSON *json,*obj; char resultstr[MAX_JSON_FIELD],*jsonstr; double hbla = 0.;
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"http://data.bter.com/api/1/depth/%s_%s",prices->base,prices->rel);
+    jsonstr = issue_curl(prices->url);
     //printf("(%s) -> (%s)\n",ep->url,jsonstr);
     //{"result":"true","asks":[["0.00008035",100],["0.00008030",2030],["0.00008024",100],["0.00008018",643.41783554],["0.00008012",100]
     if ( jsonstr != 0 )
@@ -197,136 +223,577 @@ void ramparse_bter(struct rambook_info *bids,struct rambook_info *asks,int32_t m
                 copy_cJSON(resultstr,obj);
                 if ( strcmp(resultstr,"true") == 0 )
                 {
-                    maxdepth = 1000; // since bter ask is wrong order, need to scan entire list
-                    ramparse_json_orderbook("bter",bids,asks,maxdepth,json,0,"bids","asks",0,0,gui);
+                    maxdepth = MAX_DEPTH;//1000; // since bter ask is wrong order, need to scan entire list
+                    hbla = prices777_json_orderbook("bter",prices,maxdepth,json,0,"bids","asks",0,0);
                 }
             }
             free_json(json);
         }
         free(jsonstr);
     }
+    return(hbla);
 }
 
-void ramparse_standard(char *exchangestr,char *url,struct rambook_info *bids,struct rambook_info *asks,char *price,char *volume,int32_t maxdepth,char *gui)
+double prices777_standard(char *exchangestr,char *url,struct prices777 *prices,char *price,char *volume,int32_t maxdepth,char *field)
 {
-    //static CURL *cHandle;
-    char *jsonstr; cJSON *json;
-    //if ( (jsonstr= curl_getorpost(&cHandle,url,0,0)) != 0 )
+    char *jsonstr; cJSON *json; double hbla = 0.;
     if ( (jsonstr= issue_curl(url)) != 0 )
     {
-        //if ( strcmp(exchangestr,"btc38") == 0 )
-        //    printf("(%s)\n",jsonstr);
+        //if ( strcmp(exchangestr,"btce") == 0 )
+        //    printf("(%s) -> (%s)\n",url,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            ramparse_json_orderbook(exchangestr,bids,asks,maxdepth,json,0,"bids","asks",price,volume,gui);
+            hbla = prices777_json_orderbook(exchangestr,prices,maxdepth,json,field,"bids","asks",price,volume);
             free_json(json);
         }
         free(jsonstr);
     }
+    return(hbla);
 }
 
-void ramparse_poloniex(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t poloniex_supports(char *base,char *rel)
+{
+    if ( strcmp(rel,"BTC") == 0 )
+        return(1);
+    else if ( strcmp(base,"BTC") == 0 )
+        return(-1);
+    else return(0);
+    //char *poloassets[][8] = { { "UNITY", "12071612744977229797" },  { "JLH", "6932037131189568014" },  { "XUSD", "12982485703607823902" },  { "LQD", "4630752101777892988" },  { "NXTI", "14273984620270850703" }, { "CNMT", "7474435909229872610", "6220108297598959542" } };
+    //return(add_exchange_assetids(assetids,n,BTC_ASSETID,baseid,relid,exchangeid,poloassets,(int32_t)(sizeof(poloassets)/sizeof(*poloassets))));
+}
+
+double prices777_poloniex(struct prices777 *prices,int32_t maxdepth)
 {
     char market[128];
-    if ( bids->url[0] == 0 )
+    if ( prices->url[0] == 0 )
     {
-        sprintf(market,"%s_%s",bids->rel,bids->base);
-        sprintf(bids->url,"https://poloniex.com/public?command=returnOrderBook&currencyPair=%s&depth=%d",market,maxdepth);
+        sprintf(market,"%s_%s",prices->rel,prices->base);
+        sprintf(prices->url,"https://poloniex.com/public?command=returnOrderBook&currencyPair=%s&depth=%d",market,maxdepth);
     }
-    ramparse_standard("poloniex",bids->url,bids,asks,0,0,maxdepth,gui);
+    return(prices777_standard("poloniex",prices->url,prices,0,0,maxdepth,0));
 }
 
-void ramparse_bitfinex(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t bitfinex_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://api.bitfinex.com/v1/book/%s%s",bids->base,bids->rel);
-    ramparse_standard("bitfinex",bids->url,bids,asks,"price","amount",maxdepth,gui);
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"BTC") == 0) || (strcmp(base,"DASH") == 0 && strcmp(rel,"BTC") == 0) || (strcmp(base,"DASH") == 0 && strcmp(rel,"USD") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"BTC") == 0) || (strcmp(rel,"DASH") == 0 && strcmp(base,"BTC") == 0) || (strcmp(rel,"DASH") == 0 && strcmp(base,"USD") == 0) )
+        return(-1);
+    else return(0);
 }
 
-void ramparse_btce(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_bitfinex(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://btc-e.com/api/2/%s%s/depth",bids->lbase,bids->lrel);
-    ramparse_standard("btce",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://api.bitfinex.com/v1/book/%s%s",prices->base,prices->rel);
+    return(prices777_standard("bitfinex",prices->url,prices,"price","amount",maxdepth,0));
 }
 
-void ramparse_bitstamp(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t btce_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://www.bitstamp.net/api/order_book/");
-    ramparse_standard("bitstamp",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"BTC") == 0) || (strcmp(base,"BTC") == 0 && strcmp(rel,"RUR") == 0) || (strcmp(base,"PPC") == 0 && strcmp(rel,"BTC") == 0) || (strcmp(base,"PPC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"RUR") == 0) || (strcmp(base,"NMC") == 0 && strcmp(rel,"BTC") == 0) || (strcmp(base,"NMC") == 0 && strcmp(rel,"USD") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"BTC") == 0) || (strcmp(rel,"BTC") == 0 && strcmp(base,"RUR") == 0) || (strcmp(rel,"PPC") == 0 && strcmp(base,"BTC") == 0) || (strcmp(rel,"PPC") == 0 && strcmp(base,"USD") == 0 ) || (strcmp(rel,"LTC") == 0 && strcmp(base,"RUR") == 0) || (strcmp(rel,"NMC") == 0 && strcmp(base,"BTC") == 0 ) || (strcmp(rel,"NMC") == 0 && strcmp(base,"USD") == 0) )
+        return(-1);
+    else return(0);
 }
 
-void ramparse_okcoin(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_btce(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://www.okcoin.com/api/depth.do?symbol=%s%s",bids->lbase,bids->lrel);
-    ramparse_standard("okcoin",bids->url,bids,asks,0,0,maxdepth,gui);
+    char field[64];
+    sprintf(field,"%s_%s",prices->lbase,prices->lrel);
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://btc-e.com/api/3/depth/%s",field);
+    return(prices777_standard("btce",prices->url,prices,0,0,maxdepth,field));
 }
 
-void ramparse_huobi(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t bitstamp_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"http://api.huobi.com/staticmarket/depth_%s_json.js ",bids->lbase);
-    ramparse_standard("huobi",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0 )
+        return(1);
+    else if ( strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0 )
+        return(-1);
+    else return(0);
 }
 
-void ramparse_bityes(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_bitstamp(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://market.bityes.com/%s_%s/trade_history.js?time=%ld",bids->lrel,bids->lbase,time(NULL));
-    ramparse_standard("bityes",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://www.bitstamp.net/api/order_book/");
+    return(prices777_standard("bitstamp",prices->url,prices,0,0,maxdepth,0));
 }
 
-void ramparse_coinbase(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t okcoin_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://api.exchange.coinbase.com/products/%s-%s/book?level=2",bids->base,bids->rel);
-    ramparse_standard("coinbase",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"USD") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"USD") == 0) )
+        return(-1);
+    else return(0);
 }
 
-void ramparse_lakebtc(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_okcoin(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://www.okcoin.com/api/v1/depth.do?symbol=%s_%s",prices->lbase,prices->lrel);
+    if ( strcmp(prices->rel,"USD") != 0 && strcmp(prices->rel,"BTC") != 0 )
     {
-        if ( strcmp(bids->rel,"USD") == 0 )
-            sprintf(bids->url,"https://www.LakeBTC.com/api_v1/bcorderbook");
-        else if ( strcmp(bids->rel,"CNY") == 0 )
-            sprintf(bids->url,"https://www.LakeBTC.com/api_v1/bcorderbook_cny");
-        else printf("illegal lakebtc pair.(%s/%s)\n",bids->base,bids->rel);
+        fprintf(stderr,">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FATAL ERROR OKCOIN.(%s) only supports USD\n",prices->url);
+        printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FATAL ERROR OKCOIN.(%s) only supports USD\n",prices->url);
+        exit(-1);
+        return(0);
     }
-    ramparse_standard("lakebtc",bids->url,bids,asks,0,0,maxdepth,gui);
+    return(prices777_standard("okcoin",prices->url,prices,0,0,maxdepth,0));
 }
 
-void ramparse_exmo(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t huobi_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://api.exmo.com/api_v2/orders_book?pair=%s_%s",bids->base,bids->rel);
-    ramparse_standard("exmo",bids->url,bids,asks,0,0,maxdepth,gui);
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CNY") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"CNY") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"CNY") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"CNY") == 0) )
+        return(-1);
+    else return(0);
 }
 
-void ramparse_btc38(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_huobi(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"http://api.btc38.com/v1/depth.php?c=%s&mk_type=%s",bids->lbase,bids->lrel);
-    printf("btc38.(%s)\n",bids->url);
-    ramparse_standard("btc38",bids->url,bids,asks,0,0,maxdepth,gui);
-}*/
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"http://api.huobi.com/staticmarket/depth_%s_json.js ",prices->lbase);
+    return(prices777_standard("huobi",prices->url,prices,0,0,maxdepth,0));
+}
 
-/*void ramparse_kraken(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+int32_t bityes_supports(char *base,char *rel)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://api.kraken.com/0/public/Depth"); // need POST
-    ramparse_standard("kraken",bids->url,bids,asks,0,0,maxdepth,gui);
-}*/
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0) || (strcmp(base,"LTC") == 0 && strcmp(rel,"USD") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0) || (strcmp(rel,"LTC") == 0 && strcmp(base,"USD") == 0) )
+        return(-1);
+    else return(0);
+}
 
-/*void ramparse_itbit(struct rambook_info *bids,struct rambook_info *asks,int32_t maxdepth,char *gui)
+double prices777_bityes(struct prices777 *prices,int32_t maxdepth)
 {
-    if ( bids->url[0] == 0 )
-        sprintf(bids->url,"https://www.itbit.com/%s%s",bids->base,bids->rel);
-    ramparse_standard("itbit",bids->url,bids,asks,0,0,maxdepth,gui);
-}*/
+    //if ( prices->url[0] == 0 )
+    sprintf(prices->url,"https://market.bityes.com/%s_%s/depth.js?time=%ld",prices->lrel,prices->lbase,time(NULL));
+    return(prices777_standard("bityes",prices->url,prices,0,0,maxdepth,0));
+}
 
+int32_t coinbase_supports(char *base,char *rel)
+{
+    if ( strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0 )
+        return(1);
+    else if ( strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0 )
+        return(-1);
+    else return(0);
+}
+
+double prices777_coinbase(struct prices777 *prices,int32_t maxdepth)
+{
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://api.exchange.coinbase.com/products/%s-%s/book?level=2",prices->base,prices->rel);
+    return(prices777_standard("coinbase",prices->url,prices,0,0,maxdepth,0));
+}
+
+int32_t lakebtc_supports(char *base,char *rel)
+{
+    if ( strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0 )
+        return(1);
+    else if ( strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0 )
+        return(-1);
+    else return(0);
+}
+
+double prices777_lakebtc(struct prices777 *prices,int32_t maxdepth)
+{
+    if ( prices->url[0] == 0 )
+    {
+        if ( strcmp(prices->rel,"USD") == 0 )
+            sprintf(prices->url,"https://www.LakeBTC.com/api_v1/bcorderbook");
+        else if ( strcmp(prices->rel,"CNY") == 0 )
+            sprintf(prices->url,"https://www.LakeBTC.com/api_v1/bcorderbook_cny");
+        else printf("illegal lakebtc pair.(%s/%s)\n",prices->base,prices->rel);
+    }
+    return(prices777_standard("lakebtc",prices->url,prices,0,0,maxdepth,0));
+}
+
+int32_t exmo_supports(char *base,char *rel)
+{
+    if ( strcmp(base,"BTC") == 0 && (strcmp(rel,"USD") == 0 || strcmp(rel,"EUR") == 0 || strcmp(rel,"RUR") == 0) )
+        return(1);
+    else if ( strcmp(rel,"BTC") == 0 && (strcmp(base,"USD") == 0 || strcmp(base,"EUR") == 0 || strcmp(base,"RUR") == 0) )
+        return(-1);
+    else return(0);
+}
+
+double prices777_exmo(struct prices777 *prices,int32_t maxdepth)
+{
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://api.exmo.com/api_v2/orders_book?pair=%s_%s",prices->base,prices->rel);
+    return(prices777_standard("exmo",prices->url,prices,0,0,maxdepth,0));
+}
+
+int32_t btc38_supports(char *base,char *rel)
+{
+    if ( strcmp(rel,"BTC") == 0 || strcmp(rel,"CNY") == 0 )
+        return(1);
+    else if ( strcmp(base,"BTC") == 0 || strcmp(base,"CNY") == 0 )
+        return(-1);
+    else return(0);
+}
+
+double prices777_btc38(struct prices777 *prices,int32_t maxdepth)
+{
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"http://api.btc38.com/v1/depth.php?c=%s&mk_type=%s",prices->lbase,prices->lrel);
+    return(prices777_standard("btc38",prices->url,prices,0,0,maxdepth,0));
+}
+
+int32_t quadriga_supports(char *base,char *rel)
+{
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CAD") == 0) || (strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0) )
+        return(1);
+    else if ( (strcmp(rel,"BTC") == 0 && strcmp(base,"CAD") == 0) || (strcmp(rel,"BTC") == 0 && strcmp(base,"USD") == 0) )
+        return(-1);
+    else return(0);
+}
+
+double prices777_quadriga(struct prices777 *prices,int32_t maxdepth)
+{
+    if ( prices->url[0] == 0 )
+        sprintf(prices->url,"https://api.quadrigacx.com/v2/order_book?book=%s_%s",prices->lbase,prices->lrel);
+    return(prices777_standard("quadriga",prices->url,prices,0,0,maxdepth,0));
+}
+
+
+/*void prices777_kraken(struct prices777 *prices,int32_t maxdepth)
+ {
+ if ( prices->url[0] == 0 )
+ sprintf(prices->url,"https://api.kraken.com/0/public/Depth"); // need POST
+ prices777_standard("kraken",prices->url,prices,0,0,maxdepth);
+ }*/
+
+/*void prices777_itbit(struct prices777 *prices,int32_t maxdepth)
+ {
+ if ( prices->url[0] == 0 )
+ sprintf(prices->url,"https://www.itbit.com/%s%s",prices->base,prices->rel);
+ prices777_standard("itbit",prices->url,prices,0,0,maxdepth);
+ }*/
+
+uint64_t prices777_truefx(uint64_t *millistamps,double *bids,double *asks,double *opens,double *highs,double *lows,char *username,char *password,uint64_t idnum)
+{
+    char *truefxfmt = "http://webrates.truefx.com/rates/connect.html?f=csv&id=jl777:truefxtest:poll:1437671654417&c=EUR/USD,USD/JPY,GBP/USD,EUR/GBP,USD/CHF,AUD/NZD,CAD/CHF,CHF/JPY,EUR/AUD,EUR/CAD,EUR/JPY,EUR/CHF,USD/CAD,AUD/USD,GBP/JPY,AUD/CAD,AUD/CHF,AUD/JPY,EUR/NOK,EUR/NZD,GBP/CAD,GBP/CHF,NZD/JPY,NZD/USD,USD/NOK,USD/SEK";
+    
+    // EUR/USD,1437569931314,1.09,034,1.09,038,1.08922,1.09673,1.09384 USD/JPY,1437569932078,123.,778,123.,781,123.569,123.903,123.860 GBP/USD,1437569929008,1.56,332,1.56,337,1.55458,1.56482,1.55538 EUR/GBP,1437569931291,0.69,742,0.69,750,0.69710,0.70383,0.70338 USD/CHF,1437569932237,0.96,142,0.96,153,0.95608,0.96234,0.95748 EUR/JPY,1437569932237,134.,960,134.,972,134.842,135.640,135.476 EUR/CHF,1437569930233,1.04,827,1.04,839,1.04698,1.04945,1.04843 USD/CAD,1437569929721,1.30,231,1.30,241,1.29367,1.30340,1.29466 AUD/USD,1437569931700,0.73,884,0.73,890,0.73721,0.74395,0.74200 GBP/JPY,1437569931924,193.,500,193.,520,192.298,193.670,192.649
+    char url[1024],userpass[1024],buf[128],base[64],rel[64],*str; cJSON *array; int32_t jpyflag,i,c,n = 0; double pre,pre2,bid,ask,open,high,low; long millistamp;
+    //printf("truefx.(%s)(%s).%llu\n",username,password,(long long)idnum);
+    url[0] = 0;
+    if ( username[0] != 0 && password[0] != 0 )
+    {
+        if ( idnum == 0 )
+        {
+            sprintf(userpass,"http://webrates.truefx.com/rates/connect.html?f=csv&s=y&u=%s&p=%s&q=poll",username,password);
+            if ( (str= issue_curl(userpass)) != 0 )
+            {
+                _stripwhite(str,0);
+                printf("(%s) -> (%s)\n",userpass,str);
+                sprintf(userpass,"%s:%s:poll:",username,password);
+                idnum = calc_nxt64bits(str + strlen(userpass));
+                free(str);
+                printf("idnum.%llu\n",(long long)idnum);
+            }
+        }
+        if ( idnum != 0 )
+            sprintf(url,truefxfmt,username,password,(long long)idnum);
+    }
+    if ( url[0] == 0 )
+        sprintf(url,"http://webrates.truefx.com/rates/connect.html?f=csv&s=y");
+    if ( (str= issue_curl(url)) != 0 )
+    {
+        //printf("(%s) -> (%s)\n",url,str);
+        while ( str[n + 0] != 0 && str[n] != '\n' && str[n] != '\r' )
+        {
+            for (i=jpyflag=0; str[n + i]!=' '&&str[n + i]!='\n'&&str[n + i]!='\r'&&str[n + i]!=0; i++)
+            {
+                if ( i > 0 && str[n+i] == ',' && str[n+i-1] == '.' )
+                    str[n+i-1] = ' ', jpyflag = 1;
+                else if ( i > 0 && str[n+i-1] == ',' && str[n+i] == '0' && str[n+i+1+2] == ',' )
+                {
+                    str[n+i] = ' ';
+                    if ( str[n+i+1] == '0' )
+                        str[n+i+1] = ' ', i++;
+                }
+            }
+            memcpy(base,str+n,3), base[3] = 0;
+            memcpy(rel,str+n+4,3), rel[3] = 0;
+            str[n + i] = 0;
+            //printf("str.(%s) (%s/%s) %d n.%d i.%d\n",str+n,base,rel,str[n],n,i);
+            sprintf(buf,"[%s]",str+n+7+1);
+            n += i + 1;
+            if ( (array= cJSON_Parse(buf)) != 0 )
+            {
+                if ( is_cJSON_Array(array) != 0 )
+                {
+                    millistamp = (uint64_t)get_API_float(jitem(array,0));
+                    pre = get_API_float(jitem(array,1));
+                    bid = get_API_float(jitem(array,2));
+                    pre2 = get_API_float(jitem(array,3));
+                    ask = get_API_float(jitem(array,4));
+                    open = get_API_float(jitem(array,5));
+                    high = get_API_float(jitem(array,6));
+                    low = get_API_float(jitem(array,7));
+                    if ( jpyflag != 0 )
+                        bid = pre + (bid / 1000.), ask = pre2 + (ask / 1000.);
+                    else bid = pre + (bid / 100000.), ask = pre2 + (ask / 100000.);
+                    if ( (c= prices777_contractnum(base,rel)) >= 0 )
+                    {
+                        char name[64];
+                        strcpy(name,base), strcat(name,rel);
+                        if ( BUNDLE.truefx[c] == 0 )
+                            BUNDLE.truefx[c] = prices777_initpair(0,0,"truefx",base,rel,0,name,stringbits(base),stringbits(rel),0);
+                        millistamps[c] = millistamp,opens[c] = open, highs[c] = high, lows[c] = low, bids[c] = bid, asks[c] = ask;
+                        if ( Debuglevel > 2 )
+                        {
+                            if ( jpyflag != 0 )
+                                printf("%s%s.%-2d %llu: %.3f %.3f %.3f | %.3f %.3f\n",base,rel,c,(long long)millistamp,open,high,low,bid,ask);
+                            else printf("%s%s.%-2d %llu: %.5f %.5f %.5f | %.5f %.5f\n",base,rel,c,(long long)millistamp,open,high,low,bid,ask);
+                        }
+                    } else printf("unknown basepair.(%s) (%s)\n",base,rel);
+                }
+                free_json(array);
+            } else printf("cant parse.(%s)\n",buf);
+        }
+        free(str);
+    }
+    return(idnum);
+}
+
+double prices777_fxcm(double lhlogmatrix[8][8],double logmatrix[8][8],double bids[64],double asks[64],double highs[64],double lows[64])
+{
+    char numstr[64],name[64],*xmlstr,*str; cJSON *json,*obj; int32_t i,j,c,flag,k,n = 0; double bid,ask,high,low;
+    memset(bids,0,sizeof(*bids) * NUM_CONTRACTS), memset(asks,0,sizeof(*asks) * NUM_CONTRACTS);
+    if ( (xmlstr= issue_curl("http://rates.fxcm.com/RatesXML")) != 0 )
+    {
+        _stripwhite(xmlstr,0);
+        //printf("(%s)\n",xmlstr);
+        i = 0;
+        if ( strncmp("<?xml",xmlstr,5) == 0 )
+            for (; xmlstr[i]!='>'&&xmlstr[i]!=0; i++)
+                ;
+        if ( xmlstr[i] == '>' )
+            i++;
+        for (j=0; xmlstr[i]!=0; i++)
+        {
+            if ( strncmp("<Rates>",&xmlstr[i],strlen("<Rates>")) == 0 )
+                xmlstr[j++] = '[', i += strlen("<Rates>")-1;
+            else if ( strncmp("<RateSymbol=",&xmlstr[i],strlen("<RateSymbol=")) == 0 )
+            {
+                if ( j > 1 )
+                    xmlstr[j++] = ',';
+                memcpy(&xmlstr[j],"{\"Symbol\":",strlen("{\"Symbol\":")), i += strlen("<RateSymbol=")-1, j += strlen("{\"Symbol\":");
+            }
+            else
+            {
+                char *strpairs[][2] = { { "<Bid>", "\"Bid\":" }, { "<Ask>", "\"Ask\":" }, { "<High>", "\"High\":" }, { "<Low>", "\"Low\":" }, { "<Direction>", "\"Direction\":" }, { "<Last>", "\"Last\":\"" } };
+                for (k=0; k<sizeof(strpairs)/sizeof(*strpairs); k++)
+                    if ( strncmp(strpairs[k][0],&xmlstr[i],strlen(strpairs[k][0])) == 0 )
+                    {
+                        memcpy(&xmlstr[j],strpairs[k][1],strlen(strpairs[k][1]));
+                        i += strlen(strpairs[k][0])-1;
+                        j += strlen(strpairs[k][1]);
+                        break;
+                    }
+                if ( k == sizeof(strpairs)/sizeof(*strpairs) )
+                {
+                    char *ends[] = { "</Bid>", "</Ask>", "</High>", "</Low>", "</Direction>", "</Last>", "</Rate>", "</Rates>", ">" };
+                    for (k=0; k<sizeof(ends)/sizeof(*ends); k++)
+                        if ( strncmp(ends[k],&xmlstr[i],strlen(ends[k])) == 0 )
+                        {
+                            i += strlen(ends[k])-1;
+                            if ( strcmp("</Rate>",ends[k]) == 0 )
+                                xmlstr[j++] = '}';
+                            else if ( strcmp("</Rates>",ends[k]) == 0 )
+                                xmlstr[j++] = ']';
+                            else if ( strcmp("</Last>",ends[k]) == 0 )
+                                xmlstr[j++] = '\"';
+                            else xmlstr[j++] = ',';
+                            break;
+                        }
+                    if ( k == sizeof(ends)/sizeof(*ends) )
+                        xmlstr[j++] = xmlstr[i];
+                }
+            }
+        }
+        xmlstr[j] = 0;
+        if ( (json= cJSON_Parse(xmlstr)) != 0 )
+        {
+            /*<Rate Symbol="USDJPY">
+             <Bid>123.763</Bid>
+             <Ask>123.786</Ask>
+             <High>123.956</High>
+             <Low>123.562</Low>
+             <Direction>-1</Direction>
+             <Last>08:49:15</Last>*/
+            //printf("Parsed stupid XML! (%s)\n",xmlstr);
+            if ( is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) != 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    obj = jitem(json,i);
+                    flag = 0;
+                    c = -1;
+                    if ( (str= jstr(obj,"Symbol")) != 0 && strlen(str) < 15 )
+                    {
+                        strcpy(name,str);
+                        if ( strcmp(name,"USDCNH") == 0 )
+                            strcpy(name,"USDCNY");
+                        copy_cJSON(numstr,jobj(obj,"Bid")), bid = atof(numstr);
+                        copy_cJSON(numstr,jobj(obj,"Ask")), ask = atof(numstr);
+                        copy_cJSON(numstr,jobj(obj,"High")), high = atof(numstr);
+                        copy_cJSON(numstr,jobj(obj,"Low")), low = atof(numstr);
+                        if ( (c= prices777_contractnum(name,0)) >= 0 )
+                        {
+                            bids[c] = bid, asks[c] = ask, highs[c] = high, lows[c] = low;
+                            //printf("c.%d (%s) %f %f\n",c,name,bid,ask);
+                            flag = 1;
+                            if ( BUNDLE.fxcm[c] == 0 )
+                            {
+                                printf("max.%ld FXCM: not initialized.(%s) %d\n",sizeof(CONTRACTS)/sizeof(*CONTRACTS),name,c);
+                                BUNDLE.fxcm[c] = prices777_initpair(0,0,"fxcm",name,0,0,name,peggy_basebits(name),peggy_relbits(name),0);
+                            }
+                        } else printf("cant find.%s\n",name);//, getchar();
+                    }
+                    if ( flag == 0 )
+                        printf("FXCM: Error finding.(%s) c.%d (%s)\n",name,c,cJSON_Print(obj));
+                }
+            }
+            free_json(json);
+        } else printf("couldnt parse.(%s)\n",xmlstr);
+        free(xmlstr);
+    }
+    calc_primary_currencies(lhlogmatrix,lows,highs);
+    return(calc_primary_currencies(logmatrix,bids,asks));
+}
+
+double prices777_instaforex(double logmatrix[8][8],uint32_t timestamps[NUM_COMBINED+1],double bids[128],double asks[128])
+{
+    //{"NZDUSD":{"symbol":"NZDUSD","lasttime":1437580206,"digits":4,"change":"-0.0001","bid":"0.6590","ask":"0.6593"},
+    char numstr[64],*jsonstr,*str; cJSON *json,*item; int32_t i,c;
+    memset(timestamps,0,sizeof(*timestamps) * (NUM_COMBINED + 1)), memset(bids,0,sizeof(*bids) * (NUM_COMBINED + 1)), memset(asks,0,sizeof(*asks) * (NUM_COMBINED + 1));
+    if ( (jsonstr= issue_curl("https://quotes.instaforex.com/get_quotes.php?q=NZDUSD,NZDCHF,NZDCAD,NZDJPY,GBPNZD,EURNZD,AUDNZD,CADJPY,CADCHF,USDCAD,EURCAD,GBPCAD,AUDCAD,USDCHF,CHFJPY,EURCHF,GBPCHF,AUDCHF,EURUSD,EURAUD,EURJPY,EURGBP,GBPUSD,GBPJPY,GBPAUD,USDJPY,AUDJPY,AUDUSD,XAUUSD&m=json")) != 0 )
+    {
+        // printf("(%s)\n",jsonstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            for (i=0; i<=NUM_CONTRACTS; i++)
+            {
+                if ( i < NUM_CONTRACTS )
+                    str = CONTRACTS[i], c = i;
+                else str = "XAUUSD", c = prices777_contractnum(str,0);
+                if ( (item= jobj(json,str)) != 0 )
+                {
+                    timestamps[c] = juint(item,"lasttime");
+                    copy_cJSON(numstr,jobj(item,"bid")), bids[c] = atof(numstr);
+                    copy_cJSON(numstr,jobj(item,"ask")), asks[c] = atof(numstr);
+                    //if ( c < NUM_CONTRACTS && Contract_rel[c] == JPY )
+                    //    bids[i] /= 100., asks[i] /= 100.;
+                    if ( Debuglevel > 2 )
+                        printf("%s.(%.6f %.6f) ",str,bids[c],asks[c]);
+                    if ( BUNDLE.instaforex[c] == 0 )
+                        BUNDLE.instaforex[c] = prices777_initpair(0,0,"instaforex",str,0,0,str,peggy_basebits(str),peggy_relbits(str),0);
+                }
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(calc_primary_currencies(logmatrix,bids,asks));
+}
+
+int32_t prices777_ecbparse(char *date,double *prices,char *url,int32_t basenum)
+{
+    char *jsonstr,*relstr,*basestr; int32_t count=0,i,relnum; cJSON *json,*ratesobj,*item;
+    if ( (jsonstr= issue_curl(url)) != 0 )
+    {
+        if ( Debuglevel > 2 )
+            printf("(%s)\n",jsonstr);
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            copy_cJSON(date,jobj(json,"date"));
+            if ( (basestr= jstr(json,"base")) != 0 && strcmp(basestr,CURRENCIES[basenum]) == 0 && (ratesobj= jobj(json,"rates")) != 0 && (item= ratesobj->child) != 0 )
+            {
+                while ( item != 0 )
+                {
+                    if ( (relstr= get_cJSON_fieldname(item)) != 0 && (relnum= prices777_basenum(relstr)) >= 0 )
+                    {
+                        i = basenum*MAX_CURRENCIES + relnum;
+                        prices[i] = item->valuedouble;
+                        //if ( basenum == JPYNUM )
+                        //    prices[i] *= 100.;
+                        // else if ( relnum == JPYNUM )
+                        //     prices[i] /= 100.;
+                        count++;
+                        if ( Debuglevel > 2 )
+                            printf("(%02d:%02d %f) ",basenum,relnum,prices[i]);
+                    } else printf("cant find.(%s)\n",relstr);//, getchar();
+                    item = item->next;
+                }
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(count);
+}
+
+int32_t prices777_ecb(char *date,double *prices,int32_t year,int32_t month,int32_t day)
+{
+    // http://api.fixer.io/latest?base=CNH
+    // http://api.fixer.io/2000-01-03?base=USD
+    // "USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "NZD"
+    char baseurl[512],tmpdate[64],url[512],checkdate[16]; int32_t basenum,count,i,iter,nonz;
+    checkdate[0] = 0;
+    if ( year == 0 )
+        strcpy(baseurl,"http://api.fixer.io/latest?base=");
+    else
+    {
+        sprintf(checkdate,"%d-%02d-%02d",year,month,day);
+        sprintf(baseurl,"http://api.fixer.io/%s?base=",checkdate);
+    }
+    count = 0;
+    for (iter=0; iter<2; iter++)
+    {
+        for (basenum=0; basenum<sizeof(CURRENCIES)/sizeof(*CURRENCIES); basenum++)
+        {
+            if ( strcmp(CURRENCIES[basenum],"XAU") == 0 )
+                break;
+            if ( iter == 0 )
+            {
+                sprintf(url,"%s%s",baseurl,CURRENCIES[basenum]);
+                count += prices777_ecbparse(basenum == 0 ? date : tmpdate,prices,url,basenum);
+                if ( (basenum != 0 && strcmp(tmpdate,date) != 0) || (checkdate[0] != 0 && strcmp(checkdate,date) != 0) )
+                {
+                    printf("date mismatch (%s) != (%s) or checkdate.(%s)\n",tmpdate,date,checkdate);
+                    return(-1);
+                }
+            }
+            else
+            {
+                for (nonz=i=0; i<sizeof(CURRENCIES)/sizeof(*CURRENCIES); i++)
+                {
+                    if ( strcmp(CURRENCIES[i],"XAU") == 0 )
+                        break;
+                    if ( prices[MAX_CURRENCIES*basenum + i] != 0. )
+                        nonz++;
+                    if ( Debuglevel > 2 )
+                        printf("%8.5f ",prices[MAX_CURRENCIES*basenum + i]);
+                }
+                if ( Debuglevel > 2 )
+                    printf("%s.%d %d\n",CURRENCIES[basenum],basenum,nonz);
+            }
+        }
+    }
+    return(count);
+}
 
 #endif
 

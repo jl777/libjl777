@@ -86,7 +86,7 @@ void set_KV777_globals(struct dKV777 **relaysptr,char *transport,void *NXTACCTSE
 
 struct kv777_info
 {
-    char PATH[512],NXTADDR[64],SERVICENXT[64],relayendpoint[128],transport[16],protocol[16];
+    char NXTADDR[64],SERVICENXT[64],relayendpoint[128],transport[16],protocol[16];
     uint8_t mysecret[32],mypubkey[32],servicesecret[32],servicepubkey[32],NXTACCTSECRET[2048],SERVICESECRET[2048];
     struct kv777 **KVS; struct dKV777 **dKVs,**relays_handle;
     uint64_t nxt64bits,service64bits;
@@ -246,7 +246,7 @@ void kv777_free(struct kv777 *kv,struct kv777_item *ptr,int32_t freeall)
 
 int32_t kv777_update(struct kv777 *kv,struct kv777_item *ptr)
 {
-    struct kv777_hdditem *item; uint32_t valuesize; long savepos; int32_t retval = -1;
+    struct kv777_hdditem *item; uint32_t valuesize; long savepos; int32_t i,retval = -1;
     if ( kv->fp == 0 )
         return(-1);
     item = (void *)ptr->item;
@@ -303,7 +303,7 @@ int32_t kv777_update(struct kv777 *kv,struct kv777_item *ptr)
         }
         if ( 0 && kv->dispflag != 0 )
         {
-            for (int i=0; i<ptr->itemsize; i++)
+            for (i=0; i<ptr->itemsize; i++)
                 fprintf(stderr,"%02x ",((uint8_t *)ptr->item)[i]);
             fprintf(stderr,"(%s).(%s)\n",kv->path,kv->name);
         }
@@ -1024,7 +1024,7 @@ char *dKV777_ping(struct dKV777 *dKV)
     json = cJSON_CreateObject();
     cJSON_AddItemToObject(json,"agent",cJSON_CreateString(dKV->name));
     cJSON_AddItemToObject(json,"dKVname",cJSON_CreateString(dKV->name));
-    if ( dKV->protocol != 0 && dKV->protocol[0] != 0 )
+    if ( dKV->protocol[0] != 0 )
         cJSON_AddItemToObject(json,"protocol",cJSON_CreateString(dKV->protocol));
     cJSON_AddItemToObject(json,"method",cJSON_CreateString("ping"));
     cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(dKV->NXTADDR));
@@ -1095,8 +1095,8 @@ struct dKV777 *dKV777_init(char *name,char *protocol,struct kv777 **kvs,int32_t 
         free(dKV);
         return(0);
     }
-    sprintf(buf,"%s.nodes",name), dKV->nodes = kv777_init(KV777.PATH,buf,0);
-    sprintf(buf,"%s.approvals",name), dKV->approvals = kv777_init(KV777.PATH,buf,0);
+    sprintf(buf,"%s.nodes",name), dKV->nodes = kv777_init(SUPERNET.DBPATH,buf,0);
+    sprintf(buf,"%s.approvals",name), dKV->approvals = kv777_init(SUPERNET.DBPATH,buf,0);
     for (i=0; i<dKV->nodes->numkeys; i++) // connect all nodes in DB that are not already connected
     {
         printf("dKV.%d check\n",i);

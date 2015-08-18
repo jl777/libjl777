@@ -270,6 +270,7 @@ int32_t peggy_emit(void *_PEGS,uint8_t opreturndata[MAX_OPRETURNSIZE],struct opr
 uint32_t peggy_clone(char *path,void *dest,void *src)
 {
     struct peggy_info *destPEGS,*srcPEGS;
+    printf("inside peggy_clone sizeof peggy_info %ld %ld %ld\n",sizeof(*destPEGS),sizeof(destPEGS->pricedpegs),sizeof(destPEGS->pairedpegs));//, getchar();
     destPEGS = dest, srcPEGS = src;
     *destPEGS = *srcPEGS;
     destPEGS->accts = accts777_clone(path,srcPEGS->accts);

@@ -339,56 +339,6 @@ uint32_t get_txhashes(char *sighash,char *fullhash,struct NXT_tx *tx)
     return(calc_expiration(tx));
 }
 
-uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT,uint32_t triggerheight)
-{
-    int32_t deadline = 1 + time_to_nextblock(2)/60;
-    uint64_t txid = 0;
-    char cmd[4096],secret[8192],errstr[MAX_JSON_FIELD],*jsonstr;
-    cJSON *json;
-    if ( retjsonstrp != 0 )
-        *retjsonstrp = 0;
-    if ( triggerheight != 0 )
-        deadline = DEFAULT_NXT_DEADLINE;
-    escape_code(secret,NXTACCTSECRET);
-    sprintf(cmd,"requestType=%s&secretPhrase=%s&feeNQT=%llu&deadline=%d",bidask,secret,(long long)MIN_NQTFEE,deadline);
-    sprintf(cmd+strlen(cmd),"&%s=%llu&%s=%llu",is_MS!=0?"units":"quantityQNT",(long long)qty,is_MS!=0?"currency":"asset",(long long)assetid);
-    if ( NXTprice != 0 )
-    {
-        if ( is_MS != 0 )
-            sprintf(cmd+strlen(cmd),"&rateNQT=%llu",(long long)NXTprice);
-        else sprintf(cmd+strlen(cmd),"&priceNQT=%llu",(long long)NXTprice);
-    }
-    if ( otherNXT != 0 )
-        sprintf(cmd+strlen(cmd),"&recipient=%llu",(long long)otherNXT);
-    if ( triggerhash != 0 && triggerhash[0] != 0 )
-    {
-        if ( triggerheight == 0 )
-            sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",triggerhash);
-        else sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s&phased=true&phasingFinishHeight=%u&phasingVotingModel=4&phasingQuorum=1&phasingLinkedFullHash=%s",triggerhash,triggerheight,triggerhash);
-    }
-    if ( comment != 0 && comment[0] != 0 )
-        sprintf(cmd+strlen(cmd),"&message=%s",comment);
-    if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
-    {
-        _stripwhite(jsonstr,' ');
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
-        {
-            copy_cJSON(errstr,cJSON_GetObjectItem(json,"error"));
-            if ( errstr[0] == 0 )
-                copy_cJSON(errstr,cJSON_GetObjectItem(json,"errorDescription"));
-            if ( errstr[0] != 0 )
-            {
-                printf("submit_triggered_bidask.(%s) -> (%s)\n",cmd,jsonstr);
-                if ( retjsonstrp != 0 )
-                    *retjsonstrp = clonestr(errstr);
-            }
-            else txid = get_API_nxt64bits(cJSON_GetObjectItem(json,"transaction"));
-        }
-        free(jsonstr);
-    }
-    return(txid);
-}
-
 uint64_t send_feetx(uint64_t assetbits,uint64_t fee,char *fullhash,char *comment)
 {
     char feeutx[MAX_JSON_FIELD],signedfeetx[MAX_JSON_FIELD];
@@ -489,7 +439,7 @@ int32_t NXT_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t in
 extern struct ramkv777 *DB_revNXTtrades,*DB_NXTtrades;
 int32_t NXT_set_revassettrade(uint32_t ind,uint64_t key[2])
 {
-    //printf("NXT_set_revassettrade\n");
+printf("NXT_set_revassettrade.%u -> %llu\n",ind,(long long)key[0]);
     if ( DB_revNXTtrades != 0 )
     {
         if ( ramkv777_write(DB_revNXTtrades,&ind,key,sizeof(*key)*2) == 0 )
@@ -502,7 +452,7 @@ int32_t NXT_set_revassettrade(uint32_t ind,uint64_t key[2])
 int32_t NXT_revassettrade(uint64_t key[2],uint32_t ind)
 {
     void *value; int32_t len = 0;
-    //printf("NXT_revassettrade\n");
+printf("NXT_revassettrade\n");
     memset(key,0,sizeof(*key)*2);
     if ( DB_revNXTtrades != 0 )
     {
@@ -515,7 +465,7 @@ int32_t NXT_revassettrade(uint64_t key[2],uint32_t ind)
 int32_t NXT_add_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t ind)
 {
     uint64_t key[2];
-    //printf("NXT_add_assettrade\n");
+printf("NXT_add_assettrade\n");
     if ( DB_NXTtrades != 0 )
     {
         key[0] = tp->bidorder, key[1] = tp->askorder;
@@ -529,7 +479,7 @@ int32_t NXT_add_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_
 int32_t NXT_assettrade(struct assettrade *dest,struct assettrade *tp,uint32_t ind)
 {
     void *value; int32_t len = 0; uint64_t key[2];
-    //printf("NXT_assettrade\n");
+printf("NXT_assettrade\n");
     if ( DB_NXTtrades != 0 )
     {
         key[0] = tp->bidorder, key[1] = tp->askorder;
@@ -635,7 +585,7 @@ int32_t NXT_assettrades(struct assettrade *trades,long max,int32_t firstindex,in
         } else printf("couldnt parse trades\n");
         free(jsonstr);
     }
-    if ( firstindex < 0 || lastindex <= firstindex )
+    //if ( firstindex < 0 || lastindex <= firstindex )
         printf(" -> %d entries\n",n);
     return(n);
 }
@@ -678,6 +628,26 @@ int32_t update_NXT_assettrades()
         NXT_assettrades(trades,max - 1,-1,-1);
     free(trades);
     return(count);
+}
+
+int32_t trigger_items(cJSON *item)
+{
+    char feeutxbytes[MAX_JSON_FIELD],feesignedtx[MAX_JSON_FIELD],triggerhash[65],feesighash[65];
+    struct NXT_tx T,*feetx; uint32_t triggerheight,expiration;
+    set_NXTtx(SUPERNET.my64bits,&T,NXT_ASSETID,INSTANTDEX_FEE,calc_nxt64bits(INSTANTDEX_ACCT),-1);
+    triggerheight = _get_NXTheight(0) + FINISH_HEIGHT;
+    if ( (feetx= sign_NXT_tx(feeutxbytes,feesignedtx,SUPERNET.NXTACCTSECRET,SUPERNET.my64bits,&T,0,1.)) != 0 )
+    {
+        expiration = get_txhashes(feesighash,triggerhash,feetx);
+        jadd64bits(item,"feetxid",feetx->txid);
+        jaddstr(item,"triggerhash",triggerhash);
+        jaddnum(item,"triggerheight",triggerheight);
+        //sprintf(offer->comment + strlen(offer->comment) - 1,",\"feetxid\":\"%llu\",\"triggerhash\":\"%s\",\"triggerheight\":\"%u\"}",(long long)feetx->txid,triggerhash,offer->triggerheight);
+        //if ( strlen(triggerhash) == 64 && (retstr= submit_trades(offer,NXTACCTSECRET)) != 0 )
+        //    return(retstr);
+        return(0);
+    }
+    return(-1);
 }
 
 #endif

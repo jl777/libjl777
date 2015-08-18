@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <process.h>
 #include <tlhelp32.h>
+#include <time.h>
 
 uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second) // datenum+H:M:S -> unix time
 {
@@ -11,7 +12,8 @@ uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t sec
     memset(&t,0,sizeof(t));
     t.tm_year = (datenum / 10000) - 1900, t.tm_mon = ((datenum / 100) % 100) - 1, t.tm_mday = (datenum % 100);
     t.tm_hour = hour, t.tm_min = minute, t.tm_sec = second;
-    return((uint32_t)timegm(&t));
+    return(time(NULL));
+    //return((uint32_t)_mkgmtime(&t));
 }
 
 int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp) // gmtime -> datenum + number of seconds
@@ -82,4 +84,15 @@ int32_t OS_init()
         return -1;
     }
     return(0);
+}
+
+struct tm *gmtime_r(const time_t *timep, struct tm *result)
+{
+	struct tm *p = gmtime(timep);
+	memset(result, 0, sizeof(*result));
+	if (p) {
+        *result = *p;
+        p = result;
+	}
+	return p;
 }

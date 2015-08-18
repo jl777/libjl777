@@ -569,10 +569,12 @@ int64_t peggy_process(void *_PEGS,int32_t flags,char *fundedcoinaddr,uint64_t fu
                 T.blocknum = PEGS->numopreturns-1, T.blocktimestamp = blocktimestamp;
                 price = peggy_priceconsensus(PEGS,T,PEGS->accts->pricefeeds->sha256.txid,j,PEGS->votes[j],nonz[j],0,0);
                 price = peggy_scaleprice(price,PEGS->contracts[j]->peggymils);
-                fprintf(stderr,"%d %10s.{%14.6f} %7.4f%%\n",T.blocknum,PEGS->contracts[j]->name.name,Pval(&price),(fabs(Pval(&price)/Pval(&aveprice))-1)*100);
+                if ( Debuglevel > 2 )
+                    fprintf(stderr,"%d %10s.{%14.6f} %7.4f%%\n",T.blocknum,PEGS->contracts[j]->name.name,Pval(&price),(fabs(Pval(&price)/Pval(&aveprice))-1)*100);
             }
         }
- printf("staked.%u n.%d i.%d blocknum.%d t%u | processed in %.3f microseconds | pricehash.%llx\n",stakedblock,n,i,blocknum,blocktimestamp,1000*(milliseconds() - startmilli),(long long)PEGS->accts->pricefeeds->sha256.txid);
+        if ( Debuglevel > 2 || blocktimestamp+600 > time(NULL) )
+            printf("staked.%u n.%d i.%d blocknum.%d t%u | processed in %.3f microseconds | pricehash.%llx\n",stakedblock,n,i,blocknum,blocktimestamp,1000*(milliseconds() - startmilli),(long long)PEGS->accts->pricefeeds->sha256.txid);
     }
     return(txind);
 }
@@ -625,8 +627,8 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
         if ( opporate != 0 )
             n++;
         aprsum += (rate + opporate);
-        price = PEG->price; //peggy_lastprice(PEGS,PEG,1,PEG->genesistime,timestamp);
-        shortprice = peggy_shortprice(PEG,PEG->price); //peggy_lastprice(PEGS,PEG,-1,PEG->genesistime,timestamp);
+        price = peggy_price(PEG,(timestamp - PEG->genesistime) /  PEGGY_MINUTE);
+        shortprice = peggy_shortprice(PEG,PEG->price);
         liability.Pval = (PEG->pool.liability.num * price.Pval);
         liabilities.Pval += liability.Pval;
         covercost = peggy_covercost(&num,&pos,&neg,PEGS,PEG,price,shortprice);
@@ -638,10 +640,13 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
         jaddnum(item,"pendinginterests",dstr(pos));
         jaddnum(item,"pendinginterest_fees",dstr(neg));
         
+        price = peggy_scaleprice(price,PEG->peggymils);
         jaddnum(item,"price",Pval(&price));
-        jaddnum(item,"dayprice",Pval(&PEG->dayprice));
+        price = peggy_scaleprice(PEG->dayprice,PEG->peggymils);
+        jaddnum(item,"dayprice",Pval(&price));
         jaddnum(item,"longunits",PEG->pool.liability.num);
-        jaddnum(item,"liability",Pval(&liability));
+        price = peggy_scaleprice(liability,PEG->peggymils);
+        jaddnum(item,"liability",Pval(&price));
         
         jaddnum(item,"antiprice",Pval(&shortprice));
         jaddnum(item,"shortunits",PEG->pool.liability.numoppo);
@@ -698,6 +703,16 @@ double peggy_status(char **jsonstrp,struct peggy_info *PEGS,double *rates,uint32
     if ( n != 0 )
         aprsum /= n;
     return(aprsum/100.);
+}
+
+char *peggyrates(uint32_t timestamp)
+{
+    char *jsonstr = 0; double rates[2 * PEGGY_MAXPEGS]; struct peggy_info *PEGS = opreturns_context("peggy",0);
+    if ( timestamp == 0 )
+        timestamp = (uint32_t)time(NULL);
+    if ( PEGS != 0 )
+        peggy_status(&jsonstr,PEGS,rates,timestamp);
+    return(jsonstr);
 }
 
 void peggy_test()

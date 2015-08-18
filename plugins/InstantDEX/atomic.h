@@ -10,7 +10,6 @@
 #ifndef xcode_atomic_h
 #define xcode_atomic_h
 
-#define FINISH_HEIGHT 7
 
 struct tradeinfo
 {
@@ -225,65 +224,6 @@ int32_t process_Pending_offersQ(struct pending_offer **offerp,void **ptrs)
     return(0);
 }
 
-void poll_pending_offers(char *NXTaddr,char *NXTACCTSECRET)
-{
-    static uint32_t prevNXTblock; static double lastmilli;
-    struct InstantDEX_quote *iQ;
-    cJSON *json,*array,*item; struct NXT_tx *txptrs[MAX_TXPTRS]; void *ptrs[2];
-    int32_t i,n,numtx,NXTblock; uint64_t quoteid,baseid,relid;
-    ptrs[0] = NXTACCTSECRET, ptrs[1] = txptrs;
-    if ( milliseconds() < (lastmilli + 5000) )
-        return;
-    NXTblock = _get_NXTheight(0);
-    memset(txptrs,0,sizeof(txptrs));
-    if ( (numtx= update_iQ_flags(txptrs,(sizeof(txptrs)/sizeof(*txptrs))-1,0)) > 0 )
-    {
-        if ( (json= openorders_json(NXTaddr)) != 0 )
-        {
-            if ( (array= cJSON_GetObjectItem(json,"openorders")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
-            {
-                for (i=0; i<n; i++)
-                {
-                    item = cJSON_GetArrayItem(array,i);
-                    if ( (quoteid= get_API_nxt64bits(cJSON_GetObjectItem(item,"quoteid"))) != 0 )
-                    {
-                        baseid = get_API_nxt64bits(cJSON_GetObjectItem(item,"baseid"));
-                        relid = get_API_nxt64bits(cJSON_GetObjectItem(item,"relid"));
-                        iQ = (struct InstantDEX_quote *)get_API_nxt64bits(cJSON_GetObjectItem(item,"iQ"));
-                        /*if ( iQ->closed != 0 || iQ->baseid != baseid || iQ->relid != relid || calc_quoteid(iQ) != quoteid )
-                            printf("error: isclosed.%d %llu/%llu != %llu/%llu: iQ.%p quoteid.%llu vs %llu\n",iQ->closed,(long long)iQ->baseid,(long long)iQ->relid,(long long)baseid,(long long)relid,iQ,(long long)calc_quoteid(iQ),(long long)quoteid);
-                        else*/
-                        if ( iQ->closed == 0 && iQ->baseid == baseid && iQ->relid == relid && calc_quoteid(iQ) == quoteid )
-                            update_openorder(iQ,quoteid,txptrs,numtx,NXTblock == prevNXTblock);
-                    }
-                }
-            }
-            free_json(json);
-        }
-        process_pingpong_queue(&Pending_offersQ,ptrs);
-        free_txptrs(txptrs,numtx);
-    }
-    if ( NXTblock != prevNXTblock )
-    {
-        struct rambook_info **obooks; int32_t numbooks = 0;
-        update_NXT_assettrades();
-        if ( (obooks= get_allrambooks(&numbooks)) != 0 )
-        {
-            for (i=0; i<numbooks; i++)
-            {
-                if ( strcmp(obooks[i]->exchange,"nxtae") == 0 )
-                {
-                    //printf("obook.%d %llu %llu isask.%d\n",i,(long long)obooks[i]->assetids[0],(long long)obooks[i]->assetids[1],(int)(obooks[i]->assetids[2] & 1));
-                    //ramupdate_NXThalf((obooks[i]->assetids[2] & 1) != 0,obooks[i]->assetids[0],50,0);
-                }
-            }
-            free(obooks);
-        }
-        prevNXTblock = NXTblock, printf("New NXTblock.%d numbooks.%d\n",NXTblock,numbooks);
-    }
-    lastmilli = milliseconds();
-}
-
 // process sending
 double calc_asset_QNT(struct pendinghalf *half,uint64_t nxt64bits,int32_t checkflag)
 {
@@ -302,13 +242,13 @@ double calc_asset_QNT(struct pendinghalf *half,uint64_t nxt64bits,int32_t checkf
         {
             ratio = (double)srcqty / half->T.qty;
             half->baseamount *= ratio, half->relamount *= ratio;
-            half->price = calc_price_volume(&half->vol,half->baseamount,half->relamount);
+            half->price = prices777_price_volume(&half->vol,half->baseamount,half->relamount);
             half->T.priceNQT = (half->relamount * ap_mult + ap_mult/2) / half->baseamount;
             if ( (half->T.qty= half->baseamount / ap_mult) == 0 )
                 return(0);
         }
         else if ( half->price == 0. )*/
-            half->price = calc_price_volume(&half->vol,half->baseamount,half->relamount);
+            half->price = prices777_price_volume(&half->vol,half->baseamount,half->relamount);
         balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
         printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | (%f * %f) * (%lld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)half->T.priceNQT,(long long)half->T.qty,assetidstr,half->vol,half->price,(long long)SATOSHIDEN,(long long)ap_mult);
         // getchar();
@@ -352,6 +292,14 @@ uint64_t need_to_submithalf(struct pendinghalf *half,int32_t dir,struct pendingp
         printf("%p close half mismatched dir and T.sell: dir.%d sellflag.%d\n",half,dir,half->T.sell);
         return(0);
     }
+}
+
+char *submit_respondtx(char *respondtxstr,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t dest64bits)
+{
+    uint32_t nonce; char destNXT[64];
+    expand_nxt64bits(destNXT,dest64bits);
+    printf("submit_respondtx.(%s) -> dest.%llu\n",respondtxstr,(long long)dest64bits);
+    return(busdata_sync(&nonce,respondtxstr,"allnodes",destNXT));
 }
 
 int32_t submit_trade(cJSON **jsonp,char *whostr,int32_t dir,struct pendinghalf *half,struct pendinghalf *other,struct pending_offer *offer,char *NXTACCTSECRET,char *base,char *rel,double price,double volume,uint32_t triggerheight)
@@ -475,14 +423,14 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
         seller->T.transfer = buyer->T.transfer = 1;
         seller->T.qty = pt->baseamount / offer->basemult, buyer->T.qty = pt->relamount / offer->relmult;
         printf("prices.(%f) vol %f dir.%d pt->perc %d baseqty %d relqty %d\n",pt->price,pt->volume,dir,(int)pt->perc,(int)seller->T.qty,(int)buyer->T.qty);
-        price = calc_price_volume(&volume,seller->T.qty * offer->basemult,buyer->T.qty * offer->relmult);
+        price = prices777_price_volume(&volume,seller->T.qty * offer->basemult,buyer->T.qty * offer->relmult);
         printf("ratio %f prices.(%f %f) vol %f dir.%d pt->srcqty %d baseqty %d relqty %d\n",pt->ratio,price,pt->price,volume,dir,pt->perc,(int)seller->T.qty,(int)buyer->T.qty);
         if ( price != pt->price )
         {
             if ( offer->basemult <= offer->relmult )
                 seller->T.qty *= (price / pt->price), printf("b adjust %f\n",(price / pt->price));
             else buyer->T.qty *= (pt->price / price), printf("r adjust %f\n",(pt->price / price));
-            price = calc_price_volume(&volume,seller->T.qty * offer->basemult,buyer->T.qty * offer->relmult);
+            price = prices777_price_volume(&volume,seller->T.qty * offer->basemult,buyer->T.qty * offer->relmult);
         }
         if ( dir > 0 )
             expand_nxt64bits(assetidstr,pt->baseid), qty = seller->T.qty;
@@ -500,10 +448,10 @@ char *set_buyer_seller(struct pendinghalf *seller,struct pendinghalf *buyer,stru
 void set_basereliQ(struct InstantDEX_quote *iQ,cJSON *obj)
 {
     char exchange[64]; int32_t exchangeid;
-    iQ->baseamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"baseamount"));
-    iQ->relamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"relamount"));
-    iQ->quoteid = get_API_nxt64bits(cJSON_GetObjectItem(obj,"quoteid"));
-    iQ->nxt64bits = get_API_nxt64bits(cJSON_GetObjectItem(obj,"offerNXT"));
+    iQ->s.baseamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"baseamount"));
+    iQ->s.relamount = get_API_nxt64bits(cJSON_GetObjectItem(obj,"relamount"));
+    iQ->s.quoteid = get_API_nxt64bits(cJSON_GetObjectItem(obj,"quoteid"));
+    iQ->s.offerNXT = get_API_nxt64bits(cJSON_GetObjectItem(obj,"offerNXT"));
     copy_cJSON(exchange,cJSON_GetObjectItem(obj,"exchange"));
     find_exchange(&exchangeid,exchange);
     iQ->exchangeid = exchangeid;
@@ -513,14 +461,14 @@ void set_basereliQ(struct InstantDEX_quote *iQ,cJSON *obj)
 char *set_combohalf(struct pendingpair *pt,struct InstantDEX_quote *iQ,struct pending_offer *offer,uint64_t baseid,uint64_t relid,int32_t askoffer,int32_t dir)
 {
     char *retstr;
-    pt->baseamount = offer->ratio * iQ->baseamount;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"baseamount"));
-    pt->relamount = offer->ratio * iQ->relamount;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"relamount"));
-    pt->quoteid = iQ->quoteid;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"quoteid"));
-    pt->offerNXT = iQ->nxt64bits;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"offerNXT"));
-    iQ_exchangestr(pt->exchange,iQ);
+    pt->baseamount = offer->ratio * iQ->s.baseamount;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"baseamount"));
+    pt->relamount = offer->ratio * iQ->s.relamount;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"relamount"));
+    pt->quoteid = iQ->s.quoteid;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"quoteid"));
+    pt->offerNXT = iQ->s.offerNXT;//get_API_nxt64bits(cJSON_GetObjectItem(obj,"offerNXT"));
+    strcpy(pt->exchange,exchange_str(iQ->exchangeid));
     //copy_cJSON(pt->exchange,cJSON_GetObjectItem(obj,"exchange"));
     pt->nxt64bits = offer->nxt64bits, pt->baseid = baseid, pt->relid = relid, pt->ratio = offer->ratio;
-    pt->price = calc_price_volume(&pt->volume,pt->baseamount,pt->relamount);
+    pt->price = prices777_price_volume(&pt->volume,pt->baseamount,pt->relamount);
     pt->sell = askoffer;
     if ( (retstr= set_buyer_seller(&offer->halves[offer->numhalves++],&offer->halves[offer->numhalves++],pt,offer,dir)) != 0 )
         return(retstr);
@@ -574,13 +522,13 @@ char *tweak_offer(struct pending_offer *offer,int32_t dir,double refprice,double
     refsatoshis = (refprice * SATOSHIDEN);
     baseqty = offer->baseamount / offer->basemult;
     relqty = offer->relamount / offer->relmult;
-    price = calc_price_volume(&volume,baseqty * offer->basemult,relqty * offer->relmult);
+    price = prices777_price_volume(&volume,baseqty * offer->basemult,relqty * offer->relmult);
     if ( fabs(price/refprice - 1.) > 0.01 || fabs(volume/refvolume - 1.) > 0.1 )
     {
         printf("refprice %.8f -> price %.8f %f, %f refvolume %.8f -> %.8f\n",refprice,price,fabs(price/refprice - 1.),fabs(volume/refvolume),refvolume,volume);
         return(clonestr("{\"error\":\"asset decimals dont allow this\"}"));
     }
-    price = calc_price_volume(&volume,offer->baseamount,offer->relamount);
+    price = prices777_price_volume(&volume,offer->baseamount,offer->relamount);
     satoshis = (price * SATOSHIDEN);
     besti = bestj = 0;
     bestvolume = refvolume, bestprice = refprice;
@@ -588,7 +536,7 @@ char *tweak_offer(struct pending_offer *offer,int32_t dir,double refprice,double
     {
         for (j=100; j>=-100&&j>-relqty; j--)
         {
-            price = calc_price_volume(&volume,(baseqty + i) * offer->basemult,(relqty + j) * offer->relmult + j);
+            price = prices777_price_volume(&volume,(baseqty + i) * offer->basemult,(relqty + j) * offer->relmult + j);
             satoshis = (price * SATOSHIDEN);
             if ( dir < 0 && satoshis > refsatoshis )
             {
@@ -632,8 +580,8 @@ char *makeoffer3(char *NXTaddr,char *NXTACCTSECRET,double price,double volume,in
     offer = calloc(1,sizeof(*offer));
     offer->minperc = minperc;
     offer->jumpasset = jumpasset;
-    set_assetname(&offer->basemult,offer->base,baseid);
-    set_assetname(&offer->relmult,offer->rel,relid);
+    _set_assetname(&offer->basemult,offer->base,0,baseid);
+    _set_assetname(&offer->relmult,offer->rel,0,relid);
     offer->nxt64bits = calc_nxt64bits(NXTaddr);
     if ( offer->nxt64bits == offerNXT )
         return(clonestr("{\"error\":\"cant match your own offer\"}"));
@@ -739,28 +687,28 @@ struct InstantDEX_quote *is_valid_offer(uint64_t quoteid,int32_t dir,uint64_t as
     double price,vol,refprice,refvol;
     struct InstantDEX_quote *iQ;
     uint64_t baseamount,relamount;
-    if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->matched == 0 )
+    if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->s.matched == 0 )
     {
         if ( dir == 0 )
         {
             printf("need to validate iQ details\n"); // combo orderbook entries, polling, automatch
-            polarity = (iQ->isask == 0) ? -1 : 1;
+            polarity = (iQ->s.isask == 0) ? -1 : 1;
             dir = polarity;
-        } else polarity = (iQ->isask != 0) ? -1 : 1;
+        } else polarity = (iQ->s.isask != 0) ? -1 : 1;
         if ( Debuglevel > 1 )
-            printf("found quoteid.%llu polarity.%d %llu/%llu vs %llu dir.%d\n",(long long)quoteid,polarity,(long long)iQ->baseid,(long long)iQ->relid,(long long)assetid,dir);
+            printf("found quoteid.%llu polarity.%d %llu/%llu vs %llu dir.%d\n",(long long)quoteid,polarity,(long long)iQ->s.baseid,(long long)iQ->s.relid,(long long)assetid,dir);
         //found quoteid.7555841528599494229 polarity.1 6932037131189568014/6854596569382794790 vs 6854596569382794790 dir.1
-        if ( polarity*dir > 0 && ((polarity > 0 && iQ->baseid == assetid) || (polarity < 0 && iQ->relid == assetid)) )
+        if ( polarity*dir > 0 && ((polarity > 0 && iQ->s.baseid == assetid) || (polarity < 0 && iQ->s.relid == assetid)) )
         {
             if ( priceNQT != 0 )
                 baseamount = calc_baseamount(&relamount,assetid,qty,priceNQT);
             else baseamount = qty * get_assetmult(assetid), relamount = otherqty * get_assetmult(otherassetid);
             if ( polarity > 0 )
-                price = calc_price_volume(&vol,baseamount,relamount), refprice = calc_price_volume(&refvol,iQ->baseamount,iQ->relamount);
-            else price = calc_price_volume(&vol,relamount,baseamount), refprice = calc_price_volume(&refvol,iQ->relamount,iQ->baseamount);
+                price = prices777_price_volume(&vol,baseamount,relamount), refprice = prices777_price_volume(&refvol,iQ->s.baseamount,iQ->s.relamount);
+            else price = prices777_price_volume(&vol,relamount,baseamount), refprice = prices777_price_volume(&refvol,iQ->s.relamount,iQ->s.baseamount);
             if ( Debuglevel > 1 )
                 printf("polarity.%d dir.%d (%f %f) vs ref.(%f %f)\n",polarity,dir,price,vol,refprice,refvol);
-            if ( vol >= refvol*(double)iQ->minperc/100. && vol <= refvol )
+            if ( vol >= refvol*(double)iQ->s.minperc/100. && vol <= refvol )
             {
                 if ( (dir > 0 && price <= (refprice * (1. + INSTANTDEX_PRICESLIPPAGE) + SMALLVAL)) || (dir < 0 && price >= (refprice / (1. + INSTANTDEX_PRICESLIPPAGE) - SMALLVAL)) )
                     return(iQ);
@@ -809,7 +757,7 @@ char *respondtx(char *NXTaddr,char *NXTACCTSECRET,char *sender,char *cmdstr,uint
                                     sprintf(retbuf,"{\"error\":[\"%s\"],\"submit_txid\":\"%llu\",\"quoteid\":\"%llu\"}",submitstr == 0 ? "submit error" : submitstr,(long long)txid,(long long)quoteid), free(submitstr);
                                 else
                                 {
-                                    iQ->matched = 1;
+                                    iQ->s.matched = 1;
                                     sprintf(retbuf,"{\"result\":\"%s\",:\"submit_txid\":\"%llu\",:\"quoteid\":\"%llu\"}",cmdstr,(long long)txid,(long long)quoteid);
                                 }
                             } else printf("invalid offer or quoteid mismatch %llu vs %llu\n",(long long)checkquoteid,(long long)quoteid);
@@ -824,6 +772,67 @@ char *respondtx(char *NXTaddr,char *NXTACCTSECRET,char *sender,char *cmdstr,uint
     }
     return(clonestr(retbuf));
 }
+char *call_makeoffer3(int32_t localaccess,char *NXTaddr,char *NXTACCTSECRET,cJSON *objs[])
+{
+    uint64_t quoteid,baseid,relid,baseamount,relamount,offerNXT,jumpasset; struct InstantDEX_quote baseiQ,reliQ;
+    char exchange[MAX_JSON_FIELD];
+    double price,volume;
+    int32_t minperc,perc,flip = 0;
+    baseid = get_API_nxt64bits(objs[0]);
+    relid = get_API_nxt64bits(objs[1]);
+    quoteid = get_API_nxt64bits(objs[2]);
+    perc = get_API_int(objs[3],0);
+    flip = (int32_t)get_API_int(objs[4],0);
+    price = get_API_float(objs[8]);
+    volume = get_API_float(objs[9]);
+    copy_cJSON(exchange,objs[10]);
+    baseamount = get_API_nxt64bits(objs[11]);
+    relamount = get_API_nxt64bits(objs[12]);
+    offerNXT = get_API_nxt64bits(objs[13]);
+    minperc = (int32_t)get_API_int(objs[14],INSTANTDEX_MINVOL);
+    jumpasset = get_API_nxt64bits(objs[15]);
+    memset(&baseiQ,0,sizeof(baseiQ));
+    memset(&reliQ,0,sizeof(reliQ));
+    set_basereliQ(&baseiQ,objs[5]), set_basereliQ(&reliQ,objs[6]);
+    return(makeoffer3(NXTaddr,NXTACCTSECRET,price,volume,flip,perc,baseid,relid,&baseiQ,&reliQ,quoteid,get_API_int(objs[7],0),exchange,baseamount,relamount,offerNXT,minperc,jumpasset));
+}
+
+char *makeoffer3_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char *retstr = 0;
+    //printf("makeoffer3 localaccess.%d\n",localaccess);
+    if ( valid > 0 )
+        retstr = call_makeoffer3(localaccess,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,objs);
+    return(retstr);
+}
+
+char *respondtx_func(int32_t localaccess,int32_t valid,char *sender,cJSON **objs,int32_t numobjs,char *origargstr)
+{
+    char cmdstr[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],utx[MAX_JSON_FIELD],offerNXT[MAX_JSON_FIELD],sig[MAX_JSON_FIELD],*retstr = 0;
+    uint64_t quoteid,assetid,qty,priceNQT,otherassetid,otherqty;
+    int32_t minperc;
+    printf("got respond_tx.(%s)\n",origargstr);
+    if ( localaccess == 0 )
+        return(0);
+    copy_cJSON(cmdstr,objs[0]);
+    assetid = get_API_nxt64bits(objs[1]);
+    qty = get_API_nxt64bits(objs[2]);
+    priceNQT = get_API_nxt64bits(objs[3]);
+    copy_cJSON(triggerhash,objs[4]);
+    quoteid = get_API_nxt64bits(objs[5]);
+    copy_cJSON(sig,objs[6]);
+    copy_cJSON(utx,objs[7]);
+    minperc = (int32_t)get_API_int(objs[8],INSTANTDEX_MINVOL);
+    //if ( localaccess != 0 )
+    copy_cJSON(offerNXT,objs[9]);
+    otherassetid = get_API_nxt64bits(objs[10]);
+    otherqty = get_API_nxt64bits(objs[11]);
+    if ( strcmp(offerNXT,SUPERNET.NXTADDR) == 0 && valid > 0 && triggerhash[0] != 0 )
+        retstr = respondtx(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,offerNXT,cmdstr,assetid,qty,priceNQT,triggerhash,quoteid,sig,utx,minperc,otherassetid,otherqty);
+    //else retstr = clonestr("{\"result\":\"invalid respondtx_func request\"}");
+    return(retstr);
+}
+
 
 #endif
 

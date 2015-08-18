@@ -263,7 +263,7 @@ int32_t txinds777_flush(struct txinds777_info *txinds,uint32_t blocknum,uint32_t
     else
     {
         printf("txinds777_flush null ptr\n");
-        getchar();
+        //getchar();
     }
     return(0);
 }

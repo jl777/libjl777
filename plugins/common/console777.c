@@ -248,6 +248,17 @@ void process_userinput(char *_line)
 {
     static char *line,*line2;
     char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int timeout,broadcastflag = 0;
+    if ( (json= cJSON_Parse(_line)) != 0 )
+    {
+        char *process_nn_message(int32_t sock,char *jsonstr);
+        free_json(json);
+        char *SuperNET_JSON(char *jsonstr);
+        retstr = SuperNET_JSON(_line);
+        //retstr = process_nn_message(-1,line);
+        //retstr = nn_loadbalanced((uint8_t *)line,(int32_t)strlen(line)+1);
+        fprintf(stderr,"console -> (%s)\n",retstr);
+        return;
+    } else printf("cant parse.(%s)\n",line);
     printf("[%s]\n",_line);
     if ( line == 0 )
         line = calloc(1,65536), line2 = calloc(1,65536);
@@ -256,15 +267,6 @@ void process_userinput(char *_line)
         return;
     if ( line[0] == '!' )
         broadcastflag = 1, line++;
-    if ( (json= cJSON_Parse(line)) != 0 )
-    {
-        char *process_nn_message(int32_t sock,char *jsonstr);
-        free_json(json);
-        retstr = process_nn_message(-1,line);
-        //retstr = nn_loadbalanced((uint8_t *)line,(int32_t)strlen(line)+1);
-        printf("console.(%s) -> (%s)\n",line,retstr);
-        return;
-    }
     settoken(ipaddr,line);
     printf("expands to: %s [%s] %s\n",broadcastflag != 0 ? "broadcast": "",line,ipaddr);
     if ( is_ipaddr(ipaddr) != 0 )

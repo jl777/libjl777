@@ -48,7 +48,7 @@ int curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
 #define issue_NXTPOST(cmdstr) bitcoind_RPC(0,"curl",SUPERNET.NXTAPIURL,0,0,cmdstr)
 #define fetch_URL(url) bitcoind_RPC(0,"fetch",url,0,0,0)
 
-#define INSTANTDEX_TRIGGERDEADLINE 15
+#define INSTANTDEX_TRIGGERDEADLINE 120
 
 #define NXT_ASSETID ('N' + ((uint64_t)'X'<<8) + ((uint64_t)'T'<<16))    // 5527630
 #define BTC_ASSETID ('B' + ((uint64_t)'T'<<8) + ((uint64_t)'C'<<16))    // 4412482
@@ -136,6 +136,7 @@ struct json_AM { struct NXT_AMhdr H; uint32_t funcid,gatewayid,timestamp,jsonfla
 struct assethash { UT_hash_handle hh; uint64_t assetid,minvol,mult; int32_t type,decimals; char name[16]; } *Allassets;
 struct assethash *find_asset(uint64_t assetid);
 
+uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
 uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
 bits256 calc_sharedsecret(uint64_t *nxt64bitsp,int32_t *haspubpeyp,uint8_t *NXTACCTSECRET,int32_t secretlen,uint64_t other64bits);
 int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
@@ -146,7 +147,6 @@ char *_issue_getCurrency(char *assetidstr);
 uint64_t _get_NXT_ECblock(uint32_t *ecblockp);
 char *_issue_getTransaction(char *txidstr);
 bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct);
-uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
 uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey);
 uint64_t get_sender(uint64_t *amountp,char *txidstr);
 uint64_t conv_acctstr(char *acctstr);
@@ -173,7 +173,7 @@ int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char e
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret);
 int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
 int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
-char *cancel_orderid(char *NXTaddr,uint64_t orderid);
+char *cancel_NXTorderid(char *NXTaddr,uint64_t orderid);
 
 uint64_t calc_decimals_mult(int32_t decimals);
 int32_t get_assetdecimals(uint64_t assetid);
@@ -206,7 +206,6 @@ extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
 #undef DEFINES_ONLY
 #endif
 #include "tweetnacl.c"
-//__i686__ || __i386__
 #if __amd64__
 #include "curve25519-donna-c64.c"
 #else
@@ -321,8 +320,8 @@ char *_issue_getCurrency(char *assetidstr)
 {
     char cmd[4096];
     //sprintf(cmd,"requestType=getAsset&asset=%s",assetidstr);
-    sprintf(cmd,"requestType=getCurrency&asset=%s",assetidstr);
-    //printf("_cmd.(%s)\n",cmd);
+    sprintf(cmd,"requestType=getCurrency&currency=%s",assetidstr);
+    printf("_cmd.(%s)\n",cmd);
     return(issue_NXTPOST(cmd));
 }
 
@@ -579,7 +578,7 @@ uint64_t _get_AEquote(char *str,uint64_t orderid)
     return(nxt64bits);
 }
 
-char *cancel_orderid(char *NXTaddr,uint64_t orderid)
+char *cancel_NXTorderid(char *NXTaddr,uint64_t orderid)
 {
     uint64_t nxt64bits; char cmd[1025],secret[8192],*str = "Bid",*retstr = 0;
     if ( (nxt64bits= _get_AEquote(str,orderid)) == 0 )
@@ -833,13 +832,85 @@ uint64_t calc_decimals_mult(int32_t decimals)
     return(mult);
 }
 
-int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
+int32_t unstringbits(char *buf,uint64_t bits)
 {
-    int32_t decimals = -1;
-    cJSON *json;
+    int32_t i;
+    for (i=0; i<8; i++,bits>>=8)
+        if ( (buf[i]= (char)(bits & 0xff)) == 0 )
+            break;
+    buf[i] = 0;
+    return(i);
+}
+
+int32_t is_native_crypto(char *name,uint64_t bits)
+{
+    int32_t i,n;
+    if ( (n= (int32_t)strlen(name)) > 0 || (n= unstringbits(name,bits)) <= 5 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( (name[i] >= '0' && name[i] <= '9') || (name[i] >= 'A' && name[i] <= 'Z') )// || (name[i] >= '0' && name[i] <= '9') )
+                continue;
+            //printf("(%s) is not native crypto\n",name);
+            return(0);
+        }
+        //printf("(%s) is native crypto\n",name);
+        return(1);
+    }
+    return(0);
+}
+
+int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr,uint64_t assetid)
+{
+    int32_t type = 0,decimals = -1; cJSON *json=0; char assetidstr[64];
+    *multp = 1;
+    buf[0] = 0;
+    if ( assetid != 0 )
+    {
+        //fprintf(stderr,"assetid.%llu\n",(long long)assetid);
+        if ( is_MGWasset(multp,assetid) != 0 )
+            return(0);
+        if ( is_native_crypto(buf,assetid) != 0 )
+            return(0);
+    }
+    if ( jsonstr == 0 )
+    {
+        if ( assetid == 0 )
+            printf("_set_assetname null assetid\n");//, getchar();
+        expand_nxt64bits(assetidstr,assetid);
+        type = 2;
+        if ( (jsonstr= _issue_getAsset(assetidstr)) != 0 )
+        {
+            //printf("%llu (%s) -> (%s)\n",(long long)assetid,assetidstr,jsonstr);
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( get_cJSON_int(json,"errorCode") != 0 )
+                {
+                    free_json(json), free(jsonstr);
+                    if ( (jsonstr= _issue_getCurrency(assetidstr)) != 0 )
+                    {
+                        //printf("(%s) -> (%s)\n",assetidstr,jsonstr);
+                        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                        {
+                            if ( get_cJSON_int(json,"errorCode") != 0 )
+                            {
+                                printf("(%s) not asset and not currency (%s)\n",assetidstr,jsonstr), getchar();
+                                free_json(json), free(jsonstr);
+                                return(-1);
+                            }
+                            type = 5;
+                        }
+                    }
+                }
+            }
+            free(jsonstr), jsonstr = 0;
+        } else return(-1);
+    }
     if ( multp != 0 )
         *multp = 0;
-    if ( (json= cJSON_Parse(jsonstr)) != 0 )
+    if ( json == 0 )
+        json = cJSON_Parse(jsonstr);
+    if ( json != 0 )
     {
         if ( get_cJSON_int(json,"errorCode") == 0 )
         {
@@ -848,10 +919,82 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr)
                 *multp = calc_decimals_mult(decimals);
             if ( extract_cJSON_str(buf,16,json,"name") <= 0 )
                 decimals = -1;
+            //printf("%s decimals.%d (%s)\n",assetidstr,decimals,buf);
         }
         free_json(json);
     }
-    return(decimals);
+    return(type);
+}
+
+uint64_t calc_baseamount(uint64_t *relamountp,uint64_t assetid,uint64_t qty,uint64_t priceNQT)
+{
+    *relamountp = (qty * priceNQT);
+    return(qty * get_assetmult(assetid));
+}
+
+void set_best_amounts(int64_t *baseamountp,int64_t *relamountp,double price,double volume)
+{
+    double checkprice,checkvol,distA,distB,metric,bestmetric = (1. / SMALLVAL);
+    uint64_t baseamount,relamount,bestbaseamount = 0,bestrelamount = 0;
+    int32_t i,j;
+    baseamount = volume * SATOSHIDEN;
+    relamount = ((price * volume) * SATOSHIDEN);
+    //*baseamountp = baseamount, *relamountp = relamount;
+    //return;
+    for (i=-1; i<=1; i++)
+        for (j=-1; j<=1; j++)
+        {
+            checkprice = prices777_price_volume(&checkvol,baseamount+i,relamount+j);
+            distA = (checkprice - price);
+            distA *= distA;
+            distB = (checkvol - volume);
+            distB *= distB;
+            metric = sqrt(distA + distB);
+            if ( metric < bestmetric )
+            {
+                bestmetric = metric;
+                bestbaseamount = baseamount + i;
+                bestrelamount = relamount + j;
+                //printf("i.%d j.%d metric. %f\n",i,j,metric);
+            }
+        }
+    *baseamountp = bestbaseamount;
+    *relamountp = bestrelamount;
+}
+
+uint64_t calc_asset_qty(uint64_t *availp,uint64_t *priceNQTp,char *NXTaddr,int32_t checkflag,uint64_t assetid,double price,double vol)
+{
+    char assetidstr[64];
+    uint64_t ap_mult,priceNQT,quantityQNT = 0;
+    int64_t unconfirmed,balance;
+    *priceNQTp = *availp = 0;
+    if ( assetid != NXT_ASSETID )
+    {
+        expand_nxt64bits(assetidstr,assetid);
+        if ( (ap_mult= get_assetmult(assetid)) != 0 )
+        {
+            //price = (double)get_satoshi_obj(srcitem,"priceNQT") / ap_mult;
+            //vol = (double)get_satoshi_obj(srcitem,"quantityQNT") * ((double)ap_mult / SATOSHIDEN);
+            priceNQT = (price * ap_mult + (ap_mult/2)/SATOSHIDEN);
+            quantityQNT = (vol * SATOSHIDEN) / ap_mult;
+            balance = get_asset_quantity(&unconfirmed,NXTaddr,assetidstr);
+            printf("%s balance %.8f unconfirmed %.8f vs price %llu qty %llu for asset.%s | price_vol.(%f * %f) * (%lld / %llu)\n",NXTaddr,dstr(balance),dstr(unconfirmed),(long long)priceNQT,(long long)quantityQNT,assetidstr,price,vol,(long long)SATOSHIDEN,(long long)ap_mult);
+            //getchar();
+            if ( checkflag != 0 && (balance < quantityQNT || unconfirmed < quantityQNT) )
+            {
+                printf("balance %.8f < qty %.8f || unconfirmed %.8f < qty %llu\n",dstr(balance),dstr(quantityQNT),dstr(unconfirmed),(long long)quantityQNT);
+                return(0);
+            }
+            *priceNQTp = priceNQT;
+            *availp = unconfirmed;
+        } else printf("%llu null apmult\n",(long long)assetid);
+    }
+    else
+    {
+        *priceNQTp = price * SATOSHIDEN;
+        quantityQNT = vol;
+    }
+    return(quantityQNT);
 }
 
 struct assethash *Allassets;
@@ -876,6 +1019,11 @@ struct assethash *create_asset(uint64_t assetid,struct assethash *ap)
 int32_t get_assettype(int32_t *numdecimalsp,char *assetidstr)
 {
     cJSON *json; char name[64],*jsonstr; uint64_t assetid; int32_t ap_type = -1; struct assethash *ap,A;
+    if ( is_native_crypto(name,calc_nxt64bits(assetidstr)) > 0 )
+    {
+        *numdecimalsp = 8;
+        return(0);
+    }
     if ( (assetid= calc_nxt64bits(assetidstr)) == NXT_ASSETID )
     {
         *numdecimalsp = 8;
@@ -1161,7 +1309,7 @@ uint64_t calc_txid(unsigned char *buf,int32_t len)
     calc_sha256(0,(unsigned char *)&hash[0],buf,len);
     if ( sizeof(hash) >= sizeof(txid) )
         memcpy(&txid,hash,sizeof(txid));
-    else memcpy(&txid,hash,sizeof(hash));
+    else memcpy(&txid,hash,sizeof(txid));
     //printf("calc_txid.(%llu)\n",(long long)txid);
     //return(hash[0] ^ hash[1] ^ hash[2] ^ hash[3]);
     return(txid);

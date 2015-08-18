@@ -22,10 +22,10 @@
 #define PEGGY_HOURTICKS (PEGGY_MINUTE * 60)
 #define PEGGY_DAYTICKS (24 * PEGGY_HOURTICKS)
 #define MAX_TIMEFRAME (24 * 3600 * 365)
-#define MAX_PEGGYDAYS (365 * 3 )
+#define MAX_PEGGYDAYS (365 * 2)
 #define PEGGY_MINEXTRADAYS 3
 
-#define PEGGY_MAXPRICEDPEGS 256
+#define PEGGY_MAXPRICEDPEGS 64
 #define PEGGY_MAXPAIREDPEGS 4096
 #define PEGGY_MAXPEGS (PEGGY_MAXPRICEDPEGS + PEGGY_MAXPAIREDPEGS)
 
@@ -315,7 +315,7 @@ int32_t peggy_islegal_amount(struct peggy_entry *entry,struct peggy_info *PEGS,s
     if ( entry->baseid == entry->relid )
     {
         printf("illegal baseid.%d relid.%d (%s)\n",PEG->name.baseid,PEG->name.relid,PEG->name.name);
-        getchar();
+        //getchar();
         return(1);
     }
     if ( PEG->name.id == 0 )
@@ -696,7 +696,8 @@ struct price_resolution peggy_newprice(struct peggy_info *PEGS,struct peggy *PEG
         peggy_setprice(PEG,newprice,minute);
         shortprice = peggy_shortprice(PEG,newprice);
         price.Pval = newpval;
-        fprintf(stderr,"t.%u M%d day.%-4d new %.8f short.%.8f pval.%.8f | first %.10f ",T.blocktimestamp,minute,minute/1440,Pval(&newprice),Pval(&shortprice),Pval(&price),Pval(&PEG->genesisprice));
+        if ( Debuglevel > 2 )
+            fprintf(stderr,"t.%u M%d day.%-4d new %.8f short.%.8f pval.%.8f | first %.10f ",T.blocktimestamp,minute,minute/1440,Pval(&newprice),Pval(&shortprice),Pval(&price),Pval(&PEG->genesisprice));
     }
     return(newprice);
 }
@@ -735,7 +736,7 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
         {
             if ( votes[i].pval != 0 )
             {
-                wts[i] = n + 1;
+                wts[i] = 1;//n + 1;
                 n++;
                 totalwt += wts[i];
             }
@@ -773,13 +774,14 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
             //    fprintf(stderr,"%d.(%.6f %llu) ",i,(double)votes[i].pval/PRICE_RESOLUTION,(long long)weight);
             if ( weight > (totalwt >> 1) )
             {
-                fprintf(stderr,"%6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",votes[i].pval,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
+                if ( Debuglevel > 2 )
+                    fprintf(stderr,"%6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",votes[i].pval,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
                 PEG->price = peggy_newprice(PEGS,PEG,T,votes[i].pval);
                 break;
             }
         }
-        if ( k == numvotes )
-            fprintf(stderr,"%6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",votes[i].tolerance,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
+        if ( 0 && k == numvotes )
+            fprintf(stderr,"no consensus for %s %6d k%-4d %4d-> %.6f wt.%-4lld/%4lld ",PEG->name.name,votes[i].tolerance,k,i,Pval(&PEG->price),(long long)weight,(long long)totalwt);
         if ( (day= (T.blocktimestamp - PEG->genesistime)/PEGGY_DAYTICKS) != PEG->day )
         {
             peggy_gamblers(PEGS,T,PEG->dayprice,PEG->price,bets,numbets);
@@ -795,7 +797,8 @@ struct price_resolution peggy_priceconsensus(struct peggy_info *PEGS,struct pegg
             PEG->dayprice = dayprice;
             PEG->day = day;
             PEG->dayprices[day] = (uint32_t)dayprice.Pval;
-            printf(">>>>>>>>>>>> DAY PRICE.%d %s %.8f\n",day,PEG->name.name,Pval(&dayprice));
+            if ( Debuglevel > 2 )
+                printf(">>>>>>>>>>>> DAY PRICE.%d %s %.8f\n",day,PEG->name.name,Pval(&dayprice));
             while ( --day > 0 && PEG->dayprices[day] == 0 )
                 PEG->dayprices[day] = (uint32_t)dayprice.Pval;
         }

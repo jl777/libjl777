@@ -284,7 +284,7 @@ struct ledger_addrinfo *ramchain_addrinfo(char *field,char *retbuf,int32_t maxle
         sprintf(retbuf,"{\"error\":\"invalid addr or addrind\",\"coin\":\"%s\"}",coin->name);
         return(0);
     }
-    printf("coin_addrinfo not coded yet\n"); getchar();
+    printf("coin_addrinfo not coded yet\n"); //getchar();
     //if ( (addrinfo= ledger_addrinfo(&firstblocknum,ramchain->activeledger,coinaddr,addrind)) == 0 )
     //    sprintf(retbuf,"{\"error\":\"cant find %s\",\"coin\":\"%s\"}",field,ramchain->name);
     return(0);//addrinfo);

@@ -241,7 +241,7 @@ uint64_t acct777_nxt64bits(bits256 pubkey)
 bits256 acct777_hashiter(bits256 privkey,bits256 pubkey,int32_t lockdays,uint8_t chainlen)
 {
     uint16_t lockseed,signlen = 0; uint8_t signbuf[16]; bits256 shared,lockhash;
-    lockseed = chainlen | (lockdays << 6);
+    lockseed = (chainlen & 0x7f) | (lockdays << 7);
     signlen = 0, signbuf[signlen++] = lockseed & 0xff, signbuf[signlen++] = (lockseed >> 8) & 0xff;
     
     privkey.bytes[0] &= 248, privkey.bytes[31] &= 127, privkey.bytes[31] |= 64;

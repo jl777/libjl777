@@ -5,11 +5,12 @@
 //  Copyright (c) 2015 jl777. All rights reserved.
 //
 #include <stdint.h>
-#include "ccgi.h"
+#include "../ccgi/ccgi.h"
 #include "nn.h"
-#include "includes/cJSON.h"
+#include "../includes/cJSON.h"
 #include "pair.h"
 #include "pipeline.h"
+#include "nonportable.h"
 #ifdef _WIN32
 #define setenv(x, y, z) _putenv_s(x, y)
 #endif
@@ -20,8 +21,9 @@ long _stripwhite(char *buf,int accept);
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
 #define issue_POST(url,cmdstr) bitcoind_RPC(0,"curl",url,0,0,cmdstr)
 char *os_compatible_path(char *str);
+void randombytes(unsigned char *x,long xlen);
 
-void process_json(cJSON *json,int32_t publicaccess)
+void process_json(cJSON *json,char *remoteaddr,int32_t localaccess)
 {
     int32_t sock,len,checklen,sendtimeout,recvtimeout; uint32_t apitag; uint64_t tag;
     char endpoint[128],numstr[64],*resultstr,*jsonstr;
@@ -32,17 +34,19 @@ void process_json(cJSON *json,int32_t publicaccess)
     free(jsonstr);
     recvtimeout = get_API_int(cJSON_GetObjectItem(json,"timeout"),30000);
     sendtimeout = 30000;
-    randombytes(&tag,sizeof(tag));
+    randombytes((uint8_t *)&tag,sizeof(tag));
     if ( cJSON_GetObjectItem(json,"tag") == 0 )
         sprintf(numstr,"%llu",(long long)tag), cJSON_AddItemToObject(json,"tag",cJSON_CreateString(numstr));
     if ( cJSON_GetObjectItem(json,"apitag") == 0 )
         cJSON_AddItemToObject(json,"apitag",cJSON_CreateString(endpoint));
-    if ( publicaccess != 0 )
-        cJSON_AddItemToObject(json,"broadcast",cJSON_CreateString("publicaccess"));
+    if ( remoteaddr != 0 )
+        cJSON_AddItemToObject(json,"broadcast",cJSON_CreateString("remoteaccess"));
+    if ( localaccess != 0 )
+        cJSON_AddItemToObject(json,"localaccess",cJSON_CreateNumber(1));
     jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' ');
-    //fprintf(stderr,"publicaccess.%d jsonstr.(%s)\r\n",publicaccess,jsonstr);
+    //fprintf(stderr,"localacess.%d remote.(%s) jsonstr.(%s)\r\n",localaccess,remoteaddr!=0?remoteaddr:"",jsonstr);
     len = (int32_t)strlen(jsonstr)+1;
-    if ( json != 0 )
+    if ( jsonstr != 0 )
     {
         if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
         {
@@ -93,11 +97,14 @@ fprintf(stderr,"set NXTAPIURL.(%s)\n",urlbuf);
 int main(int argc, char **argv)
 {
     void portable_OS_init();
-    CGI_varlist *varlist; const char *name; CGI_value  *value;  int i,j,iter,publicaccess = 0,portflag = 0; cJSON *json; long offset;
-    char urlbuf[512],namebuf[512],postbuf[65536],*retstr,*delim,*url = 0;
+    CGI_varlist *varlist; const char *name; char urlbuf[512],namebuf[512],postbuf[65536],*remoteaddr,*str=0,*retstr,*delim,*url = 0;
+    int i,j,iter,localaccess=0,doneflag=0,portflag = 0; cJSON *json; long offset; CGI_value  *value;
     portable_OS_init();
     setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
     json = cJSON_CreateObject();
+    if ( (remoteaddr= getenv("REMOTE_ADDR")) == 0 || strncmp("127.0.0.1",remoteaddr,strlen("127.0.0.1")) == 0 )
+        remoteaddr = 0,localaccess = 1;
+    else cJSON_AddItemToObject(json,"remoteaddr",cJSON_CreateString(remoteaddr));
     for (i=j=0; argv[0][i]!=0; i++)
         if ( argv[0][i] == '/' || argv[0][i] == '\\' )
             j = i+1;
@@ -105,13 +112,22 @@ int main(int argc, char **argv)
     offset = strlen(namebuf) - 4;
     if ( offset > 0 && strcmp(".exe",namebuf + offset) == 0 )
         namebuf[offset] = 0;
-    if ( strcmp(namebuf,"public") == 0 )
-        publicaccess = 1, strcpy(namebuf,"api");
-    if ( strcmp(namebuf,"api") != 0 )
-        cJSON_AddItemToObject(json,"agent",cJSON_CreateString(namebuf));
+    if ( strcmp(namebuf,"init") == 0 || strcmp(namebuf,"") == 0 || strcmp(namebuf,"index.cgi") == 0 )
+    {
+        // "http://178.63.60.131/init/?requestType=status&coin=VRC"
+        //"http://78.47.115.250:7777/public?plugin=relay&method=busdata&servicename=MGW&serviceNXT=8119557380101451968&destplugin=MGW&submethod=status&coin=BTC"
+        if ( strcmp(namebuf,"api") != 0 )
+            cJSON_AddItemToObject(json,"agent",cJSON_CreateString(namebuf));
+        cJSON_AddItemToObject(json,"plugin",cJSON_CreateString("relay"));
+        cJSON_AddItemToObject(json,"method",cJSON_CreateString("busdata"));
+        cJSON_AddItemToObject(json,"servicename",cJSON_CreateString("MGW"));
+        cJSON_AddItemToObject(json,"serviceNXT",cJSON_CreateString("8119557380101451968"));
+        cJSON_AddItemToObject(json,"destplugin",cJSON_CreateString("MGW"));
+        if ( jstr(json,"requestType") != 0 )
+            cJSON_AddItemToObject(json,"submethod",cJSON_CreateString(jstr(json,"requestType")));
+    }
     if ( strcmp("nxt",namebuf) == 0 )
     {
-fprintf(stderr,"namebuf.(%s)\n",namebuf);
         if ( setnxturl(urlbuf) != 0 )
             url = urlbuf;
         else url = "http://127.0.0.1:7876/nxt";
@@ -122,24 +138,54 @@ fprintf(stderr,"namebuf.(%s)\n",namebuf);
         url = "http://127.0.0.1", portflag = 1;
     else if ( strcmp("ports",namebuf) == 0 )
         url = "https://127.0.0.1", portflag = 1;
+    fprintf(stderr,"namebuf.(%s)\n",namebuf);
     if ( url != 0 )
          postbuf[0] = 0, delim = "";
-    //if ( (value= CGI_lookup_all(CGI_get_all(0),"HTTP_ORIGIN")) != 0 )
-    //    printf("HTTP_ORIGIN: %s\n",value);
     for (iter=0; iter<3; iter++)
     {
         if ( (varlist= ((iter==0) ? CGI_get_post(0,0) : ((iter==1) ? CGI_get_query(0) : CGI_get_cookie(0)))) != 0 )
         {
-            for (name=CGI_first_name(varlist); name!=0; name=CGI_next_name(varlist))
+            for (name=CGI_first_name(varlist); name!=0&&doneflag==0; name=CGI_next_name(varlist))
             {
                 value = CGI_lookup_all(varlist,0);
                 for (i=0; value[i]!=0; i++)
                 {
-                    //fprintf(stderr,"iter.%d %s [%d] = %s\r\n",iter,name,i,value[i]);
+                fprintf(stderr,"iter.%d %s [%d] = %s\r\n",iter,name,i,value[i]);
                     if ( i == 0 )
                     {
                         if ( url == 0 )
+                        {
+                            if ( strcmp(name,"stringified") == 0 || strcmp(namebuf,"stringified") == 0 )
+                            {
+                                char *unstringify(char *str);
+                                cJSON *obj;
+                                if ( (obj= cJSON_Parse(name)) == 0 )
+                                {
+                                    str = malloc(strlen(value[i])+1);
+                                    strcpy(str,value[i]);
+                                    unstringify(str);
+                                    printf("unstringify (%s) -> (%s)\n",value[i],str);
+                                    obj= cJSON_Parse(str);
+                                }
+                                if ( obj != 0 )
+                                {
+                                    //unstringified ((null)) -> ({"stringified":{"method":"orderbook","baseid":"12071612744977229797","relid":"5527630","maxdepth":"1"},"agent":"InstantDEX"})
+                                    free_json(json);
+                                    if ( jobj(obj,"stringified") != 0 )
+                                        json = cJSON_Duplicate(jobj(obj,"stringified"),1), free_json(obj);
+                                    else json = obj;
+                                    cJSON_AddItemToObject(json,"agent",cJSON_CreateString("InstantDEX"));
+                                    if ( remoteaddr != 0 && remoteaddr[0] != 0 )
+                                        cJSON_AddItemToObject(json,"remoteaddr",cJSON_CreateString(remoteaddr));
+                                    fprintf(stderr,"unstringified (%s) -> (%s)\n",str!=0?str:"",jprint(json,0));
+                                    if ( str != 0 )
+                                        free(str);
+                                    doneflag = 1;
+                                    break;
+                                }
+                            }
                             cJSON_AddItemToObject(json,name,cJSON_CreateString(value[i]));
+                        }
                         else
                         {
                             if ( portflag != 0 && strncmp(name,"port",strlen("port")) == 0 )
@@ -152,9 +198,11 @@ fprintf(stderr,"namebuf.(%s)\n",namebuf);
         }
         CGI_free_varlist(varlist);
     }
-    fputs("Access-Control-Allow-Origin: null\r\n",stdout);
-    fputs("Access-Control-Allow-Headers: Authorization, Content-Type\r\n",stdout);
+    if ( localaccess == 0 )
+        fputs("Access-Control-Allow-Origin: *\r\n",stdout);
+    else fputs("Access-Control-Allow-Origin: null\r\n",stdout);
     fputs("Access-Control-Allow-Credentials: true\r\n",stdout);
+    fputs("Access-Control-Allow-Headers: Authorization, Content-Type\r\n",stdout);
     fputs("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n",stdout);
     fputs("Cache-Control: no-cache, no-store, must-revalidate\r\n",stdout);
     fputs("Content-type: text/plain\r\n",stdout);
@@ -171,7 +219,10 @@ fprintf(stderr,"url.(%s) (%s)\n",url,postbuf);
     }
     else
     {
-        process_json(json,publicaccess);
+        if ( jobj(json,"agent") == 0 && strcmp(namebuf,"api") != 0 )
+            cJSON_AddItemToObject(json,"agent",cJSON_CreateString(namebuf));
+        fprintf(stderr,"PROCESS.(%s)\n",jprint(json,0));
+        process_json(json,remoteaddr,localaccess);
     }
     free_json(json);
     return 0;

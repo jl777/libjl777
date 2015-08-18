@@ -20,7 +20,6 @@
 #define NXTPRIVACY_COINADDR "RELiMDcxPeAT85acmeAEEX3M2omZRax4ft"
 
 STRUCTNAME TELEPORT;
-queue_t TelepathyQ;
 struct invoice_info { uint8_t hash[32]; };
 struct telepod { char txid[256],privkey[256],podaddr[256],script[512]; uint64_t value; int32_t vout,numconfirms; };
 

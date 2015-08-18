@@ -23,7 +23,7 @@
 #include "../utils/bits777.c"
 #include "gen1.c"
 #ifdef INSIDE_MGW
-#include "../mgw/db777.c"
+#include "../mgw/old/db777.c"
 #endif
 
 #define OP_RETURN_OPCODE 0x6a

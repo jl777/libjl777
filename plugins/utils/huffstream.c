@@ -61,7 +61,7 @@ int32_t hupdate_internals(HUFF *hp)
     if ( (hp->bitoffset >> 3) > hp->allocsize )
     {
         printf("hupdate_internals: ERROR: bitoffset.%d -> %d >= allocsize.%d\n",hp->bitoffset,hp->bitoffset>>3,hp->allocsize);
-        getchar();
+        //getchar();
         hp->bitoffset = (hp->allocsize << 3) - 1;
         retval = -1;
     }
@@ -110,7 +110,7 @@ int32_t hgetbit(HUFF *hp)
         //fprintf(stderr,"<-%d ",bit);
         return(bit);
     }
-    printf("hgetbit past EOF: %d >= %d\n",hp->bitoffset,hp->endpos), getchar();
+    printf("hgetbit past EOF: %d >= %d\n",hp->bitoffset,hp->endpos);//, getchar();
     return(-1);
 }
 

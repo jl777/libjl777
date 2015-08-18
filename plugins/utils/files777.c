@@ -170,8 +170,8 @@ long ensure_filesize(char *fname,long filesize,int32_t truncateflag)
     char *zeroes;
     long i,n,allocsize = 0;
 printf("ensure_filesize.(%s) %ld %s | ",fname,filesize,_mbstr(filesize));
-    if ( filesize == 0 )
-        getchar();
+    //if ( filesize == 0 )
+    //    getchar();
     if ( (fp= fopen(os_compatible_path(fname),"rb")) != 0 )
     {
         fseek(fp,0,SEEK_END);

@@ -812,10 +812,10 @@ uint8_t *txnet777_serialize(struct txnet777 *TXNET,uint8_t *serbuf,int32_t max,s
 
 int32_t txnet777_incoming(int32_t rtflag,struct txnet777 *TXNET,struct txnet777_tx *tx,int32_t recvlen)
 {
-    uint32_t now,nonceerr = 0;
+    uint32_t i,now,nonceerr = 0;
     if ( 0 && strcmp(TXNET->path,"RPS/T1") == 0 )
     {
-        for (int i=0; i<recvlen; i++)
+        for (i=0; i<recvlen; i++)
             fprintf(stderr,"%02x ",((uint8_t *)tx)[i]);
         fprintf(stderr,"%s received.%d %x\n",TXNET->path,recvlen,recvlen);
     }
@@ -839,7 +839,7 @@ int32_t txnet777_incoming(int32_t rtflag,struct txnet777 *TXNET,struct txnet777_
 
 uint64_t txnet777_broadcast(struct txnet777 *TXNET,struct txnet777_tx *tx)
 {
-    int32_t len,sendlen; //uint8_t *ptr;
+    int32_t i,len,sendlen; //uint8_t *ptr;
     txnet777_savetx(TXNET,tx);
     if ( TXNET->NET.pubsock >= 0 )
     {
@@ -854,7 +854,7 @@ uint64_t txnet777_broadcast(struct txnet777 *TXNET,struct txnet777_tx *tx)
         sendlen = nn_send(TXNET->NET.pubsock,tx,len,0);
         if ( 0 && strcmp(TXNET->path,"RPS/T0") == 0 )
         {
-            for (int i=0; i<len; i++)
+            for (i=0; i<len; i++)
                 fprintf(stderr,"%02x ",((uint8_t *)tx)[i]);
             printf("%s sent.%d %x allocsize.%d offset.%ld\n",TXNET->path,len,len,tx->in.allocsize,(long)&tx->in.allocsize-(long)tx);
         }
@@ -1051,7 +1051,7 @@ void txnet777_test(char *protocol,char *path,char *agent)
     for (i=0; i<numthreads; i++)
         portable_thread_create((void *)txnet777_poll,TXNETS[i]);
     Startmilli = milliseconds();
-    getchar();
+   // getchar();
     
 }
 #endif

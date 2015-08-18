@@ -1,5 +1,5 @@
 //
-//  exchanges.h
+//  exchanges_trades.h
 //
 //  Created by jl777 on 7/9/14.
 //  Copyright (c) 2014 jl777. All rights reserved.
@@ -7,9 +7,6 @@
 
 #ifndef xcode_exchanges_h
 #define xcode_exchanges_h
-
-//#include "exchangepairs.h"
-//#include "exchangeparse.h"
 
 #define SHA512_DIGEST_SIZE (512 / 8)
 void *curl_post(CURL **cHandlep,char *url,char *postfields,char *hdr0,char *hdr1,char *hdr2);
@@ -253,4 +250,120 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *base,ch
         free(data);
     return(txid);
 }
+
+uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT,uint32_t triggerheight)
+{
+    int32_t deadline = 1 + 20;
+    uint64_t txid = 0;
+    char cmd[4096],secret[8192],errstr[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json;
+    if ( retjsonstrp != 0 )
+        *retjsonstrp = 0;
+    if ( triggerheight != 0 )
+        deadline = DEFAULT_NXT_DEADLINE;
+    escape_code(secret,NXTACCTSECRET);
+    sprintf(cmd,"requestType=%s&secretPhrase=%s&feeNQT=%llu&deadline=%d",bidask,secret,(long long)MIN_NQTFEE,deadline);
+    sprintf(cmd+strlen(cmd),"&%s=%llu&%s=%llu",is_MS!=0?"units":"quantityQNT",(long long)qty,is_MS!=0?"currency":"asset",(long long)assetid);
+    if ( NXTprice != 0 )
+    {
+        if ( is_MS != 0 )
+            sprintf(cmd+strlen(cmd),"&rateNQT=%llu",(long long)NXTprice);
+        else sprintf(cmd+strlen(cmd),"&priceNQT=%llu",(long long)NXTprice);
+    }
+    if ( otherNXT != 0 )
+        sprintf(cmd+strlen(cmd),"&recipient=%llu",(long long)otherNXT);
+    if ( triggerhash != 0 && triggerhash[0] != 0 )
+    {
+        if ( triggerheight == 0 )
+            sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s",triggerhash);
+        else sprintf(cmd+strlen(cmd),"&referencedTransactionFullHash=%s&phased=true&phasingFinishHeight=%u&phasingVotingModel=4&phasingQuorum=1&phasingLinkedFullHash=%s",triggerhash,triggerheight,triggerhash);
+    }
+    if ( comment != 0 && comment[0] != 0 )
+        sprintf(cmd+strlen(cmd),"&message=%s",comment);
+    if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
+    {
+        _stripwhite(jsonstr,' ');
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            copy_cJSON(errstr,cJSON_GetObjectItem(json,"error"));
+            if ( errstr[0] == 0 )
+                copy_cJSON(errstr,cJSON_GetObjectItem(json,"errorDescription"));
+            if ( errstr[0] != 0 )
+            {
+                printf("submit_triggered_bidask.(%s) -> (%s)\n",cmd,jsonstr);
+                if ( retjsonstrp != 0 )
+                    *retjsonstrp = clonestr(errstr);
+            }
+            else txid = get_API_nxt64bits(cJSON_GetObjectItem(json,"transaction"));
+        }
+        free(jsonstr);
+    }
+    return(txid);
+}
+
+char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid)
+{
+    uint64_t txid,assetid,avail,qty,priceNQT,ap_mult; char retbuf[512],*errstr;
+    if ( nxt64bits != calc_nxt64bits(SUPERNET.NXTADDR) )
+        return(clonestr("{\"error\":\"must use your NXT address\"}"));
+    else if ( baseid == NXT_ASSETID )
+        dir = -dir, assetid = relid;
+    else if ( relid == NXT_ASSETID )
+        assetid = baseid;
+    else return(clonestr("{\"error\":\"NXT AE order without NXT\"}"));
+    if ( (ap_mult= get_assetmult(assetid)) == 0 )
+        return(clonestr("{\"error\":\"assetid not found\"}"));
+    qty = calc_asset_qty(&avail,&priceNQT,SUPERNET.NXTADDR,0,assetid,price,volume);
+    txid = submit_triggered_nxtae(&errstr,0,dir > 0 ? "placeBidOrder" : "placeAskOrder",nxt64bits,SUPERNET.NXTACCTSECRET,assetid,qty,priceNQT,0,0,0,0);
+    if ( errstr != 0 )
+        sprintf(retbuf,"{\"error\":\"%s\"}",errstr), free(errstr);
+    else sprintf(retbuf,"{\"result\":\"success\",\"txid\":\"%llu\"}",(long long)txid);
+    if ( txidp != 0 )
+        *txidp = txid;
+    return(clonestr(retbuf));
+}
+
+uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,uint64_t qty,uint64_t priceNQT,int32_t dir,uint64_t nxt64bits,char *NXTACCTSECRET,char *triggerhash,char *comment,uint64_t otherNXT,char *base,char *rel,double price,double volume,uint32_t triggerheight)
+{
+    uint64_t txid = 0;
+    char assetidstr[64],*cmd,*retstr = 0;
+    int32_t ap_type,decimals;
+    struct exchange_info *exchange;
+    *jsonstrp = 0;
+    expand_nxt64bits(assetidstr,assetid);
+    ap_type = get_assettype(&decimals,assetidstr);
+    if ( dir == 0 || priceNQT == 0 )
+        cmd = (ap_type == 2 ? "transferAsset" : "transferCurrency"), priceNQT = 0;
+    else cmd = ((dir > 0) ? (ap_type == 2 ? "placeBidOrder" : "currencyBuy") : (ap_type == 2 ? "placeAskOrder" : "currencySell")), otherNXT = 0;
+    if ( exchangeid == INSTANTDEX_NXTAEID || exchangeid == INSTANTDEX_UNCONFID )
+    {
+        if ( assetid != NXT_ASSETID && qty != 0 && (dir == 0 || priceNQT != 0) )
+        {
+            printf("submit to exchange.%s (%s) dir.%d\n",Exchanges[exchangeid].name,comment,dir);
+            txid = submit_triggered_nxtae(jsonstrp,ap_type == 5,cmd,nxt64bits,NXTACCTSECRET,assetid,qty,priceNQT,triggerhash,comment,otherNXT,triggerheight);
+            if ( *jsonstrp != 0 )
+                txid = 0;
+        }
+    }
+    else if ( exchangeid < MAX_EXCHANGES && (exchange= &Exchanges[exchangeid]) != 0 && exchange->exchangeid == exchangeid && exchange->trade != 0 )
+    {
+        printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f (%s)\n",exchangeid,dir,price,volume,1./price,price*volume,comment);
+        if ( (txid= (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume)) == 0 )
+            printf("illegal combo (%s/%s) ret.(%s)\n",base,rel,retstr!=0?retstr:"");
+    }
+    return(txid);
+}
+
+uint64_t InstantDEX_tradestub(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+{
+    printf("this is just a InstantDEX_tradestub\n");
+    return(0);
+}
+
+uint64_t NXT_tradestub(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+{
+    printf("this is just a NXT_tradestub\n");
+    return(0);
+}
+
 #endif

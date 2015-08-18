@@ -4,5 +4,5 @@ echo $PATH
 echo ">>>>>>>>>>>>>>>>>>building miniupnpc.a"
 make clean
 make -f Makefile.mingw DLLWRAP=x86_64-w64-mingw32.static-dllwrap CC=x86_64-w64-mingw32.static-gcc AR=x86_64-w64-mingw32.static-ar init upnpc-static
-mv libminiupnpc.a ../libs/libminiupnpc-x64-win.a
+mv libminiupnpc.a ../libs/libminiupnpc-win64.a
 echo '>>>>>>>>>>>>>>>>>>finished'

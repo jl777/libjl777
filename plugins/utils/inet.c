@@ -336,7 +336,7 @@ int32_t parse_ipaddr(char *ipaddr,char *ip_port)
                 break;
             }
         ipaddr[j] = 0;
-        //printf("(%s) -> (%s:%d)\n",ip_port,ipaddr,port);
+        printf("%p.(%s) -> (%s:%d)\n",ip_port,ip_port,ipaddr,port);
     } else strcpy(ipaddr,"127.0.0.1");
     return(port);
 }

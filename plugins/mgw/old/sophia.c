@@ -10918,7 +10918,7 @@ size_t FSE_normalizeCount (short* normalizedCounter, unsigned tableLog,
             nTotal += abs(normalizedCounter[s]);
         if (nTotal != (1U<<tableLog))
             printf("Warning !!! Total == %u != %u !!!", nTotal, 1U<<tableLog);
-        getchar();
+       // getchar();
     }
 #endif
 

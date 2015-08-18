@@ -23,6 +23,12 @@
 #include "uthash.h"
 
 #define OP_RETURN_OPCODE 0x6a
+#define calc_predisplinex(startweekind,clumpsize,weekind) (((weekind) - (startweekind))/(clumpsize))
+#define _extrapolate_Spline(Splines,gap) ((double)(Splines)[0] + ((gap) * ((double)(Splines)[1] + ((gap) * ((double)(Splines)[2] + ((gap) * (double)(Splines)[3]))))))
+#define _extrapolate_Slope(Splines,gap) ((double)(Splines)[1] + ((gap) * ((double)(Splines)[2] + ((gap) * (double)(Splines)[3]))))
+
+#define PRICE_BLEND(oldval,newval,decay,oppodecay) ((oldval == 0.) ? newval : ((oldval * decay) + (oppodecay * newval)))
+#define PRICE_BLEND64(oldval,newval,decay,oppodecay) ((oldval == 0) ? newval : ((oldval * decay) + (oppodecay * newval) + 0.499))
 
 
 int32_t portable_truncate(char *fname,long filesize);
@@ -125,5 +131,124 @@ int32_t hcalc_varint(uint8_t *buf,uint64_t x);
 long hdecode_varint(uint64_t *valp,uint8_t *ptr,long offset,long mappedsize);
 
 double milliseconds();
+uint64_t peggy_basebits(char *name);
+uint64_t peggy_relbits(char *name);
+uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits);
+int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr,uint64_t assetid);
+struct prices777 *prices777_poll(char *exchangestr,char *name,char *base,uint64_t refbaseid,char *rel,uint64_t refrelid);
+int32_t is_native_crypto(char *name,uint64_t bits);
+uint64_t InstantDEX_name(char *key,int32_t *keysizep,char *exchange,char *name,char *base,uint64_t *baseidp,char *rel,uint64_t *relidp);
+uint64_t is_MGWcoin(char *name);
+char *is_MGWasset(uint64_t *multp,uint64_t assetid);
+int32_t unstringbits(char *buf,uint64_t bits);
+int32_t get_assetname(char *name,uint64_t assetid);
+
+int32_t parse_ipaddr(char *ipaddr,char *ip_port);
+int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename);
+char *dumpprivkey(char *coinstr,char *serverport,char *userpass,char *coinaddr);
+uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
+uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
+uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
+void set_best_amounts(int64_t *baseamountp,int64_t *relamountp,double price,double volume);
+
+#define MAX_DEPTH 25
+#define MINUTES_FIFO (1024)
+#define HOURS_FIFO (64)
+#define DAYS_FIFO (512)
+#define INSTANTDEX_MINVOL 75
+#define INSTANTDEX_ACCT "4383817337783094122"
+#define MAX_TXPTRS 1024
+
+#define INSTANTDEX_NAME "InstantDEX"
+#define INSTANTDEX_NXTAENAME "nxtae"
+#define INSTANTDEX_NXTAEUNCONF "unconf"
+#define INSTANTDEX_BASKETNAME "basket"
+#define INSTANTDEX_ACTIVENAME "active"
+#define INSTANTDEX_EXCHANGEID 0
+#define INSTANTDEX_UNCONFID 1
+#define INSTANTDEX_NXTAEID 2
+#define MAX_EXCHANGES 64
+
+struct NXTtx { uint64_t txid; char fullhash[MAX_JSON_FIELD],utxbytes[MAX_JSON_FIELD],utxbytes2[MAX_JSON_FIELD],txbytes[MAX_JSON_FIELD],sighash[MAX_JSON_FIELD]; };
+
+struct InstantDEX_shared { double price,vol; uint64_t quoteid,offerNXT,basebits,relbits,baseid,relid; int64_t baseamount,relamount; uint32_t timestamp; uint16_t duration,isask:1,closed:1,swap:1,responded:1,matched:1,feepaid:1,automatch:2,pending:1,minperc:7; };
+struct InstantDEX_quote
+{
+    UT_hash_handle hh;
+    struct InstantDEX_shared s; // must be here
+    char exchangeid,gui[9];
+};
+
+struct prices777_order { struct InstantDEX_shared s; struct prices777 *source; uint64_t id; double wt,ratio; uint16_t slot_ba; };
+struct prices777_basket { struct prices777 *prices; double wt; int32_t groupid,groupsize,aski,bidi; char base[64],rel[64]; };
+struct prices777_orderentry { struct prices777_order bid,ask; };
+#define MAX_GROUPS 8
+
+struct prices777_basketinfo
+{
+    int32_t numbids,numasks; uint32_t timestamp;
+    struct prices777_orderentry book[MAX_GROUPS+1][MAX_DEPTH];
+};
+
+struct pending_trade { struct queueitem DL; struct prices777_order order; uint64_t triggertxid,txid,quoteid,orderid; struct prices777 *prices; char *triggertx,*txbytes; cJSON *tradesjson; double price,volume; uint32_t timestamp; int32_t dir,type; };
+
+struct prices777
+{
+    char url[512],exchange[64],base[64],rel[64],lbase[64],lrel[64],key[512],oppokey[512],contract[64],origbase[64],origrel[64];
+    uint64_t contractnum,ap_mult,baseid,relid,basemult,relmult; double lastupdate,decay,oppodecay,lastprice,lastbid,lastask;
+    uint32_t pollnxtblock,exchangeid,numquotes,updated,lasttimestamp,RTflag,disabled,dirty; int32_t keysize,oppokeysize;
+    portable_mutex_t mutex;
+    char *orderbook_jsonstrs[2][2];
+    struct prices777_basketinfo O,O2; double groupwts[MAX_GROUPS + 1];
+    uint8_t changed,type; uint8_t **dependents; int32_t numdependents,numgroups,basketsize;
+    struct prices777_basket basket[];
+};
+
+struct exchange_info
+{
+    double (*updatefunc)(struct prices777 *prices,int32_t maxdepth);
+    int32_t (*supports)(char *base,char *rel);
+    uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
+    char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD],userid[MAX_JSON_FIELD];
+    uint32_t num,exchangeid,pollgap,refcount,polling; uint64_t nxt64bits; double lastupdate;
+    portable_mutex_t mutex;
+};
+
+uint64_t gen_NXTtx(struct NXTtx *tx,uint64_t dest64bits,uint64_t assetidbits,uint64_t qty,uint64_t orderid,uint64_t quoteid,int32_t deadline,char *reftx,char *phaselink,uint32_t finishheight);
+int32_t InstantDEX_verify(uint64_t destNXTaddr,uint64_t sendasset,uint64_t sendqty,cJSON *txobj,uint64_t recvasset,uint64_t recvqty);
+int32_t verify_NXTtx(cJSON *json,uint64_t refasset,uint64_t qty,uint64_t destNXTbits);
+
+struct exchange_info *get_exchange(int32_t exchangeid);
+char *exchange_str(int32_t exchangeid);
+struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr);
+struct exchange_info *exchange_find(char *exchangestr);
+void prices777_exchangeloop(void *ptr);
+char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid);
+//cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64_t orderid);
+uint64_t prices777_equiv(uint64_t assetid);
+void prices777_jsonstrs(struct prices777 *prices,struct prices777_basketinfo *OB);
+char *prices777_activebooks(char *name,char *base,char *rel,uint64_t baseid,uint64_t relid,int32_t maxdepth,int32_t allflag,int32_t tradeable);
+char *prices777_orderbook_jsonstr(int32_t invert,uint64_t nxt64bits,struct prices777 *prices,struct prices777_basketinfo *OB,int32_t maxdepth,int32_t allflag);
+int32_t prices777_getmatrix(double *basevals,double *btcusdp,double *btcdbtcp,double Hmatrix[32][32],double *RTprices,char *contracts[],int32_t num,uint32_t timestamp);
+struct InstantDEX_quote *find_iQ(uint64_t quoteid);
+int32_t bidask_parse(char *exchangestr,char *name,char *base,char *rel,char *gui,struct InstantDEX_quote *iQ,cJSON *json);
+struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ);
+
+struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struct prices777 *prices,int32_t maxdepth),char *exchange,char *base,char *rel,double decay,char *name,uint64_t baseid,uint64_t relid,int32_t basketsize);
+double prices777_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount);
+struct prices777 *prices777_makebasket(char *basketstr,cJSON *basketjson,int32_t addbasket,char *typestr);
+char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess);
+//cJSON *prices777_InstantDEX_json(char *_base,char *_rel,int32_t depth,int32_t invert,int32_t localaccess,uint64_t *baseamountp,uint64_t *relamountp,struct InstantDEX_quote *iQ,uint64_t refbaseid,uint64_t refrelid,uint64_t jumpasset);
+uint64_t calc_baseamount(uint64_t *relamountp,uint64_t assetid,uint64_t qty,uint64_t priceNQT);
+uint64_t calc_asset_qty(uint64_t *availp,uint64_t *priceNQTp,char *NXTaddr,int32_t checkflag,uint64_t assetid,double price,double vol);
+cJSON *InstantDEX_orderbook(struct prices777 *prices);
+struct prices777 *prices777_find(int32_t *invertedp,uint64_t baseid,uint64_t relid,char *exchange);
+
+uint64_t calc_quoteid(struct InstantDEX_quote *iQ);
+double check_ratios(uint64_t baseamount,uint64_t relamount,uint64_t baseamount2,uint64_t relamount2);
+double make_jumpquote(uint64_t baseid,uint64_t relid,uint64_t *baseamountp,uint64_t *relamountp,uint64_t *frombasep,uint64_t *fromrelp,uint64_t *tobasep,uint64_t *torelp);
+
+extern queue_t PendingQ;
+char *peggyrates(uint32_t timestamp);
 
 #endif

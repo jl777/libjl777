@@ -85,15 +85,15 @@ struct applicant_info { uint64_t senderbits; uint32_t nonce; char startflag,lben
 
 struct SuperNET_info
 {
-    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DATADIR[1024],transport[16],BACKUPS[512],SERVICENXT[64];
+    char WEBSOCKETD[1024],NXTAPIURL[1024],NXTSERVER[1024],DBPATH[1024],DATADIR[1024],transport[16],BACKUPS[512],SERVICENXT[64];
     char myipaddr[64],myNXTacct[64],myNXTaddr[64],NXTACCT[64],NXTADDR[64],NXTACCTSECRET[8192],SERVICESECRET[8192],userhome[512],hostname[512];
     uint64_t my64bits; uint8_t myprivkey[32],mypubkey[32];
     uint32_t myipbits,nonces[512],numnonces; struct applicant_info *responses; cJSON *peersjson; char lbendpoint[128],relayendpoint[128],globalendpoint[128];
-    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,telepathicdelay;
+    int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,telepathicdelay,peggy,idlegap,exchangeidle,recvtimeout;
     uint16_t port,serviceport;
     uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
-    struct kv777 *PM,*rawPM,*protocols,*alias,*NXTaccts,*services,*invoices,*NXTtxids;
+    struct kv777 *PM,*rawPM,*protocols,*alias,*services,*invoices,*NXTtxids,*NXTaccts;
     struct dKV777 *relays;
     cJSON *argjson;
 }; extern struct SuperNET_info SUPERNET;
@@ -378,7 +378,7 @@ void queue_enqueue(char *name,queue_t *queue,struct queueitem *item)
         safecopy(queue->name,name,sizeof(queue->name));
     if ( item == 0 )
     {
-        printf("FATAL type error: queueing empty value\n"), getchar();
+        printf("FATAL type error: queueing empty value\n");//, getchar();
         return;
     }
     lock_queue(queue);
@@ -533,7 +533,7 @@ uint16_t wait_for_myipaddr(char *ipaddr)
 {
     uint16_t port = 0;
     printf("need a portable way to find IP addr\n");
-    getchar();
+    //getchar();
     return(port);
 }
 
@@ -673,9 +673,9 @@ void portable_OS_init()
     if ( memcmp(GENESIS_PRIVKEY.bytes,privkey.bytes,sizeof(privkey)) != 0 )
     {
         init_hexbytes_noT(hexstr,privkey.bytes,sizeof(privkey));
-        printf("%s GENESIS_PRIVKEY mismatch %llu != %llu\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)privkey.txid);
+        //printf("%s GENESIS_PRIVKEY mismatch %llu != %llu\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)privkey.txid);
     }
-    printf("%s GENESIS_PRIVKEY %llx GENESIS_PUBKEY %llx\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)GENESIS_PUBKEY.txid);
+    //printf("%s GENESIS_PRIVKEY %llx GENESIS_PUBKEY %llx\n",hexstr,(long long)GENESIS_PRIVKEY.txid,(long long)GENESIS_PUBKEY.txid);
     OS_init();
     curl_global_init(CURL_GLOBAL_ALL); //init the curl session
     SaM_PrepareIndices();

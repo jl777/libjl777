@@ -116,7 +116,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
 
 static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps)
 {
-    cJSON *argjson; char buf[512]; int32_t n; struct protocol_info *prot = &plugin->protocol;
+    cJSON *argjson; char buf[8192]; int32_t n; struct protocol_info *prot = &plugin->protocol;
     if ( path == 0 )
         path = protocol;
     ensure_directory(path);
@@ -129,7 +129,7 @@ static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,
         copy_cJSON((void *)prot->transport,jobj(argjson,"transport"));
         copy_cJSON((void *)prot->ipaddr,jobj(argjson,"myipaddr"));
         prot->port = juint(argjson,"port");
-        printf("found %s path.(%s) protocol.(%s) json secret.(%s) %s:port.%d\n",agent,path,protocol,(void *)prot->NXTACCTSECRET,prot->ipaddr,prot->port);
+        printf("found %s path.(%s) protocol.(%s) json secret.(%s) %s:port.%d\n",agent,path,protocol,(char *)prot->NXTACCTSECRET,prot->ipaddr,prot->port);
     }
     if ( prot->NXTACCTSECRET[0] == 0 )
     {
@@ -139,7 +139,7 @@ static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,
     if ( prot->port == 0 )
         prot->port = SUPERNET_PORT + ((((uint16_t)protocol[0] << 8) | agent[0]) % 777);
 #ifndef BUNDLED
-    strcpy(KV777.PATH,path), os_compatible_path(KV777.PATH), ensure_directory(KV777.PATH);
+    strcpy(SUPERNET.DBPATH,path), os_compatible_path(SUPERNET.DBPATH), ensure_directory(SUPERNET.DBPATH);
 #endif
     buf[0] = 0, prot->subsock = nn_createsocket(buf,0,"NN_SUB",NN_SUB,0,10,1);
     n = protocols_init(prot->subsock,prot->connections,protocol);

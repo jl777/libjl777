@@ -23,7 +23,10 @@
 #endif
 
 //////////// must be consensus safe
-#define PEGGY_GENESIS "6af2504547ef00147eb3ccb70a0006f49b65bed5a3b5f867565be8feb53b1c694b1bd8bcf1039696d8b968a7ae93168e745c6737fe9b6ab079152a3cabeee24e4d48f9ade6b1b41a39fc3abe2a5ae6f9254de6cbf679ad6e338cdfd7b1b4b1e2689c555648a4087cd94aa44869ab48a65b1295f6f75f8bf760a42966bbf2c1d8d6811379d17916e99abdb6c5246a2a192969f101ae3cc9679d98c5abedb64b6d9ea3a5ee485fe3ea467b77e5add9c1fa2d0d0dc781a5046b686b5c3bcdd91b8abb6ed33c8c556e05c4778b0e6b30bd6d6f41cc381d50e7f5a565bd64e78ff696de8a9517ee5ec79f531c594510abdd25ac44e62a"
+#define PEGGY_GENESIS "6aed504547ea00145e8754ba0a000604804dd2565af681fc958b2fb4337de1ebf0d86b63a2b276d38c6b15aaf75687f679db707b6ff065aea57e4d56354ff1eeb4e75e0d3ece1a08a8dacc086f6d3702afdbc9e43ded75bc7089b455e83bae0a7b2b85defe5679cf4c9d313b6dcdd1b415cd5b9f166b8593122dab44d1dec66c6fcb962ca511f996692d4eb52a2e05a784f5d601b663d7c88acf570337afeaf016bee35ad965bca5e052e2b6608c98274469558ed6ab3da47c31e3d8ed3e70b1968f80d8288161bd7aac6d7b1119877ee8bc6796a7b7f6eed1ea0547f1a6f0da7b85ab8a572c005eef41fd3a637402"
+
+//#define PEGGY_GENESIS "6aef504547ec00143e3028ba0a000604800d0560da5a55fbb56121b403e9dfbbd99f6b05c9af5683676bdda7f39636c579515174afebe5ad659c44567df9f02eb1dc5e30b4cc1a96a0dab18b2e55e5fd771032f2ee3d34de9313d9ea2813d70e6995a2fe7d7b2854a6032c9d022d676a9ae0ed573ab57e4887761a85688b20b417ad099686a67a2b82cca6104698a254c5ca5fe95ab874649513bae9e4bcbc7e868497c3a9d6da3ad82d625f12078d50c48a2e492bd6665e9f86e3fbe4bf6ee1758a9461fee35068851562b3b68082645c92a8f35a61a2de5652478b441fc53aa96aaf169feaedaef7bf1472fb3542ee04"
+//#define PEGGY_GENESIS "6af2504547ef00147eb3ccb70a0006f49b65bed5a3b5f867565be8feb53b1c694b1bd8bcf1039696d8b968a7ae93168e745c6737fe9b6ab079152a3cabeee24e4d48f9ade6b1b41a39fc3abe2a5ae6f9254de6cbf679ad6e338cdfd7b1b4b1e2689c555648a4087cd94aa44869ab48a65b1295f6f75f8bf760a42966bbf2c1d8d6811379d17916e99abdb6c5246a2a192969f101ae3cc9679d98c5abedb64b6d9ea3a5ee485fe3ea467b77e5add9c1fa2d0d0dc781a5046b686b5c3bcdd91b8abb6ed33c8c556e05c4778b0e6b30bd6d6f41cc381d50e7f5a565bd64e78ff696de8a9517ee5ec79f531c594510abdd25ac44e62a"
 
 uint64_t peggy_smooth_coeffs[PEGGY_NUMCOEFFS] =	// numprimes.13
 {
@@ -459,10 +462,10 @@ int32_t peggy_prices(struct price_resolution prices[64],double btcusd,double btc
 
 char *peggy_emitprices(int32_t *nonzp,struct peggy_info *PEGS,uint32_t blocktimestamp,int32_t maxlockdays)
 {
-    int32_t prices777_getmatrix(double *basevals,double *btcusdp,double *btcdbtcp,double Hmatrix[32][32],double *RTprices,char *contracts[],int32_t num,uint32_t timestamp);
     double matrix[32][32],RTmatrix[32][32],cprices[64],basevals[64]; struct price_resolution prices[256];
     cJSON *json,*array; char *jsonstr,*opreturnstr = 0; int32_t i,nonz = 0;
     memset(cprices,0,sizeof(cprices));
+    //printf("peggy_emitprices\n");
     if ( prices777_getmatrix(basevals,&PEGS->btcusd,&PEGS->btcdbtc,matrix,cprices+1,peggy_contracts+1,sizeof(peggy_contracts)/sizeof(*peggy_contracts)-1,blocktimestamp) > 0 )
     {
         cprices[0] = PEGS->btcdbtc;
@@ -500,6 +503,7 @@ char *peggy_emitprices(int32_t *nonzp,struct peggy_info *PEGS,uint32_t blocktime
         free(jsonstr);
     } else printf("pricematrix returned null\n");
     *nonzp = nonz;
+    //printf("nonz.%d\n",nonz);
     return(opreturnstr);
 }
 
@@ -551,6 +555,34 @@ char *peggy_mapname(char *basebuf,char *relbuf,int32_t i) // sorry it is messy t
     if ( base != 0 )
         strcpy(basebuf,base);//, printf("base.(%s) ",base);
     return(basebuf);
+}
+
+uint64_t peggy_basebits(char *name)
+{
+    int32_t i; char basebuf[64],relbuf[64];
+    for (i=0; i<64; i++)
+    {
+        if ( strcmp(name,peggy_contracts[i]) == 0 )
+        {
+            peggy_mapname(basebuf,relbuf,i);
+            return(stringbits(basebuf));
+        }
+    }
+    return(0);
+}
+
+uint64_t peggy_relbits(char *name)
+{
+    int32_t i; char basebuf[64],relbuf[64];
+    for (i=0; i<64; i++)
+    {
+        if ( strcmp(name,peggy_contracts[i]) == 0 )
+        {
+            peggy_mapname(basebuf,relbuf,i);
+            return(stringbits(relbuf));
+        }
+    }
+    return(0);
 }
 
 struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct peggy_info *PEGS,char *path,uint32_t firsttimestamp,char *opreturnstr)
@@ -648,16 +680,48 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
     return(PEGS);
 }
 
+char *peggybase(uint32_t blocknum,uint32_t blocktimestamp)
+{
+    int32_t nonz; struct peggy_info *PEGS = opreturns_context("peggy",0);
+    if ( PEGS != 0 )
+        return(peggy_emitprices(&nonz,PEGS,blocktimestamp,PEGS->genesis != 0 ? 0 : PEGGY_MAXLOCKDAYS));
+    return(0);
+}
+
+char *peggypayments(uint32_t blocknum,uint32_t blocktimestamp)
+{
+    int32_t peggy_payments(queue_t *PaymentsQ,struct opreturn_payment *payments,int32_t max,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp);
+    struct opreturn_payment payments[8192]; cJSON *json;
+    int32_t i,n; struct peggy_info *PEGS = opreturns_context("peggy",0);
+    memset(payments,0,sizeof(payments));
+    if ( PEGS != 0 && PEGS->accts != 0 && (n= peggy_payments(&PEGS->accts->PaymentsQ,payments,sizeof(payments)/sizeof(*payments),blocknum,blocknum,blocktimestamp)) > 0 )
+    {
+        json = cJSON_CreateObject();
+        for (i=0; i<n; i++)
+            jaddnum(json,payments[i].coinaddr,payments[i].value);
+        return(jprint(json,1));
+    }
+    return(clonestr("{}"));
+}
+
+int32_t peggyblock(char *jsonstr)
+{
+    printf("got peggyblock.(%s)\n",jsonstr);
+    return(0);
+}
+
 void peggy()
 {
     int32_t lookbacks[OPRETURNS_CONTEXTS],nonz,num,peggylen; uint32_t timestamp = (uint32_t)time(0);
     FILE *fp; uint8_t opret[8192]; char fname[512],*opreturnstr; struct peggy_info *PEGS = opreturns_context("peggy",0);
-    if ( PEGS != 0 )
+    if ( 0 && PEGS != 0 )
     {
         opreturnstr = peggy_emitprices(&nonz,PEGS,timestamp,PEGS->genesis != 0 ? 0 : PEGGY_MAXLOCKDAYS);
         if ( opreturnstr != 0 )
         {
-            printf("update.%d opreturns.(%s) t%u\n",PEGS->numopreturns,opreturnstr,timestamp);
+            printf("OPRETURN.(%s)\n",opreturnstr);
+            if ( Debuglevel > 2 )
+                printf("update.%d opreturns.(%s) t%u\n",PEGS->numopreturns,opreturnstr,timestamp);
             sprintf(fname,"opreturns/%d",PEGS->numopreturns);
             if ( (fp= fopen(fname,"wb")) != 0 )
             {
@@ -786,12 +850,12 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
                 int32_t j,nonz = 0;
                 for (j=0; j<Ptx.details.price.num; j++)
                     if ( Ptx.details.price.feed[j] != 0 )
-                        nonz++, fprintf(stderr,"%u ",Ptx.details.price.feed[j]);
-                fprintf(stderr,"%d ",nonz);
+                        nonz++;//, fprintf(stderr,"%u ",Ptx.details.price.feed[j]);
+                //fprintf(stderr,"%d ",nonz);
                 //printf("%d: type.%d %u num.%d\n",i,Ptx.txtype,Ptx.timestamp,Ptx.details.price.num);
-                if ( PEGS == 0 )
+                if ( PEGS == 0 && nonz == Ptx.details.price.num )
                     PEGS = peggy_genesis(lookbacks,PEGS,path,Ptx.timestamp,opreturnstr);
-                else if ( Ptx.timestamp > PEGS->genesistime )
+                else if ( PEGS != 0 && Ptx.timestamp > PEGS->genesistime )
                 {
                     Ptx.flags |= PEGGY_FLAGS_PEGGYBASE;
                     if ( peggy_process(PEGS,1,Ptx.funding.src.coinaddr,Ptx.funding.amount,&data[offset+3],(int32_t)len-3,blocknum,Ptx.timestamp,blocknum) < 0 )
@@ -813,6 +877,7 @@ struct peggy_info *peggy_lchain(struct txinds777_info *opreturns,char *path)
 {
     double startmilli; int32_t i; struct peggy_info *tmp,*PEGS = 0;
     startmilli = milliseconds();
+   // printf("about to replay\n"), getchar();
     for (i=0; i<1000000; i++)
     {
         if ( PEGS == 0 )
@@ -820,7 +885,8 @@ struct peggy_info *peggy_lchain(struct txinds777_info *opreturns,char *path)
         else if ( (tmp= peggy_replay(path,opreturns,PEGS,i,0,0,0)) != PEGS )
             break;
     }
-    printf("loaded %d in %.3f millis per opreturn\n",PEGS->numopreturns,(milliseconds() - startmilli)/PEGS->numopreturns);
+    if ( PEGS != 0 )
+        printf("loaded %d in %.3f millis per opreturn\n",PEGS->numopreturns,(milliseconds() - startmilli)/PEGS->numopreturns);// getchar();
     return(PEGS);
 }
 

@@ -51,6 +51,8 @@ int32_t add_tagstr(struct daemon_info *dp,uint64_t tag,char **dest,int32_t retso
     //printf("ADDTAG.%llu <- %p\n",(long long)tag,dest);
     for (i=0; i<NUM_PLUGINTAGS; i++)
     {
+        if ( SUPERNET.tags[i][0] == tag )
+            return(-1);
         if ( SUPERNET.tags[i][0] == 0 )
         {
             if ( Debuglevel > 2 )
@@ -171,10 +173,10 @@ uint64_t send_to_daemon(int32_t sock,char **retstrp,char *name,uint64_t daemonid
                 printf("after find_daemoninfo send_to_daemon.(%s) tag.%llu dp.%p len.%d vs %ld retstrp.%p\n",jsonstr,(long long)tag,dp,len,strlen(jsonstr)+1,retstrp);
             if ( len > 0 )
             {
+                 if ( tag != 0 )
+                    duplicateflag = add_tagstr(dp,tag,retstrp,sock) < 0;
                 if ( Debuglevel > 2 )
-                    fprintf(stderr,"HAVETAG.%llu send_to_daemon(%s) sock.%d\n",(long long)tag,jsonstr,sock);
-                if ( tag != 0 )
-                    duplicateflag = add_tagstr(dp,tag,retstrp,sock);
+                    fprintf(stderr,"HAVETAG.%llu send_to_daemon(%s) sock.%d duplicateflag.%d\n",(long long)tag,jsonstr,sock,duplicateflag);
                 if ( duplicateflag == 0 )
                 {
                     dp->numsent++;

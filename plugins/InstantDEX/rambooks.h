@@ -167,7 +167,7 @@ struct rambook_info *get_rambook(char *_base,uint64_t baseid,char *_rel,uint64_t
     {
         if ( relid != NXT_ASSETID || is_native_crypto(base,baseid) != 0 )
         {
-            printf("illegal NXT rambook %llu/%llu\n",(long long)baseid,(long long)relid), getchar();
+            printf("illegal NXT rambook %llu/%llu\n",(long long)baseid,(long long)relid);//, getchar();
             return(0);
         }
     }
@@ -504,6 +504,66 @@ int32_t update_iQ_flags(struct NXT_tx *txptrs[],int32_t maxtx,uint64_t refasseti
     } free(obooks);
     txptrs[m] = 0;
     return(m);
+}
+
+char *InstantDEX_openorders()
+{
+    return(clonestr("{\"error\":\"API is not yet\"}"));
+}
+
+char *InstantDEX_tradehistory()
+{
+    return(clonestr("{\"error\":\"API is not yet\"}"));
+}
+
+char *InstantDEX_cancelorder(uint64_t orderid)
+{
+    return(clonestr("{\"error\":\"API is not yet\"}"));
+}
+
+cJSON *InstantDEX_lottostats()
+{
+    char cmdstr[1024],NXTaddr[64],buf[1024],receiverstr[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json,*array,*txobj;
+    int32_t i,n,totaltickets = 0;
+    uint64_t amount,senderbits;
+    uint32_t timestamp = 0;
+    if ( timestamp == 0 )
+        timestamp = 38785003;
+    sprintf(cmdstr,"requestType=getAccountTransactions&account=%s&timestamp=%u&type=0&subtype=0",INSTANTDEX_ACCT,timestamp);
+    //printf("cmd.(%s)\n",cmdstr);
+    if ( (jsonstr= issue_NXTPOST(cmdstr)) != 0 )
+    {
+        // printf("jsonstr.(%s)\n",jsonstr);
+        // mm string.({"requestProcessingTime":33,"transactions":[{"fullHash":"2a2aab3b84dadf092cf4cedcd58a8b5a436968e836338e361c45651bce0ef97e","confirmations":203,"signatureHash":"52a4a43d9055fe4861b3d13fbd03a42fecb8c9ad4ac06a54da7806a8acd9c5d1","transaction":"711527527619439146","amountNQT":"1100000000","transactionIndex":2,"ecBlockHeight":360943,"block":"6797727125503999830","recipientRS":"NXT-74VC-NKPE-RYCA-5LMPT","type":0,"feeNQT":"100000000","recipient":"4383817337783094122","version":1,"sender":"423766016895692955","timestamp":38929220,"ecBlockId":"10121077683890606382","height":360949,"subtype":0,"senderPublicKey":"4e5bbad625df3d536fa90b1e6a28c3f5a56e1fcbe34132391c8d3fd7f671cb19","deadline":1440,"blockTimestamp":38929430,"senderRS":"NXT-8E6V-YBWH-5VMR-26ESD","signature":"4318f36d9cf68ef0a8f58303beb0ed836b670914065a868053da5fe8b096bc0c268e682c0274e1614fc26f81be4564ca517d922deccf169eafa249a88de58036"}]})
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( (array= cJSON_GetObjectItem(json,"transactions")) != 0 && is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    txobj = cJSON_GetArrayItem(array,i);
+                    copy_cJSON(receiverstr,cJSON_GetObjectItem(txobj,"recipient"));
+                    if ( strcmp(receiverstr,INSTANTDEX_ACCT) == 0 )
+                    {
+                        if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
+                        {
+                            expand_nxt64bits(NXTaddr,senderbits);
+                            amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
+                            if ( amount == INSTANTDEX_FEE )
+                                totaltickets++;
+                            else if ( amount >= 2*INSTANTDEX_FEE )
+                                totaltickets += 2;
+                        }
+                    }
+                }
+            }
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    sprintf(buf,"{\"result\":\"lottostats\",\"totaltickets\":\"%d\"}",totaltickets);
+    return(cJSON_Parse(buf));
 }
 
 #endif

@@ -196,7 +196,7 @@ int32_t safecopy(char *dest,char *src,long len)
         {
             printf("safecopy: %s too long %ld\n",src,len);
 #ifdef __APPLE__
-            getchar();
+            //getchar();
 #endif
             return(-1);
         }
