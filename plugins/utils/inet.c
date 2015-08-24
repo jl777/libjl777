@@ -408,13 +408,39 @@ uint32_t is_ipaddr(char *str)
     return(0);
 }
 
+/*int32_t conv_domain(struct sockaddr_storage *ss,const char *addr,int32_t ipv4only)
+{
+    //struct nn_dns dns; struct nn_dns_result dns_result;
+    size_t addrlen,sslen;
+    const char *semicolon,*hostname,*colon,*end;
+    addrlen = strlen(addr);
+    semicolon = strchr(addr,';');
+    hostname = semicolon ? semicolon + 1 : addr;
+    colon = strrchr(addr,':');
+    end = addr + addrlen;
+    if ( nn_slow(!colon) ) // Parse the port
+        return -EINVAL;
+    if ( nn_slow(nn_port_resolve (colon + 1, end - colon - 1) < 0) )
+        return -EINVAL;
+    //  Check whether the host portion of the address is either a literal or a valid hostname.
+    if ( nn_dns_check_hostname(hostname,colon - hostname) < 0 && nn_literal_resolve(hostname,colon - hostname,ipv4only,ss,&sslen) < 0 )
+        return -EINVAL;
+    if ( semicolon != 0 && nn_iface_resolve(addr,semicolon - addr,ipv4only,ss,&sslen) < 0 ) // If local address is specified, check whether it is valid
+        return -ENODEV;
+    //memset(&dns_result,0,sizeof(dns_result));
+    // nn_dns_start(&dns,addr,addrlen,ipv4only,&dns_result);
+    // while ( *(uint32_t *)&dns_result.addr == 0 )
+    //    usleep(10000);
+    return(0);
+}*/
+
 uint32_t conv_domainname(char *ipaddr,char *domain)
 {
     int32_t conv_domain(struct sockaddr_storage *ss,const char *addr,int32_t ipv4only);
     int32_t ipv4only = 1;
     uint32_t ipbits;
     struct sockaddr_in ss;
-    if ( conv_domain((struct sockaddr_storage *)&ss,(const char *)domain,ipv4only) == 0 )
+    if ( 0 && conv_domain((struct sockaddr_storage *)&ss,(const char *)domain,ipv4only) == 0 )
     {
         ipbits = *(uint32_t *)&ss.sin_addr;
         expand_ipbits(ipaddr,ipbits);

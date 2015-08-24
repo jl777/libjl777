@@ -1,5 +1,12 @@
 echo ">>>>>>>>>>>>>>>>>>Building mxe. This may take a while."
+cp -n mxepatch/bdb48.mk mxe/src/bdb48.mk
+cp -n mxepatch/nanomsg.mk mxe/src/nanomsg.mk
+cp -n mxepatch/nanomsg-1.patch mxe/src/nanomsg-1.patch
+cp -n mxepatch/nanomsg-2.patch mxe/src/nanomsg-2.patch
+cp -n mxepatch/nanomsg-3-global.patch mxe/src/nanomsg-3-global.patch
+cp -n mxepatch/nanomsg-4-options.patch mxe/src/nanomsg-4-options.patch
 cd mxe
+patch -N -s --reject-file=- < ../mxepatch/mxe.patch
 cd src
 patch -N -s --reject-file=- < ../../mxepatch/curl.mk.patch
 cd ..
@@ -26,27 +33,31 @@ make apr-util  MXE_TARGETS='x86_64-w64-mingw32.static'
 make curl MXE_TARGETS='x86_64-w64-mingw32.static'
 make pthreads MXE_TARGETS='x86_64-w64-mingw32.static'
 make libwebsockets MXE_TARGETS='x86_64-w64-mingw32.static'
+make boost MXE_TARGETS='x86_64-w64-mingw32.static'
+make bdb48 MXE_TARGETS='x86_64-w64-mingw32.static'
+make nanomsg MXE_TARGETS='x86_64-w64-mingw32.static'
+make mman-win32 MXE_TARGETS='x86_64-w64-mingw32.static'
 export PATH=$PWD/usr/bin:$PATH
 cp ./usr/x86_64-w64-mingw32.static/include/winioctl.h ./usr/x86_64-w64-mingw32.static/include/WinIoCtl.h
 cp ./usr/x86_64-w64-mingw32.static/include/windows.h ./usr/x86_64-w64-mingw32.static/include/Windows.h
 cd ..
-cd nanomsg
-echo ">>>>>>>>>>>>>>>>>>building nanomsg"
-make clean
-sh ./autogen.sh
-CC=x86_64-w64-mingw32.static-gcc CXX=x86_64-w64-mingw32.static-g++ ./configure --host x86_64-w64-mingw32.static
-make CFLAGS='-g -O2 -w -DNN_HAVE_WINDOWS -DNN_HAVE_MINGW -D_WIN32_WINNT=0x0600'
-cp .libs/libnanomsg.a ../libs/libnanomsg-win64.a
-cd ../
+#cd nanomsg
+#echo ">>>>>>>>>>>>>>>>>>building nanomsg"
+#make clean
+#sh ./autogen.sh
+#CC=x86_64-w64-mingw32.static-gcc CXX=x86_64-w64-mingw32.static-g++ ./configure --host x86_64-w64-mingw32.static
+#make CFLAGS='-g -O2 -w -DNN_HAVE_WINDOWS -DNN_HAVE_MINGW -D_WIN32_WINNT=0x0600'
+#cp .libs/libnanomsg.a ../libs/libnanomsg-win64.a
+#cd ../
 rm mxe/usr/x86_64-w64-mingw32.static/include/objidl.h
 cp mxepatch/winheaders/objidl.h mxe/usr/x86_64-w64-mingw32.static/include/objidl.h
 cd miniupnpc
 sh make_win64.sh
-echo ">>>>>>>>>>>>>>>>>>building mman-win32"
-cd ../mman-win32
-make clean
-./configure --cc=x86_64-w64-mingw32.static-gcc --enable-static
-make
-cp libmman.a ../libs/libmman.a
-cd ..
+#echo ">>>>>>>>>>>>>>>>>>building mman-win32"
+#cd ../mman-win32
+#make clean
+#./configure --cc=x86_64-w64-mingw32.static-gcc --enable-static
+#make
+#cp libmman.a ../libs/libmman.a
+#cd ..
 echo ">>>>>>>>>>>>>>>>>>finished with make winpatch"

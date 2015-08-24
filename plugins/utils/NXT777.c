@@ -1,10 +1,17 @@
-//
-//  NXT777.c
-//  crypto777
-//
-//  Created by James on 4/9/15.
-//  Copyright (c) 2015 jl777. All rights reserved.
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
 #ifdef DEFINES_ONLY
 #ifndef crypto777_NXT777_h
@@ -1305,14 +1312,14 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
 
 uint64_t calc_txid(unsigned char *buf,int32_t len)
 {
-    uint64_t txid,hash[4];
-    calc_sha256(0,(unsigned char *)&hash[0],buf,len);
-    if ( sizeof(hash) >= sizeof(txid) )
-        memcpy(&txid,hash,sizeof(txid));
-    else memcpy(&txid,hash,sizeof(txid));
+    bits256 hash;
+    calc_sha256(0,hash.bytes,buf,len);
+    //if ( sizeof(hash) >= sizeof(txid) )
+    //    memcpy(&txid,hash,sizeof(txid));
+    //else memcpy(&txid,hash,sizeof(txid));
     //printf("calc_txid.(%llu)\n",(long long)txid);
     //return(hash[0] ^ hash[1] ^ hash[2] ^ hash[3]);
-    return(txid);
+    return(hash.txid);
 }
 
 /*

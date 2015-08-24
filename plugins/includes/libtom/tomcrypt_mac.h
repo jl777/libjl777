@@ -1,26 +1,24 @@
 #ifdef LTC_HMAC
 typedef struct Hmac_state {
      hash_state     md;
-     int            hash;
+     struct ltc_hash_descriptor            *hash;
      hash_state     hashstate;
      unsigned char  *key;
 } hmac_state;
 
-int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned long keylen);
-int hmac_process(hmac_state *hmac, const unsigned char *in, unsigned long inlen);
-int hmac_done(hmac_state *hmac, unsigned char *out, unsigned long *outlen);
+int hmac_init(hmac_state *hmac, const struct ltc_hash_descriptor *hash, const unsigned char *key, unsigned long keylen);
+int hmac_process(hmac_state *hmac, const struct ltc_hash_descriptor *hash,const unsigned char *in, unsigned long inlen);
+int hmac_done(hmac_state *hmac,const struct ltc_hash_descriptor *hash, unsigned char *out, unsigned long *outlen);
 int hmac_test(void);
-int hmac_memory(int hash, 
+int hmac_memory(const struct ltc_hash_descriptor *hash,
                 const unsigned char *key, unsigned long keylen,
                 const unsigned char *in,  unsigned long inlen, 
                       unsigned char *out, unsigned long *outlen);
-int hmac_memory_multi(int hash, 
+int hmac_memory_multi(struct ltc_hash_descriptor *hash,
                 const unsigned char *key,  unsigned long keylen,
                       unsigned char *out,  unsigned long *outlen,
                 const unsigned char *in,   unsigned long inlen, ...);
-int hmac_file(int hash,  char *fname, const unsigned char *key,
-              unsigned long keylen, 
-              unsigned char *dst, unsigned long *dstlen);
+int hmac_file(const struct ltc_hash_descriptor *hash, const char *fname, const unsigned char *key, unsigned long keylen,unsigned char *out, unsigned long *outlen);
 #endif
 
 #ifdef LTC_OMAC

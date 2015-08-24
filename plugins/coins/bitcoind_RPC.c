@@ -1,8 +1,18 @@
-//
-//  bitcoind_RPC.c
-//  Created by jl777, Mar 27, 2014
-//  MIT License
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 // based on example from http://curl.haxx.se/libcurl/c/getinmemory.html and util.c from cpuminer.c
 
 #ifndef JL777_BITCOIND_RPC
@@ -273,7 +283,7 @@ static size_t WriteMemoryCallback(void *ptr,size_t size,size_t nmemb,void *data)
     return(realsize);
 }
 
-void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *hdr0,char *hdr1,char *hdr2)
+void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *hdr0,char *hdr1,char *hdr2,char *hdr3)
 {
     struct MemoryStruct chunk; CURL *cHandle; long code; struct curl_slist *headers = 0;
     if ( (cHandle= *cHandlep) == NULL )
@@ -284,20 +294,26 @@ void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *
 //#endif
 	curl_easy_setopt(cHandle,CURLOPT_USERAGENT,"mozilla/4.0");//"Mozilla/4.0 (compatible; )");
 	curl_easy_setopt(cHandle,CURLOPT_SSL_VERIFYPEER,0);
+	//curl_easy_setopt(cHandle,CURLOPT_SSLVERSION,1);
 	curl_easy_setopt(cHandle,CURLOPT_URL,url);
-    //curl_easy_setopt(cHandle,CURLOPT_POST,1);
   	curl_easy_setopt(cHandle,CURLOPT_CONNECTTIMEOUT,10);
-    if ( userpass != 0 )
+    if ( userpass != 0 && userpass[0] != 0 )
         curl_easy_setopt(cHandle,CURLOPT_USERPWD,userpass);
-	if ( postfields != NULL )
-		curl_easy_setopt(cHandle,CURLOPT_POSTFIELDS,postfields);
-    if ( hdr0 != NULL )
+	if ( postfields != 0 && postfields[0] != 0 )
     {
+        curl_easy_setopt(cHandle,CURLOPT_POST,1);
+		curl_easy_setopt(cHandle,CURLOPT_POSTFIELDS,postfields);
+    }
+    if ( hdr0 != NULL && hdr0[0] != 0 )
+    {
+        printf("HDR0.(%s) HDR1.(%s) HDR2.(%s) HDR3.(%s)\n",hdr0!=0?hdr0:"",hdr1!=0?hdr1:"",hdr2!=0?hdr2:"",hdr3!=0?hdr3:"");
         headers = curl_slist_append(headers,hdr0);
-        if ( hdr1 != 0 )
+        if ( hdr1 != 0 && hdr1[0] != 0 )
             headers = curl_slist_append(headers,hdr1);
-        if ( hdr2 != 0 )
+        if ( hdr2 != 0 && hdr2[0] != 0 )
             headers = curl_slist_append(headers,hdr2);
+        if ( hdr3 != 0 && hdr3[0] != 0 )
+            headers = curl_slist_append(headers,hdr3);
     } //headers = curl_slist_append(0,"Expect:");
     if ( headers != 0 )
         curl_easy_setopt(cHandle,CURLOPT_HTTPHEADER,headers);
@@ -319,7 +335,7 @@ void foo(char *serverport,char *userpass)
     static CURL *cHandle;
     char *retstr;
     //sprintf(databuf,"{\"id\":\"jl777\",\"method\":\"%s\",\"params\":%s%s%s}",command,bracket0,params,bracket1);
-    retstr = curl_post(&cHandle,serverport,userpass,"{\"method\":\"listreceivedbyaddress\",\"params\":[1 true]}",0,0,0);
+    retstr = curl_post(&cHandle,serverport,userpass,"{\"method\":\"listreceivedbyaddress\",\"params\":[1 true]}",0,0,0,0);
     printf("retstr.%p (%s)\n",retstr,retstr!=0?retstr:"");
 }
 #endif

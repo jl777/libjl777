@@ -327,13 +327,13 @@ int hash_is_valid(int idx);
 
 LTC_MUTEX_PROTO(ltc_hash_mutex)
 
-int hash_memory(int hash, 
+int hash_memory(const struct ltc_hash_descriptor *hash,
                 const unsigned char *in,  unsigned long inlen, 
                       unsigned char *out, unsigned long *outlen);
-int hash_memory_multi(int hash, unsigned char *out, unsigned long *outlen,
+int hash_memory_multi(struct ltc_hash_descriptor *hash, unsigned char *out, unsigned long *outlen,
                       const unsigned char *in, unsigned long inlen, ...);
-int hash_filehandle(int hash, FILE *in, unsigned char *out, unsigned long *outlen);
-int hash_file(int hash, const char *fname, unsigned char *out, unsigned long *outlen);
+int hash_filehandle(struct ltc_hash_descriptor *hash, FILE *in, unsigned char *out, unsigned long *outlen);
+int hash_file(struct ltc_hash_descriptor *hash, const char *fname, unsigned char *out, unsigned long *outlen);
 
 /* a simple macro for making hash "process" functions */
 #define HASH_PROCESS(func_name, compress_name, state_var, block_size)                       \

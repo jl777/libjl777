@@ -461,6 +461,19 @@ int rmd160_test(void)
    return CRYPT_OK;
 #endif
 }
+#undef FF
+#undef GG
+#undef HH
+#undef II
+#undef FFF
+#undef GGG
+#undef HHH
+#undef III
+#undef F
+#undef G
+#undef H
+#undef I
+#undef J
 
 //#endif
 

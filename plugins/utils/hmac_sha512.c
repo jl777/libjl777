@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  */
 
+
 #define SHA512_DIGEST_SIZE (512 / 8)
 #include <string.h>
 
@@ -300,7 +301,7 @@ static void sha512_transf(sha512_ctx * ctx, const unsigned char *message,
 }
 
 
-static void sha512_init(sha512_ctx * ctx)
+static void _sha512_init(sha512_ctx * ctx)
 {
    ctx->h[0] = sha512_h0[0];
    ctx->h[1] = sha512_h0[1];
@@ -381,7 +382,7 @@ static void sha512(const unsigned char *message, unsigned int len,
 {
    sha512_ctx ctx;
 
-   sha512_init(&ctx);
+   _sha512_init(&ctx);
    sha512_update(&ctx, message, len);
    sha512_final(&ctx, digest);
 }
@@ -420,10 +421,10 @@ static void hmac_sha512_init(hmac_sha512_ctx * ctx, const unsigned char *key,
       ctx->block_opad[i] = key_used[i] ^ 0x5c;
    }
 
-   sha512_init(&ctx->ctx_inside);
+   _sha512_init(&ctx->ctx_inside);
    sha512_update(&ctx->ctx_inside, ctx->block_ipad, SHA512_BLOCK_SIZE);
 
-   sha512_init(&ctx->ctx_outside);
+   _sha512_init(&ctx->ctx_outside);
    sha512_update(&ctx->ctx_outside, ctx->block_opad, SHA512_BLOCK_SIZE);
 
    /* for hmac_reinit */
@@ -460,16 +461,148 @@ void hmac_sha512(const unsigned char *key, unsigned int key_size,
    hmac_sha512_final(&ctx, mac, mac_size);
 }
 
+int init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
+#ifndef libtom_hmac
+#define libtom_hmac
+
+#include "hmac/hash_memory.c"
+#include "hmac/hmac_init.c"
+#include "hmac/hmac_process.c"
+#include "hmac/hmac_done.c"
+#include "hmac/hmac_file.c"
+#include "hmac/hmac_memory.c"
+//#include "sha512.c"
+#include "rmd128.c"
+//#include "rmd160.c"
+#include "rmd256.c"
+#include "rmd320.c"
+#include "tiger.c"
+#include "md2.c"
+#include "md4.c"
+#include "sha1.c"
+#include "whirl.c"
+//#include "md5.c"
+#endif
+
 char *hmac_sha512_str(char dest[SHA512_DIGEST_SIZE*2 + 1],char *key,unsigned int key_size,char *message)
 {
-    int init_hexbytes_noT(char *hexbytes,unsigned char *message,long len);
-	unsigned char mac[SHA512_DIGEST_SIZE];
+	unsigned char mac[SHA512_DIGEST_SIZE],checkbuf[SHA512_DIGEST_SIZE*2 + 1]; char dest2[SHA512_DIGEST_SIZE*2 + 1]; unsigned long size = sizeof(checkbuf);
 	//int i;
 	hmac_sha512((const unsigned char *)key,key_size,(const unsigned char *)message,(int)strlen(message),mac,SHA512_DIGEST_SIZE);
 	//for (i=0; i<SHA512_DIGEST_SIZE; i++)
  	//	sprintf(&dest[i*2],"%02x", mac[i]);
 	//dest[2 * SHA512_DIGEST_SIZE] = '\0';
+    hmac_memory(&sha512_desc,(void *)key,key_size,(void *)message,strlen(message),checkbuf,&size);
     init_hexbytes_noT(dest,mac,SHA512_DIGEST_SIZE);
+    init_hexbytes_noT(dest2,checkbuf,SHA512_DIGEST_SIZE);
+    if ( memcmp(checkbuf,mac,SHA512_DIGEST_SIZE) == 0 )
+        printf("hmac_512 worked!\n");
+    else printf("hmac_512 error: %s vs %s\n",dest,dest2);
 	return(dest);
 }
+
+char *hmac_sha384_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&sha384_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_sha256_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&sha256_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_sha224_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&sha224_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_rmd320_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&rmd320_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_rmd256_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&rmd256_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_rmd160_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&rmd160_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_rmd128_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&rmd128_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_sha1_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&sha1_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_md2_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&md2_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_md4_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&md4_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_md5_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&md5_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_tiger_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&tiger_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
+char *hmac_whirlpool_str(char *dest,char *key,int32_t key_size,char *message)
+{
+	unsigned char mac[1024]; unsigned long size = sizeof(mac);
+    hmac_memory(&whirlpool_desc,(void *)key,key_size,(void *)message,strlen(message),mac,&size);
+    init_hexbytes_noT(dest,mac,(int32_t)size);
+ 	return(dest);
+}
+
 

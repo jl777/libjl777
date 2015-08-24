@@ -1,11 +1,18 @@
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
-//
-//  opreturn777.c
-//  crypto777
-//
-//  Created by James 2015
-//  Copyright (c) 2015 jl777. All rights reserved.
-//
 
 #ifdef DEFINES_ONLY
 #ifndef opreturn777_h
@@ -109,7 +116,7 @@ void *opreturns_context(char *name,int32_t context)
 int32_t opreturns_process(int32_t flags,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp,struct opreturn_entry *list,int32_t num,uint8_t *peggyopreturn,int32_t peggylen)
 {
     static uint32_t prevblocknum; struct opreturn_entry stakedblock;
-    int32_t i,iter,isstaked,lookback,numvalid = 0; uint64_t len; uint32_t pastblocknum; uint8_t buf[16384]; long offset = 1;
+    int32_t i,iter,size,isstaked,lookback,numvalid = 0; uint64_t len; uint32_t pastblocknum; uint8_t buf[16384]; long offset = 1;
     struct opreturn_protocol *protocol; struct opreturn_entry *opreturn = list;
     if ( prevblocknum != 0 && currentblocknum != prevblocknum+1 )
     {
@@ -149,7 +156,7 @@ int32_t opreturns_process(int32_t flags,uint32_t currentblocknum,uint32_t blockn
                 while ( protocol->pastblocknums[iter] <= pastblocknum )
                 {
                     txinds777_seek(protocol->opreturns,pastblocknum);
-                    while ( (opreturn= txinds777_read(buf,protocol->opreturns)) != 0 )
+                    while ( (opreturn= txinds777_read(&size,buf,protocol->opreturns)) != 0 )
                     {
                         if ( opreturn->blocknum != pastblocknum )
                             break;

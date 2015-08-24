@@ -28,16 +28,12 @@
 
 #include <stddef.h>
 
-/*  Based on base64.c (Public Domain) by Jon Mayo.
-    Base64 is defined in RFC 2045, section 6.8. */
+/*  Based on base64.c (Public Domain) by Jon Mayo. Base64 is defined in RFC 2045, section 6.8. */
 
-/*  This function encodes an arbitrary byte array into base64
-    null-terminated string. */
-int nn_base64_encode (const uint8_t *in, size_t in_len,
-    char *out, size_t out_len);
+//  This function encodes an arbitrary byte array into base64 null-terminated string.
+int nn_base64_encode (const uint8_t *in, size_t in_len,char *out, size_t out_len);
 
-/*  This function decodes a base64 string into supplied buffer. */
-int nn_base64_decode (const char *in, size_t in_len,
-    uint8_t *out, size_t out_len);
+//  This function decodes a base64 string into supplied buffer.
+int nn_base64_decode (const char *in, size_t in_len,uint8_t *out, size_t out_len);
 
 #endif

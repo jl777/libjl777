@@ -1,9 +1,18 @@
-//
-//  SaM.c
-//  crypto777
-//
-//  Created by jl777 on 4/9/15.
-//  Copyright (c) 2015 jl777. All rights reserved.
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 //  based on SaM code by Come-from-Beyond
 
 #ifdef DEFINES_ONLY
@@ -409,6 +418,511 @@ uint32_t SaM_nonce(void *data,int32_t datalen,int32_t leverage,int32_t maxmillis
     //printf("%5.1f %14llu %7.2f%% numrounds.%lld threshold.%llu seed.%u\n",milliseconds()-startmilli,(long long)hit,100.*(double)hit/threshold,(long long)numrounds,(long long)threshold,rseed);
     return(hit);
 }*/
+
+#ifdef include_vps
+// from Come-from-Beyond
+#define HASH_SIZE 32
+
+#define DAILY 0
+#define WEEKLY 1
+#define MONTHLY 2
+#define YEARLY 3
+
+#define MAX_NUMBER_OF_POOLS 1000
+#define MAX_NUMBER_OF_TOKENS 1000
+#define MAX_NUMBER_OF_UNITS 1000000
+#define MAX_NUMBER_OF_SUPERVISORS 1000000
+
+#define MAX_TOKEN_LIFESPAN 36500
+
+unsigned int numberOfPools = 0;
+struct Pool {
+    
+	signed long reserve;
+	unsigned long quorum, decisionThreshold;
+    
+} pools[MAX_NUMBER_OF_POOLS];
+
+unsigned int numberOfTokens = 0;
+struct Token {
+    
+	BOOL enabled;
+	unsigned int pool;
+	unsigned long curSupply, maxSupply; // Defines max %% of total coin supply that can be locked
+	signed int fadeRate; // Per day in 1/1000th (zero - to keep value const; negative - for deflation; positive - for inflation)
+	unsigned int decreaseLimits[YEARLY + 1], increaseLimits[YEARLY + 1]; // In 1/1000th
+	unsigned long unitSize; // Locked amount
+	unsigned short minLockPeriod, maxLockPeriod; // In days
+	unsigned char minExtraLockPeriod, maxExtraLockPeriod; // In days
+	unsigned char redemptionGap; // In days
+	unsigned long day0Offset; // UNIX time
+	unsigned long prices[MAX_TOKEN_LIFESPAN]; // In main currency units
+    
+} tokens[MAX_NUMBER_OF_TOKENS];
+
+unsigned int numberOfUnits = 0;
+struct Unit {
+    
+	unsigned long id;
+	unsigned int token;
+	unsigned long account;
+	signed int fadeRate;
+	unsigned long size;
+	unsigned long timestamp;
+	unsigned char lockPeriodHash[HASH_SIZE];
+	unsigned short minLockPeriod, maxLockPeriod;
+	unsigned char extraLockPeriod;
+	unsigned char redemptionGap;
+    
+} units[MAX_NUMBER_OF_UNITS];
+
+unsigned int numberOfSupervisors = 0;
+struct Supervisor {
+    
+	unsigned long id;
+	signed long rating;
+	unsigned int activity;
+    
+} supervisors[MAX_NUMBER_OF_SUPERVISORS];
+
+struct Vote {
+    
+	unsigned long supervisorId;
+	unsigned long price;
+	unsigned long tolerance;
+	unsigned long weight;
+	unsigned long bet;
+};
+
+unsigned char random() {
+    
+	return 42; // TODO: Replace with a better RNG
+}
+
+void hash(unsigned char* data, unsigned int dataSize, unsigned char* hash) {
+    
+	// TODO: Invoke SHA-256
+}
+
+unsigned int addPool(unsigned long quorum, unsigned long decisionThreshold) {
+	// Returns the index of the new pool
+    
+	if (numberOfPools >= MAX_NUMBER_OF_POOLS) {
+        
+		// TODO: Throw exception
+	}
+    
+	pools[numberOfPools].reserve = 0;
+	pools[numberOfPools].quorum = quorum;
+	pools[numberOfPools].decisionThreshold = decisionThreshold;
+    
+	return numberOfPools++;
+}
+
+unsigned int addToken(unsigned int pool,
+                      unsigned long maxSupply,
+                      signed int fadeRate,
+                      unsigned int* decreaseLimits, unsigned int* increaseLimits,
+                      unsigned long unitSize,
+                      unsigned short minLockPeriod, unsigned short maxLockPeriod,
+                      unsigned char minExtraLockPeriod, unsigned char maxExtraLockPeriod,
+                      unsigned char redemptionGap,
+                      unsigned long day0Offset,
+                      unsigned long initialPrice) {
+	// Returns the index of the new token
+    
+	if (numberOfTokens >= MAX_NUMBER_OF_TOKENS) {
+        
+		// TODO: Throw exception
+	}
+    
+	if (pool >= numberOfPools) {
+        
+		// TODO: Throw exception
+	}
+    
+	if (minLockPeriod > maxLockPeriod || minExtraLockPeriod > maxExtraLockPeriod) {
+        
+		// TODO: Throw exception
+	}
+    
+	tokens[numberOfTokens].enabled = TRUE;
+	tokens[numberOfTokens].pool = pool;
+	tokens[numberOfTokens].curSupply = 0;
+	tokens[numberOfTokens].maxSupply = maxSupply;
+	tokens[numberOfTokens].fadeRate = fadeRate;
+	memcpy(tokens[numberOfTokens].decreaseLimits, decreaseLimits, sizeof(tokens[numberOfTokens].decreaseLimits));
+	memcpy(tokens[numberOfTokens].increaseLimits, increaseLimits, sizeof(tokens[numberOfTokens].increaseLimits));
+	tokens[numberOfTokens].unitSize = unitSize;
+	tokens[numberOfTokens].minLockPeriod = minLockPeriod;
+	tokens[numberOfTokens].maxLockPeriod = maxLockPeriod;
+	tokens[numberOfTokens].minExtraLockPeriod = minExtraLockPeriod;
+	tokens[numberOfTokens].maxExtraLockPeriod = maxExtraLockPeriod;
+	tokens[numberOfTokens].redemptionGap = redemptionGap;
+	tokens[numberOfTokens].day0Offset = day0Offset;
+    
+	memset(tokens[numberOfTokens].prices, 0, sizeof(tokens[numberOfTokens].prices));
+	tokens[numberOfTokens].prices[0] = initialPrice;
+    
+	return numberOfTokens++;
+}
+
+void enableToken(unsigned int token) {
+    
+	tokens[token].enabled = TRUE;
+}
+
+void disableToken(unsigned int token) {
+    
+	tokens[token].enabled = FALSE;
+}
+
+void changeFadeRate(unsigned int token, signed int newFadeRate) {
+    
+	tokens[token].fadeRate = newFadeRate;
+}
+
+void changeUnitSize(unsigned int token, unsigned long newUnitSize) {
+    
+	tokens[token].unitSize = newUnitSize;
+}
+
+void changeLockPeriods(unsigned int token, unsigned short newMinLockPeriod, unsigned short newMaxLockPeriod) {
+    
+	tokens[token].minLockPeriod = newMinLockPeriod;
+	tokens[token].maxLockPeriod = newMaxLockPeriod;
+}
+
+void changeExtraLockPeriods(unsigned int token, unsigned char newMinExtraLockPeriod, unsigned char newMaxExtraLockPeriod) {
+    
+	tokens[token].minExtraLockPeriod = newMinExtraLockPeriod;
+	tokens[token].maxExtraLockPeriod = newMaxExtraLockPeriod;
+}
+
+void changeRedemptionGap(unsigned int token, unsigned char newRedemptionGap) {
+    
+	tokens[token].redemptionGap = newRedemptionGap;
+}
+
+void getLockPeriodHashAndPrefix(unsigned short lockPeriod, unsigned char* lockPeriodHash, unsigned char* lockPeriodPrefix) {
+    
+	unsigned char buffer[HASH_SIZE];
+	int i;
+	for (i = 0; i < HASH_SIZE - sizeof(lockPeriod); i++) {
+        
+		buffer[i] = random();
+	}
+	*((unsigned short*)&buffer[i]) = lockPeriod; // WARNING: Depends on endianness!
+	hash(buffer, sizeof(buffer), lockPeriodHash);
+	memcpy(lockPeriodPrefix, buffer, i);
+}
+
+unsigned long getLastPrice(unsigned int token, unsigned long time) {
+    
+	for (int i = (time - tokens[token].day0Offset) / (24 * 60 * 60 * 1000) + 1; i-- > 0;) {
+        
+		if (tokens[token].prices[i] > 0) {
+            
+			return tokens[token].prices[i];
+		}
+	}
+}
+
+unsigned int addUnit(unsigned long id,
+                     unsigned int token,
+                     unsigned long account,
+                     unsigned long time,
+                     unsigned char* lockPeriodHash,
+                     unsigned short minLockPeriod, unsigned short maxLockPeriod,
+                     unsigned long seed,
+                     unsigned long mainCurrencyUnitSize) {
+	// Returns the index of the new unit
+    
+	if (numberOfUnits >= MAX_NUMBER_OF_UNITS) {
+        
+		// TODO: Throw exception
+	}
+    
+	if (token >= numberOfTokens) {
+        
+		// TODO: Throw exception
+	}
+    
+	if (tokens[token].enabled == FALSE) {
+        
+		// TODO: Throw exception
+	}
+    
+	units[numberOfUnits].id = id;
+	units[numberOfUnits].token = token;
+	units[numberOfUnits].account = account;
+	units[numberOfUnits].fadeRate = tokens[token].fadeRate;
+	units[numberOfUnits].size = tokens[token].unitSize;
+	units[numberOfUnits].timestamp = time;
+	memcpy(units[numberOfUnits].lockPeriodHash, lockPeriodHash, HASH_SIZE);
+	units[numberOfUnits].minLockPeriod = minLockPeriod;
+	units[numberOfUnits].maxLockPeriod = maxLockPeriod;
+	units[numberOfUnits].extraLockPeriod = seed % (tokens[token].maxExtraLockPeriod - tokens[token].minExtraLockPeriod + 1) + tokens[token].minExtraLockPeriod;
+	units[numberOfUnits].redemptionGap = tokens[token].redemptionGap;
+    
+	pools[tokens[token].pool].reserve += units[numberOfUnits].size * getLastPrice(token, time) / mainCurrencyUnitSize; // WARNING: May overflow!
+    
+	return numberOfUnits++;
+}
+
+unsigned long redeemUnit(unsigned long id, unsigned long account, unsigned short lockPeriod, unsigned char* lockPeriodPrefix, unsigned long time, unsigned long mainCurrencyUnitSize) {
+	// Returns amount to add to the account balance
+    
+	for (int i = 0; i < numberOfUnits; i++) {
+        
+		if (units[i].id == id) {
+            
+			if (units[i].account == account) {
+                
+				unsigned char buffer[HASH_SIZE];
+				memcpy(buffer, lockPeriodPrefix, HASH_SIZE - sizeof(lockPeriod));
+				*((unsigned short*)&buffer[HASH_SIZE - sizeof(lockPeriod)]) = lockPeriod; // WARNING: Depends on endianness!
+				unsigned char lockPeriodHash[HASH_SIZE];
+				hash(buffer, sizeof(buffer), lockPeriodHash);
+				for (int j = 0; j < HASH_SIZE; j++) {
+                    
+					if (lockPeriodHash[j] != units[i].lockPeriodHash[j]) {
+                        
+						return 0;
+					}
+				}
+                
+				if (lockPeriod < units[i].minLockPeriod || lockPeriod > units[i].maxLockPeriod) {
+                    
+					return 0;
+				}
+                
+				unsigned int delta = (time - units[i].timestamp) / (24 * 60 * 60 * 1000);
+				if (delta < lockPeriod + units[i].extraLockPeriod || delta > lockPeriod + units[i].extraLockPeriod + units[i].redemptionGap) {
+                    
+					return 0;
+				}
+                
+				unsigned long amount = units[i].size * getLastPrice(units[i].token, units[i].timestamp + (lockPeriod + units[i].extraLockPeriod) * 24 * 60 * 60 * 1000) / mainCurrencyUnitSize; // WARNING: May overflow!
+				for (int j = lockPeriod + units[i].extraLockPeriod; j-- > 0; ) {
+                    
+					amount = amount * (1000 - units[i].fadeRate) / 1000; // WARNING: Do not use floating-point math!
+				}
+				if (pools[tokens[units[i].token].pool].reserve < amount) {
+                    
+					amount = pools[tokens[units[i].token].pool].reserve;
+				}
+				pools[tokens[units[i].token].pool].reserve -= amount;
+                
+				memcpy(&units[i], &units[--numberOfUnits], sizeof(Unit));
+                
+				return amount;
+			}
+            
+			break;
+		}
+	}
+    
+	return 0;
+}
+
+void salvageExpiredUnits(unsigned long time) {
+    
+	for (int i = numberOfUnits; i-- > 0; ) {
+        
+		if ((time - units[i].timestamp) / (24 * 60 * 60 * 1000) > units[i].maxLockPeriod + units[i].extraLockPeriod + units[i].redemptionGap) {
+            
+			memcpy(&units[i], &units[--numberOfUnits], sizeof(Unit));
+		}
+	}
+}
+
+unsigned int addSupervisor(unsigned long id) {
+	// Returns the index of the new supervisor
+    
+	if (numberOfSupervisors >= MAX_NUMBER_OF_SUPERVISORS) {
+        
+		// TODO: Throw exception
+	}
+    
+	supervisors[numberOfSupervisors].id = id;
+	supervisors[numberOfSupervisors].rating = 0;
+	supervisors[numberOfSupervisors].activity = 0;
+    
+	return numberOfSupervisors++;
+}
+
+Supervisor* getSupervisor(unsigned long id) {
+    
+	for (int i = 0; i < numberOfSupervisors; i++) {
+        
+		if (supervisors[i].id == id) {
+            
+			return &supervisors[i];
+		}
+	}
+    
+	return NULL;
+}
+
+BOOL castSupervisorVotes(unsigned int token, unsigned long time, Vote* votes, unsigned int numberOfVotes, unsigned long* prizes) {
+	// Returns if a new price has been set
+    
+	unsigned long totalWeight = 0;
+	unsigned long totalBet = 0;
+	for (int i = 0; i < numberOfVotes; i++) {
+        
+		totalWeight += votes[i].weight;
+		getSupervisor(votes[i].supervisorId)->activity++;
+		totalBet += votes[i].bet;
+	}
+    
+	if (totalWeight < pools[tokens[token].pool].quorum) {
+        
+		return FALSE;
+	}
+    
+	unsigned long prices[MAX_NUMBER_OF_SUPERVISORS];
+	unsigned long weights[MAX_NUMBER_OF_SUPERVISORS];
+	for (int i = 0; i < numberOfVotes; i++) {
+        
+		int j;
+		for (j = 0; j < i; j++) {
+            
+			if (prices[j] > votes[i].price) {
+                
+				break;
+			}
+			memmove(&prices[j + 1], &prices[j], (i - j) * sizeof(Vote));
+			memmove(&weights[j + 1], &weights[j], (i - j) * sizeof(Vote));
+			prices[j] = votes[i].price;
+			weights[j] = votes[i].weight;
+		}
+	}
+    
+	unsigned long newPrice = 0;
+	for (int i = 0; i < numberOfVotes; i++) {
+        
+		unsigned long weight = 0;
+		unsigned long bet = 0;
+		for (int j = 0; j < numberOfVotes; j++) {
+            
+			signed long delta = votes[i].price - votes[j].price;
+			if (delta < 0) {
+                
+				delta = -delta;
+			}
+            
+			if (delta <= votes[j].tolerance) {
+                
+				weight += votes[j].weight;
+				bet += votes[j].bet;
+			}
+		}
+		if (weight > totalWeight / 2) {
+            
+			newPrice = votes[i].price;
+            
+			unsigned long totalPrize = 0;
+			for (int j = 0; j < numberOfVotes; j++) {
+                
+				signed long delta = votes[i].price - votes[j].price;
+				if (delta < 0) {
+                    
+					delta = -delta;
+				}
+                
+				if (delta <= votes[j].tolerance) {
+                    
+					getSupervisor(votes[j].supervisorId)->rating++;
+					if (prizes != NULL) {
+                        
+						prizes[j] = votes[j].bet + (votes[j].bet * (totalBet - bet) / bet);
+						totalPrize += prizes[j];
+					}
+                    
+				} else {
+                    
+					if (prizes != NULL) {
+                        
+						prizes[j] = 0;
+					}
+				}
+			}
+            
+			if (prizes != NULL) {
+                
+				pools[tokens[token].pool].reserve += totalBet - totalPrize;
+			}
+            
+			break;
+		}
+	}
+    
+	if (newPrice == 0) {
+        
+		return FALSE;
+        
+	} else {
+        
+		unsigned long lastPrice = getLastPrice(token, time);
+		if (newPrice < lastPrice) {
+            
+			if ((lastPrice - newPrice) * 1000 / lastPrice > tokens[token].decreaseLimits[DAILY]) {
+                
+				newPrice = lastPrice - tokens[token].decreaseLimits[DAILY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 7L * 24 * 60 * 60 * 1000);
+			if ((lastPrice - newPrice) * 1000 / lastPrice > tokens[token].decreaseLimits[WEEKLY]) {
+                
+				newPrice = lastPrice - tokens[token].decreaseLimits[WEEKLY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 30L * 24 * 60 * 60 * 1000);
+			if ((lastPrice - newPrice) * 1000 / lastPrice > tokens[token].decreaseLimits[MONTHLY]) {
+                
+				newPrice = lastPrice - tokens[token].decreaseLimits[MONTHLY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 365L * 24 * 60 * 60 * 1000);
+			if ((lastPrice - newPrice) * 1000 / lastPrice > tokens[token].decreaseLimits[YEARLY]) {
+                
+				newPrice = lastPrice - tokens[token].decreaseLimits[YEARLY] * lastPrice / 1000;
+			}
+            
+		} else {
+            
+			if ((newPrice - lastPrice) * 1000 / lastPrice > tokens[token].increaseLimits[DAILY]) {
+                
+				newPrice = lastPrice + tokens[token].increaseLimits[DAILY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 7L * 24 * 60 * 60 * 1000);
+			if ((newPrice - lastPrice) * 1000 / lastPrice > tokens[token].increaseLimits[WEEKLY]) {
+                
+				newPrice = lastPrice + tokens[token].increaseLimits[WEEKLY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 30L * 24 * 60 * 60 * 1000);
+			if ((newPrice - lastPrice) * 1000 / lastPrice > tokens[token].increaseLimits[MONTHLY]) {
+                
+				newPrice = lastPrice + tokens[token].increaseLimits[MONTHLY] * lastPrice / 1000;
+			}
+            
+			lastPrice = getLastPrice(token, time - 365L * 24 * 60 * 60 * 1000);
+			if ((newPrice - lastPrice) * 1000 / lastPrice > tokens[token].increaseLimits[YEARLY]) {
+                
+				newPrice = lastPrice + tokens[token].increaseLimits[YEARLY] * lastPrice / 1000;
+			}
+		}
+        
+		tokens[token].prices[(time - tokens[token].day0Offset) / (24 * 60 * 60 * 1000)] = newPrice;
+        
+		return TRUE;
+	}
+}
+#endif
 
 #endif
 #endif

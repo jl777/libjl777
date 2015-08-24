@@ -1,8 +1,18 @@
-//
-//  crypto777
-//
-//  Copyright (c) 2015 jl777. All rights reserved.
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 // add to limbo:  txids 204961939803594792, 7301360590217481477, 14387806392702706073 for a total of 568.1248 BTCD
 // 17638509709909095430 ~170
 // http://chain.explorebtcd.info/tx/1dc0faf122e64aa46393291f00483f7779b73504573c1776301347545b760ea9
@@ -34,8 +44,8 @@ int32_t MGW_idle(struct plugin_info *plugin)
 char *fix_msigaddr(struct coin777 *coin,char *NXTaddr,char *method);
 
 STRUCTNAME MGW;
-char *PLUGNAME(_methods)[] = { "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status" };
-char *PLUGNAME(_pubmethods)[] = { "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status" };
+char *PLUGNAME(_methods)[] = { "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
+char *PLUGNAME(_pubmethods)[] = { "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
 char *PLUGNAME(_authmethods)[] = { "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status" };
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME   *data,cJSON *json)
@@ -1313,7 +1323,7 @@ uint64_t MGWtransfer_asset(cJSON **transferjsonp,int32_t forceflag,uint64_t nxt6
     expand_nxt64bits(NXTaddr,nxt64bits);
     conv_rsacctstr(rsacct,nxt64bits);
     issue_getpubkey(&haspubkey,rsacct);
-    if ( haspubkey != 0 && depositors_pubkey[0] == 0 )
+    if ( haspubkey != 0 )//&& depositors_pubkey[0] == 0 )
     {
         set_NXTpubkey(depositors_pubkey,NXTaddr);
         printf("set.%s pubkey.(%s)\n",NXTaddr,depositors_pubkey);
@@ -1669,7 +1679,7 @@ int32_t mgw_markunspent(char *txidstr,int32_t vout,int32_t status)
 int32_t mgw_isrealtime(struct coin777 *coin)
 {
     printf("verified.%d lag.%d (coin->ramchain.RTblocknum - coin->ramchain.blocknum) <= coin->minconfirms %d vs %d\n",coin->verified,coin->lag,(coin->ramchain.RTblocknum - coin->ramchain.blocknum),coin->minconfirms);
-    if ( (coin->lag > 0 && coin->lag <= coin->minconfirms) && coin->verified != 0 )
+    if ( (coin->lag >= 0 && coin->lag <= coin->minconfirms) && coin->verified != 0 )
         return(1);
     return(0);
 }
@@ -1735,11 +1745,14 @@ uint64_t mgw_unspentsfunc(struct coin777 *coin,void *args,uint32_t addrind,struc
                     }
                     else if ( coin->mgw.firstunspentind == 0 || unspentind >= coin->mgw.firstunspentind )
                     {
-                        printf("pending deposit.%u (%s).v%d %.8f -> %s | Ustatus.%d status.%d\n",unspentind,txidstr,vout,dstr(atx_value),msig->multisigaddr,Ustatus,status);
-                        if ( (nxt64bits % msig->n) == SUPERNET.gatewayid && mgw_isrealtime(coin) != 0 )
+                        printf("pending deposit.%u (%s).v%d %.8f -> %s nxt.%llu pubkey.%s | Ustatus.%d status.%d\n",unspentind,txidstr,vout,dstr(atx_value),msig->multisigaddr,(long long)nxt64bits,msig->NXTpubkey,Ustatus,status);
+                        if ( (nxt64bits % msig->n) == SUPERNET.gatewayid )
                         {
-                            if ( MGWtransfer_asset(0,1,nxt64bits,msig->NXTpubkey,coin,atx_value,msig->multisigaddr,txidstr,vout,&msig->buyNXT,DEPOSIT_XFER_DURATION) != 0 )
-                                mgw_markunspent(txidstr,vout,Ustatus | MGW_PENDINGXFER);
+                            if ( mgw_isrealtime(coin) != 0 )
+                            {
+                                if ( MGWtransfer_asset(0,1,nxt64bits,msig->NXTpubkey,coin,atx_value,msig->multisigaddr,txidstr,vout,&msig->buyNXT,DEPOSIT_XFER_DURATION) != 0 )
+                                    mgw_markunspent(txidstr,vout,Ustatus | MGW_PENDINGXFER);
+                            }
                         } else mgw_markunspent(txidstr,vout,Ustatus | MGW_PENDINGXFER);
                     }
                     else
@@ -2268,7 +2281,7 @@ int32_t make_MGWbus(uint16_t port,char *bindaddr,char serverips[MAX_MGWSERVERS][
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char NXTaddr[64],nxtaddr[64],ipaddr[64],*resultstr,*coinstr,*methodstr,*retstr = 0; int32_t i,j,n; cJSON *array; uint64_t nxt64bits;
+    char NXTaddr[64],nxtaddr[64],ipaddr[64],*resultstr,*coinstr,*methodstr,*coinaddr,*retstr = 0; int32_t i,j,n; cJSON *array; uint64_t nxt64bits;
     retbuf[0] = 0;
     printf("<<<<<<<<<<<< INSIDE PLUGIN! process %s\n",plugin->name);
     if ( initflag > 0 )
@@ -2327,6 +2340,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
         coinstr = cJSON_str(cJSON_GetObjectItem(json,"coin"));
+        coinaddr = cJSON_str(cJSON_GetObjectItem(json,"coinaddr"));
         if ( methodstr == 0 || methodstr[0] == 0 || SUPERNET.gatewayid < 0 )
         {
             printf("(%s) has not method or not a gateway node %d\n",jsonstr,SUPERNET.gatewayid);
@@ -2337,6 +2351,13 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         {
             plugin->registered = 1;
             strcpy(retbuf,"{\"result\":\"activated\"}");
+        }
+        else if ( strcmp(methodstr,"findmsigaddr") == 0 )
+        {
+            struct multisig_addr *msig; char buf[4096]; int32_t len = sizeof(buf);
+            if ( coinstr != 0 && coinaddr != 0 && (msig= find_msigaddr((struct multisig_addr *)buf,&len,coinstr,coinaddr)) != 0 )
+                sprintf(retbuf,"{\"result\":\"success\",\"NXT\":\"%s\"}",msig->NXTaddr);
+            else strcpy(retbuf,"{\"result\":\"cant find addr\"}");
         }
         else if ( strcmp(methodstr,"msigaddr") == 0 )
         {

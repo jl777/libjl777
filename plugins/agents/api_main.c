@@ -1,9 +1,18 @@
-//
-//  api_main.c
-//  crypto777
-//
-//  Copyright (c) 2015 jl777. All rights reserved.
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 #include <stdint.h>
 #include "../ccgi/ccgi.h"
 #include "nn.h"
@@ -111,6 +120,8 @@ int main(int argc, char **argv)
     strcpy(namebuf,&argv[0][j]);
     offset = strlen(namebuf) - 4;
     if ( offset > 0 && strcmp(".exe",namebuf + offset) == 0 )
+        namebuf[offset] = 0;
+    if ( offset > 0 && strcmp(".cgi",namebuf + offset) == 0 )
         namebuf[offset] = 0;
     if ( strcmp(namebuf,"init") == 0 || strcmp(namebuf,"") == 0 || strcmp(namebuf,"index.cgi") == 0 )
     {

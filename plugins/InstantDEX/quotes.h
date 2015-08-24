@@ -1,9 +1,18 @@
-//
-//  quotes.h
-//
-//  Created by jl777 on 7/9/14.
-//  Copyright (c) 2014 jl777. All rights reserved.
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 
 #ifndef xcode_quotes_h
 #define xcode_quotes_h
@@ -54,6 +63,8 @@ uint64_t calc_quoteid(struct InstantDEX_quote *iQ)
     struct InstantDEX_quote Q;
     if ( iQ == 0 )
         return(0);
+    if ( iQ->s.duration == 0 || iQ->s.duration > ORDERBOOK_EXPIRATION )
+        iQ->s.duration = ORDERBOOK_EXPIRATION;
     if ( iQ->s.quoteid == 0 )
     {
         Q = *iQ;
@@ -142,7 +153,8 @@ char *InstantDEX_cancelorder(uint64_t orderid,uint64_t quoteid)
 struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ)
 {
     struct InstantDEX_quote *newiQ; struct prices777 *prices; int32_t inverted;
-    printf("createiQ %llu/%llu %f %f\n",(long long)iQ->s.baseid,(long long)iQ->s.relid,iQ->s.price,iQ->s.vol);
+    calc_quoteid(iQ);
+    printf("createiQ %llu/%llu %f %f quoteid.%llu offerNXT.%llu\n",(long long)iQ->s.baseid,(long long)iQ->s.relid,iQ->s.price,iQ->s.vol,(long long)iQ->s.quoteid,(long long)iQ->s.offerNXT);
     if ( (newiQ= find_iQ(iQ->s.quoteid)) != 0 )
         return(newiQ);
     newiQ = calloc(1,sizeof(*newiQ));
@@ -192,10 +204,13 @@ char *InstantDEX_orderstatus(uint64_t orderid,uint64_t quoteid)
 
 char *InstantDEX_openorders(char *NXTaddr,int32_t allorders)
 {
-    struct InstantDEX_quote *iQ,*tmp; char buf[4096],*jsonstr; cJSON *json,*array,*item; uint64_t nxt64bits = calc_nxt64bits(NXTaddr);
+    struct InstantDEX_quote *iQ,*tmp; char buf[4096],*jsonstr; uint32_t now; cJSON *json,*array,*item; uint64_t nxt64bits = calc_nxt64bits(NXTaddr);
+    now = (uint32_t)time(NULL);
     json = cJSON_CreateObject(), array = cJSON_CreateArray();
     HASH_ITER(hh,AllQuotes,iQ,tmp)
     {
+        if ( iQ->s.timestamp > (now + ORDERBOOK_EXPIRATION) )
+            iQ->s.expired = iQ->s.closed = 1;
         if ( iQ->s.offerNXT == nxt64bits && (allorders != 0 || iQ->s.closed == 0) )
         {
             if ( (jsonstr= InstantDEX_str(buf,0,iQ)) != 0 && (item= cJSON_Parse(jsonstr)) != 0 )
@@ -243,12 +258,15 @@ cJSON *prices777_orderjson(struct InstantDEX_quote *iQ)
 
 cJSON *InstantDEX_orderbook(struct prices777 *prices)
 {
-    struct InstantDEX_quote *ptr,iQ,*tmp,*askvals,*bidvals; cJSON *json,*bids,*asks; int32_t i,isask,iter,n,m,numbids,numasks,invert;
+    struct InstantDEX_quote *ptr,iQ,*tmp,*askvals,*bidvals; cJSON *json,*bids,*asks; uint32_t now; int32_t i,isask,iter,n,m,numbids,numasks,invert;
     json = cJSON_CreateObject(), bids = cJSON_CreateArray(), asks = cJSON_CreateArray();
+    now = (uint32_t)time(NULL);
     for (iter=numbids=numasks=n=m=0; iter<2; iter++)
     {
         HASH_ITER(hh,AllQuotes,ptr,tmp)
         {
+            if ( iQ.s.timestamp > (now + ORDERBOOK_EXPIRATION) )
+                iQ.s.expired = iQ.s.closed = 1;
             //printf("iterate quote.%llu\n",(long long)iQ.s.quoteid);
             if ( prices777_equiv(ptr->s.baseid) == prices777_equiv(prices->baseid) && prices777_equiv(ptr->s.relid) == prices777_equiv(prices->relid) )
                 invert = 0;
@@ -341,12 +359,14 @@ double ordermetric(double price,double vol,int32_t dir,double refprice,double re
 char *autofill(char *remoteaddr,struct InstantDEX_quote *refiQ,char *NXTaddr,char *NXTACCTSECRET)
 {
     double price,volume,revprice,revvol,metric,bestmetric = 0.; int32_t dir,inverted; uint64_t nxt64bits; char *retstr=0;
-    struct InstantDEX_quote *iQ,*tmp,*bestiQ; struct prices777 *prices;
+    struct InstantDEX_quote *iQ,*tmp,*bestiQ; struct prices777 *prices; uint32_t now = (uint32_t)time(NULL);
     nxt64bits = calc_nxt64bits(NXTaddr);
     memset(&bestiQ,0,sizeof(bestiQ));
     dir = (refiQ->s.isask != 0) ? -1 : 1;
     HASH_ITER(hh,AllQuotes,iQ,tmp)
     {
+        if ( iQ->s.timestamp > (now + ORDERBOOK_EXPIRATION) )
+            iQ->s.expired = iQ->s.closed = 1;
         if ( iQ->s.offerNXT == nxt64bits && iQ->s.closed == 0 && iQ->s.pending == 0 )
         {
             if ( iQ->s.baseid == refiQ->s.baseid && iQ->s.relid == refiQ->s.relid && iQ->s.isask != refiQ->s.isask && (metric= ordermetric(iQ->s.price,iQ->s.vol,dir,refiQ->s.price,refiQ->s.vol)) > bestmetric )
@@ -380,7 +400,7 @@ char *autofill(char *remoteaddr,struct InstantDEX_quote *refiQ,char *NXTaddr,cha
                 price = 1. / bestiQ->s.price;
                 printf("price inverted (%f %f) -> (%f %f)\n",bestiQ->s.price,bestiQ->s.vol,price,volume);
             } else price = bestiQ->s.price, volume = bestiQ->s.vol;
-            retstr = prices777_trade(prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid);
+            retstr = prices777_trade(prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid,0);
         }
     }
     return(retstr);
@@ -408,16 +428,19 @@ char *automatch(struct prices777 *prices,int32_t dir,double refprice,double refv
     }
     //printf("n.%d\n",n);
     if ( bestorder.source != 0 )
-        retstr = prices777_trade(bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid);
+        retstr = prices777_trade(bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid,0);
     return(retstr);
 }
 
 void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
 {
-    int32_t iter,dir; struct pending_trade *pend; double price,volume; char *retstr = 0;
+    int32_t iter,dir; struct pending_trade *pend; double price,volume; uint32_t now; char *retstr = 0;
     int32_t inverted; struct InstantDEX_quote *iQ,*tmp; struct prices777 *prices; uint64_t nxt64bits = calc_nxt64bits(NXTaddr);
+    now = (uint32_t)time(NULL);
     HASH_ITER(hh,AllQuotes,iQ,tmp)
     {
+        if ( iQ->s.timestamp > (now + ORDERBOOK_EXPIRATION) )
+            iQ->s.expired = iQ->s.closed = 1;
         if ( iQ->s.offerNXT == nxt64bits && iQ->s.closed == 0 && iQ->s.pending == 0 )
         {
             if ( (prices= prices777_find(&inverted,iQ->s.baseid,iQ->s.relid,exchange_str(iQ->exchangeid))) != 0 )
@@ -447,6 +470,7 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
            if ( (retstr= offer_statemachine(pend)) != 0 )
            {
                printf("offer_statemachine %llu/%llu %d %f %f (%s)\n",(long long)pend->orderid,(long long)pend->quoteid,pend->dir,pend->price,pend->volume,retstr);
+               InstantDEX_history(1,pend,retstr);
                free(retstr);
                free_pending(pend);
            } else queue_enqueue("requeue",&Pending_offersQ.pingpong[iter ^ 1],&pend->DL);
@@ -454,10 +478,11 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
     }
 }
 
-char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr,char *name,char *base,char *rel,struct InstantDEX_quote *iQ)
+char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr,char *name,char *base,char *rel,struct InstantDEX_quote *iQ,char *extra)
 {
     extern queue_t InstantDEXQ;
     char *retstr = 0; int32_t inverted,dir; struct prices777 *prices; double price,volume;
+    printf("placebidask.(%llu)\n",(long long)iQ->s.offerNXT);
     if ( iQ->exchangeid < 0 || (exchangestr= exchange_str(iQ->exchangeid)) == 0 )
         return(clonestr("{\"error\":\"exchange not active, check SuperNET.conf exchanges array\"}\n"));
     if ( (prices= prices777_find(&inverted,iQ->s.baseid,iQ->s.relid,exchangestr)) == 0 )
@@ -482,18 +507,23 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
         {
             if ( strcmp(exchangestr,"InstantDEX") != 0 && strcmp(exchangestr,"active") != 0 && strcmp(exchangestr,"basket") != 0 )
             {
-                return(prices777_trade(prices,dir,price,volume,iQ,0,iQ->s.quoteid));
+                return(prices777_trade(prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
             }
             if ( iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET)) != 0 )
                 return(retstr);
             retstr = InstantDEX_str(0,1,iQ);
             create_iQ(iQ);
+            prices777_InstantDEX(prices,MAX_DEPTH);
             queue_enqueue("InstantDEX",&InstantDEXQ,queueitem(retstr));
         }
         else
         {
             if ( (retstr= autofill(remoteaddr,iQ,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET)) == 0 )
-                create_iQ(iQ);
+            {
+                printf("create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);
+                iQ = create_iQ(iQ);
+                printf("got create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);
+            }
             return(retstr);
         }
     }

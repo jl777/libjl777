@@ -1,9 +1,18 @@
-//
-//  prices777.c
-//  crypto777
-//
-//  Copyright (c) 2015 jl777. All rights reserved.
-//
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
+
 
 #define BUNDLED
 #define PLUGINSTR "prices"
@@ -661,6 +670,24 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 #include "../InstantDEX/exchangeparse.h"
 #include "../InstantDEX/exchange_trades.h"
 
+cJSON *basketitem_json(struct prices777_basket *basket)
+{
+    cJSON *item = cJSON_CreateObject();
+    jaddstr(item,"base",basket->base);
+    jaddstr(item,"base",basket->rel);
+    jaddnum(item,"group",basket->groupid);
+    jaddnum(item,"wt",basket->wt);
+    return(item);
+}
+
+cJSON *basket_json(struct prices777 *prices)
+{
+    int32_t i; cJSON *array = cJSON_CreateArray();
+    for (i=0; i<prices->basketsize; i++)
+        jaddi(array,basketitem_json(&prices->basket[i]));
+    return(array);
+}
+
 char *prices777_allorderbooks()
 {
     int32_t i; struct prices777 *prices; char numstr[64]; cJSON *item,*json,*array = cJSON_CreateArray();
@@ -674,6 +701,10 @@ char *prices777_allorderbooks()
         jaddstr(item,"rel",prices->rel);
         sprintf(numstr,"%llu",(long long)prices->relid), jaddstr(item,"relid",numstr);
         jaddstr(item,"exchange",prices->exchange);
+        if ( strcmp(prices->exchange,"basket") == 0 )
+            jadd(item,"basket",basket_json(prices));
+        else if ( strcmp(prices->exchange,"active") == 0 )
+            jadd(item,"active",basket_json(prices));
         jaddi(array,item);
     }
     json = cJSON_CreateObject();
@@ -688,13 +719,13 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
     {
         {"nxtae", prices777_NXT, NXT_supports, NXT_tradestub }, {"unconf", prices777_unconfNXT, NXT_supports, NXT_tradestub },
         {"InstantDEX", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub }, {"basket", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
-        {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade }, {"bitfinex", prices777_bitfinex, bitfinex_supports },
+        {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade }, {"bitfinex", prices777_bitfinex, bitfinex_supports, bitfinex_trade },
         {"btc38", prices777_btc38, btc38_supports, btc38_trade }, //{"bter", prices777_bter, bter_supports, bter_trade },
-        {"btce", prices777_btce, btce_supports, btce_trade }, {"bitstamp", prices777_bitstamp, bitstamp_supports },
-        {"bittrex", prices777_bittrex, bittrex_supports, bittrex_trade }, {"okcoin", prices777_okcoin, okcoin_supports },
-        {"huobi", prices777_huobi, huobi_supports }, {"bityes", prices777_bityes, bityes_supports },
-        {"coinbase", prices777_coinbase, coinbase_supports }, {"lakebtc", prices777_lakebtc, lakebtc_supports },
-        {"exmo", prices777_exmo, exmo_supports }, {"quadriga", prices777_quadriga, quadriga_supports },
+        {"btce", prices777_btce, btce_supports, btce_trade }, {"bitstamp", prices777_bitstamp, bitstamp_supports, bitstamp_trade },
+        {"bittrex", prices777_bittrex, bittrex_supports, bittrex_trade }, {"okcoin", prices777_okcoin, okcoin_supports, okcoin_trade },
+        {"huobi", prices777_huobi, huobi_supports, huobi_trade }, {"bityes", prices777_bityes, bityes_supports, bityes_trade },
+        {"coinbase", prices777_coinbase, coinbase_supports, coinbase_trade }, {"lakebtc", prices777_lakebtc, lakebtc_supports, lakebtc_trade },
+        {"exmo", prices777_exmo, exmo_supports, exmo_trade }, {"quadriga", prices777_quadriga, quadriga_supports, quadriga_trade },
         {"truefx", 0 }, {"ecb", 0 }, {"instaforex", 0 }, {"fxcm", 0 }, {"yahoo", 0 },
     };
     int32_t i,rellen; char basebuf[64],relbuf[64]; struct exchange_info *exchangeptr;
@@ -705,8 +736,9 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
         {
             if ( (exchangeptr= find_exchange(0,pairs[i].exchange)) != 0 )
             {
-                printf("%s set supports.%p\n",pairs[i].exchange,pairs[i].supports);
+                printf("%p %s set supports.%p %p\n",exchangeptr,pairs[i].exchange,pairs[i].supports,pairs[i].trade);
                 exchangeptr->supports = pairs[i].supports;
+                exchangeptr->trade = pairs[i].trade;
             }
         }
         return(0);
@@ -1044,12 +1076,15 @@ int32_t prices777_init(char *jsonstr)
             if ( (base == 0 || rel == 0) && (contract= jstr(item,"contract")) != 0 )
                 rel = 0, base = contract;
             else contract = 0;
-            if ( (exchangeptr= find_exchange(0,exchange)) != 0 )
+            if ( exchange != 0 && strcmp(exchange,"bter") == 0 )
+                continue;
+            if ( exchange != 0 && (exchangeptr= find_exchange(0,exchange)) != 0 )
             {
-                exchangeptr->pollgap = get_API_int(cJSON_GetObjectItem(json,"pollgap"),SUPERNET.exchangeidle);
-                extract_cJSON_str(exchangeptr->apikey,sizeof(exchangeptr->apikey),json,"key");
-                extract_cJSON_str(exchangeptr->userid,sizeof(exchangeptr->userid),json,"userid");
-                extract_cJSON_str(exchangeptr->apisecret,sizeof(exchangeptr->apisecret),json,"secret");
+                exchangeptr->pollgap = get_API_int(cJSON_GetObjectItem(item,"pollgap"),SUPERNET.exchangeidle);
+                extract_cJSON_str(exchangeptr->apikey,sizeof(exchangeptr->apikey),item,"key");
+                extract_cJSON_str(exchangeptr->userid,sizeof(exchangeptr->userid),item,"userid");
+                extract_cJSON_str(exchangeptr->apisecret,sizeof(exchangeptr->apisecret),item,"secret");
+                //printf("%p ADDEXCHANGE.(%s) [%s, %s, %s]\n",exchangeptr,exchange,exchangeptr->apikey,exchangeptr->userid,exchangeptr->apisecret);
             }
             if ( strcmp(exchange,"truefx") == 0 )
             {
@@ -1057,7 +1092,7 @@ int32_t prices777_init(char *jsonstr)
                 copy_cJSON(BUNDLE.truefxpass,jobj(item,"truefxpass"));
                 printf("truefx.(%s %s)\n",BUNDLE.truefxuser,BUNDLE.truefxpass);
             }
-            else if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,exchange,base,rel,jdouble(item,"decay"),contract,stringbits(base),stringbits(rel),0)) != 0 )
+            else if ( base != 0 && rel != 0 && base[0] != 0 && rel[0] != 0 && (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,exchange,base,rel,jdouble(item,"decay"),contract,stringbits(base),stringbits(rel),0)) != 0 )
                 BUNDLE.num++;
         }
     }
@@ -1066,7 +1101,7 @@ int32_t prices777_init(char *jsonstr)
     for (i=0; i<MAX_EXCHANGES; i++)
     {
         exchangeptr = &Exchanges[i];
-        if ( exchangeptr->refcount > 0 )
+        if ( exchangeptr->refcount > 0 || strcmp(exchangeptr->name,"unconf") == 0 )
             portable_thread_create((void *)prices777_exchangeloop,exchangeptr);
     }
     return(0);

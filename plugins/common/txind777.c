@@ -1,3 +1,17 @@
+/******************************************************************************
+ * Copyright © 2014-2015 The SuperNET Developers.                             *
+ *                                                                            *
+ * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
+ * the top-level directory of this distribution for the individual copyright  *
+ * holder information and the developer policies on copyright and licensing.  *
+ *                                                                            *
+ * Unless otherwise agreed in a custom licensing agreement, no part of the    *
+ * Nxt software, including this file, may be copied, modified, propagated,    *
+ * or distributed except according to the terms contained in the LICENSE file *
+ *                                                                            *
+ * Removal or modification of this copyright notice is prohibited.            *
+ *                                                                            *
+ ******************************************************************************/
 
 #ifdef DEFINES_ONLY
 #ifndef txind777_h
@@ -26,7 +40,7 @@ int32_t txind777_txbuf(uint8_t *txbuf,int32_t len,uint64_t val,int32_t size);
 int32_t txinds777_flush(struct txinds777_info *txinds,uint32_t blocknum,uint32_t blocktimestamp);
 struct txinds777_info *txinds777_init(char *path,char *name);
 int64_t txinds777_seek(struct txinds777_info *txinds,uint32_t blocknum);
-void *txinds777_read(uint8_t *buf,struct txinds777_info *txinds);
+void *txinds777_read(int32_t *lenp,uint8_t *buf,struct txinds777_info *txinds);
 void txinds777_purge(struct txinds777_info *txinds);
 
 #endif
@@ -61,9 +75,10 @@ int64_t txinds777_seek(struct txinds777_info *txinds,uint32_t blocknum)
     return(txinds->curitem);
 }
 
-void *txinds777_read(uint8_t *buf,struct txinds777_info *txinds)
+void *txinds777_read(int32_t *lenp,uint8_t *buf,struct txinds777_info *txinds)
 {
-    int64_t txind,fpos; int32_t len;
+    int64_t txind,fpos; int32_t len; uint32_t triplet[3];
+    *lenp = 0;
     if ( txinds->indexfp == 0 || txinds->txlogfp == 0 )
         return(0);
     fseek(txinds->indexfp,txinds->curitem * sizeof(int64_t),SEEK_SET);
@@ -74,11 +89,19 @@ void *txinds777_read(uint8_t *buf,struct txinds777_info *txinds)
     }
     len = txind & 0xffff;
     fpos = (txind >> 16);
-    if ( fpos+len < txinds->H.nextpos )
+    if ( fpos+len <= txinds->H.nextpos )
     {
+        printf("load %ld for item.%d log.%ld\n",ftell(txinds->indexfp),(int32_t)txinds->curitem,(long)fpos);
         fseek(txinds->txlogfp,fpos,SEEK_SET);
-        if ( fread(buf,1,len,txinds->txlogfp) == len )
-            return(buf);
+        if ( len >= sizeof(triplet) && fread(triplet,1,sizeof(triplet),txinds->txlogfp) == sizeof(triplet) && len > sizeof(triplet) )
+        {
+            len -= sizeof(triplet);
+            if ( fread(buf,1,len,txinds->txlogfp) == len )
+            {
+                *lenp = len;
+                return(buf);
+            }
+        }
     }
     return(0);
 }
@@ -106,17 +129,18 @@ void txinds777_ensure(struct txinds777_info *txinds,uint32_t blocknum,uint64_t c
 
 int64_t txind777_create(struct txinds777_info *txinds,uint32_t blocknum,uint32_t timestamp,void *txdata,uint16_t len)
 {
-    int64_t txind = -1; uint32_t pair[3];
+    int64_t txind = -1; uint32_t triplet[3];
     if ( txdata == 0 )
         return(0);
     if ( len != 0 )
     {
-        txind = (txinds->H.nextpos << 16) | (len + sizeof(pair));
+        txind = (txinds->H.nextpos << 16) | (len + sizeof(triplet));
         if ( txinds->txlogfp != 0 )
         {
-            pair[0] = len, pair[1] = blocknum, pair[2] = timestamp;
+            triplet[0] = len, triplet[1] = blocknum, triplet[2] = timestamp;
+            //printf("triplet.(%d %d %d)\n",len,blocknum,timestamp);
             fseek(txinds->txlogfp,txinds->H.nextpos,SEEK_SET);
-            if ( fwrite(pair,1,sizeof(pair),txinds->txlogfp) != sizeof(pair) || fwrite(txdata,1,len,txinds->txlogfp) != len )
+            if ( fwrite(triplet,1,sizeof(triplet),txinds->txlogfp) != sizeof(triplet) || fwrite(txdata,1,len,txinds->txlogfp) != len )
             {
                 printf("error updating txlog file at pos %lld\n",(long long)txinds->H.nextpos);
                 return(-1);
@@ -132,9 +156,11 @@ int64_t txind777_create(struct txinds777_info *txinds,uint32_t blocknum,uint32_t
                 return(-1);
             }
             txinds->H.num++;
+           // printf("H.num %d: indexfp %ld\n",(int32_t)txinds->H.num,ftell(txinds->indexfp));
         }
         update_sha256(txinds->H.sha256.bytes,&txinds->H.state,txdata,len);
-        txinds->H.nextpos += len + sizeof(pair);
+        txinds->H.nextpos += len + sizeof(triplet);
+        //printf("H.num %d, nextpos %ld (len %ld) indexfp %ld logfp %ld\n",(int32_t)txinds->H.num,(long)txinds->H.nextpos,len + sizeof(triplet),ftell(txinds->indexfp),ftell(txinds->txlogfp));
     } else printf("cant txlog no data\n");
     return(txind);
 }
@@ -148,7 +174,7 @@ int64_t txind777_bundle(struct txinds777_info *txinds,uint32_t blocknum,uint32_t
 
 FILE *txinds777_initfile(long *fposp,char *path,char *name,char *suffix,uint64_t expected)
 {
-    FILE *fp; char fname[512]; long fpos = -1;
+    FILE *fp; char fname[512]; long fpos = 0;
     sprintf(fname,"%s/%s%s",path,name,suffix), os_compatible_path(fname);
     if ( (fp= fopen(fname,"rb+")) != 0 )
     {
@@ -161,16 +187,18 @@ FILE *txinds777_initfile(long *fposp,char *path,char *name,char *suffix,uint64_t
                 printf("txinds777_init: error mismatched position %ld vs %lld after set fpos\n",fpos,(long long)expected);
         }
     }
+    else fp = fopen(fname,"wb+");
     *fposp = fpos;
     return(fp);
 }
 
 struct txinds777_info *txinds777_init(char *path,char *name)
 {
-    FILE *fp; char fname[512]; int64_t txind,checktxind; long logfpos,indexfpos; struct txinds777_hdr H,goodH; uint32_t pair[3];
+    FILE *fp; char fname[512]; int64_t txind,checktxind; long logfpos,indexfpos; struct txinds777_hdr H,goodH; uint32_t triplet[3];
     struct txinds777_info *txinds = calloc(1,sizeof(*txinds));
     strcpy(txinds->path,path), strcpy(txinds->name,name);
     sprintf(fname,"%s/%s",path,name), os_compatible_path(fname);
+    printf("txinds777_init(%s,%s)\n",path,name);
     if ( (fp= fopen(fname,"rb+")) != 0 )
     {
         if ( fread(&txinds->H,1,sizeof(txinds->H),fp) == sizeof(txinds->H) )
@@ -185,6 +213,7 @@ struct txinds777_info *txinds777_init(char *path,char *name)
                     if ( H.num*sizeof(uint64_t) > indexfpos || H.nextpos > logfpos )
                         break;
                     goodH = H;
+                    //printf("loaded H nextpos %d num.%d\n",(int32_t)H.nextpos,(int32_t)H.num);
                 }
                 txinds->H = goodH;
                 if ( txinds->H.nextpos > 0 )
@@ -197,11 +226,12 @@ struct txinds777_info *txinds777_init(char *path,char *name)
                         if ( fread(&txind,1,sizeof(txind),txinds->indexfp) != sizeof(txind) )
                             break;
                         logfpos = ftell(txinds->txlogfp);
-                        if ( fread(pair,1,sizeof(pair),txinds->txlogfp) == sizeof(pair) )
+                        if ( fread(triplet,1,sizeof(triplet),txinds->txlogfp) == sizeof(triplet) )
                         {
-                            if ( (pair[0] + logfpos) > txinds->H.nextpos )
+                            //printf("triplet.(%d %d %d)\n",triplet[0],triplet[1],triplet[2]);
+                            if ( (triplet[0] + logfpos) > txinds->H.nextpos )
                                 break;
-                            checktxind = (logfpos << 16) | pair[0];
+                            checktxind = (logfpos << 16) | (triplet[0] + sizeof(triplet));
                             if ( checktxind != txind )
                             {
                                 printf("checktxind error item.%lld %llx != %llx\n",(long long)txinds->curitem,(long long)checktxind,(long long)txind);
@@ -209,8 +239,8 @@ struct txinds777_info *txinds777_init(char *path,char *name)
                                 txinds->H.nextpos = logfpos;
                                 break;
                             }
-                            txinds777_ensure(txinds,pair[1],txinds->curitem++);
-                            fseek(txinds->txlogfp,logfpos + pair[0],SEEK_SET);
+                            txinds777_ensure(txinds,triplet[1],txinds->curitem++);
+                            fseek(txinds->txlogfp,logfpos + (triplet[0] + sizeof(triplet)),SEEK_SET);
                         }
                     }
                     printf("verified %lld items, curpos %ld %ld\n",(long long)txinds->curitem,ftell(txinds->indexfp),ftell(txinds->txlogfp));
@@ -226,13 +256,15 @@ struct txinds777_info *txinds777_init(char *path,char *name)
         }
         txinds->fp = fp;
     }
-    else txinds->fp = fopen(fname,"wb");
+    else if ( (txinds->fp= fopen(fname,"wb+")) != 0 )
+        fwrite(&txinds->H,1,sizeof(txinds->H),txinds->fp);
     if ( txinds->txlogfp == 0 || txinds->indexfp == 0 )
         update_sha256(txinds->H.sha256.bytes,&txinds->H.state,0,0);
     if ( txinds->txlogfp == 0 )
         txinds->txlogfp = txinds777_initfile(&logfpos,path,name,".log",0);
     if ( txinds->indexfp == 0 )
         txinds->indexfp = txinds777_initfile(&indexfpos,path,name,".index",0);
+    //printf("fps %p %p %p\n",txinds->fp,txinds->txlogfp,txinds->indexfp);
     return(txinds);
 }
 
@@ -247,6 +279,7 @@ int32_t txind777_txbuf(uint8_t *txbuf,int32_t len,uint64_t val,int32_t size)
 
 int32_t txinds777_flush(struct txinds777_info *txinds,uint32_t blocknum,uint32_t blocktimestamp)
 {
+    long fpos;
     if ( txinds != 0 )
     {
         if ( txinds->txlogfp != 0 )
@@ -257,8 +290,13 @@ int32_t txinds777_flush(struct txinds777_info *txinds,uint32_t blocknum,uint32_t
         if ( txinds->fp != 0 )
         {
             fwrite(&txinds->H,1,sizeof(txinds->H),txinds->fp);
+            fpos = ftell(txinds->fp);
+            rewind(txinds->fp);
+            fwrite(&txinds->H,1,sizeof(txinds->H),txinds->fp);
+            fseek(txinds->fp,fpos,SEEK_SET);
             fflush(txinds->fp);
         }
+        //printf("txinds777_flush.(%s)\n",txinds->name);
     }
     else
     {
