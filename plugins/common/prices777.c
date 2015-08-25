@@ -86,6 +86,8 @@
 
 #define DEFINES_ONLY
 #include <math.h>
+#include "../includes/portable777.h"
+#include "../utils/NXT777.c"
 #include "../agents/plugin777.c"
 #undef DEFINES_ONLY
 

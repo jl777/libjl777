@@ -22,6 +22,7 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
+#include "../coins/coins777.c"
 #include "../agents/plugin777.c"
 #include "../utils/bits777.c"
 #undef DEFINES_ONLY

@@ -4,7 +4,12 @@ regarding copyright and licensing policies.
 
 0. License.
 
-The SuperNET software is distributed under the GPL version 2
+The SuperNET software is distributed under the GPL version 2, with the exception of
+the code that allows SuperNET agents to be created. Agent reference code uses the MIT
+license to allow fully unencumbered development of SuperNET agents. Independently created
+SuperNET agents can even be closed source and be made available via the service provider
+functionality within SuperNET. Also, service providers are free to decide on what
+type of fees to charge for their services.
 
 
 1. Individual copyright.

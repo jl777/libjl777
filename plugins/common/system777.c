@@ -173,9 +173,6 @@ struct relayargs
     char name[16],endpoint[MAX_SERVERNAME];
     int32_t sock,type,bindflag,sendtimeout,recvtimeout;
 };
-
-#define CONNECTION_NUMBITS 10
-struct endpoint { uint64_t ipbits:32,port:16,transport:2,nn:4,directind:CONNECTION_NUMBITS; };
 struct _relay_info { int32_t sock,num,mytype,desttype; struct endpoint connections[1 << CONNECTION_NUMBITS]; };
 struct direct_connection { char handler[16]; struct endpoint epbits; int32_t sock; };
 

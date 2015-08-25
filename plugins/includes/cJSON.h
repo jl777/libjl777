@@ -209,6 +209,16 @@ extern "C"
 #define replace_backslashquotes unstringify
     char *unstringify(char *str);
     
+#include "mutex.h"
+    
+#define portable_mutex_t struct nn_mutex
+#define portable_mutex_init nn_mutex_init
+#define portable_mutex_lock nn_mutex_lock
+#define portable_mutex_unlock nn_mutex_unlock
+
+#define CONNECTION_NUMBITS 10
+    struct endpoint { uint64_t ipbits:32,port:16,transport:2,nn:4,directind:CONNECTION_NUMBITS; };
+
 #ifdef __cplusplus
 }
 #endif

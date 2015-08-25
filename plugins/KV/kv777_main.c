@@ -23,6 +23,8 @@
 
 #include "../mgw/old/sophia.h"
 #define DEFINES_ONLY
+#include "../common/system777.c"
+#include "../KV/kv777.c"
 #include "../agents/plugin777.c"
 #include "../mgw/old/db777.c"
 #undef DEFINES_ONLY

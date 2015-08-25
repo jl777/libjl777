@@ -21,6 +21,7 @@
 #define PLUGIN_EXTRASIZE sizeof(STRUCTNAME)
 
 #define DEFINES_ONLY
+#include "../KV/kv777.c"
 #include "../agents/plugin777.c"
 #undef DEFINES_ONLY
 

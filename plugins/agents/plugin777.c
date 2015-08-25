@@ -1,18 +1,29 @@
-/******************************************************************************
- * Copyright © 2014-2015 The SuperNET Developers.                             *
- *                                                                            *
- * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
- * the top-level directory of this distribution for the individual copyright  *
- * holder information and the developer policies on copyright and licensing.  *
- *                                                                            *
- * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
- * or distributed except according to the terms contained in the LICENSE file *
- *                                                                            *
- * Removal or modification of this copyright notice is prohibited.            *
- *                                                                            *
- ******************************************************************************/
-
+/**********************************************************************************
+ * The MIT License (MIT)                                                          *
+ *                                                                                *
+ * Copyright © 2014-2015 The SuperNET Developers.                                 *
+ *                                                                                *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy  *
+ *  of this software and associated documentation files (the "Software"), to deal *
+ *  in the Software without restriction, including without limitation the rights  *
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell     *
+ *  copies of the Software, and to permit persons to whom the Software is         *
+ *  furnished to do so, subject to the following conditions:                      *
+ *                                                                                *
+ *  The above copyright notice and this permission notice shall be included in    *
+ *  all copies or substantial portions of the Software.                           *
+ *                                                                                *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR    *
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,      *
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE   *
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER        *
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, *
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN     *
+ *  THE SOFTWARE.                                                                 *
+ *                                                                                *
+ * Removal or modification of this copyright notice is prohibited.                *
+ *                                                                                *
+ **********************************************************************************/
 
 #ifdef DEFINES_ONLY
 #ifndef crypto777_plugin777_h
@@ -40,8 +51,7 @@
 #include "pair.h"
 #include "pubsub.h"
 #include "../includes/cJSON.h"
-#include "../KV/kv777.c"
-#include "../common/system777.c"
+#include "../uthash.h"
 
 struct protocol_info
 {
@@ -65,7 +75,7 @@ struct plugin_info
 };
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr);
-static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps);
+//static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps);
 static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
 
 static char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
@@ -121,7 +131,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
     return(0);
 }
 
-static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps)
+/*static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps)
 {
     cJSON *argjson; char buf[8192]; int32_t n; struct protocol_info *prot = &plugin->protocol;
     if ( path == 0 )
@@ -159,7 +169,7 @@ static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,
 char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid)
 {
     return(dKV777_ping(prot->protocol_relays));
-}
+}*/
 
 static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr)
 {
