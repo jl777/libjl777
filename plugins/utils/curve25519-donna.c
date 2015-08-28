@@ -75,7 +75,7 @@ static void fsum(limb *output, const limb *in) {
 
 /* Find the difference of two numbers: output = in - output
  * (note the order of the arguments!). */
-static void fdifference(limb *output, const limb *in) {
+void fdifference_backwards(limb *output, const limb *in) {
   unsigned i;
   for (i = 0; i < 10; ++i) {
     output[i] = in[i] - output[i];
@@ -325,8 +325,8 @@ static void freduce_coefficients(limb *output) {
  *
  * output must be distinct to both inputs. The output is reduced degree
  * (indeed, one need only provide storage for 10 limbs) and |output[i]| < 2^26. */
-static void
-fmul(limb *output, const limb *in, const limb *in2) {
+void fmul(limb *output, const limb *in, const limb *in2)
+{
   limb t[19];
   fproduct(t, in, in2);
   /* |t[i]| < 14*2^54 */
@@ -421,8 +421,8 @@ fsquare(limb *output, const limb *in) {
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
-static void
-fexpand(limb *output, const u8 *input) {
+void fexpand(limb *output, const u8 *input)
+{
 #define F(n,start,shift,mask) \
   output[n] = ((((limb) input[start + 0]) | \
                 ((limb) input[start + 1]) << 8 | \
@@ -468,8 +468,8 @@ static s32 s32_gte(s32 a, s32 b) {
  * little-endian, 32-byte array.
  *
  * On entry: |input_limbs[i]| < 2^26 */
-static void
-fcontract(u8 *output, limb *input_limbs) {
+void fcontract(u8 *output, limb *input_limbs)
+{
   int i;
   int j;
   s32 input[10];
@@ -633,13 +633,13 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   memcpy(origx, x, 10 * sizeof(limb));
   fsum(x, z);
   /* |x[i]| < 2^27 */
-  fdifference(z, origx);  /* does x - z */
+  fdifference_backwards(z, origx);  /* does x - z */
   /* |z[i]| < 2^27 */
 
   memcpy(origxprime, xprime, sizeof(limb) * 10);
   fsum(xprime, zprime);
   /* |xprime[i]| < 2^27 */
-  fdifference(zprime, origxprime);
+  fdifference_backwards(zprime, origxprime);
   /* |zprime[i]| < 2^27 */
   fproduct(xxprime, xprime, z);
   /* |xxprime[i]| < 14*2^54: the largest product of two limbs will be <
@@ -656,7 +656,7 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   memcpy(origxprime, xxprime, sizeof(limb) * 10);
   fsum(xxprime, zzprime);
   /* |xxprime[i]| < 2^27 */
-  fdifference(zzprime, origxprime);
+  fdifference_backwards(zzprime, origxprime);
   /* |zzprime[i]| < 2^27 */
   fsquare(xxxprime, xxprime);
   /* |xxxprime[i]| < 2^26 */
@@ -679,7 +679,7 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   freduce_degree(x2);
   freduce_coefficients(x2);
   /* |x2[i]| < 2^26 */
-  fdifference(zz, xx);  // does zz = xx - zz
+  fdifference_backwards(zz, xx);  // does zz = xx - zz
   /* |zz[i]| < 2^27 */
   memset(zzz + 10, 0, sizeof(limb) * 9);
   fscalar_product(zzz, zz, 121665);

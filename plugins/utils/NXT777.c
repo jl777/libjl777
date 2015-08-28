@@ -328,8 +328,38 @@ char *_issue_getCurrency(char *assetidstr)
     char cmd[4096];
     //sprintf(cmd,"requestType=getAsset&asset=%s",assetidstr);
     sprintf(cmd,"requestType=getCurrency&currency=%s",assetidstr);
-    printf("_cmd.(%s)\n",cmd);
+    //printf("_cmd.(%s)\n",cmd);
     return(issue_NXTPOST(cmd));
+}
+
+uint32_t issue_getTime()
+{
+    char cmd[4096],*jsonstr; cJSON *json; uint32_t timestamp = 0;
+    //sprintf(cmd,"requestType=getAsset&asset=%s",assetidstr);
+    sprintf(cmd,"requestType=getTime");
+    if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            timestamp = juint(json,"time"), free_json(json);
+        free(jsonstr);
+    }
+    return(timestamp);
+}
+
+int32_t is_mscoin(char *assetidstr)
+{
+    char *jsonstr; cJSON *json; int32_t retcode = 0;
+    if ( (jsonstr= _issue_getCurrency(assetidstr)) != 0 )
+    {
+        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        {
+            if ( get_cJSON_int(json,"errorCode") == 0 )
+                retcode = 1;
+            free_json(json);
+        }
+        free(jsonstr);
+    }
+    return(retcode);
 }
 
 uint64_t _get_bestassetprice(uint64_t *volp,char *assetcmd,char *arrayfield,uint64_t assetid)
@@ -1025,22 +1055,28 @@ struct assethash *create_asset(uint64_t assetid,struct assethash *ap)
 
 int32_t get_assettype(int32_t *numdecimalsp,char *assetidstr)
 {
-    cJSON *json; char name[64],*jsonstr; uint64_t assetid; int32_t ap_type = -1; struct assethash *ap,A;
+    cJSON *json; char name[64],*jsonstr; uint64_t assetid; int32_t ap_type = -1; //struct assethash *ap,A;
+    *numdecimalsp = -1;
+    name[0] = 0;
     if ( is_native_crypto(name,calc_nxt64bits(assetidstr)) > 0 )
     {
+        //printf("found native crypto.(%s) name.(%s)\n",assetidstr,name);
+        ap_type = 0;
         *numdecimalsp = 8;
         return(0);
     }
     if ( (assetid= calc_nxt64bits(assetidstr)) == NXT_ASSETID )
     {
+        //printf("found NXT_ASSETID.(%s)\n",assetidstr);
+        ap_type = 0;
         *numdecimalsp = 8;
         return(0);
     }
-    if ( (ap= find_asset(assetid)) != 0 )
+    /*if ( (ap= find_asset(assetid)) != 0 )
     {
         *numdecimalsp = ap->decimals;
         return(ap->type);
-    }
+    }*/
     memset(name,0,sizeof(name));
     if ( (jsonstr= _issue_getAsset(assetidstr)) != 0 )
     {
@@ -1048,15 +1084,16 @@ int32_t get_assettype(int32_t *numdecimalsp,char *assetidstr)
         {
             if ( get_cJSON_int(json,"errorCode") == 0 )
             {
+                //printf("assetstr.(%s)\n",jsonstr);
                 if ( extract_cJSON_str(name,16,json,"name") <= 0 )
                     *numdecimalsp = -1;
                 else *numdecimalsp = (int32_t)get_cJSON_int(json,"decimals");
                 ap_type = 2;
-            }
+            } //else printf("errorcode.%lld (%s)\n",(long long)get_cJSON_int(json,"errorCode"),jsonstr);
             free_json(json);
-        }
+        } else printf("cant parse.(%s)\n",jsonstr);
         free(jsonstr);
-    }
+    } else printf("couldnt getAsset.(%s)\n",assetidstr);
     if ( ap_type < 0 )
     {
         if ( (jsonstr= _issue_getCurrency(assetidstr)) != 0 )
@@ -1075,13 +1112,13 @@ int32_t get_assettype(int32_t *numdecimalsp,char *assetidstr)
             free(jsonstr);
         }
     }
-    memset(&A,0,sizeof(A));
+    /*memset(&A,0,sizeof(A));
     A.assetid = assetid;
     A.minvol = A.mult = calc_decimals_mult(*numdecimalsp);
     A.decimals = *numdecimalsp;
     A.type = ap_type;
     strcpy(A.name,name);
-    create_asset(assetid,&A);
+    create_asset(assetid,&A);*/
     return(ap_type);
 }
 
@@ -1089,8 +1126,6 @@ uint64_t assetmult(char *assetidstr)
 {
     int32_t ap_type,decimals; uint64_t mult = 0;
     ap_type = get_assettype(&decimals,assetidstr);
-    if ( ap_type == 0 )
-        return(1);
     if ( decimals >= 0 && decimals <= 8 )
         mult = calc_decimals_mult(decimals);
     return(mult);

@@ -51,8 +51,8 @@ fsum(limb *output, const limb *in) {
  * Assumes that out[i] < 2**52
  * On return, out[i] < 2**55
  */
-static inline void force_inline
-fdifference_backwards(felem out, const felem in) {
+void fdifference_backwards(felem out, const felem in)
+{
   /* 152 is 19 << 3 */
   static const limb two54m152 = (((limb)1) << 54) - 152;
   static const limb two54m8 = (((limb)1) << 54) - 8;
@@ -95,8 +95,7 @@ fscalar_product(felem output, const felem in, const limb scalar) {
  * Assumes that in[i] < 2**55 and likewise for in2.
  * On return, output[i] < 2**52
  */
-static inline void force_inline
-fmul(felem output, const felem in2, const felem in) {
+void fmul(felem output, const felem in2, const felem in) {
   uint128_t t[5];
   limb r0,r1,r2,r3,r4,s0,s1,s2,s3,s4,c;
 
@@ -213,8 +212,8 @@ store_limb(u8 *out, limb in) {
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
-static void
-fexpand(limb *output, const u8 *in) {
+void fexpand(limb *output, const u8 *in)
+{
   output[0] = load_limb(in) & 0x7ffffffffffff;
   output[1] = (load_limb(in+6) >> 3) & 0x7ffffffffffff;
   output[2] = (load_limb(in+12) >> 6) & 0x7ffffffffffff;
@@ -225,8 +224,8 @@ fexpand(limb *output, const u8 *in) {
 /* Take a fully reduced polynomial form number and contract it into a
  * little-endian, 32-byte array
  */
-static void
-fcontract(u8 *output, const felem input) {
+void fcontract(u8 *output, const felem input)
+{
   uint128_t t[5];
 
   t[0] = input[0];

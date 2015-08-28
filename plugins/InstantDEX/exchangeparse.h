@@ -35,9 +35,31 @@ char *MGWassets[][3] =
     { "2881764795164526882", "LTC", "4" },
     { "7117580438310874759", "BC", "4" },
     { "275548135983837356", "VIA", "4" },
-    { "6220108297598959542", "CNMT", "0" },
-    { "7474435909229872610", "CNMT", "0" },
 };
+
+char *Tradedassets[][4] =
+{
+    { "6220108297598959542", "CNMT", "0", "poloniex" },
+    { "7474435909229872610", "CNMT", "0", "poloniex" },
+    { "979292558519844732", "MMNXT", "0", "poloniex" },
+    { "12982485703607823902", "XUSD", "0", "poloniex" },
+    { "13634675574519917918", "INDEX", "0", "poloniex" },
+    { "6932037131189568014", "JLH", "0", "poloniex" },
+    { "14273984620270850703", "NXTI", "0", "poloniex" },
+    { "12071612744977229797", "UNITY", "0", "poloniex" },
+};
+
+char *is_tradedasset(char *exchange,char *assetidstr)
+{
+    int32_t i;
+    for (i=0; i<(int32_t)(sizeof(Tradedassets)/sizeof(*Tradedassets)); i++)
+        if ( strcmp(Tradedassets[i][0],assetidstr) == 0 )
+        {
+            strcpy(exchange,Tradedassets[i][3]);
+            return(Tradedassets[i][1]);
+        }
+    return(0);
+}
 
 uint64_t is_MGWcoin(char *name)
 {

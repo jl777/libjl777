@@ -906,11 +906,20 @@ char *nn_busdata_processor(uint8_t *msg,int32_t len)
             } else retstr = clonestr("{\"error\":\"already stop\",\"broadcast\":\"nowhere\"}");
             free_json(dupjson);
         }
-        else retstr = clonestr("{\"error\":\"busdata doesnt validate\"}");
+        else
+        {
+            fprintf(stderr,"busdata doesnt validate.(%s)\n",msg);
+            retstr = clonestr("{\"error\":\"busdata doesnt validate\"}");
+        }
         if ( tokenstr != 0 )
             free(tokenstr);
         free_json(json);
-    } else retstr = clonestr("{\"error\":\"couldnt parse busdata\"}");
+    }
+    else
+    {
+        fprintf(stderr,"busdata processor parse error.(%s)\n",msg);
+        retstr = clonestr("{\"error\":\"couldnt parse busdata\"}");
+    }
     if ( Debuglevel > 2 )
         fprintf(stderr,"BUSDATA.(%s) -> %p.(%s)\n",msg,retstr,retstr);
     return(retstr);
@@ -1044,7 +1053,8 @@ char *create_busdata(int32_t *sentflagp,uint32_t *noncep,int32_t *datalenp,char 
         if ( broadcastmode != 0 && broadcastmode[0] != 0 )
             cJSON_AddItemToObject(datajson,"broadcast",cJSON_CreateString(broadcastmode));
         cJSON_AddItemToObject(datajson,"plugin",cJSON_CreateString("relay"));
-        cJSON_AddItemToObject(datajson,"key",cJSON_CreateString(key));
+        if ( key[0] != 0 )
+            cJSON_AddItemToObject(datajson,"key",cJSON_CreateString(key));
         cJSON_AddItemToObject(datajson,"time",cJSON_CreateNumber(timestamp + diff));
         if ( secret != GENESIS_SECRET )
         {
@@ -1213,7 +1223,7 @@ int32_t complete_relay(struct relayargs *args,char *retstr)
 
 int32_t busdata_poll()
 {
-    char tokenized[65536],*msg,*retstr; cJSON *json,*retjson,*obj; uint64_t tag; int32_t len,noneed,sock,i,n = 0; uint32_t nonce;
+    char tokenized[65536],*msg,*retstr,*jsonstr; cJSON *json,*retjson,*obj; uint64_t tag; int32_t len,noneed,sock,i,n = 0; uint32_t nonce;
     if ( RELAYS.numservers > 0 )
     {
         for (i=0; i<RELAYS.numservers; i++)
@@ -1221,10 +1231,12 @@ int32_t busdata_poll()
             sock = RELAYS.pfd[i].fd;
             if ( (len= nn_recv(sock,&msg,NN_MSG,0)) > 0 )
             {
+                jsonstr = clonestr(msg);
+                nn_freemsg(msg);
                 if ( Debuglevel > 2 )
-                    printf("RECV.%d (%s)\n",sock,msg);
+                    printf("RECV.%d (%s)\n",sock,jsonstr);
                 n++;
-                if ( (json= cJSON_Parse(msg)) != 0 )
+                if ( (json= cJSON_Parse(jsonstr)) != 0 )
                 {
                     if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
                         obj = cJSON_GetArrayItem(json,0);
@@ -1232,7 +1244,7 @@ int32_t busdata_poll()
                     tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
                     if ( is_duplicate_tag(tag) == 0 )
                     {
-                        if ( (retstr= nn_busdata_processor((uint8_t *)msg,len)) != 0 )
+                        if ( (retstr= nn_busdata_processor((uint8_t *)jsonstr,len)) != 0 )
                         {
                             noneed = 0;
                             if ( (retjson= cJSON_Parse(retstr)) != 0 )
@@ -1240,7 +1252,7 @@ int32_t busdata_poll()
                                 if ( is_cJSON_Array(retjson) != 0 && cJSON_GetArraySize(retjson) == 2 )
                                 {
                                     noneed = 1;
-                                    //fprintf(stderr,"return.(%s)\n",retstr);
+                                    fprintf(stderr,"busdatapoll send back.(%s)\n",retstr);
                                     nn_send(sock,retstr,(int32_t)strlen(retstr)+1,0);
                                 }
                                 free_json(retjson);
@@ -1248,15 +1260,25 @@ int32_t busdata_poll()
                             if ( noneed == 0 )
                             {
                                 len = construct_tokenized_req(&nonce,tokenized,retstr,(sock == RELAYS.servicesock) ? SUPERNET.SERVICESECRET : SUPERNET.NXTACCTSECRET,0);
-                                //fprintf(stderr,"tokenized return.(%s)\n",tokenized);
+                                //fprintf(stderr,"busdatapoll tokenized return.(%s)\n",tokenized);
                                 nn_send(sock,tokenized,len,0);
                             }
                             free(retstr);
-                        } else nn_send(sock,"{\"error\":\"null return\"}",(int32_t)strlen("{\"error\":\"null return\"}")+1,0);
-                    } else nn_send(sock,"{\"error\":\"duplicate command\"}",(int32_t)strlen("{\"error\":\"duplicate command\"}")+1,0);
+                        }
+                        else
+                        {
+                            fprintf(stderr,"busdatapoll null return from busdata_processor\n");
+                            //nn_send(sock,"{\"error\":\"null return\"}",(int32_t)strlen("{\"error\":\"null return\"}")+1,0);
+                        }
+                    }
+                    else
+                    {
+                        fprintf(stderr,"busdatapoll duplicate command\n");
+                        //nn_send(sock,"{\"error\":\"duplicate command\"}",(int32_t)strlen("{\"error\":\"duplicate command\"}")+1,0);
+                    }
                     free_json(json);
-                }
-                nn_freemsg(msg);
+                } else printf("couldnt parse.(%s)\n",jsonstr);
+                free(jsonstr);
             } //else printf("sock.%d nothing\n",sock);
         }
     }
@@ -1325,7 +1347,7 @@ int32_t init_SUPERNET_pullsock(int32_t sendtimeout,int32_t recvtimeout)
     for (iter=0; iter<2; iter++)
     {
         transportstr = (iter == 0) ? "ipc" : "inproc";
-        sprintf(bindaddr,"%s://SuperNET",transportstr);
+        sprintf(bindaddr,"%s://SuperNET.agents",transportstr);
         if ( nn_bind(SUPERNET.pullsock,bindaddr) < 0 )
         {
             printf("error binding pullsock to (%s) %s\n",bindaddr,nn_strerror(nn_errno()));

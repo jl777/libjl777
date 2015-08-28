@@ -429,7 +429,7 @@ int32_t main
     plugin->daemonid = calc_nxt64bits(argv[2]);
     plugin->bundledflag = bundledflag = is_bundled_plugin(plugin->name);
     transportstr = get_localtransport(plugin->bundledflag);
-    sprintf(plugin->connectaddr,"%s://SuperNET",transportstr);
+    sprintf(plugin->connectaddr,"%s://SuperNET.agents",transportstr);
     sprintf(plugin->bindaddr,"%s://%llu",transportstr,(long long)plugin->daemonid);
     jsonargs = (argc >= 3) ? ((char *)argv[3]) : 0;
     configure_plugin(retbuf,max,plugin,jsonargs,1);

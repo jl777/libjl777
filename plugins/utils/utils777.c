@@ -331,11 +331,18 @@ unsigned char _decode_hex(char *hex) { return((unhex(hex[0])<<4) | unhex(hex[1])
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex)
 {
     int32_t adjust,i = 0;
+    if ( is_hexstr(hex) == 0 )
+    {
+        memset(bytes,0,n);
+        return(n);
+    }
     if ( n == 0 || (hex[n*2+1] == 0 && hex[n*2] != 0) )
     {
         bytes[0] = unhex(hex[0]);
         printf("decode_hex n.%d hex[0] (%c) -> %d (%s)\n",n,hex[0],bytes[0],hex);
-        //while ( 1 ) portable_sleep(1);
+#ifdef __APPLE__
+        getchar();
+#endif
         bytes++;
         hex++;
         adjust = 1;

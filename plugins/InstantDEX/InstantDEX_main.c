@@ -62,7 +62,7 @@ cJSON *InstantDEX_lottostats();
 #include "quotes.h"
 //#include "atomic.h"
 
-uint32_t prices777_NXTBLOCK;
+uint32_t prices777_NXTBLOCK,FIRST_EXTERNAL = 5;
 int32_t InstantDEX_idle(struct plugin_info *plugin) { return(0); }
 
 void idle()
@@ -136,6 +136,7 @@ int32_t prices777_key(char *key,char *exchange,char *name,char *base,uint64_t ba
 int32_t get_assetname(char *name,uint64_t assetid)
 {
     char assetidstr[64],*jsonstr; cJSON *json;
+    name[0] = 0;
     if ( is_native_crypto(name,assetid) != 0 )
         return((int32_t)strlen(name));
     expand_nxt64bits(assetidstr,assetid);
@@ -381,6 +382,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
             else strcpy(exchangestr,"basket");
         }
         assetbits = InstantDEX_name(key,&keysize,exchangestr,name,base,&iQ.s.baseid,rel,&iQ.s.relid);
+        exchange = exchange_find(exchangestr);
         if ( strcmp(method,"allorderbooks") == 0 )
             retstr = prices777_allorderbooks();
         else if ( strcmp(method,"openorders") == 0 )
@@ -397,7 +399,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
             retstr = jprint(Lottostats_json,0);
         else if ( strcmp(method,"balance") == 0 )
         {
-            if ( (exchange= exchange_find(exchangestr)) != 0 && exchange->trade != 0 )
+            if ( exchange != 0 && exchange->trade != 0 )
                 (*exchange->trade)(&retstr,exchange,0,0,0,0,0);
             else retstr = clonestr("{\"error\":\"cant find exchange\"}");
             printf("%s ptr%.p trade.%p\n",exchangestr,exchange,exchange!=0?exchange->trade:0);
@@ -427,7 +429,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
         else if ( strcmp(method,"placebid") == 0 || strcmp(method,"placeask") == 0 )
             return(InstantDEX_placebidask(0,sequenceid,exchangestr,name,base,rel,&iQ,jstr(json,"extra")));
         else if ( strcmp(exchangestr,"active") == 0 && strcmp(method,"orderbook") == 0 )
-            retstr = prices777_activebooks(name,base,rel,iQ.s.baseid,iQ.s.relid,maxdepth,allfields,juint(json,"tradeable"));
+            retstr = prices777_activebooks(name,base,rel,iQ.s.baseid,iQ.s.relid,maxdepth,allfields,strcmp(exchangestr,"active") == 0 || juint(json,"tradeable"));
         else if ( (prices= prices777_find(&invert,iQ.s.baseid,iQ.s.relid,exchangestr)) == 0 )
         {
             if ( (prices= prices777_poll(exchangestr,name,base,iQ.s.baseid,rel,iQ.s.relid)) != 0 )
@@ -445,6 +447,8 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
             {
                 if ( prices != 0 )
                 {
+                    if ( strcmp(prices->exchange,"unconf") == 0 )
+                        return(clonestr("{\"error\":\"cannot disable unconf\"}"));
                     prices->disabled = 1;
                     return(clonestr("{\"result\":\"success\"}"));
                 }
@@ -489,14 +493,14 @@ char *bidask_func(int32_t localaccess,int32_t valid,char *sender,cJSON *json,cha
     char gui[MAX_JSON_FIELD],exchangestr[MAX_JSON_FIELD],name[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD],offerNXT[MAX_JSON_FIELD];
     struct InstantDEX_quote iQ;
     copy_cJSON(offerNXT,jobj(json,"offerNXT"));
-printf("got (%s)\n",origargstr);
+//printf("got (%s)\n",origargstr);
     if ( strcmp(SUPERNET.NXTADDR,offerNXT) != 0 )
     {
         if ( bidask_parse(exchangestr,name,base,rel,gui,&iQ,json) == 0 )
             return(InstantDEX_placebidask(sender,j64bits(json,"orderid"),exchangestr,name,base,rel,&iQ,jstr(json,"extra")));
         else printf("error with incoming bidask\n");
     } else fprintf(stderr,"got my bidask from network (%s)\n",origargstr);
-    return(0);
+    return(clonestr("{\"result\":\"got loopback bidask\"}"));
 }
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *argjson)
@@ -515,6 +519,7 @@ void init_exchanges(cJSON *json)
     find_exchange(0,INSTANTDEX_NXTAENAME);
     find_exchange(0,INSTANTDEX_BASKETNAME);
     find_exchange(0,INSTANTDEX_ACTIVENAME);
+    FIRST_EXTERNAL = 5;
     for (i=0; i<sizeof(Supported_exchanges)/sizeof(*Supported_exchanges); i++)
         find_exchange(0,Supported_exchanges[i]);
     prices777_initpair(-1,0,0,0,0,0.,0,0,0,0);
@@ -523,6 +528,8 @@ void init_exchanges(cJSON *json)
         for (i=0; i<n; i++)
             prices777_makebasket(0,jitem(array,i),1,"basket");
     }
+    void prices777_basketsloop(void *ptr);
+    portable_thread_create((void *)prices777_basketsloop,0);
     //prices777_makebasket("{\"name\":\"NXT/BTC\",\"base\":\"NXT\",\"rel\":\"BTC\",\"basket\":[{\"exchange\":\"bittrex\"},{\"exchange\":\"poloniex\"},{\"exchange\":\"btc38\"}]}",0);
 }
 

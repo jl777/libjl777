@@ -64,12 +64,13 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
     cJSON *json,*resultobj;
     int32_t i,j,n;
     nonce = time(NULL);
+// https://bittrex.com/api/v1.1/market/selllimit?apikey=API_KEY&market=BTC-LTC&quantity=1.2&rate=1.3
     if ( dir == 0 )
         sprintf(urlbuf,"https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%llu",exchange->apikey,(long long)nonce);
     else
     {
         dir = flip_for_exchange(pairstr,"%s-%s","BTC",dir,&price,&volume,base,rel);
-        sprintf(urlbuf,"https://bittrex.com/api/v1.1/market/%slimit?apikey=%s&nonce=%llu&currencyPair=%s&rate=%.8f&amount=%.8f",dir>0?"buy":"sell",exchange->apikey,(long long)nonce,pairstr,price,volume);
+        sprintf(urlbuf,"https://bittrex.com/api/v1.1/market/%slimit?apikey=%s&nonce=%llu&market=%s&rate=%.8f&amount=%.8f",dir>0?"buy":"sell",exchange->apikey,(long long)nonce,pairstr,price,volume);
     }
     if ( (sig = hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),urlbuf)) != 0 )
         sprintf(hdr,"apisign:%s",sig);
@@ -372,7 +373,7 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *base,ch
     cJSON *json,*resultobj; uint64_t nonce,txid = 0;
     nonce = time(NULL);
     sprintf(buf,"%s_%s_%s_%llu",exchange->apikey,exchange->userid,exchange->apisecret,(long long)nonce);
-    printf("MD5.(%s)\n",buf);
+    //printf("MD5.(%s)\n",buf);
     calc_md5(digest,buf,(int32_t)strlen(buf));
     if ( dir == 0 )
     {
@@ -1003,6 +1004,8 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
         printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f (%s)\n",exchangeid,dir,price,volume,1./price,price*volume,comment);
         if ( (txid= (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume)) == 0 )
             printf("illegal combo (%s/%s) ret.(%s)\n",base,rel,retstr!=0?retstr:"");
+        if ( jsonstrp != 0 )
+            *jsonstrp = retstr;
     }
     return(txid);
 }
