@@ -721,7 +721,12 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
     {
         {"nxtae", prices777_NXT, NXT_supports, NXT_tradestub }, {"unconf", prices777_unconfNXT, NXT_supports, NXT_tradestub },
         {"InstantDEX", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
-        {"basket", prices777_basket, InstantDEX_supports, InstantDEX_tradestub }, {"active", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"basket", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"basketNXT", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"basketBTC", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"basketUSD", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"basketCNY", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
+        {"active", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
         {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade }, {"bitfinex", prices777_bitfinex, bitfinex_supports, bitfinex_trade },
         {"btc38", prices777_btc38, btc38_supports, btc38_trade }, //{"bter", prices777_bter, bter_supports, bter_trade },
         {"btce", prices777_btce, btce_supports, btce_trade }, {"bitstamp", prices777_bitstamp, bitstamp_supports, bitstamp_trade },

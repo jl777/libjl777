@@ -49,6 +49,34 @@ char *Tradedassets[][4] =
     { "12071612744977229797", "UNITY", "0", "poloniex" },
 };
 
+int32_t get_duplicates(uint64_t *duplicates,uint64_t baseid)
+{
+    int32_t i,j,n = 0; char assetidstr[64];
+    expand_nxt64bits(assetidstr,baseid);
+    duplicates[n++] = baseid;
+    for (i=0; i<(int32_t)(sizeof(Tradedassets)/sizeof(*Tradedassets)); i++)
+        if ( strcmp(Tradedassets[i][0],assetidstr) == 0 )
+        {
+            for (j=0; j<(int32_t)(sizeof(Tradedassets)/sizeof(*Tradedassets)); j++)
+            {
+                if ( i != j && strcmp(Tradedassets[i][1],Tradedassets[j][1]) == 0 )
+                    duplicates[n++] = calc_nxt64bits(Tradedassets[j][0]);
+            }
+            break;
+        }
+    for (i=0; i<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); i++)
+        if ( strcmp(MGWassets[i][0],assetidstr) == 0 )
+        {
+            for (j=0; j<(int32_t)(sizeof(MGWassets)/sizeof(*MGWassets)); j++)
+            {
+                if ( i != j && strcmp(MGWassets[i][1],MGWassets[j][1]) == 0 )
+                    duplicates[n++] = calc_nxt64bits(MGWassets[j][0]);
+            }
+            break;
+        }
+    return(n);
+}
+
 char *is_tradedasset(char *exchange,char *assetidstr)
 {
     int32_t i;
@@ -168,7 +196,7 @@ struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr)
             //    getchar();
             break;
         }
-        if ( strcmp(exchangestr,exchange->name) == 0 )
+        if ( strcmp(exchangestr,exchange->name) == 0 || (strncmp(exchangestr,"basket",strlen("basket")) == 0 && strcmp("basket",exchange->name) == 0)  )
             break;
     }
     if ( exchange != 0 && exchangeidp != 0 )
