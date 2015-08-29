@@ -557,7 +557,12 @@ void prices777_json_quotes(double *hblap,struct prices777 *prices,cJSON *bids,cJ
             if ( pricefield != 0 && volfield != 0 )
                 price = jdouble(item,pricefield), volume = jdouble(item,volfield);
             else if ( is_cJSON_Array(item) != 0 && (numitems= cJSON_GetArraySize(item)) != 0 ) // big assumptions about order within nested array!
-                price = jdouble(jitem(item,0),0), volume = jdouble(jitem(item,1),0), orderid = j64bits(jitem(item,2),0);
+            {
+                price = jdouble(jitem(item,0),0), volume = jdouble(jitem(item,1),0);
+                if ( strcmp(prices->exchange,"kraken") == 0 )
+                    timestamp = juint(jitem(item,2),0);
+                else orderid = j64bits(jitem(item,2),0);
+            }
             else continue;
             if ( quoteid == 0 )
                 quoteid = orderid;

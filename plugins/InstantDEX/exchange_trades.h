@@ -70,7 +70,7 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
     else
     {
         dir = flip_for_exchange(pairstr,"%s-%s","BTC",dir,&price,&volume,base,rel);
-        sprintf(urlbuf,"https://bittrex.com/api/v1.1/market/%slimit?apikey=%s&nonce=%llu&market=%s&rate=%.8f&amount=%.8f",dir>0?"buy":"sell",exchange->apikey,(long long)nonce,pairstr,price,volume);
+        sprintf(urlbuf,"https://bittrex.com/api/v1.1/market/%slimit?apikey=%s&nonce=%llu&market=%s&rate=%.8f&quantity=%.8f",dir>0?"buy":"sell",exchange->apikey,(long long)nonce,pairstr,price,volume);
     }
     if ( (sig = hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),urlbuf)) != 0 )
         sprintf(hdr,"apisign:%s",sig);
@@ -262,6 +262,11 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *_base,ch
     return(txid);
 }
 
+uint64_t kraken_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
+{
+    return(0);
+}
+
 uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
 {
     /* POST https://api.bitfinex.com/v1/order/new
@@ -351,7 +356,7 @@ uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_bas
     return(txid);
 }
 
-uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
 {
     /* $ Stamp = $ date-> getTimestamp ();
      type, 1 for the purchase of Entry, 2 entry order to sell, can not be empty / the type of the order
@@ -368,9 +373,57 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *base,ch
      curl_setopt ($ ch, CURLOPT_POSTFIELDS, $ data);
      curl_setopt ($ ch, CURLOPT_RETURNTRANSFER, 1);
      curl_setopt ($ ch, CURLOPT_HEADER, 0);  */
+    char *cnypairs[] = { "BTC", "LTC", "DOGE", "XRP", "BTS", "STR", "NXT", "BLK", "YBC", "BILS", "BOST", "PPC", "APC", "ZCC", "XPM", "DGC", "MEC", "WDC", "QRK", "BEC", "ANC", "UNC", "RIC", "SRC", "TAG" };
+    char *btcpairs[] = { "TMC", "LTC", "DOGE", "XRP", "BTS", "STR", "NXT", "BLK", "XEM", "VPN", "BILS", "BOST", "WDC", "ANC", "XCN", "VOOT", "SYS", "NRS", "NAS", "SYNC", "MED", "EAC" };
+
     static CURL *cHandle;
- 	char *data,*path,url[1024],cmdbuf[8192],buf[512],digest[33],market[16],coinname[16],fmtstr[512],*pricefmt,*volfmt = "%.3f";
-    cJSON *json,*resultobj; uint64_t nonce,txid = 0;
+ 	char *data,*path,url[1024],cmdbuf[8192],buf[512],digest[33],market[16],base[64],rel[64],coinname[16],fmtstr[512],*pricefmt,*volfmt = "%.3f";
+    cJSON *json,*resultobj; int32_t i,good = 0; uint64_t nonce,txid = 0;
+    strcpy(base,_base), strcpy(rel,_rel);
+    touppercase(base), touppercase(rel);
+    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CNY") == 0) || (strcmp(base,"CNY") == 0 && strcmp(rel,"BTC") == 0) )
+        good = 1;
+    else if ( strcmp(base,"BTC") == 0 )
+    {
+        for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
+            if ( strcmp(btcpairs[i],rel) == 0 )
+            {
+                good = 1;
+                break;
+            }
+    }
+    else if ( strcmp(rel,"BTC") == 0 )
+    {
+        for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
+            if ( strcmp(btcpairs[i],base) == 0 )
+            {
+                good = 1;
+                break;
+            }
+    }
+    else if ( strcmp(base,"CNY") == 0 )
+    {
+        for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
+            if ( strcmp(cnypairs[i],rel) == 0 )
+            {
+                good = 1;
+                break;
+            }
+    }
+    else if ( strcmp(rel,"CNY") == 0 )
+    {
+        for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
+            if ( strcmp(cnypairs[i],base) == 0 )
+            {
+                good = 1;
+                break;
+            }
+    }
+    if ( good == 0 )
+    {
+        *retstrp = clonestr("{\"error\":\"invalid contract pair\"}");
+        return(0);
+    }
     nonce = time(NULL);
     sprintf(buf,"%s_%s_%s_%llu",exchange->apikey,exchange->userid,exchange->apisecret,(long long)nonce);
     //printf("MD5.(%s)\n",buf);
@@ -442,7 +495,7 @@ uint64_t huobi_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
         {
             printf("cant find baserel (%s/%s)\n",base,rel);
             return(0);
-        }
+        } else printf("FOUND (%s/%s)\n",base,rel);
         if ( extra != 0 && strcmp(extra,"market") == 0 )
             method = (dir > 0) ? "buy_market" : "sell_market";
         else method = (dir > 0) ? "buy" : "sell", sprintf(pricestr,"&price=%.2f",price);
