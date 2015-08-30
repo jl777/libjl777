@@ -49,10 +49,10 @@ cJSON *crypto777_json(struct crypto777_node *nn)
 int32_t _jsoncmp(cJSON *jsonA,cJSON *jsonB,char *field)
 {
     cJSON *objA,*objB;
-    char strA[MAX_JSON_FIELD],strB[MAX_JSON_FIELD];
-    objA = cJSON_GetObjectItem(jsonA,field), copy_cJSON(strA,objA);
-    objB = cJSON_GetObjectItem(jsonB,field), copy_cJSON(strB,objB);
-    return(strcmp(strA,strB));
+    struct destbuf strA,strB;
+    objA = cJSON_GetObjectItem(jsonA,field), copy_cJSON(&strA,objA);
+    objB = cJSON_GetObjectItem(jsonB,field), copy_cJSON(&strB,objB);
+    return(strcmp(strA.buf,strB.buf));
 }
 
 int32_t crypto777_jsoncmp(cJSON *jsonA,cJSON *jsonB)
@@ -90,7 +90,8 @@ int32_t crypto777_jsoncmp(cJSON *jsonA,cJSON *jsonB)
 
 int32_t crypto777_publish(struct crypto777_node *nn)
 {
-    char cmd[4096],name[MAX_JSON_FIELD],str384[1024],info[MAX_JSON_FIELD],*jsonstr,*infostr,*jsonstr2;
+    struct destbuf name,info;
+    char cmd[4096],str384[1024],*jsonstr,*infostr,*jsonstr2;
     cJSON *json,*json2,*obj,*infojson,*nnjson;
     int32_t retval = -1;
     sprintf(cmd,"requestType=getAccount&account=%llu",(long long)nn->nxt64bits);
@@ -98,12 +99,12 @@ int32_t crypto777_publish(struct crypto777_node *nn)
     {
         if ( (json = cJSON_Parse(jsonstr)) != 0 )
         {
-            copy_cJSON(name,cJSON_GetObjectItem(json,"name"));
+            copy_cJSON(&name,cJSON_GetObjectItem(json,"name"));
             if ( (obj= cJSON_GetObjectItem(json,"description")) != 0 )
             {
-                copy_cJSON(info,obj);
-                unstringify(info);
-                if ( (infojson= cJSON_Parse(info)) != 0 )
+                copy_cJSON(&info,obj);
+                unstringify(info.buf);
+                if ( (infojson= cJSON_Parse(info.buf)) != 0 )
                 {
                     if ( (nnjson= crypto777_json(nn)) != 0 )
                     {
@@ -123,7 +124,7 @@ int32_t crypto777_publish(struct crypto777_node *nn)
                             } free(infostr);
                         } free_json(nnjson);
                     } free_json(infojson);
-                } else printf("Cant parse AccountInfo.(%s)\n",info);
+                } else printf("Cant parse AccountInfo.(%s)\n",info.buf);
             } free_json(json);
         } free(jsonstr);
     } else printf("Error issuing.(%s)\n",cmd);

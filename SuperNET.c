@@ -36,18 +36,18 @@ struct pending_cgi { struct queueitem DL; char apitag[24],*jsonstr; cJSON *json;
 
 char *SuperNET_install(char *plugin,char *jsonstr,cJSON *json)
 {
-    char ipaddr[MAX_JSON_FIELD],path[MAX_JSON_FIELD],*str,*retstr;
+    struct destbuf ipaddr,path; char *str,*retstr;
     int32_t i,ind,async;
     uint16_t port,websocket;
     if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
         return(clonestr("{\"error\":\"plugin already installed\"}"));
-    copy_cJSON(path,cJSON_GetObjectItem(json,"path"));
-    copy_cJSON(ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
+    copy_cJSON(&path,cJSON_GetObjectItem(json,"path"));
+    copy_cJSON(&ipaddr,cJSON_GetObjectItem(json,"ipaddr"));
     port = get_API_int(cJSON_GetObjectItem(json,"port"),0);
     async = get_API_int(cJSON_GetObjectItem(json,"daemonize"),0);
     websocket = get_API_int(cJSON_GetObjectItem(json,"websocket"),0);
     str = stringifyM(jsonstr);
-    retstr = language_func(plugin,ipaddr,port,websocket,async,path,str,call_system);
+    retstr = language_func(plugin,ipaddr.buf,port,websocket,async,path.buf,str,call_system);
     for (i=0; i<3; i++)
     {
         if ( find_daemoninfo(&ind,plugin,0,0) != 0 )
@@ -63,26 +63,26 @@ int32_t got_newpeer(const char *ip_port) { if ( Debuglevel > 2 ) printf("got_new
 
 void *issue_cgicall(void *_ptr)
 {
-    char apitag[1024],plugin[1024],method[1024],*str = 0,*broadcaststr,*destNXT; struct pending_cgi *ptr =_ptr;
+    struct destbuf apitag,plugin,method; char *str = 0,*broadcaststr,*destNXT; struct pending_cgi *ptr =_ptr;
     uint32_t nonce; int32_t localaccess,checklen,retlen,timeout;
-    copy_cJSON(apitag,cJSON_GetObjectItem(ptr->json,"apitag"));
-    safecopy(ptr->apitag,apitag,sizeof(ptr->apitag));
-    copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"agent"));
-    if ( plugin[0] == 0 )
-        copy_cJSON(plugin,cJSON_GetObjectItem(ptr->json,"plugin"));
-    copy_cJSON(method,cJSON_GetObjectItem(ptr->json,"method"));
+    copy_cJSON(&apitag,cJSON_GetObjectItem(ptr->json,"apitag"));
+    safecopy(ptr->apitag,apitag.buf,sizeof(ptr->apitag));
+    copy_cJSON(&plugin,cJSON_GetObjectItem(ptr->json,"agent"));
+    if ( plugin.buf[0] == 0 )
+        copy_cJSON(&plugin,cJSON_GetObjectItem(ptr->json,"plugin"));
+    copy_cJSON(&method,cJSON_GetObjectItem(ptr->json,"method"));
     localaccess = juint(ptr->json,"localaccess");
     if ( ptr->sock < 0 )
         localaccess = 1;
     timeout = get_API_int(cJSON_GetObjectItem(ptr->json,"timeout"),SUPERNET.PLUGINTIMEOUT);
     broadcaststr = cJSON_str(cJSON_GetObjectItem(ptr->json,"broadcast"));
     fprintf(stderr,"sock.%d (%s) API RECV.(%s)\n",ptr->sock,broadcaststr!=0?broadcaststr:"",ptr->jsonstr);
-    if ( ptr->sock >= 0 && (ptr->retind= nn_connect(ptr->sock,apitag)) < 0 )
-        fprintf(stderr,"error connecting to (%s)\n",apitag);
+    if ( ptr->sock >= 0 && (ptr->retind= nn_connect(ptr->sock,apitag.buf)) < 0 )
+        fprintf(stderr,"error connecting to (%s)\n",apitag.buf);
     else
     {
         destNXT = cJSON_str(cJSON_GetObjectItem(ptr->json,"destNXT"));
-        if ( strcmp(plugin,"relay") == 0 || (broadcaststr != 0 && strcmp(broadcaststr,"remoteaccess") == 0) || cJSON_str(cJSON_GetObjectItem(ptr->json,"servicename")) != 0 )
+        if ( strcmp(plugin.buf,"relay") == 0 || (broadcaststr != 0 && strcmp(broadcaststr,"remoteaccess") == 0) || cJSON_str(cJSON_GetObjectItem(ptr->json,"servicename")) != 0 )
         {
             if ( Debuglevel > 1 )
                 printf("call busdata_sync.(%s)\n",ptr->jsonstr);
@@ -94,23 +94,23 @@ void *issue_cgicall(void *_ptr)
         {
             if ( Debuglevel > 2 )
                 fprintf(stderr,"call plugin_method.(%s)\n",ptr->jsonstr);
-            str = plugin_method(ptr->sock,0,localaccess,plugin,method,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout,0);
+            str = plugin_method(ptr->sock,0,localaccess,plugin.buf,method.buf,0,0,ptr->jsonstr,(int32_t)strlen(ptr->jsonstr)+1,timeout,0);
         }
         if ( str != 0 )
         {
             int32_t busdata_validate(char *forwarder,char *sender,uint32_t *timestamp,uint8_t *databuf,int32_t *datalenp,void *msg,cJSON *json);
-            char forwarder[512],sender[512],methodstr[512]; uint32_t timestamp = 0; uint8_t databuf[8192]; int32_t valid=-1,datalen; cJSON *retjson,*argjson;
-            forwarder[0] = sender[0] = 0;
+            struct destbuf forwarder,sender,methodstr; uint32_t timestamp = 0; uint8_t databuf[8192]; int32_t valid=-1,datalen; cJSON *retjson,*argjson;
+            forwarder.buf[0] = sender.buf[0] = 0;
             if ( (retjson= cJSON_Parse(str)) != 0 )
             {
                 if ( is_cJSON_Array(retjson) != 0 && cJSON_GetArraySize(retjson) == 2 )
                 {
                     argjson = cJSON_GetArrayItem(retjson,0);
-                    copy_cJSON(methodstr,cJSON_GetObjectItem(argjson,"method"));
-                    if ( strcmp(methodstr,"busdata") == 0 )
+                    copy_cJSON(&methodstr,cJSON_GetObjectItem(argjson,"method"));
+                    if ( strcmp(methodstr.buf,"busdata") == 0 )
                     {
                         //fprintf(stderr,"call validate\n");
-                        if ( (valid= busdata_validate(forwarder,sender,&timestamp,databuf,&datalen,str,retjson)) > 0 )
+                        if ( (valid= busdata_validate(forwarder.buf,sender.buf,&timestamp,databuf,&datalen,str,retjson)) > 0 )
                         {
                             if ( datalen > 0 )
                             {
@@ -128,7 +128,7 @@ void *issue_cgicall(void *_ptr)
             {
                 retlen = (int32_t)strlen(str) + 1;
                 if ( (checklen= nn_send(ptr->sock,str,retlen,0)) != retlen )
-                    fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag);
+                    fprintf(stderr,"checklen.%d != len.%d for nn_send to (%s)\n",checklen,retlen,apitag.buf);
                 free(str), str = 0;
             }
         } else printf("null str returned\n");
@@ -164,21 +164,21 @@ char *process_nn_message(int32_t sock,char *jsonstr)
 char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
 {
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    char buf[65536],plugin[MAX_JSON_FIELD],method[MAX_JSON_FIELD],request[MAX_JSON_FIELD],*bstr,*retstr;
+    struct destbuf plugin,method,request; char buf[65536],*bstr,*retstr;
     uint64_t daemonid,instanceid,tag;
     int32_t override=0,broadcastflag = 0;
     cJSON *json;
     //fprintf(stderr,"process_jl777_msg previpaddr.(%s) (%s)\n",previpaddr!=0?previpaddr:"",jsonstr);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
-        copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
-        copy_cJSON(plugin,cJSON_GetObjectItem(json,"plugin"));
+        copy_cJSON(&request,cJSON_GetObjectItem(json,"requestType"));
+        copy_cJSON(&plugin,cJSON_GetObjectItem(json,"plugin"));
         if ( jstr(json,"plugin") != 0 && jstr(json,"agent") != 0 )
             override = 1;
         //fprintf(stderr,"SuperNET_JSON override.%d\n",override);
-        if ( plugin[0] == 0 )
-            copy_cJSON(plugin,cJSON_GetObjectItem(json,"agent"));
-        if ( override == 0 && strcmp(plugin,"InstantDEX") == 0 )
+        if ( plugin.buf[0] == 0 )
+            copy_cJSON(&plugin,cJSON_GetObjectItem(json,"agent"));
+        if ( override == 0 && strcmp(plugin.buf,"InstantDEX") == 0 )
         {
             if ( (retstr= InstantDEX(jsonstr,0,1)) != 0 )
             {
@@ -186,24 +186,24 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
                 return(retstr);
             }
         }
-        if ( strcmp(request,"install") == 0 && plugin[0] != 0 )
+        if ( strcmp(request.buf,"install") == 0 && plugin.buf[0] != 0 )
         {
             fprintf(stderr,"call install path\n");
-            retstr = SuperNET_install(plugin,jsonstr,json);
+            retstr = SuperNET_install(plugin.buf,jsonstr,json);
             free_json(json);
             return(retstr);
         }
         tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"));
         daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
-        copy_cJSON(method,cJSON_GetObjectItem(json,"method"));
+        copy_cJSON(&method,cJSON_GetObjectItem(json,"method"));
         if ( (bstr= cJSON_str(cJSON_GetObjectItem(json,"broadcast"))) != 0 )
             broadcastflag = 1;
         else broadcastflag = 0;
-        if ( method[0] == 0 )
+        if ( method.buf[0] == 0 )
         {
-            strcpy(method,request);
-            if ( plugin[0] == 0 && set_first_plugin(plugin,method) < 0 )
+            strcpy(method.buf,request.buf);
+            if ( plugin.buf[0] == 0 && set_first_plugin(plugin.buf,method.buf) < 0 )
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
         if ( strlen(jsonstr) < sizeof(buf)-1)
@@ -224,21 +224,21 @@ char *SuperNET_JSON(char *jsonstr) // BTCD's entry point
 
 char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
 {
-    char request[MAX_JSON_FIELD],name[MAX_JSON_FIELD],*retstr = 0;;
+    struct destbuf request,name; char *retstr = 0;;
     uint64_t daemonid,instanceid;
     cJSON *json;
     fprintf(stderr,"call_SuperNET_JSON\n");
     if ( (json= cJSON_Parse(JSONstr)) != 0 )
     {
-        copy_cJSON(request,cJSON_GetObjectItem(json,"requestType"));
-        copy_cJSON(name,cJSON_GetObjectItem(json,"plugin"));
-        if ( name[0] == 0 )
-            copy_cJSON(name,cJSON_GetObjectItem(json,"agent"));
-        if ( strcmp(request,"register") == 0 )
+        copy_cJSON(&request,cJSON_GetObjectItem(json,"requestType"));
+        copy_cJSON(&name,cJSON_GetObjectItem(json,"plugin"));
+        if ( name.buf[0] == 0 )
+            copy_cJSON(&name,cJSON_GetObjectItem(json,"agent"));
+        if ( strcmp(request.buf,"register") == 0 )
         {
             daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
             instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
-            retstr = register_daemon(name,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"),cJSON_GetObjectItem(json,"pubmethods"),cJSON_GetObjectItem(json,"authmethods"));
+            retstr = register_daemon(name.buf,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"),cJSON_GetObjectItem(json,"pubmethods"),cJSON_GetObjectItem(json,"authmethods"));
         } else retstr = process_jl777_msg(0,JSONstr,60);
         free_json(json);
     }
@@ -336,7 +336,7 @@ void SuperNET_agentloop(void *ipaddr)
 
 void SuperNET_apiloop(void *ipaddr)
 {
-    char plugin[MAX_JSON_FIELD],*jsonstr,*retstr,*msg; int32_t sock,len,retlen,checklen; cJSON *json;
+    struct destbuf plugin; char *jsonstr,*retstr,*msg; int32_t sock,len,retlen,checklen; cJSON *json;
     if ( (sock= nn_socket(AF_SP,NN_PAIR)) >= 0 )
     {
         if ( nn_bind(sock,SUPERNET_APIENDPOINT) < 0 )
@@ -356,10 +356,10 @@ void SuperNET_apiloop(void *ipaddr)
                     //fprintf(stderr,"apirecv.(%s)\n",jsonstr);
                     if ( INSTANTDEX.readyflag != 0 && (json= cJSON_Parse(jsonstr)) != 0 )
                     {
-                        copy_cJSON(plugin,jobj(json,"agent"));
-                        if ( plugin[0] == 0 )
-                            copy_cJSON(plugin,jobj(json,"plugin"));
-                        if ( strcmp(plugin,"InstantDEX") == 0 )
+                        copy_cJSON(&plugin,jobj(json,"agent"));
+                        if ( plugin.buf[0] == 0 )
+                            copy_cJSON(&plugin,jobj(json,"plugin"));
+                        if ( strcmp(plugin.buf,"InstantDEX") == 0 )
                         {
                             retstr = clonestr("retstr");
                             if ( (retstr= InstantDEX(jsonstr,jstr(json,"remoteaddr"),juint(json,"localaccess"))) != 0 )
@@ -368,7 +368,7 @@ void SuperNET_apiloop(void *ipaddr)
                                 if ( (checklen= nn_send(sock,retstr,retlen,0)) != retlen )
                                     fprintf(stderr,"checklen.%d != len.%d for nn_send of (%s)\n",checklen,retlen,retstr);
                             }
-                        } else fprintf(stderr,">>>>>>>>> request is not InstantDEX (%s) %s\n",plugin,jsonstr);
+                        } else fprintf(stderr,">>>>>>>>> request is not InstantDEX (%s) %s\n",plugin.buf,jsonstr);
                         free_json(json);
                     }
                     if ( retstr == 0 && (retstr= process_nn_message(sock,jsonstr)) != 0 )
@@ -424,12 +424,12 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
 
 void SuperNET_initconf(cJSON *json)
 {
-    char myipaddr[512]; uint8_t mysecret[32],mypublic[32]; FILE *fp;
+    struct destbuf myipaddr,tmp; uint8_t mysecret[32],mypublic[32]; FILE *fp;
     SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
     SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
     SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
     SUPERNET.NXTconfirms = get_API_int(cJSON_GetObjectItem(json,"NXTconfirms"),10);
-    copy_cJSON(SUPERNET.NXTAPIURL,cJSON_GetObjectItem(json,"NXTAPIURL"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"NXTAPIURL")), safecopy(SUPERNET.NXTAPIURL,tmp.buf,sizeof(SUPERNET.NXTAPIURL));
     if ( SUPERNET.NXTAPIURL[0] == 0 )
     {
         if ( SUPERNET.usessl == 0 )
@@ -439,19 +439,19 @@ void SuperNET_initconf(cJSON *json)
             strcat(SUPERNET.NXTAPIURL,"7876/nxt");
         else strcat(SUPERNET.NXTAPIURL,"6876/nxt");
     }
-    copy_cJSON(SUPERNET.userhome,cJSON_GetObjectItem(json,"userdir"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"userdir")), safecopy(SUPERNET.userhome,tmp.buf,sizeof(SUPERNET.userhome));
     if ( SUPERNET.userhome[0] == 0 )
         strcpy(SUPERNET.userhome,"/root");
     strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
     strcat(SUPERNET.NXTSERVER,"?requestType");
-    copy_cJSON(SUPERNET.myNXTacct,cJSON_GetObjectItem(json,"myNXTacct"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"myNXTacct")), safecopy(SUPERNET.myNXTacct,tmp.buf,sizeof(SUPERNET.myNXTacct));
     if ( SUPERNET.disableNXT == 0 )
         set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
     else strcpy(SUPERNET.NXTADDR,SUPERNET.myNXTacct);
     SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
-    copy_cJSON(myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
-    if ( myipaddr[0] != 0 || SUPERNET.myipaddr[0] == 0 )
-        strcpy(SUPERNET.myipaddr,myipaddr);
+    copy_cJSON(&myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
+    if ( myipaddr.buf[0] != 0 || SUPERNET.myipaddr[0] == 0 )
+        safecopy(SUPERNET.myipaddr,myipaddr.buf,sizeof(SUPERNET.myipaddr));
     if ( SUPERNET.myipaddr[0] != 0 )
         SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
     //KV777.mmapflag = get_API_int(cJSON_GetObjectItem(json,"mmapflag"),0);
@@ -459,16 +459,16 @@ void SuperNET_initconf(cJSON *json)
     //    SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
     //else
     SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),0);
-    copy_cJSON(SUPERNET.hostname,cJSON_GetObjectItem(json,"hostname"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"hostname")), safecopy(SUPERNET.hostname,tmp.buf,sizeof(SUPERNET.hostname));
     SUPERNET.port = get_API_int(cJSON_GetObjectItem(json,"SUPERNET_PORT"),SUPERNET_PORT);
     SUPERNET.serviceport = get_API_int(cJSON_GetObjectItem(json,"serviceport"),SUPERNET_PORT - 2);
-    copy_cJSON(SUPERNET.transport,cJSON_GetObjectItem(json,"transport"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"transport")), safecopy(SUPERNET.transport,tmp.buf,sizeof(SUPERNET.transport));
     if ( SUPERNET.transport[0] == 0 )
         strcpy(SUPERNET.transport,SUPERNET.UPNP == 0 ? "tcp" : "ws");
     sprintf(SUPERNET.lbendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + LB_OFFSET);
     sprintf(SUPERNET.relayendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + PUBRELAYS_OFFSET);
     sprintf(SUPERNET.globalendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + PUBGLOBALS_OFFSET);
-    copy_cJSON(SUPERNET.SERVICESECRET,cJSON_GetObjectItem(json,"SERVICESECRET"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"SERVICESECRET")), safecopy(SUPERNET.SERVICESECRET,tmp.buf,sizeof(SUPERNET.SERVICESECRET));
     expand_nxt64bits(SUPERNET.SERVICENXT,conv_NXTpassword(mysecret,mypublic,(uint8_t *)SUPERNET.SERVICESECRET,(int32_t)strlen(SUPERNET.SERVICESECRET)));
     printf("SERVICENXT.%s\n",SUPERNET.SERVICENXT);
     SUPERNET.automatch = get_API_int(cJSON_GetObjectItem(json,"automatch"),3);
@@ -487,7 +487,7 @@ void SuperNET_initconf(cJSON *json)
     SUPERNET.PLUGINTIMEOUT = get_API_int(cJSON_GetObjectItem(json,"PLUGINTIMEOUT"),10000);
     if ( SUPERNET.APISLEEP <= 1 )
         SUPERNET.APISLEEP = 1;
-    copy_cJSON(SUPERNET.DATADIR,cJSON_GetObjectItem(json,"DATADIR"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"DATADIR")), safecopy(SUPERNET.DATADIR,tmp.buf,sizeof(SUPERNET.DATADIR));
     if ( SUPERNET.DATADIR[0] == 0 )
         strcpy(SUPERNET.DATADIR,"archive");
     Debuglevel = get_API_int(cJSON_GetObjectItem(json,"debug"),Debuglevel);
@@ -497,10 +497,10 @@ void SuperNET_initconf(cJSON *json)
         strcpy(SUPERNET.WEBSOCKETD,"libs/websocketd");
     }
     else strcpy(SUPERNET.WEBSOCKETD,"websocketd");
-    copy_cJSON(SUPERNET.BACKUPS,cJSON_GetObjectItem(json,"backups"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"backups")), safecopy(SUPERNET.BACKUPS,tmp.buf,sizeof(SUPERNET.BACKUPS));
     if ( SUPERNET.BACKUPS[0] == 0 )
         strcpy(SUPERNET.BACKUPS,"/tmp");
-    copy_cJSON(SUPERNET.DBPATH,cJSON_GetObjectItem(json,"DBPATH"));
+    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"DBPATH")), safecopy(SUPERNET.DBPATH,tmp.buf,sizeof(SUPERNET.DBPATH));
     if ( SUPERNET.DBPATH[0] == 0 )
         strcpy(SUPERNET.DBPATH,"./DB");
     os_compatible_path(SUPERNET.DBPATH), ensure_directory(SUPERNET.DBPATH);

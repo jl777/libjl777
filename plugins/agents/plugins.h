@@ -200,7 +200,7 @@ char *add_instanceid(struct daemon_info *dp,uint64_t instanceid)
 
 void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
 {
-    cJSON *json; int32_t permflag,sendlen,broadcastflag,retsock; uint64_t instanceid,tag = 0; char request[8192],**dest,*retstr=0,*sendstr;
+    cJSON *json; int32_t permflag,sendlen,broadcastflag,retsock; uint64_t instanceid,tag = 0; char **dest,*retstr=0,*sendstr; struct destbuf request;
     if ( (json= cJSON_Parse(str)) != 0 )
     {
         //printf("READY.(%s) >>>>>>>>>>>>>> READY.(%s)\n",dp->name,dp->name);
@@ -217,8 +217,8 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
             if ( (sendstr= add_instanceid(dp,instanceid)) != 0 )
                 nn_local_broadcast(dp->pushsock,instanceid,LOCALCAST,(uint8_t *)sendstr,(int32_t)strlen(sendstr)+1), dp->numsent++, free(sendstr);
         }
-        copy_cJSON(request,cJSON_GetObjectItem(json,"pluginrequest"));
-        if ( strcmp(request,"SuperNET") == 0 )
+        copy_cJSON(&request,cJSON_GetObjectItem(json,"pluginrequest"));
+        if ( strcmp(request.buf,"SuperNET") == 0 )
         {
             char *call_SuperNET_JSON(char *JSONstr);
             //fprintf(stderr,"processing pluginrequest.(%s)\n",str);

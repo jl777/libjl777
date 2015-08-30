@@ -185,7 +185,8 @@ static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr)
 static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
     void *loadfile(uint64_t *allocsizep,char *fname);
-    char filename[1024],*myipaddr,tokenstr[MAX_JSON_FIELD],*jsonstr = 0;
+    struct destbuf tokenstr,filename;
+    char *myipaddr,*jsonstr = 0;
     cJSON *obj=0,*tmp,*json = 0;
     uint64_t allocsize,nxt64bits,tag = 0;
     int32_t retval = 0;
@@ -195,11 +196,11 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
         if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
         {
             obj = cJSON_GetArrayItem(json,0);
-            copy_cJSON(tokenstr,cJSON_GetArrayItem(json,1));
+            copy_cJSON(&tokenstr,cJSON_GetArrayItem(json,1));
         }
-        else obj = json, tokenstr[0] = 0;
-        copy_cJSON(filename,cJSON_GetObjectItem(obj,"filename"));
-        if ( filename[0] != 0 && (jsonstr= loadfile(&allocsize,filename)) != 0 )
+        else obj = json, tokenstr.buf[0] = 0;
+        copy_cJSON(&filename,cJSON_GetObjectItem(obj,"filename"));
+        if ( filename.buf[0] != 0 && (jsonstr= loadfile(&allocsize,filename.buf)) != 0 )
         {
             if ( (tmp= cJSON_Parse(jsonstr)) != 0 )
                 obj = tmp;
@@ -230,7 +231,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 && obj != 0 )
-        retval = PLUGNAME(_process_json)(0,0,1,plugin,tag,retbuf,max,jsonstr,obj,initflag,tokenstr);
+        retval = PLUGNAME(_process_json)(0,0,1,plugin,tag,retbuf,max,jsonstr,obj,initflag,tokenstr.buf);
     else printf("error with JSON.(%s)\n",jsonstr);//, getchar();
     //fprintf(stderr,"done tag.%llu initflag.%d got jsonargs.(%p) %p %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
     if ( jsonstr != 0 )
@@ -339,7 +340,7 @@ static void plugin_transportaddr(char *addr,char *transportstr,char *ipaddr,uint
 static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,struct plugin_info *plugin,int32_t permanentflag,uint64_t daemonid,uint64_t myid,char *jsonstr)
 {
     int32_t valid = -11,len = (int32_t)strlen(jsonstr); cJSON *json,*obj,*tokenobj; uint64_t tag = 0;
-    char name[MAX_JSON_FIELD],destname[MAX_JSON_FIELD],forwarder[MAX_JSON_FIELD],tokenstr[MAX_JSON_FIELD],sender[MAX_JSON_FIELD];
+    struct destbuf name,destname,forwarder,tokenstr,sender;
     retbuf[0] = *sendflagp = 0;
     if ( Debuglevel > 2 )
         printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
@@ -349,21 +350,21 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
         {
             obj = cJSON_GetArrayItem(json,0);
             jsonstr = cJSON_Print(obj), _stripwhite(jsonstr,' ');
-            tokenobj = cJSON_GetArrayItem(json,1), _stripwhite(tokenstr,' ');
-            copy_cJSON(tokenstr,tokenobj);
-            copy_cJSON(forwarder,cJSON_GetObjectItem(tokenobj,"forwarder"));
-            copy_cJSON(sender,cJSON_GetObjectItem(tokenobj,"sender"));
+            tokenobj = cJSON_GetArrayItem(json,1), _stripwhite(tokenstr.buf,' ');
+            copy_cJSON(&tokenstr,tokenobj);
+            copy_cJSON(&forwarder,cJSON_GetObjectItem(tokenobj,"forwarder"));
+            copy_cJSON(&sender,cJSON_GetObjectItem(tokenobj,"sender"));
             valid = get_API_int(cJSON_GetObjectItem(tokenobj,"valid"),valid);
         }
-        else obj = json, tokenstr[0] = forwarder[0] = sender[0] = 0;
-        copy_cJSON(name,cJSON_GetObjectItem(obj,"plugin"));
-        if ( name[0] == 0 )
-            copy_cJSON(name,cJSON_GetObjectItem(obj,"agent"));
-        copy_cJSON(destname,cJSON_GetObjectItem(obj,"destplugin"));
-        if ( destname[0] == 0 )
-            copy_cJSON(destname,cJSON_GetObjectItem(obj,"destagent"));
+        else obj = json, tokenstr.buf[0] = forwarder.buf[0] = sender.buf[0] = 0;
+        copy_cJSON(&name,cJSON_GetObjectItem(obj,"plugin"));
+        if ( name.buf[0] == 0 )
+            copy_cJSON(&name,cJSON_GetObjectItem(obj,"agent"));
+        copy_cJSON(&destname,cJSON_GetObjectItem(obj,"destplugin"));
+        if ( destname.buf[0] == 0 )
+            copy_cJSON(&destname,cJSON_GetObjectItem(obj,"destagent"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(obj,"tag"));
-        if ( (strcmp(name,plugin->name) == 0 || strcmp(destname,plugin->name) == 0) && (len= PLUGNAME(_process_json)(forwarder,sender,valid,plugin,tag,retbuf,max,jsonstr,obj,0,tokenstr)) > 0 )
+        if ( (strcmp(name.buf,plugin->name) == 0 || strcmp(destname.buf,plugin->name) == 0) && (len= PLUGNAME(_process_json)(forwarder.buf,sender.buf,valid,plugin,tag,retbuf,max,jsonstr,obj,0,tokenstr.buf)) > 0 )
         {
             *sendflagp = 1;
             if ( retbuf[0] == 0 )

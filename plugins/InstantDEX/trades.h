@@ -128,10 +128,8 @@ cJSON *tabulate_trade_history(uint64_t mynxt64bits,cJSON *array)
 
 cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
 {
-    char cmdstr[1024],NXTaddr[64],receiverstr[MAX_JSON_FIELD],message[MAX_JSON_FIELD],newtriggerhash[MAX_JSON_FIELD],triggerhash[MAX_JSON_FIELD],*jsonstr;
-    cJSON *json,*array,*txobj,*msgobj,*attachment,*retjson = 0,*histarray = 0;
-    int32_t i,j,n,m,duplicates = 0;
-    uint64_t senderbits;
+    char cmdstr[1024],NXTaddr[64],*jsonstr; struct destbuf receiverstr,message,newtriggerhash,triggerhash;
+    cJSON *json,*array,*txobj,*msgobj,*attachment,*retjson = 0,*histarray = 0; int32_t i,j,n,m,duplicates = 0; uint64_t senderbits;
     if ( timestamp == 0 )
         timestamp = 38785003;
     sprintf(cmdstr,"requestType=getBlockchainTransactions&account=%s&timestamp=%u&withMessage=true",refNXTaddr,timestamp);
@@ -144,7 +142,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                 for (i=0; i<n; i++)
                 {
                     txobj = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(receiverstr,cJSON_GetObjectItem(txobj,"recipient"));
+                    copy_cJSON(&receiverstr,cJSON_GetObjectItem(txobj,"recipient"));
                     if ( (senderbits = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"sender"))) != 0 )
                     {
                         expand_nxt64bits(NXTaddr,senderbits);
@@ -152,22 +150,22 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                         {
                             if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 && (msgobj= cJSON_GetObjectItem(attachment,"message")) != 0 )
                             {
-                                copy_cJSON(message,msgobj);
+                                copy_cJSON(&message,msgobj);
                                 //printf("(%s) -> ",message);
-                                unstringify(message);
-                                if ( (msgobj= cJSON_Parse(message)) != 0 )
+                                unstringify(message.buf);
+                                if ( (msgobj= cJSON_Parse(message.buf)) != 0 )
                                 {
                                     //printf("(%s)\n",message);
                                     if ( histarray == 0 )
                                         histarray = cJSON_CreateArray(), j = m = 0;
                                     else
                                     {
-                                        copy_cJSON(newtriggerhash,cJSON_GetObjectItem(msgobj,"triggerhash"));
+                                        copy_cJSON(&newtriggerhash,cJSON_GetObjectItem(msgobj,"triggerhash"));
                                         m = cJSON_GetArraySize(histarray);
                                         for (j=0; j<m; j++)
                                         {
-                                            copy_cJSON(triggerhash,cJSON_GetObjectItem(cJSON_GetArrayItem(histarray,j),"triggerhash"));
-                                            if ( strcmp(triggerhash,newtriggerhash) == 0 )
+                                            copy_cJSON(&triggerhash,cJSON_GetObjectItem(cJSON_GetArrayItem(histarray,j),"triggerhash"));
+                                            if ( strcmp(triggerhash.buf,newtriggerhash.buf) == 0 )
                                             {
                                                 duplicates++;
                                                 break;
@@ -176,7 +174,7 @@ cJSON *get_tradehistory(char *refNXTaddr,uint32_t timestamp)
                                     }
                                     if ( j == m )
                                         cJSON_AddItemToArray(histarray,msgobj);
-                                } else printf("parse error on.(%s)\n",message);
+                                } else printf("parse error on.(%s)\n",message.buf);
                             }
                         }
                     }
@@ -606,11 +604,11 @@ char *prices777_trade(struct prices777 *prices,int32_t dir,double price,double v
 
 char *swap_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,char *origargstr)
 {
-    char offerNXT[MAX_JSON_FIELD],UTX[MAX_JSON_FIELD],calchash[256],*triggerhash,*utx,*sighash,*jsonstr,*parsed,*fullhash,*cmpstr;
+    struct destbuf offerNXT,calchash; char UTX[32768],*triggerhash,*utx,*sighash,*jsonstr,*parsed,*fullhash,*cmpstr;
     cJSON *json,*txobj; uint64_t otherbits,otherqty,quoteid,orderid,recvasset; int64_t recvqty; uint32_t i,j,deadline,timestamp,now,finishheight; struct InstantDEX_quote *iQ,_iQ;
-    copy_cJSON(offerNXT,jobj(origjson,"offerNXT"));
+    copy_cJSON(&offerNXT,jobj(origjson,"offerNXT"));
     //printf("swap_func got (%s)\n",origargstr);
-    if ( strcmp(SUPERNET.NXTADDR,offerNXT) != 0 )
+    if ( strcmp(SUPERNET.NXTADDR,offerNXT.buf) != 0 )
     {
         orderid = j64bits(origjson,"orderid");
         quoteid = j64bits(origjson,"quoteid");
@@ -631,6 +629,11 @@ char *swap_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,c
         triggerhash = jstr(origjson,"T");
         fullhash = jstr(origjson,"FH");
         utx = jstr(origjson,"U");
+        if ( utx != 0 && strlen(utx) > sizeof(UTX) )
+        {
+            printf("UTX overflow\n");
+            return(0);
+        }
         for (i=0; utx[i]!=0; i++)
             if ( utx[i] == 'Z' )
             {
@@ -649,8 +652,8 @@ char *swap_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,c
             //printf("calculated.(%s)\n",jsonstr);
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
             {
-                copy_cJSON(calchash,jobj(json,"fullHash"));
-                if ( strcmp(calchash,fullhash) == 0 )
+                copy_cJSON(&calchash,jobj(json,"fullHash"));
+                if ( strcmp(calchash.buf,fullhash) == 0 )
                 {
                     if ( (parsed= issue_parseTransaction(UTX)) != 0 )
                     {
@@ -672,7 +675,7 @@ char *swap_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,c
                                 if ( InstantDEX_verify(SUPERNET.my64bits,otherbits,otherqty,txobj,recvasset,recvqty) == 0 )
                                 {
                                     gen_NXTtx(&fee,calc_nxt64bits(INSTANTDEX_ACCT),NXT_ASSETID,INSTANTDEX_FEE,orderid,quoteid,deadline,triggerhash,0,0);
-                                    gen_NXTtx(&responsetx,calc_nxt64bits(offerNXT),otherbits,otherqty,orderid,quoteid,deadline,triggerhash,fullhash,finishheight);
+                                    gen_NXTtx(&responsetx,calc_nxt64bits(offerNXT.buf),otherbits,otherqty,orderid,quoteid,deadline,triggerhash,fullhash,finishheight);
                                     if ( (fee.txid= issue_broadcastTransaction(&errcode,&txstr,fee.txbytes,SUPERNET.NXTACCTSECRET)) != 0 )
                                     {
                                         if ( (responsetx.txid= issue_broadcastTransaction(&errcode2,&txstr2,responsetx.txbytes,SUPERNET.NXTACCTSECRET)) != 0 )
@@ -707,7 +710,7 @@ char *swap_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,c
                             free_json(txobj);
                         } else fprintf(stderr,"swap cant parse tx.(%s)\n",parsed);
                     } else fprintf(stderr,"swap cant parse UTX.(%s)\n",UTX);
-                } else fprintf(stderr,"mismatch (%s) != (%s)\n",calchash,fullhash);
+                } else fprintf(stderr,"mismatch (%s) != (%s)\n",calchash.buf,fullhash);
                 free_json(json);
             } else fprintf(stderr,"swap cant parse.(%s)\n",jsonstr);
             free(jsonstr);
@@ -933,9 +936,9 @@ cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64
 
 char *InstantDEX_dotrades(cJSON *json,struct prices777_order *trades,int32_t numtrades,int32_t dotrade,char *extra)
 {
-    char exchangestr[MAX_JSON_FIELD],gui[MAX_JSON_FIELD],name[MAX_JSON_FIELD],base[MAX_JSON_FIELD],rel[MAX_JSON_FIELD]; struct InstantDEX_quote iQ;
+    struct destbuf exchangestr,gui,name,base,rel; struct InstantDEX_quote iQ;
     cJSON *retjson,*retarray,*item; int32_t i; struct pending_trade *pend;
-    bidask_parse(exchangestr,name,base,rel,gui,&iQ,json);
+    bidask_parse(&exchangestr,&name,&base,&rel,&gui,&iQ,json);
     retjson = cJSON_CreateObject(), retarray = cJSON_CreateArray();
     for (i=0; i<numtrades; i++)
     {
@@ -960,8 +963,8 @@ char *InstantDEX_dotrades(cJSON *json,struct prices777_order *trades,int32_t num
 char *InstantDEX_tradesequence(cJSON *json)
 {
     //"trades":[[{"basket":"bid","rootwt":-1,"groupwt":1,"wt":-1,"price":40000,"volume":0.00015000,"group":0,"trade":"buy","exchange":"nxtae","asset":"17554243582654188572","base":"BTC","rel":"NXT","orderid":"3545444239044461477","orderprice":40000,"ordervolume":0.00015000}], [{"basket":"bid","rootwt":-1,"groupwt":1,"wt":1,"price":0.00376903,"volume":1297.41480000,"group":10,"trade":"sell","exchange":"coinbase","name":"BTC/USD","base":"BTC","rel":"USD","orderid":"1","orderprice":265.32000000,"ordervolume":4.89000000}]]}
-    cJSON *array,*item; int32_t i,n,dir; char *tradestr,*exchangestr,base[512],rel[512],name[512]; struct prices777_order trades[256],*order;
-    uint64_t orderid,assetid,currency,baseid,relid,quoteid; int64_t sendbase,recvbase,sendrel,recvrel;
+    cJSON *array,*item; int32_t i,n,dir; char *tradestr,*exchangestr; struct prices777_order trades[256],*order;
+    uint64_t orderid,assetid,currency,baseid,relid,quoteid; int64_t sendbase,recvbase,sendrel,recvrel; struct destbuf base,rel,name;
     double orderprice,ordervolume; struct prices777 *prices; uint32_t timestamp;
     memset(trades,0,sizeof(trades));
     if ( (array= jarray(&n,json,"trades")) != 0 )
@@ -974,7 +977,7 @@ char *InstantDEX_tradesequence(cJSON *json)
             order = &trades[i];
             item = jitem(array,i);
             tradestr = jstr(item,"trade"), exchangestr = jstr(item,"exchange");
-            copy_cJSON(base,jobj(item,"base")), copy_cJSON(rel,jobj(item,"rel")), copy_cJSON(name,jobj(item,"name"));
+            copy_cJSON(&base,jobj(item,"base")), copy_cJSON(&rel,jobj(item,"rel")), copy_cJSON(&name,jobj(item,"name"));
             orderid = j64bits(item,"orderid"), quoteid = j64bits(item,"quoteid");
             if ( orderid == 0 )
                 orderid = quoteid;
@@ -1003,7 +1006,7 @@ char *InstantDEX_tradesequence(cJSON *json)
                 else if ( strcmp(tradestr,"swap") == 0 )
                     dir = 0;
                 else return(clonestr("{\"error\":\"invalid trade direction\"}"));
-                if ( (prices= prices777_initpair(1,0,exchangestr,base,rel,0.,name,baseid,relid,0)) != 0 )
+                if ( (prices= prices777_initpair(1,0,exchangestr,base.buf,rel.buf,0.,name.buf,baseid,relid,0)) != 0 )
                 {
                     order->source = prices;
                     order->s.offerNXT = j64bits(item,"offerNXT");

@@ -58,7 +58,7 @@ int32_t flipstr_for_exchange(char *pairstr,char *fmt,char *pairs[][2],int32_t n,
 uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
- 	char *sig,*data,urlbuf[2048],hdr[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1],uuidstr[512];
+ 	char *sig,*data,urlbuf[2048],hdr[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; struct destbuf uuidstr;
     uint8_t databuf[512];
     uint64_t nonce,txid = 0;
     cJSON *json,*resultobj;
@@ -86,14 +86,14 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
                 printf("got balances.(%s)\n",data);
             else if ( is_cJSON_True(cJSON_GetObjectItem(json,"success")) != 0 && (resultobj= cJSON_GetObjectItem(json,"result")) != 0 )
             {
-                copy_cJSON(uuidstr,cJSON_GetObjectItem(resultobj,"uuid"));
-                for (i=j=0; uuidstr[i]!=0; i++)
-                    if ( uuidstr[i] != '-' )
-                        uuidstr[j++] = uuidstr[i];
-                uuidstr[j] = 0;
-                n = (int32_t)strlen(uuidstr);
-                printf("-> uuidstr.(%s).%d\n",uuidstr,n);
-                decode_hex(databuf,n/2,uuidstr);
+                copy_cJSON(&uuidstr,cJSON_GetObjectItem(resultobj,"uuid"));
+                for (i=j=0; uuidstr.buf[i]!=0; i++)
+                    if ( uuidstr.buf[i] != '-' )
+                        uuidstr.buf[j++] = uuidstr.buf[i];
+                uuidstr.buf[j] = 0;
+                n = (int32_t)strlen(uuidstr.buf);
+                printf("-> uuidstr.(%s).%d\n",uuidstr.buf,n);
+                decode_hex(databuf,n/2,uuidstr.buf);
                 if ( n >= 16 )
                     for (i=0; i<8; i++)
                         databuf[i] ^= databuf[8 + i];
@@ -264,7 +264,80 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *_base,ch
 
 uint64_t kraken_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
 {
-    return(0);
+    //API-Key = API key
+    //API-Sign = Message signature using HMAC-SHA512 of (URI path + SHA256(nonce + POST data)) and base64 decoded secret API key
+    
+    static CURL *cHandle;
+    char *sig,*data,url[512],base[64],rel[64],buf[8192],postbuf[1024],payload[8192],sha256[65],hdr1[1024],hdr2[1024],pairstr[512],encode64[1024],decode64[1024],dest[SHA512_DIGEST_SIZE*2 + 1];
+    cJSON *json,*resultobj; uint8_t hash[32]; uint64_t nonce,txid = 0; int32_t n;
+    if ( _base != 0 && _rel != 0 )
+    {
+        strcpy(base,_base), strcpy(rel,_rel);
+        touppercase(base), touppercase(rel);
+        if ( strcmp(base,"BTC") == 0 )
+            strcpy(base,"XBT");
+        if ( strcmp(rel,"BTC") == 0 )
+            strcpy(rel,"XBT");
+        if ( strcmp(base,"DOGE") == 0 )
+            strcpy(base,"XDG");
+        if ( strcmp(rel,"DOGE") == 0 )
+            strcpy(rel,"XDG");
+    }
+    sprintf(hdr1,"API-Key:%s",exchange->apikey);
+    n = nn_base64_decode((void *)exchange->apisecret,strlen(exchange->apisecret),(void *)decode64,sizeof(decode64));
+    nonce = time(NULL);
+    if ( dir == 0 )
+    {
+        sprintf(postbuf,"nonce=%llu",(long long)nonce);
+        sprintf(url,"https://api.kraken.com/0/private/Balance");
+    }
+    else
+    {
+        /*strcpy(base,_base), strcpy(rel,_rel);
+        tolowercase(base), tolowercase(rel);
+        if ( flipstr_for_exchange(pairstr,"%s_%s",baserels,sizeof(baserels)/sizeof(*baserels),dir,&price,&volume,base,rel) == 0 )
+        {
+            printf("cant find baserel (%s/%s)\n",base,rel);
+            return(0);
+        }
+        //dir = flip_for_exchange(pairstr,"%s_%s","BTC",dir,&price,&volume,base,rel);
+        sprintf(payload,"method=Trade&nonce=%ld&pair=%s&type=%s&rate=%.6f&amount=%.6f",time(NULL),pairstr,dir>0?"buy":"sell",price,volume);*/
+    }
+    sprintf(buf,"%s",postbuf);
+    calc_sha256(sha256,hash,(uint8_t *)buf,(int32_t)strlen(buf));
+    sprintf(payload,"%s%s",url,sha256);
+    //memset(payload,0,sizeof(payload));
+    //sprintf(payload,"%s",url);
+    //memcpy(payload+strlen(payload),hash,sizeof(hash));
+    if ( (sig= hmac_sha512_str(dest,decode64,n,payload)) != 0 )
+    {
+        n = nn_base64_encode((void *)sig,n,(void *)encode64,sizeof(encode64));
+        sprintf(hdr2,"API-Sign:%s",encode64);
+    }
+    else hdr2[0] = 0;
+    printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",postbuf,hdr2,hdr1);
+    if ( (data= curl_post(&cHandle,url,0,postbuf,hdr1,hdr2,0,0)) != 0 )
+    {
+        printf("cmd.(%s) [%s]\n",payload,data);
+        //{ "success":1, "return":{ "received":0.1, "remains":0, "order_id":0, "funds":{ "usd":325, "btc":2.498,  } } }
+        if ( (json= cJSON_Parse(data)) != 0 )
+        {
+            if ( get_API_int(cJSON_GetObjectItem(json,"success"),-1) > 0 && (resultobj= cJSON_GetObjectItem(json,"return")) != 0 )
+            {
+                if ( (txid= get_API_nxt64bits(cJSON_GetObjectItem(resultobj,"order_id"))) == 0 )
+                {
+                    if ( get_API_nxt64bits(cJSON_GetObjectItem(resultobj,"remains")) == 0 )
+                        txid = _crc32(0,payload,strlen(payload));
+                }
+            }
+            free_json(json);
+        }
+    }
+    if ( retstrp != 0 )
+        *retstrp = data;
+    else if ( data != 0 )
+        free(data);
+    return(txid);
 }
 
 uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
@@ -960,10 +1033,7 @@ uint64_t exmo_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
 
 uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT,uint32_t triggerheight)
 {
-    int32_t deadline = 1 + 20;
-    uint64_t txid = 0;
-    char cmd[4096],secret[8192],errstr[MAX_JSON_FIELD],*jsonstr;
-    cJSON *json;
+    int32_t deadline = 1 + 20; uint64_t txid = 0; struct destbuf errstr; char cmd[4096],secret[8192],*jsonstr; cJSON *json;
     if ( retjsonstrp != 0 )
         *retjsonstrp = 0;
     if ( triggerheight != 0 )
@@ -992,14 +1062,14 @@ uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,ui
         _stripwhite(jsonstr,' ');
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            copy_cJSON(errstr,cJSON_GetObjectItem(json,"error"));
-            if ( errstr[0] == 0 )
-                copy_cJSON(errstr,cJSON_GetObjectItem(json,"errorDescription"));
-            if ( errstr[0] != 0 )
+            copy_cJSON(&errstr,cJSON_GetObjectItem(json,"error"));
+            if ( errstr.buf[0] == 0 )
+                copy_cJSON(&errstr,cJSON_GetObjectItem(json,"errorDescription"));
+            if ( errstr.buf[0] != 0 )
             {
                 printf("submit_triggered_bidask.(%s) -> (%s)\n",cmd,jsonstr);
                 if ( retjsonstrp != 0 )
-                    *retjsonstrp = clonestr(errstr);
+                    *retjsonstrp = clonestr(errstr.buf);
             }
             else txid = get_API_nxt64bits(cJSON_GetObjectItem(json,"transaction"));
         }

@@ -176,10 +176,10 @@ uint64_t get_nxtlastprice(uint64_t assetid);
 int32_t assetdecimals(char *assetidstr);
 int32_t get_assettype(int32_t *decimals,char *assetidstr);
 
-int32_t issue_decodeToken(char *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN]);
+int32_t issue_decodeToken(struct destbuf *sender,int32_t *validp,char *key,unsigned char encoded[NXT_TOKEN_LEN]);
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret);
 int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
-int32_t validate_token(char *forwarder,char *pubkey,char *NXTaddr,char *tokenizedtxt,int32_t strictflag);
+int32_t validate_token(struct destbuf *forwarder,struct destbuf *pubkey,struct destbuf *NXTaddr,char *tokenizedtxt,int32_t strictflag);
 char *cancel_NXTorderid(char *NXTaddr,uint64_t orderid);
 
 uint64_t calc_decimals_mult(int32_t decimals);
@@ -243,12 +243,10 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_
 
 bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
 {
-    cJSON *json;
-    bits256 pubkey;
-    char cmd[4096],pubkeystr[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json; bits256 pubkey; char cmd[4096],*jsonstr; struct destbuf pubkeystr;
     sprintf(cmd,"%s?requestType=getAccountPublicKey&account=%s",SUPERNET.NXTAPIURL,acct);
     jsonstr = issue_curl(cmd);
-    pubkeystr[0] = 0;
+    pubkeystr.buf[0] = 0;
     if ( haspubkeyp != 0 )
         *haspubkeyp = 0;
     memset(&pubkey,0,sizeof(pubkey));
@@ -256,13 +254,13 @@ bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
     {
         if ( (json = cJSON_Parse(jsonstr)) != 0 )
         {
-            copy_cJSON(pubkeystr,cJSON_GetObjectItem(json,"publicKey"));
+            copy_cJSON(&pubkeystr,cJSON_GetObjectItem(json,"publicKey"));
             free_json(json);
-            if ( strlen(pubkeystr) == sizeof(pubkey)*2 )
+            if ( strlen(pubkeystr.buf) == sizeof(pubkey)*2 )
             {
                 if ( haspubkeyp != 0 )
                     *haspubkeyp = 1;
-                decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr);
+                decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr.buf);
             }
         }
         free(jsonstr);
@@ -272,12 +270,10 @@ bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)
 
 bits256 issue_getpubkey2(int32_t *haspubkeyp,uint64_t nxt64bits)
 {
-    cJSON *json;
-    bits256 pubkey;
-    char cmd[4096],pubkeystr[MAX_JSON_FIELD],*jsonstr;
+    cJSON *json; bits256 pubkey; char cmd[4096],*jsonstr; struct destbuf pubkeystr;
     sprintf(cmd,"requestType=getAccountPublicKey&account=%llu",(long long)nxt64bits);
     jsonstr = issue_NXTPOST(cmd);
-    pubkeystr[0] = 0;
+    pubkeystr.buf[0] = 0;
     if ( haspubkeyp != 0 )
         *haspubkeyp = 0;
     memset(&pubkey,0,sizeof(pubkey));
@@ -286,13 +282,13 @@ bits256 issue_getpubkey2(int32_t *haspubkeyp,uint64_t nxt64bits)
         //printf("(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json = cJSON_Parse(jsonstr)) != 0 )
         {
-            copy_cJSON(pubkeystr,cJSON_GetObjectItem(json,"publicKey"));
+            copy_cJSON(&pubkeystr,cJSON_GetObjectItem(json,"publicKey"));
             free_json(json);
-            if ( strlen(pubkeystr) == sizeof(pubkey)*2 )
+            if ( strlen(pubkeystr.buf) == sizeof(pubkey)*2 )
             {
                 if ( haspubkeyp != 0 )
                     *haspubkeyp = 1;
-                decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr);
+                decode_hex(pubkey.bytes,sizeof(pubkey),pubkeystr.buf);
             } else printf("%llu -> %s\n",(long long)nxt64bits,jsonstr);
         }
         free(jsonstr);
@@ -427,11 +423,8 @@ uint32_t get_blockutime(uint32_t blocknum)
 
 int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
 {
-    char cmd[2*MAX_JSON_FIELD],assetid[MAX_JSON_FIELD],*jsonstr;
-    int32_t i,n,iter;
-    cJSON *array,*item,*obj,*json;
+    char cmd[2*MAX_JSON_FIELD],*jsonstr; struct destbuf assetid; int32_t i,n,iter; cJSON *array,*item,*obj,*json; int64_t quantity,qty = 0;
     uint64_t assetidbits = calc_nxt64bits(assetidstr);
-    int64_t quantity,qty = 0;
     quantity = *unconfirmedp = 0;
     if ( assetidbits == NXT_ASSETID )
     {
@@ -467,9 +460,9 @@ int64_t get_asset_quantity(int64_t *unconfirmedp,char *NXTaddr,char *assetidstr)
                     {
                         item = cJSON_GetArrayItem(array,i);
                         obj = cJSON_GetObjectItem(item,"asset");
-                        copy_cJSON(assetid,obj);
+                        copy_cJSON(&assetid,obj);
                         //printf("i.%d of %d: %s(%s)\n",i,n,assetid,cJSON_Print(item));
-                        if ( strcmp(assetid,assetidstr) == 0 )
+                        if ( strcmp(assetid.buf,assetidstr) == 0 )
                         {
                             qty = get_cJSON_int(item,iter==0?"balanceQNT":"unconfirmedBalanceQNT");
                             break;
@@ -660,10 +653,9 @@ uint64_t ram_verify_NXTtxstillthere(uint64_t ap_mult,uint64_t txidbits)
 
 uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
 {
-    cJSON *json;
-    char field[32],cmd[4096],retstr[4096],*jsonstr = 0;
+    cJSON *json; char field[32],cmd[4096],*jsonstr = 0; struct destbuf retstr;
     strcpy(field,"account");
-    retstr[0] = 0;
+    retstr.buf[0] = 0;
     if ( nxt64bits != 0 )
     {
         sprintf(cmd,"requestType=rsConvert&account=%llu",(long long)nxt64bits);
@@ -681,22 +673,20 @@ uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits)
         //printf("(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json = cJSON_Parse(jsonstr)) != 0 )
         {
-            copy_cJSON(retstr,cJSON_GetObjectItem(json,field));
+            copy_cJSON(&retstr,cJSON_GetObjectItem(json,field));
             free_json(json);
         }
         free(jsonstr);
         if ( nxt64bits != 0 )
-            strcpy(rsacctstr,retstr);
-        else nxt64bits = calc_nxt64bits(retstr);
+            safecopy(rsacctstr,retstr.buf,32);
+        else nxt64bits = calc_nxt64bits(retstr.buf);
     }
     return(nxt64bits);
 }
 
 uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *recipient,char *asset,int64_t quantity,int64_t feeNQT,int32_t deadline,char *comment,char *destpubkey)
 {
-    char cmd[16384],secretstr[8192],numstr[MAX_JSON_FIELD],*jsontxt;
-    uint64_t assetidbits,txid = 0;
-    cJSON *json,*errjson,*txidobj;
+    char cmd[16384],secretstr[8192],*jsontxt; struct destbuf numstr; uint64_t assetidbits,txid = 0; cJSON *json,*errjson,*txidobj;
     *retstrp = 0;
     if ( strlen(secretstr) >= sizeof(secretstr)/3-1 )
     {
@@ -738,8 +728,8 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
             else
             {
                 txidobj = cJSON_GetObjectItem(json,"transaction");
-                copy_cJSON(numstr,txidobj);
-                txid = calc_nxt64bits(numstr);
+                copy_cJSON(&numstr,txidobj);
+                txid = calc_nxt64bits(numstr.buf);
                 if ( txid == 0 )
                 {
                     //printf("ERROR WITH ASSET TRANSFER.(%s) -> \n%s\n",cmd,jsontxt);
@@ -757,18 +747,16 @@ uint64_t issue_transferAsset(char **retstrp,void *deprecated,char *secret,char *
 
 uint64_t get_sender(uint64_t *amountp,char *txidstr)
 {
-    cJSON *json,*attachobj;
-    char *jsonstr,numstr[MAX_JSON_FIELD];
-    uint64_t senderbits = 0;
+    cJSON *json,*attachobj; char *jsonstr; struct destbuf numstr; uint64_t senderbits = 0;
     jsonstr = _issue_getTransaction(txidstr);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
-        copy_cJSON(numstr,cJSON_GetObjectItem(json,"sender"));
-        senderbits = calc_nxt64bits(numstr);
+        copy_cJSON(&numstr,cJSON_GetObjectItem(json,"sender"));
+        senderbits = calc_nxt64bits(numstr.buf);
         if ( (attachobj= cJSON_GetObjectItem(json,"quantityQNT")) != 0 )
         {
-            copy_cJSON(numstr,cJSON_GetObjectItem(attachobj,"attachment"));
-            *amountp = calc_nxt64bits(numstr);
+            copy_cJSON(&numstr,cJSON_GetObjectItem(attachobj,"attachment"));
+            *amountp = calc_nxt64bits(numstr.buf);
         }
         free_json(json);
     }
@@ -777,15 +765,15 @@ uint64_t get_sender(uint64_t *amountp,char *txidstr)
 
 cJSON *NXT_convjson(cJSON *array)
 {
-    char acctstr[1024],nxtaddr[64]; int32_t i,n; uint64_t nxt64bits; cJSON *json = cJSON_CreateArray();
+    struct destbuf acctstr; char nxtaddr[64]; int32_t i,n; uint64_t nxt64bits; cJSON *json = cJSON_CreateArray();
     if ( is_cJSON_Array(array) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
     {
         for (i=0; i<n; i++)
         {
-            copy_cJSON(acctstr,cJSON_GetArrayItem(array,i));
-            if ( acctstr[0] != 0 )
+            copy_cJSON(&acctstr,cJSON_GetArrayItem(array,i));
+            if ( acctstr.buf[0] != 0 )
             {
-                nxt64bits = conv_acctstr(acctstr);
+                nxt64bits = conv_acctstr(acctstr.buf);
                 expand_nxt64bits(nxtaddr,nxt64bits);
                 printf("%s ",nxtaddr);
                 cJSON_AddItemToArray(json,cJSON_CreateString(nxtaddr));
@@ -1172,7 +1160,7 @@ double get_minvolume(uint64_t assetid)
 
 uint64_t calc_circulation(int32_t minconfirms,struct mgw777 *mgw,uint32_t height)
 {
-    uint64_t quantity,circulation = 0; char cmd[4096],acct[MAX_JSON_FIELD],*retstr = 0; cJSON *json,*array,*item; uint32_t i,n;
+    uint64_t quantity,circulation = 0; char cmd[4096],*retstr = 0; cJSON *json,*array,*item; uint32_t i,n; struct destbuf acct;
     mgw->RTNXT_height = _get_NXTheight(0);
     if ( minconfirms != 0 )
         height = mgw->RTNXT_height - minconfirms;
@@ -1189,8 +1177,8 @@ uint64_t calc_circulation(int32_t minconfirms,struct mgw777 *mgw,uint32_t height
                 for (i=0; i<n; i++)
                 {
                     item = cJSON_GetArrayItem(array,i);
-                    copy_cJSON(acct,cJSON_GetObjectItem(item,"account"));
-                    if ( acct[0] != 0 && _in_specialNXTaddrs(mgw,acct) == 0 && (quantity= get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"))) != 0 )
+                    copy_cJSON(&acct,cJSON_GetObjectItem(item,"account"));
+                    if ( acct.buf[0] != 0 && _in_specialNXTaddrs(mgw,acct.buf) == 0 && (quantity= get_API_nxt64bits(cJSON_GetObjectItem(item,"quantityQNT"))) != 0 )
                         circulation += quantity;
                 }
             }
@@ -1201,7 +1189,7 @@ uint64_t calc_circulation(int32_t minconfirms,struct mgw777 *mgw,uint32_t height
     return(circulation * mgw->ap_mult);
 }
 
-uint64_t _set_NXT_sender(char *sender,cJSON *txobj)
+uint64_t _set_NXT_sender(struct destbuf *sender,cJSON *txobj)
 {
     cJSON *senderobj;
     senderobj = cJSON_GetObjectItem(txobj,"sender");
@@ -1210,52 +1198,52 @@ uint64_t _set_NXT_sender(char *sender,cJSON *txobj)
     else if ( senderobj == 0 )
         senderobj = cJSON_GetObjectItem(txobj,"account");
     copy_cJSON(sender,senderobj);
-    if ( sender[0] != 0 )
-        return(calc_nxt64bits(sender));
+    if ( sender->buf[0] != 0 )
+        return(calc_nxt64bits(sender->buf));
     else return(0);
 }
 
-int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *receiverbitsp,uint64_t *amountp,int32_t *flagp,char *coindata,int32_t confirmed,struct mgw777 *mgw,cJSON *txobj)
+int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *receiverbitsp,uint64_t *amountp,int32_t *flagp,struct destbuf *coindata,int32_t confirmed,struct mgw777 *mgw,cJSON *txobj)
 {
-    char AMstr[MAX_JSON_FIELD],coinstr[MAX_JSON_FIELD],sender[MAX_JSON_FIELD],receiver[MAX_JSON_FIELD],assetidstr[MAX_JSON_FIELD],txid[MAX_JSON_FIELD],comment[MAX_JSON_FIELD],buf[MAX_JSON_FIELD];
+    struct destbuf AMstr,coinstr,sender,receiver,assetidstr,txid,comment,buf;
     cJSON *attachment,*message,*assetjson,*commentobj,*json = 0,*obj; struct NXT_AMhdr *hdr;
     uint64_t units,estNXT; uint32_t buyNXT,height = 0; int32_t funcid,numconfs,coinv = -1,timestamp=0;
     int64_t type,subtype,n,satoshis,assetoshis = 0;
     *flagp = MGW_IGNORE, *amountp = *senderbitsp = *receiverbitsp = *heightp = 0;
     if ( txobj != 0 )
     {
-        hdr = 0, sender[0] = receiver[0] = 0;
+        hdr = 0, sender.buf[0] = receiver.buf[0] = 0;
         *heightp = height = (uint32_t)get_cJSON_int(txobj,"height");
         if ( confirmed != 0 )
         {
             if ( (numconfs= (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"confirmations"),0)) == 0 )
                 numconfs = (_get_NXTheight(0) - height);
         } else numconfs = 0;
-        copy_cJSON(txid,cJSON_GetObjectItem(txobj,"transaction"));
+        copy_cJSON(&txid,cJSON_GetObjectItem(txobj,"transaction"));
         type = get_cJSON_int(txobj,"type");
         subtype = get_cJSON_int(txobj,"subtype");
         timestamp = (int32_t)get_cJSON_int(txobj,"blockTimestamp");
-        *senderbitsp = _set_NXT_sender(sender,txobj);
-        copy_cJSON(receiver,cJSON_GetObjectItem(txobj,"recipient"));
-        if ( receiver[0] != 0 )
-            *receiverbitsp = calc_nxt64bits(receiver);
+        *senderbitsp = _set_NXT_sender(&sender,txobj);
+        copy_cJSON(&receiver,cJSON_GetObjectItem(txobj,"recipient"));
+        if ( receiver.buf[0] != 0 )
+            *receiverbitsp = calc_nxt64bits(receiver.buf);
         attachment = cJSON_GetObjectItem(txobj,"attachment");
         if ( attachment != 0 )
         {
             message = cJSON_GetObjectItem(attachment,"message");
             assetjson = cJSON_GetObjectItem(attachment,"asset");
-            memset(comment,0,sizeof(comment));
+            memset(comment.buf,0,sizeof(comment));
             if ( message != 0 && type == 1 )
             {
-                copy_cJSON(AMstr,message);
-                n = strlen(AMstr);
-                if ( is_hexstr(AMstr) != 0 )
+                copy_cJSON(&AMstr,message);
+                n = strlen(AMstr.buf);
+                if ( is_hexstr(AMstr.buf) != 0 )
                 {
                     if ( (n&1) != 0 || n > 2000 )
                         printf("warning: odd message len?? %ld\n",(long)n);
-                    decode_hex((void *)buf,(int32_t)(n>>1),AMstr);
-                    buf[(n>>1)] = 0;
-                    hdr = (struct NXT_AMhdr *)buf;
+                    decode_hex((void *)buf.buf,(int32_t)(n>>1),AMstr.buf);
+                    buf.buf[(n>>1)] = 0;
+                    hdr = (struct NXT_AMhdr *)buf.buf;
                     //_process_AM_message(mgw,height,(void *)hdr,sender,receiver,txid);
                 }
             }
@@ -1264,26 +1252,26 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
                 commentobj = cJSON_GetObjectItem(attachment,"comment");
                 if ( commentobj == 0 )
                     commentobj = message;
-                copy_cJSON(comment,commentobj);
-                if ( comment[0] != 0 )
+                copy_cJSON(&comment,commentobj);
+                if ( comment.buf[0] != 0 )
                 {
-                    unstringify(comment);
-                    json = cJSON_Parse(comment);
+                    unstringify(comment.buf);
+                    json = cJSON_Parse(comment.buf);
                 }
-                copy_cJSON(assetidstr,cJSON_GetObjectItem(attachment,"asset"));
+                copy_cJSON(&assetidstr,cJSON_GetObjectItem(attachment,"asset"));
                 assetoshis = get_cJSON_int(attachment,"quantityQNT");
                 if ( mgw->NXTfee_equiv != 0 && mgw->txfee != 0 )
                     estNXT = (((double)mgw->NXTfee_equiv / mgw->txfee) * assetoshis / SATOSHIDEN);
                 else estNXT = 0;
                 *amountp = assetoshis * mgw->ap_mult;
                 //printf("%s [%s] vs [%s] txid.(%s) (%s) -> %.8f estNXT %.8f json.%p\n",mgw->coinstr,mgw->assetidstr,assetidstr,txid,comment,dstr(assetoshis * mgw->ap_mult),dstr(estNXT),json);
-                if ( assetidstr[0] != 0 && strcmp(mgw->assetidstr,assetidstr) == 0 )
+                if ( assetidstr.buf[0] != 0 && strcmp(mgw->assetidstr,assetidstr.buf) == 0 )
                 {
                     if ( json != 0 )
                     {
-                        copy_cJSON(coinstr,cJSON_GetObjectItem(json,"coin"));
+                        copy_cJSON(&coinstr,cJSON_GetObjectItem(json,"coin"));
                         copy_cJSON(coindata,cJSON_GetObjectItem(json,"withdrawaddr"));
-                        if ( coindata[0] != 0 )
+                        if ( coindata->buf[0] != 0 )
                         {
                             if ( *receiverbitsp == mgw->issuerbits )
                                 *flagp = MGW_PENDINGREDEEM;
@@ -1295,23 +1283,23 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
                                 obj = cJSON_GetObjectItem(json,"vout");
                             coinv = (uint32_t)get_API_int(obj,-1);
                             copy_cJSON(coindata,cJSON_GetObjectItem(json,"cointxid"));
-                            if ( coindata[0] != 0 )
+                            if ( coindata->buf[0] != 0 )
                                 *flagp = MGW_DEPOSITDONE;
                         }
                         free_json(json);
-                        if ( coindata[0] != 0 )
-                            unstringify(coindata);
+                        if ( coindata->buf[0] != 0 )
+                            unstringify(coindata->buf);
                     }
                 }
             }
             else
             {
-                copy_cJSON(comment,message);
-                unstringify(comment);
-                commentobj = comment[0] != 0 ? cJSON_Parse(comment) : 0;
+                copy_cJSON(&comment,message);
+                unstringify(comment.buf);
+                commentobj = comment.buf[0] != 0 ? cJSON_Parse(comment.buf) : 0;
                 if ( type == 5 && subtype == 3 )
                 {
-                    copy_cJSON(assetidstr,cJSON_GetObjectItem(attachment,"currency"));
+                    copy_cJSON(&assetidstr,cJSON_GetObjectItem(attachment,"currency"));
                     units = get_API_int(cJSON_GetObjectItem(attachment,"units"),0);
                     if ( commentobj != 0 )
                     {
@@ -1322,14 +1310,14 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
                 }
                 else if ( type == 0 && subtype == 0 && commentobj != 0 )
                 {
-                    if ( _in_specialNXTaddrs(mgw,sender) != 0 )
+                    if ( _in_specialNXTaddrs(mgw,sender.buf) != 0 )
                     {
                         buyNXT = get_API_int(cJSON_GetObjectItem(commentobj,"buyNXT"),0);
                         satoshis = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
                         if ( buyNXT*SATOSHIDEN == satoshis )
                         {
                             mgw->S.sentNXT += buyNXT * SATOSHIDEN;
-                            printf("%s sent %d NXT, total sent %.0f\n",sender,buyNXT,dstr(mgw->S.sentNXT));
+                            printf("%s sent %d NXT, total sent %.0f\n",sender.buf,buyNXT,dstr(mgw->S.sentNXT));
                         }
                         else if ( buyNXT != 0 )
                             printf("unexpected QNT %.8f vs %d\n",dstr(satoshis),buyNXT);
@@ -1340,7 +1328,7 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
             }
         }
     }
-    else printf("unexpected error iterating timestamp.(%d) txid.(%s)\n",timestamp,txid);
+    else printf("unexpected error iterating timestamp.(%d) txid.(%s)\n",timestamp,txid.buf);
     //fprintf(stderr,"finish type.%d subtype.%d txid.(%s)\n",(int)type,(int)subtype,txid);
     return(coinv);
 }

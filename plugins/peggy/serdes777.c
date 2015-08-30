@@ -778,7 +778,8 @@ int32_t peggy_outputs(struct peggy_tx *Ptx,cJSON *array)
 
 int32_t peggy_details(struct peggy_tx *Ptx,cJSON *json,int32_t txtype,uint32_t btcusd)
 {
-    int32_t i,n=0; cJSON *item,*array; char name[1024],*hashstr,*refundstr; struct peggy_txtune *tune; struct peggy_txmicropay *mp; struct peggy_txbet *bet;
+    struct destbuf name;
+    int32_t i,n=0; cJSON *item,*array; char *hashstr,*refundstr; struct peggy_txtune *tune; struct peggy_txmicropay *mp; struct peggy_txbet *bet;
     Ptx->details.price.timestamp = juint(json,"genesistime");
     Ptx->details.price.maxlockdays = juint(json,"maxlockdays");
     //printf("BTCUSD.%d vs %d\n",Ptx->details.prices.btcusd,btcusd);
@@ -795,8 +796,8 @@ int32_t peggy_details(struct peggy_tx *Ptx,cJSON *json,int32_t txtype,uint32_t b
                     break;
                 case PEGGY_TXBET:
                     bet = &Ptx->details.bets[i];
-                    copy_cJSON(name,jobj(item,"peg"));
-                    safecopy(bet->peg,name,sizeof(bet->peg));
+                    copy_cJSON(&name,jobj(item,"peg"));
+                    safecopy(bet->peg,name.buf,sizeof(bet->peg));
                     bet->binary = juint(item,"binary");
                     bet->prediction.Pval = juint(item,"prediction");
                     break;
@@ -805,8 +806,8 @@ int32_t peggy_details(struct peggy_tx *Ptx,cJSON *json,int32_t txtype,uint32_t b
                     break;
                 case PEGGY_TXTUNE:
                     tune = &Ptx->details.tune[i];
-                    copy_cJSON(name,jobj(item,"peg"));
-                    safecopy(tune->peg,name,sizeof(bet->peg));
+                    copy_cJSON(&name,jobj(item,"peg"));
+                    safecopy(tune->peg,name.buf,sizeof(bet->peg));
                     tune->type = juint(item,"type");
                     tune->val = j64bits(item,"val");
                     tune->B.val = j64bits(item,"valB");
@@ -836,7 +837,7 @@ int32_t peggy_details(struct peggy_tx *Ptx,cJSON *json,int32_t txtype,uint32_t b
 char *peggy_tx(char *jsonstr)
 {
     cJSON *json; int32_t i,n,len,signedcount; char *hexstr,opreturnstr[8192],retbuf[4096],retbufstr[8192],checkstr[8192];
-    struct peggy_tx Ptx,checkPtx; bits256 privkey;
+    struct peggy_tx Ptx,checkPtx; bits256 privkey; struct destbuf tmp;
     memset(&Ptx,0,sizeof(Ptx));
     opreturnstr[0] = 0;
     memset(privkey.bytes,0,sizeof(privkey));
@@ -858,7 +859,7 @@ char *peggy_tx(char *jsonstr)
         Ptx.expiration = juint(json,"expiration");
         if ( (Ptx.funding.amount= juint(json,"funds")) != 0 )
         {
-            copy_cJSON(Ptx.funding.src.coinaddr,jobj(json,"fundsaddr"));
+            copy_cJSON(&tmp,jobj(json,"fundsaddr")), safecopy(Ptx.funding.src.coinaddr,tmp.buf,sizeof(Ptx.funding.src.coinaddr));
             Ptx.flags |= PEGGY_FLAGS_HASFUNDING;
             Ptx.funding.type = PEGGY_ADDRFUNDING;
         }

@@ -245,7 +245,7 @@ char *prices777_activebooks(char *name,char *_base,char *_rel,uint64_t baseid,ui
 char *prices777_orderbook_jsonstr(int32_t invert,uint64_t nxt64bits,struct prices777 *prices,struct prices777_basketinfo *OB,int32_t maxdepth,int32_t allflag);
 int32_t prices777_getmatrix(double *basevals,double *btcusdp,double *btcdbtcp,double Hmatrix[32][32],double *RTprices,char *contracts[],int32_t num,uint32_t timestamp);
 struct InstantDEX_quote *find_iQ(uint64_t quoteid);
-int32_t bidask_parse(char *exchangestr,char *name,char *base,char *rel,char *gui,struct InstantDEX_quote *iQ,cJSON *json);
+int32_t bidask_parse(struct destbuf *exchangestr,struct destbuf *name,struct destbuf *base,struct destbuf *rel,struct destbuf *gui,struct InstantDEX_quote *iQ,cJSON *json);
 struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ);
 double prices777_InstantDEX(struct prices777 *prices,int32_t maxdepth);
 char *hmac_sha1_str(char *dest,char *key,int32_t key_size,char *message);

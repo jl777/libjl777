@@ -30,7 +30,7 @@
 #include "coins777.c"
 
 int32_t bitcoin_assembler(char *script);
-int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj);
+int32_t _extract_txvals(struct destbuf *coinaddr,struct destbuf *script,int32_t nohexout,cJSON *txobj);
 uint8_t *ram_encode_hashstr(int32_t *datalenp,uint8_t *data,char type,char *hashstr);
 char *ram_decode_hashdata(char *strbuf,char type,uint8_t *hashdata);
 
@@ -43,7 +43,7 @@ cJSON *_rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson);
 
 char *dumpprivkey(char *coinstr,char *serverport,char *userpass,char *coinaddr);
 char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *userpass,char *NXTaddr);
-int32_t get_pubkey(char pubkey[512],char *coinstr,char *serverport,char *userpass,char *coinaddr);
+int32_t get_pubkey(struct destbuf *pubkey,char *coinstr,char *serverport,char *userpass,char *coinaddr);
 cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass);
 
 #endif
@@ -633,10 +633,10 @@ cJSON *_script_has_address(int32_t *nump,cJSON *scriptobj)
     return(0);
 }
 
-int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txobj)
+int32_t _extract_txvals(struct destbuf *coinaddr,struct destbuf *script,int32_t nohexout,cJSON *txobj)
 {
     int32_t numaddresses;
-    char typestr[MAX_JSON_FIELD];
+    struct destbuf typestr;
     cJSON *scriptobj,*addrobj,*hexobj;
     scriptobj = cJSON_GetObjectItem(txobj,"scriptPubKey");
     if ( scriptobj != 0 )
@@ -658,14 +658,14 @@ int32_t _extract_txvals(char *coinaddr,char *script,int32_t nohexout,cJSON *txob
             if ( nohexout != 0 )
             {
                 //fprintf(stderr,"{%s} ",script);
-                bitcoin_assembler(script);
+                bitcoin_assembler(script->buf);
                 //fprintf(stderr,"-> {%s}\n",script);
             }
         }
-        if ( coinaddr[0] == 0 )
+        if ( coinaddr->buf[0] == 0 )
         {
-            copy_cJSON(typestr,cJSON_GetObjectItem(scriptobj,"type"));
-            if ( strcmp(typestr,"pubkey") != 0 && strcmp(typestr,"nonstandard") != 0 && strcmp(typestr,"nulldata") != 0 )
+            copy_cJSON(&typestr,cJSON_GetObjectItem(scriptobj,"type"));
+            if ( strcmp(typestr.buf,"pubkey") != 0 && strcmp(typestr.buf,"nonstandard") != 0 && strcmp(typestr.buf,"nulldata") != 0 )
                 printf("missing addr? (%s)\n",cJSON_Print(txobj));//, getchar();
         }
         return(0);
@@ -817,7 +817,7 @@ uint64_t rawblock_txvouts(struct rawblock *raw,struct rawtx *tx,char *coinstr,ch
     uint64_t value,total = 0;
     struct rawvout *v;
     int32_t i,numvouts = 0;
-    char coinaddr[8192],script[8192];
+    struct destbuf coinaddr,script;
     tx->firstvout = raw->numrawvouts;
     if ( voutsobj != 0 && is_cJSON_Array(voutsobj) != 0 && (numvouts= cJSON_GetArraySize(voutsobj)) > 0 && tx->firstvout+numvouts < MAX_BLOCKTX )
     {
@@ -829,9 +829,9 @@ uint64_t rawblock_txvouts(struct rawblock *raw,struct rawtx *tx,char *coinstr,ch
             memset(v,0,sizeof(*v));
             v->value = value;
             total += value;
-            _extract_txvals(coinaddr,script,1,item); // default to nohexout
-            _set_string('a',v->coinaddr,coinaddr,sizeof(v->coinaddr));
-            _set_string('s',v->script,script,sizeof(v->script));
+            _extract_txvals(&coinaddr,&script,1,item); // default to nohexout
+            _set_string('a',v->coinaddr,coinaddr.buf,sizeof(v->coinaddr));
+            _set_string('s',v->script,script.buf,sizeof(v->script));
         }
     } else printf("error with vouts\n");
     tx->numvouts = numvouts;
@@ -843,7 +843,7 @@ int32_t rawblock_txvins(struct rawblock *raw,struct rawtx *tx,char *coinstr,char
     cJSON *item;
     struct rawvin *v;
     int32_t i,numvins = 0;
-    char txidstr[8192],coinbase[8192];
+    struct destbuf txidstr,coinbase;
     tx->firstvin = raw->numrawvins;
     if ( vinsobj != 0 && is_cJSON_Array(vinsobj) != 0 && (numvins= cJSON_GetArraySize(vinsobj)) > 0 && tx->firstvin+numvins < MAX_BLOCKTX )
     {
@@ -852,15 +852,15 @@ int32_t rawblock_txvins(struct rawblock *raw,struct rawtx *tx,char *coinstr,char
             item = cJSON_GetArrayItem(vinsobj,i);
             if ( numvins == 1  )
             {
-                copy_cJSON(coinbase,cJSON_GetObjectItem(item,"coinbase"));
-                if ( strlen(coinbase) > 1 )
+                copy_cJSON(&coinbase,cJSON_GetObjectItem(item,"coinbase"));
+                if ( strlen(coinbase.buf) > 1 )
                     return(0);
             }
-            copy_cJSON(txidstr,cJSON_GetObjectItem(item,"txid"));
+            copy_cJSON(&txidstr,cJSON_GetObjectItem(item,"txid"));
             v = &raw->vinspace[raw->numrawvins];
             memset(v,0,sizeof(*v));
             v->vout = (int)get_cJSON_int(item,"vout");
-            _set_string('t',v->txidstr,txidstr,sizeof(v->txidstr));
+            _set_string('t',v->txidstr,txidstr.buf,sizeof(v->txidstr));
         }
     } else printf("error with vins\n");
     tx->numvins = numvins;
@@ -929,7 +929,7 @@ void rawblock_patch(struct rawblock *raw)
 
 int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *userpass,uint32_t blocknum)
 {
-    char txidstr[8192],mintedstr[8192];
+    struct destbuf txidstr,mintedstr,tmp;
     cJSON *json,*txobj;
     uint32_t blockid;
     int32_t txind,n;
@@ -941,29 +941,29 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
     if ( (json= _get_blockjson(0,coinstr,serverport,userpass,0,blocknum)) != 0 )
     {
         raw->blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"height"),0);
-        copy_cJSON(raw->blockhash,cJSON_GetObjectItem(json,"hash"));
+        copy_cJSON(&tmp,cJSON_GetObjectItem(json,"hash")), safecopy(raw->blockhash,tmp.buf,sizeof(raw->blockhash));
         //fprintf(stderr,"%u: blockhash.[%s] ",blocknum,raw->blockhash);
-        copy_cJSON(raw->merkleroot,cJSON_GetObjectItem(json,"merkleroot"));
+        copy_cJSON(&tmp,cJSON_GetObjectItem(json,"merkleroot")), safecopy(raw->merkleroot,tmp.buf,sizeof(raw->merkleroot));
         //fprintf(stderr,"raw->merkleroot.[%s]\n",raw->merkleroot);
         raw->timestamp = (uint32_t)get_cJSON_int(cJSON_GetObjectItem(json,"time"),0);
-        copy_cJSON(mintedstr,cJSON_GetObjectItem(json,"mint"));
-        if ( mintedstr[0] == 0 )
-            copy_cJSON(mintedstr,cJSON_GetObjectItem(json,"newmint"));
-        if ( mintedstr[0] != 0 )
-            raw->minted = (uint64_t)(atof(mintedstr) * SATOSHIDEN);
+        copy_cJSON(&mintedstr,cJSON_GetObjectItem(json,"mint"));
+        if ( mintedstr.buf[0] == 0 )
+            copy_cJSON(&mintedstr,cJSON_GetObjectItem(json,"newmint"));
+        if ( mintedstr.buf[0] != 0 )
+            raw->minted = (uint64_t)(atof(mintedstr.buf) * SATOSHIDEN);
         if ( (txobj= _rawblock_txarray(&blockid,&n,json)) != 0 && blockid == blocknum && n < MAX_BLOCKTX )
         {
             for (txind=0; txind<n; txind++)
             {
-                copy_cJSON(txidstr,cJSON_GetArrayItem(txobj,txind));
+                copy_cJSON(&txidstr,cJSON_GetArrayItem(txobj,txind));
                 //printf("block.%d txind.%d TXID.(%s)\n",blocknum,txind,txidstr);
-                total += rawblock_txidinfo(raw,&raw->txspace[raw->numtx++],coinstr,serverport,userpass,txind,txidstr,blocknum);
+                total += rawblock_txidinfo(raw,&raw->txspace[raw->numtx++],coinstr,serverport,userpass,txind,txidstr.buf,blocknum);
             }
         } else printf("error _get_blocktxarray for block.%d got %d, n.%d vs %d\n",blocknum,blockid,n,MAX_BLOCKTX);
         if ( raw->minted == 0 )
             raw->minted = total;
         free_json(json);
-    } else printf("get_blockjson error parsing.(%s)\n",txidstr);
+    } else printf("get_blockjson error parsing.(%s)\n",txidstr.buf);
     //printf("BLOCK.%d: block.%d numtx.%d minted %.8f rawnumvins.%d rawnumvouts.%d\n",blocknum,raw->blocknum,raw->numtx,dstr(raw->minted),raw->numrawvins,raw->numrawvouts);
     rawblock_patch(raw);
     return(raw->numtx);
@@ -992,11 +992,9 @@ char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *user
     return(0);
 }
 
-int32_t get_pubkey(char pubkey[512],char *coinstr,char *serverport,char *userpass,char *coinaddr)
+int32_t get_pubkey(struct destbuf *pubkey,char *coinstr,char *serverport,char *userpass,char *coinaddr)
 {
-    char quotes[512],*retstr;
-    int64_t len = 0;
-    cJSON *json;
+    char quotes[512],*retstr; int64_t len = 0; cJSON *json;
     if ( coinaddr[0] != '"' )
         sprintf(quotes,"\"%s\"",coinaddr);
     else safecopy(quotes,coinaddr,sizeof(quotes));
@@ -1005,7 +1003,7 @@ int32_t get_pubkey(char pubkey[512],char *coinstr,char *serverport,char *userpas
         if ( (json= cJSON_Parse(retstr)) != 0 )
         {
             copy_cJSON(pubkey,cJSON_GetObjectItem(json,"pubkey"));
-            len = (int32_t)strlen(pubkey);
+            len = (int32_t)strlen(pubkey->buf);
             free_json(json);
         }
         //printf("get_pubkey.(%s) -> (%s)\n",retstr,pubkey);

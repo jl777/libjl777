@@ -914,33 +914,33 @@ struct prices777 *prices777_addbundle(int32_t *validp,int32_t loadprices,struct 
 
 int32_t create_basketitem(struct prices777_basket *basketitem,cJSON *item,char *refbase,char *refrel,int32_t basketsize)
 {
-    char exchangestr[64],name[64],base[64],rel[64],key[512]; uint64_t baseid,relid; int32_t groupid,keysize,valid; double wt; struct prices777 *prices;
-    copy_cJSON(exchangestr,jobj(item,"exchange"));
-    if ( exchange_find(exchangestr) == 0 )
+    struct destbuf exchangestr,name,base,rel; char key[512]; uint64_t baseid,relid; int32_t groupid,keysize,valid; double wt; struct prices777 *prices;
+    copy_cJSON(&exchangestr,jobj(item,"exchange"));
+    if ( exchange_find(exchangestr.buf) == 0 )
         return(-1);
-    copy_cJSON(name,jobj(item,"name"));
-    copy_cJSON(base,jobj(item,"base"));
-    if ( base[0] == 0 )
-        strcpy(base,refbase);
-    copy_cJSON(rel,jobj(item,"rel"));
-    if ( rel[0] == 0 )
-        strcpy(rel,refrel);
+    copy_cJSON(&name,jobj(item,"name"));
+    copy_cJSON(&base,jobj(item,"base"));
+    if ( base.buf[0] == 0 )
+        strcpy(base.buf,refbase);
+    copy_cJSON(&rel,jobj(item,"rel"));
+    if ( rel.buf[0] == 0 )
+        strcpy(rel.buf,refrel);
     baseid = j64bits(item,"baseid");
     relid = j64bits(item,"relid");
     groupid = juint(item,"group");
     wt = jdouble(item,"wt");
     if ( wt == 0. )
         wt = 1.;
-    InstantDEX_name(key,&keysize,exchangestr,name,base,&baseid,rel,&relid);
-    printf(">>>>>>>>>> create basketitem.%s (%s/%s) %llu/%llu wt %f\n",exchangestr,base,rel,(long long)baseid,(long long)relid,wt);
-    if ( (prices= prices777_initpair(1,0,exchangestr,base,rel,0.,name,baseid,relid,basketsize)) != 0 )
+    InstantDEX_name(key,&keysize,exchangestr.buf,name.buf,base.buf,&baseid,rel.buf,&relid);
+    printf(">>>>>>>>>> create basketitem.%s (%s/%s) %llu/%llu wt %f\n",exchangestr.buf,base.buf,rel.buf,(long long)baseid,(long long)relid,wt);
+    if ( (prices= prices777_initpair(1,0,exchangestr.buf,base.buf,rel.buf,0.,name.buf,baseid,relid,basketsize)) != 0 )
     {
         prices777_addbundle(&valid,0,prices,0,0,0);
         basketitem->prices = prices;
         basketitem->wt = wt;
         basketitem->groupid = groupid;
-        strcpy(basketitem->base,base);
-        strcpy(basketitem->rel,rel);
+        strcpy(basketitem->base,base.buf);
+        strcpy(basketitem->rel,rel.buf);
         return(0);
     }
     return(-1);
@@ -949,16 +949,16 @@ int32_t create_basketitem(struct prices777_basket *basketitem,cJSON *item,char *
 struct prices777 *prices777_makebasket(char *basketstr,cJSON *_basketjson,int32_t addbasket,char *typestr,struct prices777 *ptrs[],int32_t num)
 {
     //{"name":"NXT/BTC","base":"NXT","rel":"BTC","basket":[{"exchange":"poloniex"},{"exchange":"btc38"}]}
-    int32_t i,n,keysize,valid,basketsize; char refname[64],refbase[64],refrel[64],key[8192]; uint64_t refbaseid=0,refrelid=0;
+    int32_t i,n,keysize,valid,basketsize; struct destbuf refname,refbase,refrel; char key[8192]; uint64_t refbaseid=0,refrelid=0;
     struct prices777_basket *basketitem,*basket = 0; cJSON *basketjson,*array,*item; struct prices777 *prices = 0;
     if ( (basketjson= _basketjson) == 0 && (basketjson= cJSON_Parse(basketstr)) == 0 )
     {
         printf("cant parse basketstr.(%s)\n",basketstr);
         return(0);
     }
-    copy_cJSON(refname,jobj(basketjson,"name"));
-    copy_cJSON(refbase,jobj(basketjson,"base"));
-    copy_cJSON(refrel,jobj(basketjson,"rel"));
+    copy_cJSON(&refname,jobj(basketjson,"name"));
+    copy_cJSON(&refbase,jobj(basketjson,"base"));
+    copy_cJSON(&refrel,jobj(basketjson,"rel"));
     refbaseid = j64bits(basketjson,"baseid");
     refrelid = j64bits(basketjson,"relid");
     printf("MAKE/(%s)\n",jprint(basketjson,0));
@@ -969,7 +969,7 @@ struct prices777 *prices777_makebasket(char *basketstr,cJSON *_basketjson,int32_
         for (i=0; i<n; i++)
         {
             item = jitem(array,i);
-            if ( create_basketitem(&basket[i],item,refbase,refrel,basketsize) < 0 )
+            if ( create_basketitem(&basket[i],item,refbase.buf,refrel.buf,basketsize) < 0 )
             {
                 printf("ERROR: >>>>>>>>>>>> create_basketitem %d of %d of %d\n",i,n,basketsize);
                 if ( basketjson != _basketjson )
@@ -986,21 +986,21 @@ struct prices777 *prices777_makebasket(char *basketstr,cJSON *_basketjson,int32_
                 basketitem->prices = ptrs[i];
                 basketitem->wt = 1;
                 basketitem->groupid = 0;
-                strcpy(basketitem->base,refbase);
-                strcpy(basketitem->rel,refrel);
+                strcpy(basketitem->base,refbase.buf);
+                strcpy(basketitem->rel,refrel.buf);
             }
         }
-        printf(">>>>> addbasket.%d (%s/%s).%s %llu %llu\n",addbasket,refbase,refrel,typestr,(long long)refbaseid,(long long)refrelid);
-        InstantDEX_name(key,&keysize,typestr,refname,refbase,&refbaseid,refrel,&refrelid);
-        printf(">>>>> addbasket.%d (%s/%s).%s %llu %llu\n",addbasket,refbase,refrel,typestr,(long long)refbaseid,(long long)refrelid);
+        printf(">>>>> addbasket.%d (%s/%s).%s %llu %llu\n",addbasket,refbase.buf,refrel.buf,typestr,(long long)refbaseid,(long long)refrelid);
+        InstantDEX_name(key,&keysize,typestr,refname.buf,refbase.buf,&refbaseid,refrel.buf,&refrelid);
+        printf(">>>>> addbasket.%d (%s/%s).%s %llu %llu\n",addbasket,refbase.buf,refrel.buf,typestr,(long long)refbaseid,(long long)refrelid);
         if ( addbasket != 0 )
         {
             prices777_addbundle(&valid,0,0,typestr,refbaseid,refrelid);
-            printf("<<<<< created.%s valid.%d refname.(%s) (%s/%s).%s %llu %llu\n",typestr,valid,refname,refbase,refrel,typestr,(long long)refbaseid,(long long)refrelid);
+            printf("<<<<< created.%s valid.%d refname.(%s) (%s/%s).%s %llu %llu\n",typestr,valid,refname.buf,refbase.buf,refrel.buf,typestr,(long long)refbaseid,(long long)refrelid);
         } else valid = 0;
         if ( valid >= 0 )
         {
-            if ( (prices= prices777_createbasket(addbasket,refname,refbase,refrel,refbaseid,refrelid,basket,basketsize,typestr)) != 0 )
+            if ( (prices= prices777_createbasket(addbasket,refname.buf,refbase.buf,refrel.buf,refbaseid,refrelid,basket,basketsize,typestr)) != 0 )
             {
                 if ( addbasket != 0 )
                     BUNDLE.ptrs[BUNDLE.num] = prices;
@@ -1124,7 +1124,7 @@ double prices777_NXT(struct prices777 *prices,int32_t maxdepth)
 
 double prices777_unconfNXT(struct prices777 *prices,int32_t maxdepth)
 {
-    char url[1024],account[1024],txidstr[1024],comment[1024],recipient[1024],*str; uint32_t timestamp; int32_t type,i,subtype,n;
+    struct destbuf account,txidstr,comment,recipient; char url[1024],*str; uint32_t timestamp; int32_t type,i,subtype,n;
     cJSON *json,*bids,*asks,*array,*txobj,*attachment;
     double price,vol; uint64_t assetid,accountid,quoteid,baseamount,relamount,qty,priceNQT,amount;
     bids = cJSON_CreateArray(), asks = cJSON_CreateArray();
@@ -1155,12 +1155,12 @@ double prices777_unconfNXT(struct prices777 *prices,int32_t maxdepth)
                     "height": 2147483647*/
                     if ( (txobj= jitem(array,i)) == 0 )
                         continue;
-                    copy_cJSON(txidstr,cJSON_GetObjectItem(txobj,"transaction"));
-                    copy_cJSON(recipient,cJSON_GetObjectItem(txobj,"recipient"));
-                    copy_cJSON(account,cJSON_GetObjectItem(txobj,"account"));
-                    if ( account[0] == 0 )
-                        copy_cJSON(account,cJSON_GetObjectItem(txobj,"sender"));
-                    accountid = calc_nxt64bits(account);
+                    copy_cJSON(&txidstr,cJSON_GetObjectItem(txobj,"transaction"));
+                    copy_cJSON(&recipient,cJSON_GetObjectItem(txobj,"recipient"));
+                    copy_cJSON(&account,cJSON_GetObjectItem(txobj,"account"));
+                    if ( account.buf[0] == 0 )
+                        copy_cJSON(&account,cJSON_GetObjectItem(txobj,"sender"));
+                    accountid = calc_nxt64bits(account.buf);
                     type = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"type"),-1);
                     subtype = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"subtype"),-1);
                     timestamp = get_blockutime(juint(txobj,"timestamp"));
@@ -1169,23 +1169,23 @@ double prices777_unconfNXT(struct prices777 *prices,int32_t maxdepth)
                     if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 )
                     {
                         assetid = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"asset"));
-                        comment[0] = 0;
+                        comment.buf[0] = 0;
                         qty = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"quantityQNT"));
                         priceNQT = get_API_nxt64bits(cJSON_GetObjectItem(attachment,"priceNQT"));
                         baseamount = (qty * prices->ap_mult), relamount = (qty * priceNQT);
-                        copy_cJSON(comment,jobj(attachment,"message"));
-                        if ( comment[0] != 0 )
+                        copy_cJSON(&comment,jobj(attachment,"message"));
+                        if ( comment.buf[0] != 0 )
                         {
                             int32_t match_unconfirmed(char *sender,char *hexstr,cJSON *txobj,char *txidstr,char *account,uint64_t amount,uint64_t qty,uint64_t assetid,char *recipient);
                             //printf("sender.%s -> recv.(%s)\n",account,recipient);
-                            match_unconfirmed(account,comment,txobj,txidstr,account,amount,qty,assetid,recipient);
+                            match_unconfirmed(account.buf,comment.buf,txobj,txidstr.buf,account.buf,amount,qty,assetid,recipient.buf);
                         }
-                        quoteid = calc_nxt64bits(txidstr);
+                        quoteid = calc_nxt64bits(txidstr.buf);
                         price = prices777_price_volume(&vol,baseamount,relamount);
                         if ( prices->baseid == assetid )
                         {
                             if ( Debuglevel > 2 )
-                                printf("unconf.%d subtype.%d %s %llu (%llu %llu) %f %f mult.%llu qty.%llu pqt.%llu baseamount.%lld relamount.%lld\n",i,subtype,txidstr,(long long)prices->baseid,(long long)assetid,(long long)NXT_ASSETID,price,vol,(long long)prices->ap_mult,(long long)qty,(long long)priceNQT,(long long)baseamount,(long long)relamount);
+                                printf("unconf.%d subtype.%d %s %llu (%llu %llu) %f %f mult.%llu qty.%llu pqt.%llu baseamount.%lld relamount.%lld\n",i,subtype,txidstr.buf,(long long)prices->baseid,(long long)assetid,(long long)NXT_ASSETID,price,vol,(long long)prices->ap_mult,(long long)qty,(long long)priceNQT,(long long)baseamount,(long long)relamount);
                             if ( subtype == 2 )
                             {
                                 array = bids;

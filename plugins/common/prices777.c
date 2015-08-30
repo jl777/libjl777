@@ -1012,7 +1012,7 @@ int32_t prices777_init(char *jsonstr)
 {
     char *btcdexchanges[] = { "poloniex", "bittrex" };//, "bter" };
     char *btcusdexchanges[] = { "bityes", "bitfinex", "bitstamp", "itbit", "okcoin", "coinbase", "btce", "lakebtc", "exmo" };
-    cJSON *json=0,*item,*exchanges; int32_t i,n; char *exchange,*base,*rel,*contract; struct exchange_info *exchangeptr;
+    cJSON *json=0,*item,*exchanges; int32_t i,n; char *exchange,*base,*rel,*contract; struct exchange_info *exchangeptr; struct destbuf tmp;
     if ( BUNDLE.ptrs[0] != 0 )
         return(0);
     if ( (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,"unconf","NXT","BTC",0,"NXT/BTC",NXT_ASSETID,calc_nxt64bits("12659653638116877017"),0)) != 0 )
@@ -1063,8 +1063,8 @@ int32_t prices777_init(char *jsonstr)
             }
             if ( strcmp(exchange,"truefx") == 0 )
             {
-                copy_cJSON(BUNDLE.truefxuser,jobj(item,"truefxuser"));
-                copy_cJSON(BUNDLE.truefxpass,jobj(item,"truefxpass"));
+                copy_cJSON(&tmp,jobj(item,"truefxuser")), safecopy(BUNDLE.truefxuser,tmp.buf,sizeof(BUNDLE.truefxuser));
+                copy_cJSON(&tmp,jobj(item,"truefxpass")), safecopy(BUNDLE.truefxpass,tmp.buf,sizeof(BUNDLE.truefxpass));;
                 printf("truefx.(%s %s)\n",BUNDLE.truefxuser,BUNDLE.truefxpass);
             }
             else if ( base != 0 && rel != 0 && base[0] != 0 && rel[0] != 0 && (BUNDLE.ptrs[BUNDLE.num]= prices777_initpair(1,0,exchange,base,rel,jdouble(item,"decay"),contract,stringbits(base),stringbits(rel),0)) != 0 )
