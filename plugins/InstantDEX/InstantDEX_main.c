@@ -73,7 +73,7 @@ void idle()
     while ( 1 )
     {
         if ( n == 0 )
-            msleep(100);
+            msleep(1000);
         n = 0;
         if ( (jsonstr= queue_dequeue(&InstantDEXQ,1)) != 0 )
         {
