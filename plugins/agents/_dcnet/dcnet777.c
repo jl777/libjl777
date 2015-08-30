@@ -59,7 +59,7 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char *resultstr,*methodstr,*addr,*retstr = 0; struct destbuf echostr;
+    char echostr[MAX_JSON_FIELD],*resultstr,*methodstr,*addr,*retstr = 0;
     retbuf[0] = 0;
     plugin->allowremote = 1;
     //fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
@@ -72,7 +72,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     {
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
-        copy_cJSON(&echostr,cJSON_GetObjectItem(json,"echostr"));
+        copy_cJSON(echostr,cJSON_GetObjectItem(json,"echostr"));
         retbuf[0] = 0;
         if ( resultstr != 0 && strcmp(resultstr,"registered") == 0 )
         {
@@ -89,7 +89,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         else if ( strcmp(methodstr,"echo") == 0 )
         {
-            sprintf(retbuf,"{\"result\":\"%s\"}",echostr.buf);
+            sprintf(retbuf,"{\"result\":\"%s\"}",echostr);
         }
         else if ( strcmp(methodstr,"passthru") == 0 )
         {

@@ -89,12 +89,15 @@ _eth := rm agents/eth; gcc -o agents/eth -O2 $(PINCLUDES) agents/two/eth.c $(PLI
 
 _two := rm agents/two; gcc -o agents/two -O2 $(PINCLUDES) agents/two/two.c $(PLIBS)
 
+_dcnet := rm agents/rps; gcc -o agents/rps -O2 $(PINCLUDES) agents/_dcnet/dcnet777.c $(PLIBS)
+
 _stockfish := cd agents/stockfish; rm stockfish; $(MAKE) build ARCH=x86-64-modern; cp stockfish ../agents; cd ../..
 
 agents: plugins/agents/echodemo plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
 	cd plugins; \
     $(_echodemo); \
     $(_api); \
+    $(_dcnet); \
     cd ..
 
 rps: plugins/agents/rps; \

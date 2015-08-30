@@ -113,7 +113,7 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
 uint64_t poloniex_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     static CURL *cHandle;
- 	char *sig,*data,*extra,*typestr,cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t nonce,txid = 0;
+ 	char *sig,*data,*extra,*typestr,cmdbuf[8192],hdr1[4096],hdr2[4096],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t nonce,txid = 0;
     nonce = time(NULL);
     if ( (extra= *retstrp) != 0 )
         *retstrp = 0;
@@ -217,7 +217,7 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *_base,ch
     static CURL *cHandle;
     
     char *baserels[][2] = { {"btc","usd"}, {"btc","rur"}, {"btc","eur"}, {"ltc","btc"}, {"ltc","usd"}, {"ltc","rur"}, {"ltc","eur"}, {"nmc","btc"}, {"nmc","usd"}, {"nvc","btc"}, {"nvc","usd"}, {"eur","usd"}, {"eur","rur"}, {"ppc","btc"}, {"ppc","usd"} };
-    char *sig,*data,base[64],rel[64],payload[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json,*resultobj; uint64_t nonce,txid = 0;
+    char *sig,*data,base[64],rel[64],payload[8192],hdr1[4096],hdr2[4096],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json,*resultobj; uint64_t nonce,txid = 0;
     sprintf(hdr1,"Key:%s",exchange->apikey);
     nonce = time(NULL);
     if ( dir == 0 )
@@ -268,7 +268,7 @@ uint64_t kraken_trade(char **retstrp,struct exchange_info *exchange,char *_base,
     //API-Sign = Message signature using HMAC-SHA512 of (URI path + SHA256(nonce + POST data)) and base64 decoded secret API key
     
     static CURL *cHandle;
-    char *sig,*data,url[512],base[64],rel[64],buf[8192],postbuf[1024],payload[8192],sha256[65],hdr1[1024],hdr2[1024],pairstr[512],encode64[1024],decode64[1024],dest[SHA512_DIGEST_SIZE*2 + 1];
+    char *sig,*data,url[512],base[64],rel[64],buf[8192],postbuf[1024],payload[8192],sha256[65],hdr1[4096],hdr2[4096],pairstr[512],encode64[4096],decode64[4096],dest[SHA512_DIGEST_SIZE*2 + 1];
     cJSON *json,*resultobj; uint8_t hash[32]; uint64_t nonce,txid = 0; int32_t n;
     if ( _base != 0 && _rel != 0 )
     {
@@ -377,7 +377,7 @@ uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_bas
             
     static CURL *cHandle;
     char *baserels[][2] = { {"btc","usd"}, {"ltc","usd"}, {"ltc","btc"}, {"drk","usd"}, {"drk","btc"} };
- 	char *sig,*data,hdr3[1024],url[512],*extra,*typestr,*method,req[512],base[16],rel[16],payload[512],hdr1[1024],hdr2[1024],pairstr[512],dest[1024 + 1]; cJSON *json; uint64_t nonce,txid = 0;
+ 	char *sig,*data,hdr3[4096],url[512],*extra,*typestr,*method,req[4096],base[16],rel[16],payload[4096],hdr1[4096],hdr2[4096],pairstr[512],dest[1024 + 1]; cJSON *json; uint64_t nonce,txid = 0;
     if ( (extra= *retstrp) != 0 )
         *retstrp = 0;
     memset(req,0,sizeof(req));
@@ -452,45 +452,48 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
     static CURL *cHandle;
  	char *data,*path,url[1024],cmdbuf[8192],buf[512],digest[33],market[16],base[64],rel[64],coinname[16],fmtstr[512],*pricefmt,*volfmt = "%.3f";
     cJSON *json,*resultobj; int32_t i,good = 0; uint64_t nonce,txid = 0;
-    strcpy(base,_base), strcpy(rel,_rel);
-    touppercase(base), touppercase(rel);
-    if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CNY") == 0) || (strcmp(base,"CNY") == 0 && strcmp(rel,"BTC") == 0) )
-        good = 1;
-    else if ( strcmp(base,"BTC") == 0 )
+    if ( _base != 0 && _rel != 0 )
     {
-        for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
-            if ( strcmp(btcpairs[i],rel) == 0 )
-            {
-                good = 1;
-                break;
-            }
-    }
-    else if ( strcmp(rel,"BTC") == 0 )
-    {
-        for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
-            if ( strcmp(btcpairs[i],base) == 0 )
-            {
-                good = 1;
-                break;
-            }
-    }
-    else if ( strcmp(base,"CNY") == 0 )
-    {
-        for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
-            if ( strcmp(cnypairs[i],rel) == 0 )
-            {
-                good = 1;
-                break;
-            }
-    }
-    else if ( strcmp(rel,"CNY") == 0 )
-    {
-        for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
-            if ( strcmp(cnypairs[i],base) == 0 )
-            {
-                good = 1;
-                break;
-            }
+        strcpy(base,_base), strcpy(rel,_rel);
+        touppercase(base), touppercase(rel);
+        if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CNY") == 0) || (strcmp(base,"CNY") == 0 && strcmp(rel,"BTC") == 0) )
+            good = 1;
+        else if ( strcmp(base,"BTC") == 0 )
+        {
+            for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
+                if ( strcmp(btcpairs[i],rel) == 0 )
+                {
+                    good = 1;
+                    break;
+                }
+        }
+        else if ( strcmp(rel,"BTC") == 0 )
+        {
+            for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
+                if ( strcmp(btcpairs[i],base) == 0 )
+                {
+                    good = 1;
+                    break;
+                }
+        }
+        else if ( strcmp(base,"CNY") == 0 )
+        {
+            for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
+                if ( strcmp(cnypairs[i],rel) == 0 )
+                {
+                    good = 1;
+                    break;
+                }
+        }
+        else if ( strcmp(rel,"CNY") == 0 )
+        {
+            for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
+                if ( strcmp(cnypairs[i],base) == 0 )
+                {
+                    good = 1;
+                    break;
+                }
+        }
     }
     if ( good == 0 )
     {
@@ -835,7 +838,7 @@ uint64_t quadriga_trade(char **retstrp,struct exchange_info *exchange,char *base
      
      */
     static CURL *cHandle;
- 	char *sig,*data,*path,hdr3[1024],url[512],md5secret[128],req[4096],payload[2048],hdr1[1024],hdr2[1024],dest[1024 + 1];
+ 	char *sig,*data,*path,hdr3[4096],url[512],md5secret[128],req[4096],payload[4096],hdr1[4096],hdr2[4096],dest[1024 + 1];
     cJSON *json; uint64_t nonce,txid = 0;
     memset(payload,0,sizeof(payload));
     nonce = time(NULL);
@@ -934,7 +937,7 @@ uint64_t coinbase_trade(char **retstrp,struct exchange_info *exchange,char *base
         Remember to first base64-decode the alphanumeric secret string (resulting in 64 bytes) before using it as the key for HMAC. Also, base64-encode the digest output before sending in the header.
             */
     static CURL *cHandle;
- 	char *sig,*data,*path,sig64[1024],body[1024],method[64],prehash64[512],prehash[512],cmdbuf[8192],url[1024],decodedsecret[128],hdr1[1024],hdr2[1024],hdr3[1024],hdr4[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; int32_t n; uint64_t nonce,txid = 0;
+ 	char *sig,*data,*path,sig64[1024],body[4096],method[64],prehash64[512],prehash[512],cmdbuf[8192],url[1024],decodedsecret[128],hdr1[4096],hdr2[4096],hdr3[4096],hdr4[4096],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; int32_t n; uint64_t nonce,txid = 0;
     nonce = time(NULL);
     cmdbuf[0] = 0;
     body[0] = 0;
@@ -996,7 +999,7 @@ uint64_t exmo_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
      );
      */
     static CURL *cHandle;
- 	char *sig,*method,*data,url[512],cmdbuf[8192],hdr1[1024],hdr2[1024],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t nonce,txid = 0;
+ 	char *sig,*method,*data,url[512],cmdbuf[8192],hdr1[4096],hdr2[4096],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t nonce,txid = 0;
     nonce = time(NULL);
     if ( dir == 0 )
     {

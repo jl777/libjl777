@@ -490,7 +490,6 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
     char *retstr = 0; int32_t inverted,dir; struct prices777 *prices; double price,volume; struct exchange_info *exchange;
     if ( exchangestr != 0 && (exchange= exchange_find(exchangestr)) != 0 )
         iQ->exchangeid = exchange->exchangeid;
-    //printf("placebidask.(%llu)\n",(long long)iQ->s.offerNXT);
     if ( iQ->exchangeid < 0 || (exchangestr= exchange_str(iQ->exchangeid)) == 0 )
     {
         printf("exchangestr.%s id.%d\n",exchangestr,iQ->exchangeid);

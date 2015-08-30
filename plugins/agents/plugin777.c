@@ -53,6 +53,10 @@
 #include "../includes/cJSON.h"
 #include "../uthash.h"
 
+#ifndef PLUGINMILLIS
+#define PLUGINMILLIS 10000
+#endif
+
 struct protocol_info
 {
     struct dKV777 *protocol_relays; //struct kv777 *coins,*accounts;
@@ -73,6 +77,13 @@ struct plugin_info
     portable_mutex_t mutex;
     uint8_t pluginspace[];
 };
+
+struct nn_clock
+{
+    uint64_t last_tsc;
+    uint64_t last_time;
+};
+
 int32_t plugin_result(char *retbuf,cJSON *json,uint64_t tag);
 static int32_t plugin_copyretstr(char *retbuf,long maxlen,char *retstr);
 //static struct dKV777 *agent_initprotocol(struct plugin_info *plugin,cJSON *json,char *agent,char *path,char *protocol,double pingmillis,char *nxtsecret,struct kv777 *kps[],int32_t numkps);
@@ -80,6 +91,10 @@ static char *protocol_endpoint(char *retbuf,long maxlen,struct protocol_info *pr
 
 static char *protocol_ping(char *retbuf,long maxlen,struct protocol_info *prot,cJSON *json,char *jsonstr,char *tokenstr,char *forwarder,char *sender,int32_t valid);
 int32_t protocols_init(int32_t sock,struct endpoint *connections,char *protocol);
+uint32_t is_ipaddr(char *str);
+void randombytes(unsigned char *x,long xlen);
+int32_t OS_getppid();
+void portable_OS_init();
 
 #endif
 #else
@@ -89,8 +104,96 @@ int32_t protocols_init(int32_t sock,struct endpoint *connections,char *protocol)
 #ifndef crypto777_plugin777_h
 #define DEFINES_ONLY
 #include "plugin777.c"
+#include "../utils/inet.c"
 #undef DEFINES_ONLY
 #endif
+
+#define nn_errstr() nn_strerror(nn_errno())
+struct nn_clock Global_timer;
+
+#define OFFSET_ENABLED (bundledflag == 0)
+static char *get_localtransport(int32_t bundledflag) { return(OFFSET_ENABLED ? "ipc" : "inproc"); }
+
+static double milliseconds2()
+{
+    uint64_t nn_clock_now (struct nn_clock *self);
+    return(nn_clock_now(&Global_timer));
+}
+
+static void msleep2(uint32_t milliseconds)
+{
+    void nn_sleep (int milliseconds);
+    nn_sleep(milliseconds);
+}
+
+static long stripwhite2(char *buf,int accept)
+{
+    int32_t i,j,c;
+    if ( buf == 0 || buf[0] == 0 )
+        return(0);
+    for (i=j=0; buf[i]!=0; i++)
+    {
+        buf[j] = c = buf[i];
+        if ( c == accept || (c != ' ' && c != '\n' && c != '\r' && c != '\t' && c != '\b') )
+            j++;
+    }
+    buf[j] = 0;
+    return(j);
+}
+
+static int32_t has_backslash2(char *str)
+{
+    int32_t i;
+    if ( str == 0 || str[0] == 0 )
+        return(0);
+    for (i=0; str[i]!=0; i++)
+        if ( str[i] == '\\' )
+            return(1);
+    return(0);
+}
+
+static int32_t nn_socket_status2(int32_t sock,int32_t timeoutmillis)
+{
+    struct nn_pollfd pfd;
+    int32_t rc;
+    pfd.fd = sock;
+    pfd.events = NN_POLLIN | NN_POLLOUT;
+    if ( (rc= nn_poll(&pfd,1,timeoutmillis)) == 0 )
+        return(pfd.revents);
+    else return(-1);
+}
+
+static int32_t nn_local_broadcast2(int32_t sock,uint64_t instanceid,int32_t flags,uint8_t *retstr,int32_t len)
+{
+    int32_t i,sendlen,errs = 0;
+    if ( sock >= 0 )
+    {
+        for (i=0; i<10; i++)
+            if ( (nn_socket_status2(sock,1) & NN_POLLOUT) != 0 )
+                break;
+        if ( (sendlen= nn_send(sock,(char *)retstr,len,0)) <= 0 )
+            errs++, printf("sending to socket.%d sendlen.%d len.%d (%s) [%s]\n",sock,sendlen,len,nn_strerror(nn_errno()),retstr);
+        //else if ( Debuglevel > 2 )
+        //    printf("nn_local_broadcast SENT.(%s) len.%d sendlen.%d vs strlen.%ld instanceid.%llu -> sock.%d\n",retstr,len,sendlen,strlen((char *)retstr),(long long)instanceid,sock);
+    }
+    return(errs);
+}
+
+static int32_t nn_settimeouts2(int32_t sock,int32_t sendtimeout,int32_t recvtimeout)
+{
+    int32_t retrymillis,maxmillis;
+    maxmillis = PLUGINMILLIS, retrymillis = maxmillis/40;
+    if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
+        fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+    else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
+        fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
+    else if ( sendtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_SNDTIMEO,&sendtimeout,sizeof(sendtimeout)) < 0 )
+        fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+    else if ( recvtimeout > 0 && nn_setsockopt(sock,NN_SOL_SOCKET,NN_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0 )
+        fprintf(stderr,"error setting sendtimeout %s\n",nn_errstr());
+    else return(0);
+    return(-1);
+}
 
 static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag,uint64_t instanceid,uint64_t daemonid,int32_t timeout)
 {
@@ -102,7 +205,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
         printf("error creating plugin->pushsock %s\n",nn_strerror(nn_errno()));
         return(-1);
     }
-    else if ( nn_settimeouts(plugin->pushsock,10,1) < 0 )
+    else if ( nn_settimeouts2(plugin->pushsock,10,1) < 0 )
     {
         printf("error setting plugin->pushsock timeouts %s\n",nn_strerror(nn_errno()));
         return(-1);
@@ -117,7 +220,7 @@ static int32_t init_pluginsocks(struct plugin_info *plugin,int32_t permanentflag
         printf("error creating plugin->pullsock %s\n",nn_strerror(nn_errno()));
         return(-1);
     }
-    else if ( nn_settimeouts(plugin->pullsock,10,1) < 0 )
+    else if ( nn_settimeouts2(plugin->pullsock,10,1) < 0 )
     {
         printf("error setting plugin->pullsock timeouts %s\n",nn_strerror(nn_errno()));
         return(-1);
@@ -208,7 +311,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
         }
         if ( jsonstr == 0 )
             jsonstr = cJSON_Print(obj);
-        _stripwhite(jsonstr,' ');
+        stripwhite2(jsonstr,' ');
     }
     if ( obj != 0 )
     {
@@ -258,10 +361,10 @@ static void append_stdfields(char *retbuf,int32_t max,struct plugin_info *plugin
             sprintf(tagstr+strlen(tagstr),",\"NXT\":\"%s\"",plugin->NXTADDR);
         if ( allfields != 0 )
         {
-             if ( SUPERNET.iamrelay != 0 )
-                 sprintf(retbuf+strlen(retbuf)-1,",\"myipaddr\":\"%s\"}",plugin->ipaddr);
+            //if ( SUPERNET.iamrelay != 0 )
+            //    sprintf(retbuf+strlen(retbuf)-1,",\"myipaddr\":\"%s\"}",plugin->ipaddr);
             sprintf(retbuf+strlen(retbuf)-1,",\"allowremote\":%d%s}",plugin->allowremote,tagstr);
-            sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"daemonid\":\"%llu\",\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->daemonid,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds(),plugin->numsent,plugin->numrecv);
+            sprintf(retbuf+strlen(retbuf)-1,",\"permanentflag\":%d,\"daemonid\":\"%llu\",\"myid\":\"%llu\",\"plugin\":\"%s\",\"endpoint\":\"%s\",\"millis\":%.2f,\"sent\":%u,\"recv\":%u}",plugin->permanentflag,(long long)plugin->daemonid,(long long)plugin->myid,plugin->name,plugin->bindaddr[0]!=0?plugin->bindaddr:plugin->connectaddr,milliseconds2(),plugin->numsent,plugin->numrecv);
          }
          else sprintf(retbuf+strlen(retbuf)-1,",\"daemonid\":\"%llu\",\"myid\":\"%llu\",\"allowremote\":%d%s}",(long long)plugin->daemonid,(long long)plugin->myid,plugin->allowremote,tagstr);
     }
@@ -306,7 +409,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     cJSON_AddItemToObject(json,"pluginrequest",cJSON_CreateString("SuperNET"));
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("register"));
     if ( plugin->sleepmillis == 0 )
-        plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),SUPERNET.APISLEEP);
+        plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),25);//SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
     if ( cJSON_GetObjectItem(json,"NXT") == 0 )
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));
@@ -315,17 +418,16 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
         cJSON_AddItemToObject(json,"serviceNXT",cJSON_CreateString(plugin->SERVICENXT));
     else cJSON_ReplaceItemInObject(json,"serviceNXT",cJSON_CreateString(plugin->SERVICENXT));
     jsonstr = cJSON_Print(json), free_json(json);
-    _stripwhite(jsonstr,' ');
+    stripwhite2(jsonstr,' ');
     strcpy(retbuf,jsonstr), free(jsonstr);
     append_stdfields(retbuf,max,plugin,0,1);
-    if ( Debuglevel > 2 )
-        printf(">>>>>>>>>>> register return.(%s)\n",retbuf);
+   //printf(">>>>>>>>>>> register return.(%s)\n",retbuf);
     return((int32_t)strlen(retbuf) + (retbuf[0] != 0));
 }
 
 static void configure_plugin(char *retbuf,int32_t max,struct plugin_info *plugin,char *jsonargs,int32_t initflag)
 {
-    if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 && has_backslash(jsonargs) != 0 )
+    if ( initflag != 0 && jsonargs != 0 && jsonargs[0] != 0 && has_backslash2(jsonargs) != 0 )
         unstringify(jsonargs);
     process_json(retbuf,max,plugin,jsonargs,initflag);
 }
@@ -342,15 +444,14 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
     int32_t valid = -11,len = (int32_t)strlen(jsonstr); cJSON *json,*obj,*tokenobj; uint64_t tag = 0;
     struct destbuf name,destname,forwarder,tokenstr,sender;
     retbuf[0] = *sendflagp = 0;
-    if ( Debuglevel > 2 )
-        printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
+    //printf("PLUGIN.(%s) process_plugin_json (%s)\n",plugin->name,jsonstr);
     if ( (json= cJSON_Parse(jsonstr)) != 0 )
     {
         if ( is_cJSON_Array(json) != 0 )
         {
             obj = cJSON_GetArrayItem(json,0);
-            jsonstr = cJSON_Print(obj), _stripwhite(jsonstr,' ');
-            tokenobj = cJSON_GetArrayItem(json,1), _stripwhite(tokenstr.buf,' ');
+            jsonstr = cJSON_Print(obj), stripwhite2(jsonstr,' ');
+            tokenobj = cJSON_GetArrayItem(json,1), stripwhite2(tokenstr.buf,' ');
             copy_cJSON(&tokenstr,tokenobj);
             copy_cJSON(&forwarder,cJSON_GetObjectItem(tokenobj,"forwarder"));
             copy_cJSON(&sender,cJSON_GetObjectItem(tokenobj,"sender"));
@@ -370,8 +471,6 @@ static int32_t process_plugin_json(char *retbuf,int32_t max,int32_t *sendflagp,s
             if ( retbuf[0] == 0 )
                 sprintf(retbuf,"{\"result\":\"no response\"}");
             append_stdfields(retbuf,max,plugin,tag,0);
-            if ( Debuglevel > 2 )
-                printf("return.(%s)\n",retbuf);
             return((int32_t)strlen(retbuf));
         } //else printf("(%s) -> no return.%d (%s) vs (%s):(%s) len.%d\n",jsonstr,strcmp(name,plugin->name),name,destname,plugin->name,len);
     }
@@ -397,11 +496,11 @@ int32_t main
 {
     char *retbuf,*line,*jsonargs,*transportstr,registerbuf[MAX_JSON_FIELD];
     struct plugin_info *plugin; double startmilli; cJSON *argjson;
-    int32_t bundledflag,max,sendflag,sleeptime=1,len = 0;
+    int32_t max,sendflag,sleeptime=1,len = 0;
 #ifndef BUNDLED
     portable_OS_init();
 #endif
-    milliseconds();
+    milliseconds2();
     max = 1000000;
     retbuf = malloc(max+1);
     plugin = calloc(1,sizeof(*plugin));// + PLUGIN_EXTRASIZE);
@@ -428,7 +527,9 @@ int32_t main
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
     plugin->permanentflag = atoi(argv[1]);
     plugin->daemonid = calc_nxt64bits(argv[2]);
-    plugin->bundledflag = bundledflag = is_bundled_plugin(plugin->name);
+#ifdef BUNDLED
+    plugin->bundledflag = 1;
+#endif
     transportstr = get_localtransport(plugin->bundledflag);
     sprintf(plugin->connectaddr,"%s://SuperNET.agents",transportstr);
     sprintf(plugin->bindaddr,"%s://%llu",transportstr,(long long)plugin->daemonid);
@@ -440,9 +541,8 @@ int32_t main
         argjson = cJSON_Parse(jsonargs);
         if ( (len= registerAPI(registerbuf,sizeof(registerbuf)-1,plugin,argjson)) > 0 )
         {
-            if ( Debuglevel > 2 )
-                fprintf(stderr,">>>>>>>>>>>>>>> plugin.(%s) sends REGISTER SEND.(%s)\n",plugin->name,registerbuf);
-            nn_local_broadcast(plugin->pushsock,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
+            //fprintf(stderr,">>>>>>>>>>>>>>> plugin.(%s) sends REGISTER SEND.(%s)\n",plugin->name,registerbuf);
+            nn_local_broadcast2(plugin->pushsock,0,0,(uint8_t *)registerbuf,(int32_t)strlen(registerbuf)+1), plugin->numsent++;
         } else printf("error register API\n");
         if ( argjson != 0 )
             free_json(argjson);
@@ -453,32 +553,30 @@ int32_t main
         if ( (len= nn_recv(plugin->pullsock,&line,NN_MSG,0)) > 0 )
         {
             len = (int32_t)strlen(line);
-            if ( Debuglevel > 2 )
-                printf("(s%d r%d) <<<<<<<<<<<<<< %s.RECEIVED (%s).%d -> bind.(%s) connect.(%s) %s\n",plugin->numsent,plugin->numrecv,plugin->name,line,len,plugin->bindaddr,plugin->connectaddr,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET"), fflush(stdout);
+            //printf("(s%d r%d) <<<<<<<<<<<<<< %s.RECEIVED (%s).%d -> bind.(%s) connect.(%s) %s\n",plugin->numsent,plugin->numrecv,plugin->name,line,len,plugin->bindaddr,plugin->connectaddr,plugin->permanentflag != 0 ? "PERMANENT" : "WEBSOCKET"), fflush(stdout);
             if ( (len= process_plugin_json(retbuf,max,&sendflag,plugin,plugin->permanentflag,plugin->daemonid,plugin->myid,line)) > 0 )
             {
                 if ( plugin->bundledflag == 0 )
                     printf("%s\n",retbuf), fflush(stdout);
                 if ( sendflag != 0 )
                 {
-                    nn_local_broadcast(plugin->pushsock,0,0,(uint8_t *)retbuf,(int32_t)strlen(retbuf)+1), plugin->numsent++;
-                    if ( Debuglevel > 2 )
-                        fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
+                    nn_local_broadcast2(plugin->pushsock,0,0,(uint8_t *)retbuf,(int32_t)strlen(retbuf)+1), plugin->numsent++;
+                    //fprintf(stderr,">>>>>>>>>>>>>> returned.(%s)\n",retbuf);
                 }
             } //else printf("null return from process_plugin_json\n");
             nn_freemsg(line);
         }
         else
         {
-            startmilli = milliseconds();
+            startmilli = milliseconds2();
             if ( PLUGNAME(_idle)(plugin) == 0 )
             {
                 if ( plugin->sleepmillis != 0 )
                 {
-                    sleeptime = plugin->sleepmillis - (milliseconds() - startmilli);
+                    sleeptime = plugin->sleepmillis - (milliseconds2() - startmilli);
                     //printf("%s sleepmillis.%d sleeptime.%d\n",plugin->name,plugin->sleepmillis,sleeptime);
                     if ( sleeptime > 0 )
-                        msleep(sleeptime);
+                        msleep2(sleeptime);
                 }
             }
         }

@@ -547,23 +547,33 @@ char *issue_signTransaction(char *txbytes,char *NXTACCTSECRET)
 
 uint32_t _get_NXTheight(uint32_t *firsttimep)
 {
-    cJSON *json;
-    uint32_t height = 0;
-    char cmd[256],*jsonstr;
-    sprintf(cmd,"requestType=getState");
-    if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
+    static uint32_t last,lastheight,lastNXTtime;
+    cJSON *json; uint32_t height = 0; char cmd[256],*jsonstr;
+    if ( time(NULL) > last+10 )
     {
-        //printf("(%s) -> (%s)\n",cmd,jsonstr);
-        if ( (json= cJSON_Parse(jsonstr)) != 0 )
+        sprintf(cmd,"requestType=getState");
+        if ( (jsonstr= issue_NXTPOST(cmd)) != 0 )
         {
-            if ( firsttimep != 0 )
-                *firsttimep = (uint32_t)get_cJSON_int(json,"time");
-            height = (int32_t)get_cJSON_int(json,"numberOfBlocks");
-            if ( height > 0 )
-                height--;
-            free_json(json);
+            //printf("(%s) -> (%s)\n",cmd,jsonstr);
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+            {
+                if ( firsttimep != 0 )
+                    lastNXTtime = *firsttimep = (uint32_t)get_cJSON_int(json,"time");
+                height = (int32_t)get_cJSON_int(json,"numberOfBlocks");
+                if ( height > 0 )
+                    height--;
+                lastheight = height;
+                free_json(json);
+            }
+            free(jsonstr);
         }
-        free(jsonstr);
+        last = (uint32_t)time(NULL);
+    }
+    else
+    {
+        height = lastheight;
+        if ( firsttimep != 0 )
+            *firsttimep = lastNXTtime;
     }
     return(height);
 }

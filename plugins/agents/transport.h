@@ -37,6 +37,8 @@
 
 #define LOCALCAST 1
 #define BROADCAST 2
+#define OFFSET_ENABLED (bundledflag == 0)
+char *get_localtransport(int32_t bundledflag) { return(OFFSET_ENABLED ? "ipc" : "inproc"); }
 
 void set_connect_transport(char *connectaddr,int32_t bundledflag,int32_t permanentflag,char *ipaddr,uint16_t port,uint64_t daemonid)
 {
