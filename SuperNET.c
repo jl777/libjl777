@@ -76,7 +76,8 @@ void *issue_cgicall(void *_ptr)
         localaccess = 1;
     timeout = get_API_int(cJSON_GetObjectItem(ptr->json,"timeout"),SUPERNET.PLUGINTIMEOUT);
     broadcaststr = cJSON_str(cJSON_GetObjectItem(ptr->json,"broadcast"));
-    fprintf(stderr,"sock.%d (%s) API RECV.(%s)\n",ptr->sock,broadcaststr!=0?broadcaststr:"",ptr->jsonstr);
+    if ( ptr->sock >= 0 )
+        fprintf(stderr,"sock.%d (%s) API RECV.(%s)\n",ptr->sock,broadcaststr!=0?broadcaststr:"",ptr->jsonstr);
     if ( ptr->sock >= 0 && (ptr->retind= nn_connect(ptr->sock,apitag.buf)) < 0 )
         fprintf(stderr,"error connecting to (%s)\n",apitag.buf);
     else
@@ -124,6 +125,21 @@ void *issue_cgicall(void *_ptr)
                 free_json(retjson);
             }
             //fprintf(stderr,"sock.%d mainstr.(%s) valid.%d sender.(%s) forwarder.(%s) time.%u\n",ptr->sock,str,valid,sender,forwarder,timestamp);
+            if ( str != 0 && (retjson= cJSON_Parse(str)) != 0 )
+            {
+                if ( juint(retjson,"done") != 0 )
+                {
+                    cJSON_DeleteItemFromObject(retjson,"daemonid");
+                    cJSON_DeleteItemFromObject(retjson,"myid");
+                    cJSON_DeleteItemFromObject(retjson,"allowremote");
+                    cJSON_DeleteItemFromObject(retjson,"tag");
+                    cJSON_DeleteItemFromObject(retjson,"NXT");
+                    cJSON_DeleteItemFromObject(retjson,"done");
+                    free(str);
+                    str = jprint(retjson,0);
+                }
+                free_json(retjson);
+            }
             if ( ptr->sock >= 0 )
             {
                 retlen = (int32_t)strlen(str) + 1;
@@ -275,6 +291,9 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
     while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 )
         poll_daemons();
+    //strs[n++] = language_func((char *)"dcnet","",0,0,1,(char *)"dcnet",jsonargs,call_system);
+    //while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"dcnet",0,0) == 0 )
+    //    poll_daemons();
 #ifdef INSIDE_MGW
     if ( SUPERNET.gatewayid >= 0 )
     {
@@ -823,7 +842,7 @@ int main(int argc,const char *argv[])
         line[0] = 0;
         if ( getline777(line,sizeof(line)-1) > 0 )
         {
-            printf("getline777.(%s)\n",line);
+            //printf("getline777.(%s)\n",line);
             process_userinput(line);
         }
     }

@@ -570,9 +570,11 @@ void prices777_json_quotes(double *hblap,struct prices777 *prices,cJSON *bids,cJ
             {
                 if ( prices->commission != 0. )
                 {
+                    //printf("price %f fee %f -> ",price,prices->commission * price);
                     if ( bidask == 0 )
                         price -= prices->commission * price;
                     else price += prices->commission * price;
+                    //printf("%f\n",price);
                 }
                 order = (bidask == 0) ? &gp->bid : &gp->ask;
                 order->s.price = price, order->s.vol = volume, order->source = prices, order->s.timestamp = OB.timestamp, order->wt = 1, order->id = orderid, order->s.quoteid = quoteid;
@@ -1038,7 +1040,10 @@ double prices777_NXT(struct prices777 *prices,int32_t maxdepth)
     uint32_t timestamp; int32_t flip,i,n; uint64_t baseamount,relamount,qty,pqt; char url[1024],*str,*cmd,*field;
     cJSON *json,*bids,*asks,*srcobj,*item,*array; double price,vol,hbla = 0.;
     if ( NXT_ASSETID != stringbits("NXT") || (strcmp(prices->rel,"NXT") != 0 && strcmp(prices->rel,"5527630") != 0) )
+    {
         printf("NXT_ASSETID.%llu != %llu stringbits rel.%s\n",(long long)NXT_ASSETID,(long long)stringbits("NXT"),prices->rel);//, getchar();
+        return(0);
+    }
     bids = cJSON_CreateArray(), asks = cJSON_CreateArray();
     for (flip=0; flip<2; flip++)
     {

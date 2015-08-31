@@ -703,6 +703,7 @@ char *prices777_allorderbooks()
         jaddstr(item,"rel",prices->rel);
         sprintf(numstr,"%llu",(long long)prices->relid), jaddstr(item,"relid",numstr);
         jaddstr(item,"exchange",prices->exchange);
+        jaddnum(item,"commission",prices->commission);
         if ( strcmp(prices->exchange,"basket") == 0 )
             jadd(item,"basket",basket_json(prices));
         else if ( strcmp(prices->exchange,"active") == 0 )
@@ -848,6 +849,8 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
     prices->RTflag = 1;
     if ( (exchangeptr= find_exchange(0,exchange)) != 0 )
     {
+        if ( prices->commission == 0. )
+            prices->commission = exchangeptr->commission;
         prices->exchangeid = exchangeptr->exchangeid;
         if ( (exchangeptr->updatefunc= updatefunc) == 0 )
         {
@@ -1063,7 +1066,7 @@ int32_t prices777_init(char *jsonstr)
                     extract_cJSON_str(exchangeptr->apisecret,sizeof(exchangeptr->apisecret),item,"apisecret");
                 if ( exchangeptr->commission == 0. )
                     exchangeptr->commission = jdouble(item,"commission");
-                printf("%p ADDEXCHANGE.(%s) [%s, %s, %s]\n",exchangeptr,exchange,exchangeptr->apikey,exchangeptr->userid,exchangeptr->apisecret);
+                printf("%p ADDEXCHANGE.(%s) [%s, %s, %s] commission %.3f%%\n",exchangeptr,exchange,exchangeptr->apikey,exchangeptr->userid,exchangeptr->apisecret,exchangeptr->commission * 100);
             }
             if ( strcmp(exchange,"truefx") == 0 )
             {
@@ -1075,6 +1078,7 @@ int32_t prices777_init(char *jsonstr)
             {
                 if ( (BUNDLE.ptrs[BUNDLE.num]->commission= jdouble(item,"commission")) == 0. )
                     BUNDLE.ptrs[BUNDLE.num]->commission = exchangeptr->commission;
+                printf("SET COMMISSION.%s %f for %s/%s\n",exchange,exchangeptr->commission,base,rel);
                 BUNDLE.num++;
             }
         }

@@ -95,6 +95,7 @@ uint32_t is_ipaddr(char *str);
 void randombytes(unsigned char *x,long xlen);
 int32_t OS_getppid();
 void portable_OS_init();
+static int32_t nn_settimeouts2(int32_t sock,int32_t sendtimeout,int32_t recvtimeout);
 
 #endif
 #else

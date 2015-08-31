@@ -323,21 +323,19 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t kv777_main(int32_t,char *args[]);
         int32_t SuperNET_main(int32_t,char *args[]);
         int32_t coins_main(int32_t,char *args[]);
-        //int32_t peers_main(int32_t,char *args[]);
-        int32_t teleport_main(int32_t,char *args[]);
         int32_t relay_main(int32_t,char *args[]);
         int32_t InstantDEX_main(int32_t,char *args[]);
-        int32_t rps_main(int32_t,char *args[]);
+        int32_t dcnet_main(int32_t,char *args[]);
         int32_t prices_main(int32_t,char *args[]);
-        int32_t cashier_main(int32_t,char *args[]);
+        //int32_t teleport_main(int32_t,char *args[]);
+        //int32_t cashier_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
         else if ( strcmp(dp->name,"prices") == 0 ) return(prices_main(n,args));
         else if ( strcmp(dp->name,"kv777") == 0 ) return(kv777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
-        //else if ( strcmp(dp->name,"peers") == 0 ) return(peers_main(n,args));
         else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
-        //else if ( strcmp(dp->name,"rps") == 0 ) return(rps_main(n,args));
+        else if ( strcmp(dp->name,"dcnet") == 0 ) return(dcnet_main(n,args));
         //else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
         //else if ( strcmp(dp->name,"teleport") == 0 ) return(teleport_main(n,args));
 #ifdef INSIDE_MGW
@@ -351,12 +349,12 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 ||
-        strcmp(plugin,"cashier") == 0 || strcmp(plugin,"rps") == 0 || strcmp(plugin,"teleport") == 0
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 ||
+        //strcmp(plugin,"cashier") == 0 || strcmp(plugin,"teleport") == 0
 #ifdef INSIDE_MGW
-        || strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0
+        strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0 ||
 #endif
-        )
+        0 )
         return(1);
     else return(0);
 }
