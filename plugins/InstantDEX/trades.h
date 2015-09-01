@@ -524,10 +524,10 @@ uint64_t prices777_swapbuf(uint64_t *txidp,char *triggertx,char *txbytes,char *s
     return(txid);
 }
 
-char *prices777_trade(struct prices777 *prices,int32_t dir,double price,double volume,struct InstantDEX_quote *iQ,struct prices777_order *order,uint64_t orderid,char *extra)
+char *prices777_trade(char *activenxt,char *secret,struct prices777 *prices,int32_t dir,double price,double volume,struct InstantDEX_quote *iQ,struct prices777_order *order,uint64_t orderid,char *extra)
 {
-    struct InstantDEX_quote _iQ;
-    char *retstr; struct exchange_info *exchange; struct pending_trade *pend; uint32_t nonce; char *str,swapbuf[8192],triggertx[4096],txbytes[4096];
+    struct InstantDEX_quote _iQ; char *retstr; struct exchange_info *exchange; struct pending_trade *pend; uint32_t nonce;
+    char *str,swapbuf[8192],triggertx[4096],txbytes[4096]; uint64_t txid;
     if ( (exchange= find_exchange(0,prices->exchange)) == 0 && exchange->trade != 0 )
     {
         printf("prices777_trade: need to have supported exchange\n");
@@ -584,7 +584,7 @@ char *prices777_trade(struct prices777 *prices,int32_t dir,double price,double v
     else if ( strcmp(prices->exchange,"nxtae") == 0 )
     {
         pend->type = 'N';
-        retstr = fill_nxtae(&pend->txid,SUPERNET.my64bits,dir,price,volume,prices->baseid,prices->relid);
+        retstr = fill_nxtae(&pend->txid,calc_nxt64bits(activenxt),secret,dir,price,volume,prices->baseid,prices->relid);
         InstantDEX_history(0,pend,retstr);
         return(retstr);
     }
@@ -594,8 +594,12 @@ char *prices777_trade(struct prices777 *prices,int32_t dir,double price,double v
         {
             printf(" issue dir.%d %s/%s price %f vol %f -> %s\n",dir,prices->base,prices->rel,price,volume,prices->exchange);
             retstr = extra;
-            (*exchange->trade)(&retstr,exchange,prices->base,prices->rel,dir,price,volume);
-            InstantDEX_history(0,pend,retstr);
+            if ( (txid= (*exchange->trade)(&retstr,exchange,prices->base,prices->rel,dir,price,volume)) != 0 )
+                InstantDEX_history(0,pend,retstr);
+            else printf("no txid from trade\n");
+            pend->txid = txid;
+            if ( retstr != 0 )
+                printf("returning.%p (%s)\n",retstr,retstr);
             return(retstr);
         } else return(clonestr("{\"error\":\"no trade function for exchange\"}\n"));
     }
@@ -894,7 +898,7 @@ int32_t is_unfunded_order(uint64_t nxt64bits,uint64_t assetid,uint64_t amount)
     return(0);
 }
 
-cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64_t orderid,char *extra)
+cJSON *InstantDEX_tradejson(char *activenxt,char *secret,struct prices777_order *order,int32_t dotrade,uint64_t orderid,char *extra)
 {
     char swapbuf[8192],buf[8192],triggertx[4096],txbytes[4096],*retstr,*exchange; uint64_t txid,qty,avail,priceNQT; struct prices777 *prices; cJSON *json = 0;
     if ( (prices= order->source) != 0 )
@@ -908,7 +912,7 @@ cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64
                 sprintf(buf,"{\"orderid\":\"%llu\",\"trade\":\"%s\",\"exchange\":\"%s\",\"base\":\"%s\",\"rel\":\"%s\",\"baseid\":\"%llu\",\"relid\":\"%llu\",\"price\":%.8f,\"volume\":%.8f,\"extra\":\"%s\"}",(long long)orderid,order->wt > 0. ? "buy" : "sell",exchange,prices->base,prices->rel,(long long)prices->baseid,(long long)prices->relid,order->s.price,order->s.vol,extra!=0?extra:"");
                 if ( strcmp(exchange,"nxtae") == 0 )
                 {
-                    qty = calc_asset_qty(&avail,&priceNQT,SUPERNET.NXTADDR,0,prices->baseid,order->s.price,order->s.vol);
+                    qty = calc_asset_qty(&avail,&priceNQT,activenxt,0,prices->baseid,order->s.price,order->s.vol);
                     sprintf(buf+strlen(buf)-1,",\"priceNQT\":\"%llu\",\"quantityQNT\":\"%llu\",\"avail\":\"%llu\"}",(long long)priceNQT,(long long)qty,(long long)avail);
                     if ( qty == 0 )
                         sprintf(buf+strlen(buf)-1,",\"error\":\"insufficient balance\"}");
@@ -924,7 +928,7 @@ cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64
                 return(cJSON_Parse(swapbuf));
             }
         }
-        retstr = prices777_trade(prices,order->wt,order->s.price,order->s.vol,0,order,orderid,extra);
+        retstr = prices777_trade(activenxt,secret,prices,order->wt,order->s.price,order->s.vol,0,order,orderid,extra);
         if ( retstr != 0 )
         {
             json = cJSON_Parse(retstr);
@@ -934,7 +938,7 @@ cJSON *InstantDEX_tradejson(struct prices777_order *order,int32_t dotrade,uint64
     return(json);
 }
 
-char *InstantDEX_dotrades(cJSON *json,struct prices777_order *trades,int32_t numtrades,int32_t dotrade,char *extra)
+char *InstantDEX_dotrades(char *activenxt,char *secret,cJSON *json,struct prices777_order *trades,int32_t numtrades,int32_t dotrade,char *extra)
 {
     struct destbuf exchangestr,gui,name,base,rel; struct InstantDEX_quote iQ;
     cJSON *retjson,*retarray,*item; int32_t i; struct pending_trade *pend;
@@ -942,7 +946,7 @@ char *InstantDEX_dotrades(cJSON *json,struct prices777_order *trades,int32_t num
     retjson = cJSON_CreateObject(), retarray = cJSON_CreateArray();
     for (i=0; i<numtrades; i++)
     {
-        item = InstantDEX_tradejson(&trades[i],dotrade,iQ.s.quoteid,extra);
+        item = InstantDEX_tradejson(activenxt,secret,&trades[i],dotrade,iQ.s.quoteid,extra);
         //printf("GOT%d.(%s)\n",i,jprint(item,0));
         jaddi(retarray,item);
     }
@@ -960,7 +964,7 @@ char *InstantDEX_dotrades(cJSON *json,struct prices777_order *trades,int32_t num
     return(jprint(retjson,1));
 }
 
-char *InstantDEX_tradesequence(cJSON *json)
+char *InstantDEX_tradesequence(char *activenxt,char *secret,cJSON *json)
 {
     //"trades":[[{"basket":"bid","rootwt":-1,"groupwt":1,"wt":-1,"price":40000,"volume":0.00015000,"group":0,"trade":"buy","exchange":"nxtae","asset":"17554243582654188572","base":"BTC","rel":"NXT","orderid":"3545444239044461477","orderprice":40000,"ordervolume":0.00015000}], [{"basket":"bid","rootwt":-1,"groupwt":1,"wt":1,"price":0.00376903,"volume":1297.41480000,"group":10,"trade":"sell","exchange":"coinbase","name":"BTC/USD","base":"BTC","rel":"USD","orderid":"1","orderprice":265.32000000,"ordervolume":4.89000000}]]}
     cJSON *array,*item; int32_t i,n,dir; char *tradestr,*exchangestr; struct prices777_order trades[256],*order;
@@ -1015,7 +1019,7 @@ char *InstantDEX_tradesequence(cJSON *json)
                 } else return(clonestr("{\"error\":\"invalid exchange or contract pair\"}"));
             } else return(clonestr("{\"error\":\"no trade specified\"}"));
         }
-        return(InstantDEX_dotrades(json,trades,n,juint(json,"dotrade"),jstr(json,"extra")));
+        return(InstantDEX_dotrades(activenxt,secret,json,trades,n,juint(json,"dotrade"),jstr(json,"extra")));
     }
     printf("error parsing.(%s)\n",jprint(json,0));
     return(clonestr("{\"error\":\"couldnt process trades\"}"));

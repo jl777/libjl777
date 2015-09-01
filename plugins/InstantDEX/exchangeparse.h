@@ -179,8 +179,13 @@ struct exchange_info *exchange_find(char *exchangestr)
 
 struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr)
 {
-    int32_t exchangeid;
-    struct exchange_info *exchange = 0;
+    int32_t exchangeid; struct exchange_info *exchange = 0;
+    if ( supported_exchange(exchangestr) < 0 )
+    {
+        if ( exchangeidp != 0 )
+            *exchangeidp = -1;
+        return(0);
+    }
     for (exchangeid=0; exchangeid<MAX_EXCHANGES; exchangeid++)
     {
         exchange = &Exchanges[exchangeid];
@@ -529,6 +534,7 @@ double prices777_lakebtc(struct prices777 *prices,int32_t maxdepth)
     return(prices777_standard("lakebtc",prices->url,prices,0,0,maxdepth,0));
 }
 
+#ifdef exmo_supported
 int32_t exmo_supports(char *base,char *rel)
 {
     if ( strcmp(base,"BTC") == 0 && (strcmp(rel,"USD") == 0 || strcmp(rel,"EUR") == 0 || strcmp(rel,"RUR") == 0) )
@@ -544,6 +550,7 @@ double prices777_exmo(struct prices777 *prices,int32_t maxdepth)
         sprintf(prices->url,"https://api.exmo.com/api_v2/orders_book?pair=%s_%s",prices->base,prices->rel);
     return(prices777_standard("exmo",prices->url,prices,0,0,maxdepth,0));
 }
+#endif
 
 int32_t btc38_supports(char *base,char *rel)
 {

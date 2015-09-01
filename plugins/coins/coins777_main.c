@@ -218,10 +218,16 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     char *serverport,*path=0,*conf=0; struct destbuf tmp;
     struct coin777 *coin = calloc(1,sizeof(*coin));
     safecopy(coin->name,coinstr,sizeof(coin->name));
-    coin->minoutput = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"minoutput"));
-    coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
-    if ( argjson != 0 )
+    if ( argjson == 0 )
     {
+        coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
+        coin->estblocktime = (strcmp("BTC",coinstr) == 0) ? 600 : 120;
+    }
+    else
+    {
+        coin->minoutput = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"minoutput"));
+        coin->minconfirms = get_API_int(cJSON_GetObjectItem(argjson,"minconfirms"),(strcmp("BTC",coinstr) == 0) ? 3 : 10);
+        coin->estblocktime = get_API_int(cJSON_GetObjectItem(argjson,"estblocktime"),(strcmp("BTC",coinstr) == 0) ? 600 : 120);
         coin->jsonstr = cJSON_Print(argjson);
         coin->argjson = cJSON_Duplicate(argjson,1);
         if ( (serverport= cJSON_str(cJSON_GetObjectItem(argjson,"rpc"))) != 0 )
@@ -291,7 +297,7 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate)
     }
     if ( autocreate != 0 )
     {
-        if ( (array= cJSON_GetObjectItem(COINS.argjson,"coins")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
+        if ( COINS.argjson != 0 && (array= cJSON_GetObjectItem(COINS.argjson,"coins")) != 0 && (n= cJSON_GetArraySize(array)) > 0 )
         {
             for (i=j=0; i<n; i++)
             {

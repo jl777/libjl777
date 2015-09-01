@@ -180,7 +180,7 @@ int32_t issue_decodeToken(struct destbuf *sender,int32_t *validp,char *key,unsig
 int32_t issue_generateToken(char encoded[NXT_TOKEN_LEN],char *key,char *secret);
 int32_t construct_tokenized_req(uint32_t *noncep,char *tokenized,char *cmdjson,char *NXTACCTSECRET,char *broadcastmode);
 int32_t validate_token(struct destbuf *forwarder,struct destbuf *pubkey,struct destbuf *NXTaddr,char *tokenizedtxt,int32_t strictflag);
-char *cancel_NXTorderid(char *NXTaddr,uint64_t orderid);
+char *cancel_NXTorderid(char *NXTaddr,char *secret,uint64_t orderid);
 
 uint64_t calc_decimals_mult(int32_t decimals);
 int32_t get_assetdecimals(uint64_t assetid);
@@ -618,14 +618,14 @@ uint64_t _get_AEquote(char *str,uint64_t orderid)
     return(nxt64bits);
 }
 
-char *cancel_NXTorderid(char *NXTaddr,uint64_t orderid)
+char *cancel_NXTorderid(char *NXTaddr,char *nxtsecret,uint64_t orderid)
 {
     uint64_t nxt64bits; char cmd[1025],secret[8192],*str = "Bid",*retstr = 0;
     if ( (nxt64bits= _get_AEquote(str,orderid)) == 0 )
         str = "Ask", nxt64bits = _get_AEquote(str,orderid);
     if ( nxt64bits == calc_nxt64bits(NXTaddr) )
     {
-        escape_code(secret,SUPERNET.NXTACCTSECRET);
+        escape_code(secret,nxtsecret);
         sprintf(cmd,"requestType=cancel%sOrder&secretPhrase=%s&feeNQT=%lld&deadline=%d&order=%llu",str,secret,(long long)MIN_NQTFEE,DEFAULT_NXT_DEADLINE,(long long)orderid);
         retstr = issue_NXTPOST(cmd);
         //printf("(%s) -> (%s)\n",cmd,retstr);

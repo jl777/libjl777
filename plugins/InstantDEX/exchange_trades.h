@@ -232,7 +232,7 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *_base,ch
             return(0);
         }
         //dir = flip_for_exchange(pairstr,"%s_%s","BTC",dir,&price,&volume,base,rel);
-        sprintf(payload,"method=Trade&nonce=%ld&pair=%s&type=%s&rate=%.6f&amount=%.6f",time(NULL),pairstr,dir>0?"buy":"sell",price,volume);
+        sprintf(payload,"method=Trade&nonce=%ld&pair=%s&type=%s&rate=%.3f&amount=%.6f",time(NULL),pairstr,dir>0?"buy":"sell",price,volume);
     }
     if ( (sig= hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),payload)) != 0 )
         sprintf(hdr2,"Sign:%s",sig);
@@ -494,11 +494,11 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
                     break;
                 }
         }
-    }
-    if ( good == 0 )
-    {
-        *retstrp = clonestr("{\"error\":\"invalid contract pair\"}");
-        return(0);
+        if ( good == 0 )
+        {
+            *retstrp = clonestr("{\"error\":\"invalid contract pair\"}");
+            return(0);
+        }
     }
     nonce = time(NULL);
     sprintf(buf,"%s_%s_%s_%llu",exchange->apikey,exchange->userid,exchange->apisecret,(long long)nonce);
@@ -541,7 +541,16 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
         }
     } else fprintf(stderr,"submit err cmd.(%s)\n",cmdbuf);
     if ( retstrp != 0 )
+    {
+        if ( (json= cJSON_Parse(data)) == 0 )
+        {
+            json = cJSON_CreateObject();
+            jaddstr(json,"result",data);
+            data = jprint(json,1);
+        } else free_json(json);
+        printf("btc38 returning.(%s) in %p\n",data,data);
         *retstrp = data;
+    }
     else if ( data != 0 )
         free(data);
     return(txid);
@@ -802,7 +811,7 @@ uint64_t lakebtc_trade(char **retstrp,struct exchange_info *exchange,char *_base
     return(txid);
 }
 
-uint64_t quadriga_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
+uint64_t quadriga_trade(char **retstrp,struct exchange_info *exchange,char *_base,char *_rel,int32_t dir,double price,double volume)
 {
     /* You need to POST 3 fields as a JSON payload to the API in order to perform authentication.
      
@@ -838,21 +847,42 @@ uint64_t quadriga_trade(char **retstrp,struct exchange_info *exchange,char *base
      
      */
     static CURL *cHandle;
- 	char *sig,*data,*path,hdr3[4096],url[512],md5secret[128],req[4096],payload[4096],hdr1[4096],hdr2[4096],dest[1024 + 1];
+    char *baserels[][2] = { {"btc","usd"}, {"btc","cad"} };
+	char *extra,*sig,*data,*path,pairstr[64],base[64],rel[64],hdr3[4096],url[512],md5secret[128],req[4096],payload[4096],hdr1[4096],hdr2[4096],dest[1024 + 1];
     cJSON *json; uint64_t nonce,txid = 0;
     memset(payload,0,sizeof(payload));
+    if ( (extra= *retstrp) != 0 )
+        *retstrp = 0;
     nonce = time(NULL);
     sprintf(payload,"%llu%s%s",(long long)nonce,exchange->userid,exchange->apikey);
     calc_md5(md5secret,exchange->apisecret,(int32_t)strlen(exchange->apisecret));
-    if ( dir == 0 )
-        path = "balance";
-    else
-    {
-        //dir = flip_for_exchange(pairstr,"%s_%s","BTC",dir,&price,&volume,base,rel);
-    }
     if ( (sig= hmac_sha256_str(dest,md5secret,(int32_t)strlen(md5secret),payload)) != 0 )
     {
-        sprintf(req,"{\"key\":\"%s\",\"nonce\":%llu,\"signature\":\"%s\"}",exchange->apikey,(long long)nonce,sig);
+        if ( dir == 0 )
+        {
+            path = "balance";
+            sprintf(req,"{\"key\":\"%s\",\"nonce\":%llu,\"signature\":\"%s\"}",exchange->apikey,(long long)nonce,sig);
+        }
+        else
+        {
+            strcpy(base,_base), strcpy(rel,_rel);
+            tolowercase(base), tolowercase(rel);
+            if ( flipstr_for_exchange(pairstr,"%s_%s",baserels,sizeof(baserels)/sizeof(*baserels),dir,&price,&volume,base,rel) == 0 )
+            {
+                printf("cant find baserel (%s/%s)\n",base,rel);
+                return(0);
+            }
+            path = (dir > 0) ? "buy" : "sell";
+            /*key - API key
+             signature - signature
+             nonce - nonce
+             amount - amount of major currency
+             price - price to buy at
+             book - optional, if not specified, will default to btc_cad*/
+            sprintf(req,"{\"key\":\"%s\",\"amount\":%.6f,\"price\":%.3f,\"book\":\"%s_%s\",\"nonce\":%llu,\"signature\":\"%s\"}",exchange->apikey,volume,price,base,rel,(long long)nonce,sig);
+
+            //dir = flip_for_exchange(pairstr,"%s_%s","BTC",dir,&price,&volume,base,rel);
+        }
         sprintf(hdr1,"Content-Type:application/json"), sprintf(hdr2,"charset=utf-8"), sprintf(hdr3,"Content-Length:%ld",strlen(req));
         printf("quadriga req.(%s) -> (%s) [%s %s sig.%s]\n",req,payload,md5secret,payload,sig);
         sprintf(url,"https://api.quadrigacx.com/v2/%s",path);
@@ -983,6 +1013,7 @@ uint64_t coinbase_trade(char **retstrp,struct exchange_info *exchange,char *base
     return(txid);
 }
 
+#ifdef enable_exmo
 uint64_t exmo_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
     /* $req['nonce'] = $NONCE;
@@ -1033,6 +1064,7 @@ uint64_t exmo_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
         free(data);
     return(txid);
 }
+#endif
 
 uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,uint64_t nxt64bits,char *NXTACCTSECRET,uint64_t assetid,uint64_t qty,uint64_t NXTprice,char *triggerhash,char *comment,uint64_t otherNXT,uint32_t triggerheight)
 {
@@ -1081,7 +1113,7 @@ uint64_t submit_triggered_nxtae(char **retjsonstrp,int32_t is_MS,char *bidask,ui
     return(txid);
 }
 
-char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid)
+char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,char *secret,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid)
 {
     uint64_t txid,assetid,avail,qty,priceNQT,ap_mult; char retbuf[512],*errstr;
     if ( nxt64bits != calc_nxt64bits(SUPERNET.NXTADDR) )
@@ -1093,8 +1125,8 @@ char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,int32_t dir,double price,dou
     else return(clonestr("{\"error\":\"NXT AE order without NXT\"}"));
     if ( (ap_mult= get_assetmult(assetid)) == 0 )
         return(clonestr("{\"error\":\"assetid not found\"}"));
-    qty = calc_asset_qty(&avail,&priceNQT,SUPERNET.NXTADDR,0,assetid,price,volume);
-    txid = submit_triggered_nxtae(&errstr,0,dir > 0 ? "placeBidOrder" : "placeAskOrder",nxt64bits,SUPERNET.NXTACCTSECRET,assetid,qty,priceNQT,0,0,0,0);
+    qty = calc_asset_qty(&avail,&priceNQT,secret,0,assetid,price,volume);
+    txid = submit_triggered_nxtae(&errstr,0,dir > 0 ? "placeBidOrder" : "placeAskOrder",nxt64bits,secret,assetid,qty,priceNQT,0,0,0,0);
     if ( errstr != 0 )
         sprintf(retbuf,"{\"error\":\"%s\"}",errstr), free(errstr);
     else sprintf(retbuf,"{\"result\":\"success\",\"txid\":\"%llu\"}",(long long)txid);
@@ -1129,7 +1161,7 @@ uint64_t submit_to_exchange(int32_t exchangeid,char **jsonstrp,uint64_t assetid,
     {
         printf("submit_to_exchange.(%d) dir.%d price %f vol %f | inv %f %f (%s)\n",exchangeid,dir,price,volume,1./price,price*volume,comment);
         if ( (txid= (*exchange->trade)(&retstr,exchange,base,rel,dir,price,volume)) == 0 )
-            printf("illegal combo (%s/%s) ret.(%s)\n",base,rel,retstr!=0?retstr:"");
+            printf("error trading (%s/%s) dir.%d price %f vol %f ret.(%s)\n",base,rel,dir,price,volume,retstr!=0?retstr:"");
         if ( jsonstrp != 0 )
             *jsonstrp = retstr;
     }

@@ -29,8 +29,8 @@
 
 struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
 int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx);
-//char *_createsignraw_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,char *rawbytes,char **privkeys,int32_t gatewayid,int32_t numgateways);
-//char *_createrawtxid_json_params(char *coinstr,char *serverport,char *userpass,struct cointx_info *cointx,int32_t gatewayid,int32_t numgateways);
+int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx,int32_t oldtx);
+
 void disp_cointx(struct cointx_info *cointx);
 
 #endif

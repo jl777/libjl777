@@ -122,7 +122,7 @@ int32_t cancelquote(char *NXTaddr,uint64_t quoteid)
     return(0);
 }
 
-char *InstantDEX_cancelorder(uint64_t orderid,uint64_t quoteid)
+char *InstantDEX_cancelorder(char *activenxt,char *secret,uint64_t orderid,uint64_t quoteid)
 {
     struct InstantDEX_quote *iQ; cJSON *json,*array,*item; char numstr[64],*retstr; uint64_t quoteids[256]; int32_t i,n=0;
     json = cJSON_CreateObject(), array = cJSON_CreateArray();
@@ -132,19 +132,19 @@ char *InstantDEX_cancelorder(uint64_t orderid,uint64_t quoteid)
     for (i=0; i<n; i++)
     {
         quoteid = quoteids[i];
-        if ( (retstr= cancel_NXTorderid(SUPERNET.NXTADDR,quoteid)) != 0 )
+        if ( (retstr= cancel_NXTorderid(activenxt,secret,quoteid)) != 0 )
         {
-            if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->s.offerNXT == calc_nxt64bits(SUPERNET.NXTADDR) )
+            if ( (iQ= findquoteid(quoteid,0)) != 0 && iQ->s.offerNXT == calc_nxt64bits(activenxt) )
                 cancel_InstantDEX_quote(iQ);
             if ( (item= cJSON_Parse(retstr)) != 0 )
                 jaddi(array,item);
             free(retstr);
         }
-        cancelquote(SUPERNET.NXTADDR,quoteid);
+        cancelquote(activenxt,quoteid);
     }
     if ( orderid != 0 )
     {
-        if ( cancelquote(SUPERNET.NXTADDR,orderid) != 0 )
+        if ( cancelquote(activenxt,orderid) != 0 )
             sprintf(numstr,"%llu",(long long)orderid), jaddstr(json,"ordercanceled",numstr);
     }
     return(jprint(json,1));
@@ -401,7 +401,7 @@ char *autofill(char *remoteaddr,struct InstantDEX_quote *refiQ,char *NXTaddr,cha
                 price = 1. / bestiQ->s.price;
                 printf("price inverted (%f %f) -> (%f %f)\n",bestiQ->s.price,bestiQ->s.vol,price,volume);
             } else price = bestiQ->s.price, volume = bestiQ->s.vol;
-            retstr = prices777_trade(prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid,0);
+            retstr = prices777_trade(NXTaddr,NXTACCTSECRET,prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid,0);
         }
     }
     return(retstr);
@@ -429,7 +429,7 @@ char *automatch(struct prices777 *prices,int32_t dir,double refprice,double refv
     }
     //printf("n.%d\n",n);
     if ( bestorder.source != 0 )
-        retstr = prices777_trade(bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid,0);
+        retstr = prices777_trade(NXTaddr,NXTACCTSECRET,bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid,0);
     return(retstr);
 }
 
@@ -484,7 +484,7 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
     }
 }
 
-char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr,char *name,char *base,char *rel,struct InstantDEX_quote *iQ,char *extra)
+char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr,char *name,char *base,char *rel,struct InstantDEX_quote *iQ,char *extra,char *secret,char *activenxt)
 {
     extern queue_t InstantDEXQ;
     char *retstr = 0; int32_t inverted,dir; struct prices777 *prices; double price,volume; struct exchange_info *exchange;
@@ -515,12 +515,14 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
         //printf("dir.%d price %f vol %f isask.%d\n",dir,price,volume,iQ->s.isask);
         if ( remoteaddr == 0 )
         {
-            if ( strcmp(exchangestr,"InstantDEX") != 0 && strcmp(exchangestr,"active") != 0 && strcmp(exchangestr,"basket") != 0 )
+            if ( strcmp(exchangestr,"InstantDEX") != 0 && strcmp(exchangestr,"active") != 0 && strncmp(exchangestr,"basket",strlen("basket")) != 0 )
             {
-                return(prices777_trade(prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
+                return(prices777_trade(activenxt,secret,prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
             }
-            if ( iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET)) != 0 )
+            if ( iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,activenxt,secret)) != 0 )
                 return(retstr);
+            if ( strcmp(SUPERNET.NXTACCTSECRET,secret) != 0 )
+                return(clonestr("{\"error\":\"cant do queued requests with non-default accounts\"}"));
             retstr = InstantDEX_str(0,1,iQ);
             //printf("create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);
             iQ = create_iQ(iQ);
@@ -530,9 +532,11 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
         }
         else
         {
-            if ( (retstr= autofill(remoteaddr,iQ,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET)) == 0 )
+            if ( (retstr= autofill(remoteaddr,iQ,activenxt,secret)) == 0 )
             {
                 //printf("create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);
+                if ( strcmp(SUPERNET.NXTACCTSECRET,secret) != 0 )
+                    return(clonestr("{\"error\":\"cant do queued requests with non-default accounts\"}"));
                 iQ = create_iQ(iQ);
                 prices777_InstantDEX(prices,MAX_DEPTH);
                 printf("got create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);

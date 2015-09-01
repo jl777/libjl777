@@ -613,7 +613,7 @@ void orderbook_test(uint64_t nxt64bits,uint64_t refbaseid,uint64_t refrelid,int3
 
 void init_exchanges(cJSON *json)
 {
-    static char *exchanges[] = { "bitfinex", "btc38", "bitstamp", "btce", "poloniex", "bittrex", "huobi", "coinbase", "okcoin", "bityes", "lakebtc", "exmo" }; // "bter" <- orderbook is backwards and all entries are needed, later to support
+    static char *exchanges[] = { "bitfinex", "btc38", "bitstamp", "btce", "poloniex", "bittrex", "huobi", "coinbase", "okcoin", "bityes", "lakebtc" }; // "bter" <- orderbook is backwards and all entries are needed, later to support, , "exmo" flakey servers
     cJSON *array; int32_t i,n;
     find_exchange(0,INSTANTDEX_NAME);
     find_exchange(0,INSTANTDEX_NXTAEUNCONF);

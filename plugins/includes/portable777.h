@@ -232,13 +232,14 @@ int32_t verify_NXTtx(cJSON *json,uint64_t refasset,uint64_t qty,uint64_t destNXT
 cJSON *exchanges_json();
 struct InstantDEX_quote *delete_iQ(uint64_t quoteid);
 char *is_tradedasset(char *exchange,char *assetidstr);
+int32_t supported_exchange(char *exchangestr);
 
 struct exchange_info *get_exchange(int32_t exchangeid);
 char *exchange_str(int32_t exchangeid);
 struct exchange_info *find_exchange(int32_t *exchangeidp,char *exchangestr);
 struct exchange_info *exchange_find(char *exchangestr);
 void prices777_exchangeloop(void *ptr);
-char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid);
+char *fill_nxtae(uint64_t *txidp,uint64_t nxt64bits,char *secret,int32_t dir,double price,double volume,uint64_t baseid,uint64_t relid);
 uint64_t prices777_equiv(uint64_t assetid);
 void prices777_jsonstrs(struct prices777 *prices,struct prices777_basketinfo *OB);
 char *prices777_activebooks(char *name,char *_base,char *_rel,uint64_t baseid,uint64_t relid,int32_t maxdepth,int32_t allflag,int32_t tradeable);

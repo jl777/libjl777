@@ -607,6 +607,10 @@ int SuperNET_start(char *fname,char *myip)
             printf("ERROR >>>>>>>>>>> SuperNET.conf file couldnt be parsed\n");
             exit(-666);
         }
+#ifdef __APPLE__
+        //void test_subatomic();
+        //test_subatomic();
+#endif
     }
     strcpy(SUPERNET.myipaddr,ipaddr);
     init_SUPERNET_pullsock(10,SUPERNET.recvtimeout);
@@ -749,9 +753,6 @@ int main(int argc,const char *argv[])
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
     char dest[512*2 + 1];
-    uint64_t quadriga_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
-//    getchar();
-    //zktest(); getchar();
     hmac_sha512_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha512.(%s)\n",dest);
     hmac_sha384_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha384.(%s)\n",dest);
     hmac_sha256_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha256.(%s)\n",dest);

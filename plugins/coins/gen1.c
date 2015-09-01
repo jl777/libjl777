@@ -633,6 +633,39 @@ cJSON *_script_has_address(int32_t *nump,cJSON *scriptobj)
     return(0);
 }
 
+/*
+ {
+    "PrivateKey" : "308201130201010420cca2db1e12cd4b17b09edd638ae1349f58c7217c0f7d22e58c9c10c2b029653fa081a53081a2020101302c06072a8648ce3d0101022100fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f300604010004010704410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a14403420004d8e8b5d8979c841668ce0f006eae6e502c3d8522e828ec0d574ef1b28b5b80f75236fdb332f2a2f1ea364850283328ef56387517df1e616bb9bdfb764988c190",
+    "PublicKey" : "04d8e8b5d8979c841668ce0f006eae6e502c3d8522e828ec0d574ef1b28b5b80f75236fdb332f2a2f1ea364850283328ef56387517df1e616bb9bdfb764988c190"
+}
+￼
+{
+    "isvalid" : true,
+    "address" : "RTvcjHngNQKXaK5NjPcH7Wssin7hvTkZ5m",
+    "ismine" : false,
+    "iscompressed" : false
+}
+ a15cedfe4b6b00291f99e89762e71b76c3f45bd211f36a132620a5735a19ef9d -> 
+ {
+ "value" : 1.00000000,
+ "n" : 1,
+ "scriptPubKey" : {
+ "asm" : "OP_DUP OP_HASH160 cc863b881f35bbeca374b25d018d4e17dc4aa19b OP_EQUALVERIFY OP_CHECKSIG",
+ "reqSigs" : 1,
+ "type" : "pubkeyhash",
+ "addresses" : [
+ "RTvcjHngNQKXaK5NjPcH7Wssin7hvTkZ5m"
+ ]
+ }
+ ripemd160(sha256(04d8e8b5d8979c841668ce0f006eae6e502c3d8522e828ec0d574ef1b28b5b80f75236fdb332f2a2f1ea364850283328ef56387517df1e616bb9bdfb764988c190)) -> sha256.196ee5c15db800db4cfebbe8be6d9ef666f839ef8dcdd36a81a358aae312720e -> 9f8b558621baa463e410860702742c260d3a89ee
+ 
+ cc863b881f35bbeca374b25d018d4e17dc4aa19b
+
+
+036b0ac4361f0058710840f9db9f85733e8014211d9fcc7930dd833aa098ed4d33",
+30440220387a6dcdc95a44487c4a978a8a91a7834ee2294a8a10dda11750e21e8891776b02207a17dcf7ee082a1a9db385900d6abc76735397776ee3f74f1d4fa8177d9b2f0c01
+*/
+
 int32_t _extract_txvals(struct destbuf *coinaddr,struct destbuf *script,int32_t nohexout,cJSON *txobj)
 {
     int32_t numaddresses;
