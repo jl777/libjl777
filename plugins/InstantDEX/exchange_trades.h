@@ -376,7 +376,7 @@ uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_bas
         is_hidden	[bool]	true if the order should be hidden. Default is false.*/
             
     static CURL *cHandle;
-    char *baserels[][2] = { {"btc","usd"}, {"ltc","usd"}, {"ltc","btc"}, {"drk","usd"}, {"drk","btc"} };
+    char *baserels[][2] = { {"btc","usd"}, {"ltc","usd"}, {"ltc","btc"} };
  	char *sig,*data,hdr3[4096],url[512],*extra,*typestr,*method,req[4096],base[16],rel[16],payload[4096],hdr1[4096],hdr2[4096],pairstr[512],dest[1024 + 1]; cJSON *json; uint64_t nonce,txid = 0;
     if ( (extra= *retstrp) != 0 )
         *retstrp = 0;
@@ -446,55 +446,15 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
      curl_setopt ($ ch, CURLOPT_POSTFIELDS, $ data);
      curl_setopt ($ ch, CURLOPT_RETURNTRANSFER, 1);
      curl_setopt ($ ch, CURLOPT_HEADER, 0);  */
-    char *cnypairs[] = { "BTC", "LTC", "DOGE", "XRP", "BTS", "STR", "NXT", "BLK", "YBC", "BILS", "BOST", "PPC", "APC", "ZCC", "XPM", "DGC", "MEC", "WDC", "QRK", "BEC", "ANC", "UNC", "RIC", "SRC", "TAG" };
-    char *btcpairs[] = { "TMC", "LTC", "DOGE", "XRP", "BTS", "STR", "NXT", "BLK", "XEM", "VPN", "BILS", "BOST", "WDC", "ANC", "XCN", "VOOT", "SYS", "NRS", "NAS", "SYNC", "MED", "EAC" };
 
     static CURL *cHandle;
  	char *data,*path,url[1024],cmdbuf[8192],buf[512],digest[33],market[16],base[64],rel[64],coinname[16],fmtstr[512],*pricefmt,*volfmt = "%.3f";
-    cJSON *json,*resultobj; int32_t i,good = 0; uint64_t nonce,txid = 0;
+    cJSON *json,*resultobj; uint64_t nonce,txid = 0;
     if ( _base != 0 && _rel != 0 )
     {
         strcpy(base,_base), strcpy(rel,_rel);
         touppercase(base), touppercase(rel);
-        if ( (strcmp(base,"BTC") == 0 && strcmp(rel,"CNY") == 0) || (strcmp(base,"CNY") == 0 && strcmp(rel,"BTC") == 0) )
-            good = 1;
-        else if ( strcmp(base,"BTC") == 0 )
-        {
-            for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
-                if ( strcmp(btcpairs[i],rel) == 0 )
-                {
-                    good = 1;
-                    break;
-                }
-        }
-        else if ( strcmp(rel,"BTC") == 0 )
-        {
-            for (i=0; i<sizeof(btcpairs)/sizeof(*btcpairs); i++)
-                if ( strcmp(btcpairs[i],base) == 0 )
-                {
-                    good = 1;
-                    break;
-                }
-        }
-        else if ( strcmp(base,"CNY") == 0 )
-        {
-            for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
-                if ( strcmp(cnypairs[i],rel) == 0 )
-                {
-                    good = 1;
-                    break;
-                }
-        }
-        else if ( strcmp(rel,"CNY") == 0 )
-        {
-            for (i=0; i<sizeof(cnypairs)/sizeof(*cnypairs); i++)
-                if ( strcmp(cnypairs[i],base) == 0 )
-                {
-                    good = 1;
-                    break;
-                }
-        }
-        if ( good == 0 )
+        if ( btc38_supports(base,rel) == 0 )
         {
             *retstrp = clonestr("{\"error\":\"invalid contract pair\"}");
             return(0);

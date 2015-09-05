@@ -247,8 +247,9 @@ int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx,i
         }
         else
         {
-            disp_cointx(cointx);
             printf("_validate_decoderawtransaction: error: \n(%s) != \n(%s)\n",hexstr,checkstr);
+            //strcpy(hexstr,checkstr);
+            disp_cointx(cointx);
         }
         //getchar();
     }

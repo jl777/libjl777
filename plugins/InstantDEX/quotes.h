@@ -401,7 +401,7 @@ char *autofill(char *remoteaddr,struct InstantDEX_quote *refiQ,char *NXTaddr,cha
                 price = 1. / bestiQ->s.price;
                 printf("price inverted (%f %f) -> (%f %f)\n",bestiQ->s.price,bestiQ->s.vol,price,volume);
             } else price = bestiQ->s.price, volume = bestiQ->s.vol;
-            retstr = prices777_trade(NXTaddr,NXTACCTSECRET,prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid,0);
+            retstr = prices777_trade(0,NXTaddr,NXTACCTSECRET,prices,dir,price,volume,bestiQ,0,bestiQ->s.quoteid,0);
         }
     }
     return(retstr);
@@ -429,7 +429,7 @@ char *automatch(struct prices777 *prices,int32_t dir,double refprice,double refv
     }
     //printf("n.%d\n",n);
     if ( bestorder.source != 0 )
-        retstr = prices777_trade(NXTaddr,NXTACCTSECRET,bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid,0);
+        retstr = prices777_trade(0,NXTaddr,NXTACCTSECRET,bestorder.source,bestorder.s.isask!=0?-1:1,bestorder.s.price,bestorder.s.vol,0,&bestorder,bestorder.s.quoteid,0);
     return(retstr);
 }
 
@@ -484,10 +484,22 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
     }
 }
 
+int32_t is_specialexchange(char *exchangestr)
+{
+    if ( strcmp(exchangestr,"InstantDEX") == 0 || strcmp(exchangestr,"subatomic") == 0 || strcmp(exchangestr,"wallet") == 0 || strcmp(exchangestr,"active") == 0 || strncmp(exchangestr,"basket",strlen("basket")) == 0 )
+        return(1);
+    return(0);
+}
+
 char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr,char *name,char *base,char *rel,struct InstantDEX_quote *iQ,char *extra,char *secret,char *activenxt)
 {
     extern queue_t InstantDEXQ;
     char *retstr = 0; int32_t inverted,dir; struct prices777 *prices; double price,volume; struct exchange_info *exchange;
+    if ( secret == 0 || activenxt == 0 )
+    {
+        secret = SUPERNET.NXTACCTSECRET;
+        activenxt = SUPERNET.NXTADDR;
+    }
     if ( exchangestr != 0 && (exchange= exchange_find(exchangestr)) != 0 )
         iQ->exchangeid = exchange->exchangeid;
     if ( iQ->exchangeid < 0 || (exchangestr= exchange_str(iQ->exchangeid)) == 0 )
@@ -515,11 +527,9 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
         //printf("dir.%d price %f vol %f isask.%d\n",dir,price,volume,iQ->s.isask);
         if ( remoteaddr == 0 )
         {
-            if ( strcmp(exchangestr,"InstantDEX") != 0 && strcmp(exchangestr,"active") != 0 && strncmp(exchangestr,"basket",strlen("basket")) != 0 )
-            {
-                return(prices777_trade(activenxt,secret,prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
-            }
-            if ( iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,activenxt,secret)) != 0 )
+            if ( is_specialexchange(exchangestr) == 0 )
+                return(prices777_trade(0,activenxt,secret,prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
+            if ( strcmp(exchangestr,"wallet") != 0 && iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,activenxt,secret)) != 0 )
                 return(retstr);
             if ( strcmp(SUPERNET.NXTACCTSECRET,secret) != 0 )
                 return(clonestr("{\"error\":\"cant do queued requests with non-default accounts\"}"));

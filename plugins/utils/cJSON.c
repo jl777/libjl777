@@ -959,7 +959,7 @@ int32_t cmp_nxt64bits(const char *str,uint64_t nxt64bits)
 uint64_t calc_nxt64bits(const char *NXTaddr)
 {
     int32_t c;
-    int64_t n,i;
+    int64_t n,i,polarity = 1;
     uint64_t lastval,mult,nxt64bits = 0;
     if ( NXTaddr == 0 )
     {
@@ -977,6 +977,8 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
         // printf("zero address?\n"); getchar();
         return(0);
     }
+    if ( NXTaddr[0] == '-' )
+        polarity = -1, NXTaddr++, n--;
     mult = 1;
     lastval = 0;
     for (i=n-1; i>=0; i--,mult*=10)
@@ -1001,6 +1003,8 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
     }
     if ( cmp_nxt64bits(NXTaddr,nxt64bits) != 0 )
         printf("error calculating nxt64bits: %s -> %llx -> %s\n",NXTaddr,(long long)nxt64bits,nxt64str(nxt64bits));
+    if ( polarity < 0 )
+        return(-(int64_t)nxt64bits);
     return(nxt64bits);
 }
 

@@ -170,6 +170,8 @@ uint16_t extract_userpass(char *serverport,char *userpass,char *coinstr,char *us
 {
     FILE *fp; uint16_t port = 0;
     char fname[2048],line[1024],*rpcuser,*rpcpassword,*rpcport,*str;
+    if ( strcmp(coinstr,"NXT") == 0 )
+        return(0);
     serverport[0] = userpass[0] = 0;
     set_coinconfname(fname,coinstr,userhome,coindir,confname);
     printf("set_coinconfname.(%s)\n",fname);
@@ -213,15 +215,31 @@ uint16_t extract_userpass(char *serverport,char *userpass,char *coinstr,char *us
     return(port);
 }
 
+void set_atomickeys(struct coin777 *coin)
+{
+    char *addr; struct destbuf pubkey;
+    if ( (addr= get_acct_coinaddr(coin->atomicrecv,coin->name,coin->serverport,coin->userpass,"atomicrecv")) != 0 )
+    {
+        get_pubkey(&pubkey,coin->name,coin->serverport,coin->userpass,coin->atomicrecv);
+        strcpy(coin->atomicrecvpubkey,pubkey.buf);
+    }
+    if ( (addr= get_acct_coinaddr(coin->atomicsend,coin->name,coin->serverport,coin->userpass,"atomicsend")) != 0 )
+    {
+        get_pubkey(&pubkey,coin->name,coin->serverport,coin->userpass,coin->atomicsend);
+        strcpy(coin->atomicsendpubkey,pubkey.buf);
+    }
+}
+
 struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
 {
     char *serverport,*path=0,*conf=0; struct destbuf tmp;
     struct coin777 *coin = calloc(1,sizeof(*coin));
     safecopy(coin->name,coinstr,sizeof(coin->name));
-    if ( argjson == 0 )
+    if ( argjson == 0 || strcmp(coinstr,"NXT") == 0 )
     {
         coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
         coin->estblocktime = (strcmp("BTC",coinstr) == 0) ? 600 : 120;
+        coin->mgw.use_addmultisig = (strcmp("BTC",coinstr) != 0);
     }
     else
     {
@@ -254,8 +272,6 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         coin->mgw.txfee = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"txfee_satoshis"));
         if ( coin->mgw.txfee == 0 )
             coin->mgw.txfee = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(argjson,"txfee")));
-        if ( coin->mgw.txfee == 0 )
-            coin->mgw.txfee = 10000;
         coin->mgw.NXTfee_equiv = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"NXTfee_equiv_satoshis"));
         if ( coin->mgw.NXTfee_equiv == 0 )
             coin->mgw.NXTfee_equiv = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(argjson,"NXTfee_equiv")));
@@ -275,9 +291,16 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"marker")), safecopy(coin->mgw.marker,tmp.buf,sizeof(coin->mgw.marker));
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
     }
+    if ( coin->mgw.txfee == 0 )
+        coin->mgw.txfee = 10000;
+    if ( strcmp(coin->name,"BTC") == 0 && coin->donationaddress[0] == 0 )
+        strcpy(coin->donationaddress,"177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
+    else if ( strcmp(coin->name,"BTCD") == 0 && coin->donationaddress[0] == 0 )
+        strcpy(coin->donationaddress,"REsAF17mNLqPgeeUN8oRkvPmSfSkKzRwPt");
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
-    printf("COIN.%s serverport.(%s) userpass.(%s)\n",coin->name,coin->serverport,coin->userpass);
+    set_atomickeys(coin);
+    printf("COIN.%s serverport.(%s) userpass.(%s) %s/%s %s/%s\n",coin->name,coin->serverport,coin->userpass,coin->atomicrecv,coin->atomicrecvpubkey,coin->atomicsend,coin->atomicsendpubkey);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
     //ensure_packedptrs(coin);
@@ -287,6 +310,8 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
 struct coin777 *coin777_find(char *coinstr,int32_t autocreate)
 {
     int32_t i,j,n; cJSON *item,*array; char *str;
+    if ( coinstr == 0 )
+        return(0);
     if ( COINS.num > 0 )
     {
         for (i=0; i<COINS.num; i++)

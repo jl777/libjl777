@@ -171,6 +171,7 @@ struct coin777
     struct ramchain ramchain;
     struct mgw777 mgw;
     int32_t minconfirms,verified,lag,estblocktime; uint64_t minoutput;
+    char atomicsendpubkey[128],atomicrecvpubkey[128],atomicrecv[128],atomicsend[128],donationaddress[128],changeaddr[128];
 };
 
 char *bitcoind_RPC(char **retstrp,char *debugstr,char *url,char *userpass,char *command,char *params);
@@ -180,6 +181,7 @@ int32_t coin777_close(char *coinstr);
 struct coin777 *coin777_find(char *coinstr,int32_t autocreate);
 int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *userpass,uint32_t blocknum);
 void rawblock_patch(struct rawblock *raw);
+char *subatomic_txid(char *txbytes,struct coin777 *coin,char *destaddr,uint64_t amount,int32_t future);
 
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 void coin777_disprawblock(struct rawblock *raw);

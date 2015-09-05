@@ -152,6 +152,8 @@ uint64_t is_MGWcoin(char *name);
 char *is_MGWasset(uint64_t *multp,uint64_t assetid);
 int32_t unstringbits(char *buf,uint64_t bits);
 int32_t get_assetname(char *name,uint64_t assetid);
+void calc_OP_HASH160(char hexstr[41],uint8_t hash160[20],char *pubkey);
+int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
 
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename);
@@ -163,7 +165,8 @@ void set_best_amounts(int64_t *baseamountp,int64_t *relamountp,double price,doub
 int32_t is_mscoin(char *assetidstr);
 uint32_t issue_getTime();
 
-#define MAX_DEPTH 25
+#define _MAX_DEPTH 100
+extern uint32_t MAX_DEPTH;
 #define MINUTES_FIFO (1024)
 #define HOURS_FIFO (64)
 #define DAYS_FIFO (512)
@@ -180,6 +183,7 @@ uint32_t issue_getTime();
 #define INSTANTDEX_UNCONFID 1
 #define INSTANTDEX_NXTAEID 2
 #define MAX_EXCHANGES 64
+#define ORDERBOOK_EXPIRATION 3600
 
 struct NXTtx { uint64_t txid; char fullhash[MAX_JSON_FIELD],utxbytes[MAX_JSON_FIELD],utxbytes2[MAX_JSON_FIELD],txbytes[MAX_JSON_FIELD],sighash[MAX_JSON_FIELD]; };
 
@@ -199,10 +203,10 @@ struct prices777_orderentry { struct prices777_order bid,ask; };
 struct prices777_basketinfo
 {
     int32_t numbids,numasks; uint32_t timestamp;
-    struct prices777_orderentry book[MAX_GROUPS+1][MAX_DEPTH];
+    struct prices777_orderentry book[MAX_GROUPS+1][_MAX_DEPTH];
 };
 
-struct pending_trade { struct queueitem DL; struct prices777_order order; uint64_t triggertxid,txid,quoteid,orderid; struct prices777 *prices; char *triggertx,*txbytes; cJSON *tradesjson; double price,volume; uint32_t timestamp; int32_t dir,type,version,size; };
+struct pending_trade { struct queueitem DL; struct NXTtx trigger; struct prices777_order order; uint64_t triggertxid,txid,quoteid,orderid; struct prices777 *prices; char *triggertx,*txbytes; cJSON *tradesjson; double price,volume; uint32_t timestamp; int32_t dir,type,version,size; };
 
 struct prices777
 {
@@ -226,13 +230,14 @@ struct exchange_info
     portable_mutex_t mutex;
 };
 
-uint64_t gen_NXTtx(struct NXTtx *tx,uint64_t dest64bits,uint64_t assetidbits,uint64_t qty,uint64_t orderid,uint64_t quoteid,int32_t deadline,char *reftx,char *phaselink,uint32_t finishheight);
+uint64_t gen_NXTtx(struct NXTtx *tx,uint64_t dest64bits,uint64_t assetidbits,uint64_t qty,uint64_t orderid,uint64_t quoteid,int32_t deadline,char *reftx,char *phaselink,uint32_t finishheight,char *phasesecret);
 int32_t InstantDEX_verify(uint64_t destNXTaddr,uint64_t sendasset,uint64_t sendqty,cJSON *txobj,uint64_t recvasset,uint64_t recvqty);
 int32_t verify_NXTtx(cJSON *json,uint64_t refasset,uint64_t qty,uint64_t destNXTbits);
 cJSON *exchanges_json();
 struct InstantDEX_quote *delete_iQ(uint64_t quoteid);
 char *is_tradedasset(char *exchange,char *assetidstr);
 int32_t supported_exchange(char *exchangestr);
+struct NXTtx *fee_triggerhash(char *triggerhash,uint64_t orderid,uint64_t quoteid,int32_t deadline);
 
 struct exchange_info *get_exchange(int32_t exchangeid);
 char *exchange_str(int32_t exchangeid);
@@ -265,6 +270,7 @@ char *hmac_tiger_str(char *dest,char *key,int32_t key_size,char *message);
 char *hmac_whirlpool_str(char *dest,char *key,int32_t key_size,char *message);
 int nn_base64_encode(const uint8_t *in,size_t in_len,char *out,size_t out_len);
 int nn_base64_decode(const char *in,size_t in_len,uint8_t *out,size_t out_len);
+uint64_t is_NXT_native(uint64_t assetid);
 
 struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struct prices777 *prices,int32_t maxdepth),char *exchange,char *base,char *rel,double decay,char *name,uint64_t baseid,uint64_t relid,int32_t basketsize);
 double prices777_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount);

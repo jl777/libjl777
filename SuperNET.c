@@ -444,6 +444,9 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
 void SuperNET_initconf(cJSON *json)
 {
     struct destbuf myipaddr,tmp; uint8_t mysecret[32],mypublic[32]; FILE *fp;
+    MAX_DEPTH = get_API_int(cJSON_GetObjectItem(json,"MAX_DEPTH"),MAX_DEPTH);
+    if ( MAX_DEPTH > _MAX_DEPTH )
+        MAX_DEPTH = _MAX_DEPTH;
     SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
     SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
     SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
@@ -608,8 +611,8 @@ int SuperNET_start(char *fname,char *myip)
             exit(-666);
         }
 #ifdef __APPLE__
-        //void test_subatomic();
-        //test_subatomic();
+        void test_subatomic();
+        test_subatomic();
 #endif
     }
     strcpy(SUPERNET.myipaddr,ipaddr);

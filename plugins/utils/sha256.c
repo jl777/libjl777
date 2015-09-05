@@ -322,6 +322,29 @@ void update_sha256(uint8_t hash[256 >> 3],struct sha256_state *state,uint8_t *sr
     sha256_done(&md,hash);
 }
 
+void calc_OP_HASH160(char hexstr[41],uint8_t hash160[20],char *pubkey)
+{
+    int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
+    int32_t init_hexbytes_noT(char *hexbytes,uint8_t *message,long len);
+    uint8_t sha256[32],buf[128]; int32_t len; hash_state md;
+    len = (int32_t)strlen(pubkey)/2;
+    decode_hex(buf,len,pubkey);
+    sha256_init(&md);
+    sha256_process(&md,buf,len);
+    sha256_done(&md,sha256);
+    
+    rmd160_init(&md);
+    rmd160_process(&md,sha256,256 >> 3);
+    rmd160_done(&md,hash160);
+    {
+        int i;
+        for (i=0; i<20; i++)
+            printf("%02x",hash160[i]);
+        printf("<- (%s)\n",pubkey);
+    }
+    init_hexbytes_noT(hexstr,hash160,20);
+}
+
 /**
   Self-test the hash
   @return CRYPT_OK if successful, CRYPT_NOP if self-tests have been disabled

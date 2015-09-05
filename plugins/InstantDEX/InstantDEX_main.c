@@ -22,7 +22,6 @@
 
 #define _issue_curl(curl_handle,label,url) bitcoind_RPC(curl_handle,label,url,0,0,0)
 
-#define ORDERBOOK_EXPIRATION 3600
 #define INSTANTDEX_MINVOL 75
 #define INSTANTDEX_MINVOLPERC ((double)INSTANTDEX_MINVOL / 100.)
 #define INSTANTDEX_PRICESLIPPAGE 0.001
@@ -40,11 +39,14 @@
 #include "../common/txind777.c"
 #undef DEFINES_ONLY
 
-char *Supported_exchanges[] = { "InstantDEX", "nxtae", "unconf", "basket", "basketNXT", "basketUSD", "basketBTC", "basketCNY", "active", "subatomic", "bitfinex", "btc38", "bitstamp", "btce", "poloniex", "bittrex", "huobi", "coinbase", "okcoin", "bityes", "lakebtc", "quadriga", "kraken" }; // "bter" <- orderbook is backwards and all entries are needed, later to support, "exmo" flakey apiservers
+char *Supported_exchanges[] = { INSTANTDEX_NAME, INSTANTDEX_NXTAEUNCONF, INSTANTDEX_NXTAENAME, INSTANTDEX_BASKETNAME, "basketNXT", "basketUSD", "basketBTC", "basketCNY", INSTANTDEX_ACTIVENAME, "wallet", "subatomic", // subatomic MUST be last of special exchanges
+    "bitfinex", "btc38", "bitstamp", "btce", "poloniex", "bittrex", "huobi", "coinbase", "okcoin", "bityes", "lakebtc", "quadriga",
+    "kraken", "gatecoin", "quoine", "jubi", "hitbtc"  // no trading for these exchanges yet
+}; // "bter" <- orderbook is backwards and all entries are needed, later to support, "exmo" flakey apiservers
 
 #define INSTANTDEX_LOCALAPI "allorderbooks", "orderbook", "lottostats", "LSUM", "makebasket", "disable", "enable", "peggyrates", "tradesequence", "placebid", "placeask", "orderstatus", "openorders", "cancelorder", "tradehistory", "balance", "allexchanges"
 
-#define INSTANTDEX_REMOTEAPI "msigaddr", "bid", "ask", "swap"
+#define INSTANTDEX_REMOTEAPI "msigaddr", "bid", "ask", "swap", "funding", "refund"
 char *PLUGNAME(_methods)[] = { INSTANTDEX_REMOTEAPI}; // list of supported methods approved for local access
 char *PLUGNAME(_pubmethods)[] = { INSTANTDEX_REMOTEAPI }; // list of supported methods approved for public (Internet) access
 char *PLUGNAME(_authmethods)[] = { "echo" }; // list of supported methods that require authentication
@@ -54,7 +56,6 @@ typedef char *(*json_handler)(int32_t localaccess,int32_t valid,char *sender,cJS
 queue_t InstantDEXQ,TelepathyQ;
 struct InstantDEX_info INSTANTDEX;
 struct pingpong_queue Pending_offersQ;
-cJSON *Lottostats_json;
 cJSON *InstantDEX_lottostats();
 
 //#include "NXT_tx.h"
@@ -62,7 +63,12 @@ cJSON *InstantDEX_lottostats();
 #include "quotes.h"
 #include "subatomic.h"
 
-uint32_t prices777_NXTBLOCK,FIRST_EXTERNAL = 5;
+// {"plugin":"InstantDEX","method":"orderbook","baseid":"8688289798928624137","rel":"USD","exchange":"active","allfields":1}
+
+// {"plugin":"InstantDEX","method":"orderbook","baseid":"17554243582654188572","rel":"12071612744977229797","exchange":"active","allfields":1}
+// {"plugin":"InstantDEX","method":"orderbook","baseid":"6918149200730574743","rel":"XMR","exchange":"active","allfields":1}
+
+uint32_t prices777_NXTBLOCK,FIRST_EXTERNAL,MAX_DEPTH = 100;
 int32_t InstantDEX_idle(struct plugin_info *plugin) { return(0); }
 
 int32_t supported_exchange(char *exchangestr)
@@ -105,7 +111,7 @@ void idle()
 
 void idle2()
 {
-    static double lastmilli; static cJSON *oldjson;
+    static double lastmilli;
     uint32_t NXTblock;
     while ( INSTANTDEX.readyflag == 0 )
         sleep(1);
@@ -116,11 +122,6 @@ void idle2()
         NXTblock = _get_NXTheight(0);
         if ( 1 && NXTblock != prices777_NXTBLOCK )
         {
-            if ( oldjson != 0 )
-                free_json(oldjson);
-            oldjson = Lottostats_json;
-            //fprintf(stderr,"idle NXT\n");
-            Lottostats_json = InstantDEX_lottostats();
             prices777_NXTBLOCK = NXTblock;
             InstantDEX_update(SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET);
             //fprintf(stderr,"done idle NXT\n");
@@ -414,7 +415,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
         else if ( strcmp(method.buf,"tradehistory") == 0 )
             retstr = InstantDEX_tradehistory(juint(json,"firsti"),juint(json,"endi"));
         else if ( strcmp(method.buf,"lottostats") == 0 )
-            retstr = jprint(Lottostats_json,0);
+            retstr = jprint(InstantDEX_lottostats(),1);
         else if ( strcmp(method.buf,"balance") == 0 )
         {
             if ( exchange != 0 && exchange->trade != 0 )
@@ -424,7 +425,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
         }
         else if ( strcmp(method.buf,"tradesequence") == 0 )
         {
-            printf("call tradesequence.(%s)\n",jsonstr);
+            //printf("call tradesequence.(%s)\n",jsonstr);
             retstr = InstantDEX_tradesequence(activenxt,secret,json);
         }
         else if ( strcmp(method.buf,"makebasket") == 0 )
@@ -531,13 +532,16 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 void init_exchanges(cJSON *json)
 {
     cJSON *array; int32_t i,n;
-    find_exchange(0,INSTANTDEX_NAME);
-    find_exchange(0,INSTANTDEX_NXTAEUNCONF);
-    find_exchange(0,INSTANTDEX_NXTAENAME);
-    find_exchange(0,INSTANTDEX_BASKETNAME);
-    find_exchange(0,INSTANTDEX_ACTIVENAME);
-    FIRST_EXTERNAL = 5;
-    for (i=0; i<sizeof(Supported_exchanges)/sizeof(*Supported_exchanges); i++)
+    for (FIRST_EXTERNAL=0; FIRST_EXTERNAL<sizeof(Supported_exchanges)/sizeof(*Supported_exchanges); FIRST_EXTERNAL++)
+    {
+        find_exchange(0,Supported_exchanges[FIRST_EXTERNAL]);
+        if ( strcmp(Supported_exchanges[FIRST_EXTERNAL],"subatomic") == 0 )
+        {
+            FIRST_EXTERNAL++;
+            break;
+        }
+    }
+    for (i=FIRST_EXTERNAL; i<sizeof(Supported_exchanges)/sizeof(*Supported_exchanges); i++)
         find_exchange(0,Supported_exchanges[i]);
     prices777_initpair(-1,0,0,0,0,0.,0,0,0,0);
     if ( (array= jarray(&n,json,"baskets")) != 0 )
@@ -623,6 +627,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                 retstr = bidask_func(0,1,sender,json,jsonstr);
             else if ( strcmp(methodstr,"swap") == 0 )
                 retstr = swap_func(0,1,sender,json,jsonstr);
+            else if ( strcmp(methodstr,"funding") == 0 )
+                retstr = funding_func(0,1,sender,json,jsonstr);
+            else if ( strcmp(methodstr,"refund") == 0 )
+                retstr = refund_func(0,1,sender,json,jsonstr);
         } else retstr = clonestr("{\"result\":\"relays only relay\"}");
     }
     return(plugin_copyretstr(retbuf,maxlen,retstr));
