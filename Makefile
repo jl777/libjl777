@@ -15,7 +15,7 @@ else
     LANL := -lanl
     PLANL := -lanl
 endif
-
+  
 PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a libs/libccoin.a -lcrypto -lssl -lpthread -lcurl -lz -lm $(PLANL)
 
 LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a libs/libccoin.a -lpthread -lcrypto -lssl -lcurl -lz -lm $(LANL)
