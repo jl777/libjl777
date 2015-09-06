@@ -278,9 +278,13 @@ patch2: doesntexist; \
 dependencies: doesntexist; \
     sudo apt-get install make clang-3.4 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
 
+libccoin: doesntexist; \
+    git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..;
+
 onetime: doesntexist; \
-   cd nanomsg; ./autogen.sh && CFLAGS='$(CFLAGS) -fPIC ' ./configure --with-pic; $(MAKE) -lanl; cd ..; \
+    cd nanomsg; ./autogen.sh && CFLAGS='$(CFLAGS) -fPIC ' ./configure --with-pic; $(MAKE) -lanl; cd ..; \
     cd miniupnpc; $(MAKE); cp libminiupnpc.a ../libs; cd ..; \
+    git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..; \
     git clone https://github.com/joewalnes/websocketd; cd websocketd; $(MAKE); cp websocketd ../libs; cd ..; \
     #git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \
     #mkdir go/gocode; mkdir go/gocode/src; export GOPATH=`pwd`/go/gocode;  export GOROOT=`pwd`/go; echo $$GOPATH; echo $$GOROOT; \
