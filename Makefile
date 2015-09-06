@@ -16,9 +16,9 @@ else
     PLANL := -lanl
 endif
 
-PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a libs/libccoin -lcrypto -lssl -lpthread -lcurl -lz -lm $(PLANL)
+PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a libs/libccoin.a -lcrypto -lssl -lpthread -lcurl -lz -lm $(PLANL)
 
-LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a libs/libccoin -lpthread -lcrypto -lssl -lcurl -lz -lm $(LANL)
+LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a libs/libccoin.a -lpthread -lcrypto -lssl -lcurl -lz -lm $(LANL)
 
 CC=clang
 CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -Iplugins/nonportable/$(OS)  -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2  #-Iplugins/utils -Iplugins/nonportable -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins  -I../includes -I../../includes -I/usr/include -Iplugins#-DADDRINFO_SIZE=256
@@ -154,7 +154,7 @@ btcdmac: ../src/BitcoinDarkd; \
     cd ../src; rm BitcoinDarkd; $(MAKE) -f makefile.osx; strip BitcoinDarkd; cp BitcoinDarkd ../libjl777
 
 install: doesntexist; \
-    sudo add-apt-repository ppa:fkrull/deadsnakes; sudo apt-get update; sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libdb++-dev libminiupnpc-dev python3-dev libpcre-ocaml-dev #openjdk-7-jdk openjdk-7-jre-lib
+    sudo add-apt-repository ppa:fkrull/deadsnakes; sudo apt-get update; sudo aptitude install python-software-properties software-properties-common autotools-dev ; add-apt-repository ppa:bitcoin/bitcoin; echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee /etc/apt/sources.list.d/webupd8team-java.list ; echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list ; apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886 ; aptitude update; aptitude install git build-essential libdb++-dev  libtool  autoconf pkg-config libssl-dev libboost-all-dev libminiupnpc-dev clang libcurl4-gnutls-dev oracle-java8-installer libwebsockets3 libwebsockets-dev cmake qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libdb++-dev libevent-dev libjansson-dev libminiupnpc-dev python3-dev libpcre-ocaml-dev #openjdk-7-jdk openjdk-7-jre-lib
 
 getramchain2:  doesntexist; \
     mkdir /var/www/html/ramchains; mkdir /var/www/html/ramchains/BTCD; \
@@ -276,15 +276,15 @@ patch2: doesntexist; \
     #cd ..; \
 
 dependencies: doesntexist; \
-    sudo apt-get install make clang-3.4 autoconf  libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
+    sudo apt-get install make clang-3.4 autoconf libevent-dev libjansson-dev libtool libcurl4-gnutls-dev unzip autogen g++ libssl-dev libdb++-dev  libminiupnpc-dev libboost-all-dev;
 
 libccoin: doesntexist; \
-    git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..;
+     sudo apt-get install libevent-dev libjansson-dev; git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..;
 
 onetime: doesntexist; \
     cd nanomsg; ./autogen.sh && CFLAGS='$(CFLAGS) -fPIC ' ./configure --with-pic; $(MAKE) -lanl; cd ..; \
     cd miniupnpc; $(MAKE); cp libminiupnpc.a ../libs; cd ..; \
-    git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..; \
+    sudo apt-get install libevent-dev libjansson-dev; git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..; \
     git clone https://github.com/joewalnes/websocketd; cd websocketd; $(MAKE); cp websocketd ../libs; cd ..; \
     #git clone https://go.googlesource.com/go; cd go; git checkout go1.4.1; cd src; ./all.bash; cd ..; mkdir gocode; mkdir gocode/src; cd ..; \
     #mkdir go/gocode; mkdir go/gocode/src; export GOPATH=`pwd`/go/gocode;  export GOROOT=`pwd`/go; echo $$GOPATH; echo $$GOROOT; \

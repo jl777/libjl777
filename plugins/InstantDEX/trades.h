@@ -563,7 +563,7 @@ int32_t subatomic_fundingmsig(char *msigaddr,char *hexstr,struct coin777 *coin,c
     struct destbuf pubkey,multisigaddr,redeemScript;
     strcpy(pubkeys[0].pubkey,otherpubkey);
     strcpy(pubkeys[1].pubkey,coin->atomicrecvpubkey);
-    sprintf(swapacct,"atomic.%llu",quoteid);
+    sprintf(swapacct,"atomic.%llu",(long long)quoteid);
     msigaddr[0] = hexstr[0] = 0;
     if ( get_acct_coinaddr(tmpswapaddr,coin->name,coin->serverport,coin->userpass,swapacct) != 0 )
     {
