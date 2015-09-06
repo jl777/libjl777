@@ -16,9 +16,9 @@ else
     PLANL := -lanl
 endif
 
-PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a -lpthread -lcurl -lm $(PLANL)
+PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a libs/libccoin -lcrypto -lssl -lpthread -lcurl -lz -lm $(PLANL)
 
-LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a -lpthread -lcurl -lm $(LANL)
+LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a libs/libccoin -lpthread -lcrypto -lssl -lcurl -lz -lm $(LANL)
 
 CC=clang
 CFLAGS=-Wall -O2  -pedantic -g -fPIC -Iplugins/includes -Inanomsg/src -Inanomsg/src/utils -Iplugins/includes/libtom  -Iplugins/includes/miniupnp -I.. -Iplugins/nonportable/$(OS)  -Wno-unused-function -fPIC -fvisibility=hidden -fstack-protector-all -Wstack-protector -D_FORTIFY_SOURCE=2  #-Iplugins/utils -Iplugins/nonportable -Iincludes  -Iplugins/mgw -Iplugins/InstantDEX -Iplugins/sophia -Iplugins/ramchain -Iplugins/coins  -I../includes -I../../includes -I/usr/include -Iplugins#-DADDRINFO_SIZE=256
