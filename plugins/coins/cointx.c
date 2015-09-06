@@ -30,6 +30,7 @@
 struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx);
 int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx);
 int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx,int32_t oldtx);
+int32_t emit_cointx(bits256 *hash2,uint8_t *data,long max,struct cointx_info *cointx,int32_t oldtx,uint32_t hashtype);
 
 void disp_cointx(struct cointx_info *cointx);
 
@@ -155,7 +156,7 @@ long _emit_cointx_input(uint8_t *data,long offset,struct cointx_input *vin)
     offset = _emit_uint32(data,offset,vin->sequence);
     return(offset);
 }
-
+    
 long _emit_cointx_output(uint8_t *data,long offset,struct rawvout *vout)
 {
     long scriptlen;
@@ -187,7 +188,7 @@ long _decode_vout(struct rawvout *vout,uint8_t *data,long offset,long len)
 
 void disp_cointx_output(struct rawvout *vout)
 {
-    printf("%p.(%s %s %.8f) ",vout,vout->coinaddr,vout->script,dstr(vout->value));
+    printf("(%s %s %.8f) ",vout->coinaddr,vout->script,dstr(vout->value));
 }
 
 void disp_cointx_input(struct cointx_input *vin)
@@ -207,25 +208,52 @@ void disp_cointx(struct cointx_info *cointx)
     printf("\n");
 }
 
-int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx)
+int32_t emit_cointxdata(uint8_t *data,long maxlen,struct cointx_info *cointx,int32_t oldtx)
 {
-    uint8_t *data;
-    long offset = 0;
-    int32_t i;
-    data = calloc(1,len);
+    long i,offset = 0;
     offset = _emit_uint32(data,offset,cointx->version);
     if ( oldtx == 0 )
         offset = _emit_uint32(data,offset,cointx->timestamp);
     offset += hcalc_varint(&data[offset],cointx->numinputs);
     for (i=0; i<cointx->numinputs; i++)
-        offset = _emit_cointx_input(data,offset,&cointx->inputs[i]);
+    {
+        if ( (offset= _emit_cointx_input(data,offset,&cointx->inputs[i])) > maxlen )
+            return(-1);
+    }
     offset += hcalc_varint(&data[offset],cointx->numoutputs);
     for (i=0; i<cointx->numoutputs; i++)
-        offset = _emit_cointx_output(data,offset,&cointx->outputs[i]);
+    {
+        if ( (offset= _emit_cointx_output(data,offset,&cointx->outputs[i])) > maxlen )
+            return(-1);
+    }
     offset = _emit_uint32(data,offset,cointx->nlocktime);
-    init_hexbytes_noT(hexstr,data,(int32_t)offset);
-    free(data);
     return((int32_t)offset);
+}
+
+int32_t _emit_cointx(char *hexstr,long len,struct cointx_info *cointx,int32_t oldtx)
+{
+    uint8_t *data; int32_t offset;
+    data = calloc(1,len);
+    offset = emit_cointxdata(data,len,cointx,oldtx);
+    if ( offset < len/2-1 )
+        init_hexbytes_noT(hexstr,data,(int32_t)offset);
+    else hexstr[0] = 0, offset = -1;
+    free(data);
+    return(offset);
+}
+
+int32_t emit_cointx(bits256 *hash2,uint8_t *data,long max,struct cointx_info *cointx,int32_t oldtx,uint32_t hashtype)
+{
+    int32_t offset; bits256 hash;
+    if ( (offset= emit_cointxdata(data,max,cointx,oldtx)) > max || offset < 0 )
+        return(-1);
+    if ( hashtype != 0 )
+    {
+        _emit_uint32(data,offset,hashtype);
+        calc_sha256(0,hash.bytes,data,offset + sizeof(uint32_t));
+        calc_sha256(0,hash2->bytes,hash.bytes,sizeof(*hash2));
+    }
+    return(offset);
 }
 
 int32_t _validate_decoderawtransaction(char *hexstr,struct cointx_info *cointx,int32_t oldtx)

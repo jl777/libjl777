@@ -336,13 +336,15 @@ void calc_OP_HASH160(char hexstr[41],uint8_t hash160[20],char *pubkey)
     rmd160_init(&md);
     rmd160_process(&md,sha256,256 >> 3);
     rmd160_done(&md,hash160);
+    if ( 0 )
     {
         int i;
         for (i=0; i<20; i++)
             printf("%02x",hash160[i]);
         printf("<- (%s)\n",pubkey);
     }
-    init_hexbytes_noT(hexstr,hash160,20);
+    if ( hexstr != 0 )
+        init_hexbytes_noT(hexstr,hash160,20);
 }
 
 /**

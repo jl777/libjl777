@@ -207,7 +207,8 @@ patch: doesntexist; \
     ./all.bash; \
     export GOPATH=$$HOME/gocode; \
     export GOROOT=$$HOME/go; \
-    PATH="$$PATH:$$GOROOT/bin:$$GOPATH/bin"; \
+    #PATH="$$PATH:$$GOROOT/bin:$$GOPATH/bin"; \
+    #PATH="$PATH:$GOROOT/bin:$GOPATH/bin"; \
     #echo "export GOPATH=$$HOME/gocode" >> ~/.profile; \
     #echo "export GOROOT=$$HOME/go" >> ~/.profile; \
     #echo "PATH=\"$$PATH:$$GOPATH/bin:$$GOROOT/bin\"" >> ~/.profile; \

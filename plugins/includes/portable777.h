@@ -100,8 +100,8 @@ struct ramkv777
 #define ramkv777_itemkey(item) (item)->keyvalue
 #define ramkv777_itemvalue(kv,item) (&(item)->keyvalue[(kv)->keysize])
 
-void ramkv777_lock(struct ramkv777 *kv);
-void ramkv777_unlock(struct ramkv777 *kv);
+//void ramkv777_lock(struct ramkv777 *kv);
+//void ramkv777_unlock(struct ramkv777 *kv);
 int32_t ramkv777_delete(struct ramkv777 *kv,void *key);
 void *ramkv777_write(struct ramkv777 *kv,void *key,void *value,int32_t valuesize);
 void *ramkv777_read(int32_t *valuesizep,struct ramkv777 *kv,void *key);
@@ -164,6 +164,11 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_
 void set_best_amounts(int64_t *baseamountp,int64_t *relamountp,double price,double volume);
 int32_t is_mscoin(char *assetidstr);
 uint32_t issue_getTime();
+
+#define SIGHASH_ALL 1
+#define SIGHASH_NONE 2
+#define SIGHASH_SINGLE 3
+#define SIGHASH_ANYONECANPAY 0x80
 
 #define _MAX_DEPTH 100
 extern uint32_t MAX_DEPTH;
