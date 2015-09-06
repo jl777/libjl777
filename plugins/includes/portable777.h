@@ -87,6 +87,7 @@ union _bits384 { bits256 sig; uint8_t bytes[48]; uint16_t ushorts[24]; uint32_t 
 typedef union _bits384 bits384;
 
 struct ramkv777_item { UT_hash_handle hh; uint16_t valuesize,tbd; uint32_t rawind; uint8_t keyvalue[]; };
+
 struct ramkv777
 {
     char name[63],threadsafe;
@@ -100,16 +101,12 @@ struct ramkv777
 #define ramkv777_itemkey(item) (item)->keyvalue
 #define ramkv777_itemvalue(kv,item) (&(item)->keyvalue[(kv)->keysize])
 
-//void ramkv777_lock(struct ramkv777 *kv);
-//void ramkv777_unlock(struct ramkv777 *kv);
 int32_t ramkv777_delete(struct ramkv777 *kv,void *key);
 void *ramkv777_write(struct ramkv777 *kv,void *key,void *value,int32_t valuesize);
 void *ramkv777_read(int32_t *valuesizep,struct ramkv777 *kv,void *key);
 void *ramkv777_iterate(struct ramkv777 *kv,void *args,void *(*iterator)(struct ramkv777 *kv,void *args,void *key,void *value,int32_t valuesize));
 struct ramkv777 *ramkv777_init(int32_t kvind,char *name,int32_t keysize,int32_t threadsafe);
-void ramkv777_free(struct ramkv777 *kv);
-int32_t ramkv777_clone(struct ramkv777 *clone,struct ramkv777 *kv);
-struct ramkv777_item *ramkv777_itemptr(struct ramkv777 *kv,void *value);
+
 
 void lock_queue(queue_t *queue);
 void queue_enqueue(char *name,queue_t *queue,struct queueitem *item);
