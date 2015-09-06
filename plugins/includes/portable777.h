@@ -101,6 +101,10 @@ struct ramkv777
 #define ramkv777_itemkey(item) (item)->keyvalue
 #define ramkv777_itemvalue(kv,item) (&(item)->keyvalue[(kv)->keysize])
 
+struct ramkv777_item *ramkv777_itemptr(struct ramkv777 *kv,void *value);
+int32_t ramkv777_clone(struct ramkv777 *clone,struct ramkv777 *kv);
+void ramkv777_free(struct ramkv777 *kv);
+
 int32_t ramkv777_delete(struct ramkv777 *kv,void *key);
 void *ramkv777_write(struct ramkv777 *kv,void *key,void *value,int32_t valuesize);
 void *ramkv777_read(int32_t *valuesizep,struct ramkv777 *kv,void *key);
