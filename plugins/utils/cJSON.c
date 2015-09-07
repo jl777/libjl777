@@ -844,7 +844,9 @@ int32_t get_API_int(cJSON *obj,int32_t val)
         if ( is_cJSON_Number(obj) != 0 )
             return((int32_t)obj->valuedouble);
         copy_cJSON(&buf,obj);
-        val = atoi(buf.buf);
+        val = myatoi(buf.buf,0);
+        if ( val < 0 )
+            val = 0;
     }
     return(val);
 }
@@ -859,7 +861,7 @@ uint32_t get_API_uint(cJSON *obj,uint32_t val)
         if ( is_cJSON_Number(obj) != 0 )
             return((uint32_t)obj->valuedouble);
         copy_cJSON(&buf,obj);
-        val = atoi(buf.buf);
+        val = myatoi(buf.buf,0);
     }
     return(val);
 }

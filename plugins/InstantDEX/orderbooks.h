@@ -212,7 +212,7 @@ int32_t verify_NXTtx(cJSON *json,uint64_t refasset,uint64_t qty,uint64_t destNXT
         fprintf(stderr,"recipient.%s != %llu\n",recipient,(long long)destNXTbits);
         return(-2);
     }
-    typeval = atoi(type), subtypeval = atoi(subtype);
+    typeval = myatoi(type,256), subtypeval = myatoi(subtype,256);
     if ( refasset == NXT_ASSETID )
     {
         if ( typeval != 0 || subtypeval != 0 )

@@ -526,7 +526,7 @@ int32_t main
         return(0);
     }
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
-    plugin->permanentflag = atoi(argv[1]);
+    plugin->permanentflag = myatoi((char *)argv[1],2);
     plugin->daemonid = calc_nxt64bits(argv[2]);
 #ifdef BUNDLED
     plugin->bundledflag = 1;

@@ -211,7 +211,7 @@ struct tradebot_type conv_tradebot_typestr(int32_t *itemsizep,char *typestr)
     memset(&bottype,0,sizeof(bottype));
     if ( is_this_type(&typestr,"struct") != 0 )
     {
-        itembits = atoi(typestr) * 8;
+        itembits = myatoi(typestr,64) * 8;
         if ( itembits <= 0 )
         {
             printf("ILLEGAL tradebot struct type (%s)\n",origstr);
@@ -222,7 +222,7 @@ struct tradebot_type conv_tradebot_typestr(int32_t *itemsizep,char *typestr)
     {
         if ( typestr[0] != 0 )
         {
-            itembits = atoi(typestr);
+            itembits = myatoi(typestr,256);
             if ( itembits <= 0 )
             {
                 printf("ILLEGAL tradebot numbits type (%s)\n",origstr);
@@ -258,7 +258,7 @@ struct tradebot_type conv_tradebot_typestr(int32_t *itemsizep,char *typestr)
         }
         if ( typestr[0] != 0 )
         {
-            vnum = atoi(typestr);
+            vnum = myatoi(typestr,256);
             if ( vnum <= 0 )
             {
                 printf("ILLEGAL tradebot vnum type (%s)\n",origstr);

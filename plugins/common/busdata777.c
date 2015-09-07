@@ -76,8 +76,8 @@ int32_t nonce_leverage(char *broadcaststr)
             leverage = 4;
         else if ( strcmp(broadcaststr,"allrelays") == 0 )
             leverage = 4;
-        else if ( atoi(broadcaststr) != 0 )
-            leverage = atoi(broadcaststr);
+        else if ( myatoi(broadcaststr,33) != 0 )
+            leverage = myatoi(broadcaststr,33);
     }
     return(leverage);
 }

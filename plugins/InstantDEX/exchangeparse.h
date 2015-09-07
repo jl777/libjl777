@@ -79,7 +79,7 @@ char *is_MGWasset(uint64_t *multp,uint64_t assetid)
         {
             if ( multp != 0 )
             {
-                *multp = calc_decimals_mult(atoi(MGWassets[i][2]));
+                *multp = calc_decimals_mult(myatoi(MGWassets[i][2],9));
                 //printf("%s -> %d MGW assetmult.%llu\n",MGWassets[i][2],atoi(MGWassets[i][2]),(long long)*multp);
             }
             return(MGWassets[i][1]);

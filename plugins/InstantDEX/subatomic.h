@@ -896,7 +896,7 @@ void *subatomic_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *pa
             {
                 obj = cJSON_GetObjectItem(mp->accountjson,"enable_bitcoin_broadcast");
                 copy_cJSON(buf,obj);
-                gp->enable_bitcoin_broadcast = atoi(buf);
+                gp->enable_bitcoin_broadcast = myatoi(buf,2);
                 printf("enable_bitcoin_broadcast set to %d\n",gp->enable_bitcoin_broadcast);
             }
             //portnum = SUBATOMIC_PORTNUM;
@@ -1946,7 +1946,7 @@ char *subatomic_create_fundingtx(struct subatomic_halftx *htx,int64_t amount,int
             htx->avail = amount;
             if ( subatomic_calc_rawoutputs(htx,coin,&htx->funding,1.,htx->multisigaddr.buf,0,changeaddr,donation) > 0 )
             {
-                if ( (retstr= subatomic_gen_rawtransaction(htx->multisigaddr.buf,coin,&htx->funding,htx->coinaddr,locktime,0xffffffff)) != 0 )
+                if ( (retstr= subatomic_gen_rawtransaction(htx->multisigaddr.buf,coin,&htx->funding,htx->coinaddr,locktime,locktime==0?0xffffffff:(uint32_t)time(NULL))) != 0 )
                 {
                     txid = subatomic_decodetxid(0,&htx->funding_scriptPubKey,&check_locktime,coin,htx->funding.rawtransaction,htx->multisigaddr.buf);
                     //printf("txid.%s fundingtx %.8f -> %.8f %s completed.%d locktimes %d vs %d\n",txid,dstr(amount),dstr(htx->funding.amount),retstr,htx->funding.completed,check_locktime,locktime);
@@ -2971,7 +2971,7 @@ void test_subatomic()
     memset(&refT,0,sizeof(refT));
     refT.version = 1;
     refT.timestamp = (uint32_t)time(NULL);
-    strcpy(refT.inputs[0].tx.txidstr,"aac8f093b131d9ceac458850577142f2f99516db74bc08af7255da78a03bfd35");
+    strcpy(refT.inputs[0].tx.txidstr,"9bdae874a4e5c80365f0ab1808d93af76aa2c78d74a009f4d071c8d4dd3e44d5");
     refT.inputs[0].tx.vout = 0;
     //refT.inputs[0].value = (uint64_t)(SATOSHIDEN * 0.0004);
     refT.inputs[0].sequence = (uint32_t)-1;
@@ -2979,7 +2979,7 @@ void test_subatomic()
     
     strcpy(refT.outputs[0].coinaddr,btc->addr);
     strcpy(refT.outputs[0].script,scriptPubKey);
-    refT.outputs[0].value = 2500;
+    refT.outputs[0].value = 10000;
     refT.numoutputs = 1;
     
     // strcpy(T.inputs[0].sigs,"002103b4143b6e7a064a78bc66dab0ca72251fea3d6fd8db1f4c48b91996d7af62dd0521037387677a21b8ebb472ff2d00892098dcd990a9a21b09b8e22aefece8b1cbbdc05163522103b4143b6e7a064a78bc66dab0ca72251fea3d6fd8db1f4c48b91996d7af62dd0521037387677a21b8ebb472ff2d00892098dcd990a9a21b09b8e22aefece8b1cbbdc052ae6776a914e84e0808b8cd32c38fa2093a490efabc6be53d7a88ac68");
@@ -2989,7 +2989,7 @@ void test_subatomic()
         for (i=0; i<T.numinputs; i++)
             strcpy(T.inputs[i].sigs,"00");
         strcpy(T.inputs[0].sigs,p2sh_script);
-        T.nlocktime = (msigredeem == 0) ? 0 : (uint32_t)373280;
+        T.nlocktime = (msigredeem == 0) ? 0 : (uint32_t)373286;
         if ( msigredeem == 0 )
         {
             strcpy(T.outputs[0].coinaddr,"1NBKFDmmHSpSzFnP9bX5bDWnm9zqD6nUv4");

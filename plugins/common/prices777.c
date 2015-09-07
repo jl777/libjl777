@@ -727,7 +727,7 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
         {"basketUSD", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
         {"basketCNY", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
         {"active", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
-        {"subatomic", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
+        {"peggy", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
         {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade },
         {"kraken", prices777_kraken, kraken_supports, kraken_trade },
         {"bitfinex", prices777_bitfinex, bitfinex_supports, bitfinex_trade },

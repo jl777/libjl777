@@ -513,6 +513,7 @@ char *conv_ipv6(char *ipv6addr)
 
 uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retbuf,char *endpoint,uint16_t default_port)
 {
+    int32_t myatoi(char *str,int32_t range);
     char *valids[] = { "tcp", "ws", "ipc", "inproc", "tcpmux" };
     char tmp[128],*inet = 0,*ipaddr = 0; uint64_t ipbits; int32_t i,j,n,port = 0;
     ipbuf[0] = retbuf[0] = 0;
@@ -532,7 +533,7 @@ uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retb
                     {
                         if ( ipaddr[j] == ':' )
                         {
-                            if ( (port= atoi(ipaddr + j + 1)) < 0 || port >= (1 << 16) )
+                            if ( (port= myatoi(ipaddr + j + 1,0)) < 0 || port >= (1 << 16) )
                             {
                                 if ( ipaddr[j-1] == ']' )
                                     ipaddr[j] = 0;
@@ -555,7 +556,7 @@ uint16_t parse_endpoint(int32_t *ip6flagp,char *transport,char *ipbuf,char *retb
                     {
                         if ( ipaddr[j] == ':' )
                         {
-                            if ( (port= atoi(ipaddr + j + 1)) < 0 || port >= (1 << 16) )
+                            if ( (port= myatoi(ipaddr + j + 1,0)) < 0 || port >= (1 << 16) )
                                 ipaddr = 0;
                             break;
                         }

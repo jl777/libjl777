@@ -199,7 +199,7 @@ uint16_t extract_userpass(char *serverport,char *userpass,char *coinstr,char *us
         }
         if ( rpcport != 0 )
         {
-            port = atoi(rpcport);
+            port = myatoi(rpcport,65536);
             if ( serverport[0] == 0 )
                 sprintf(serverport,"127.0.0.1:%s",rpcport);
             free(rpcport);

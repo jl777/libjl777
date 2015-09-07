@@ -15,7 +15,7 @@ else
     LANL := -lanl
     PLANL := -lanl
 endif
-  
+
 PLIBS := ../libs/libjl777.a ../libs/libminiupnpc.a ../nanomsg/.libs/libnanomsg.a libs/libccoin.a -lcrypto -lssl -lpthread -lcurl -lz -lm $(PLANL)
 
 LIBS= libs/libjl777.a nanomsg/.libs/libnanomsg.a libs/libminiupnpc.a libs/libccoin.a -lpthread -lcrypto -lssl -lcurl -lz -lm $(LANL)
@@ -139,7 +139,7 @@ MGW: $(SRCS) $(TARGET); \
     clang -o MGW -DINSIDE_MGW $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS) 
 
 SuperNET: $(SRCS) $(TARGET); \
-    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS) 
+    pkill SuperNET; rm SuperNET; clang -o SuperNET $(CFLAGS) -D STANDALONE $(SRCS) $(LIBS); strip SuperNET
 
 #-lz -ldl -lutil -lpcre -lexpat
 

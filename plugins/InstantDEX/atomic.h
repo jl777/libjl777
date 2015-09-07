@@ -2625,9 +2625,9 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
     if ( quantity != 0 )
         utx->quantityQNT = quantity;
     else utx->amountNQT = calc_nxt64bits(amountNQT);
-    utx->deadline = atoi(deadline);
-    utx->type = atoi(type);
-    utx->subtype = atoi(subtype);
+    utx->deadline = myatoi(deadline,1000);
+    utx->type = myatoi(type,256);
+    utx->subtype = myatoi(subtype,256);
     utx->verify = (strcmp("true",verify) == 0);
     strcpy(utx->comment,comment);
     return(utx);
@@ -3713,7 +3713,7 @@ void *subatomic_handler(struct NXThandler_info *mp,struct NXT_protocol_parms *pa
             {
                 obj = cJSON_GetObjectItem(mp->accountjson,"enable_bitcoin_broadcast");
                 copy_cJSON(buf,obj);
-                gp->enable_bitcoin_broadcast = atoi(buf);
+                gp->enable_bitcoin_broadcast = myatoi(buf,1);
                 printf("enable_bitcoin_broadcast set to %d\n",gp->enable_bitcoin_broadcast);
             }
             //portnum = SUBATOMIC_PORTNUM;

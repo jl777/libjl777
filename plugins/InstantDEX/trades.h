@@ -637,7 +637,7 @@ char *prices777_trade(cJSON *item,char *activenxt,char *secret,struct prices777 
              {"orderid":"18116718016452187440","quoteid":"4182333102992176427","offerNXT":"423766016895692955","plugin":"relay","destplugin":"InstantDEX","method":"busdata","submethod":"swap","exchange":"wallet","base":"BTCD","rel":"NXT","baseid":"11060861818140490423","relid":"5527630","baseqty":"-100000000","relqty":"20000000000","price":200,"volume":1,"msig":"bEFM2eg4D3o55fnx6GhsmvrSRtZLhtXEVd","S":"5247d6344570939bef81a212a270caf46878cc74"}
             }*/
             char *sendpubkey,msigaddr[128],hexstr[128]; int32_t finishin;
-            finishin = (extra == 0) ? 200 : atoi(extra);
+            finishin = (extra == 0) ? 200 : myatoi(extra,10000);
             if ( finishin < FINISH_HEIGHT )
                 finishin = FINISH_HEIGHT;
             if ( (j64bits(item,"recvbase") != 0 && (coin= coin777_find(jstr(item,"base"),1)) != 0) || (j64bits(item,"recvrel") != 0 && (coin= coin777_find(jstr(item,"rel"),1)) != 0) )
@@ -665,7 +665,7 @@ char *prices777_trade(cJSON *item,char *activenxt,char *secret,struct prices777 
             printf("must call prices777_trade with swapbuf or order to do InstantDEX swap trade\n");
             return(clonestr("{\"error\":\"need to specify swapbuf\"}\n"));
         }
-        pend->triggertxid = prices777_swapbuf("yes",0,&pend->txid,triggertx,txbytes,swapbuf,prices,order,orderid,extra==0?0:atoi(extra),0);
+        pend->triggertxid = prices777_swapbuf("yes",0,&pend->txid,triggertx,txbytes,swapbuf,prices,order,orderid,extra==0?0:myatoi(extra,10000),0);
         return(prices777_finishswap('T',pend,iQ,swapbuf,triggertx,txbytes));
     }
     else if ( strcmp(prices->exchange,"nxtae") == 0 )
@@ -1100,7 +1100,7 @@ cJSON *InstantDEX_tradejson(cJSON *item,char *activenxt,char *secret,struct pric
                 //{"inverted":0,"contract":"MMNXT/Jay","baseid":"979292558519844732","relid":"8688289798928624137","bids":[{"plugin":"Inst
                 //    antDEX","method":"tradesequence","dotrade":1,"price":2,"volume":2,"trades":[]}],"asks":[],"numbids":1,"numasks":0,"lastb
                 //    id":2,"lastask":0,"NXT":"11471677413693100042","timestamp":1440587058,"maxdepth":25}
-                prices777_swapbuf("yes",0,&txid,triggertx,txbytes,swapbuf,prices,order,orderid,extra==0?0:atoi(extra),0);
+                prices777_swapbuf("yes",0,&txid,triggertx,txbytes,swapbuf,prices,order,orderid,extra==0?0:myatoi(extra,10000),0);
                 return(cJSON_Parse(swapbuf));
             }
         }

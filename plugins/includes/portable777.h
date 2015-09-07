@@ -38,6 +38,7 @@
 #define PRICE_BLEND(oldval,newval,decay,oppodecay) ((oldval == 0.) ? newval : ((oldval * decay) + (oppodecay * newval)))
 #define PRICE_BLEND64(oldval,newval,decay,oppodecay) ((oldval == 0) ? newval : ((oldval * decay) + (oppodecay * newval) + 0.499))
 
+int32_t myatoi(char *str,int32_t maxval);
 
 int32_t portable_truncate(char *fname,long filesize);
 void *map_file(char *fname,uint64_t *filesizep,int32_t enablewrite);

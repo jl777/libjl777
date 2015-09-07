@@ -1076,7 +1076,7 @@ struct multisig_addr *decode_msigjson(char *NXTaddr,cJSON *obj,char *sender)
         {
             copy_cJSON(numstr,idobj);
             if ( numstr[0] != 0 )
-                set_legacy_coinid(coinstr,atoi(numstr));
+                set_legacy_coinid(coinstr,myatoi(numstr,256));
         }
     }
     if ( coinstr[0] != 0 )

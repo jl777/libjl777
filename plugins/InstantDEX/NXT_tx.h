@@ -242,9 +242,9 @@ struct NXT_tx *set_NXT_tx(cJSON *json)
         utx->U.quantityQNT = quantity;
     else utx->U.amountNQT = calc_nxt64bits(amountNQT);
     utx->priceNQT = price;
-    utx->deadline = atoi(deadline);
-    utx->type = atoi(type);
-    utx->subtype = atoi(subtype);
+    utx->deadline = myatoi(deadline,1000);
+    utx->type = myatoi(type,256);
+    utx->subtype = myatoi(subtype,256);
     utx->timestamp = atoi(timestamp);
     utx->verify = (strcmp("true",verify) == 0);
     strcpy(utx->comment,comment);

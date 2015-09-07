@@ -39,7 +39,7 @@
 #include "../common/txind777.c"
 #undef DEFINES_ONLY
 
-char *Supported_exchanges[] = { INSTANTDEX_NAME, INSTANTDEX_NXTAEUNCONF, INSTANTDEX_NXTAENAME, INSTANTDEX_BASKETNAME, "basketNXT", "basketUSD", "basketBTC", "basketCNY", INSTANTDEX_ACTIVENAME, "wallet", "subatomic", // subatomic MUST be last of special exchanges
+char *Supported_exchanges[] = { INSTANTDEX_NAME, INSTANTDEX_NXTAEUNCONF, INSTANTDEX_NXTAENAME, INSTANTDEX_BASKETNAME, "basketNXT", "basketUSD", "basketBTC", "basketCNY", INSTANTDEX_ACTIVENAME, "wallet", "peggy", // peggy MUST be last of special exchanges
     "bitfinex", "btc38", "bitstamp", "btce", "poloniex", "bittrex", "huobi", "coinbase", "okcoin", "bityes", "lakebtc", "quadriga",
     "kraken", "gatecoin", "quoine", "jubi", "hitbtc"  // no trading for these exchanges yet
 }; // "bter" <- orderbook is backwards and all entries are needed, later to support, "exmo" flakey apiservers
@@ -535,7 +535,7 @@ void init_exchanges(cJSON *json)
     for (FIRST_EXTERNAL=0; FIRST_EXTERNAL<sizeof(Supported_exchanges)/sizeof(*Supported_exchanges); FIRST_EXTERNAL++)
     {
         find_exchange(0,Supported_exchanges[FIRST_EXTERNAL]);
-        if ( strcmp(Supported_exchanges[FIRST_EXTERNAL],"subatomic") == 0 )
+        if ( strcmp(Supported_exchanges[FIRST_EXTERNAL],"peggy") == 0 )
         {
             FIRST_EXTERNAL++;
             break;

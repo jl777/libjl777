@@ -486,7 +486,7 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
 
 int32_t is_specialexchange(char *exchangestr)
 {
-    if ( strcmp(exchangestr,"InstantDEX") == 0 || strcmp(exchangestr,"subatomic") == 0 || strcmp(exchangestr,"wallet") == 0 || strcmp(exchangestr,"active") == 0 || strncmp(exchangestr,"basket",strlen("basket")) == 0 )
+    if ( strcmp(exchangestr,"InstantDEX") == 0 || strcmp(exchangestr,"peggy") == 0 || strcmp(exchangestr,"wallet") == 0 || strcmp(exchangestr,"active") == 0 || strncmp(exchangestr,"basket",strlen("basket")) == 0 )
         return(1);
     return(0);
 }
