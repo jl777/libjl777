@@ -170,6 +170,7 @@ struct coin777
     char name[16],serverport[512],userpass[4096],*jsonstr; cJSON *argjson;
     struct ramchain ramchain;
     struct mgw777 mgw;
+    uint8_t p2shtype,addrtype,usep2sh;
     int32_t minconfirms,verified,lag,estblocktime; uint64_t minoutput;
     char atomicsendpubkey[128],atomicrecvpubkey[128],atomicrecv[128],atomicsend[128],donationaddress[128],changeaddr[128];
 };

@@ -296,5 +296,28 @@ double make_jumpquote(uint64_t baseid,uint64_t relid,uint64_t *baseamountp,uint6
 
 extern queue_t PendingQ;
 char *peggyrates(uint32_t timestamp);
+#define MAX_SUBATOMIC_OUTPUTS 4
+#define MAX_SUBATOMIC_INPUTS 16
+#define SUBATOMIC_STARTING_SEQUENCEID 1000
+#define SUBATOMIC_LOCKTIME (3600 * 2)
+#define SUBATOMIC_DONATIONRATE .001
+#define SUBATOMIC_DEFAULTINCR 100
+#define SUBATOMIC_TYPE 0
+
+struct subatomic_unspent_tx
+{
+    int64_t amount;    // MUST be first!
+    uint32_t vout,confirmations;
+    struct destbuf txid,address,scriptPubKey,redeemScript;
+};
+
+struct subatomic_rawtransaction
+{
+    char destaddrs[MAX_SUBATOMIC_OUTPUTS][64];
+    int64_t amount,change,inputsum,destamounts[MAX_SUBATOMIC_OUTPUTS];
+    int32_t numoutputs,numinputs,completed,broadcast,confirmed;
+    char rawtransaction[1024],signedtransaction[1024],txid[128];
+    struct subatomic_unspent_tx inputs[MAX_SUBATOMIC_INPUTS];   // must be last, could even make it variable sized
+};
 
 #endif

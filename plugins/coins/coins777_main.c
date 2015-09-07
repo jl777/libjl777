@@ -237,6 +237,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     safecopy(coin->name,coinstr,sizeof(coin->name));
     if ( argjson == 0 || strcmp(coinstr,"NXT") == 0 )
     {
+        coin->usep2sh = 1;
         coin->minconfirms = (strcmp("BTC",coinstr) == 0) ? 3 : 10;
         coin->estblocktime = (strcmp("BTC",coinstr) == 0) ? 600 : 120;
         coin->mgw.use_addmultisig = (strcmp("BTC",coinstr) != 0);
@@ -290,13 +291,30 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         }
         copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"marker")), safecopy(coin->mgw.marker,tmp.buf,sizeof(coin->mgw.marker));
         printf("OPRETURN.(%s)\n",coin->mgw.opreturnmarker);
+        coin->addrtype = get_API_int(jobj(argjson,"addrtype"),0);
+        coin->p2shtype = get_API_int(jobj(argjson,"p2shtype"),0);
+        coin->usep2sh = get_API_int(jobj(argjson,"usep2sh"),1);
     }
     if ( coin->mgw.txfee == 0 )
         coin->mgw.txfee = 10000;
-    if ( strcmp(coin->name,"BTC") == 0 && coin->donationaddress[0] == 0 )
-        strcpy(coin->donationaddress,"177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
-    else if ( strcmp(coin->name,"BTCD") == 0 && coin->donationaddress[0] == 0 )
-        strcpy(coin->donationaddress,"REsAF17mNLqPgeeUN8oRkvPmSfSkKzRwPt");
+    if ( strcmp(coin->name,"BTC") == 0 )
+    {
+        coin->addrtype = 0, coin->p2shtype = 5;
+        if ( coin->donationaddress[0] == 0 )
+            strcpy(coin->donationaddress,"177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
+    }
+    else if ( strcmp(coin->name,"LTC") == 0 )
+        coin->addrtype = 48, coin->p2shtype = 5;
+    else if ( strcmp(coin->name,"BTCD") == 0 )
+        coin->addrtype = 60, coin->p2shtype = 85;
+    else if ( strcmp(coin->name,"DOGE") == 0 )
+        coin->addrtype = 30, coin->p2shtype = 35;
+    else if ( strcmp(coin->name,"VRC") == 0 )
+        coin->addrtype = 70, coin->p2shtype = 85;
+    else if ( strcmp(coin->name,"OPAL") == 0 )
+        coin->addrtype = 115, coin->p2shtype = 28;
+    else if ( strcmp(coin->name,"BITS") == 0 )
+        coin->addrtype = 25, coin->p2shtype = 8;
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
     extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
     set_atomickeys(coin);

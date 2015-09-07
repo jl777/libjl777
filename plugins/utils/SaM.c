@@ -368,7 +368,8 @@ uint32_t SaM_nonce(void *data,int32_t datalen,int32_t leverage,int32_t maxmillis
         {
             if ( (hit= SaM(&sig,data,datalen,(void *)&nonce,sizeof(nonce))) >= threshold )
             {
-                printf("nonce failure hit.%llu >= threshold.%llu\n",(long long)hit,(long long)threshold);
+                printf("nonce failure hit.%llu >= threshold.%llu | leverage.%d crc.%u nonce.%u\n",(long long)hit,(long long)threshold,leverage,_crc32(0,data,datalen),nonce);
+                return(0);
                 if ( (threshold - hit) > ((uint64_t)1L << 32) )
                     return(0xffffffff);
                 else return((uint32_t)(threshold - hit));
@@ -381,7 +382,11 @@ uint32_t SaM_nonce(void *data,int32_t datalen,int32_t leverage,int32_t maxmillis
             {
                 randombytes((void *)&nonce,sizeof(nonce));
                 if ( (hit= SaM(&sig,data,datalen,(void *)&nonce,sizeof(nonce))) < threshold )
+                {
+                    printf("crc.%u -> nonce.%u leverage.%d | hit.%llu < threshold.%llu\n",_crc32(0,data,datalen),nonce,leverage,(long long)hit,(long long)threshold);
+                    SaM_nonce(data,datalen,leverage,0,nonce);
                     return(nonce);
+                }
             }
         }
     }
