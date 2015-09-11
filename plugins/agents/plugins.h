@@ -327,7 +327,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t InstantDEX_main(int32_t,char *args[]);
         int32_t dcnet_main(int32_t,char *args[]);
         int32_t prices_main(int32_t,char *args[]);
-        int32_t shuffle_main(int32_t,char *args[]);
+        //int32_t shuffle_main(int32_t,char *args[]);
         //int32_t cashier_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
