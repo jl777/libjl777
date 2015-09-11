@@ -330,7 +330,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
             if ( is_ipaddr(myipaddr) != 0 )
                 strcpy(plugin->ipaddr,myipaddr);
-            plugin->port = get_API_int(cJSON_GetObjectItem(obj,"port"),0);
+            plugin->port = juint(obj,"port");
         }
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);

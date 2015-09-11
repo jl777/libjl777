@@ -97,8 +97,8 @@ uint64_t parse_unspent_json(struct telepod *pod,struct coin777 *coin,cJSON *json
     copy_cJSON(&tmp,cJSON_GetObjectItem(json,"address")), safecopy(pod->podaddr,tmp.buf,sizeof(pod->podaddr));;
     copy_cJSON(&tmp,cJSON_GetObjectItem(json,"scriptPubKey")), safecopy(pod->script,tmp.buf,sizeof(pod->script));;
     amount = (uint64_t)(SATOSHIDEN * get_API_float(cJSON_GetObjectItem(json,"amount")));
-    pod->vout = get_API_int(cJSON_GetObjectItem(json,"vout"),0);
-    pod->numconfirms = get_API_int(cJSON_GetObjectItem(json,"confirmations"),0);
+    pod->vout = juint(json,"vout");
+    pod->numconfirms = juint(json,"confirmations");
     if ( pod->txid[0] != 0 && pod->podaddr[0] != 0 && pod->script[0] != 0 && amount != 0 && pod->vout >= 0 )
     {
         sprintf(args,"[\"%s\"]",pod->podaddr);
@@ -459,7 +459,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         else if ( strcmp(methodstr,"sendinvoice") == 0 )
         {
-            retstr = teleport_sendinvoice(json,cJSON_str(cJSON_GetObjectItem(json,"peggy")),get_API_int(cJSON_GetObjectItem(json,"lockdays"),DEFAULT_PEGGYDAYS),get_API_int(cJSON_GetObjectItem(json,"numunits"),0),cJSON_str(cJSON_GetObjectItem(json,"validation")),cJSON_str(cJSON_GetObjectItem(json,"paymentaddr")),cJSON_str(cJSON_GetObjectItem(json,"destNXT")),cJSON_str(cJSON_GetObjectItem(json,"delivery")));
+            retstr = teleport_sendinvoice(json,cJSON_str(cJSON_GetObjectItem(json,"peggy")),get_API_int(cJSON_GetObjectItem(json,"lockdays"),DEFAULT_PEGGYDAYS),juint(json,"numunits"),cJSON_str(cJSON_GetObjectItem(json,"validation")),cJSON_str(cJSON_GetObjectItem(json,"paymentaddr")),cJSON_str(cJSON_GetObjectItem(json,"destNXT")),cJSON_str(cJSON_GetObjectItem(json,"delivery")));
         }
         else if ( strcmp(methodstr,"invoicestatus") == 0 )
         {
@@ -467,7 +467,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         else if ( strcmp(methodstr,"sendmoney") == 0 )
         {
-            retstr = teleport_sendmoney(cJSON_str(cJSON_GetObjectItem(json,"funding")),cJSON_str(cJSON_GetObjectItem(json,"lockNXT")),get_API_int(cJSON_GetObjectItem(json,"minlockdays"),7),get_API_int(cJSON_GetObjectItem(json,"maxlockdays"),255),cJSON_str(cJSON_GetObjectItem(json,"invoicebits")),cJSON_str(cJSON_GetObjectItem(json,"peggy")),get_API_int(cJSON_GetObjectItem(json,"numunits"),0),cJSON_str(cJSON_GetObjectItem(json,"paymentaddr")),cJSON_str(cJSON_GetObjectItem(json,"destNXT")),cJSON_str(cJSON_GetObjectItem(json,"delivery")));
+            retstr = teleport_sendmoney(cJSON_str(cJSON_GetObjectItem(json,"funding")),cJSON_str(cJSON_GetObjectItem(json,"lockNXT")),get_API_int(cJSON_GetObjectItem(json,"minlockdays"),7),get_API_int(cJSON_GetObjectItem(json,"maxlockdays"),255),cJSON_str(cJSON_GetObjectItem(json,"invoicebits")),cJSON_str(cJSON_GetObjectItem(json,"peggy")),juint(json,"numunits"),cJSON_str(cJSON_GetObjectItem(json,"paymentaddr")),cJSON_str(cJSON_GetObjectItem(json,"destNXT")),cJSON_str(cJSON_GetObjectItem(json,"delivery")));
         }
     }
     return(plugin_copyretstr(retbuf,maxlen,retstr));

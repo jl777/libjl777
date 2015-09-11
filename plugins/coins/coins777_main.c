@@ -234,6 +234,12 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
 {
     char *serverport,*path=0,*conf=0; struct destbuf tmp;
     struct coin777 *coin = calloc(1,sizeof(*coin));
+    if ( coinstr == 0 || coinstr[0] == 0 )
+    {
+        printf("null coinstr?\n");
+        //getchar();
+        return(0);
+    }
     safecopy(coin->name,coinstr,sizeof(coin->name));
     if ( argjson == 0 || strcmp(coinstr,"NXT") == 0 )
     {
@@ -255,19 +261,23 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         conf = cJSON_str(cJSON_GetObjectItem(argjson,"conf"));
 
         copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"assetid")), safecopy(coin->mgw.assetidstr,tmp.buf,sizeof(coin->mgw.assetidstr));
-        coin->mgw.assetidbits = calc_nxt64bits(coin->mgw.assetidstr);
+        if ( (coin->mgw.assetidbits= calc_nxt64bits(coin->mgw.assetidstr)) == 0 )
+            coin->mgw.assetidbits = is_MGWcoin(coinstr);
         copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"issuer")), safecopy(coin->mgw.issuer,tmp.buf,sizeof(coin->mgw.issuer));;
         coin->mgw.issuerbits = conv_acctstr(coin->mgw.issuer);
         printf(">>>>>>>>>>>> a issuer.%s %llu assetid.%llu minoutput.%llu\n",coin->mgw.issuer,(long long)coin->mgw.issuerbits,(long long)coin->mgw.assetidbits,(long long)coin->minoutput);
         //uint32_t set_assetname(uint64_t *multp,char *name,uint64_t assetbits);
-        _set_assetname(&coin->mgw.ap_mult,coin->mgw.assetname,0,coin->mgw.assetidbits);
+        if ( coin->mgw.assetidbits != 0 )
+            _set_assetname(&coin->mgw.ap_mult,coin->mgw.assetname,0,coin->mgw.assetidbits);
         printf("assetname.(%s) mult.%llu\n",coin->mgw.assetname,coin->mgw.ap_mult);
         strcpy(coin->mgw.coinstr,coinstr);
         if ( (coin->mgw.special= cJSON_GetObjectItem(argjson,"special")) == 0 )
             coin->mgw.special = cJSON_GetObjectItem(COINS.argjson,"special");
         if ( coin->mgw.special != 0 )
+        {
             coin->mgw.special = NXT_convjson(coin->mgw.special);
-        printf("CONVERTED.(%s)\n",cJSON_Print(coin->mgw.special));
+            printf("CONVERTED.(%s)\n",cJSON_Print(coin->mgw.special));
+        }
         coin->mgw.limbo = cJSON_GetObjectItem(argjson,"limbo");
         coin->mgw.dust = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"dust"));
         coin->mgw.txfee = get_API_nxt64bits(cJSON_GetObjectItem(argjson,"txfee_satoshis"));
@@ -304,7 +314,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
             strcpy(coin->donationaddress,"177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
     }
     else if ( strcmp(coin->name,"LTC") == 0 )
-        coin->addrtype = 48, coin->p2shtype = 5;
+        coin->addrtype = 48, coin->p2shtype = 5, coin->minconfirms = 1, coin->mgw.txfee = 100000, coin->usep2sh = 0;
     else if ( strcmp(coin->name,"BTCD") == 0 )
         coin->addrtype = 60, coin->p2shtype = 85;
     else if ( strcmp(coin->name,"DOGE") == 0 )
@@ -316,9 +326,12 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     else if ( strcmp(coin->name,"BITS") == 0 )
         coin->addrtype = 25, coin->p2shtype = 8;
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
-    extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
-    set_atomickeys(coin);
-    printf("COIN.%s serverport.(%s) userpass.(%s) %s/%s %s/%s\n",coin->name,coin->serverport,coin->userpass,coin->atomicrecv,coin->atomicrecvpubkey,coin->atomicsend,coin->atomicsendpubkey);
+    if ( strcmp(coin->name,"NXT") != 0 )
+    {
+        extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
+        set_atomickeys(coin);
+        printf("COIN.%s serverport.(%s) userpass.(%s) %s/%s %s/%s\n",coin->name,coin->serverport,coin->userpass,coin->atomicrecv,coin->atomicrecvpubkey,coin->atomicsend,coin->atomicsendpubkey);
+    }
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
     //ensure_packedptrs(coin);

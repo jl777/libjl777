@@ -194,8 +194,8 @@ struct crypto777_block *parse_block777(struct consensus_model *model,struct cryp
     uint32_t timestamp,blocknum = 0;
     if ( (bestacct= validate_block(block)) >= 0 && peerid < nn->numpeers && (json= cJSON_Parse(blockstr)) != 0 )
     {
-        blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocknum"),0);
-        timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"timestamp"),0);
+        blocknum = juint(json,"blocknum");
+        timestamp = juint(json,"timestamp");
         metric = get_API_nxt64bits(cJSON_GetObjectItem(json,"metric"));
         model->peermetrics[blocknum][peerid] = metric;
         model->peerblocknum[peerid] = blocknum;

@@ -295,7 +295,7 @@ struct cointx_info *_decode_rawtransaction(char *hexstr,int32_t oldtx)
     uint32_t vin,vout;
     if ( (len= strlen(hexstr)) >= sizeof(data)*2-1 || is_hexstr(hexstr) == 0 || (len & 1) != 0 )
     {
-        printf("_decode_rawtransaction: hexstr too long %ld vs %ld || is_hexstr.%d || oddlen.%ld\n",strlen(hexstr),sizeof(data)*2-1,is_hexstr(hexstr),(len & 1));
+        printf("_decode_rawtransaction: hexstr.(%s) too long %ld vs %ld || is_hexstr.%d || oddlen.%ld\n",hexstr,strlen(hexstr),sizeof(data)*2-1,is_hexstr(hexstr),(len & 1));
         return(0);
     }
     //_decode_rawtransaction("0100000001a131c270d541c9d2be98b6f7a88c6cbea5d5a395ec82c9954083675226f399ee0300000000ffffffff042f7500000000000017a9140cc0def37d9682c292d18b3f579b7432adf4703187a0f70300000000001976a914e8bf7b6c41702de3451d189db054c985fe6fbbdb88ac01000000000000001976a914f9fab825f93c5f0ddcf90c4c96c371dc3dbca95788ac10eb09000000000017a914309924e8dad854d4cb8e3d6b839a932aea22590c8700000000"); getchar();

@@ -53,8 +53,8 @@ struct rawblock
     struct rawvout voutspace[MAX_BLOCKTX];
 };
 
-#define MAX_COINTX_INPUTS 64
-#define MAX_COINTX_OUTPUTS 8
+#define MAX_COINTX_INPUTS 256
+#define MAX_COINTX_OUTPUTS 256
 struct cointx_input { struct rawvin tx; char coinaddr[64],sigs[1024]; uint64_t value; uint32_t sequence; char used; };
 struct cointx_info
 {
@@ -171,6 +171,7 @@ struct coin777
     struct ramchain ramchain;
     struct mgw777 mgw;
     uint8_t p2shtype,addrtype,usep2sh;
+    struct subatomic_rawtransaction funding; struct NXTtx trigger; char *refundtx,*signedrefund;
     int32_t minconfirms,verified,lag,estblocktime; uint64_t minoutput;
     char atomicsendpubkey[128],atomicrecvpubkey[128],atomicrecv[128],atomicsend[128],donationaddress[128],changeaddr[128];
 };
@@ -183,9 +184,14 @@ struct coin777 *coin777_find(char *coinstr,int32_t autocreate);
 int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *userpass,uint32_t blocknum);
 void rawblock_patch(struct rawblock *raw);
 char *subatomic_txid(char *txbytes,struct coin777 *coin,char *destaddr,uint64_t amount,int32_t future);
+struct subatomic_unspent_tx *subatomic_bestfit(uint64_t *valuep,struct coin777 *coin,struct subatomic_unspent_tx *unspents,int32_t numunspents,uint64_t value,int32_t mode);
+struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,struct coin777 *coin,char *skipcoinaddr);
+cJSON *get_decoderaw_json(struct coin777 *coin,char *rawtransaction);
+char *shuffle_signvin(char *sigstr,struct coin777 *coin,struct cointx_info *refT,int32_t redeemi);
 
 void ram_clear_rawblock(struct rawblock *raw,int32_t totalflag);
 void coin777_disprawblock(struct rawblock *raw);
+uint64_t wait_for_txid(char *script,struct coin777 *coin,char *txidstr,int32_t vout,uint64_t recvamount,int32_t minconfirms,int32_t maxseconds);
 
 int32_t coin777_parse(struct coin777 *coin,uint32_t RTblocknum,int32_t syncflag,int32_t minconfirms);
 void coin777_initDBenv(struct coin777 *coin);
@@ -216,6 +222,11 @@ int32_t coin777_RWaddrtx(int32_t writeflag,struct coin777 *coin,uint32_t addrind
 int32_t NXT_set_revassettxid(uint64_t assetidbits,uint32_t ind,struct extra_info *extra);
 int32_t NXT_revassettxid(struct extra_info *extra,uint64_t assetidbits,uint32_t ind);
 int32_t NXT_mark_withdrawdone(struct mgw777 *mgw,uint64_t redeemtxid);
+int32_t subatomic_pubkeyhash(char *pubkeystr,char *pkhash,struct coin777 *coin,uint64_t quoteid);
+char *subatomic_fundingtx(char *refredeemscript,struct subatomic_rawtransaction *funding,struct coin777 *coin,char *mypubkey,char *otherpubkey,char *pkhash,uint64_t amount,int32_t lockblocks);
+char *subatomic_spendtx(struct destbuf *spendtxid,char *vintxid,char *refundsig,struct coin777 *coin,char *otherpubkey,char *mypubkey,char *onetimepubkey,uint64_t amount,char *refundtx,char *refredeemscript);
+char *subatomic_validate(struct coin777 *coin,char *pubA,char *pubB,char *pkhash,char *refundtx,char *refundsig);
+char *create_atomictx_scripts(uint8_t addrtype,char *scriptPubKey,char *p2shaddr,char *pubkeyA,char *pubkeyB,char *hash160str);
 
 #ifdef INSIDE_MGW
 struct db777 *db777_open(int32_t dispflag,struct env777 *DBs,char *name,char *compression,int32_t flags,int32_t valuesize);
@@ -299,7 +310,7 @@ int32_t parse_block(void *state,uint64_t *creditsp,uint64_t *debitsp,uint32_t *t
     minted = total = 0;
     if ( (json= _get_blockjson(0,coinstr,serverport,userpass,0,blocknum)) != 0 )
     {
-        if ( get_API_int(cJSON_GetObjectItem(json,"height"),0) == blocknum )
+        if ( juint(json,"height") == blocknum )
         {
             copy_cJSON(&blockhash,cJSON_GetObjectItem(json,"hash"));
             copy_cJSON(&merkleroot,cJSON_GetObjectItem(json,"merkleroot"));
@@ -336,7 +347,7 @@ int32_t parse_block(void *state,uint64_t *creditsp,uint64_t *debitsp,uint32_t *t
                 if ( (*blockfuncp)(state,blocknum+1,0,0,0,0,(*txidindp),(*numrawvoutsp),(*numrawvinsp),(*addrindp),(*scriptindp),(*totaladdrtxp),(*creditsp),(*debitsp)) != 0 )
                     printf("error finishing blocknum.%u\n",blocknum);
             } else printf("error _get_blocktxarray for block.%d got %d n.%d\n",blocknum,checkblocknum,numtx);
-        } else printf("blocknum.%u mismatched with %u\n",blocknum,get_API_int(cJSON_GetObjectItem(json,"height"),0));
+        } else printf("blocknum.%u mismatched with %u\n",blocknum,juint(json,"height"));
         free_json(json);
     } else printf("get_blockjson error parsing.(%s)\n",txidstr.buf);
     if ( Debuglevel > 2 )

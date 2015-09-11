@@ -204,9 +204,9 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
     if ( (json= cJSON_Parse(str)) != 0 )
     {
         //printf("READY.(%s) >>>>>>>>>>>>>> READY.(%s)\n",dp->name,dp->name);
-        if ( get_API_int(cJSON_GetObjectItem(json,"allowremote"),0) > 0 )
+        if ( juint(json,"allowremote") > 0 )
             dp->allowremote = 1;
-        permflag = get_API_int(cJSON_GetObjectItem(json,"permanentflag"),0);
+        permflag = juint(json,"permanentflag");
         instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"myid"));
         tag = get_API_nxt64bits(cJSON_GetObjectItem(json,"tag"));
         if ( dp->readyflag == 0 || Debuglevel > 2 )
@@ -230,7 +230,7 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
                 free(str), str = retstr, retstr = 0;
             }
         }
-        else if ( instanceid != 0 && (broadcastflag= get_API_int(cJSON_GetObjectItem(json,"broadcast"),0)) > 0 )
+        else if ( instanceid != 0 && (broadcastflag= juint(json,"broadcast")) > 0 )
         {
             fprintf(stderr,"send to other <<<<<<<<<<<<<<<<<<<<< \n");
             nn_local_broadcast(dp->pushsock,instanceid,broadcastflag,(uint8_t *)str,(int32_t)strlen(str)+1), dp->numsent++;
@@ -327,13 +327,14 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t InstantDEX_main(int32_t,char *args[]);
         int32_t dcnet_main(int32_t,char *args[]);
         int32_t prices_main(int32_t,char *args[]);
-        //int32_t teleport_main(int32_t,char *args[]);
+        int32_t shuffle_main(int32_t,char *args[]);
         //int32_t cashier_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
         else if ( strcmp(dp->name,"prices") == 0 ) return(prices_main(n,args));
         else if ( strcmp(dp->name,"kv777") == 0 ) return(kv777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
+        else if ( strcmp(dp->name,"shuffle") == 0 ) return(shuffle_main(n,args));
         else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
         else if ( strcmp(dp->name,"dcnet") == 0 ) return(dcnet_main(n,args));
         //else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
@@ -349,7 +350,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 ||
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 || strcmp(plugin,"cashier") == 0 ||
         //strcmp(plugin,"cashier") == 0 || strcmp(plugin,"teleport") == 0
 #ifdef INSIDE_MGW
         strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0 ||
@@ -536,9 +537,10 @@ char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin
         }
         else if ( in_jsonarray(localaccess != 0 ? dp->methodsjson : dp->pubmethods,method) == 0 )
         {
+            static uint32_t counter;
             methodsstr = cJSON_Print(localaccess != 0 ? dp->methodsjson : dp->pubmethods);
-            //if ( Debuglevel > 2 )
-                fprintf(stderr,"available.%s methods.(%s) vs (%s)\n",plugin,methodsstr,method);
+            if ( Debuglevel > 2 || counter++ < 3 )
+                fprintf(stderr,"available.%s methods.(%s) vs (%s) orig.(%s)\n",plugin,methodsstr,method,origargstr);//, getchar();
             sprintf(retbuf,"{\"error\":\"method not allowed\",\"plugin\":\"%s\",\"%s\":\"%s\",\"daemonid\":\"%llu\",\"myid\":\"%llu\"}",plugin,method,methodsstr,(long long)dp->daemonid,(long long)dp->myid);
             free(methodsstr);
             return(clonestr(retbuf));

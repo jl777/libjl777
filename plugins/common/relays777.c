@@ -353,7 +353,7 @@ char *nn_loadbalanced(uint8_t *data,int32_t len)
             break;
     if ( Debuglevel > 2 )
         printf("sock.%d NN_LBSEND.(%s)\n",lbsock,data);
-    fprintf(stderr,"send to network\n");
+    //fprintf(stderr,"send to network\n");
     if ( (sendlen= nn_send(lbsock,data,len,0)) == len )
     {
         for (i=0; i<10; i++)

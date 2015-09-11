@@ -226,8 +226,9 @@ int32_t validate_token(struct destbuf *forwarder,struct destbuf *pubkey,struct d
                 {
                     if ( NXTaddr->buf[0] == 0 )
                         strcpy(NXTaddr->buf,sender.buf);
-                    nonce = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"nonce"),0);
-                    leverage = (uint32_t)get_API_int(cJSON_GetObjectItem(tokenobj,"leverage"),0);
+                    if ( (nonce= juint(tokenobj,"nonce")) == 0 )
+                        printf("null nonce.%u in (%s)\n",nonce,jprint(tokenobj,0));
+                    leverage = juint(tokenobj,"leverage");
                     copy_cJSON(&broadcaststr,cJSON_GetObjectItem(tokenobj,"broadcast"));
                     broadcastmode = get_broadcastmode(firstitem,broadcaststr.buf);
                     retcode = valid;
@@ -587,14 +588,13 @@ int32_t decode_cipher(uint8_t *str,uint8_t *cipher,int32_t *lenp,uint8_t *mypriv
     return(err);
 }
 
-cJSON *privatemessage_encrypt(uint64_t destbits,char *pmstr)
+cJSON *privatemessage_encrypt(uint64_t destbits,void *pmstr,int32_t len)
 {
     uint8_t *cipher; bits256 destpubkey,onetime_pubkey,onetime_privkey; cJSON *strjson;
-    char *hexstr,destNXT[64]; int32_t len,haspubkey,cipherlen; uint32_t crc;
+    char *hexstr,destNXT[64]; int32_t haspubkey,cipherlen; uint32_t crc;
     expand_nxt64bits(destNXT,destbits);
     destpubkey = issue_getpubkey(&haspubkey,destNXT);
     crypto_box_keypair(onetime_pubkey.bytes,onetime_privkey.bytes);
-    len = (int32_t)strlen(pmstr);
     cipher = encode_str(&cipherlen,pmstr,len,destpubkey,onetime_privkey,onetime_pubkey);
     if ( haspubkey == 0 || cipher == 0 )
     {
@@ -661,6 +661,7 @@ char *privatemessage_recv(char *jsonstr)
             queue_enqueue("Telepathy",&TelepathyQ,queueitem(pmstr));
         }
         printf("privatemessage_recv.(%s)\n",pmstr!=0?pmstr:"<no message>");
+        free_json(argjson);
     }
     return(clonestr("{\"result\":\"success\",\"action\":\"privatemessage received\"}"));
 }
@@ -686,11 +687,11 @@ int32_t busdata_validate(struct destbuf *forwarder,struct destbuf *sender,uint32
 {
     struct destbuf pubkey,hexstr,sha,datastr,fforwarder,fsender; int32_t valid,fvalid; cJSON *argjson; bits256 hash;
     *timestamp = *datalenp = 0; forwarder->buf[0] = sender->buf[0] = 0;
-    //printf("busdata_validate.(%s)\n",msg);
+//printf("busdata_validate.(%s)\n",msg);
     if ( is_cJSON_Array(json) != 0 && cJSON_GetArraySize(json) == 2 )
     {
         argjson = cJSON_GetArrayItem(json,0);
-        *timestamp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"time"),0);
+        *timestamp = juint(argjson,"time");
         if ( (valid= validate_token(forwarder,&pubkey,sender,msg,(*timestamp != 0) * MAXTIMEDIFF)) <= 0 )
         {
             fprintf(stderr,"error valid.%d sender.(%s) forwarder.(%s)\n",valid,sender->buf,forwarder->buf);
@@ -708,8 +709,8 @@ int32_t busdata_validate(struct destbuf *forwarder,struct destbuf *sender,uint32
             if ( datastr.buf[0] != 0 )
                 decode_hex(databuf,(int32_t)(strlen(datastr.buf)+1)>>1,datastr.buf);
             else databuf[0] = 0;
-            *datalenp = (uint32_t)get_API_int(cJSON_GetObjectItem(argjson,"n"),0);
-            calc_sha256(hexstr.buf,hash.bytes,databuf,*datalenp<1000?*datalenp:1000);
+            *datalenp = juint(argjson,"n");
+            calc_sha256(hexstr.buf,hash.bytes,databuf,*datalenp<MAX_JSON_FIELD?*datalenp:MAX_JSON_FIELD);
             if ( strcmp(hexstr.buf,sha.buf) == 0 )
             {
                 *datalenp = privatemessage_decrypt(databuf,*datalenp,datastr.buf);
@@ -1006,7 +1007,7 @@ char *create_busdata(int32_t *sentflagp,uint32_t *noncep,int32_t *datalenp,char 
         if ( (destbits= conv_acctstr(destNXTaddr)) != 0 && (pmstr= cJSON_str(cJSON_GetObjectItem(json,"PM"))) != 0 )
         {
             //printf("destbits.%llu (%s)\n",(long long)destbits,destNXT);
-            cJSON_ReplaceItemInObject(json,"PM",privatemessage_encrypt(destbits,pmstr));
+            cJSON_ReplaceItemInObject(json,"PM",privatemessage_encrypt(destbits,pmstr,(int32_t)strlen(pmstr)));
             newmethod = "telepathy";
             cJSON_ReplaceItemInObject(json,"method",cJSON_CreateString(newmethod));
             secret = GENESIS_SECRET;
@@ -1071,7 +1072,7 @@ char *create_busdata(int32_t *sentflagp,uint32_t *noncep,int32_t *datalenp,char 
         tmp = malloc((datalen << 1) + 1);
         init_hexbytes_noT(tmp,(void *)str,datalen);
         cJSON_AddItemToObject(datajson,"data",cJSON_CreateString(tmp));
-        calc_sha256(hexstr,hash.bytes,(uint8_t *)str,datalen<1000?datalen:1000);
+        calc_sha256(hexstr,hash.bytes,(uint8_t *)str,datalen<MAX_JSON_FIELD?datalen:MAX_JSON_FIELD);
         cJSON_AddItemToObject(datajson,"n",cJSON_CreateNumber(datalen));
         cJSON_AddItemToObject(datajson,"H",cJSON_CreateString(hexstr));
         str2 = cJSON_Print(datajson), _stripwhite(str2,' ');
@@ -1093,6 +1094,7 @@ char *create_busdata(int32_t *sentflagp,uint32_t *noncep,int32_t *datalenp,char 
 char *busdata_sync(uint32_t *noncep,char *jsonstr,char *broadcastmode,char *destNXTaddr)
 {
     struct applicant_info apply,*ptr; int32_t sentflag,datalen,sendlen = 0; struct destbuf plugin,destplugin; char *data,*retstr,*submethod; cJSON *json;
+    //printf("BUSDATA_SYNC.(%s)\n",jsonstr);
     json = cJSON_Parse(jsonstr);
     if ( json == 0 )
     {

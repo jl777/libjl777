@@ -19,14 +19,14 @@
 
 char *MGWassets[][3] =
 {
+    { "12659653638116877017", "BTC", "8" },
     { "17554243582654188572", "BTC", "8" }, // assetid, name, decimals
     { "4551058913252105307", "BTC", "8" },
-    { "12659653638116877017", "BTC", "8" },
-    { "11060861818140490423", "BTCD", "4" },
     { "6918149200730574743", "BTCD", "4" },
+    { "11060861818140490423", "BTCD", "4" },
     { "13120372057981370228", "BITS", "6" },
-    { "2303962892272487643", "DOGE", "4" },
     { "16344939950195952527", "DOGE", "4" },
+    { "2303962892272487643", "DOGE", "4" },
     { "6775076774325697454", "OPAL", "8" },
     { "7734432159113182240", "VPN", "4" },
     { "9037144112883608562", "VRC", "8" },
@@ -35,6 +35,8 @@ char *MGWassets[][3] =
     { "2881764795164526882", "LTC", "4" },
     { "7117580438310874759", "BC", "4" },
     { "275548135983837356", "VIA", "4" },
+    { "6220108297598959542", "CNMT", "0" },
+    { "7474435909229872610", "CNMT", "0" },
 };
 
 char *Tradedassets[][4] =
@@ -46,7 +48,7 @@ char *Tradedassets[][4] =
     { "13634675574519917918", "INDEX", "0", "poloniex" },
     { "6932037131189568014", "JLH", "0", "poloniex" },
     { "14273984620270850703", "NXTI", "0", "poloniex" },
-    { "12071612744977229797", "UNITY", "0", "poloniex" },
+    { "12071612744977229797", "UNITY", "4", "poloniex" },
 };
 
 char *is_tradedasset(char *exchange,char *assetidstr)
@@ -235,6 +237,42 @@ int32_t NXT_supports(char *base,char *rel)
     else return(0);
 }
 
+char *bittrex_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    int32_t i,n; char *str,*itemstr = 0; cJSON *item,*array,*obj; double total,pending;
+    *balancep = 0.;
+    if ( exchange->balancejson != 0 && (array= jarray(&n,exchange->balancejson,"result")) != 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( (item= jitem(array,i)) != 0 )
+            {
+                if ( (str= jstr(item,"Currency")) != 0 && strcmp(coinstr,str) == 0 )
+                {
+                    itemstr = jprint(item,0);
+                    *balancep = jdouble(item,"Available");
+                    total = jdouble(item,"Balance");
+                    pending = jdouble(item,"Pending");
+                    if ( (obj= cJSON_Parse(itemstr)) != 0 )
+                    {
+                        jaddnum(obj,"balance",*balancep);
+                        jaddnum(obj,"total",total);
+                        jaddnum(obj,"pending",pending);
+                        if ( (str= jstr(obj,"CryptoAddress")) != 0 )
+                            jaddstr(obj,"deposit_address",str);
+                        free(itemstr);
+                        itemstr = jprint(obj,1);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
+
 int32_t bittrex_supports(char *base,char *rel)
 {
     if ( strlen(base) > 5 || strlen(rel) > 5 || strcmp(rel,"CNY") == 0 || strcmp(base,"CNY") == 0 || strcmp(rel,"USD") == 0 || strcmp(base,"USD") == 0 )
@@ -335,6 +373,31 @@ double prices777_standard(char *exchangestr,char *url,struct prices777 *prices,c
     return(hbla);
 }
 
+char *poloniex_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    char *itemstr = 0; cJSON *item,*obj; double onorders,btcvalue;
+    *balancep = 0.;
+    if ( exchange->balancejson != 0 && (item= jobj(exchange->balancejson,coinstr)) != 0 )
+    {
+        itemstr = jprint(item,0);
+        *balancep = jdouble(item,"available");
+        onorders = jdouble(item,"onOrders");
+        btcvalue = jdouble(item,"btcValue");
+        if ( (obj= cJSON_Parse(itemstr)) != 0 )
+        {
+            free(itemstr);
+            jaddstr(obj,"base",coinstr);
+            jaddnum(obj,"balance",*balancep);
+            jaddnum(obj,"onOrders",onorders);
+            jaddnum(obj,"btcvalue",btcvalue);
+            itemstr = jprint(obj,1);
+        }
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
+
 int32_t poloniex_supports(char *base,char *rel)
 {
     if ( strlen(base) > 5 || strlen(rel) > 5 || strcmp(rel,"CNY") == 0 || strcmp(base,"CNY") == 0 || strcmp(rel,"USD") == 0 || strcmp(base,"USD") == 0 )
@@ -411,6 +474,59 @@ double prices777_kraken(struct prices777 *prices,int32_t maxdepth)
     return(hbla);
 }
 
+char *bitfinex_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    //[[{"type":"deposit","currency":"btc","amount":"0.0","available":"0.0"},{"type":"deposit","currency":"usd","amount":"0.0","available":"0.0"},{"type":"exchange","currency":"btc","amount":"0.01065851","available":"0.01065851"},{"type":"exchange","currency":"usd","amount":"23386.37278962","available":"0.00378962"},{"type":"trading","currency":"btc","amount":"0.0","available":"0.0"},{"type":"trading","currency":"usd","amount":"0.0","available":"0.0"}]]
+    int32_t i,n,ind; char field[64],*str,*typestr,*itemstr = 0; cJSON *item,*obj,*array; double amounts[3],avail[3],val0,val1;
+    *balancep = 0.;
+    strcpy(field,coinstr), tolowercase(field);
+    memset(amounts,0,sizeof(amounts));
+    memset(avail,0,sizeof(avail));
+    if ( exchange->balancejson != 0 && is_cJSON_Array(exchange->balancejson) != 0 && (n= cJSON_GetArraySize(exchange->balancejson)) > 0 )
+    {
+        for (i=0; i<n; i++)
+        {
+            if ( (item= jitem(exchange->balancejson,i)) != 0 )
+            {
+                if ( (str= jstr(item,"currency")) != 0 && strcmp(field,str) == 0 )
+                {
+                    val0 = jdouble(item,"amount");
+                    val1 = jdouble(item,"available");
+                    if ( (typestr= jstr(item,"type")) != 0 )
+                    {
+                        if ( strcmp(typestr,"deposit") == 0 )
+                            ind = 0;
+                        else if ( strcmp(typestr,"exchange") == 0 )
+                            ind = 1;
+                        else if ( strcmp(typestr,"trading") == 0 )
+                            ind = 2;
+                        else ind = -1;
+                        if ( ind >= 0 )
+                        {
+                            amounts[ind] = val0;
+                            avail[ind] = val1;
+                        }
+                    }
+                }
+            }
+        }
+        if ( (obj= cJSON_CreateObject()) != 0 )
+        {
+            touppercase(field);
+            *balancep = avail[0] + avail[1] + avail[2];
+            jaddstr(obj,"base",field);
+            jaddnum(obj,"balance",*balancep);
+            jaddnum(obj,"total",amounts[0]+amounts[1]+amounts[2]);
+            array = cJSON_CreateArray(), jaddinum(array,avail[0]), jaddinum(array,amounts[0]), jadd(obj,"deposit",array);
+            array = cJSON_CreateArray(), jaddinum(array,avail[1]), jaddinum(array,amounts[1]), jadd(obj,"exchange",array);
+            array = cJSON_CreateArray(), jaddinum(array,avail[2]), jaddinum(array,amounts[2]), jadd(obj,"trading",array);
+            itemstr = jprint(obj,1);
+        }
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
 
 int32_t bitfinex_supports(char *base,char *rel)
 {
@@ -428,6 +544,27 @@ double prices777_bitfinex(struct prices777 *prices,int32_t maxdepth)
     if ( prices->url[0] == 0 )
         sprintf(prices->url,"https://api.bitfinex.com/v1/book/%s%s",prices->base,prices->rel);
     return(prices777_standard("bitfinex",prices->url,prices,"price","amount",maxdepth,0));
+}
+
+char *btce_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    //btce.({"success":1,"return":{"funds":{"usd":73.02571846,"btc":0,"ltc":0,"nmc":0,"rur":0,"eur":0,"nvc":0.0000322,"trc":0,"ppc":0.00000002,"ftc":0,"xpm":2.28605349,"cnh":0,"gbp":0},"rights":{"info":1,"trade":1,"withdraw":0},"transaction_count":0,"open_orders":3,"server_time":1441918649}})
+    char field[128],*itemstr = 0; cJSON *obj,*item;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"return")) != 0 && (item= jobj(obj,"funds")) != 0 )
+    {
+        *balancep = jdouble(item,field);
+        obj = cJSON_CreateObject();
+        touppercase(field);
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
 }
 
 int32_t btce_supports(char *base,char *rel)
@@ -450,6 +587,26 @@ double prices777_btce(struct prices777 *prices,int32_t maxdepth)
     return(prices777_standard("btce",prices->url,prices,0,0,maxdepth,field));
 }
 
+char *bitstamp_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    char field[128],*itemstr = 0; cJSON *obj,*item;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"return")) != 0 && (item= jobj(obj,"funds")) != 0 )
+    {
+        *balancep = jdouble(item,field);
+        obj = cJSON_CreateObject();
+        touppercase(field);
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
+
 int32_t bitstamp_supports(char *base,char *rel)
 {
     if ( strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0 )
@@ -464,6 +621,31 @@ double prices777_bitstamp(struct prices777 *prices,int32_t maxdepth)
     if ( prices->url[0] == 0 )
         sprintf(prices->url,"https://www.bitstamp.net/api/order_book/");
     return(prices777_standard("bitstamp",prices->url,prices,0,0,maxdepth,0));
+}
+
+char *okcoin_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    //okcoin.({"info":{"funds":{"asset":{"net":"0","total":"0"},"free":{"btc":"0","ltc":"0","usd":"0"},"freezed":{"btc":"0","ltc":"0","usd":"0"}}},"result":true})
+    char field[128],*itemstr = 0; cJSON *obj,*item,*avail,*locked; double lockval = 0;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"info")) != 0 && (item= jobj(obj,"funds")) != 0 )
+    {
+        if ( (avail= jobj(item,"free")) != 0 )
+            *balancep = jdouble(avail,field);
+        if ( (locked= jobj(item,"freezed")) != 0 )
+            lockval = jdouble(locked,field);
+        obj = cJSON_CreateObject();
+        touppercase(field);
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        jaddnum(obj,"locked",lockval);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
 }
 
 int32_t okcoin_supports(char *base,char *rel)
@@ -487,6 +669,26 @@ double prices777_okcoin(struct prices777 *prices,int32_t maxdepth)
         return(0);
     }
     return(prices777_standard("okcoin",prices->url,prices,0,0,maxdepth,0));
+}
+
+char *huobi_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    char field[128],*itemstr = 0; cJSON *obj,*item;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"return")) != 0 && (item= jobj(obj,"funds")) != 0 )
+    {
+        *balancep = jdouble(item,field);
+        obj = cJSON_CreateObject();
+        touppercase(field);
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
 }
 
 int32_t huobi_supports(char *base,char *rel)
@@ -523,6 +725,26 @@ double prices777_bityes(struct prices777 *prices,int32_t maxdepth)
     return(prices777_standard("bityes",prices->url,prices,0,0,maxdepth,0));
 }
 
+char *coinbase_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    char field[128],*itemstr = 0; cJSON *obj,*item;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"return")) != 0 && (item= jobj(obj,"funds")) != 0 )
+    {
+        *balancep = jdouble(item,field);
+        obj = cJSON_CreateObject();
+        touppercase(field);
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
+
 int32_t coinbase_supports(char *base,char *rel)
 {
     if ( strcmp(base,"BTC") == 0 && strcmp(rel,"USD") == 0 )
@@ -537,6 +759,30 @@ double prices777_coinbase(struct prices777 *prices,int32_t maxdepth)
     if ( prices->url[0] == 0 )
         sprintf(prices->url,"https://api.exchange.coinbase.com/products/%s-%s/book?level=2",prices->base,prices->rel);
     return(prices777_standard("coinbase",prices->url,prices,0,0,maxdepth,0));
+}
+
+char *lakebtc_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    //lakebtc.({"balance":{"BTC":0.1},"locked":{"BTC":0.0},"profile":{"email":"jameslee777@yahoo.com","id":"U137561934","btc_deposit_addres":"1RyKrNJjezeFfvYaicnJEozHfhWfYzbuh"}})
+    char field[128],*str,*itemstr = 0; cJSON *obj=0,*item=0,*prof=0; double locked = 0;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    touppercase(field);
+    if ( exchange->balancejson != 0 && (obj= jobj(exchange->balancejson,"balance")) != 0 && (item= jobj(exchange->balancejson,"locked")) != 0 && (prof= jobj(exchange->balancejson,"profile")) != 0 )
+    {
+        *balancep = jdouble(obj,field);
+        locked = jdouble(item,field);
+        obj = cJSON_CreateObject();
+        jaddstr(obj,"base",field);
+        jaddnum(obj,"balance",*balancep);
+        jaddnum(obj,"locked",locked);
+        if ( (str= jstr(prof,"btc_deposit_addres")) != 0 )
+            jaddstr(obj,"deposit_address",str);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
 }
 
 int32_t lakebtc_supports(char *base,char *rel)
@@ -580,6 +826,31 @@ double prices777_exmo(struct prices777 *prices,int32_t maxdepth)
 #endif
 
 // "gatecoin", "quoine", "jubi", "hitbtc"
+
+char *btc38_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+    char field[128],*str,*itemstr = 0; cJSON *obj; double lockbalance,imma;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    strcat(field,"_balance");
+    if ( exchange->balancejson != 0 && (str= jstr(exchange->balancejson,field)) != 0 )
+    {
+        *balancep = jdouble(exchange->balancejson,field);
+        strcpy(field,coinstr), tolowercase(field), strcat(field,"_balance_lock");
+        lockbalance = jdouble(exchange->balancejson,field);
+        strcpy(field,coinstr), tolowercase(field), strcat(field,"_balance_imma");
+        imma = jdouble(exchange->balancejson,field);
+        obj = cJSON_CreateObject();
+        jaddnum(obj,"balance",*balancep);
+        jaddnum(obj,"locked_balance",lockbalance);
+        jaddnum(obj,"imma_balance",imma);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
+}
 
 int32_t btc38_supports(char *_base,char *_rel)
 {
@@ -631,6 +902,32 @@ double prices777_btc38(struct prices777 *prices,int32_t maxdepth)
         else sprintf(prices->url,"http://api.btc38.com/v1/depth.php?c=%s&mk_type=%s",prices->lbase,prices->lrel);
     }
     return(prices777_standard("btc38",prices->url,prices,0,0,maxdepth,0));
+}
+
+char *quadriga_coinbalance(struct exchange_info *exchange,double *balancep,char *coinstr)
+{
+//[{"btc_available":"0.00000000","btc_reserved":"0.00000000","btc_balance":"0.00000000","cad_available":"0.00","cad_reserved":"0.00","cad_balance":"0.00","usd_available":"0.00","usd_reserved":"0.00","usd_balance":"0.00","xau_available":"0.000000","xau_reserved":"0.000000","xau_balance":"0.000000","fee":"0.5000"}]
+    char field[128],*str,*itemstr = 0; cJSON *obj; double reserv,total;
+    *balancep = 0.;
+    strcpy(field,coinstr);
+    tolowercase(field);
+    strcat(field,"_available");
+    if ( exchange->balancejson != 0 && (str= jstr(exchange->balancejson,field)) != 0 )
+    {
+        *balancep = jdouble(exchange->balancejson,field);
+        strcpy(field,coinstr), tolowercase(field), strcat(field,"_reserved");
+        reserv = jdouble(exchange->balancejson,field);
+        strcpy(field,coinstr), tolowercase(field), strcat(field,"_balance");
+        total = jdouble(exchange->balancejson,field);
+        obj = cJSON_CreateObject();
+        jaddnum(obj,"balance",*balancep);
+        jaddnum(obj,"locked_balance",reserv);
+        jaddnum(obj,"total",total);
+        itemstr = jprint(obj,1);
+    }
+    if ( itemstr == 0 )
+        return(clonestr("{\"error\":\"cant find coin balance\"}"));
+    return(itemstr);
 }
 
 int32_t quadriga_supports(char *base,char *rel)

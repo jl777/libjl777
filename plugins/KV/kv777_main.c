@@ -690,7 +690,8 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         else if ( strcmp(method,"getPM") == 0 )
         {
-            ind = get_API_int(cJSON_GetObjectItem(json,"ind"),-1);
+            if ( (ind= juint(json,"ind")) == 0 )
+                ind = -1;
             if ( SUPERNET.PM != 0 )
             {
                 sprintf(retbuf,"{\"result\":\"success\",\"numkeys\":%d}",SUPERNET.PM->numkeys);
@@ -704,7 +705,8 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         else if ( strcmp(method,"getrawPM") == 0 )
         {
-            ind = get_API_int(cJSON_GetObjectItem(json,"ind"),-1);
+            if ( (ind= juint(json,"ind")) == 0 )
+                ind = -1;
             if ( SUPERNET.rawPM != 0 )
             {
                 sprintf(retbuf,"{\"result\":\"success\",\"numkeys\":%d}",SUPERNET.rawPM->numkeys);

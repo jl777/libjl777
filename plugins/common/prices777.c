@@ -716,9 +716,10 @@ char *prices777_allorderbooks()
 struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struct prices777 *prices,int32_t maxdepth),char *exchange,char *_base,char *_rel,double decay,char *_name,uint64_t baseid,uint64_t relid,int32_t basketsize)
 {
     static long allocated;
-    struct exchange_pair { char *exchange; double (*updatefunc)(struct prices777 *prices,int32_t maxdepth); int32_t (*supports)(char *base,char *rel); uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume); } pairs[] =
+    struct exchange_pair { char *exchange; double (*updatefunc)(struct prices777 *prices,int32_t maxdepth); int32_t (*supports)(char *base,char *rel); uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume); char *(*coinbalance)(struct exchange_info *exchange,double *balancep,char *coinstr); } pairs[] =
     {
-        {"nxtae", prices777_NXT, NXT_supports, NXT_tradestub }, {"unconf", prices777_unconfNXT, NXT_supports, NXT_tradestub },
+        {"nxtae", prices777_NXT, NXT_supports, NXT_tradestub },
+        {"unconf", prices777_unconfNXT, NXT_supports, NXT_tradestub },
         {"InstantDEX", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
         {"wallet", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
         {"basket", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
@@ -728,20 +729,21 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
         {"basketCNY", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
         {"active", prices777_basket, InstantDEX_supports, InstantDEX_tradestub },
         {"peggy", prices777_InstantDEX, InstantDEX_supports, InstantDEX_tradestub },
-        {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade },
+        {"poloniex", prices777_poloniex, poloniex_supports, poloniex_trade, poloniex_coinbalance },
         {"kraken", prices777_kraken, kraken_supports, kraken_trade },
-        {"bitfinex", prices777_bitfinex, bitfinex_supports, bitfinex_trade },
-        {"btc38", prices777_btc38, btc38_supports, btc38_trade }, //{"bter", prices777_bter, bter_supports, bter_trade },
-        {"btce", prices777_btce, btce_supports, btce_trade },
-        {"bitstamp", prices777_bitstamp, bitstamp_supports, bitstamp_trade },
-        {"bittrex", prices777_bittrex, bittrex_supports, bittrex_trade },
-        {"okcoin", prices777_okcoin, okcoin_supports, okcoin_trade },
-        {"huobi", prices777_huobi, huobi_supports, huobi_trade },
-        {"bityes", prices777_bityes, bityes_supports, bityes_trade },
-        {"coinbase", prices777_coinbase, coinbase_supports, coinbase_trade },
-        {"lakebtc", prices777_lakebtc, lakebtc_supports, lakebtc_trade },
+        {"bitfinex", prices777_bitfinex, bitfinex_supports, bitfinex_trade, bitfinex_coinbalance },
+        {"btc38", prices777_btc38, btc38_supports, btc38_trade, btc38_coinbalance }, //{"bter", prices777_bter, bter_supports, bter_trade },
+        {"btce", prices777_btce, btce_supports, btce_trade, btce_coinbalance },
+        {"bitstamp", prices777_bitstamp, bitstamp_supports, bitstamp_trade, bitstamp_coinbalance },
+        {"bittrex", prices777_bittrex, bittrex_supports, bittrex_trade, bittrex_coinbalance },
+        {"okcoin", prices777_okcoin, okcoin_supports, okcoin_trade, okcoin_coinbalance },
+        {"huobi", prices777_huobi, huobi_supports, huobi_trade, huobi_coinbalance },
+        //{"bityes", prices777_bityes, bityes_supports, bityes_trade },
+        {"coinbase", prices777_coinbase, coinbase_supports, coinbase_trade, coinbase_coinbalance },
+        {"lakebtc", prices777_lakebtc, lakebtc_supports, lakebtc_trade, lakebtc_coinbalance },
         //{"exmo", prices777_exmo, exmo_supports, exmo_trade },
-        {"quadriga", prices777_quadriga, quadriga_supports, quadriga_trade },
+        {"quadriga", prices777_quadriga, quadriga_supports, quadriga_trade, quadriga_coinbalance },
+        {"shuffle", prices777_InstantDEX, InstantDEX_supports },
         {"truefx", 0 }, {"ecb", 0 }, {"instaforex", 0 }, {"fxcm", 0 }, {"yahoo", 0 },
     };
     int32_t i,rellen; char basebuf[64],relbuf[64],base[64],rel[64],name[64]; struct exchange_info *exchangeptr;
@@ -755,15 +757,16 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
         {
             if ( (exchangeptr= find_exchange(0,pairs[i].exchange)) != 0 )
             {
-                printf("%p %s set supports.%p %p\n",exchangeptr,pairs[i].exchange,pairs[i].supports,pairs[i].trade);
+                printf("%p %s set supports.%p %p coinbalance.%p\n",exchangeptr,pairs[i].exchange,pairs[i].supports,pairs[i].trade,pairs[i].coinbalance);
                 exchangeptr->supports = pairs[i].supports;
                 exchangeptr->trade = pairs[i].trade;
+                exchangeptr->coinbalance = pairs[i].coinbalance;
             }
         }
         return(0);
     }
     printf("init.(%s/%s) name.(%s) %llu %llu\n",base,rel,name,(long long)baseid,(long long)relid);
-    if ( strcmp(exchange,"nxtae") == 0 || strcmp(exchange,"unconf") == 0 || strcmp(exchange,"InstantDEX") == 0 )
+    if ( strcmp(exchange,"nxtae") == 0 || strcmp(exchange,"unconf") == 0 )//|| strcmp(exchange,"InstantDEX") == 0 )
     {
         if ( strcmp(base,"NXT") == 0 || baseid == NXT_ASSETID )
         {
@@ -984,7 +987,7 @@ void prices777_basketsloop(void *ptr)
 void prices777_exchangeloop(void *ptr)
 {
     extern int32_t prices777_NXTBLOCK;
-    struct prices777 *prices; int32_t i,n,pollflag,isnxtae = 0; double updated = 0.; struct exchange_info *exchange = ptr;
+    struct prices777 *prices; char *retstr; cJSON *json; int32_t i,n,pollflag,isnxtae = 0; double updated = 0.; struct exchange_info *exchange = ptr;
     if ( strcmp(exchange->name,"nxtae") == 0 || strcmp(exchange->name,"unconf") == 0 )
         isnxtae = 1;
     printf("POLL.(%s)\n",exchange->name);
@@ -1016,6 +1019,22 @@ void prices777_exchangeloop(void *ptr)
                     prices->pollnxtblock = prices777_NXTBLOCK;
                     prices->dirty = 0;
                     n++;
+                }
+                if ( exchange->trade != 0 && exchange->apikey[0] != 0 && exchange->exchangeid >= FIRST_EXTERNAL && time(NULL) > exchange->lastbalancetime+300 )
+                {
+                    (*exchange->trade)(&retstr,exchange,0,0,0,0,0);
+                    if ( retstr != 0 )
+                    {
+                        if ( (json= cJSON_Parse(retstr)) != 0 )
+                        {
+                            printf("%s.(%s)\n",exchange->name,retstr);
+                            if ( exchange->balancejson != 0 )
+                                free_json(exchange->balancejson);
+                            exchange->balancejson = json;
+                        }
+                        free(retstr);
+                    }
+                    exchange->lastbalancetime = (uint32_t)time(NULL);
                 }
             }
         }

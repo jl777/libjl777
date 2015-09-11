@@ -142,6 +142,7 @@ struct json_AM { struct NXT_AMhdr H; uint32_t funcid,gatewayid,timestamp,jsonfla
 
 struct assethash { UT_hash_handle hh; uint64_t assetid,minvol,mult; int32_t type,decimals; char name[16]; } *Allassets;
 struct assethash *find_asset(uint64_t assetid);
+char *issue_approveTransaction(char *fullhash,char *revealed,char *message,char *NXTACCTSECRET);
 
 uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
 uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
@@ -412,7 +413,7 @@ uint32_t get_blockutime(uint32_t blocknum)
         //printf("(%s) -> (%s)\n",cmd,jsonstr);
         if ( (json= cJSON_Parse(jsonstr)) != 0 )
         {
-            if ( (timestamp= (uint32_t)get_API_int(cJSON_GetObjectItem(json,"timestamp"),0)) != 0 )
+            if ( (timestamp= juint(json,"timestamp")) != 0 )
                 timestamp += NXT_GENESISTIME;
             free_json(json);
         }
@@ -542,6 +543,15 @@ char *issue_signTransaction(char *txbytes,char *NXTACCTSECRET)
     char cmd[4096],secret[8192];
     escape_code(secret,NXTACCTSECRET);
     sprintf(cmd,"requestType=signTransaction&secretPhrase=%s&unsignedTransactionBytes=%s",secret,txbytes);
+    return(issue_NXTPOST(cmd));
+}
+
+char *issue_approveTransaction(char *fullhash,char *revealed,char *message,char *NXTACCTSECRET)
+{
+    char cmd[4096],secret[8192];
+    escape_code(secret,NXTACCTSECRET);
+    sprintf(cmd,"requestType=approveTransaction&secretPhrase=%s&transactionFullHash=%s&revealedSecret=%s&messageIsText=true&feeNQT=%lld&deadline=%d&message=%s",secret,fullhash,revealed,(long long)MIN_NQTFEE,DEFAULT_NXT_DEADLINE,message);
+    printf("submit approve.(%s)\n",cmd);
     return(issue_NXTPOST(cmd));
 }
 
@@ -917,7 +927,7 @@ int32_t _set_assetname(uint64_t *multp,char *buf,char *jsonstr,uint64_t assetid)
     if ( jsonstr == 0 )
     {
         if ( assetid == 0 )
-            printf("_set_assetname null assetid\n");//, getchar();
+            printf("_set_assetname null assetid\n"), getchar();
         expand_nxt64bits(assetidstr,assetid);
         type = 2;
         if ( (jsonstr= _issue_getAsset(assetidstr)) != 0 )
@@ -1263,7 +1273,7 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
         *heightp = height = (uint32_t)get_cJSON_int(txobj,"height");
         if ( confirmed != 0 )
         {
-            if ( (numconfs= (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"confirmations"),0)) == 0 )
+            if ( (numconfs= juint(txobj,"confirmations")) == 0 )
                 numconfs = (_get_NXTheight(0) - height);
         } else numconfs = 0;
         copy_cJSON(&txid,cJSON_GetObjectItem(txobj,"transaction"));
@@ -1347,7 +1357,7 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
                 if ( type == 5 && subtype == 3 )
                 {
                     copy_cJSON(&assetidstr,cJSON_GetObjectItem(attachment,"currency"));
-                    units = get_API_int(cJSON_GetObjectItem(attachment,"units"),0);
+                    units = juint(attachment,"units");
                     if ( commentobj != 0 )
                     {
                         funcid = (int32_t)get_API_int(cJSON_GetObjectItem(commentobj,"funcid"),-1);
@@ -1359,7 +1369,7 @@ int32_t process_assettransfer(uint32_t *heightp,uint64_t *senderbitsp,uint64_t *
                 {
                     if ( _in_specialNXTaddrs(mgw,sender.buf) != 0 )
                     {
-                        buyNXT = get_API_int(cJSON_GetObjectItem(commentobj,"buyNXT"),0);
+                        buyNXT = juint(commentobj,"buyNXT");
                         satoshis = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
                         if ( buyNXT*SATOSHIDEN == satoshis )
                         {

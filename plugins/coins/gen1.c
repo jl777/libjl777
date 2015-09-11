@@ -723,7 +723,7 @@ uint32_t _get_RTheight(double *lastmillip,char *coinstr,char *serverport,char *u
         {
             if ( (json= cJSON_Parse(retstr)) != 0 )
             {
-                height = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"blocks"),0);
+                height = juint(json,"blocks");
                 //printf("get_RTheight %u\n",height);
                 free_json(json);
                 *lastmillip = milliseconds();
@@ -741,6 +741,64 @@ char *_get_transaction(char *coinstr,char *serverport,char *userpass,char *txids
     //printf("get_transaction.(%s)\n",txidstr);
     rawtransaction = bitcoind_passthru(coinstr,serverport,userpass,"getrawtransaction",txid);
     return(rawtransaction);
+}
+
+uint64_t wait_for_txid(char *script,struct coin777 *coin,char *txidstr,int32_t vout,uint64_t recvamount,int32_t minconfirms,int32_t maxseconds)
+{
+    uint64_t value; char *rawtx,*jsonstr,*str; struct cointx_info *cointx; struct destbuf buf; cJSON *json;
+    uint32_t unconf=0,i,n,starttime = (uint32_t)time(NULL);
+    script[0] = 0;
+    while ( 1 )
+    {
+        if ( unconf == 0 && (jsonstr= bitcoind_passthru(coin->name,coin->serverport,coin->userpass,"getrawmempool","")) != 0 )
+        {
+            //printf("rawmempool.(%s)\n",jsonstr);
+            if ( (json= cJSON_Parse(jsonstr)) != 0 && is_cJSON_Array(json) != 0 && (n= cJSON_GetArraySize(json)) > 0 )
+            {
+                for (i=0; i<n; i++)
+                {
+                    copy_cJSON(&buf,jitem(json,i));
+                    if ( strcmp(buf.buf,txidstr) == 0 )
+                    {
+                        unconf = 1;
+                        printf("FOUND %s in unconfirmed\n",txidstr);
+                        break;
+                    }
+                }
+                free_json(json);
+            }
+            free(jsonstr);
+        }
+        printf("unconf.%d get.(%s)\n",unconf,txidstr);
+        value = 0;
+        if ( (rawtx= _get_transaction(coin->name,coin->serverport,coin->userpass,txidstr)) != 0 )
+        {
+            if ( (json= cJSON_Parse(rawtx)) != 0 )
+            {
+                if ( (str= jstr(json,"hex")) != 0 )
+                {
+                    if ( (cointx= _decode_rawtransaction(str,coin->mgw.oldtx_format)) != 0 )
+                    {
+                        strcpy(script,cointx->inputs[0].sigs);
+                        if ( (value= cointx->outputs[vout].value) != recvamount )
+                        {
+                            printf("TXID amount mismatch (%s v%d) %.8f vs expected %.8f\n",txidstr,vout,dstr(cointx->outputs[vout].value),dstr(recvamount));
+                        }
+                        free(cointx);
+                    }
+                }
+                free_json(json);
+            }
+            free(rawtx);
+        }
+        if ( value != 0 )
+            break;
+        fprintf(stderr,".");
+        if ( maxseconds != 0 && starttime+maxseconds < time(NULL) )
+            break;
+        sleep(20);
+    }
+    return(value);
 }
 
 uint64_t ram_verify_txstillthere(char *coinstr,char *serverport,char *userpass,char *txidstr,int32_t vout)
@@ -790,7 +848,8 @@ cJSON *_get_blockjson(uint32_t *heightp,char *coinstr,char *serverport,char *use
         //printf("get_blockjson.(%d %s)\n",blocknum,blockhashstr);
         blocktxt = bitcoind_passthru(coinstr,serverport,userpass,"getblock",buf);
         if ( blocktxt != 0 && blocktxt[0] != 0 && (json= cJSON_Parse(blocktxt)) != 0 && heightp != 0 )
-            *heightp = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"height"),0xffffffff);
+            if ( (*heightp= juint(json,"height")) == 0 )
+                *heightp = 0xffffffff;
         if ( flag != 0 && blockhashstr != 0 )
             free(blockhashstr);
         if ( blocktxt != 0 )
@@ -935,7 +994,7 @@ cJSON *_rawblock_txarray(uint32_t *blockidp,int32_t *numtxp,cJSON *blockjson)
     cJSON *txarray = 0;
     if ( blockjson != 0 )
     {
-        *blockidp = (uint32_t)get_API_int(cJSON_GetObjectItem(blockjson,"height"),0);
+        *blockidp = juint(blockjson,"height");
         txarray = cJSON_GetObjectItem(blockjson,"tx");
         *numtxp = cJSON_GetArraySize(txarray);
     }
@@ -973,7 +1032,7 @@ int32_t rawblock_load(struct rawblock *raw,char *coinstr,char *serverport,char *
     raw->minted = raw->numtx = raw->numrawvins = raw->numrawvouts = 0;
     if ( (json= _get_blockjson(0,coinstr,serverport,userpass,0,blocknum)) != 0 )
     {
-        raw->blocknum = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"height"),0);
+        raw->blocknum = juint(json,"height");
         copy_cJSON(&tmp,cJSON_GetObjectItem(json,"hash")), safecopy(raw->blockhash,tmp.buf,sizeof(raw->blockhash));
         //fprintf(stderr,"%u: blockhash.[%s] ",blocknum,raw->blockhash);
         copy_cJSON(&tmp,cJSON_GetObjectItem(json,"merkleroot")), safecopy(raw->merkleroot,tmp.buf,sizeof(raw->merkleroot));
@@ -1017,7 +1076,7 @@ char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *user
         return(0);
     sprintf(addr,"\"%s\"",NXTaddr);
     retstr = bitcoind_passthru(coinstr,serverport,userpass,"getaccountaddress",addr);
-    printf("get_acct_coinaddr.(%s) -> (%s)\n",NXTaddr,retstr);
+    //printf("get_acct_coinaddr.(%s) -> (%s)\n",NXTaddr,retstr);
     if ( retstr != 0 )
     {
         strcpy(coinaddr,retstr);

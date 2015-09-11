@@ -553,8 +553,8 @@ uint64_t set_assettrade(int32_t i,int32_t n,struct assettrade *tp,cJSON *json)
         tp->buyer = get_API_nxt64bits(cJSON_GetObjectItem(json,"buyer"));
         tp->askorder = get_API_nxt64bits(cJSON_GetObjectItem(json,"askOrder"));
         tp->bidorder = get_API_nxt64bits(cJSON_GetObjectItem(json,"bidOrder"));
-        tp->bidheight = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"bidOrderHeight"),0);
-        tp->askheight = (uint32_t)get_API_int(cJSON_GetObjectItem(json,"askOrderHeight"),0);
+        tp->bidheight = juint(json,"bidOrderHeight");
+        tp->askheight = juint(json,"askOrderHeight");
         if ( 1 )
         {
             copy_cJSON(name,cJSON_GetObjectItem(json,"name"));

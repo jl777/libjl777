@@ -2083,6 +2083,7 @@ struct cointx_info *mgw_cointx_withdraw(struct coin777 *coin,char *destaddr,uint
         cointx->outputs[cointx->numoutputs++].value = opreturn_amount;
     }
     cointx->amount = amount = value - mgw->txfee;//(MGWfee + value + opreturn_amount + mgw->txfee);
+    printf("total %.8f: value %.8f txfee %.8f MGWfee %.8f\n",dstr(cointx->amount),dstr(value),dstr(mgw->txfee),dstr(MGWfee));
     if ( mgw->balance >= 0 )
     {
         cointx->inputsum = coin777_inputs(&cointx->change,&cointx->numinputs,coin,cointx->inputs,sizeof(cointx->inputs)/sizeof(*cointx->inputs),amount,mgw->txfee);

@@ -156,6 +156,7 @@ int32_t unstringbits(char *buf,uint64_t bits);
 int32_t get_assetname(char *name,uint64_t assetid);
 void calc_OP_HASH160(char hexstr[41],uint8_t hash160[20],char *pubkey);
 int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
+int32_t decode_cipher(uint8_t *str,uint8_t *cipher,int32_t *lenp,uint8_t *myprivkey);
 
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename);
@@ -166,6 +167,8 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_
 void set_best_amounts(int64_t *baseamountp,int64_t *relamountp,double price,double volume);
 int32_t is_mscoin(char *assetidstr);
 uint32_t issue_getTime();
+cJSON *privatemessage_encrypt(uint64_t destbits,void *pmstr,int32_t len);
+void telepathic_PM(char *destNXT,char *PM);
 
 #define SIGHASH_ALL 1
 #define SIGHASH_NONE 2
@@ -194,12 +197,13 @@ extern uint32_t MAX_DEPTH;
 
 struct NXTtx { uint64_t txid; char fullhash[MAX_JSON_FIELD],utxbytes[MAX_JSON_FIELD],utxbytes2[MAX_JSON_FIELD],txbytes[MAX_JSON_FIELD],sighash[MAX_JSON_FIELD]; };
 
-struct InstantDEX_shared { double price,vol; uint64_t quoteid,offerNXT,basebits,relbits,baseid,relid; int64_t baseamount,relamount; uint32_t timestamp; uint16_t duration,isask:1,expired:1,closed:1,swap:1,responded:1,matched:1,feepaid:1,automatch:1,pending:1,minperc:7; };
+struct InstantDEX_shared { double price,vol; uint64_t quoteid,offerNXT,basebits,relbits,baseid,relid; int64_t baseamount,relamount; uint32_t timestamp; uint16_t duration:14,wallet:1,a:1,isask:1,expired:1,closed:1,swap:1,responded:1,matched:1,feepaid:1,automatch:1,pending:1,minperc:7; };
 struct InstantDEX_quote
 {
     UT_hash_handle hh;
     struct InstantDEX_shared s; // must be here
     char exchangeid,gui[9];
+    char walletstr[];
 };
 
 struct prices777_order { struct InstantDEX_shared s; struct prices777 *source; uint64_t id; double wt,ratio; uint16_t slot_ba; };
@@ -230,12 +234,14 @@ struct prices777
 struct exchange_info
 {
     double (*updatefunc)(struct prices777 *prices,int32_t maxdepth);
+    char *(*coinbalance)(struct exchange_info *exchange,double *balancep,char *coinstr);
     int32_t (*supports)(char *base,char *rel);
     uint64_t (*trade)(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume);
-    char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD],userid[MAX_JSON_FIELD];
-    uint32_t num,exchangeid,pollgap,refcount,polling; uint64_t nxt64bits; double lastupdate,commission;
+    char name[16],apikey[MAX_JSON_FIELD],apisecret[MAX_JSON_FIELD],userid[MAX_JSON_FIELD]; cJSON *balancejson;
+    uint32_t num,exchangeid,pollgap,refcount,polling,lastbalancetime; uint64_t nxt64bits; double lastupdate,commission;
     portable_mutex_t mutex;
 };
+extern uint32_t FIRST_EXTERNAL;
 
 uint64_t gen_NXTtx(struct NXTtx *tx,uint64_t dest64bits,uint64_t assetidbits,uint64_t qty,uint64_t orderid,uint64_t quoteid,int32_t deadline,char *reftx,char *phaselink,uint32_t finishheight,char *phasesecret);
 int32_t InstantDEX_verify(uint64_t destNXTaddr,uint64_t sendasset,uint64_t sendqty,cJSON *txobj,uint64_t recvasset,uint64_t recvqty);
@@ -259,7 +265,7 @@ char *prices777_orderbook_jsonstr(int32_t invert,uint64_t nxt64bits,struct price
 int32_t prices777_getmatrix(double *basevals,double *btcusdp,double *btcdbtcp,double Hmatrix[32][32],double *RTprices,char *contracts[],int32_t num,uint32_t timestamp);
 struct InstantDEX_quote *find_iQ(uint64_t quoteid);
 int32_t bidask_parse(struct destbuf *exchangestr,struct destbuf *name,struct destbuf *base,struct destbuf *rel,struct destbuf *gui,struct InstantDEX_quote *iQ,cJSON *json);
-struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ);
+struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr);
 double prices777_InstantDEX(struct prices777 *prices,int32_t maxdepth);
 char *hmac_sha1_str(char *dest,char *key,int32_t key_size,char *message);
 char *hmac_md2_str(char *dest,char *key,int32_t key_size,char *message);
@@ -278,6 +284,9 @@ char *hmac_whirlpool_str(char *dest,char *key,int32_t key_size,char *message);
 int nn_base64_encode(const uint8_t *in,size_t in_len,char *out,size_t out_len);
 int nn_base64_decode(const char *in,size_t in_len,uint8_t *out,size_t out_len);
 uint64_t is_NXT_native(uint64_t assetid);
+cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *iQ);
+cJSON *InstantDEX_shuffleorders(uint64_t *quoteidp,uint64_t nxt64bits,char *base);
+extern queue_t InstantDEXQ;
 
 struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struct prices777 *prices,int32_t maxdepth),char *exchange,char *base,char *rel,double decay,char *name,uint64_t baseid,uint64_t relid,int32_t basketsize);
 double prices777_price_volume(double *volumep,uint64_t baseamount,uint64_t relamount);
