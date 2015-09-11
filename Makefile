@@ -77,6 +77,8 @@ PINCLUDES := -Iincludes -Inonportable/$(OS)  -I../nanomsg/src -I../nanomsg/src/u
 
 _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) agents/echodemo.c $(PLIBS)
 
+_shuffle := rm agents/shuffle; gcc -o agents/shuffle -O2 $(PINCLUDES) agents/shuffle777.c $(PLIBS)
+
 #_rps := rm agents/rps; gcc -o agents/rps -O2 $(PINCLUDES) common/rps777.c $(PLIBS)
 
 _api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) agents/api_main.c ccgi/ccgi.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/stringified; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/init;  ln cgi/api cgi/public
@@ -96,6 +98,7 @@ _stockfish := cd agents/stockfish; rm stockfish; $(MAKE) build ARCH=x86-64-moder
 agents: plugins/agents/echodemo plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
 	cd plugins; \
     $(_echodemo); \
+    $(_shuffle); \
     $(_api); \
     cd ..
 

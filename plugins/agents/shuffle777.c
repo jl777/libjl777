@@ -13,7 +13,7 @@
  *                                                                            *
  ******************************************************************************/
 
-#define BUNDLED
+//#define BUNDLED
 #define PLUGINSTR "shuffle"
 #define PLUGNAME(NAME) shuffle ## NAME
 #define STRUCTNAME struct PLUGNAME(_info) 
