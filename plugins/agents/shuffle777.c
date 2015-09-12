@@ -13,7 +13,7 @@
  *                                                                            *
  ******************************************************************************/
 
-//#define BUNDLED
+#define BUNDLED
 #define PLUGINSTR "shuffle"
 #define PLUGNAME(NAME) shuffle ## NAME
 #define STRUCTNAME struct PLUGNAME(_info) 
@@ -546,17 +546,17 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char *resultstr,tx[8192],*methodstr,*rawtx,*sig,*cointxid,*retstr = 0; int32_t i,vin; uint64_t allocsize,shuffleid; struct coin777 *coin; struct shuffle_info *sp;
+    char *resultstr,tx[8192],*methodstr,*rawtx,*sig,*cointxid,*retstr = 0; int32_t i,vin; uint64_t shuffleid; struct coin777 *coin; struct shuffle_info *sp;
     retbuf[0] = 0;
     plugin->allowremote = 1;
     if ( initflag > 0 )
     {
-        if ( 0 && (jsonstr= loadfile(&allocsize,"SuperNET.conf")) != 0 )
+        /*if ( 0 && (jsonstr= loadfile(&allocsize,"SuperNET.conf")) != 0 )
         {
             if ( (json= cJSON_Parse(jsonstr)) != 0 )
                 SuperNET_initconf(json), free_json(json);
             free(jsonstr);
-        }
+        }*/
         strcpy(retbuf,"{\"result\":\"shuffle init\"}");
     }
     else

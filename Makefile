@@ -54,7 +54,7 @@ NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random
 COINS = $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c #$(C)/gen1auth.c $(C)/gen1pub.c 
 CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c $(U)/peer777.c $(U)/user777.c $(U)/node777.c $(U)/SaM.c $(U)/transport777.c $(U)/crypto777.c $(U)/packet777.c $(U)/tom_md5.c
 INSTANTDEX = $(I)/InstantDEX_main.c
-COMMON = plugins/common/busdata777.c plugins/common/relays777.c plugins/common/console777.c plugins/common/prices777.c plugins/common/cashier777.c plugins/common/txnet777.c plugins/common/teleport777.c plugins/common/opreturn777.c $(C)/bitcoind_RPC.c plugins/common/txind777.c plugins/common/system777.c plugins/agents/_dcnet/dcnet777.c
+COMMON = plugins/common/busdata777.c plugins/common/relays777.c plugins/common/console777.c plugins/common/prices777.c plugins/common/cashier777.c plugins/common/txnet777.c plugins/common/teleport777.c plugins/common/opreturn777.c $(C)/bitcoind_RPC.c plugins/common/txind777.c plugins/common/system777.c plugins/agents/_dcnet/dcnet777.c plugins/agents/_dcnet/shuffle777.c
 MGW = plugins/mgw/MGW_main.c $(S)/sophia.c $(S)/db777.c
 
 SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) $(PEGGY) $(KV) $(COMMON)
@@ -98,7 +98,7 @@ _stockfish := cd agents/stockfish; rm stockfish; $(MAKE) build ARCH=x86-64-moder
 agents: plugins/agents/echodemo plugins/cgi/api plugins/agents/nxt plugins/agents/two plugins/agents/eth plugins/agents/msc; \
 	cd plugins; \
     $(_echodemo); \
-    $(_shuffle); \
+    #$(_shuffle); \
     $(_api); \
     cd ..
 
