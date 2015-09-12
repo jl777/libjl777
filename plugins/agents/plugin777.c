@@ -42,16 +42,16 @@
 #include <math.h>
 #include <float.h>
 #include <ctype.h>
-#include "nn.h"
-#include "bus.h"
-#include "pubsub.h"
-#include "pipeline.h"
-#include "reqrep.h"
-#include "survey.h"
-#include "pair.h"
-#include "pubsub.h"
+#include "../../nanomsg/src/nn.h"
+#include "../../nanomsg/src/bus.h"
+#include "../../nanomsg/src/pubsub.h"
+#include "../../nanomsg/src/pipeline.h"
+#include "../../nanomsg/src/reqrep.h"
+#include "../../nanomsg/src/survey.h"
+#include "../../nanomsg/src/pair.h"
+#include "../../nanomsg/src/pubsub.h"
 #include "../includes/cJSON.h"
-#include "../uthash.h"
+#include "../includes/uthash.h"
 
 #ifndef PLUGINMILLIS
 #define PLUGINMILLIS 10000
@@ -96,6 +96,7 @@ void randombytes(unsigned char *x,long xlen);
 int32_t OS_getppid();
 void portable_OS_init();
 static int32_t nn_settimeouts2(int32_t sock,int32_t sendtimeout,int32_t recvtimeout);
+int32_t myatoi(char *str,int32_t maxval);
 
 #endif
 #else

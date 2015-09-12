@@ -425,10 +425,15 @@ struct shuffle_info *shuffle_find(uint64_t shuffleid)
 char *shuffle_start(char *base,uint32_t timestamp,uint64_t *addrs,int32_t num)
 {
     cJSON *array; struct InstantDEX_quote *iQ = 0; int32_t createdflag,i,n; uint32_t now; uint64_t _addrs[64],quoteid = 0;
-    struct shuffle_info *sp; struct coin777 *coin = coin777_find(base,0);
+    struct shuffle_info *sp; struct coin777 *coin;
+printf("shuffle_start(%s)\n",base);
+    if ( base == 0 || base[0] == 0 )
+        return(clonestr("{\"error\":\"no base defined\"}"));
+    coin = coin777_find(base,1);
     now = (uint32_t)time(NULL);
     if ( timestamp != 0 && now > timestamp+777 )
         return(clonestr("{\"error\":\"shuffle expired\"}"));
+printf("shuffle_start(%s) addrs.%p\n",base,addrs);
     if ( addrs == 0 )
     {
         addrs = _addrs, num = 0;
@@ -443,6 +448,7 @@ char *shuffle_start(char *base,uint32_t timestamp,uint64_t *addrs,int32_t num)
             free_json(array);
         }
     }
+printf("shuffle_start(%s) addrs.%p\n",base,addrs);
     if ( (sp= shuffle_create(&createdflag,base,timestamp,addrs,num)) == 0 )
     {
         printf("cant create shuffle.(%s) numaddrs.%d\n",base,num);
@@ -457,6 +463,7 @@ char *shuffle_start(char *base,uint32_t timestamp,uint64_t *addrs,int32_t num)
         }
         if ( (iQ= find_iQ(quoteid)) != 0 )
         {
+            printf("quoteid.%llu\n",(long long)quoteid);
             sp->amount = iQ->s.baseamount;
             iQ->s.pending = 1;
             sp->fee = ((sp->amount>>10) < coin->mgw.txfee) ? coin->mgw.txfee : (sp->amount>>10);
@@ -524,7 +531,7 @@ char *shuffle_incoming(char *jsonstr)
     return(clonestr("{\"success\":\"shuffled\"}"));
 }
 
-#define SHUFFLE_METHODS "validate", "signed"
+#define SHUFFLE_METHODS "validate", "signed", "start"
 char *PLUGNAME(_methods)[] = { SHUFFLE_METHODS };
 char *PLUGNAME(_pubmethods)[] = { SHUFFLE_METHODS };
 char *PLUGNAME(_authmethods)[] = { SHUFFLE_METHODS };
@@ -539,17 +546,22 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char *resultstr,tx[8192],*methodstr,*rawtx,*sig,*cointxid,*retstr = 0; int32_t i,vin; uint64_t shuffleid; struct coin777 *coin; struct shuffle_info *sp;
+    char *resultstr,tx[8192],*methodstr,*rawtx,*sig,*cointxid,*retstr = 0; int32_t i,vin; uint64_t allocsize,shuffleid; struct coin777 *coin; struct shuffle_info *sp;
     retbuf[0] = 0;
     plugin->allowremote = 1;
-    //fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
     if ( initflag > 0 )
     {
-        // configure settings
+        if ( 0 && (jsonstr= loadfile(&allocsize,"SuperNET.conf")) != 0 )
+        {
+            if ( (json= cJSON_Parse(jsonstr)) != 0 )
+                SuperNET_initconf(json), free_json(json);
+            free(jsonstr);
+        }
         strcpy(retbuf,"{\"result\":\"shuffle init\"}");
     }
     else
     {
+        fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
         resultstr = cJSON_str(cJSON_GetObjectItem(json,"result"));
         methodstr = cJSON_str(cJSON_GetObjectItem(json,"method"));
         retbuf[0] = 0;
@@ -565,6 +577,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         {
             printf("(%s) has not method\n",jsonstr);
             return(0);
+        }
+        else if ( strcmp(methodstr,"start") == 0 )
+        {
+            retstr = shuffle_start(jstr(json,"base"),0,0,0);
         }
         else if ( strcmp(methodstr,"validate") == 0 )
         {

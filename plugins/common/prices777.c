@@ -1027,7 +1027,7 @@ void prices777_exchangeloop(void *ptr)
                     {
                         if ( (json= cJSON_Parse(retstr)) != 0 )
                         {
-                            printf("%s.(%s)\n",exchange->name,retstr);
+                            //printf("%s.(%s)\n",exchange->name,retstr);
                             if ( exchange->balancejson != 0 )
                                 free_json(exchange->balancejson);
                             exchange->balancejson = json;

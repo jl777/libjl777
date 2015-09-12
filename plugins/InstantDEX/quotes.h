@@ -157,7 +157,7 @@ char *InstantDEX_cancelorder(char *activenxt,char *secret,uint64_t orderid,uint6
 
 struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr)
 {
-    struct InstantDEX_quote *newiQ; struct prices777 *prices; int32_t inverted; long len = 0;
+    struct InstantDEX_quote *newiQ,*tmp; struct prices777 *prices; int32_t inverted; long len = 0;
     if ( walletstr != 0 && (len= strlen(walletstr)) > 0 )
         iQ->s.wallet = 1, len++;
     calc_quoteid(iQ);
@@ -183,6 +183,14 @@ struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr)
                 printf("%02x ",((uint8_t *)checkiQ)[i]);
             printf("checkiQ\n");
             printf("error finding iQ after adding %llu vs %llu\n",(long long)checkiQ->s.quoteid,(long long)iQ->s.quoteid);
+        }
+    }
+    HASH_ITER(hh,AllQuotes,iQ,tmp)
+    {
+        if ( iQ->s.expired != 0 )
+        {
+            printf("quoteid.%llu expired, purging\n",(long long)iQ->s.expired);
+            delete_iQ(iQ->s.quoteid);
         }
     }
     return(newiQ);
@@ -309,7 +317,10 @@ cJSON *InstantDEX_shuffleorders(uint64_t *quoteidp,uint64_t nxt64bits,char *base
         if ( (duration= iQ->s.duration) == 0 )
             duration = ORDERBOOK_EXPIRATION;
         if ( iQ->s.timestamp > (now + duration) )
+        {
             iQ->s.expired = iQ->s.closed = 1;
+            continue;
+        }
         if ( iQ->s.basebits == basebits )
         {
             if ( n > 0 )
@@ -388,7 +399,10 @@ cJSON *InstantDEX_orderbook(struct prices777 *prices)
             if ( (duration= iQ.s.duration) == 0 )
                 duration = ORDERBOOK_EXPIRATION;
             if ( iQ.s.timestamp > (now + duration) )
+            {
                 iQ.s.expired = iQ.s.closed = 1;
+                continue;
+            }
             if ( Debuglevel > 2 )
                 printf("iterate quote.%llu\n",(long long)iQ.s.quoteid);
             if ( prices777_equiv(ptr->s.baseid) == prices777_equiv(prices->baseid) && prices777_equiv(ptr->s.relid) == prices777_equiv(prices->relid) )
@@ -692,34 +706,6 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
     return(retstr);
 }
 
-/*char *shuffle_func(int32_t localaccess,int32_t valid,char *sender,cJSON *origjson,char *origargstr)
-{
-    struct destbuf exchangestr,name,base,rel,gui; struct InstantDEX_quote _iQ,*iQ;
-    if ( localaccess == 0 )
-    {
-        if ( bidask_parse(&exchangestr,&name,&base,&rel,&gui,&_iQ,origjson) == 0 )
-        {
-            iQ = create_iQ(&_iQ,0);
-            printf("received InstantDEX_coinshuffle.(NXT.%llu) quoteid.%llu (%s)\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,base.buf);
-        }
-        else printf("error with incoming shuffle\n");
-    } else printf("GOT my shuffle from network.(%s)\n",origargstr);
-    return(clonestr("{\"result\":\"shuffled\"}"));
-}
-
-char *InstantDEX_coinshuffle(char *base,struct InstantDEX_quote *iQ,cJSON *origjson)
-{
-    char buf[512],*retstr; cJSON *array;
-    if ( (array= InstantDEX_shuffleorders(SUPERNET.my64bits,base)) != 0 )
-    {
-        sprintf(buf,"{\"base\":\"%s\",\"offerNXT\":\"%llu\",\"timestamp\":\"%u\",\"exchange\":\"shuffle\",\"gui\":\"%s\",\"plugin\":\"relay\",\"destplugin\":\"InstantDEX\",\"method\":\"busdata\",\"submethod\":\"shuffle\"}",(long long)iQ->s.quoteid,base,(long long)iQ->s.baseamount,(long long)iQ->s.offerNXT,iQ->s.timestamp,iQ->gui);
-    }
-    iQ = create_iQ(iQ,0);
-    retstr = clonestr(buf);
-    printf("broadcast InstantDEX_coinshuffle.(NXT.%llu) quoteid.%llu (%s)\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,base);
-    queue_enqueue("InstantDEX",&InstantDEXQ,queueitem(retstr));
-    return(retstr);
-}*/
 
 #endif
 #endif

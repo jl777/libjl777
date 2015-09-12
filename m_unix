@@ -8,6 +8,8 @@ echo "there should only be the entries for grep in the above lines"
 rm SuperNET 
 make SuperNET
 make api
+make echodemo
+make agents
 if make btcd; then
 	rm ~/.BitcoinDark/debug.log
 	./BitcoinDarkd

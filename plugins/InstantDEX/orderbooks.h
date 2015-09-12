@@ -472,11 +472,22 @@ cJSON *prices777_tradesequence(struct prices777 *prices,int32_t bidask,struct pr
 
 void prices777_orderbook_item(struct prices777 *prices,int32_t bidask,struct prices777_order *suborders[],cJSON *array,int32_t invert,int32_t allflag,double origprice,double origvolume,uint64_t orderid,uint64_t quoteid)
 {
-    cJSON *item,*obj,*tarray; double price,volume;
+    cJSON *item,*obj,*tarray; double price,volume; struct InstantDEX_quote *iQ;
     item = cJSON_CreateObject();
     if ( invert != 0 )
         volume = (origvolume * origprice), price = 1./origprice;
     else price = origprice, volume = origvolume;
+    if ( strcmp(prices->exchange,"shuffle") == 0 )
+    {
+        jaddstr(item,"plugin","shuffle"), jaddstr(item,"method","start");
+        jaddnum(item,"dotrade",1), jaddnum(item,"volume",volume);
+        jaddstr(item,"base",prices->base);
+        if ( (iQ= find_iQ(quoteid)) != 0 )
+            jadd64bits(item,"offerNXT",iQ->s.offerNXT);
+        jadd64bits(item,"quoteid",iQ->s.quoteid);
+        jaddi(array,item);
+        return;
+    }
     jaddstr(item,"plugin","InstantDEX"), jaddstr(item,"method","tradesequence");
     jaddnum(item,"dotrade",1), jaddnum(item,"price",price), jaddnum(item,"volume",volume);
     //jaddnum(item,"invert",invert), jaddnum(item,"origprice",origprice), jaddnum(item,"origvolume",origvolume);
@@ -498,7 +509,7 @@ void prices777_orderbook_item(struct prices777 *prices,int32_t bidask,struct pri
 char *prices777_orderbook_jsonstr(int32_t invert,uint64_t nxt64bits,struct prices777 *prices,struct prices777_basketinfo *OB,int32_t maxdepth,int32_t allflag)
 {
     struct prices777_orderentry *gp; struct prices777_order *suborders[MAX_GROUPS]; cJSON *json,*bids,*asks;
-    int32_t i,slot; char baserel[64],assetA[64],assetB[64],NXTaddr[64];
+    int32_t i,slot; char baserel[64],base[64],rel[64],assetA[64],assetB[64],NXTaddr[64];
     if ( invert == 0 )
         sprintf(baserel,"%s/%s",prices->base,prices->rel);
     else sprintf(baserel,"%s/%s",prices->rel,prices->base);
@@ -524,13 +535,20 @@ char *prices777_orderbook_jsonstr(int32_t invert,uint64_t nxt64bits,struct price
         }
     }
     expand_nxt64bits(NXTaddr,nxt64bits);
+    if ( invert != 0 )
+        strcpy(base,prices->rel), strcpy(rel,prices->base);
+    else strcpy(base,prices->base), strcpy(rel,prices->rel);
     expand_nxt64bits(assetA,invert==0 ? prices->baseid : prices->relid);
     expand_nxt64bits(assetB,invert!=0 ? prices->baseid : prices->relid);
     cJSON_AddItemToObject(json,"exchange",cJSON_CreateString(prices->exchange));
     cJSON_AddItemToObject(json,"inverted",cJSON_CreateNumber(invert));
     cJSON_AddItemToObject(json,"contract",cJSON_CreateString(prices->contract));
     cJSON_AddItemToObject(json,"baseid",cJSON_CreateString(assetA));
-    cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
+    if ( assetB != 0 )
+        cJSON_AddItemToObject(json,"relid",cJSON_CreateString(assetB));
+    cJSON_AddItemToObject(json,"base",cJSON_CreateString(base));
+    if ( rel[0] != 0 )
+        cJSON_AddItemToObject(json,"rel",cJSON_CreateString(rel));
     cJSON_AddItemToObject(json,"bids",bids);
     cJSON_AddItemToObject(json,"asks",asks);
     if ( invert == 0 )
@@ -1005,7 +1023,7 @@ int32_t create_basketitem(struct prices777_basket *basketitem,cJSON *item,char *
 {
     struct destbuf exchangestr,name,base,rel; char key[512]; uint64_t tmp,baseid,relid; int32_t groupid,keysize,valid; double wt; struct prices777 *prices;
     copy_cJSON(&exchangestr,jobj(item,"exchange"));
-    if ( exchange_find(exchangestr.buf) == 0 )
+    if ( strcmp("shuffle",exchangestr.buf) == 0 || exchange_find(exchangestr.buf) == 0 )
     {
         printf("create_basketitem: illegal exchange.%s\n",exchangestr.buf);
         return(-1);

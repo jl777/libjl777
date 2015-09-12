@@ -34,6 +34,7 @@
 
 #define DEFINES_ONLY
 #include "plugin777.c"
+#include "../includes/cJSON.h"
 #undef DEFINES_ONLY
 
 STRUCTNAME
