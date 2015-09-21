@@ -1340,7 +1340,7 @@ char *InstantDEX_dotrades(char *activenxt,char *secret,cJSON *json,struct prices
 {
     struct destbuf exchangestr,gui,name,base,rel; struct InstantDEX_quote iQ;
     cJSON *retjson,*retarray,*item; int32_t i; struct pending_trade *pend;
-    bidask_parse(&exchangestr,&name,&base,&rel,&gui,&iQ,json);
+    bidask_parse(1,&exchangestr,&name,&base,&rel,&gui,&iQ,json);
     retjson = cJSON_CreateObject(), retarray = cJSON_CreateArray();
     for (i=0; i<numtrades; i++)
     {

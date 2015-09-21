@@ -45,6 +45,7 @@ char *dumpprivkey(char *coinstr,char *serverport,char *userpass,char *coinaddr);
 char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *userpass,char *NXTaddr);
 int32_t get_pubkey(struct destbuf *pubkey,char *coinstr,char *serverport,char *userpass,char *coinaddr);
 cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass);
+char *get_rawtransaction(char *coinstr,char *serverport,char *userpass,char *txidstr);
 
 #endif
 #else
@@ -743,6 +744,15 @@ char *_get_transaction(char *coinstr,char *serverport,char *userpass,char *txids
     return(rawtransaction);
 }
 
+char *get_rawtransaction(char *coinstr,char *serverport,char *userpass,char *txidstr)
+{
+    char *rawtransaction=0,txid[4096];
+    sprintf(txid,"[\"%s\"]",txidstr);
+    //printf("get_transaction.(%s)\n",txidstr);
+    rawtransaction = bitcoind_passthru(coinstr,serverport,userpass,"getrawtransaction",txid);
+    return(rawtransaction);
+}
+
 uint64_t wait_for_txid(char *script,struct coin777 *coin,char *txidstr,int32_t vout,uint64_t recvamount,int32_t minconfirms,int32_t maxseconds)
 {
     uint64_t value; char *rawtx,*jsonstr,*str; struct cointx_info *cointx; struct destbuf buf; cJSON *json;
@@ -1110,9 +1120,9 @@ cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass)
 {
     char *retstr;
     cJSON *json = 0;
-    retstr = bitcoind_passthru(coinstr,serverport,userpass,"listaddressgroupings","");
-    if ( retstr != 0 )
+    if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"listaddressgroupings","")) != 0 )
     {
+        //printf("listaddressgroupings.(%s)\n",retstr);
         json = cJSON_Parse(retstr);
         free(retstr);
     }

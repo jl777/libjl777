@@ -37,3 +37,9 @@ libs/libwebsockets.dylib
 storage.h
 
 InstantDEX copy.h
+
+plugins/agents/pangea
+
+SuperNET.dSYM/Contents/Resources/DWARF/SuperNET
+
+SuperNET.dSYM/Contents/Resources/DWARF/SuperNET

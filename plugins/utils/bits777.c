@@ -59,6 +59,7 @@ uint64_t acct777_validate(struct acct777_sig *sig,uint32_t timestamp,uint8_t *da
 uint64_t acct777_signtx(struct acct777_sig *sig,bits256 privkey,uint32_t timestamp,uint8_t *data,int32_t datalen);
 uint64_t acct777_swaptx(bits256 privkey,struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen);
 uint64_t conv_acctstr(char *acctstr);
+bits256 curve25519(bits256 mysecret,bits256 theirpublic);
 
 #endif
 #else
@@ -76,7 +77,7 @@ int32_t bitweight(uint64_t x)
 {
     int i,wt = 0;
     for (i=0; i<64; i++)
-        if ( (1 << i) & x )
+        if ( (1LL << i) & x )
             wt++;
     return(wt);
 }
@@ -228,7 +229,6 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size)
 
 extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
 int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
-bits256 curve25519(bits256 mysecret,bits256 theirpublic);
 
 bits256 acct777_pubkey(bits256 privkey)
 {
@@ -315,6 +315,75 @@ uint64_t acct777_swaptx(bits256 privkey,struct acct777_sig *sig,uint32_t timesta
         return(0);
     return(acct777_sign(sig,privkey,GENESIS_PUBKEY,timestamp,data,datalen));
 }
+
+#ifdef testcode
+char dest[512*2 + 1];
+hmac_sha512_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha512.(%s)\n",dest);
+hmac_sha384_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha384.(%s)\n",dest);
+hmac_sha256_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha256.(%s)\n",dest);
+hmac_sha224_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha224.(%s)\n",dest);
+hmac_rmd160_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd160.(%s)\n",dest);
+hmac_rmd128_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd128.(%s)\n",dest);
+hmac_rmd256_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd256.(%s)\n",dest);
+hmac_rmd320_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd320.(%s)\n",dest);
+hmac_sha1_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha1.(%s)\n",dest);
+hmac_md2_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md2.(%s)\n",dest);
+hmac_md4_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md4.(%s)\n",dest);
+hmac_md5_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md5.(%s)\n",dest);
+hmac_tiger_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_tiger.(%s)\n",dest);
+hmac_whirlpool_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_whirlpool.(%s)\n",dest);
+//void peggy_test();
+//portable_OS_init();
+//peggy_test();
+//void txnet777_test(char *protocol,char *path,char *agent);
+//int pegs[64];
+//int32_t peggy_test(int32_t *pegs,int32_t numprices,int32_t maxdays,double apr,int32_t spreadmillis);
+//peggy_test(pegs,64,90,2.5,2000);
+//txnet777_test("rps","RPS","rps");
+//void peggy_test(); peggy_test();
+//void SaM_PrepareIndices();
+//int32_t SaM_test();
+//SaM_PrepareIndices();
+//SaM_test();
+//printf("finished SaM_test\n");
+//void kv777_test(int32_t n);
+//kv777_test(10000);
+//getchar();
+if ( 0 )
+{
+    bits128 calc_md5(char digeststr[33],void *buf,int32_t len);
+    char digeststr[33],*str = "abc";
+    calc_md5(digeststr,str,(int32_t)strlen(str));
+    printf("(%s) -> (%s)\n",str,digeststr);
+    //getchar();
+}
+while ( 0 )
+{
+    uint32_t nonce,failed; int32_t leverage;
+    nonce = busdata_nonce(&leverage,"test string","allrelays",3000,0);
+    failed = busdata_nonce(&leverage,"test string","allrelays",0,nonce);
+    printf("nonce.%u failed.%u\n",nonce,failed);
+}
+#define DEFINES_ONLY
+#include "ramcoder.c"
+#undef DEFINES_ONLY
+
+uint8_t data[8192],check[8192],cipher[45]; bits256 seed; HUFF H,*hp = &H; int32_t newlen,cipherlen;
+memset(seed.bytes,0,sizeof(seed));
+_init_HUFF(hp,sizeof(data),data);
+for (i=0; i<1000; i++)
+{
+    cipherlen = (rand() % sizeof(cipher)) + 1;
+    randombytes(cipher,cipherlen);
+    ramcoder_encoder(0,1,cipher,cipherlen,hp,&seed);
+    memset(seed.bytes,0,sizeof(seed));
+    newlen = ramcoder_decoder(0,1,check,sizeof(check),hp,&seed);
+    if ( newlen != cipherlen || memcmp(check,cipher,cipherlen) != 0 )
+        printf("ramcoder error newlen.%d vs %d\n",newlen,cipherlen);
+        }
+getchar();
+
+#endif
 
 #endif
 #endif

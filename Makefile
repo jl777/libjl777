@@ -52,9 +52,9 @@ RAMCHAIN = $(R)/ramchain_main.c $(R)/ramchain.c # $(R)/gen1block.c
 KV = $(K)/kv777_main.c $(K)/kv777.c $(K)/ramkv777.c
 NONPORTABLE = plugins/nonportable/$(OS)/files.c plugins/nonportable/$(OS)/random.c
 COINS = $(C)/cointx.c $(C)/coins777.c $(C)/coins777_main.c $(C)/gen1.c #$(C)/gen1auth.c $(C)/gen1pub.c 
-CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c $(U)/peer777.c $(U)/user777.c $(U)/node777.c $(U)/SaM.c $(U)/transport777.c $(U)/crypto777.c $(U)/packet777.c $(U)/tom_md5.c
+CRYPTO = $(U)/sha256.c $(U)/crypt_argchk.c $(U)/hmac_sha512.c $(U)/rmd160.c $(U)/sha512.c $(U)/peer777.c $(U)/user777.c $(U)/node777.c $(U)/SaM.c $(U)/transport777.c $(U)/crypto777.c $(U)/packet777.c $(U)/tom_md5.c $(U)/libgfshare.c
 INSTANTDEX = $(I)/InstantDEX_main.c
-COMMON = plugins/common/busdata777.c plugins/common/relays777.c plugins/common/console777.c plugins/common/prices777.c plugins/common/cashier777.c plugins/common/txnet777.c plugins/common/teleport777.c plugins/common/opreturn777.c $(C)/bitcoind_RPC.c plugins/common/txind777.c plugins/common/system777.c plugins/agents/_dcnet/dcnet777.c plugins/agents/_dcnet/shuffle777.c
+COMMON = plugins/common/busdata777.c plugins/common/relays777.c plugins/common/console777.c plugins/common/prices777.c plugins/common/cashier777.c plugins/common/txnet777.c plugins/common/teleport777.c plugins/common/opreturn777.c $(C)/bitcoind_RPC.c plugins/common/txind777.c plugins/common/system777.c plugins/agents/_dcnet/dcnet777.c plugins/agents/shuffle777.c
 MGW = plugins/mgw/MGW_main.c $(S)/sophia.c $(S)/db777.c
 
 SRCS = SuperNET.c libjl777.c $(CRYPTO) $(UTILS) $(COINS) $(NONPORTABLE) $(RAMCHAIN) $(INSTANTDEX) $(PEGGY) $(KV) $(COMMON)
@@ -79,6 +79,8 @@ _echodemo := rm agents/echodemo; gcc -o agents/echodemo -O2 $(PINCLUDES) agents/
 
 _shuffle := rm agents/shuffle; gcc -o agents/shuffle -O2 $(PINCLUDES) agents/shuffle777.c $(PLIBS)
 
+_pangea := rm agents/pangea; gcc -o agents/pangea -O2 $(PINCLUDES) games/pangea/pangea777.c  games/pangea/poker.c $(PLIBS)
+
 #_rps := rm agents/rps; gcc -o agents/rps -O2 $(PINCLUDES) common/rps777.c $(PLIBS)
 
 _api := rm cgi/*; gcc -o cgi/api -O2 $(PINCLUDES) agents/api_main.c ccgi/ccgi.c coins/bitcoind_RPC.c  $(PLIBS); ln cgi/api cgi/nxt; ln cgi/api cgi/nxts; ln cgi/api cgi/port; ln cgi/api cgi/stringified; ln cgi/api cgi/ports; ln cgi/api cgi/InstantDEX; ln cgi/api cgi/init;  ln cgi/api cgi/public
@@ -99,11 +101,15 @@ agents: plugins/agents/echodemo plugins/cgi/api plugins/agents/nxt plugins/agent
 	cd plugins; \
     $(_echodemo); \
     #$(_shuffle); \
+    #$(_pangea); \
     $(_api); \
     cd ..
 
 rps: plugins/agents/rps; \
  	cd plugins; $(_rps); cd ..
+
+pangea: doesntexist; \
+ 	cd plugins; $(_pangea); cd ..
 
 echodemo: doesntexist; \
  	cd plugins; $(_echodemo); cd ..
@@ -182,7 +188,8 @@ chessjs:  doesntexist; \
     git clone https://github.com/exoticorn/stockfish-js
 
 nanomsg:  doesntexist; \
-   git clone https://github.com/nanomsg/nanomsg; cd nanomsg; ./autogen.sh && CFLAGS='$(CFLAGS) -fPIC ' ./configure --with-pic; $(MAKE) -lanl; $(MAKE) check; cp .libs/libnanomsg.a ../libs; cp src/*.h ../includes; cd ..
+   git clone https://github.com/nanomsg/nanomsg; cd nanomsg; \
+   cd nanomsg; ./autogen.sh && ./configure --with-pic; $(MAKE) -lanl; cp .libs/libnanomsg.a ../libs; cd ..
 
 python: doesntexist; \
     tar -xvf Python-3.4.3.tgz; cd Python-3.4.3; ./configure; $(MAKE) all; cp libpython3.so libpython3.4m.a ../libs; cp pyconfig.h Include; ln ./build/lib.linux-x86_64-3.4/_sysconfigdata.py Lib; cd ..;
@@ -285,7 +292,7 @@ libccoin: doesntexist; \
      sudo apt-get install libevent-dev libjansson-dev; git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..;
 
 onetime: doesntexist; \
-    cd nanomsg; ./autogen.sh && CFLAGS='$(CFLAGS) -fPIC ' ./configure --with-pic; $(MAKE) -lanl; cd ..; \
+    cd nanomsg; ./autogen.sh && ./configure --with-pic; $(MAKE) -lanl; cd ..; \
     cd miniupnpc; $(MAKE); cp libminiupnpc.a ../libs; cd ..; \
     sudo apt-get install libevent-dev libjansson-dev; git clone https://github.com/jgarzik/picocoin; cd picocoin; ./autogen.sh; ./configure; $(MAKE); cp lib/libccoin.a ../libs; cd ..; \
     git clone https://github.com/joewalnes/websocketd; cd websocketd; $(MAKE); cp websocketd ../libs; cd ..; \

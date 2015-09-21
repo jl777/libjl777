@@ -17,6 +17,15 @@
 #ifndef dcnet_curve25519_h
 #define dcnet_curve25519_h
 
+/*#ifndef _bits320
+union _bits320 { uint8_t bytes[40]; uint16_t ushorts[20]; uint32_t uints[10]; uint64_t ulongs[5]; uint64_t txid; };
+typedef union _bits320 bits320;
+#endif
+
+#ifndef _bits256
+union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
+typedef union _bits256 bits256;
+#endif*/
 
 // special gcc mode for 128-bit integers. It's implemented on 64-bit platforms only as far as I know.
 typedef unsigned uint128_t __attribute__((mode(TI)));
@@ -282,6 +291,22 @@ static inline bits320 force_inline crecip(const bits320 z)
     /* 2^255 - 21 */ return(fmul(t0, a));
 }
 
+bits256 curve25519(bits256 mysecret,bits256 basepoint);
+/*{
+    bits320 bp,x,z;
+    bp = fexpand(basepoint);
+    cmult(&x,&z,mysecret,bp);
+    return(fcontract(fmul(x,crecip(z))));
+}*/
+
+static bits256 rand256(int32_t privkeyflag)
+{
+    bits256 randval;
+    randombytes(randval.bytes,sizeof(randval));
+    if ( privkeyflag != 0 )
+        randval.bytes[0] &= 0xf8, randval.bytes[31] &= 0x7f, randval.bytes[31] |= 0x40;
+    return(randval);
+}
 // following is ported from libtom
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 

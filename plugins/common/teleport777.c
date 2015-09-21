@@ -258,7 +258,7 @@ void telepathic_PM(char *destNXT,char *PM)
     cJSON_AddItemToObject(json,"destNXT",cJSON_CreateString(destNXT));
     cJSON_AddItemToObject(json,"PM",cJSON_CreateString(PM));
     jsonstr = cJSON_Print(json), _stripwhite(jsonstr,' '), free_json(json);
-    if ( (retstr= busdata_sync(&nonce,jsonstr,"allnodes",0)) != 0 )
+    if ( (retstr= busdata_sync(&nonce,jsonstr,"allnodes",destNXT)) != 0 )
         free(retstr);
     free(jsonstr);
 }

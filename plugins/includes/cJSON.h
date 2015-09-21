@@ -206,6 +206,7 @@ extern "C"
     int32_t expand_nxt64bits(char *str,uint64_t nxt64bits);
     char *nxt64str(uint64_t nxt64bits);
     char *nxt64str2(uint64_t nxt64bits);
+    cJSON *addrs_jsonarray(uint64_t *addrs,int32_t num);
 
     char *stringifyM(char *str);
 #define replace_backslashquotes unstringify

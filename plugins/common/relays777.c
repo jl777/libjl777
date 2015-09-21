@@ -243,7 +243,7 @@ int32_t crackfoo_servers(char servers[][MAX_SERVERNAME],int32_t max,int32_t port
      strcpy(servers[n++],"5.9.105.170");
      strcpy(servers[n++],"136.243.5.70");
      strcpy(servers[n++],"5.9.155.145");*/
-    if ( 0 )
+    if ( 1 )
     {
         strcpy(servers[n++],"167.114.96.223");
         strcpy(servers[n++],"167.114.113.25");
@@ -268,14 +268,16 @@ int32_t nn_lbsocket(int32_t maxmillis,int32_t port,uint16_t globalport,uint16_t 
     strcpy(failsafes[numfailsafes++],"5.9.102.210");
     n = crackfoo_servers(Cservers,sizeof(Cservers)/sizeof(*Cservers),port);
     m = badass_servers(Bservers,sizeof(Bservers)/sizeof(*Bservers),port);
-    lbsock = _lb_socket(port,globalport,relaysport,maxmillis,Bservers,m,Cservers,0*n,failsafes,numfailsafes);
+    lbsock = _lb_socket(port,globalport,relaysport,maxmillis,Bservers,m,Cservers,n,failsafes,numfailsafes);
     return(lbsock);
 }
 
 int32_t nn_settimeouts(int32_t sock,int32_t sendtimeout,int32_t recvtimeout)
 {
     int32_t retrymillis,maxmillis;
-    maxmillis = SUPERNET.PLUGINTIMEOUT, retrymillis = maxmillis/40;
+    if ( (maxmillis= SUPERNET.PLUGINTIMEOUT) == 0 )
+        maxmillis = 3000;
+    retrymillis = maxmillis/40;
     if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL,&retrymillis,sizeof(retrymillis)) < 0 )
         fprintf(stderr,"error setting NN_REQ NN_RECONNECT_IVL_MAX socket %s\n",nn_errstr());
     else if ( nn_setsockopt(sock,NN_SOL_SOCKET,NN_RECONNECT_IVL_MAX,&maxmillis,sizeof(maxmillis)) < 0 )
@@ -555,6 +557,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         // configure settings
         RELAYS.readyflag = 1;
         plugin->allowremote = 1;
+        plugin->sleepmillis = 25;
         strcpy(retbuf,"{\"result\":\"initflag > 0\"}");
     }
     else

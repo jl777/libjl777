@@ -230,6 +230,26 @@ void set_atomickeys(struct coin777 *coin)
     }
 }
 
+int32_t coin777_addrtype(uint8_t *p2shtypep,char *coinstr)
+{
+    int32_t addrtype = 0;
+    if ( strcmp(coinstr,"BTC") == 0 )
+        addrtype = 0, *p2shtypep = 5;
+    else if ( strcmp(coinstr,"LTC") == 0 )
+        addrtype = 48, *p2shtypep = 5;
+    else if ( strcmp(coinstr,"BTCD") == 0 )
+        addrtype = 60, *p2shtypep = 85;
+    else if ( strcmp(coinstr,"DOGE") == 0 )
+        addrtype = 30, *p2shtypep = 35;
+    else if ( strcmp(coinstr,"VRC") == 0 )
+        addrtype = 70, *p2shtypep = 85;
+    else if ( strcmp(coinstr,"OPAL") == 0 )
+        addrtype = 115, *p2shtypep = 28;
+    else if ( strcmp(coinstr,"BITS") == 0 )
+        addrtype = 25, *p2shtypep = 8;
+    return(addrtype);
+}
+
 struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
 {
     char *serverport,*path=0,*conf=0; struct destbuf tmp;
@@ -241,6 +261,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         return(0);
     }
     safecopy(coin->name,coinstr,sizeof(coin->name));
+    coin->jvin = -1;
     if ( argjson == 0 || strcmp(coinstr,"NXT") == 0 )
     {
         coin->usep2sh = 1;
@@ -307,24 +328,19 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     }
     if ( coin->mgw.txfee == 0 )
         coin->mgw.txfee = 10000;
+    coin->addrtype = coin777_addrtype(&coin->p2shtype,coin->name);
     if ( strcmp(coin->name,"BTC") == 0 )
     {
-        coin->addrtype = 0, coin->p2shtype = 5;
         if ( coin->donationaddress[0] == 0 )
+        {
             strcpy(coin->donationaddress,"177MRHRjAxCZc7Sr5NViqHRivDu1sNwkHZ");
+            sprintf(coin->donationscript,"76a91443044b8d5dc8f3758dbc83374c596e96d25ead4f88ac");
+        }
     }
     else if ( strcmp(coin->name,"LTC") == 0 )
-        coin->addrtype = 48, coin->p2shtype = 5, coin->minconfirms = 1, coin->mgw.txfee = 100000, coin->usep2sh = 0;
+        coin->minconfirms = 1, coin->mgw.txfee = 100000, coin->usep2sh = 0;
     else if ( strcmp(coin->name,"BTCD") == 0 )
-        coin->addrtype = 60, coin->p2shtype = 85;
-    else if ( strcmp(coin->name,"DOGE") == 0 )
-        coin->addrtype = 30, coin->p2shtype = 35;
-    else if ( strcmp(coin->name,"VRC") == 0 )
-        coin->addrtype = 70, coin->p2shtype = 85;
-    else if ( strcmp(coin->name,"OPAL") == 0 )
-        coin->addrtype = 115, coin->p2shtype = 28;
-    else if ( strcmp(coin->name,"BITS") == 0 )
-        coin->addrtype = 25, coin->p2shtype = 8;
+        coin->mgw.txfee = 1000000;//, strcpy(coin->donationaddress,"RDRWMSrDdoUcfZRBWUz7KZQSxPS9bZRerM");
     printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
     if ( strcmp(coin->name,"NXT") != 0 )
     {

@@ -68,13 +68,13 @@ struct protocol_info
 
 struct plugin_info
 {
-    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64],SERVICENXT[64];
-    uint64_t daemonid,myid,nxt64bits;
+    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64],NXTACCT[64],SERVICENXT[64],NXTACCTSECRET[2048];
     struct protocol_info protocol;
     int32_t pushsock,pullsock;
     uint32_t permanentflag,ppid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
-    uint16_t port;
+    uint16_t port,pangeaport;
     portable_mutex_t mutex;
+    uint64_t daemonid,myid,nxt64bits; uint8_t mypriv[32],mypub[32],recvbuf[65536*2];
     uint8_t pluginspace[];
 };
 
@@ -332,6 +332,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             if ( is_ipaddr(myipaddr) != 0 )
                 strcpy(plugin->ipaddr,myipaddr);
             plugin->port = juint(obj,"port");
+            plugin->pangeaport = juint(obj,"pangeaport");
         }
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
@@ -411,7 +412,7 @@ static int32_t registerAPI(char *retbuf,int32_t max,struct plugin_info *plugin,c
     cJSON_AddItemToObject(json,"pluginrequest",cJSON_CreateString("SuperNET"));
     cJSON_AddItemToObject(json,"requestType",cJSON_CreateString("register"));
     if ( plugin->sleepmillis == 0 )
-        plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),25);//SUPERNET.APISLEEP);
+        plugin->sleepmillis = get_API_int(cJSON_GetObjectItem(json,"sleepmillis"),1000);//SUPERNET.APISLEEP);
     cJSON_AddItemToObject(json,"sleepmillis",cJSON_CreateNumber(plugin->sleepmillis));
     if ( cJSON_GetObjectItem(json,"NXT") == 0 )
         cJSON_AddItemToObject(json,"NXT",cJSON_CreateString(plugin->NXTADDR));

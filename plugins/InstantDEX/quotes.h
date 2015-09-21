@@ -196,9 +196,24 @@ struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr)
     return(newiQ);
 }
 
+cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin)
+{
+    char *addr; struct destbuf pubkey;
+    if ( walletitem == 0 )
+        walletitem = cJSON_CreateObject();
+    if ( (addr= get_acct_coinaddr(coin->pangeacoinaddr,coin->name,coin->serverport,coin->userpass,"pangea")) != 0 )
+    {
+        get_pubkey(&pubkey,coin->name,coin->serverport,coin->userpass,coin->atomicrecv);
+        strcpy(coin->pangeapubkey,pubkey.buf);
+    }
+    jaddstr(walletitem,"pubkey",coin->pangeapubkey);
+    jaddstr(walletitem,"coinaddr",coin->pangeacoinaddr);
+    return(walletitem);
+}
+
 cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *iQ)
 {
-    char pubkeystr[128],pkhash[128],base[64],rel[64],fieldA[64],fieldB[64],fieldpkhash[64],*pubA,*pubB,*pkhashstr,*str;
+    char pubkeystr[128],pkhash[128],base[64],rel[64],fieldA[64],fieldB[64],fieldpkhash[64],*pubA,*pubB,*pkhashstr,*str,*exchangestr;
     struct coin777 *coin; int32_t flip = 0;
     if ( walletstr != 0 && walletitem == 0 )
        walletitem = cJSON_Parse(walletstr);
@@ -213,27 +228,32 @@ cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *
     else coin = 0;
     if ( coin != 0 )
     {
-        //printf("START.(%s)\n",jprint(walletitem,0));
-        if ( (iQ->s.isask ^ flip) == 0 )
-        {
-            sprintf(fieldA,"%spubA",coin->name);
-            if ( (pubA= jstr(walletitem,fieldA)) != 0 )
-                cJSON_DeleteItemFromObject(walletitem,fieldA);
-            jaddstr(walletitem,fieldA,coin->atomicsendpubkey);
-            //printf("replaceA\n");
-        }
+        if ( (exchangestr= exchange_str(iQ->exchangeid)) != 0 && strcmp(exchangestr,"pangea") == 0 )
+            pangea_walletitem(walletitem,coin);
         else
         {
-            sprintf(fieldB,"%spubB",coin->name);
-            if ( (pubB= jstr(walletitem,fieldB)) != 0 )
-                cJSON_DeleteItemFromObject(walletitem,fieldB);
-            jaddstr(walletitem,fieldB,coin->atomicrecvpubkey);
-            sprintf(fieldpkhash,"%spkhash",coin->name);
-            if ( (pkhashstr= jstr(walletitem,fieldpkhash)) != 0 )
-                cJSON_DeleteItemFromObject(walletitem,fieldpkhash);
-            subatomic_pubkeyhash(pubkeystr,pkhash,coin,iQ->s.quoteid);
-            jaddstr(walletitem,fieldpkhash,pkhash);
-            //printf("replaceB\n");
+            //printf("START.(%s)\n",jprint(walletitem,0));
+            if ( (iQ->s.isask ^ flip) == 0 )
+            {
+                sprintf(fieldA,"%spubA",coin->name);
+                if ( (pubA= jstr(walletitem,fieldA)) != 0 )
+                    cJSON_DeleteItemFromObject(walletitem,fieldA);
+                jaddstr(walletitem,fieldA,coin->atomicsendpubkey);
+                //printf("replaceA\n");
+            }
+            else
+            {
+                sprintf(fieldB,"%spubB",coin->name);
+                if ( (pubB= jstr(walletitem,fieldB)) != 0 )
+                    cJSON_DeleteItemFromObject(walletitem,fieldB);
+                jaddstr(walletitem,fieldB,coin->atomicrecvpubkey);
+                sprintf(fieldpkhash,"%spkhash",coin->name);
+                if ( (pkhashstr= jstr(walletitem,fieldpkhash)) != 0 )
+                    cJSON_DeleteItemFromObject(walletitem,fieldpkhash);
+                subatomic_pubkeyhash(pubkeystr,pkhash,coin,iQ->s.quoteid);
+                jaddstr(walletitem,fieldpkhash,pkhash);
+                //printf("replaceB\n");
+            }
         }
         str = jprint(walletitem,0);
         strcpy(walletstr,str);
@@ -245,7 +265,7 @@ cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *
 
 char *InstantDEX_str(char *walletstr,char *buf,int32_t extraflag,struct InstantDEX_quote *iQ)
 {
-    char _buf[4096],_walletstr[256],base[64],rel[64],*exchange,*str; cJSON *walletitem,*json;
+    char _buf[4096],_walletstr[256],base[64],rel[64],*exchange,*str; cJSON *walletitem,*json; struct coin777 *coin;
     unstringbits(base,iQ->s.basebits), unstringbits(rel,iQ->s.relbits);
     if ( buf == 0 )
         buf = _buf;
@@ -261,13 +281,24 @@ char *InstantDEX_str(char *walletstr,char *buf,int32_t extraflag,struct InstantD
             walletstr = _walletstr;
             walletstr[0] = 0;
         }
-        if ( (exchange= exchange_str(iQ->exchangeid)) != 0 && strcmp(exchange,"wallet") == 0 )
+        if ( (exchange= exchange_str(iQ->exchangeid)) != 0 )
         {
-            if ( (walletitem= set_walletstr(0,walletstr,iQ)) != 0 )
+            coin = coin777_find(base,0);
+            if ( strcmp(exchange,"wallet") == 0 )
+                walletitem = set_walletstr(0,walletstr,iQ);
+            else if ( strcmp(exchange,"pangea") == 0 && walletstr[0] == 0 && coin != 0 )
+                walletitem = pangea_walletitem(0,coin);
+            else walletitem = 0;
+            if ( walletitem != 0 )
+            {
                 jadd(json,"wallet",walletitem);
+                strcpy(walletstr,jprint(walletitem,0));
+            }
+            //printf("exchange.(%s) iswallet.%d (%s) base.(%s) coin.%p (%s)\n",exchange,iQ->s.wallet,walletstr,base,coin,jprint(json,0));
         }
         str = jprint(json,1);
         strcpy(buf,str);
+        printf("str.(%s) %p\n",buf,buf);
         free(str);
     }
     if ( buf == _buf )
@@ -305,24 +336,43 @@ char *InstantDEX_openorders(char *NXTaddr,int32_t allorders)
     return(jprint(json,1));
 }
 
-cJSON *InstantDEX_shuffleorders(uint64_t *quoteidp,uint64_t nxt64bits,char *base)
+cJSON *InstantDEX_specialorders(uint64_t *quoteidp,uint64_t nxt64bits,char *base,char *special,uint64_t baseamount,int32_t addrtype)
 {
-    struct InstantDEX_quote *iQ,*tmp; uint32_t i,n,now,duration,ismine = 0; uint64_t basebits; cJSON *array;
+    struct InstantDEX_quote *iQ,*tmp; int32_t exchangeid; uint32_t i,n,now,duration,ismine = 0;
+    uint64_t basebits; cJSON *item=0,*array = 0; char *coinaddr,*pubkey,checkaddr[128]; 
     now = (uint32_t)time(NULL);
     basebits = stringbits(base);
+    if ( special == 0 || find_exchange(&exchangeid,special) == 0 )
+        exchangeid = 0;
     n = 0;
     *quoteidp = 0;
     HASH_ITER(hh,AllQuotes,iQ,tmp)
     {
+        //printf("iter Q.%llu b.%llu\n",(long long)iQ->s.quoteid,(long long)iQ->s.basebits);
         if ( (duration= iQ->s.duration) == 0 )
             duration = ORDERBOOK_EXPIRATION;
         if ( iQ->s.timestamp > (now + duration) )
         {
             iQ->s.expired = iQ->s.closed = 1;
+            printf("expire order %llu\n",(long long)iQ->s.quoteid);
             continue;
         }
-        if ( iQ->s.basebits == basebits )
+        if ( iQ->s.basebits == basebits && (exchangeid == 0 || iQ->exchangeid == exchangeid) )
         {
+            //printf("matched basebits\n");
+            if ( strcmp(special,"pangea") == 0 )
+            {
+                checkaddr[0] = 0;
+                if ( iQ->s.wallet != 0 && (item= cJSON_Parse(iQ->walletstr)) != 0 && (coinaddr= jstr(item,"coinaddr")) != 0 && coinaddr[0] != 0 && (pubkey= jstr(item,"pubkey")) != 0 && pubkey[0] != 0 )
+                    btc_coinaddr(coinaddr,addrtype,pubkey);
+                if ( item != 0 )
+                    free_json(item);
+                if ( coinaddr == 0 || strcmp(coinaddr,checkaddr) != 0 )
+                {
+                    printf("mismatched pangea coinaddr (%s) vs (%s) or baseamount %.8f vs %.8f\n",coinaddr,checkaddr,dstr(baseamount),dstr(iQ->s.baseamount));
+                    continue;
+                }
+            }
             if ( n > 0 )
             {
                 for (i=0; i<n; i++)
@@ -330,23 +380,26 @@ cJSON *InstantDEX_shuffleorders(uint64_t *quoteidp,uint64_t nxt64bits,char *base
                     if ( iQ->s.offerNXT == j64bits(jitem(array,i),0) )
                         break;
                 }
+                //printf("found duplicate\n");
             } else i = 0;
             if ( i == n )
             {
-                if ( *quoteidp == 0 )
-                    *quoteidp = iQ->s.quoteid;
+                if ( iQ->s.offerNXT == nxt64bits )
+                {
+                    ismine = 1;
+                    if ( *quoteidp == 0 )
+                        *quoteidp = iQ->s.quoteid;
+                }
                 if ( array == 0 )
                     array = cJSON_CreateArray();
-                if ( iQ->s.offerNXT == nxt64bits )
-                    ismine = 1;
                 jaddi64bits(array,iQ->s.offerNXT);
-                if ( ++n >= 13 )
-                    break;
+                //printf("add %llu\n",(long long)iQ->s.offerNXT);
             }
-        }
+        } //else printf("quote.%llu basebits.%llu\n",(long long)iQ->s.quoteid,(long long)iQ->s.basebits);
     }
     if ( ismine == 0 )
         free_json(array), array = 0;
+    //printf("ismine.%d n.%d array.%d\n",ismine,n,array==0?0:cJSON_GetArraySize(array));
     return(array);
 }
 
@@ -625,7 +678,7 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
 
 int32_t is_specialexchange(char *exchangestr)
 {
-    if ( strcmp(exchangestr,"InstantDEX") == 0 || strcmp(exchangestr,"shuffle") == 0 || strcmp(exchangestr,"peggy") == 0 || strcmp(exchangestr,"wallet") == 0 || strcmp(exchangestr,"active") == 0 || strncmp(exchangestr,"basket",strlen("basket")) == 0 )
+    if ( strcmp(exchangestr,"InstantDEX") == 0 || strcmp(exchangestr,"jumblr") == 0 || strcmp(exchangestr,"pangea") == 0 || strcmp(exchangestr,"peggy") == 0 || strcmp(exchangestr,"wallet") == 0 || strcmp(exchangestr,"active") == 0 || strncmp(exchangestr,"basket",strlen("basket")) == 0 )
         return(1);
     return(0);
 }
@@ -676,14 +729,14 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
         {
             if ( is_specialexchange(exchangestr) == 0 )
                 return(prices777_trade(0,activenxt,secret,prices,dir,price,volume,iQ,0,iQ->s.quoteid,extra));
-            if ( strcmp(exchangestr,"wallet") != 0 && iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,activenxt,secret)) != 0 )
+            if ( strcmp(exchangestr,"wallet") != 0 && strcmp(exchangestr,"jumblr") != 0 && strcmp(exchangestr,"pangea") != 0 && iQ->s.automatch != 0 && (SUPERNET.automatch & 1) != 0 && (retstr= automatch(prices,dir,volume,price,activenxt,secret)) != 0 )
                 return(retstr);
             if ( strcmp(SUPERNET.NXTACCTSECRET,secret) != 0 )
                 return(clonestr("{\"error\":\"cant do queued requests with non-default accounts\"}"));
             retstr = InstantDEX_str(walletstr,0,1,iQ);
-            //printf("create_iQ.(%llu) quoteid.%llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid);
+            printf("create_iQ.(%llu) quoteid.%llu walletstr.(%s) %p\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,walletstr,walletstr);
             iQ = create_iQ(iQ,walletstr);
-            printf("local got create_iQ.(%llu) quoteid.%llu wallet.(%s)\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,walletstr);
+            printf("local got create_iQ.(%llu) quoteid.%llu wallet.(%s) baseamount %llu iswallet.%d\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,walletstr,(long long)iQ->s.baseamount,iQ->s.wallet);
             prices777_InstantDEX(prices,MAX_DEPTH);
             queue_enqueue("InstantDEX",&InstantDEXQ,queueitem(retstr));
         }
@@ -696,7 +749,7 @@ char *InstantDEX_placebidask(char *remoteaddr,uint64_t orderid,char *exchangestr
                 if ( strcmp(SUPERNET.NXTACCTSECRET,secret) != 0 )
                     return(clonestr("{\"error\":\"cant do queued requests with non-default accounts\"}"));
                 prices777_InstantDEX(prices,MAX_DEPTH);
-                printf("remote got create_iQ.(%llu) quoteid.%llu wallet.(%s)\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,walletstr);
+                printf("remote got create_iQ.(%llu) quoteid.%llu wallet.(%s) baseamount %llu\n",(long long)iQ->s.offerNXT,(long long)iQ->s.quoteid,walletstr,(long long)iQ->s.baseamount);
             }
             return(retstr);
         }

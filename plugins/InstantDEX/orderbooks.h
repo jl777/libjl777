@@ -36,7 +36,7 @@ struct prices777 *prices777_find(int32_t *invertedp,uint64_t baseid,uint64_t rel
             //else printf("(%llu/%llu) != (%llu/%llu)\n",(long long)baseid,(long long)relid,(long long)prices->baseid,(long long)prices->relid);
         } //else fprintf(stderr,"(%s).%d ",prices->exchange,i);
     }
-    printf("CANTFIND.(%s) %llu/%llu\n",exchange,(long long)baseid,(long long)relid);
+    //printf("CANTFIND.(%s) %llu/%llu\n",exchange,(long long)baseid,(long long)relid);
     return(0);
 }
 
@@ -472,19 +472,22 @@ cJSON *prices777_tradesequence(struct prices777 *prices,int32_t bidask,struct pr
 
 void prices777_orderbook_item(struct prices777 *prices,int32_t bidask,struct prices777_order *suborders[],cJSON *array,int32_t invert,int32_t allflag,double origprice,double origvolume,uint64_t orderid,uint64_t quoteid)
 {
-    cJSON *item,*obj,*tarray; double price,volume; struct InstantDEX_quote *iQ;
+    cJSON *item,*obj,*tarray,*walletitem; double price,volume; struct InstantDEX_quote *iQ;
     item = cJSON_CreateObject();
     if ( invert != 0 )
         volume = (origvolume * origprice), price = 1./origprice;
     else price = origprice, volume = origvolume;
-    if ( strcmp(prices->exchange,"shuffle") == 0 )
+    if ( strcmp(prices->exchange,"jumblr") == 0 || strcmp(prices->exchange,"pangea") == 0 )
     {
-        jaddstr(item,"plugin","shuffle"), jaddstr(item,"method","start");
+        jaddstr(item,"plugin",prices->exchange), jaddstr(item,"method","start");
         jaddnum(item,"dotrade",1), jaddnum(item,"volume",volume);
+        jaddnum(item,"timeout",120000);
         jaddstr(item,"base",prices->base);
         if ( (iQ= find_iQ(quoteid)) != 0 )
             jadd64bits(item,"offerNXT",iQ->s.offerNXT);
         jadd64bits(item,"quoteid",iQ->s.quoteid);
+        if ( strcmp(prices->exchange,"pangea") == 0 && iQ->s.wallet != 0 && (walletitem= cJSON_Parse(iQ->walletstr)) != 0 )
+            jadd(item,"wallet",walletitem);
         jaddi(array,item);
         return;
     }
@@ -1006,7 +1009,7 @@ struct prices777 *prices777_addbundle(int32_t *validp,int32_t loadprices,struct 
             {
                 printf("First pair for (%s), start polling]\n",exchange_str(prices->exchangeid));
                 exchange->polling = 1;
-                if ( strcmp(exchange->name,"wallet") != 0 )
+                if ( strcmp(exchange->name,"wallet") != 0 && strcmp(exchange->name,"jumblr") != 0 && strcmp(exchange->name,"pangea") != 0 )
                     portable_thread_create((void *)prices777_exchangeloop,&Exchanges[prices->exchangeid]);
             }
             BUNDLE.ptrs[BUNDLE.num] = prices;
@@ -1023,7 +1026,7 @@ int32_t create_basketitem(struct prices777_basket *basketitem,cJSON *item,char *
 {
     struct destbuf exchangestr,name,base,rel; char key[512]; uint64_t tmp,baseid,relid; int32_t groupid,keysize,valid; double wt; struct prices777 *prices;
     copy_cJSON(&exchangestr,jobj(item,"exchange"));
-    if ( strcmp("shuffle",exchangestr.buf) == 0 || exchange_find(exchangestr.buf) == 0 )
+    if ( strcmp("jumblr",exchangestr.buf) == 0 || strcmp("pangea",exchangestr.buf) == 0 || strcmp("wallet",exchangestr.buf) == 0 || exchange_find(exchangestr.buf) == 0 )
     {
         printf("create_basketitem: illegal exchange.%s\n",exchangestr.buf);
         return(-1);
@@ -1378,7 +1381,7 @@ double prices777_InstantDEX(struct prices777 *prices,int32_t maxdepth)
     cJSON *json; double hbla = 0.;
     if ( (json= InstantDEX_orderbook(prices)) != 0 )
     {
-        //if ( Debuglevel > 2 )
+        if ( Debuglevel > 2 )
             printf("InstantDEX.(%s)\n",jprint(json,0));
         prices777_json_orderbook("InstantDEX",prices,maxdepth,json,0,"bids","asks",0,0);
         free_json(json);

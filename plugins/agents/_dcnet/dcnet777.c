@@ -72,6 +72,8 @@ uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME *data,cJSON *
     plugin->allowremote = 1;
     return(disableflags); // set bits corresponding to array position in _methods[]
 }
+
+/*
 int32_t init_hexbytes_noT(char *hexbytes,uint8_t *message,long len);
 int32_t safecopy(char *dest,char *src,long len);
 char *clonestr(char *str);
@@ -579,18 +581,21 @@ int32_t dcnet_idle(struct plugin_info *plugin)
         }
     }
     return(0);
-}
+}*/
+
+int32_t dcnet_idle(struct plugin_info *plugin) { return(0); }
 
 int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struct plugin_info *plugin,uint64_t tag,char *retbuf,int32_t maxlen,char *jsonstr,cJSON *json,int32_t initflag,char *tokenstr)
 {
-    char connectaddr[64],*resultstr,*methodstr,*myip,*retstr = 0; bits256 tmp; bits320 z,zmone; int32_t i,sendtimeout = 10,recvtimeout = 1;
+    char *resultstr,*methodstr,*retstr = 0;
+    //char connectaddr[64],*resultstr,*methodstr,*myip,*retstr = 0; bits256 tmp; bits320 z,zmone; int32_t i,sendtimeout = 10,recvtimeout = 1;
     retbuf[0] = 0;
     plugin->allowremote = 1;
     if ( initflag > 0 )
     {
         if ( 0 )
         {
-            int32_t numbits,desti,i,j,x; HUFF H; bits256 msg; char msgstr[33];
+            /*int32_t numbits,desti,i,j,x; HUFF H; bits256 msg; char msgstr[33];
             memset(msgstr,0,sizeof(msgstr));
             strcpy(msgstr,"hello world");
             memset(&msg,0,sizeof(msg));
@@ -629,9 +634,9 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
                     break;
             }
             printf("TESTDONE.(%s)\n",msgstr);
-            getchar();
+            getchar();*/
         }
-        char *ipaddrs[] = { "5.9.56.103", "5.9.102.210", "89.248.160.237", "89.248.160.238", "89.248.160.239", "89.248.160.240", "89.248.160.241", "89.248.160.242" };
+        /*char *ipaddrs[] = { "5.9.56.103", "5.9.102.210", "89.248.160.237", "89.248.160.238", "89.248.160.239", "89.248.160.240", "89.248.160.241", "89.248.160.242" };
         fprintf(stderr,"<<<<<<<<<<<< INSIDE PLUGIN! process %s (%s)\n",plugin->name,jsonstr);
         for (i=0; i<1000; i++)
         {
@@ -683,7 +688,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             }
         }
         printf("ipaddr.%s bindaddr.%s\n",plugin->ipaddr,DCNET.bind);
-        strcpy(retbuf,"{\"result\":\"dcnet init\"}");
+        strcpy(retbuf,"{\"result\":\"dcnet init\"}");*/
     }
     else
     {
@@ -703,10 +708,10 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             printf("(%s) has not method\n",jsonstr);
             return(0);
         }
-        else if ( strcmp(methodstr,"join") == 0 )
-            return(dcnet_join(retbuf));
-        else if ( strcmp(methodstr,"round") == 0 )
-            return(dcnet_startround(retbuf));
+        //else if ( strcmp(methodstr,"join") == 0 )
+        //    return(dcnet_join(retbuf));
+        //else if ( strcmp(methodstr,"round") == 0 )
+        //    return(dcnet_startround(retbuf));
     }
     return(plugin_copyretstr(retbuf,maxlen,retstr));
 }

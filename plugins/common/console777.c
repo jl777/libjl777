@@ -254,8 +254,14 @@ char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcast
 
 void process_userinput(char *_line)
 {
-    static char *line,*line2;
-    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int timeout,broadcastflag = 0;
+    static char *line,*line2,*match = "./BitcoinDarkd SuperNET '";
+    char plugin[512],ipaddr[1024],method[512],*cmdstr,*retstr; cJSON *json; int len,timeout,broadcastflag = 0;
+    len = (int32_t)strlen(match);
+    if ( _line[strlen(_line)-1] == '\'' && strncmp(_line,match,len) == 0 )
+    {
+        _line[strlen(_line)-1] = 0;
+        _line += len;
+    }
     if ( (json= cJSON_Parse(_line)) != 0 )
     {
         char *process_nn_message(int32_t sock,char *jsonstr);

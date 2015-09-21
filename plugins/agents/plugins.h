@@ -327,14 +327,14 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t InstantDEX_main(int32_t,char *args[]);
         int32_t dcnet_main(int32_t,char *args[]);
         int32_t prices_main(int32_t,char *args[]);
-        int32_t shuffle_main(int32_t,char *args[]);
+        int32_t jumblr_main(int32_t,char *args[]);
         //int32_t cashier_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
         else if ( strcmp(dp->name,"prices") == 0 ) return(prices_main(n,args));
         else if ( strcmp(dp->name,"kv777") == 0 ) return(kv777_main(n,args));
         else if ( strcmp(dp->name,"relay") == 0 ) return(relay_main(n,args));
-        else if ( strcmp(dp->name,"shuffle") == 0 ) return(shuffle_main(n,args));
+        else if ( strcmp(dp->name,"jumblr") == 0 ) return(jumblr_main(n,args));
         else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
         else if ( strcmp(dp->name,"dcnet") == 0 ) return(dcnet_main(n,args));
         //else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
@@ -350,7 +350,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 
 int32_t is_bundled_plugin(char *plugin)
 {
-    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 || strcmp(plugin,"shuffle") == 0 ||
+    if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 || strcmp(plugin,"jumblr") == 0 ||
         //strcmp(plugin,"cashier") == 0 || strcmp(plugin,"teleport") == 0
 #ifdef INSIDE_MGW
         strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0 ||
@@ -512,6 +512,8 @@ char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin
     {
         if ( is_bundled_plugin(plugin) != 0 )
         {
+            if ( (strcmp("jumblr",plugin) == 0 || strcmp("pangea",plugin) == 0) && SUPERNET.iamrelay > 0 )
+                return(clonestr("{\"error\":\"jumblr/pangea not for relays\"}"));
             if ( SUPERNET.iamrelay <= 1 )
                 language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
             return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));

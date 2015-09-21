@@ -186,14 +186,34 @@ int32_t btc_getpubkey(char pubkeystr[67],uint8_t pubkeybuf[33],struct bp_key *ke
     return((int32_t)len);
 }
 
-int32_t btc_coinaddr(char *coinaddr,uint8_t addrtype,char *pubkeystr)
+int32_t btc_convrmd160(char *coinaddr,uint8_t addrtype,uint8_t md160[20])
 {
-    uint8_t md160[20]; char hashstr[41]; cstring *btc_addr;
-    calc_OP_HASH160(hashstr,md160,pubkeystr);
-    if ( (btc_addr= base58_encode_check(addrtype,true,md160,sizeof(md160))) != 0 )
+    cstring *btc_addr;
+    if ( (btc_addr= base58_encode_check(addrtype,true,md160,20)) != 0 )
     {
         strcpy(coinaddr,btc_addr->str);
         cstr_free(btc_addr,true);
+        return(0);
+    }
+    return(-1);
+}
+
+int32_t btc_coinaddr(char *coinaddr,uint8_t addrtype,char *pubkeystr)
+{
+    uint8_t rmd160[20]; char hashstr[41];
+    calc_OP_HASH160(hashstr,rmd160,pubkeystr);
+    return(btc_convrmd160(coinaddr,addrtype,rmd160));
+}
+
+int32_t btc_convaddr(char *hexaddr,char *addr58)
+{
+    uint8_t addrtype; cstring *cstr;
+    if ( (cstr= base58_decode_check(&addrtype,(const char *)addr58)) != 0 )
+    {
+        sprintf(hexaddr,"%02x",addrtype);
+        init_hexbytes_noT(hexaddr+2,(void *)cstr->str,cstr->len);
+        cstr_free(cstr,true);
+        return(0);
     }
     return(-1);
 }
@@ -208,7 +228,7 @@ int32_t btc_convwip(uint8_t *privkey,char *wipstr)
             cstr->len--;
         memcpy(privkey,cstr->str,cstr->len);
         len = (int32_t)cstr->len;
-        //printf("addrtype.%02x wipstr.(%s) len.%d\n",addrtype,privkey,len);
+        //printf("addrtype.%02x wipstr.(%llx) len.%d\n",addrtype,*(long long *)privkey,len);
         cstr_free(cstr,true);
     }
     return(len);
@@ -216,9 +236,8 @@ int32_t btc_convwip(uint8_t *privkey,char *wipstr)
 
 int32_t btc_setprivkey(struct bp_key *key,char *privkeystr)
 {
-    uint8_t privkey[64]; int32_t len = btc_convwip(privkey,privkeystr);
-    bp_key_init(key);
-    if ( bp_key_secret_set(key,privkey,len) == 0 )
+    uint8_t privkey[512]; int32_t len = btc_convwip(privkey,privkeystr);
+    if ( len < 0 || bp_key_init(key) == 0 || bp_key_secret_set(key,privkey,len) == 0 )
     {
         printf("error setting privkey\n");
         return(-1);
@@ -226,42 +245,138 @@ int32_t btc_setprivkey(struct bp_key *key,char *privkeystr)
     return(0);
 }
 
+void jumblr_freekey(void *key)
+{
+    bp_key_free(key);
+    free(key);
+}
+
+void *jumblr_bpkey(char *pubP,struct coin777 *coin,char *coinaddr)
+{
+    uint8_t buf[1024]; char *privkey; struct bp_key *key = 0;
+    //printf("coin.%s (%s)\n",coin->name,coinaddr);
+    if ( (privkey = dumpprivkey(coin->name,coin->serverport,coin->userpass,coinaddr)) != 0 )
+    {
+        //printf("privkey.(%s)\n",privkey);
+        key = calloc(1,sizeof(*key));
+        if ( btc_setprivkey(key,privkey) == 0 && btc_getpubkey(pubP,buf,key) > 0 )
+            return(key);
+        jumblr_freekey(key);
+    }
+    return(0);
+}
+
+void set_spendscript(char *spendscript,char *coinaddr)
+{
+    char hexaddr[128];
+    btc_convaddr(hexaddr,coinaddr);
+    sprintf(spendscript,"76a914%s88ac",hexaddr+2);
+}
+
 int32_t script_coinaddr(char *coinaddr,cJSON *scriptobj)
 {
     struct destbuf buf; cJSON *addresses;
     coinaddr[0] = 0;
     if ( scriptobj == 0 )
-        return(0);
-    addresses = cJSON_GetObjectItem(scriptobj,"addresses");
-    if ( addresses != 0 )
+        return(-1);
+    if ( (addresses= cJSON_GetObjectItem(scriptobj,"addresses")) != 0 )
     {
         copy_cJSON(&buf,jitem(addresses,0));
         strcpy(coinaddr,buf.buf);
+        return(0);
     }
-    return(0);
+    return(-1);
 }
 
-char *shuffle_getprivkey(uint64_t *valuep,struct destbuf *scriptPubKey,uint32_t *locktimep,struct coin777 *coin,char *txid,int32_t vout)
+uint64_t jumblr_getcoinaddr(char *coinaddr,struct destbuf *scriptPubKey,struct coin777 *coin,char *txid,int32_t vout)
+{
+    char *rawtransaction,*txidstr,*asmstr; uint64_t value = 0; int32_t n,m,len,reqSigs; cJSON *json,*scriptobj,*array,*item,*hexobj;
+    scriptPubKey->buf[0] = 0;
+    if ( (rawtransaction= _get_transaction(coin->name,coin->serverport,coin->userpass,txid)) == 0 )
+    {
+        printf("jumblr_getprivkey: error getting (%s)\n",txid);
+        return(0);
+    }
+    if ( (json= cJSON_Parse(rawtransaction)) != 0 )
+    {
+        if ( (txidstr= jstr(json,"txid")) == 0 || strcmp(txidstr,txid) != 0 )
+        {
+            printf("jumblr_getcoinaddr no txid or mismatch\n");
+            free_json(json);
+            free(rawtransaction);
+            return(0);
+        }
+        if ( (array= jarray(&n,json,"vout")) != 0 && vout < n && (item= jitem(array,vout)) != 0 )
+        {
+            reqSigs = (int32_t)get_cJSON_int(item,"reqSigs");
+            value = conv_cJSON_float(item,"value");
+            scriptobj = cJSON_GetObjectItem(item,"scriptPubKey");
+            printf("ITEM.(%s)\n",jprint(item,0));
+            if ( scriptobj != 0 )
+            {
+                printf("script.(%s)\n",jprint(scriptobj,0));
+                script_coinaddr(coinaddr,scriptobj);
+                hexobj = cJSON_GetObjectItem(scriptobj,"hex");
+                if ( scriptPubKey != 0 && hexobj != 0 )
+                    copy_cJSON(scriptPubKey,hexobj);
+                else
+                {
+                    // OP_DUP OP_HASH160 f563e867027dedd109c9bb5f3354c3cc41dc7c7f OP_EQUALVERIFY OP_CHECKSIG
+                    // 0318d4f6cdcbe6c822b979fc318dbe4ad58287223c8fb57b7bec0c88cd58a4b16a OP_CHECKSIG
+                    if ( (asmstr= jstr(scriptobj,"asm")) != 0 )
+                    {
+                        len = (int32_t)strlen(asmstr);
+                        m = (int32_t)strlen(" OP_EQUALVERIFY OP_CHECKSIG");
+                        if ( strncmp(asmstr,"OP_DUP OP_HASH160 ",strlen("OP_DUP OP_HASH160 ")) == 0 && strcmp(&asmstr[len - m]," OP_EQUALVERIFY OP_CHECKSIG") == 0 )
+                            set_spendscript(scriptPubKey->buf,coinaddr);
+                        else
+                        {
+                            printf("nonstandard.(%s)\n",&asmstr[len - m]);
+                            m = (int32_t)strlen(" OP_CHECKSIG");
+                            if ( strcmp(&asmstr[len - m]," OP_CHECKSIG") == 0 )
+                            {
+                                printf("key sig (%s)\n",asmstr);
+                                sprintf(scriptPubKey->buf,"%02x",(len-m)/2);
+                                memcpy(&scriptPubKey->buf[2],asmstr,(len - m));
+                                scriptPubKey->buf[2 + (len - m)] = 0;
+                                strcat(scriptPubKey->buf,"ac");
+                            }
+                        }
+                    }
+                }
+            } else printf("null scriptobj.%p (%s)\n",scriptobj,coinaddr);
+        }
+        free_json(json);
+    }
+    free(rawtransaction);
+    return(value);
+}
+
+char *jumblr_getprivkey(uint64_t *valuep,struct destbuf *scriptPubKey,uint32_t *locktimep,struct coin777 *coin,char *txid,int32_t vout)
 {
     char *rawtransaction,*txidstr,*privkey=0,coinaddr[64]; uint64_t value = 0; int32_t n,reqSigs; cJSON *json,*scriptobj,*array,*item,*hexobj;
     *locktimep = -1;
+    scriptPubKey->buf[0] = 0;
     if ( (rawtransaction= _get_transaction(coin->name,coin->serverport,coin->userpass,txid)) == 0 )
     {
-        printf("shuffle_getprivkey: error getting (%s)\n",txid);
+        printf("jumblr_getprivkey: error getting (%s)\n",txid);
         return(0);
     }
-    if ( (json= get_decoderaw_json(coin,rawtransaction)) != 0 )
+    if ( (json= cJSON_Parse(rawtransaction)) != 0 )//get_decoderaw_json(coin,rawtransaction)) != 0 )
     {
         *locktimep = (int32_t)get_cJSON_int(json,"locktime");
         if ( (txidstr= jstr(json,"txid")) == 0 || strcmp(txidstr,txid) != 0 )
         {
-            printf("shuffle_getprivkey no txid or mismatch\n");
+            printf("jumblr_getprivkey no txid or mismatch\n");
+            free_json(json);
+            free(rawtransaction);
             return(0);
         }
+        //printf("txidstr.(%s) vout.%d\n",txidstr,vout);
         if ( (array= jarray(&n,json,"vout")) != 0 && (item= jitem(array,vout)) != 0 )
         {
             scriptobj = cJSON_GetObjectItem(item,"scriptPubKey");
-            if ( scriptobj != 0 && script_coinaddr(coinaddr,scriptobj) != 0 )
+            if ( scriptobj != 0 && script_coinaddr(coinaddr,scriptobj) == 0 )
             {
                 reqSigs = (int32_t)get_cJSON_int(item,"reqSigs");
                 value = conv_cJSON_float(item,"value");
@@ -269,51 +384,155 @@ char *shuffle_getprivkey(uint64_t *valuep,struct destbuf *scriptPubKey,uint32_t 
                 if ( scriptPubKey != 0 && hexobj != 0 )
                     copy_cJSON(scriptPubKey,hexobj);
                 privkey = dumpprivkey(coin->name,coin->serverport,coin->userpass,coinaddr);
-            }
+            } else printf("null scriptobj.%p (%s)\n",scriptobj,coinaddr);
         }
+        free_json(json);
     }
+    free(rawtransaction);
     if ( valuep != 0 )
         *valuep = value;
     return(privkey);
 }
 
-char *shuffle_signvin(char *sigstr,struct coin777 *coin,struct cointx_info *refT,int32_t redeemi)
+cJSON *cointx_vins_json_params(struct coin777 *coin,char *rawbytes)
 {
-    char hexstr[1024],pubP[128],*privkey; bits256 hash2; uint8_t data[128],sigbuf[512]; struct bp_key key; struct destbuf scriptPubKey;
-    struct cointx_info T; int32_t i; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin; uint64_t value; uint32_t locktime;
-    T = *refT; vin = &T.inputs[redeemi];
-    sigstr[0] = 0;
-    if ( (privkey= shuffle_getprivkey(&value,&scriptPubKey,&locktime,coin,vin->tx.txidstr,vin->tx.vout)) != 0 )
+    int32_t i; cJSON *json,*array; char coinaddr[128]; struct destbuf scriptPubKey; struct cointx_info *cointx;
+    array = cJSON_CreateArray();
+    printf("convert.(%s)\n",rawbytes);
+    if ( (cointx= _decode_rawtransaction(rawbytes,coin->mgw.oldtx_format)) != 0 )
     {
-        if ( btc_setprivkey(&key,privkey) > 0 )//&& btc_getpubkey(pubP,data,&key) > 0 )
+        disp_cointx(cointx);
+        for (i=0; i<cointx->numinputs; i++)
         {
-            for (i=0; i<T.numinputs; i++)
-                strcpy(T.inputs[i].sigs,"00");
-            strcpy(vin->sigs,scriptPubKey.buf);
-            vin->sequence = (uint32_t)-1;
-            T.nlocktime = 0;
+            json = cJSON_CreateObject();
+            jaddstr(json,"txid",cointx->inputs[i].tx.txidstr);
+            jaddnum(json,"vout",cointx->inputs[i].tx.vout);
+            if ( cointx->inputs[i].sigs[0] != 0 )
+                jaddstr(json,"scriptPubKey",cointx->inputs[i].sigs);
+            else
+            {
+                jumblr_getcoinaddr(coinaddr,&scriptPubKey,coin,cointx->inputs[i].tx.txidstr,cointx->inputs[i].tx.vout);
+                jaddstr(json,"scriptPubKey",scriptPubKey.buf);
+            }
+            cJSON_AddItemToArray(array,json);
         }
-        else
-        {
-            printf("shuffle_signvin: error setting privkey/pubkey\n");
-            return(0);
-        }
+        free(cointx);
     }
-    //disp_cointx(&T);
-    emit_cointx(&hash2,data,sizeof(data),&T,coin->mgw.oldtx_format,SIGHASH_ALL);
-    if ( bp_sign(&key,hash2.bytes,sizeof(hash2),&sig,&siglen) != 0 )
+    return(array);
+}
+
+char *jumblr_signraw_json_params(struct coin777 *coin,char *rawbytes)
+{
+    char *paramstr = 0; cJSON *array,*rawobj,*vinsobj;//,*keysobj;char *coinaddrs[MAX_SUBATOMIC_INPUTS+1],
+    if ( (rawobj= cJSON_CreateString(rawbytes)) != 0 )
+    {
+        if ( (vinsobj= cointx_vins_json_params(coin,rawbytes)) != 0 )
+        {
+            array = cJSON_CreateArray();
+            jaddi(array,rawobj);
+            jaddi(array,vinsobj);
+            //cJSON_AddItemToArray(array,keysobj);
+            paramstr = jprint(array,1);
+        }
+        else free_json(rawobj);
+    }
+    return(paramstr);
+}
+
+int32_t jumblr_signtx(char *signedtx,unsigned long destsize,struct coin777 *coin,char *signparams)
+{
+    cJSON *json,*compobj; char *retstr,*deststr; uint32_t completed = 0;
+    signedtx[0] = 0;
+    //printf("cp.%d vs %d: subatomic_signtx rawbytes.(%s)\n",cp->coinid,coinid,rawbytes);
+    if ( coin != 0 && signparams != 0 )
+    {
+        _stripwhite(signparams,' ');
+        printf("got signparams.(%s)\n",signparams);
+        if ( (retstr= bitcoind_RPC(0,coin->name,coin->serverport,coin->userpass,"signrawtransaction",signparams)) != 0 )
+        {
+            //printf("got retstr.(%s)\n",retstr);
+            if ( (json= cJSON_Parse(retstr)) != 0 )
+            {
+                if ( (deststr= jstr(json,"hex")) != 0 )
+                {
+                    compobj = cJSON_GetObjectItem(json,"complete");
+                    if ( compobj != 0 )
+                        completed = ((compobj->type&0xff) == cJSON_True);
+                    if ( strlen(deststr) > destsize )
+                        printf("sign_rawtransaction: strlen(deststr) %ld > %ld destize\n",strlen(deststr),destsize);
+                    else strcpy(signedtx,deststr);
+                } else printf("cant get hex from.(%s)\n",retstr);
+                free_json(json);
+            } else printf("json parse error.(%s)\n",retstr);
+            free(retstr);
+        } else printf("error signing rawtx\n");
+    } else printf("error generating signparams\n");
+    return(completed);
+}
+
+char *jumblr_signvin(char *sigstr,struct coin777 *coin,char *signedtx,int32_t bufsize,void *bpkey,char *pubP,struct cointx_info *refT,int32_t redeemi,char *rawtx)
+{
+    // signrawtransaction <hex string> [{"txid":txid,"vout":n,"scriptPubKey":hex},...] [<privatekey1>,...]
+    char hexstr[4096],redeem[2048]; bits256 hash2; uint8_t *data,sigbuf[1024];
+    struct cointx_info *T; int32_t i; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin;
+    sigstr[0] = 0;
+    if ( 1 )
+    {
+        char *paramstr; cJSON *vinarray,*item,*array = cJSON_CreateArray();
+        vinarray = cJSON_CreateArray();
+        jaddistr(array,rawtx);
+        for (i=0; i<refT->numinputs; i++)
+        {
+            vin = &refT->inputs[i];
+            item = cJSON_CreateObject();
+            jaddstr(item,"txid",vin->tx.txidstr);
+            jaddnum(item,"vout",vin->tx.vout);
+            jaddstr(item,"scriptPubKey",vin->sigs);
+            jaddi(vinarray,item);
+        }
+        jaddi(array,vinarray);
+        paramstr = jprint(array,1);
+        if ( jumblr_signtx(signedtx,bufsize,coin,paramstr) > 0 )
+            printf("SIGS completed\n");
+        if ( signedtx[0] != 0 )
+        {
+            if ( (T= _decode_rawtransaction(signedtx,coin->mgw.oldtx_format)) != 0 )
+            {
+                strcpy(sigstr,T->inputs[redeemi].sigs);
+                free(T);
+                return(sigstr);
+            }
+        }
+        return(0);
+    }
+    T = calloc(1,sizeof(*T));
+    *T = *refT;
+    vin = &T->inputs[redeemi];
+    safecopy(redeem,vin->sigs,sizeof(redeem));
+    fprintf(stderr,"redeemi.%d numinputs.%d\n",redeemi,T->numinputs);
+    for (i=0; i<T->numinputs; i++)
+        if ( i != redeemi )
+            strcpy(T->inputs[i].sigs,"00");
+    vin->sequence = (uint32_t)-1;
+    T->nlocktime = 0;
+    data = malloc(65536);
+    disp_cointx(T);
+    emit_cointx(&hash2,data,sizeof(data),T,coin->mgw.oldtx_format,SIGHASH_ALL);
+    free(data);
+    if ( bp_sign(bpkey,hash2.bytes,sizeof(hash2),&sig,&siglen) != 0 && sig != 0 )
     {
         memcpy(sigbuf,sig,siglen);
+        free(sig);
         sigbuf[siglen++] = SIGHASH_ALL;
         init_hexbytes_noT(hexstr,sigbuf,(int32_t)siglen);
-        sprintf(vin->sigs,"%02lx%s%02lx%s00%s",siglen,hexstr,strlen(pubP)/2,pubP,scriptPubKey.buf);
+        sprintf(vin->sigs,"%02lx%s%02lx%s",siglen,hexstr,strlen(pubP)/2,pubP);
         strcpy(sigstr,vin->sigs);
-        free(sig);
-        //printf("after P.(%s) siglen.%02lx\n",vin->sigs,siglen);
+        printf("after P.(%s) siglen.%02lx -> %s pubP.(%s)\n",sigstr,siglen,vin->sigs,pubP);
     }
-    _emit_cointx(hexstr,sizeof(hexstr),&T,coin->mgw.oldtx_format);
-    disp_cointx(&T);
-    return(clonestr(vin->sigs));
+    free(T);
+    if ( sigstr[0] != 0 )
+        return(sigstr);
+    else return(0);
 }
 
 int32_t script_has_coinaddr(cJSON *scriptobj,char *coinaddr)
@@ -572,9 +791,49 @@ uint64_t subatomic_donation(struct coin777 *coin,uint64_t amount)
     return(donation);
 }
 
-struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,struct coin777 *coin,char *skipcoinaddr)
+char *gather_account_addresses(struct coin777 *coin,char *account)
 {
-    int32_t i,j,num; struct subatomic_unspent_tx *ups = 0; char params[128],*retstr; cJSON *json,*item;
+    cJSON *array,*retarray,*subarray,*item; int32_t i,j,m,n; char *acct;
+    //printf("call listaddressgroupings\n");
+    if ( (array= _get_localaddresses(coin->name,coin->serverport,coin->userpass)) != 0 )
+    {
+        retarray = cJSON_CreateArray();
+        n = cJSON_GetArraySize(array);
+        for (i=0; i<n; i++)
+        {
+            if ( (subarray= jitem(array,i)) != 0 )
+            {
+                //printf("%d of %d: %s\n",i,n,jprint(subarray,0));
+                if ( is_cJSON_Array(subarray) != 0 && (m= cJSON_GetArraySize(subarray)) > 0 )
+                {
+                    for (j=0; j<m; j++)
+                    {
+                        if ( (item= jitem(subarray,j)) != 0 && is_cJSON_Array(item) != 0 && cJSON_GetArraySize(item) > 2 )
+                        {
+                            if ( (acct= jstr(jitem(item,2),0)) != 0 && strcmp(acct,account) == 0 )
+                            {
+                                //printf("gather.(%s) %s\n",jstr(jitem(item,0),0),account);
+                                jaddistr(retarray,jstr(jitem(item,0),0));
+                            }
+                        } //else printf("skip item.%p, %d %d\n",item,is_cJSON_Array(item),cJSON_GetArraySize(item));
+                    }
+                }
+            }
+        }
+        free_json(array);
+        if ( cJSON_GetArraySize(retarray) == 0 )
+        {
+            free_json(retarray);
+            return(0);
+        }
+        else return(jprint(retarray,1));
+    }
+    else return(0);
+}
+
+struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,struct coin777 *coin,char *account)
+{
+    int32_t i,j,num; struct subatomic_unspent_tx *ups = 0; char *params,*addrs,*retstr; cJSON *json,*item;
     /*{
      "txid" : "1ccd2a9d0f8d690ed13b6768fc6c041972362f5531922b6b152ed2c98d3fe113",
      "vout" : 1,
@@ -584,7 +843,22 @@ struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,stru
      "confirmations" : 72505
      },*/
     *totalp = *nump = 0;
-    sprintf(params,"%d, 99999999",coin->minconfirms);
+    if ( account != 0 && account[0] != 0 )
+    {
+        if ( (addrs= gather_account_addresses(coin,account)) != 0 )
+        {
+            params = calloc(1,strlen(addrs) + 128);
+            addrs[strlen(addrs)-1] = 0;
+            sprintf(params,"[%d, 99999999, [%s]]",coin->minconfirms,addrs+1);
+            free(addrs);
+        } else return(0);
+    }
+    else
+    {
+        params = calloc(1,128);
+        sprintf(params,"%d, 99999999",coin->minconfirms);
+    }
+    //printf("issue listunspent.(%s)\n",params);
     if ( (retstr= bitcoind_passthru(coin->name,coin->serverport,coin->userpass,"listunspent",params)) != 0 )
     {
         //printf("unspents (%s)\n",retstr);
@@ -597,7 +871,7 @@ struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,stru
                 {
                     item = cJSON_GetArrayItem(json,i);
                     copy_cJSON(&ups[j].address,cJSON_GetObjectItem(item,"address"));
-                    if ( skipcoinaddr == 0 || strcmp(skipcoinaddr,ups[j].address.buf) != 0 )
+                    //if ( skipcoinaddr == 0 || strcmp(skipcoinaddr,ups[j].address.buf) != 0 )
                     {
                         copy_cJSON(&ups[j].txid,cJSON_GetObjectItem(item,"txid"));
                         copy_cJSON(&ups[j].scriptPubKey,cJSON_GetObjectItem(item,"scriptPubKey"));
@@ -624,20 +898,21 @@ struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,stru
         }
         free(retstr);
     }
+    free(params);
     if ( *nump == 0 )
-        printf("no unspents\n");
+        printf("no (%s) unspents for (%s)\n",coin->name,account != 0 ? account : "");
     return(ups);
 }
 
-struct subatomic_unspent_tx *subatomic_bestfit(uint64_t *valuep,struct coin777 *coin,struct subatomic_unspent_tx *unspents,int32_t numunspents,uint64_t value,int32_t mode)
+struct subatomic_unspent_tx *subatomic_bestfit(struct coin777 *coin,struct subatomic_unspent_tx *unspents,int32_t numunspents,uint64_t value,int32_t mode)
 {
     int32_t i; uint64_t above,below,gap,atx_value; struct subatomic_unspent_tx *vin,*abovevin,*belowvin;
     abovevin = belowvin = 0;
-    *valuep = 0;
     for (above=below=i=0; i<numunspents; i++)
     {
         vin = &unspents[i];
-        *valuep = atx_value = vin->amount;
+        atx_value = vin->amount;
+        //printf("(%.8f vs %.8f)\n",dstr(atx_value),dstr(value));
         if ( atx_value == value )
             return(vin);
         else if ( atx_value > value )
@@ -659,12 +934,14 @@ struct subatomic_unspent_tx *subatomic_bestfit(uint64_t *valuep,struct coin777 *
             }
         }
     }
-    return((abovevin != 0) ? abovevin : belowvin);
+    if ( (vin= (abovevin != 0) ? abovevin : belowvin) == 0 && mode == 1 )
+        vin = unspents;
+    return(vin);
 }
 
 int64_t subatomic_calc_rawinputs(struct coin777 *coin,struct subatomic_rawtransaction *rp,uint64_t amount,struct subatomic_unspent_tx *ups,int32_t num,uint64_t donation)
 {
-    uint64_t value,sum = 0; struct subatomic_unspent_tx *up; int32_t i;
+    uint64_t sum = 0; struct subatomic_unspent_tx *up; int32_t i;
     rp->inputsum = rp->numinputs = 0;
     printf("unspent num %d, amount %.8f vs donation %.8f txfee %.8f\n",num,dstr(amount),dstr(donation),dstr(coin->mgw.txfee));
     if ( coin == 0 || num == 0 ) // (donation + coin->mgw.txfee) > amount ||
@@ -672,10 +949,9 @@ int64_t subatomic_calc_rawinputs(struct coin777 *coin,struct subatomic_rawtransa
     amount += coin->mgw.txfee + donation;
     for (i=0; i<num&&i<((int32_t)(sizeof(rp->inputs)/sizeof(*rp->inputs))); i++)
     {
-        if ( (up= subatomic_bestfit(&value,coin,ups,num,amount,0)) != 0 )
+        if ( (up= subatomic_bestfit(coin,ups,num,amount,0)) != 0 )
         {
             sum += up->amount;
-            printf("%.8f ",dstr(value));
             rp->inputs[rp->numinputs++] = *up;
             if ( sum >= amount )
             {
@@ -745,23 +1021,24 @@ char *subatomic_gen_rawtransaction(char *skipaddr,struct coin777 *coin,struct su
 char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *refT,int32_t msigflag,int32_t lockblocks,int32_t redeemi,char *redeemscript,int32_t p2shflag,char *privkeystr,int32_t privkeyind,char *othersig,char *otherpubkey,char *checkprivkey)
 {
     char hexstr[1024],pubP[128],*sig0,*sig1; bits256 hash2; uint8_t data[4096],sigbuf[512]; struct bp_key key,keyV;
-    struct cointx_info T; int32_t i,n; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin;
+    struct cointx_info *T; int32_t i,n; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin;
+    T = calloc(1,sizeof(*T));
     if ( privkeystr != 0 )
         btc_setprivkey(&key,privkeystr);
-    T = *refT; vin = &T.inputs[redeemi];
-    for (i=0; i<T.numinputs; i++)
-        strcpy(T.inputs[i].sigs,"00");
+    *T = *refT; vin = &T->inputs[redeemi];
+    for (i=0; i<T->numinputs; i++)
+        strcpy(T->inputs[i].sigs,"00");
     strcpy(vin->sigs,redeemscript);
     if ( msigflag == 0 )
     {
         vin->sequence = (uint32_t)-1;
-        T.nlocktime = 0;
+        T->nlocktime = 0;
     }
     else
     {
         if ( vin->sequence == 0 )
             vin->sequence = (uint32_t)time(NULL);
-        if ( T.nlocktime == 0 && lockblocks != 0 )
+        if ( T->nlocktime == 0 && lockblocks != 0 )
         {
             if ( lockblocks != 0 )
             {
@@ -769,15 +1046,16 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
                 if ( coin->ramchain.RTblocknum == 0 )
                 {
                     printf("cant get RTblocknum for %s\n",coin->name);
+                    free(T);
                     return(0);
                 }
                 lockblocks += coin->ramchain.RTblocknum;
             }
-            T.nlocktime = lockblocks;
+            T->nlocktime = lockblocks;
         }
     }
     //disp_cointx(&T);
-    emit_cointx(&hash2,data,sizeof(data),&T,coin->mgw.oldtx_format,SIGHASH_ALL);
+    emit_cointx(&hash2,data,sizeof(data),T,coin->mgw.oldtx_format,SIGHASH_ALL);
     //printf("HASH2.(%llx)\n",(long long)hash2.txid);
     if ( msigflag != 0 )
     {
@@ -788,6 +1066,7 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
             if ( bp_key_init(&keyV) == 0 || bp_pubkey_set(&keyV,data,n) == 0 )
             {
                 printf("cant set pubkey\n");
+                free(T);
                 return(0);
             }
             n = (int32_t)strlen(othersig) >> 1;
@@ -795,6 +1074,7 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
             if ( data[n-1] != SIGHASH_ALL )
             {
                 printf("othersig.(%s) hash type mismatch %d != %d\n",othersig,data[n-1],SIGHASH_ALL);
+                free(T);
                 return(0);
             }
             if ( bp_verify(&keyV,hash2.bytes,sizeof(hash2),data,n-1) == 0 )
@@ -839,6 +1119,7 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
             else
             {
                 printf("error signing\n");
+                free(T);
                 return(0);
             }
         }
@@ -862,8 +1143,9 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
         sprintf(&vin->sigs[strlen(vin->sigs)],"%s",redeemscript);
     }
     //printf("scriptSig.(%s)\n",vin->sigs);
-    _emit_cointx(hexstr,sizeof(hexstr),&T,coin->mgw.oldtx_format);
+    _emit_cointx(hexstr,sizeof(hexstr),T,coin->mgw.oldtx_format);
     //disp_cointx(&T);
+    free(T);
     return(clonestr(hexstr));
     //printf("T.msigredeem %d -> (%s)\n",msigflag,hexstr);
 }

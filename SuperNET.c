@@ -177,10 +177,10 @@ char *process_nn_message(int32_t sock,char *jsonstr)
     return(retstr);
 }
 
-char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
+char *process_jl777_msg(char *buf,int32_t bufsize,char *previpaddr,char *jsonstr,int32_t duration)
 {
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    struct destbuf plugin,method,request; char buf[65536],*bstr,*retstr;
+    struct destbuf plugin,method,request; char *bstr,*retstr;
     uint64_t daemonid,instanceid,tag;
     int32_t override=0,broadcastflag = 0;
     cJSON *json;
@@ -222,25 +222,29 @@ char *process_jl777_msg(char *previpaddr,char *jsonstr,int32_t duration)
             if ( plugin.buf[0] == 0 && set_first_plugin(plugin.buf,method.buf) < 0 )
                 return(clonestr("{\"error\":\"no method or plugin specified, search for requestType failed\"}"));
         }
-        if ( strlen(jsonstr) < sizeof(buf)-1)
+        if ( strlen(jsonstr) < bufsize )
         {
             strcpy(buf,jsonstr);
             //if ( previpaddr == 0 || previpaddr[0] == 0 )
             //    sprintf(buf + strlen(buf)-1,",\"rand\":\"%d\"}",rand());
             return(process_nn_message(-1,buf));
-        }
+        } else printf("jsonstr too big %ld vs %d\n",strlen(jsonstr),bufsize);
     }
     return(clonestr("{\"error\":\"couldnt parse JSON\"}"));
 }
 
 char *SuperNET_JSON(char *jsonstr) // BTCD's entry point
 {
-     return(process_jl777_msg(0,jsonstr,60));
+    char *buf,*retstr;
+    buf = calloc(1,65536);
+    retstr = process_jl777_msg(buf,65536,0,jsonstr,60);
+    free(buf);
+    return(retstr);
 }
 
 char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
 {
-    struct destbuf request,name; char *retstr = 0;;
+    struct destbuf request,name; char *buf,*retstr = 0;;
     uint64_t daemonid,instanceid;
     cJSON *json;
     fprintf(stderr,"call_SuperNET_JSON\n");
@@ -255,7 +259,13 @@ char *call_SuperNET_JSON(char *JSONstr) // sub-plugin's entry point
             daemonid = get_API_nxt64bits(cJSON_GetObjectItem(json,"daemonid"));
             instanceid = get_API_nxt64bits(cJSON_GetObjectItem(json,"instanceid"));
             retstr = register_daemon(name.buf,daemonid,instanceid,cJSON_GetObjectItem(json,"methods"),cJSON_GetObjectItem(json,"pubmethods"),cJSON_GetObjectItem(json,"authmethods"));
-        } else retstr = process_jl777_msg(0,JSONstr,60);
+        }
+        else
+        {
+            buf = calloc(1,65536);
+            retstr = process_jl777_msg(buf,65536,0,JSONstr,60);
+            free(buf);
+        }
         free_json(json);
     }
     if ( retstr == 0 )
@@ -291,12 +301,15 @@ void SuperNET_loop(void *ipaddr)
     strs[n++] = language_func((char *)"relay","",0,0,1,(char *)"relay",jsonargs,call_system);
     while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"relay",0,0) == 0 )
         poll_daemons();
-    strs[n++] = language_func((char *)"shuffle","",0,0,1,(char *)"shuffle",jsonargs,call_system);
-    while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"shuffle",0,0) == 0 )
-        poll_daemons();
-    //strs[n++] = language_func((char *)"dcnet","",0,0,1,(char *)"dcnet",jsonargs,call_system);
-    //while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"dcnet",0,0) == 0 )
-    //    poll_daemons();
+    if ( SUPERNET.iamrelay == 0 )
+    {
+        strs[n++] = language_func((char *)"jumblr","",0,0,1,(char *)"jumblr",jsonargs,call_system);
+        while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"jumblr",0,0) == 0 )
+            poll_daemons();
+        //strs[n++] = language_func((char *)"dcnet","",0,0,1,(char *)"dcnet",jsonargs,call_system);
+        //while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"dcnet",0,0) == 0 )
+        //    poll_daemons();
+    }
 #ifdef INSIDE_MGW
     if ( SUPERNET.gatewayid >= 0 )
     {
@@ -403,7 +416,7 @@ void SuperNET_apiloop(void *ipaddr)
     }
 }
 
-uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t max,cJSON *argjson,char *coinstr,char *serverport,char *userpass)
+uint64_t set_account_NXTSECRET(void *myprivkey,void *mypubkey,char *NXTacct,char *NXTaddr,char *secret,int32_t max,cJSON *argjson,char *coinstr,char *serverport,char *userpass)
 {
     uint64_t allocsize,nxt64bits;
     char coinaddr[MAX_JSON_FIELD],*str,*privkey;
@@ -440,7 +453,9 @@ uint64_t set_account_NXTSECRET(char *NXTacct,char *NXTaddr,char *secret,int32_t 
     expand_nxt64bits(NXTaddr,nxt64bits);
     if ( 1 )
         conv_rsacctstr(NXTacct,nxt64bits);
-    printf("(%s) (%s) (%s)\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>");
+    char pubkeystr[128];
+    init_hexbytes_noT(pubkeystr,SUPERNET.mypubkey,32);
+    printf("(%s) (%s) (%s) pubkey.(%s)\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>",pubkeystr);
     return(nxt64bits);
 }
 
@@ -471,7 +486,7 @@ void SuperNET_initconf(cJSON *json)
     strcat(SUPERNET.NXTSERVER,"?requestType");
     copy_cJSON(&tmp,cJSON_GetObjectItem(json,"myNXTacct")), safecopy(SUPERNET.myNXTacct,tmp.buf,sizeof(SUPERNET.myNXTacct));
     if ( SUPERNET.disableNXT == 0 )
-        set_account_NXTSECRET(SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
+        set_account_NXTSECRET(SUPERNET.myprivkey,SUPERNET.mypubkey,SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
     else strcpy(SUPERNET.NXTADDR,SUPERNET.myNXTacct);
     SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
     copy_cJSON(&myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
@@ -758,54 +773,8 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
-    char dest[512*2 + 1];
-    hmac_sha512_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha512.(%s)\n",dest);
-    hmac_sha384_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha384.(%s)\n",dest);
-    hmac_sha256_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha256.(%s)\n",dest);
-    hmac_sha224_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha224.(%s)\n",dest);
-    hmac_rmd160_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd160.(%s)\n",dest);
-    hmac_rmd128_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd128.(%s)\n",dest);
-    hmac_rmd256_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd256.(%s)\n",dest);
-    hmac_rmd320_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_rmd320.(%s)\n",dest);
-    hmac_sha1_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_sha1.(%s)\n",dest);
-    hmac_md2_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md2.(%s)\n",dest);
-    hmac_md4_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md4.(%s)\n",dest);
-    hmac_md5_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_md5.(%s)\n",dest);
-    hmac_tiger_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_tiger.(%s)\n",dest);
-    hmac_whirlpool_str(dest,"exchange->apisecret",(int32_t)strlen("exchange->apisecret"),"helloworld"); printf("hmac_whirlpool.(%s)\n",dest);
-    //getchar();
-    //void peggy_test();
-    //portable_OS_init();
-    //peggy_test();
-    //void txnet777_test(char *protocol,char *path,char *agent);
-    //int pegs[64];
-    //int32_t peggy_test(int32_t *pegs,int32_t numprices,int32_t maxdays,double apr,int32_t spreadmillis);
-    //peggy_test(pegs,64,90,2.5,2000);
-    //txnet777_test("rps","RPS","rps");
-    //void peggy_test(); peggy_test();
-    //void SaM_PrepareIndices();
-    //int32_t SaM_test();
-    //SaM_PrepareIndices();
-    //SaM_test();
-    //printf("finished SaM_test\n");
-    //void kv777_test(int32_t n);
-    //kv777_test(10000);
-    //getchar();
-    if ( 0 )
-    {
-        bits128 calc_md5(char digeststr[33],void *buf,int32_t len);
-        char digeststr[33],*str = "abc";
-        calc_md5(digeststr,str,(int32_t)strlen(str));
-        printf("(%s) -> (%s)\n",str,digeststr);
-        //getchar();
-    }
-    while ( 0 )
-    {
-        uint32_t nonce,failed; int32_t leverage;
-        nonce = busdata_nonce(&leverage,"test string","allrelays",3000,0);
-        failed = busdata_nonce(&leverage,"test string","allrelays",0,nonce);
-        printf("nonce.%u failed.%u\n",nonce,failed);
-    }
+    //void poker_test();
+    //poker_test(); getchar();
 #endif
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");

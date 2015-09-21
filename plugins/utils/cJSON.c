@@ -1010,4 +1010,13 @@ uint64_t calc_nxt64bits(const char *NXTaddr)
     return(nxt64bits);
 }
 
+cJSON *addrs_jsonarray(uint64_t *addrs,int32_t num)
+{
+    int32_t j; cJSON *array;
+    array = cJSON_CreateArray();
+    for (j=0; j<num; j++)
+        jaddi64bits(array,addrs[j]);
+    return(array);
+}
+
 void free_json(cJSON *json) { if ( json != 0 ) cJSON_Delete(json); }

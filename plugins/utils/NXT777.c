@@ -1464,12 +1464,12 @@ int32_t RS_encode(char *rsaddr,uint64_t id)
     memset(inp,0,sizeof(inp));
     memset(out,0,sizeof(out));
     memset(acc,0,sizeof(acc));
-    sprintf(acc,"%lld",(long long)id);
+    sprintf(acc,"%llu",(long long)id);
     for (a=0; *(acc+a) != '\0'; a++)
-        len ++;
+        len++;
     if ( len == 20 && *acc != '1' )
     {
-        strcpy(rsaddr,"error");
+        sprintf(rsaddr,"error (%s) doesnt start with 1",acc);
         return(-1);
     }
     for (i=0; i<len; i++)
