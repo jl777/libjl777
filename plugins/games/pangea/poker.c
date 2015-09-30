@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
@@ -51,6 +51,17 @@ static u32 CardSuit[52] = {
 	4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 };
+
+int32_t cardstr(char *cardstr,uint8_t card)
+{
+    int32_t suit; char *cardc = "A234567890JQK",suitc[4] = { 'c', 'd', 'h', 's' };
+    suit = card / 13;
+    card /= 13;
+    if ( card == 10 )
+        sprintf(cardstr,"10%c",suitc[suit]);
+    else sprintf(cardstr,"%c%c",cardc[card],suitc[suit]);
+    return(card);
+}
 
 static u32 CardSuitIdx[52] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -527,25 +538,48 @@ static void set_cardstr(char *cardstr,uint32_t c)
     cardstr[j++] = 0;
 }
 
-uint32_t set_handstr(char *handstr,uint8_t cards[7])
+uint32_t set_handstr(char *handstr,uint8_t cards[7],int32_t verbose)
 {
     char cardstr[32],cardstr2[32],*kickerstr,*str; uint32_t score;
+    if ( cards == 0 )
+    {
+        handstr[0] = 0;
+        printf("set_handstr: null cards??\n");
+        return(0);
+    }
    	score = SevenCardDrawScore (&cards[0]);
     set_cardstr(cardstr,(score>>SUBR_SHL) & SUBR_SHLMASK);
     set_cardstr(cardstr2,score & SUBR_SHLMASK);
     kickerstr = kickerstrs[(score>>RANK_SHL)&15];
     str = handstrs[(score>>RANK_SHL)&15];
-    if ( strcmp(kickerstr,"high") == 0 )
-        sprintf(handstr,"%c%c high %s",cardstr2[0],cardstr2[1],str);
-    else if ( strcmp(str,"full house") == 0 )
-        sprintf(handstr,"%c%c full of %c%c",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1]);
-    else if ( strcmp(str,"three of a kind") == 0 )
-        sprintf(handstr,"set of %c%c with kickers %c%c %c%c",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1],cardstr2[3],cardstr2[4]);
-    else if ( strcmp(str,"two pair") == 0 )
-        sprintf(handstr,"two pair %c%c and %c%c with %c%c kicker",cardstr[0],cardstr[1],cardstr[3],cardstr[4],cardstr2[0],cardstr2[1]);
-    else if ( strcmp(str,"one pair") == 0 )
-        sprintf(handstr,"pair of %c%c with %c%c kicker",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1]);
-    else sprintf(handstr,"%s %s %s %s",str,cardstr,kickerstr,cardstr2);
+    if ( verbose != 0 )
+    {
+        if ( strcmp(kickerstr,"high") == 0 )
+            sprintf(handstr,"%c%c high %s",cardstr2[0],cardstr2[1],str);
+        else if ( strcmp(str,"full house") == 0 )
+            sprintf(handstr,"%c%c full of %c%c",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1]);
+        else if ( strcmp(str,"three of a kind") == 0 )
+            sprintf(handstr,"set of %c%c with kickers %c%c %c%c",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1],cardstr2[3],cardstr2[4]);
+        else if ( strcmp(str,"two pair") == 0 )
+            sprintf(handstr,"two pair %c%c and %c%c with %c%c kicker",cardstr[0],cardstr[1],cardstr[3],cardstr[4],cardstr2[0],cardstr2[1]);
+        else if ( strcmp(str,"one pair") == 0 )
+            sprintf(handstr,"pair of %c%c with %c%c kicker",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1]);
+        else sprintf(handstr,"%s %s %s %s",str,cardstr,kickerstr,cardstr2);
+    }
+    else
+    {
+        if ( strcmp(kickerstr,"high") == 0 )
+            sprintf(handstr,"%c%c high %s",cardstr2[0],cardstr2[1],str);
+        else if ( strcmp(str,"full house") == 0 )
+            sprintf(handstr,"fullhouse %c%c %c%c",cardstr[0],cardstr[1],cardstr2[0],cardstr2[1]);
+        else if ( strcmp(str,"three of a kind") == 0 )
+            sprintf(handstr,"trip %c%c",cardstr[0],cardstr[1]);
+        else if ( strcmp(str,"two pair") == 0 )
+            sprintf(handstr,"two pairs %c%c %c%c",cardstr[0],cardstr[1],cardstr[3],cardstr[4]);
+        else if ( strcmp(str,"one pair") == 0 )
+            sprintf(handstr,"pair %c%c",cardstr[0],cardstr[1]);
+        else sprintf(handstr,"%s",cardstr2);
+    }
     return(score);
 }
 
@@ -557,7 +591,7 @@ static void DisplayHand7(char *handstr,uint8_t *cards)
         DisplayCard (cards[i], out);
 	x = SevenCardDrawScore (cards);
 	y = SevenCardDrawScoreSlow (cards);
-    set_handstr(handstr,cards);
+    set_handstr(handstr,cards,1);
 	if ( x != y )
         fprintf(stderr,"Error slow score %08x vs fast score %08x???\n",y,x);
      sprintf (out + strlen (out), " => %08x %6d %6d ->   (%s)",x,(x>>SUBR_SHL)&SUBR_SHLMASK,x&SUBR_SHLMASK,handstr);
@@ -579,6 +613,7 @@ void poker_test()
 		Shuffle(&Deck);
 	}
     starttime = (uint32_t)time(NULL);
+#ifndef _WIN32
     while ( (uint32_t)time(NULL) == starttime )
         usleep(100);
     total = counter = 0;
@@ -592,4 +627,5 @@ void poker_test()
         }
     }
     printf("counter.%llu %s in 10 seconds: ave score %llx\n",(long long)counter,_mbstr(counter),(long long)(total/counter));
+#endif
 }

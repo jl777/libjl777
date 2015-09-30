@@ -249,7 +249,7 @@ void calc_shares(unsigned char *shares,unsigned char *secret,int32_t size,int32_
     {
         uint32_t _crc32(uint32_t crc, const void *buf, size_t size);
         calc_share(buffer,size,M,ctx_logs[sharenrs[i]],&shares[i * width]);
-        printf("(%02x %08x) ",sharenrs[i],_crc32(0,&shares[i*width],size));
+        //printf("(%02x %08x) ",sharenrs[i],_crc32(0,&shares[i*width],size));
     }
     free(buffer);
 }
@@ -333,10 +333,10 @@ int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,
         {
             r = (randvals[i] % remains);
             sharenrs[i] = valid[r];
-            printf("%d ",sharenrs[i]);
+            //printf("%d ",sharenrs[i]);
             valid[r] = valid[--remains];
         }
-        printf("FULL SET\n");
+        //printf("FULL SET\n");
     }
     else
     {
@@ -366,7 +366,7 @@ int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,
         //    printf("%d ",sharenrs[i]);
         //printf("sharenrs vals | ");
     }
-     //printf("sharenrs m.%d of n.%d\n",m,n);
+    //printf("sharenrs m.%d of n.%d\n",m,n);
     if ( remains != (orign - m) )
     {
         printf("remains algo error??\n");

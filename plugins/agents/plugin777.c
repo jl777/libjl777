@@ -68,13 +68,13 @@ struct protocol_info
 
 struct plugin_info
 {
-    char bindaddr[64],connectaddr[64],ipaddr[64],name[64],NXTADDR[64],NXTACCT[64],SERVICENXT[64],NXTACCTSECRET[2048];
+    char bindaddr[64],connectaddr[64],ipaddr[64],transport[16],name[64],NXTADDR[64],NXTACCT[64],SERVICENXT[64],NXTACCTSECRET[2048];
     struct protocol_info protocol;
-    int32_t pushsock,pullsock;
-    uint32_t permanentflag,ppid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote;
+    int32_t pushsock,pullsock,pangeapull,pangeapub;
+    uint32_t permanentflag,ppid,extrasize,timeout,numrecv,numsent,bundledflag,registered,sleepmillis,allowremote,ready;
     uint16_t port,pangeaport;
     portable_mutex_t mutex;
-    uint64_t daemonid,myid,nxt64bits; uint8_t mypriv[32],mypub[32],recvbuf[65536*2];
+    uint64_t daemonid,myid,nxt64bits; uint8_t mypriv[32],mypub[32];
     uint8_t pluginspace[];
 };
 
@@ -331,8 +331,15 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
             if ( is_ipaddr(myipaddr) != 0 )
                 strcpy(plugin->ipaddr,myipaddr);
+            if ( plugin->ipaddr[0] == 0 )
+                strcpy(plugin->ipaddr,"127.0.0.1");
             plugin->port = juint(obj,"port");
-            plugin->pangeaport = juint(obj,"pangeaport");
+            if ( (plugin->pangeaport= juint(obj,"pangeaport")) == 0 )
+                plugin->pangeaport = 7899;
+            if ( jstr(obj,"transport") != 0 )
+                safecopy(plugin->transport,jstr(obj,"transport"),sizeof(plugin->transport));
+            if ( plugin->transport[0] == 0 )
+                strcpy(plugin->transport,"tcp");
         }
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
@@ -530,6 +537,7 @@ int32_t main
     randombytes((uint8_t *)&plugin->myid,sizeof(plugin->myid));
     plugin->permanentflag = myatoi((char *)argv[1],2);
     plugin->daemonid = calc_nxt64bits(argv[2]);
+    plugin->pangeapull = plugin->pangeapub = -1;
 #ifdef BUNDLED
     plugin->bundledflag = 1;
 #endif

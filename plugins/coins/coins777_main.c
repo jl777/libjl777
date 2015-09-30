@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -173,7 +173,8 @@ uint16_t extract_userpass(char *serverport,char *userpass,char *coinstr,char *us
     if ( strcmp(coinstr,"NXT") == 0 )
         return(0);
     serverport[0] = userpass[0] = 0;
-    set_coinconfname(fname,coinstr,userhome,coindir,confname);
+    if ( confname == 0 || confname[0] == 0 )
+        set_coinconfname(fname,coinstr,userhome,coindir,confname);
     printf("set_coinconfname.(%s)\n",fname);
     if ( (fp= fopen(os_compatible_path(fname),"r")) != 0 )
     {
@@ -261,7 +262,7 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
         return(0);
     }
     safecopy(coin->name,coinstr,sizeof(coin->name));
-    coin->jvin = -1;
+    //coin->jvin = -1;
     if ( argjson == 0 || strcmp(coinstr,"NXT") == 0 )
     {
         coin->usep2sh = 1;
@@ -329,6 +330,14 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     if ( coin->mgw.txfee == 0 )
         coin->mgw.txfee = 10000;
     coin->addrtype = coin777_addrtype(&coin->p2shtype,coin->name);
+    if ( strcmp(coin->name,"NXT") != 0 )
+    {
+        cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin);
+        extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
+        set_atomickeys(coin);
+        free_json(pangea_walletitem(0,coin));
+        printf("COIN.%s serverport.(%s) userpass.(%s) %s/%s %s/%s pangea.(%s)\n",coin->name,coin->serverport,coin->userpass,coin->atomicrecv,coin->atomicrecvpubkey,coin->atomicsend,coin->atomicsendpubkey,coin->pangeacoinaddr);
+    }
     if ( strcmp(coin->name,"BTC") == 0 )
     {
         if ( coin->donationaddress[0] == 0 )
@@ -340,14 +349,10 @@ struct coin777 *coin777_create(char *coinstr,cJSON *argjson)
     else if ( strcmp(coin->name,"LTC") == 0 )
         coin->minconfirms = 1, coin->mgw.txfee = 100000, coin->usep2sh = 0;
     else if ( strcmp(coin->name,"BTCD") == 0 )
-        coin->mgw.txfee = 1000000;//, strcpy(coin->donationaddress,"RDRWMSrDdoUcfZRBWUz7KZQSxPS9bZRerM");
-    printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
-    if ( strcmp(coin->name,"NXT") != 0 )
     {
-        extract_userpass(coin->serverport,coin->userpass,coinstr,SUPERNET.userhome,path,conf);
-        set_atomickeys(coin);
-        printf("COIN.%s serverport.(%s) userpass.(%s) %s/%s %s/%s\n",coin->name,coin->serverport,coin->userpass,coin->atomicrecv,coin->atomicrecvpubkey,coin->atomicsend,coin->atomicsendpubkey);
+        coin->mgw.txfee = 1000000;//, strcpy(coin->donationaddress,"RDRWMSrDdoUcfZRBWUz7KZQSxPS9bZRerM");
     }
+    printf("coin777_create %s: (%s) %llu mult.%llu NXTconvrate %.8f minconfirms.%d issuer.(%s) %llu opreturn.%d oldformat.%d\n",coin->mgw.coinstr,coin->mgw.assetidstr,(long long)coin->mgw.assetidbits,(long long)coin->mgw.ap_mult,coin->mgw.NXTconvrate,coin->minconfirms,coin->mgw.issuer,(long long)coin->mgw.issuerbits,coin->mgw.do_opreturn,coin->mgw.oldtx_format);
     COINS.LIST = realloc(COINS.LIST,(COINS.num+1) * sizeof(*coin));
     COINS.LIST[COINS.num] = coin, COINS.num++;
     //ensure_packedptrs(coin);

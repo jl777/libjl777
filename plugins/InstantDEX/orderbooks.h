@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -481,7 +481,7 @@ void prices777_orderbook_item(struct prices777 *prices,int32_t bidask,struct pri
     {
         jaddstr(item,"plugin",prices->exchange), jaddstr(item,"method","start");
         jaddnum(item,"dotrade",1), jaddnum(item,"volume",volume);
-        jaddnum(item,"timeout",120000);
+        jaddnum(item,"timeout",20000);
         jaddstr(item,"base",prices->base);
         if ( (iQ= find_iQ(quoteid)) != 0 )
             jadd64bits(item,"offerNXT",iQ->s.offerNXT);
@@ -1009,13 +1009,13 @@ struct prices777 *prices777_addbundle(int32_t *validp,int32_t loadprices,struct 
             {
                 printf("First pair for (%s), start polling]\n",exchange_str(prices->exchangeid));
                 exchange->polling = 1;
-                if ( strcmp(exchange->name,"wallet") != 0 && strcmp(exchange->name,"jumblr") != 0 && strcmp(exchange->name,"pangea") != 0 )
+                if ( strcmp(exchange->name,"wallet") != 0 )//&& strcmp(exchange->name,"jumblr") != 0 && strcmp(exchange->name,"pangea") != 0 )
                     portable_thread_create((void *)prices777_exchangeloop,&Exchanges[prices->exchangeid]);
             }
             BUNDLE.ptrs[BUNDLE.num] = prices;
             printf("prices777_addbundle.(%s) (%s/%s).%s %llu %llu\n",prices->contract,prices->base,prices->rel,prices->exchange,(long long)prices->baseid,(long long)prices->relid);
             BUNDLE.num++;
-        }
+        } else printf("no prices\n");
         *validp = BUNDLE.num;
         return(prices);
     }
@@ -1324,7 +1324,7 @@ double prices777_unconfNXT(struct prices777 *prices,int32_t maxdepth)
                     accountid = calc_nxt64bits(account.buf);
                     type = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"type"),-1);
                     subtype = (int32_t)get_API_int(cJSON_GetObjectItem(txobj,"subtype"),-1);
-                    timestamp = get_blockutime(juint(txobj,"timestamp"));
+                    timestamp = juint(txobj,"timestamp");
                     amount = get_API_nxt64bits(cJSON_GetObjectItem(txobj,"amountNQT"));
                     qty = amount = assetid = 0;
                     if ( (attachment= cJSON_GetObjectItem(txobj,"attachment")) != 0 )
@@ -1379,7 +1379,7 @@ double prices777_unconfNXT(struct prices777 *prices,int32_t maxdepth)
 double prices777_InstantDEX(struct prices777 *prices,int32_t maxdepth)
 {
     cJSON *json; double hbla = 0.;
-    if ( (json= InstantDEX_orderbook(prices)) != 0 )
+    if ( (json= InstantDEX_orderbook(prices)) != 0 ) // strcmp(prices->exchange,INSTANTDEX_NAME) == 0 &&
     {
         if ( Debuglevel > 2 )
             printf("InstantDEX.(%s)\n",jprint(json,0));

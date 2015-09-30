@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -911,11 +911,13 @@ struct prices777 *prices777_poll(char *_exchangestr,char *_name,char *_base,uint
         return(0);
     }
     InstantDEX_name(key,&keysize,exchangestr,name,base,&baseid,rel,&relid);
+//printf("call addbundle\n");
     if ( (prices= prices777_addbundle(&valid,0,0,exchangestr,baseid,relid)) != 0 )
     {
         printf("found (%s/%s).%s %llu %llu in slot-> %p\n",base,rel,exchangestr,(long long)baseid,(long long)relid,prices);
         return(prices);
     }
+//printf("call find_exchange\n");
     if ( (exchange= find_exchange(&exchangeid,exchangestr)) == 0 )
     {
         printf("cant add exchange.(%s)\n",exchangestr);
@@ -930,7 +932,10 @@ struct prices777 *prices777_poll(char *_exchangestr,char *_name,char *_base,uint
         }
     }
     if ( (prices= prices777_initpair(1,0,exchangestr,base,rel,0.,name,baseid,relid,0)) != 0 )
+    {
+        //printf("call addbundle after initpair\n");
         prices777_addbundle(&valid,1,prices,0,0,0);
+    }
     return(prices);
 }
 
@@ -1002,7 +1007,7 @@ void prices777_exchangeloop(void *ptr)
                     pollflag = 1;
                 else if ( isnxtae == 0 )
                     pollflag = milliseconds() > (exchange->lastupdate + exchange->pollgap*1000) && milliseconds() > (prices->lastupdate + 1000*SUPERNET.idlegap);
-                else if ( strcmp(exchange->name,"unconf") == 0 || prices->pollnxtblock < prices777_NXTBLOCK || milliseconds() > prices->lastupdate + 1000*SUPERNET.idlegap )
+                else if ( (strcmp(exchange->name,"unconf") == 0 && milliseconds() > prices->lastupdate + 5000) || prices->pollnxtblock < prices777_NXTBLOCK || milliseconds() > prices->lastupdate + 1000*SUPERNET.idlegap )
                     pollflag = 1;
                 else continue;
                 if ( pollflag != 0 && exchange->updatefunc != 0 )
@@ -1126,7 +1131,7 @@ int32_t prices777_init(char *jsonstr)
     for (i=0; i<MAX_EXCHANGES; i++)
     {
         exchangeptr = &Exchanges[i];
-        if ( exchangeptr->refcount > 0 || strcmp(exchangeptr->name,"unconf") == 0 )
+        if ( (exchangeptr->refcount > 0 || strcmp(exchangeptr->name,"unconf") == 0) )//&& strcmp(exchangeptr->name,"pangea") != 0 && strcmp(exchangeptr->name,"jumblr") != 0 )
             portable_thread_create((void *)prices777_exchangeloop,exchangeptr);
     }
     return(0);

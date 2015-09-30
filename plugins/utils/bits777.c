@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -32,7 +32,7 @@
 #define NUM_BLOOMPRIMES 8
 
 struct bloombits { uint8_t hashbits[NUM_BLOOMPRIMES][79997/8 + 1],pad[sizeof(uint64_t)]; };
-struct acct777_sig { bits256 sigbits,pubkey; uint64_t signer64bits; };
+struct acct777_sig { bits256 sigbits,pubkey; uint64_t signer64bits; uint32_t timestamp; };
 
 int32_t bitweight(uint64_t x);
 int wt384(bits384 a,bits384 b);
@@ -60,6 +60,8 @@ uint64_t acct777_signtx(struct acct777_sig *sig,bits256 privkey,uint32_t timesta
 uint64_t acct777_swaptx(bits256 privkey,struct acct777_sig *sig,uint32_t timestamp,uint8_t *data,int32_t datalen);
 uint64_t conv_acctstr(char *acctstr);
 bits256 curve25519(bits256 mysecret,bits256 theirpublic);
+
+extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
 
 #endif
 #else
@@ -227,7 +229,6 @@ uint32_t _crc32(uint32_t crc,const void *buf,size_t size)
 	return crc ^ ~0U;
 }
 
-extern bits256 GENESIS_PUBKEY,GENESIS_PRIVKEY;
 int32_t curve25519_donna(uint8_t *mypublic,const uint8_t *secret,const uint8_t *basepoint);
 
 bits256 acct777_pubkey(bits256 privkey)
@@ -283,6 +284,7 @@ uint64_t acct777_sign(struct acct777_sig *sig,bits256 privkey,bits256 otherpubke
     int32_t i; bits256 shared; uint8_t buf[sizeof(shared) + sizeof(timestamp)]; uint32_t t = timestamp;
     for (i=0; i<sizeof(t); i++,t>>=8)
         buf[i] = (t & 0xff);
+    sig->timestamp = timestamp;
     shared = curve25519(privkey,otherpubkey);
     memcpy(&buf[sizeof(timestamp)],shared.bytes,sizeof(shared));
     calc_sha256cat(sig->sigbits.bytes,buf,sizeof(buf),data,datalen);

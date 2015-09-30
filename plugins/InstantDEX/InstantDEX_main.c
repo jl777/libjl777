@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -365,10 +365,16 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
             iQ->s.vol = 1.;
         if ( iQ->s.baseamount == 0 )
             iQ->s.baseamount = iQ->s.vol * SATOSHIDEN;
-        if ( localaccess != 0 )
+        if ( localaccess != 0 && strcmp(exchangestr->buf,"jumblr") == 0 )
         {
             if ( (coin= coin777_find(base->buf,0)) != 0 )
             {
+                if ( coin->jvin == 0 && coin->jvinaddr[0] == 0 )
+                {
+                    coin->jvin = -1;
+                    printf("initial state for jumblr.%s detected\n",coin->name);
+                    sleep(5);
+                }
                 if ( coin->jvin < 0 )
                 {
                     printf("no %s unspents available for jumblr/pangea jvin.%d %.8f\n",coin->name,coin->jvin,dstr(coin->junspent));
@@ -385,7 +391,7 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
             }
             else
             {
-                printf("%s not initialized for jumblr/pangea\n",base->buf);
+                printf("%s not initialized for jumblr\n",base->buf);
                 return(-1);
             }
         }
@@ -409,9 +415,9 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
     if ( iQ->s.price > SMALLVAL && iQ->s.vol > SMALLVAL && iQ->s.baseid != 0 && iQ->s.relid != 0 )
     {
         buf[0] = 0, _set_assetname(&basemult,buf,0,iQ->s.baseid);
-        //printf("baseid.%llu -> %s mult.%llu\n",(long long)iQ->baseid,buf,(long long)basemult);
+        printf("baseid.%llu -> %s mult.%llu\n",(long long)iQ->s.baseid,buf,(long long)basemult);
         buf[0] = 0, _set_assetname(&relmult,buf,0,iQ->s.relid);
-        //printf("relid.%llu -> %s mult.%llu\n",(long long)iQ->relid,buf,(long long)relmult);
+        printf("relid.%llu -> %s mult.%llu\n",(long long)iQ->s.relid,buf,(long long)relmult);
         //basemult = get_assetmult(iQ->baseid), relmult = get_assetmult(iQ->relid);
         baseamount = (iQ->s.baseamount + basemult/2) / basemult, baseamount *= basemult;
         relamount = (iQ->s.relamount + relmult/2) / relmult, relamount *= relmult;
@@ -450,7 +456,7 @@ char *InstantDEX(char *jsonstr,char *remoteaddr,int32_t localaccess)
         }
         if ( iQ.s.offerNXT == 0 )
             iQ.s.offerNXT = SUPERNET.my64bits;
-        //printf("isask.%d base.(%s) rel.(%s)\n",iQ.s.isask,base.buf,rel.buf);
+printf("isask.%d base.(%s) rel.(%s)\n",iQ.s.isask,base.buf,rel.buf);
         copy_cJSON(&method,jobj(json,"method"));
         if ( (sequenceid= j64bits(json,"orderid")) == 0 )
             sequenceid = j64bits(json,"sequenceid");
@@ -666,9 +672,12 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         plugin->allowremote = 1;
         portable_mutex_init(&plugin->mutex);
         init_InstantDEX(calc_nxt64bits(SUPERNET.NXTADDR),0,json);
-        INSTANTDEX.history = txinds777_init(SUPERNET.DBPATH,"InstantDEX");
-        INSTANTDEX.numhist = (int32_t)INSTANTDEX.history->curitem;
-        InstantDEX_inithistory(0,INSTANTDEX.numhist);
+        if ( 0 )
+        {
+            INSTANTDEX.history = txinds777_init(SUPERNET.DBPATH,"InstantDEX");
+            INSTANTDEX.numhist = (int32_t)INSTANTDEX.history->curitem;
+            InstantDEX_inithistory(0,INSTANTDEX.numhist);
+        }
         //update_NXT_assettrades();
         INSTANTDEX.readyflag = 1;
         plugin->sleepmillis = 25;

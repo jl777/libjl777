@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -298,6 +298,7 @@ bits256 curve25519(bits256 mysecret,bits256 basepoint);
     cmult(&x,&z,mysecret,bp);
     return(fcontract(fmul(x,crecip(z))));
 }*/
+void randombytes(unsigned char *x,long xlen);
 
 static bits256 rand256(int32_t privkeyflag)
 {
@@ -307,6 +308,24 @@ static bits256 rand256(int32_t privkeyflag)
         randval.bytes[0] &= 0xf8, randval.bytes[31] &= 0x7f, randval.bytes[31] |= 0x40;
     return(randval);
 }
+
+static bits256 curve25519_basepoint9()
+{
+    bits256 basepoint;
+    memset(&basepoint,0,sizeof(basepoint));
+    basepoint.bytes[0] = 9;
+    return(basepoint);
+}
+
+static bits256 curve25519_keypair(bits256 *pubkeyp)
+{
+    bits256 privkey;
+    privkey = rand256(1);
+    *pubkeyp = curve25519(privkey,curve25519_basepoint9());
+    //printf("[%llx %llx] ",privkey.txid,(*pubkeyp).txid);
+    return(privkey);
+}
+
 // following is ported from libtom
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 
@@ -520,7 +539,7 @@ static inline int32_t sha256_vdone(struct sha256_vstate *md,uint8_t *out)
     return(0);
 }
 
-void vcalc_sha256(char hashstr[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t *src,int32_t len)
+static void vcalc_sha256(char hashstr[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_t *src,int32_t len)
 {
     struct sha256_vstate md;
     sha256_vinit(&md);
@@ -533,7 +552,7 @@ void vcalc_sha256(char hashstr[(256 >> 3) * 2 + 1],uint8_t hash[256 >> 3],uint8_
     }
 }
 
-void vcalc_sha256cat(uint8_t hash[256 >> 3],uint8_t *src,int32_t len,uint8_t *src2,int32_t len2)
+static void vcalc_sha256cat(uint8_t hash[256 >> 3],uint8_t *src,int32_t len,uint8_t *src2,int32_t len2)
 {
     struct sha256_vstate md;
     sha256_vinit(&md);
@@ -543,7 +562,7 @@ void vcalc_sha256cat(uint8_t hash[256 >> 3],uint8_t *src,int32_t len,uint8_t *sr
     sha256_vdone(&md,hash);
 }
 
-void vupdate_sha256(uint8_t hash[256 >> 3],struct sha256_vstate *state,uint8_t *src,int32_t len)
+static void vupdate_sha256(uint8_t hash[256 >> 3],struct sha256_vstate *state,uint8_t *src,int32_t len)
 {
     struct sha256_vstate md;
     memset(&md,0,sizeof(md));
@@ -558,4 +577,13 @@ void vupdate_sha256(uint8_t hash[256 >> 3],struct sha256_vstate *state,uint8_t *
     sha256_vdone(&md,hash);
 }
 
+static bits256 curve25519_shared(bits256 privkey,bits256 otherpub)
+{
+    bits256 shared,hash;
+    shared = curve25519(privkey,otherpub);
+    vcalc_sha256(0,hash.bytes,shared.bytes,sizeof(shared));
+    //printf("priv.%llx pub.%llx shared.%llx -> hash.%llx\n",privkey.txid,pubkey.txid,shared.txid,hash.txid);
+    //hash.bytes[0] &= 0xf8, hash.bytes[31] &= 0x7f, hash.bytes[31] |= 64;
+    return(hash);
+}
 #endif

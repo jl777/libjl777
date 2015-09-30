@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -85,7 +85,7 @@ void *issue_cgicall(void *_ptr)
         destNXT = cJSON_str(cJSON_GetObjectItem(ptr->json,"destNXT"));
         if ( strcmp(plugin.buf,"relay") == 0 || (broadcaststr != 0 && strcmp(broadcaststr,"remoteaccess") == 0) || cJSON_str(cJSON_GetObjectItem(ptr->json,"servicename")) != 0 )
         {
-            if ( Debuglevel > 1 )
+            if ( Debuglevel > 2 )
                 printf("call busdata_sync.(%s)\n",ptr->jsonstr);
             //printf("destNXT.(%s)\n",destNXT!=0?destNXT:"");
             str = busdata_sync(&nonce,ptr->jsonstr,broadcaststr,destNXT);
@@ -306,6 +306,9 @@ void SuperNET_loop(void *ipaddr)
         strs[n++] = language_func((char *)"jumblr","",0,0,1,(char *)"jumblr",jsonargs,call_system);
         while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"jumblr",0,0) == 0 )
             poll_daemons();
+        strs[n++] = language_func((char *)"pangea","",0,0,1,(char *)"pangea",jsonargs,call_system);
+        while ( find_daemoninfo(&ind,"pangea",0,0) == 0 )
+            poll_daemons();
         //strs[n++] = language_func((char *)"dcnet","",0,0,1,(char *)"dcnet",jsonargs,call_system);
         //while ( RELAYS.readyflag == 0 || find_daemoninfo(&ind,"dcnet",0,0) == 0 )
         //    poll_daemons();
@@ -418,8 +421,31 @@ void SuperNET_apiloop(void *ipaddr)
 
 uint64_t set_account_NXTSECRET(void *myprivkey,void *mypubkey,char *NXTacct,char *NXTaddr,char *secret,int32_t max,cJSON *argjson,char *coinstr,char *serverport,char *userpass)
 {
-    uint64_t allocsize,nxt64bits;
-    char coinaddr[MAX_JSON_FIELD],*str,*privkey;
+    uint64_t allocsize,nxt64bits; struct destbuf tmp,myipaddr; char coinaddr[MAX_JSON_FIELD],*str,*privkey;
+    SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(argjson,"MAINNET"),1);
+    SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(argjson,"USESSL"),0);
+    SUPERNET.NXTconfirms = get_API_int(cJSON_GetObjectItem(argjson,"NXTconfirms"),10);
+    copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"NXTAPIURL")), safecopy(SUPERNET.NXTAPIURL,tmp.buf,sizeof(SUPERNET.NXTAPIURL));
+    if ( SUPERNET.NXTAPIURL[0] == 0 )
+    {
+        if ( SUPERNET.usessl == 0 )
+            strcpy(SUPERNET.NXTAPIURL,"http://127.0.0.1:");
+        else strcpy(SUPERNET.NXTAPIURL,"https://127.0.0.1:");
+        if ( SUPERNET.ismainnet != 0 )
+            strcat(SUPERNET.NXTAPIURL,"7876/nxt");
+        else strcat(SUPERNET.NXTAPIURL,"6876/nxt");
+    }
+    copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"userdir")), safecopy(SUPERNET.userhome,tmp.buf,sizeof(SUPERNET.userhome));
+    if ( SUPERNET.userhome[0] == 0 )
+        strcpy(SUPERNET.userhome,"/root");
+    strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
+    strcat(SUPERNET.NXTSERVER,"?requestType");
+    copy_cJSON(&tmp,cJSON_GetObjectItem(argjson,"myNXTacct")), safecopy(SUPERNET.myNXTacct,tmp.buf,sizeof(SUPERNET.myNXTacct));
+    copy_cJSON(&myipaddr,cJSON_GetObjectItem(argjson,"myipaddr"));
+    if ( myipaddr.buf[0] != 0 || SUPERNET.myipaddr[0] == 0 )
+        safecopy(SUPERNET.myipaddr,myipaddr.buf,sizeof(SUPERNET.myipaddr));
+    if ( SUPERNET.myipaddr[0] != 0 )
+        SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
     NXTaddr[0] = 0;
     extract_cJSON_str(secret,max,argjson,"secret");
     if ( Debuglevel > 2 )
@@ -438,62 +464,41 @@ uint64_t set_account_NXTSECRET(void *myprivkey,void *mypubkey,char *NXTacct,char
         }
         if ( coinaddr[0] == 0 )
             extract_cJSON_str(coinaddr,sizeof(coinaddr),argjson,"pubsrvaddr");
-        printf("coinaddr.(%s)\n",coinaddr);
-        if ( coinstr == 0 || serverport == 0 || userpass == 0 || (privkey= dumpprivkey(coinstr,serverport,userpass,coinaddr)) == 0 )
-            gen_randomacct(33,NXTaddr,secret,"randvals");
-        else
+        if ( coinaddr[0] != 0 )
         {
-            strcpy(secret,privkey);
-            free(privkey);
+            //printf("coinaddr.(%s) nonz.%d\n",coinaddr,coinaddr[0]);
+            if ( coinstr == 0 || serverport == 0 || userpass == 0 || (privkey= dumpprivkey(coinstr,serverport,userpass,coinaddr)) == 0 )
+                gen_randomacct(33,NXTaddr,secret,"randvals");
+            else
+            {
+                strcpy(secret,privkey);
+                free(privkey);
+            }
         }
     }
     else if ( strcmp(secret,"randvals") == 0 )
         gen_randomacct(33,NXTaddr,secret,"randvals");
-    nxt64bits = conv_NXTpassword(SUPERNET.myprivkey,SUPERNET.mypubkey,(uint8_t *)secret,(int32_t)strlen(secret));
+    nxt64bits = conv_NXTpassword(myprivkey,mypubkey,(uint8_t *)secret,(int32_t)strlen(secret));
     expand_nxt64bits(NXTaddr,nxt64bits);
     if ( 1 )
         conv_rsacctstr(NXTacct,nxt64bits);
     char pubkeystr[128];
-    init_hexbytes_noT(pubkeystr,SUPERNET.mypubkey,32);
-    printf("(%s) (%s) (%s) pubkey.(%s)\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>",pubkeystr);
+    init_hexbytes_noT(pubkeystr,mypubkey,32);
+    printf("(%s) (%s) (%s) pubkey.(%s) [%02x %02x] NXTAPIURL.[%s]\n",NXTacct,NXTaddr,Debuglevel > 2 ? secret : "<secret>",pubkeystr,*(uint8_t *)myprivkey,*(uint8_t *)mypubkey,SUPERNET.NXTAPIURL);
     return(nxt64bits);
 }
 
 void SuperNET_initconf(cJSON *json)
 {
-    struct destbuf myipaddr,tmp; uint8_t mysecret[32],mypublic[32]; FILE *fp;
+    struct destbuf tmp; uint8_t mysecret[32],mypublic[32]; FILE *fp;
     MAX_DEPTH = get_API_int(cJSON_GetObjectItem(json,"MAX_DEPTH"),MAX_DEPTH);
     if ( MAX_DEPTH > _MAX_DEPTH )
         MAX_DEPTH = _MAX_DEPTH;
     SUPERNET.disableNXT = get_API_int(cJSON_GetObjectItem(json,"disableNXT"),0);
-    SUPERNET.ismainnet = get_API_int(cJSON_GetObjectItem(json,"MAINNET"),1);
-    SUPERNET.usessl = get_API_int(cJSON_GetObjectItem(json,"USESSL"),0);
-    SUPERNET.NXTconfirms = get_API_int(cJSON_GetObjectItem(json,"NXTconfirms"),10);
-    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"NXTAPIURL")), safecopy(SUPERNET.NXTAPIURL,tmp.buf,sizeof(SUPERNET.NXTAPIURL));
-    if ( SUPERNET.NXTAPIURL[0] == 0 )
-    {
-        if ( SUPERNET.usessl == 0 )
-            strcpy(SUPERNET.NXTAPIURL,"http://127.0.0.1:");
-        else strcpy(SUPERNET.NXTAPIURL,"https://127.0.0.1:");
-        if ( SUPERNET.ismainnet != 0 )
-            strcat(SUPERNET.NXTAPIURL,"7876/nxt");
-        else strcat(SUPERNET.NXTAPIURL,"6876/nxt");
-    }
-    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"userdir")), safecopy(SUPERNET.userhome,tmp.buf,sizeof(SUPERNET.userhome));
-    if ( SUPERNET.userhome[0] == 0 )
-        strcpy(SUPERNET.userhome,"/root");
-    strcpy(SUPERNET.NXTSERVER,SUPERNET.NXTAPIURL);
-    strcat(SUPERNET.NXTSERVER,"?requestType");
-    copy_cJSON(&tmp,cJSON_GetObjectItem(json,"myNXTacct")), safecopy(SUPERNET.myNXTacct,tmp.buf,sizeof(SUPERNET.myNXTacct));
-    if ( SUPERNET.disableNXT == 0 )
+     if ( SUPERNET.disableNXT == 0 )
         set_account_NXTSECRET(SUPERNET.myprivkey,SUPERNET.mypubkey,SUPERNET.NXTACCT,SUPERNET.NXTADDR,SUPERNET.NXTACCTSECRET,sizeof(SUPERNET.NXTACCTSECRET)-1,json,0,0,0);
     else strcpy(SUPERNET.NXTADDR,SUPERNET.myNXTacct);
     SUPERNET.my64bits = conv_acctstr(SUPERNET.NXTADDR);
-    copy_cJSON(&myipaddr,cJSON_GetObjectItem(json,"myipaddr"));
-    if ( myipaddr.buf[0] != 0 || SUPERNET.myipaddr[0] == 0 )
-        safecopy(SUPERNET.myipaddr,myipaddr.buf,sizeof(SUPERNET.myipaddr));
-    if ( SUPERNET.myipaddr[0] != 0 )
-        SUPERNET.myipbits = (uint32_t)calc_ipbits(SUPERNET.myipaddr);
     //KV777.mmapflag = get_API_int(cJSON_GetObjectItem(json,"mmapflag"),0);
     //if ( strncmp(SUPERNET.myipaddr,"89.248",5) == 0 )
     //    SUPERNET.iamrelay = get_API_int(cJSON_GetObjectItem(json,"iamrelay"),1*0);
@@ -510,12 +515,13 @@ void SuperNET_initconf(cJSON *json)
     sprintf(SUPERNET.globalendpoint,"%s://%s:%u",SUPERNET.transport,SUPERNET.myipaddr,SUPERNET.port + PUBGLOBALS_OFFSET);
     copy_cJSON(&tmp,cJSON_GetObjectItem(json,"SERVICESECRET")), safecopy(SUPERNET.SERVICESECRET,tmp.buf,sizeof(SUPERNET.SERVICESECRET));
     expand_nxt64bits(SUPERNET.SERVICENXT,conv_NXTpassword(mysecret,mypublic,(uint8_t *)SUPERNET.SERVICESECRET,(int32_t)strlen(SUPERNET.SERVICESECRET)));
-    printf("SERVICENXT.%s\n",SUPERNET.SERVICENXT);
+    //printf("SERVICENXT.%s\n",SUPERNET.SERVICENXT);
     SUPERNET.automatch = get_API_int(cJSON_GetObjectItem(json,"automatch"),3);
 #ifndef __linux__
     SUPERNET.UPNP = 1;
 #endif
     SUPERNET.telepathicdelay = get_API_int(cJSON_GetObjectItem(json,"telepathicdelay"),1000);
+    SUPERNET.pangeaport = get_API_int(cJSON_GetObjectItem(json,"pangeaport"),0);
     SUPERNET.peggy = get_API_int(cJSON_GetObjectItem(json,"peggy"),0);
     SUPERNET.idlegap = get_API_int(cJSON_GetObjectItem(json,"idlegap"),60);
     SUPERNET.recvtimeout = get_API_int(cJSON_GetObjectItem(json,"recvtimeout"),10);
@@ -610,8 +616,8 @@ int SuperNET_start(char *fname,char *myip)
     void crypto_update();
     int32_t init_SUPERNET_pullsock(int32_t sendtimeout,int32_t recvtimeout);
     char ipaddr[256],*jsonstr = 0; cJSON *json; uint64_t i,allocsize;
-    portable_OS_init();
     printf("%p myip.(%s)\n",myip,myip);
+    portable_OS_init();
     parse_ipaddr(ipaddr,myip);
     Debuglevel = 2;
     if ( (jsonstr= loadfile(&allocsize,fname)) == 0 )
@@ -773,8 +779,17 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
-    //void poker_test();
-    //poker_test(); getchar();
+     if ( 0 )
+    {
+        //void poker_test();
+        //poker_test(); getchar();
+        //void raft777_test();
+        void hostnet777_test(int32_t numclients,int32_t numiters,int32_t mode);
+        void portable_OS_init();
+        //raft777_test();
+        int numplayers = 9;
+        portable_OS_init(), hostnet777_test(numplayers,1000 * (numplayers + numplayers * (numplayers*2 + 5 + 1)),1), getchar();
+    }
 #endif
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )
         jsonstr = clonestr("{}");

@@ -221,12 +221,40 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         if ( strcmp(request.buf,"SuperNET") == 0 )
         {
             char *call_SuperNET_JSON(char *JSONstr);
+            char *resubmit; cJSON *resubjson,*resubarray,*item; int32_t i,m;
             //fprintf(stderr,"processing pluginrequest.(%s)\n",str);
             if ( (retstr= call_SuperNET_JSON(str)) != 0 )
             {
                 if ( Debuglevel > 2 )
                     fprintf(stderr,"send return from (%s) <<<<<<<<<<<<<<<<<<<<<< (%s) \n",str,retstr);
-                //nn_local_broadcast(dp->pushsock,instanceid,0,(uint8_t *)retstr,(int32_t)strlen(retstr)+1), dp->numsent++;
+                if ( (resubarray= jarray(&m,json,"resubmit")) != 0 && (resubjson= cJSON_Parse(retstr)) != 0 )
+                {
+                    for (i=0; i<m; i++)
+                    {
+                        item = jitem(resubarray,i);
+                        //printf("i.%d of %d: %s %s\n",i,m,get_cJSON_fieldname(item),jprint(item,0));
+                        if ( item->child != 0 )
+                            item = item->child;
+                        if ( is_cJSON_String(item) != 0 )
+                        {
+                            //printf("addstr.(%s) %s\n",get_cJSON_fieldname(item),cJSON_str(item));
+                            jaddstr(resubjson,get_cJSON_fieldname(item),cJSON_str(item));
+                        }
+                        else if ( is_cJSON_Number(item) != 0 )
+                        {
+                            //printf("addnum.(%s) %f\n",get_cJSON_fieldname(item),jdouble(item,0));
+                            jaddnum(resubjson,get_cJSON_fieldname(item),jdouble(item,0));
+                        }
+                        else if ( is_cJSON_Array(item) != 0 )
+                            jadd(resubjson,get_cJSON_fieldname(item),cJSON_Duplicate(item,1));
+                    }
+                    jaddstr(resubjson,"plugin",dp->name);
+                    jaddstr(resubjson,"resubmit","yes");
+                    resubmit = jprint(resubjson,1);
+                    //printf("resubmit.(%s)\n",resubmit);
+                    nn_local_broadcast(dp->pushsock,instanceid,0,(uint8_t *)resubmit,(int32_t)strlen(resubmit)+1), dp->numsent++;
+                    free(resubmit);
+                } //else printf("no resubmit in json.(%s)\n",str);
                 free(str), str = retstr, retstr = 0;
             }
         }
@@ -266,7 +294,7 @@ int32_t poll_daemons()
                 process_plugin_message(dp,clonestr(msg),(int32_t)strlen(msg)+1);
             else printf("poll_daemons cant find daemonid.%llu instanceid.%llu (%s)\n",(long long)daemonid,(long long)instanceid,msg);
             free_json(json);
-        } else printf("poll_daemons couldnt parse.(%s)\n",msg);
+        } else printf("poll_daemons supernet pullsock.%d couldnt parse.(%s)\n",SUPERNET.pullsock,msg);
         nn_freemsg(msg);
         processed++;
     }
@@ -328,7 +356,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         int32_t dcnet_main(int32_t,char *args[]);
         int32_t prices_main(int32_t,char *args[]);
         int32_t jumblr_main(int32_t,char *args[]);
-        //int32_t cashier_main(int32_t,char *args[]);
+        int32_t pangea_main(int32_t,char *args[]);
         if ( strcmp(dp->name,"coins") == 0 ) return(coins_main(n,args));
         else if ( strcmp(dp->name,"InstantDEX") == 0 ) return(InstantDEX_main(n,args));
         else if ( strcmp(dp->name,"prices") == 0 ) return(prices_main(n,args));
@@ -337,7 +365,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
         else if ( strcmp(dp->name,"jumblr") == 0 ) return(jumblr_main(n,args));
         else if ( strcmp(dp->name,"SuperNET") == 0 ) return(SuperNET_main(n,args));
         else if ( strcmp(dp->name,"dcnet") == 0 ) return(dcnet_main(n,args));
-        //else if ( strcmp(dp->name,"cashier") == 0 ) return(cashier_main(n,args));
+        else if ( strcmp(dp->name,"pangea") == 0 ) return(pangea_main(n,args));
         //else if ( strcmp(dp->name,"teleport") == 0 ) return(teleport_main(n,args));
 #ifdef INSIDE_MGW
         else if ( strcmp(dp->name,"ramchain") == 0 ) return(ramchain_main(n,args));
@@ -351,7 +379,7 @@ int32_t call_system(struct daemon_info *dp,int32_t permanentflag,char *cmd,char 
 int32_t is_bundled_plugin(char *plugin)
 {
     if ( strcmp(plugin,"InstantDEX") == 0 || strcmp(plugin,"SuperNET") == 0 || strcmp(plugin,"kv777") == 0 || strcmp(plugin,"coins") == 0 || strcmp(plugin,"relay") == 0 ||strcmp(plugin,"prices") == 0 || strcmp(plugin,"dcnet") == 0 || strcmp(plugin,"jumblr") == 0 ||
-        //strcmp(plugin,"cashier") == 0 || strcmp(plugin,"teleport") == 0
+        strcmp(plugin,"pangea") == 0 || //strcmp(plugin,"teleport") == 0
 #ifdef INSIDE_MGW
         strcmp(plugin,"ramchain") == 0 || strcmp(plugin,"MGW") == 0 ||
 #endif
@@ -394,8 +422,7 @@ void *daemon_loop2(void *args) // launch permanent plugin process
 
 char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,char *cmd,char *arg,int32_t (*daemonfunc)(struct daemon_info *dp,int32_t permanentflag,char *cmd,char *jsonargs))
 {
-    struct daemon_info *dp;
-    char retbuf[1024]; int32_t i,delim,offset=0;
+    struct daemon_info *dp; cJSON *argjson; char retbuf[1024],*str; int32_t i,delim,offset=0;
     //printf("launch daemon.(%s)\n",plugin);
     if ( Numdaemons >= sizeof(Daemoninfos)/sizeof(*Daemoninfos) )
         return(clonestr("{\"error\":\"too many daemons, cant create anymore\"}"));
@@ -419,6 +446,15 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
                 offset = i+1;
         strcpy(dp->name,plugin+offset);
     }
+    if ( arg != 0 && (argjson= cJSON_Parse(arg)) != 0 )
+    {
+        if ( (str= jstr(argjson,"name")) != 0 )
+        {
+            printf("OVERRIDE name from (%s) -> (%s)\n",dp->name,str);
+            safecopy(dp->name,str,sizeof(dp->name));
+        }
+        free(argjson);
+    }
     dp->daemonid = (uint64_t)(milliseconds() * 1000000) & (~(uint64_t)3) ^ *(int32_t *)plugin;
     //memset(&dp->perm,0xff,sizeof(dp->perm));
     //memset(&dp->wss,0xff,sizeof(dp->wss));
@@ -431,7 +467,7 @@ char *launch_daemon(char *plugin,char *ipaddr,uint16_t port,int32_t websocket,ch
         free_daemon_info(dp);
         return(clonestr("{\"error\":\"portable_thread_create couldnt create daemon\"}"));
     }
-    sprintf(retbuf,"{\"result\":\"launched\",\"daemonid\":\"%llu\"}\n",(long long)dp->daemonid);
+    sprintf(retbuf,"{\"result\":\"launched\",\"daemonid\":\"%llu\",\"agent\":\"%s\"}\n",(long long)dp->daemonid,plugin);
     return(clonestr(retbuf));
  }
 
@@ -518,7 +554,7 @@ char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin
                 language_func((char *)plugin,"",0,0,1,(char *)plugin,origargstr,call_system);
             return(clonestr("{\"error\":\"cant find plugin, AUTOLOAD\"}"));
         }
-        fprintf(stderr,"cant find.(%s)\n",plugin);
+        //fprintf(stderr,"cant find.(%s)\n",plugin);
         return(clonestr("{\"error\":\"cant find plugin\"}"));
     }
     else
@@ -533,7 +569,7 @@ char *plugin_method(int32_t sock,char **retstrp,int32_t localaccess,char *plugin
         }
         if ( localaccess == 0 && dp->allowremote == 0 )
         {
-            fprintf(stderr,"allowremote.%d isremote.%d\n",dp->allowremote,!localaccess);
+            fprintf(stderr,"%s allowremote.%d isremote.%d\n",dp->name,dp->allowremote,!localaccess);
             sprintf(retbuf,"{\"error\":\"cant remote call plugin\",\"ipaddr\":\"%s\",\"plugin\":\"%s\",\"daemonid\":\"%llu\",\"myid\":\"%llu\"}",SUPERNET.myipaddr,plugin,(long long)dp->daemonid,(long long)dp->myid);
             return(clonestr(retbuf));
         }

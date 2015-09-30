@@ -13,9 +13,9 @@ make agents
 if make btcd; then
 	rm ~/.BitcoinDark/debug.log
 	./BitcoinDarkd
-    pkill websocketd; sleep 1
+    #pkill websocketd; sleep 1
 	#libs/websocketd --sameorigin=true --cgidir=plugins/cgi --port=7777 &
-	libs/websocketd --cgidir=plugins/cgi --port=7777&
+	#libs/websocketd --cgidir=plugins/cgi --port=7777&
 else
 	echo "error building"
 fi

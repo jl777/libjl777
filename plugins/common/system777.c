@@ -6,7 +6,7 @@
  * holder information and the developer policies on copyright and licensing.  *
  *                                                                            *
  * Unless otherwise agreed in a custom licensing agreement, no part of the    *
- * Nxt software, including this file, may be copied, modified, propagated,    *
+ * SuperNET software, including this file may be copied, modified, propagated *
  * or distributed except according to the terms contained in the LICENSE file *
  *                                                                            *
  * Removal or modification of this copyright notice is prohibited.            *
@@ -97,7 +97,7 @@ struct SuperNET_info
     uint64_t my64bits; uint8_t myprivkey[32],mypubkey[32];
     uint32_t myipbits,nonces[512],numnonces; struct applicant_info *responses; cJSON *peersjson; char lbendpoint[128],relayendpoint[128],globalendpoint[128];
     int32_t usessl,ismainnet,Debuglevel,SuperNET_retval,APISLEEP,gatewayid,numgateways,readyflag,UPNP,iamrelay,disableNXT,NXTconfirms,automatch,PLUGINTIMEOUT,ppid,noncing,pullsock,telepathicdelay,peggy,idlegap,exchangeidle,recvtimeout;
-    uint16_t port,serviceport;
+    uint16_t port,serviceport,pangeaport;
     uint64_t tags[NUM_PLUGINTAGS][3];
     struct env777 DBs;
     struct kv777 *PM,*rawPM,*protocols,*alias,*services,*invoices,*NXTtxids,*NXTaccts;
