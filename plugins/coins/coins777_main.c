@@ -418,7 +418,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         } else strcpy(retbuf,"{\"result\":\"no JSON for init\"}");
         COINS.readyflag = 1;
         plugin->allowremote = 1;
-        //plugin->sleepmillis = 1;
+        plugin->sleepmillis = 100;
     }
     else
     {

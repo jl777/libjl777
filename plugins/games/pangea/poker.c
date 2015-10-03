@@ -56,7 +56,7 @@ int32_t cardstr(char *cardstr,uint8_t card)
 {
     int32_t suit; char *cardc = "A234567890JQK",suitc[4] = { 'c', 'd', 'h', 's' };
     suit = card / 13;
-    card /= 13;
+    card %= 13;
     if ( card == 10 )
         sprintf(cardstr,"10%c",suitc[suit]);
     else sprintf(cardstr,"%c%c",cardc[card],suitc[suit]);
@@ -540,13 +540,20 @@ static void set_cardstr(char *cardstr,uint32_t c)
 
 uint32_t set_handstr(char *handstr,uint8_t cards[7],int32_t verbose)
 {
-    char cardstr[32],cardstr2[32],*kickerstr,*str; uint32_t score;
+    char cardstr[32],cardstr2[32],*kickerstr,*str; uint32_t score,i;
+    handstr[0] = 0;
     if ( cards == 0 )
     {
         handstr[0] = 0;
         printf("set_handstr: null cards??\n");
         return(0);
     }
+    for (i=0; i<7; i++)
+        if ( cards[i] < 0 || cards[i] >= 52 )
+        {
+            printf("illegal card[%d] %d\n",i,cards[i]);
+            return(0);
+        }
    	score = SevenCardDrawScore (&cards[0]);
     set_cardstr(cardstr,(score>>SUBR_SHL) & SUBR_SHLMASK);
     set_cardstr(cardstr2,score & SUBR_SHLMASK);

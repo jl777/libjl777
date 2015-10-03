@@ -359,6 +359,18 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
     iQ->s.quoteid = j64bits(json,"quoteid");
     if ( strcmp(exchangestr->buf,"jumblr") == 0 || strcmp(exchangestr->buf,"pangea") == 0 )
     {
+        if ( strcmp(exchangestr->buf,"pangea") == 0 )
+        {
+            if ( juint(json,"rakemillis") != 0 )
+                iQ->s.minperc = juint(json,"rakemillis");
+            if ( j64bits(json,"bigblind") != 0 )
+            {
+                iQ->s.baseamount = j64bits(json,"bigblind");
+                iQ->s.vol = ((double)iQ->s.baseamount / SATOSHIDEN);
+            }
+            if ( j64bits(json,"ante") != 0 )
+                iQ->s.relamount = j64bits(json,"ante");
+        }
         if ( iQ->s.price == 0. )
             iQ->s.price = 1.;
         if ( iQ->s.vol == 0. )
@@ -680,7 +692,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         }
         //update_NXT_assettrades();
         INSTANTDEX.readyflag = 1;
-        plugin->sleepmillis = 25;
+        plugin->sleepmillis = 100;
         strcpy(retbuf,"{\"result\":\"InstantDEX init\"}");
     }
     else

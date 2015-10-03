@@ -176,7 +176,7 @@ static int32_t nn_local_broadcast2(int32_t sock,uint64_t instanceid,int32_t flag
         if ( (sendlen= nn_send(sock,(char *)retstr,len,0)) <= 0 )
             errs++, printf("sending to socket.%d sendlen.%d len.%d (%s) [%s]\n",sock,sendlen,len,nn_strerror(nn_errno()),retstr);
         //else if ( Debuglevel > 2 )
-        //    printf("nn_local_broadcast SENT.(%s) len.%d sendlen.%d vs strlen.%ld instanceid.%llu -> sock.%d\n",retstr,len,sendlen,strlen((char *)retstr),(long long)instanceid,sock);
+        //printf("nn_local_broadcast SENT.(%s) len.%d sendlen.%d vs strlen.%ld instanceid.%llu -> sock.%d\n",retstr,len,sendlen,strlen((char *)retstr),(long long)instanceid,sock);
     }
     return(errs);
 }
@@ -328,9 +328,15 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
             }
             if ( (nxt64bits= get_API_nxt64bits(cJSON_GetObjectItem(obj,"serviceNXT"))) != 0 )
                 expand_nxt64bits(plugin->SERVICENXT,nxt64bits);
-            myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
+            myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"myipaddr"));
             if ( is_ipaddr(myipaddr) != 0 )
                 strcpy(plugin->ipaddr,myipaddr);
+            else
+            {
+                myipaddr = cJSON_str(cJSON_GetObjectItem(obj,"ipaddr"));
+                if ( is_ipaddr(myipaddr) != 0 )
+                    strcpy(plugin->ipaddr,myipaddr);
+            }
             if ( plugin->ipaddr[0] == 0 )
                 strcpy(plugin->ipaddr,"127.0.0.1");
             plugin->port = juint(obj,"port");
@@ -340,6 +346,7 @@ static int32_t process_json(char *retbuf,int32_t max,struct plugin_info *plugin,
                 safecopy(plugin->transport,jstr(obj,"transport"),sizeof(plugin->transport));
             if ( plugin->transport[0] == 0 )
                 strcpy(plugin->transport,"tcp");
+            printf("TRANSPORT.(%s) IPADDR.(%s) port.%d pangeaport.%d\n",plugin->transport,plugin->ipaddr,plugin->port,plugin->pangeaport);
         }
     }
     //fprintf(stderr,"tag.%llu initflag.%d got jsonargs.(%s) [%s] %p\n",(long long)tag,initflag,jsonargs,jsonstr,obj);
@@ -561,6 +568,8 @@ int32_t main
     while ( OS_getppid() == plugin->ppid )
     {
         retbuf[0] = 0;
+        //if ( strcmp(plugin->name,"pangea") == 0 )
+        //printf("%s poll %d\n",plugin->name,plugin->pullsock);
         if ( (len= nn_recv(plugin->pullsock,&line,NN_MSG,0)) > 0 )
         {
             len = (int32_t)strlen(line);

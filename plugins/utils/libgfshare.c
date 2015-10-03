@@ -315,14 +315,15 @@ void gfshare_ctx_dec_extract(gfshare_ctx *ctx,unsigned char *secretbuf)
 
 int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,int32_t n)
 {
-    unsigned char randvals[65536],valid[255];
+    unsigned char *randvals,valid[255];
     int32_t i,j,r,remains,orign;
     if ( m > n || n >= 0xff ) // reserve 255 for illegal sharei
     {
         printf("illegal M.%d of N.%d\n",m,n);
         return(-1);
     }
-    gfshare_fill_rand(randvals,sizeof(randvals));
+    randvals = calloc(1,65536);
+    gfshare_fill_rand(randvals,65536);
     memset(sharenrs,0,n);
     if ( orig == 0 && n == m )
     {
@@ -346,9 +347,9 @@ int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,
         i = j = 0;
         while ( i < m )
         {
-            if ( j >= sizeof(randvals) )
+            if ( j >= 65536 )
             {
-                gfshare_fill_rand(randvals,sizeof(randvals));
+                gfshare_fill_rand(randvals,65536);
                 printf("refill j.%d\n",j);
                 j = 0;
             }
@@ -366,6 +367,7 @@ int32_t init_sharenrs(unsigned char sharenrs[255],unsigned char *orig,int32_t m,
         //    printf("%d ",sharenrs[i]);
         //printf("sharenrs vals | ");
     }
+    free(randvals);
     //printf("sharenrs m.%d of n.%d\n",m,n);
     if ( remains != (orign - m) )
     {

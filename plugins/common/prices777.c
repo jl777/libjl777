@@ -1939,7 +1939,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
         init_Currencymasks();
         BUNDLE.jsonstr = clonestr(jsonstr);
         PRICES.readyflag = 1;
-        plugin->sleepmillis = 50;
+        plugin->sleepmillis = 100;
         //BUNDLE.kv = kv777_init("DB","prices",0);
         //printf("BUNDLE.kv.%p\n",BUNDLE.kv);
         strcpy(retbuf,"{\"result\":\"prices init\"}");

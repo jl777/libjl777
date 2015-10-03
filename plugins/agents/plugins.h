@@ -222,10 +222,10 @@ void process_plugin_message(struct daemon_info *dp,char *str,int32_t len)
         {
             char *call_SuperNET_JSON(char *JSONstr);
             char *resubmit; cJSON *resubjson,*resubarray,*item; int32_t i,m;
-            //fprintf(stderr,"processing pluginrequest.(%s)\n",str);
+            fprintf(stderr,"processing pluginrequest.(%s)\n",str);
             if ( (retstr= call_SuperNET_JSON(str)) != 0 )
             {
-                if ( Debuglevel > 2 )
+                //if ( Debuglevel > 2 )
                     fprintf(stderr,"send return from (%s) <<<<<<<<<<<<<<<<<<<<<< (%s) \n",str,retstr);
                 if ( (resubarray= jarray(&m,json,"resubmit")) != 0 && (resubjson= cJSON_Parse(retstr)) != 0 )
                 {

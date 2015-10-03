@@ -196,20 +196,29 @@ struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr)
     return(newiQ);
 }
 
-cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin)
+cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin,int32_t rakemillis,int64_t bigblind,int64_t ante)
 {
     char *addr; struct destbuf pubkey;
     if ( walletitem == 0 )
         walletitem = cJSON_CreateObject();
     //printf("call get_acct_coinaddr.%s (%s) (%s)\n",coin->name,coin->serverport,coin->userpass);
-    if ( (coin->pangeapubkey[0] == 0 || coin->pangeacoinaddr[0] == 0) && (addr= get_acct_coinaddr(coin->pangeacoinaddr,coin->name,coin->serverport,coin->userpass,"pangea")) != 0 )
+    if ( coin->pangeapubkey[0] == 0 || coin->pangeacoinaddr[0] == 0 )
     {
-        //printf("get_pubkey\n");
-        get_pubkey(&pubkey,coin->name,coin->serverport,coin->userpass,coin->pangeacoinaddr);
-        strcpy(coin->pangeapubkey,pubkey.buf);
+        if ( strcmp("NXT",coin->name) == 0 )
+        {
+        }
+        else if ( (addr= get_acct_coinaddr(coin->pangeacoinaddr,coin->name,coin->serverport,coin->userpass,"pangea")) != 0 )
+        {
+            //printf("get_pubkey\n");
+            get_pubkey(&pubkey,coin->name,coin->serverport,coin->userpass,coin->pangeacoinaddr);
+            strcpy(coin->pangeapubkey,pubkey.buf);
+        }
     }
     jaddstr(walletitem,"pubkey",coin->pangeapubkey);
     jaddstr(walletitem,"coinaddr",coin->pangeacoinaddr);
+    jaddnum(walletitem,"rakemillis",rakemillis);
+    jadd64bits(walletitem,"bigblind",bigblind);
+    jadd64bits(walletitem,"ante",ante);
     return(walletitem);
 }
 
@@ -231,7 +240,7 @@ cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *
     if ( coin != 0 )
     {
         if ( (exchangestr= exchange_str(iQ->exchangeid)) != 0 && strcmp(exchangestr,"pangea") == 0 )
-            pangea_walletitem(walletitem,coin);
+            pangea_walletitem(walletitem,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount);
         else
         {
             //printf("START.(%s)\n",jprint(walletitem,0));
@@ -290,7 +299,7 @@ char *InstantDEX_str(char *walletstr,char *buf,int32_t extraflag,struct InstantD
             if ( strcmp(exchange,"wallet") == 0 )
                 walletitem = set_walletstr(0,walletstr,iQ);
             else if ( strcmp(exchange,"pangea") == 0 && walletstr[0] == 0 && coin != 0 )
-                walletitem = pangea_walletitem(0,coin);
+                walletitem = pangea_walletitem(0,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount);
             else walletitem = 0;
             if ( walletitem != 0 )
             {

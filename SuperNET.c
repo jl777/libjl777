@@ -180,7 +180,7 @@ char *process_nn_message(int32_t sock,char *jsonstr)
 char *process_jl777_msg(char *buf,int32_t bufsize,char *previpaddr,char *jsonstr,int32_t duration)
 {
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    struct destbuf plugin,method,request; char *bstr,*retstr;
+    struct destbuf plugin,method,request; char *bstr,*retstr,*methodstr;
     uint64_t daemonid,instanceid,tag;
     int32_t override=0,broadcastflag = 0;
     cJSON *json;
@@ -194,9 +194,19 @@ char *process_jl777_msg(char *buf,int32_t bufsize,char *previpaddr,char *jsonstr
         //fprintf(stderr,"SuperNET_JSON override.%d\n",override);
         if ( plugin.buf[0] == 0 )
             copy_cJSON(&plugin,cJSON_GetObjectItem(json,"agent"));
-        if ( override == 0 && strcmp(plugin.buf,"InstantDEX") == 0 )
+        if ( override == 0 && (strcmp(plugin.buf,"InstantDEX") == 0 || strcmp(plugin.buf,"pangea") == 0) )
         {
-            if ( (retstr= InstantDEX(jsonstr,0,1)) != 0 )
+            if ( strcmp(plugin.buf,"pangea") == 0 )
+            {
+                if ( (methodstr= jstr(json,"method")) != 0 && strcmp(methodstr,"turn") == 0 )
+                {
+                    char *pangea_input(uint64_t my64bits,uint64_t tableid,cJSON *json);
+                    retstr = pangea_input(SUPERNET.my64bits,j64bits(json,"tableid"),json);
+                    free_json(json);
+                    return(retstr);
+                }
+            }
+            else if ( (retstr= InstantDEX(jsonstr,0,1)) != 0 )
             {
                 free_json(json);
                 return(retstr);
@@ -779,7 +789,7 @@ int main(int argc,const char *argv[])
     cJSON *json = 0;
     uint64_t ipbits,allocsize;
 #ifdef __APPLE__
-     if ( 0 )
+    if ( 0 )
     {
         //void poker_test();
         //poker_test(); getchar();
