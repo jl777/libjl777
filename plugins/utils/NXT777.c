@@ -233,12 +233,22 @@ uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_
 {
     static uint8_t basepoint[32] = {9};
     uint64_t addr; uint8_t hash[32];
-    calc_sha256(0,mysecret,pass,passlen);
+    if ( pass != 0 && passlen != 0 )
+        calc_sha256(0,mysecret,pass,passlen);
     mysecret[0] &= 248, mysecret[31] &= 127, mysecret[31] |= 64;
     curve25519_donna(mypublic,mysecret,basepoint);
     calc_sha256(0,hash,mypublic,32);
     memcpy(&addr,hash,sizeof(addr));
     return(addr);
+}
+
+uint64_t nxt_priv2addr(char *rsaddr,char *pubkeystr,uint8_t priv[32])
+{
+    uint64_t nxtaddr; uint8_t pub[32];
+    nxtaddr = conv_NXTpassword(priv,pub,0,0);
+    init_hexbytes_noT(pubkeystr,pub,32);
+    RS_encode(rsaddr,nxtaddr);
+    return(nxtaddr);
 }
 
 bits256 issue_getpubkey(int32_t *haspubkeyp,char *acct)

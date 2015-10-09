@@ -45,7 +45,7 @@ int32_t opreturns_queue_payment(queue_t *PaymentsQ,uint32_t blocktimestamp,char 
 int32_t opreturns_init(uint32_t blocknum,uint32_t blocktimestamp,char *path);
 void *opreturns_context(char *name,int32_t context);
 
-int64_t peggy_process(void *context,int32_t flags,char *fundedcoinaddr,uint64_t fundedvalue,uint8_t *data,int32_t datalen,uint32_t currentblocknum,uint32_t blocktimestamp,uint32_t stakedblock);
+int64_t peggy_process(void *context,int32_t flags,void *fundedcoinaddr,uint64_t fundedvalue,uint8_t *data,int32_t datalen,uint32_t currentblocknum,uint32_t blocktimestamp,uint32_t stakedblock);
 int32_t peggy_emit(void *context,uint8_t opreturndata[MAX_OPRETURNSIZE],struct opreturn_payment *payments,int32_t max,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp);
 int32_t peggy_flush(void *context,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp);
 int32_t peggy_init_contexts(struct txinds777_info *opreturns,uint32_t blocknum,uint32_t blocktimestamp,char *path,void *globals[OPRETURNS_CONTEXTS],int32_t lookbacks[OPRETURNS_CONTEXTS],int32_t maxcontexts);
@@ -68,7 +68,7 @@ uint32_t peggy_currentblock(void *globals);
 struct opreturn_protocol
 {
     uint8_t id[3]; char name[16];
-    int64_t (*process)(void *context,int32_t flags,char *fundedcoinaddr,uint64_t fundedvalue,uint8_t *data,int32_t datalen,uint32_t currentblocknum,uint32_t blocktimestamp,uint32_t isstaked);
+    int64_t (*process)(void *context,int32_t flags,void *fundedcoinaddr,uint64_t fundedvalue,uint8_t *data,int32_t datalen,uint32_t currentblocknum,uint32_t blocktimestamp,uint32_t isstaked);
     int32_t (*emit)(void *context,uint8_t opreturndata[MAX_OPRETURNSIZE],struct opreturn_payment *payments,int32_t max,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp);
     int32_t (*flush)(void *context,uint32_t currentblocknum,uint32_t blocknum,uint32_t blocktimestamp);
     int32_t (*init)(struct txinds777_info *opreturns,uint32_t blocknum,uint32_t blocktimestamp,char *path,void *globals[OPRETURNS_CONTEXTS],int32_t lookbacks[OPRETURNS_CONTEXTS],int32_t max);
@@ -77,7 +77,7 @@ struct opreturn_protocol
     void *(*replay)(char *path,struct txinds777_info *opreturns,void *_PEGS,uint32_t blocknum,char *opreturnstr,uint8_t *data,int32_t datalen);
     void *globals[OPRETURNS_CONTEXTS]; int32_t lookbacks[OPRETURNS_CONTEXTS],numcontexts; uint32_t pastblocknums[OPRETURNS_CONTEXTS];
     struct txinds777_info *opreturns;
-} OPRETURN_PROTOCOLS[8] = { { { 'P', 'E', 'G' }, "peggy", peggy_process, peggy_emit, peggy_flush, peggy_init_contexts, peggy_clone, peggy_currentblock, peggy_replay } };
+} OPRETURN_PROTOCOLS[8] = { { { 'P', 'A', 'X' }, "peggy", peggy_process, peggy_emit, peggy_flush, peggy_init_contexts, peggy_clone, peggy_currentblock, peggy_replay } };
 
 int32_t opreturns_init(uint32_t blocknum,uint32_t blocktimestamp,char *path)
 {

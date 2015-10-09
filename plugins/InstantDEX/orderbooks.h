@@ -674,7 +674,7 @@ void prices777_json_quotes(double *hblap,struct prices777 *prices,cJSON *bids,cJ
                         hbla = price;
                     else hbla = 0.5 * (hbla + price);
                 }
-                if ( Debuglevel > 2 || prices->basketsize > 0 || strcmp("unconf",prices->exchange) == 0 )
+                if ( Debuglevel > 2 )//|| prices->basketsize > 0 || strcmp("unconf",prices->exchange) == 0 )
                     printf("%d,%d: %-8s %s %5s/%-5s %13.8f vol %13.8f | invert %13.8f vol %13.8f | timestamp.%u\n",OB.numbids,OB.numasks,prices->exchange,dir>0?"bid":"ask",prices->base,prices->rel,price,volume,1./price,volume*price,timestamp);
             }
         }

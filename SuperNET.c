@@ -179,8 +179,9 @@ char *process_nn_message(int32_t sock,char *jsonstr)
 
 char *process_jl777_msg(char *buf,int32_t bufsize,char *previpaddr,char *jsonstr,int32_t duration)
 {
+    char *Pangea_bypass(uint64_t my64bits,uint8_t myprivkey[32],cJSON *json);
     char *process_user_json(char *plugin,char *method,char *cmdstr,int32_t broadcastflag,int32_t timeout);
-    struct destbuf plugin,method,request; char *bstr,*retstr,*methodstr;
+    struct destbuf plugin,method,request; char *bstr,*retstr=0;
     uint64_t daemonid,instanceid,tag;
     int32_t override=0,broadcastflag = 0;
     cJSON *json;
@@ -194,15 +195,13 @@ char *process_jl777_msg(char *buf,int32_t bufsize,char *previpaddr,char *jsonstr
         //fprintf(stderr,"SuperNET_JSON override.%d\n",override);
         if ( plugin.buf[0] == 0 )
             copy_cJSON(&plugin,cJSON_GetObjectItem(json,"agent"));
-        if ( override == 0 && (strcmp(plugin.buf,"InstantDEX") == 0 || strcmp(plugin.buf,"pangea") == 0) )
+        if ( override == 0 && (previpaddr == 0 || previpaddr[0] == 0) && (strcmp(plugin.buf,"InstantDEX") == 0 || strcmp(plugin.buf,"pangea") == 0) )
         {
             if ( strcmp(plugin.buf,"pangea") == 0 )
             {
-                if ( (methodstr= jstr(json,"method")) != 0 && strcmp(methodstr,"turn") == 0 )
+                if ( (retstr= Pangea_bypass(SUPERNET.my64bits,SUPERNET.myprivkey,json)) != 0 )
                 {
-                    char *pangea_input(uint64_t my64bits,uint64_t tableid,cJSON *json);
-                    retstr = pangea_input(SUPERNET.my64bits,j64bits(json,"tableid"),json);
-                    free_json(json);
+                    free(json);
                     return(retstr);
                 }
             }
@@ -798,7 +797,7 @@ int main(int argc,const char *argv[])
         void portable_OS_init();
         //raft777_test();
         int numplayers = 9;
-        portable_OS_init(), hostnet777_test(numplayers,1000 * (numplayers + numplayers * (numplayers*2 + 5 + 1)),1), getchar();
+        portable_OS_init(), hostnet777_test(numplayers,10 * (numplayers + numplayers * (numplayers*2 + 5 + 1)),0), getchar();
     }
 #endif
     if ( (jsonstr= loadfile(&allocsize,"SuperNET.conf")) == 0 )

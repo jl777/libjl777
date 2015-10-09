@@ -196,7 +196,7 @@ struct InstantDEX_quote *create_iQ(struct InstantDEX_quote *iQ,char *walletstr)
     return(newiQ);
 }
 
-cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin,int32_t rakemillis,int64_t bigblind,int64_t ante)
+cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin,int32_t rakemillis,int64_t bigblind,int64_t ante,int32_t minbuyin,int32_t maxbuyin)
 {
     char *addr; struct destbuf pubkey;
     if ( walletitem == 0 )
@@ -217,6 +217,8 @@ cJSON *pangea_walletitem(cJSON *walletitem,struct coin777 *coin,int32_t rakemill
     jaddstr(walletitem,"pubkey",coin->pangeapubkey);
     jaddstr(walletitem,"coinaddr",coin->pangeacoinaddr);
     jaddnum(walletitem,"rakemillis",rakemillis);
+    jaddnum(walletitem,"minbuyin",minbuyin);
+    jaddnum(walletitem,"maxbuyin",maxbuyin);
     jadd64bits(walletitem,"bigblind",bigblind);
     jadd64bits(walletitem,"ante",ante);
     return(walletitem);
@@ -240,7 +242,7 @@ cJSON *set_walletstr(cJSON *walletitem,char *walletstr,struct InstantDEX_quote *
     if ( coin != 0 )
     {
         if ( (exchangestr= exchange_str(iQ->exchangeid)) != 0 && strcmp(exchangestr,"pangea") == 0 )
-            pangea_walletitem(walletitem,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount);
+            pangea_walletitem(walletitem,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount,iQ->s.minbuyin,iQ->s.maxbuyin);
         else
         {
             //printf("START.(%s)\n",jprint(walletitem,0));
@@ -299,7 +301,7 @@ char *InstantDEX_str(char *walletstr,char *buf,int32_t extraflag,struct InstantD
             if ( strcmp(exchange,"wallet") == 0 )
                 walletitem = set_walletstr(0,walletstr,iQ);
             else if ( strcmp(exchange,"pangea") == 0 && walletstr[0] == 0 && coin != 0 )
-                walletitem = pangea_walletitem(0,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount);
+                walletitem = pangea_walletitem(0,coin,iQ->s.minperc,iQ->s.baseamount,iQ->s.relamount,iQ->s.minbuyin,iQ->s.maxbuyin);
             else walletitem = 0;
             if ( walletitem != 0 )
             {

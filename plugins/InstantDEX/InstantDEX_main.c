@@ -370,6 +370,8 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
             }
             if ( j64bits(json,"ante") != 0 )
                 iQ->s.relamount = j64bits(json,"ante");
+            iQ->s.minbuyin = juint(json,"minbuyin");
+            iQ->s.maxbuyin = juint(json,"maxbuyin");
         }
         if ( iQ->s.price == 0. )
             iQ->s.price = 1.;
@@ -543,7 +545,7 @@ printf("isask.%d base.(%s) rel.(%s)\n",iQ.s.isask,base.buf,rel.buf);
         else if ( strcmp(method.buf,"peggyrates") == 0 )
         {
             if ( SUPERNET.peggy != 0 )
-                retstr = peggyrates(juint(json,"timestamp"));
+                retstr = peggyrates(juint(json,"timestamp"),jstr(json,"name"));
             else retstr = clonestr("{\"error\":\"peggy disabled\"}");
         }
         else if ( strcmp(method.buf,"LSUM") == 0 )

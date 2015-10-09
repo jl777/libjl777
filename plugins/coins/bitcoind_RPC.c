@@ -292,7 +292,7 @@ void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *
 		*cHandlep = cHandle = curl_easy_init();
     else curl_easy_reset(cHandle);
 //#ifdef DEBUG
-	curl_easy_setopt(cHandle,CURLOPT_VERBOSE, 1);
+	//curl_easy_setopt(cHandle,CURLOPT_VERBOSE, 1);
 //#endif
 	curl_easy_setopt(cHandle,CURLOPT_USERAGENT,"mozilla/4.0");//"Mozilla/4.0 (compatible; )");
 	curl_easy_setopt(cHandle,CURLOPT_SSL_VERIFYPEER,0);
@@ -308,7 +308,7 @@ void *curl_post(CURL **cHandlep,char *url,char *userpass,char *postfields,char *
     }
     if ( hdr0 != NULL && hdr0[0] != 0 )
     {
-        printf("HDR0.(%s) HDR1.(%s) HDR2.(%s) HDR3.(%s)\n",hdr0!=0?hdr0:"",hdr1!=0?hdr1:"",hdr2!=0?hdr2:"",hdr3!=0?hdr3:"");
+        //printf("HDR0.(%s) HDR1.(%s) HDR2.(%s) HDR3.(%s)\n",hdr0!=0?hdr0:"",hdr1!=0?hdr1:"",hdr2!=0?hdr2:"",hdr3!=0?hdr3:"");
         headers = curl_slist_append(headers,hdr0);
         if ( hdr1 != 0 && hdr1[0] != 0 )
             headers = curl_slist_append(headers,hdr1);

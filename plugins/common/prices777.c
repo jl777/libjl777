@@ -766,7 +766,7 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
         }
         return(0);
     }
-    printf("init.(%s/%s) name.(%s) %llu %llu\n",base,rel,name,(long long)baseid,(long long)relid);
+    //printf("init.(%s/%s) name.(%s) %llu %llu\n",base,rel,name,(long long)baseid,(long long)relid);
     if ( strcmp(exchange,"nxtae") == 0 || strcmp(exchange,"unconf") == 0 )//|| strcmp(exchange,"InstantDEX") == 0 )
     {
         if ( strcmp(base,"NXT") == 0 || baseid == NXT_ASSETID )
@@ -881,7 +881,7 @@ struct prices777 *prices777_initpair(int32_t needfunc,double (*updatefunc)(struc
     }
     if ( needfunc != 0 )
         printf("prices777_init error: cant find update function for (%s) (%s) (%s)\n",exchange,base,rel!=0?rel:"");
-    printf("initialized.(%s).%lld\n",prices->contract,(long long)prices->contractnum);
+    //printf("initialized.(%s).%lld\n",prices->contract,(long long)prices->contractnum);
     return(prices);
 }
 
@@ -1018,7 +1018,7 @@ void prices777_exchangeloop(void *ptr)
                     updated = exchange->lastupdate = milliseconds(), prices->lastupdate = milliseconds();
                     if ( prices->lastprice != 0. )
                     {
-                        if ( strcmp(exchange->name,"unconf") != 0 )
+                        if ( Debuglevel > 2 && strcmp(exchange->name,"unconf") != 0 )
                             printf("%-13s %12s (%10s %10s) %022llu %022llu isnxtae.%d poll %u -> %u %.8f hbla %.8f %.8f\n",prices->exchange,prices->contract,prices->base,prices->rel,(long long)prices->baseid,(long long)prices->relid,isnxtae,prices->pollnxtblock,prices777_NXTBLOCK,prices->lastprice,prices->lastbid,prices->lastask);
                         prices777_propagate(prices);
                     }
@@ -1094,7 +1094,7 @@ int32_t prices777_init(char *jsonstr)
             if ( (base == 0 || rel == 0) && (contract= jstr(item,"contract")) != 0 )
                 rel = 0, base = contract;
             else contract = 0;
-            printf("PRICES[%d] %p %p %p\n",i,exchange,base,rel);
+            //printf("PRICES[%d] %p %p %p\n",i,exchange,base,rel);
             if ( exchange != 0 && (strcmp(exchange,"bter") == 0 || strcmp(exchange,"exmo") == 0) )
                 continue;
             if ( exchange != 0 && (exchangeptr= find_exchange(0,exchange)) != 0 )
@@ -1182,7 +1182,7 @@ cJSON *url_json2(char *url)
     char *jsonstr; cJSON *json = 0;
     if ( (jsonstr= issue_curl(url)) != 0 )
     {
-        printf("(%s) -> (%s)\n",url,jsonstr);
+        //printf("(%s) -> (%s)\n",url,jsonstr);
         json = cJSON_Parse(jsonstr);
         free(jsonstr);
     }
@@ -1230,12 +1230,14 @@ void prices777_btcprices(int32_t enddatenum,int32_t numdates)
             // ["Date","24h Average","Ask","Bid","Last","Total Volume"]
             // ["2015-07-25",289.27,288.84,288.68,288.87,44978.61]
             item = jitem(array,i);
-            printf("(%s) ",cJSON_Print(item));
+            if ( Debuglevel > 2 )
+                printf("(%s) ",cJSON_Print(item));
             if ( (dstr= jstr(jitem(item,0),0)) != 0 && (datenum= conv_date(&seconds,dstr)) > 0 )
             {
                 price = jdouble(jitem(item,1),0), ask = jdouble(jitem(item,2),0), bid = jdouble(jitem(item,3),0);
                 close = jdouble(jitem(item,4),0), vol = jdouble(jitem(item,5),0);
-                fprintf(stderr,"%d.[%d %f %f %f %f %f].%d ",i,datenum,price,ask,bid,close,vol,n);
+                if ( Debuglevel > 2 )
+                    fprintf(stderr,"%d.[%d %f %f %f %f %f].%d ",i,datenum,price,ask,bid,close,vol,n);
                 utc32[numdates - 1 - i] = OS_conv_datenum(datenum,12,0,0), qdaily[numdates - 1 - i] = price * .001;
             }
         }
@@ -1253,10 +1255,12 @@ void prices777_btcprices(int32_t enddatenum,int32_t numdates)
             timestamp = juint(item,"date"), high = jdouble(item,"high"), low = jdouble(item,"low"), open = jdouble(item,"open");
             close = jdouble(item,"close"), vol = jdouble(item,"volume"), quotevol = jdouble(item,"quoteVolume"), price = jdouble(item,"weightedAverage");
             //printf("[%u %f %f %f %f %f %f %f]",timestamp,high,low,open,close,vol,quotevol,price);
-            printf("[%u %d %f]",timestamp,OS_conv_unixtime(&seconds,timestamp),price);
+            if ( Debuglevel > 2 )
+                printf("[%u %d %f]",timestamp,OS_conv_unixtime(&seconds,timestamp),price);
             utc32[i] = timestamp - 12*3600, btcddaily[i] = price * 100.;
         }
-        printf("poloniex.%d\n",n);
+        if ( Debuglevel > 2 )
+            printf("poloniex.%d\n",n);
         prices777_genspline(&BUNDLE.splines[MAX_CURRENCIES+2],MAX_CURRENCIES+2,"btcdhist",utc32,btcddaily,n<MAX_SPLINES?n:MAX_SPLINES,btcddaily);
     }
     // https://poloniex.com/public?command=returnChartData&currencyPair=BTC_BTCD&start=1405699200&end=9999999999&period=86400

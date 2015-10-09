@@ -75,15 +75,17 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
     if ( (sig = hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),urlbuf)) != 0 )
         sprintf(hdr,"apisign:%s",sig);
     else hdr[0] = 0;
-    printf("cmdbuf.(%s) h1.(%s)\n",urlbuf,hdr);
+    //printf("cmdbuf.(%s) h1.(%s)\n",urlbuf,hdr);
     if ( (data= curl_post(&cHandle,urlbuf,0,0,hdr,0,0,0)) != 0 )
     {
-        printf("cmd.(%s) [%s]\n",urlbuf,data);
+        //printf("cmd.(%s) [%s]\n",urlbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             // { "success" : true, "message" : "", "result" : { "uuid" : "e606d53c-8d70-11e3-94b5-425861b86ab6"  } }
             if ( dir == 0 )
-                printf("got balances.(%s)\n",data);
+            {
+                //printf("got balances.(%s)\n",data);
+            }
             else if ( is_cJSON_True(cJSON_GetObjectItem(json,"success")) != 0 && (resultobj= cJSON_GetObjectItem(json,"result")) != 0 )
             {
                 copy_cJSON(&uuidstr,cJSON_GetObjectItem(resultobj,"uuid"));
@@ -134,7 +136,7 @@ uint64_t poloniex_trade(char **retstrp,struct exchange_info *exchange,char *base
     //printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
     if ( (data= curl_post(&cHandle,"https://poloniex.com/tradingApi",0,cmdbuf,hdr2,hdr1,0,0)) != 0 )
     {
-        printf("cmd.(%s) [%s]\n",cmdbuf,data);
+        //printf("cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             txid = (get_API_nxt64bits(cJSON_GetObjectItem(json,"orderNumber")) << 32) | get_API_nxt64bits(cJSON_GetObjectItem(json,"tradeID"));
@@ -237,10 +239,10 @@ uint64_t btce_trade(char **retstrp,struct exchange_info *exchange,char *_base,ch
     if ( (sig= hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),payload)) != 0 )
         sprintf(hdr2,"Sign:%s",sig);
     else hdr2[0] = 0;
-    printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",payload,hdr2,hdr1);
+    //printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",payload,hdr2,hdr1);
     if ( (data= curl_post(&cHandle,"https://btc-e.com/tapi",0,payload,hdr2,hdr1,0,0)) != 0 )
     {
-        printf("cmd.(%s) [%s]\n",payload,data);
+        //printf("cmd.(%s) [%s]\n",payload,data);
         //{ "success":1, "return":{ "received":0.1, "remains":0, "order_id":0, "funds":{ "usd":325, "btc":2.498,  } } }
         if ( (json= cJSON_Parse(data)) != 0 )
         {
@@ -315,10 +317,10 @@ uint64_t kraken_trade(char **retstrp,struct exchange_info *exchange,char *_base,
         sprintf(hdr2,"API-Sign:%s",encode64);
     }
     else hdr2[0] = 0;
-    printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",postbuf,hdr2,hdr1);
+    //printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",postbuf,hdr2,hdr1);
     if ( (data= curl_post(&cHandle,url,0,postbuf,hdr1,hdr2,0,0)) != 0 )
     {
-        printf("cmd.(%s) [%s]\n",payload,data);
+        //printf("cmd.(%s) [%s]\n",payload,data);
         //{ "success":1, "return":{ "received":0.1, "remains":0, "order_id":0, "funds":{ "usd":325, "btc":2.498,  } } }
         if ( (json= cJSON_Parse(data)) != 0 )
         {
@@ -410,14 +412,17 @@ uint64_t bitfinex_trade(char **retstrp,struct exchange_info *exchange,char *_bas
         sprintf(hdr2,"X-BFX-PAYLOAD:%s",payload);
         sprintf(hdr3,"X-BFX-SIGNATURE:%s",sig);
         sprintf(url,"https://api.bitfinex.com/v1/%s",method);
-        printf("bitfinex req.(%s) -> (%s) [%s %s %s]\n",req,payload,hdr1,hdr2,hdr3);
+        //printf("bitfinex req.(%s) -> (%s) [%s %s %s]\n",req,payload,hdr1,hdr2,hdr3);
         if ( (data= curl_post(&cHandle,url,0,req,hdr1,hdr2,hdr3,0)) != 0 )
         {
-            printf("[%s]\n",data);
+            //printf("[%s]\n",data);
             if ( (json= cJSON_Parse(data)) != 0 )
             {
                 if ( (txid= j64bits(json,"order_id")) == 0 )
-                    printf("no txid error\n");
+                {
+                    if ( dir != 0 )
+                        printf("bitfinex: no txid error\n");
+                }
                 free_json(json);
             }
         }
@@ -464,6 +469,7 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
     sprintf(buf,"%s_%s_%s_%llu",exchange->apikey,exchange->userid,exchange->apisecret,(long long)nonce);
     //printf("MD5.(%s)\n",buf);
     calc_md5(digest,buf,(int32_t)strlen(buf));
+    *retstrp = 0;
     if ( dir == 0 )
     {
         path = "getMyBalance.php";
@@ -486,7 +492,7 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
     sprintf(url,"http://www.btc38.com/trade/t_api/%s",path);
     if ( (data= curl_post(&cHandle,url,0,cmdbuf,0,0,0,0)) != 0 )
     {
-        printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
+        //printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             if ( juint(json,"success") > 0 && (resultobj= cJSON_GetObjectItem(json,"return")) != 0 )
@@ -500,7 +506,7 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
             free_json(json);
         }
     } else fprintf(stderr,"submit err cmd.(%s)\n",cmdbuf);
-    if ( retstrp != 0 )
+    if ( retstrp != 0 && data != 0 )
     {
         if ( (json= cJSON_Parse(data)) == 0 )
         {
@@ -508,7 +514,7 @@ uint64_t btc38_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
             jaddstr(json,"result",data);
             data = jprint(json,1);
         } else free_json(json);
-        printf("btc38 returning.(%s) in %p\n",data,data);
+        //printf("btc38 returning.(%s) in %p\n",data,data);
         *retstrp = data;
     }
     else if ( data != 0 )
@@ -560,7 +566,7 @@ uint64_t huobi_trade(char **retstrp,struct exchange_info *exchange,char *_base,c
     sprintf(url,"https://api.huobi.com/apiv3");
     if ( (data= curl_post(&cHandle,url,0,cmdbuf,"Content-Type:application/x-www-form-urlencoded",0,0,0)) != 0 )
     {
-        printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
+        //printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             txid = j64bits(json,"order_id");
@@ -627,7 +633,7 @@ uint64_t bityes_trade(char **retstrp,struct exchange_info *exchange,char *_base,
     sprintf(url,"https://api.bityes.com/apiv2");
     if ( (data= curl_post(&cHandle,url,0,cmdbuf,"Content-Type:application/x-www-form-urlencoded",0,0,0)) != 0 )
     {
-        printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
+        //printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             txid = j64bits(json,"order_id");
@@ -675,11 +681,11 @@ uint64_t okcoin_trade(char **retstrp,struct exchange_info *exchange,char *_base,
         touppercase(digest);
         sprintf(cmdbuf,"amount=%.4f&api_key=%s%s&symbol=%s&type=%s&sign=%s",volume,exchange->apikey,pricestr,pairstr,typestr,digest);
     }
-    printf("MD5.(%s)\n",buf);
+    //printf("MD5.(%s)\n",buf);
     sprintf(url,"https://www.okcoin.com/api/v1/%s",path);
     if ( (data= curl_post(&cHandle,url,0,cmdbuf,0,0,0,0)) != 0 ) // "{\"Content-type\":\"application/x-www-form-urlencoded\"}","{\"User-Agent\":\"OKCoin Javascript API Client\"}"
     {
-        printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
+        //printf("submit cmd.(%s) [%s]\n",cmdbuf,data);
         if ( (json= cJSON_Parse(data)) != 0 )
         {
             txid = j64bits(json,"order_id");
@@ -756,7 +762,7 @@ uint64_t lakebtc_trade(char **retstrp,struct exchange_info *exchange,char *_base
         sprintf(hdr2,"Json-Rpc-Tonce: %llu",(long long)tonce);
         if ( (data= curl_post(&cHandle,url,0,jsonbuf,hdr1,hdr2,0,0)) != 0 )
         {
-            printf("submit cmd.(%s) [%s]\n",jsonbuf,data);
+            //printf("submit cmd.(%s) [%s]\n",jsonbuf,data);
             if ( (json= cJSON_Parse(data)) != 0 )
             {
                 txid = j64bits(json,"order_id");
@@ -1002,7 +1008,7 @@ uint64_t exmo_trade(char **retstrp,struct exchange_info *exchange,char *base,cha
         method = "notyet";
         dir = flip_for_exchange(pairstr,"%s_%s","BTC",dir,&price,&volume,base,rel);
         sprintf(cmdbuf,"method=Trade&nonce=%ld&pair=%s&type=%s&rate=%.6f&amount=%.6f",time(NULL),pairstr,dir>0?"buy":"sell",price,volume);
-        printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
+        //printf("cmdbuf.(%s) h1.(%s) h2.(%s)\n",cmdbuf,hdr2,hdr1);
     }
     if ( (sig= hmac_sha512_str(dest,exchange->apisecret,(int32_t)strlen(exchange->apisecret),cmdbuf)) != 0 )
         sprintf(hdr2,"Sign:%s",sig);

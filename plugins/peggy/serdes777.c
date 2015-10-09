@@ -57,7 +57,8 @@ struct price_resolution { int64_t Pval; };
 struct peggy_lock { int16_t peg,denom; uint16_t minlockdays,maxlockdays,clonesmear,mixrange,redemptiongapdays; uint8_t extralockdays,margin; };
 
 struct peggy_newunit { bits256 sha256; struct peggy_lock newlock; };
-union peggy_addr { char coinaddr[64]; struct peggy_newunit newunit; bits256 sha256; bits384 SaMbits; uint64_t nxt64bits; };
+struct peggy_univaddr { uint8_t addrtype,rmd160[20]; char coin[7]; };
+union peggy_addr { struct peggy_univaddr coinaddr; struct peggy_newunit newunit; bits256 sha256; bits384 SaMbits; uint64_t nxt64bits; };
 struct peggy_input { uint8_t type,chainlen; union peggy_addr src; uint64_t amount; };
 struct peggy_output { uint8_t type,vin; union peggy_addr dest; uint32_t ratio; };
 
@@ -108,6 +109,8 @@ struct opreturn_buffers { int32_t blocktimestamp,blocknum,num; struct opreturn_e
 char *peggy_tx(char *jsonstr);
 int32_t serdes777_deserialize(int32_t *signedcountp,struct peggy_tx *Ptx,uint32_t blocktimestamp,uint8_t *data,int32_t totallen);
 int32_t serdes777_serialize(struct peggy_tx *Ptx,uint32_t blocktimestamp,bits256 privkey,uint32_t timestamp);
+int32_t peggy_univ2addr(char *coinaddr,struct peggy_univaddr *ua);
+int32_t peggy_addr2univ(struct peggy_univaddr *ua,char *coinaddr,char *coin);
 
 
 #endif
@@ -541,7 +544,7 @@ int32_t serdes777_rwtx(int32_t rwflag,struct peggy_tx *Ptx,HUFF *TX)
     {
         if ( (numbits= serdes777_rwinout(rwflag,0,&Ptx->funding,TX)) < 0 )
         {
-            printf("serdes777_process error serdes.%d funding %.8f %s\n",rwflag,dstr(Ptx->funding.amount),Ptx->funding.src.coinaddr);
+            printf("serdes777_process error serdes.%d funding %.8f %p\n",rwflag,dstr(Ptx->funding.amount),&Ptx->funding.src.coinaddr);
             return(-1);
         }
         totalbits += numbits;
@@ -703,8 +706,11 @@ int32_t accts777_parse(union peggy_addr *addr,cJSON *item,int32_t type)
     switch ( type )
     {
         case PEGGY_ADDRBTCD:
-            if ( (coinaddr= jstr(item,"BTCD")) != 0 )
-                strcpy(addr->coinaddr,coinaddr);
+            if ( (coinaddr= jstr(item,"BTCD")) != 0 && peggy_addr2univ(&addr->coinaddr,coinaddr,"BTCD") < 0 )
+            {
+                printf("illegal coinaddr.(%s)\n",coinaddr);
+                return(-1);
+            }
             break;
         case PEGGY_ADDRCREATE:
             if ( (hashstr= jstr(item,"lockhash")) != 0 && strlen(hashstr) == 64 )
@@ -859,7 +865,12 @@ char *peggy_tx(char *jsonstr)
         Ptx.expiration = juint(json,"expiration");
         if ( (Ptx.funding.amount= juint(json,"funds")) != 0 )
         {
-            copy_cJSON(&tmp,jobj(json,"fundsaddr")), safecopy(Ptx.funding.src.coinaddr,tmp.buf,sizeof(Ptx.funding.src.coinaddr));
+            copy_cJSON(&tmp,jobj(json,"fundsaddr"));
+            //safecopy(Ptx.funding.src.coinaddr,tmp.buf,sizeof(Ptx.funding.src.coinaddr));
+            if ( peggy_addr2univ(&Ptx.funding.src.coinaddr,tmp.buf,"BTCD") < 0 )
+            {
+                printf("warning: illegal funding address.(%s)\n",tmp.buf);
+            }
             Ptx.flags |= PEGGY_FLAGS_HASFUNDING;
             Ptx.funding.type = PEGGY_ADDRFUNDING;
         }
@@ -877,7 +888,7 @@ char *peggy_tx(char *jsonstr)
         if ( len+3 < 0xfe )
         {
             retbuf[1] = len+3;
-            strcpy(retbuf+2,"PEG");
+            strcpy(retbuf+2,"PAX");
             memcpy(retbuf+5,Ptx.data,len);
             init_hexbytes_noT(retbufstr,(void *)retbuf,len+5);
         }
@@ -886,7 +897,7 @@ char *peggy_tx(char *jsonstr)
             retbuf[1] = 0xfe;
             retbuf[2] = (len+3) & 0xff;
             retbuf[3] = ((len+3) >> 8) & 0xff;
-            strcpy(retbuf+4,"PEG");
+            strcpy(retbuf+4,"PAX");
             memcpy(retbuf+7,Ptx.data,len);
             init_hexbytes_noT(retbufstr,(void *)retbuf,len+7);
         }

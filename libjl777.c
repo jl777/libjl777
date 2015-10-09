@@ -214,6 +214,9 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             sprintf(portstr,"%d",SUPERNET.port + LB_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
             sprintf(portstr,"%d",SUPERNET.port + PUBGLOBALS_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
             sprintf(portstr,"%d",SUPERNET.port + PUBRELAYS_OFFSET), upnpredirect(portstr,portstr,"TCP","SuperNET");
+            sprintf(portstr,"%d",7899), upnpredirect(portstr,portstr,"TCP","pangea");
+            sprintf(portstr,"%d",7900), upnpredirect(portstr,portstr,"TCP","pangea");
+            sprintf(portstr,"%d",7902), upnpredirect(portstr,portstr,"TCP","pangea");
         }
     }
     else

@@ -75,7 +75,7 @@ struct plugin_info
     uint16_t port,pangeaport;
     portable_mutex_t mutex;
     uint64_t daemonid,myid,nxt64bits; uint8_t mypriv[32],mypub[32];
-    uint8_t pluginspace[];
+    uint8_t notabot,pluginspace[];
 };
 
 struct nn_clock

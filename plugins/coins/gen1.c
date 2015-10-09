@@ -1078,6 +1078,21 @@ char *dumpprivkey(char *coinstr,char *serverport,char *userpass,char *coinaddr)
     return(bitcoind_passthru(coinstr,serverport,userpass,"dumpprivkey",args));
 }
 
+int32_t getprivkey(uint8_t privkey[32],char *name,char *coinaddr)
+{
+    struct coin777 *coin; char *wipstr;
+    if ( (coin= coin777_find(name,1)) != 0 )
+    {
+        if ( (wipstr= dumpprivkey(name,coin->serverport,coin->userpass,coinaddr)) != 0 )
+        {
+            btc_wip2priv(privkey,wipstr);
+            free(wipstr);
+            return(0);
+        }
+    }
+    return(-1);
+}
+
 char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *userpass,char *NXTaddr)
 {
     char addr[128],*retstr;

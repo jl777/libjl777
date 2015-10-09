@@ -37,7 +37,7 @@
 #endif
 
 //////////// must be consensus safe
-#define PEGGY_GENESIS "6aed504547ea00145e8754ba0a000604804dd2565af681fc958b2fb4337de1ebf0d86b63a2b276d38c6b15aaf75687f679db707b6ff065aea57e4d56354ff1eeb4e75e0d3ece1a08a8dacc086f6d3702afdbc9e43ded75bc7089b455e83bae0a7b2b85defe5679cf4c9d313b6dcdd1b415cd5b9f166b8593122dab44d1dec66c6fcb962ca511f996692d4eb52a2e05a784f5d601b663d7c88acf570337afeaf016bee35ad965bca5e052e2b6608c98274469558ed6ab3da47c31e3d8ed3e70b1968f80d8288161bd7aac6d7b1119877ee8bc6796a7b7f6eed1ea0547f1a6f0da7b85ab8a572c005eef41fd3a637402"
+#define PEGGY_GENESIS "6aef504158ec0014fee05dc20a0006048ed63e523f6d1062feb23622da928cf23ddcc3b53f23566bc6cab5ebd77cfbf8f0bccb34bff73c55d742dd232994bfbffe1cbab7119ab3d653a256b02d5b6f56c05b8817799f0d242f48c26d35c992ebfff14acdefbe253345d394e84d975334cd55f7d6cbad5a7bd9425b1d5db44944d40be5304b7b62ba0dbc20d3323d2b35f05f654bc95a5a2fdb5a30e46c6fd33b5ea078255f7cad9fd0dbd2fa5031ada4474cbba7b2ee64ef35df06bf3fd3eef6cd3f48339f3c0e080158a92862bbf20bc6702018effbaee525502eb463c74f7ca0dff4ae7cb55ee55ef7cb1c915e655649"
 
 //#define PEGGY_GENESIS "6aef504547ec00143e3028ba0a000604800d0560da5a55fbb56121b403e9dfbbd99f6b05c9af5683676bdda7f39636c579515174afebe5ad659c44567df9f02eb1dc5e30b4cc1a96a0dab18b2e55e5fd771032f2ee3d34de9313d9ea2813d70e6995a2fe7d7b2854a6032c9d022d676a9ae0ed573ab57e4887761a85688b20b417ad099686a67a2b82cca6104698a254c5ca5fe95ab874649513bae9e4bcbc7e868497c3a9d6da3ad82d625f12078d50c48a2e492bd6665e9f86e3fbe4bf6ee1758a9461fee35068851562b3b68082645c92a8f35a61a2de5652478b441fc53aa96aaf169feaedaef7bf1472fb3542ee04"
 //#define PEGGY_GENESIS "6af2504547ef00147eb3ccb70a0006f49b65bed5a3b5f867565be8feb53b1c694b1bd8bcf1039696d8b968a7ae93168e745c6737fe9b6ab079152a3cabeee24e4d48f9ade6b1b41a39fc3abe2a5ae6f9254de6cbf679ad6e338cdfd7b1b4b1e2689c555648a4087cd94aa44869ab48a65b1295f6f75f8bf760a42966bbf2c1d8d6811379d17916e99abdb6c5246a2a192969f101ae3cc9679d98c5abedb64b6d9ea3a5ee485fe3ea467b77e5add9c1fa2d0d0dc781a5046b686b5c3bcdd91b8abb6ed33c8c556e05c4778b0e6b30bd6d6f41cc381d50e7f5a565bd64e78ff696de8a9517ee5ec79f531c594510abdd25ac44e62a"
@@ -229,7 +229,7 @@ void peggy_descriptions(struct peggy_info *PEGS,struct peggy_description *P,char
     P->relid = add_uint64(PEGS->basebits,sizeof(PEGS->basebits)/sizeof(*PEGS->basebits),P->relbits);
     if ( find_uint64(&emptyslot,PEGS->basebits,sizeof(PEGS->basebits)/sizeof(*PEGS->basebits),P->basebits) != P->baseid )
         printf("(%s) (%s) (%s) error cant find baseid.%d for %llx\n",name,base,P->rel,P->baseid,(long long)P->basebits);
-    if ( find_uint64(&emptyslot,PEGS->basebits,sizeof(PEGS->basebits)/sizeof(*PEGS->basebits),P->relbits) != P->relid )
+    if ( P->relbits != 0 && find_uint64(&emptyslot,PEGS->basebits,sizeof(PEGS->basebits)/sizeof(*PEGS->basebits),P->relbits) != P->relid )
         printf("(%s) (%s) (%s) error cant find relid.%d for %llx\n",name,base,P->rel,P->relid,(long long)P->relbits);
 }
 
@@ -608,11 +608,13 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
     numprices = 1;
     datalen = (int32_t)strlen(opreturnstr) / 2;
     decode_hex(opret,datalen,opreturnstr);
+    printf("peggy_genesis(%s)\n",opreturnstr);
     if ( opret[0] == OP_RETURN_OPCODE )
     {
         offset = hdecode_varint(&len,opret,1,sizeof(opret));
-        if ( opret[offset] == 'P' && opret[offset+1] == 'E' && opret[offset+2] == 'G' )
+        if ( opret[offset] == 'P' && opret[offset+1] == 'A' && opret[offset+2] == 'X' )
         {
+            printf("deser\n");
             if ( (n= serdes777_deserialize(&signedcount,&Ptx,firsttimestamp,opret+offset+3,(int32_t)len-3)) > 0 )
             {
                 err = 0;
@@ -632,10 +634,10 @@ struct peggy_info *peggy_genesis(int32_t lookbacks[OPRETURNS_CONTEXTS],struct pe
                         PEGS->accts = accts777_init(path,0);
                         PEGS->genesis = opreturnstr, opreturnstr = 0;
                     }
-                }
-            }
-        }
-    }
+                } else printf("i.%d vs %d\n",i,Ptx.details.price.num);
+            } else printf("deser got n.%d\n",n);
+        } else printf("illegal opret.(%c%c%c)\n",opret[offset],opret[offset+1],opret[offset+2]);
+    } else printf("opret[0] %d\n",opret[0]);
     if ( err < 0 || PEGS == 0 )
         return(0);
     mindenom.Pval = PRICE_RESOLUTION;
@@ -829,10 +831,11 @@ uint64_t peggy_dailyrates()
 
 void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint32_t blocknum,char *opreturnstr,uint8_t *data,int32_t datalen)
 {
-    int32_t lookbacks[OPRETURNS_CONTEXTS]; uint64_t allocsize,len; int32_t n,signedcount,valid=0; long offset;
+    int32_t lookbacks[OPRETURNS_CONTEXTS]; uint64_t allocsize,len; int32_t n,signedcount,valid=0; long offset; struct price_resolution tmp;
     char fname[512]; uint8_t opret[8192]; struct peggy_tx Ptx; struct peggy_info *PEGS = _PEGS;
     if ( blocknum == 0 )
         opreturnstr = PEGGY_GENESIS;
+    //printf("replay genesis.%p opreturnstr.%p data.%p\n",PEGGY_GENESIS,opreturnstr,data);
     if ( data == 0 )
     {
         data = opret;
@@ -855,7 +858,7 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
     if ( data != 0 && data[0] == OP_RETURN_OPCODE )
     {
         offset = hdecode_varint(&len,data,1,sizeof(opret));
-        if ( data[offset] == 'P' && data[offset+1] == 'E' && data[offset+2] == 'G' )
+        if ( data[offset] == 'P' && data[offset+1] == 'A' && data[offset+2] == 'X' )
         {
             if ( (n= serdes777_deserialize(&signedcount,&Ptx,0,&data[offset+3],(int32_t)(len - 3))) < 0 )
                 printf("peggy_process.%d peggy_deserialize error datalen.%d t%d\n",blocknum,datalen,Ptx.timestamp);
@@ -863,16 +866,23 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
             {
                 int32_t j,nonz = 0;
                 for (j=0; j<Ptx.details.price.num; j++)
+                {
                     if ( Ptx.details.price.feed[j] != 0 )
-                        nonz++;//, fprintf(stderr,"%u ",Ptx.details.price.feed[j]);
+                    {
+                        tmp.Pval = Ptx.details.price.feed[j];
+                        tmp = peggy_scaleprice(tmp,peggy_mils(j));
+                        nonz++;
+                    }
+                    fprintf(stderr,"(%s %u %.6f) ",peggy_contracts[j],Ptx.details.price.feed[j],Pval(&tmp));
+                }
                 //fprintf(stderr,"%d ",nonz);
-                //printf("%d: type.%d %u num.%d\n",i,Ptx.txtype,Ptx.timestamp,Ptx.details.price.num);
+                printf("PEGS.%p PEGGY type.%d %u num.%d nonz.%d\n",PEGS,Ptx.txtype,Ptx.timestamp,Ptx.details.price.num,nonz);
                 if ( PEGS == 0 && nonz == Ptx.details.price.num )
                     PEGS = peggy_genesis(lookbacks,PEGS,path,Ptx.timestamp,opreturnstr);
                 else if ( PEGS != 0 && Ptx.timestamp > PEGS->genesistime )
                 {
                     Ptx.flags |= PEGGY_FLAGS_PEGGYBASE;
-                    if ( peggy_process(PEGS,1,Ptx.funding.src.coinaddr,Ptx.funding.amount,&data[offset+3],(int32_t)len-3,blocknum,Ptx.timestamp,blocknum) < 0 )
+                    if ( peggy_process(PEGS,1,&Ptx.funding.src.coinaddr,Ptx.funding.amount,&data[offset+3],(int32_t)len-3,blocknum,Ptx.timestamp,blocknum) < 0 )
                     {
                         printf("error processing blocknum.%u Ptx.blocknum %u\n",blocknum,blocknum);
                     }
@@ -880,7 +890,7 @@ void *peggy_replay(char *path,struct txinds777_info *opreturns,void *_PEGS,uint3
                 if ( PEGS != 0 )
                     PEGS->numopreturns++;
             }
-        }
+        } else printf("illegal.(%c%c%c)\n",data[offset],data[offset+1],data[offset+2]);
     } else printf("missing OP_RETURN_OPCODE [%02x]\n",opret[0]);
     return(PEGS);
 }
@@ -891,11 +901,11 @@ struct peggy_info *peggy_lchain(struct txinds777_info *opreturns,char *path)
 {
     double startmilli; int32_t i; struct peggy_info *tmp,*PEGS = 0;
     startmilli = milliseconds();
-   // printf("about to replay\n"), getchar();
+    printf("about to replay\n");
     for (i=0; i<1000000; i++)
     {
-        if ( PEGS == 0 )
-            PEGS = peggy_replay(path,opreturns,PEGS,0,0,0,0);
+        if ( PEGS == 0 && (PEGS= peggy_replay(path,opreturns,PEGS,0,0,0,0)) == 0 )
+            break;
         else if ( (tmp= peggy_replay(path,opreturns,PEGS,i,0,0,0)) != PEGS )
             break;
     }

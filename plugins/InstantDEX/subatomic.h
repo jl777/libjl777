@@ -86,7 +86,8 @@ char *create_atomictx_scripts(uint8_t addrtype,char *scriptPubKey,char *p2shaddr
     hex[n++] = SCRIPT_OP_EQUALVERIFY;
     hex[n++] = SCRIPT_OP_CHECKSIG;
     hex[n++] = SCRIPT_OP_ENDIF;
-    retstr = calloc(1,n*2+16);
+    if ( (retstr= calloc(1,n*2+16)) == 0 )
+        return(0);
     //printf("pubkeyA.(%s) pubkeyB.(%s) hash160.(%s) ->\n",pubkeyA,pubkeyB,hash160str);
     //strcpy(retstr,"01");
     //sprintf(retstr+2,"%02x",n);
@@ -119,8 +120,12 @@ struct btcaddr *btcaddr_new(char *coinstr,char *p2sh_script)
 {
     uint8_t script[8192],md160[20]; char pubkeystr[512],privkeystr[512],hashstr[41]; struct coin777 *coin;
     void *privkey=0,*pubkey=0; int32_t n; size_t len,slen; cstring *btc_addr; struct btcaddr *btc;
-    btc = calloc(1,sizeof(*btc));
-    coin = coin777_find(coinstr,1);
+    if ( (btc= calloc(1,sizeof(*btc))) == 0 || (coin = coin777_find(coinstr,1)) == 0 )
+    {
+        if ( btc != 0 )
+            free(btc);
+        return(0);
+    }
     strncpy(btc->coin,coin->name,sizeof(btc->coin)-1);
     if ( p2sh_script != 0 )
     {
@@ -175,12 +180,15 @@ int32_t btc_getpubkey(char pubkeystr[67],uint8_t pubkeybuf[33],struct bp_key *ke
     bp_pubkey_get(key,&pubkey,&len);
     if ( pubkey != 0 )
     {
-        if ( len < 34 )
+        if ( pubkeystr != 0 )
         {
-            init_hexbytes_noT(pubkeystr,pubkey,(int32_t)len);
-            memcpy(pubkeybuf,pubkey,len);
+            if ( len < 34 )
+            {
+                init_hexbytes_noT(pubkeystr,pubkey,(int32_t)len);
+                memcpy(pubkeybuf,pubkey,len);
+            }
+            else printf("btc_getpubkey error len.%ld\n",len), len = -1;
         }
-        else printf("btc_getpubkey error len.%ld\n",len), len = -1;
         //printf("btc_getpubkey len.%ld (%s).%p\n",len,pubkeystr,pubkeystr);
     } else len = -1;
     return((int32_t)len);
@@ -218,7 +226,22 @@ int32_t btc_convaddr(char *hexaddr,char *addr58)
     return(-1);
 }
 
-int32_t btc_convwip(uint8_t *privkey,char *wipstr)
+int32_t btc_priv2wip(char *wipstr,uint8_t privkey[32],uint8_t addrtype)
+{
+    uint8_t tmp[128]; char hexstr[67]; cstring *btc_addr;
+    memcpy(tmp,privkey,32);
+    tmp[32] = 1;
+    init_hexbytes_noT(hexstr,tmp,32);
+    if ( (btc_addr= base58_encode_check(addrtype,true,tmp,33)) != 0 )
+    {
+        strcpy(wipstr,btc_addr->str);
+        cstr_free(btc_addr,true);
+    }
+    printf("-> (%s) -> wip.(%s) addrtype.%02x\n",hexstr,wipstr,addrtype);
+    return(0);
+}
+
+int32_t btc_wip2priv(uint8_t privkey[32],char *wipstr)
 {
     uint8_t addrtype; cstring *cstr; int32_t len = -1;
     if ( (cstr= base58_decode_check(&addrtype,(const char *)wipstr)) != 0 )
@@ -228,7 +251,9 @@ int32_t btc_convwip(uint8_t *privkey,char *wipstr)
             cstr->len--;
         memcpy(privkey,cstr->str,cstr->len);
         len = (int32_t)cstr->len;
-        //printf("addrtype.%02x wipstr.(%llx) len.%d\n",addrtype,*(long long *)privkey,len);
+        char tmp[138];
+        btc_priv2wip(tmp,privkey,addrtype);
+        printf("addrtype.%02x wipstr.(%llx) len.%d\n",addrtype,*(long long *)privkey,len);
         cstr_free(cstr,true);
     }
     return(len);
@@ -236,7 +261,7 @@ int32_t btc_convwip(uint8_t *privkey,char *wipstr)
 
 int32_t btc_setprivkey(struct bp_key *key,char *privkeystr)
 {
-    uint8_t privkey[512]; int32_t len = btc_convwip(privkey,privkeystr);
+    uint8_t privkey[512]; int32_t len = btc_wip2priv(privkey,privkeystr);
     if ( len < 0 || bp_key_init(key) == 0 || bp_key_secret_set(key,privkey,len) == 0 )
     {
         printf("error setting privkey\n");
@@ -251,15 +276,42 @@ void jumblr_freekey(void *key)
     free(key);
 }
 
+int32_t btc_priv2pub(uint8_t pubkey[33],uint8_t privkey[32])
+{
+    size_t len; void *pub = 0; int32_t retval = -1;
+    struct bp_key *key = calloc(1,sizeof(*key));
+    if ( key != 0 && bp_key_init(key) != 0 && bp_key_secret_set(key,privkey,32) != 0 )
+    {
+        bp_pubkey_get(key,&pub,&len);
+        bp_key_free(key);
+        if ( len == 33 )
+            memcpy(pubkey,pub,33);
+        if ( pub != 0 )
+            free(pub);
+        return(retval);
+    }
+    if ( key != 0 )
+        bp_key_free(key);
+    return(retval);
+}
+
+int32_t btc_pub2rmd(uint8_t rmd160[20],uint8_t pubkey[33])
+{
+    char pubkeystr[67],hashstr[41];
+    init_hexbytes_noT(pubkeystr,pubkey,33);
+    calc_OP_HASH160(hashstr,rmd160,pubkeystr);
+    return(0);
+}
+
 void *jumblr_bpkey(char *pubP,struct coin777 *coin,char *coinaddr)
 {
-    uint8_t buf[1024]; char *privkey; struct bp_key *key = 0;
+    uint8_t buf[2048]; char *privkey; struct bp_key *key = 0;
     //printf("coin.%s (%s)\n",coin->name,coinaddr);
     if ( (privkey = dumpprivkey(coin->name,coin->serverport,coin->userpass,coinaddr)) != 0 )
     {
         //printf("privkey.(%s)\n",privkey);
         key = calloc(1,sizeof(*key));
-        if ( btc_setprivkey(key,privkey) == 0 && btc_getpubkey(pubP,buf,key) > 0 )
+        if ( key != 0 && btc_setprivkey(key,privkey) == 0 && btc_getpubkey(pubP,buf,key) > 0 )
             return(key);
         jumblr_freekey(key);
     }
@@ -505,7 +557,12 @@ char *jumblr_signvin(char *sigstr,struct coin777 *coin,char *signedtx,int32_t bu
         }
         return(0);
     }
-    T = calloc(1,sizeof(*T));
+    if ( (T = calloc(1,sizeof(*T))) == 0 )
+    {
+        printf("unexpected out of mem in jumblr_signvin\n");
+        return(0);
+    }
+    
     *T = *refT;
     vin = &T->inputs[redeemi];
     safecopy(redeem,vin->sigs,sizeof(redeem));
@@ -847,7 +904,11 @@ struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,stru
     {
         if ( (addrs= gather_account_addresses(coin,account)) != 0 )
         {
-            params = calloc(1,strlen(addrs) + 128);
+            if ( (params = calloc(1,strlen(addrs) + 128)) == 0 )
+            {
+                free(addrs);
+                return(0);
+            }
             addrs[strlen(addrs)-1] = 0;
             sprintf(params,"[%d, 99999999, [%s]]",coin->minconfirms,addrs+1);
             free(addrs);
@@ -855,7 +916,8 @@ struct subatomic_unspent_tx *gather_unspents(uint64_t *totalp,int32_t *nump,stru
     }
     else
     {
-        params = calloc(1,128);
+        if ( (params = calloc(1,128)) == 0 )
+            return(0);
         sprintf(params,"%d, 99999999",coin->minconfirms);
     }
     //printf("issue listunspent.(%s)\n",params);
@@ -1022,7 +1084,8 @@ char *subatomic_signp2sh(char *sigstr,struct coin777 *coin,struct cointx_info *r
 {
     char hexstr[1024],pubP[128],*sig0,*sig1; bits256 hash2; uint8_t data[4096],sigbuf[512]; struct bp_key key,keyV;
     struct cointx_info *T; int32_t i,n; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin;
-    T = calloc(1,sizeof(*T));
+    if ( (T= calloc(1,sizeof(*T))) == 0 )
+        return(0);
     if ( privkeystr != 0 )
         btc_setprivkey(&key,privkeystr);
     *T = *refT; vin = &T->inputs[redeemi];
@@ -1196,7 +1259,8 @@ char *subatomic_fundingtx(char *refredeemscript,struct subatomic_rawtransaction 
                     printf("error creating tx\n");
                 else
                 {
-                    refT = calloc(1,sizeof(*refT));
+                    if ( (refT= calloc(1,sizeof(*refT))) == 0 )
+                        return(0);
                     refT->version = 1;
                     refT->timestamp = (uint32_t)time(NULL);
                     strcpy(refT->inputs[0].tx.txidstr,txid);

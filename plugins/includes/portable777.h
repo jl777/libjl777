@@ -51,6 +51,8 @@ int32_t OS_getpid();
 int32_t OS_waitpid(int32_t childpid,int32_t *statusp,int32_t flags);
 int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp);
 uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second);
+unsigned char _decode_hex(char *hex);
+char hexbyte(int32_t c);
 
 char *nn_typestr(int32_t type);
 
@@ -167,6 +169,7 @@ int32_t decode_cipher(uint8_t *str,uint8_t *cipher,int32_t *lenp,uint8_t *mypriv
 int32_t parse_ipaddr(char *ipaddr,char *ip_port);
 int32_t gen_randomacct(uint32_t randchars,char *NXTaddr,char *NXTsecret,char *randfilename);
 char *dumpprivkey(char *coinstr,char *serverport,char *userpass,char *coinaddr);
+int32_t getprivkey(uint8_t privkey[32],char *name,char *coinaddr);
 uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
 uint64_t conv_rsacctstr(char *rsacctstr,uint64_t nxt64bits);
 uint64_t conv_NXTpassword(unsigned char *mysecret,unsigned char *mypublic,uint8_t *pass,int32_t passlen);
@@ -297,7 +300,7 @@ double check_ratios(uint64_t baseamount,uint64_t relamount,uint64_t baseamount2,
 double make_jumpquote(uint64_t baseid,uint64_t relid,uint64_t *baseamountp,uint64_t *relamountp,uint64_t *frombasep,uint64_t *fromrelp,uint64_t *tobasep,uint64_t *torelp);
 
 extern queue_t PendingQ;
-char *peggyrates(uint32_t timestamp);
+char *peggyrates(uint32_t timestamp,char *name);
 #define MAX_SUBATOMIC_OUTPUTS 4
 #define MAX_SUBATOMIC_INPUTS 16
 #define SUBATOMIC_STARTING_SEQUENCEID 1000
@@ -325,6 +328,11 @@ struct subatomic_rawtransaction
 int32_t btc_coinaddr(char *coinaddr,uint8_t addrtype,char *pubkeystr);
 int32_t btc_convaddr(char *hexaddr,char *addr58);
 int32_t btc_convrmd160(char *coinaddr,uint8_t addrtype,uint8_t md160[20]);
+int32_t btc_priv2wip(char *wipstr,uint8_t privkey[32],uint8_t addrtype);
+int32_t btc_wip2priv(uint8_t privkey[32],char *wipstr);
+int32_t btc_priv2pub(uint8_t pubkey[33],uint8_t privkey[32]);
+int32_t btc_pub2rmd(uint8_t rmd160[20],uint8_t pubkey[33]);
+uint64_t nxt_priv2addr(char *rsaddr,char *pubkeystr,uint8_t priv[32]);
 uint8_t *encode_str(int32_t *cipherlenp,void *str,int32_t len,bits256 destpubkey,bits256 myprivkey,bits256 mypubkey);
 int32_t decode_cipher(uint8_t *str,uint8_t *cipher,int32_t *lenp,uint8_t *myprivkey);
 extern queue_t InstantDEXQ;

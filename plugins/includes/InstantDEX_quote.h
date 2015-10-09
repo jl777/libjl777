@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include "uthash.h"
 
-struct InstantDEX_shared { double price,vol; uint64_t quoteid,offerNXT,basebits,relbits,baseid,relid; int64_t baseamount,relamount; uint32_t timestamp; uint16_t duration:14,wallet:1,a:1,isask:1,expired:1,closed:1,swap:1,responded:1,matched:1,feepaid:1,automatch:1,pending:1,minperc:7; };
+struct InstantDEX_shared { double price,vol; uint64_t quoteid,offerNXT,basebits,relbits,baseid,relid; int64_t baseamount,relamount; uint32_t timestamp; uint16_t duration:14,wallet:1,a:1,isask:1,expired:1,closed:1,swap:1,responded:1,matched:1,feepaid:1,automatch:1,pending:1,minperc:7; uint16_t minbuyin,maxbuyin; };
 
 struct InstantDEX_quote
 {
