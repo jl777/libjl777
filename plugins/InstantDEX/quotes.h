@@ -683,8 +683,16 @@ void InstantDEX_update(char *NXTaddr,char *NXTACCTSECRET)
            }
            else
            {
-               printf("requeue %llu/%llu %d %f %f\n",(long long)pend->orderid,(long long)pend->quoteid,pend->dir,pend->price,pend->volume);
-               queue_enqueue("requeue",&Pending_offersQ.pingpong[iter ^ 1],&pend->DL);
+               if ( time(NULL) > iQ->s.timestamp+60 )
+               {
+                   printf("expire pending offer %llu/%llu %d %f %f\n",(long long)pend->orderid,(long long)pend->quoteid,pend->dir,pend->price,pend->volume);
+                   free(pend);
+               }
+               else
+               {
+                   printf("InstantDEX_update requeue %llu/%llu %d %f %f\n",(long long)pend->orderid,(long long)pend->quoteid,pend->dir,pend->price,pend->volume);
+                   queue_enqueue("requeue",&Pending_offersQ.pingpong[iter ^ 1],&pend->DL);
+               }
            }
         }
     }

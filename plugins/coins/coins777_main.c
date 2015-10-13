@@ -231,6 +231,15 @@ void set_atomickeys(struct coin777 *coin)
     }
 }
 
+int32_t coin777_wiftype(char *coinstr)
+{
+    if ( strcmp(coinstr,"BTC") == 0 )
+       return(0x80);
+    else if ( strcmp(coinstr,"BTCD") == 0 )
+        return(0xbc);
+    return(0);
+}
+
 int32_t coin777_addrtype(uint8_t *p2shtypep,char *coinstr)
 {
     int32_t addrtype = 0;

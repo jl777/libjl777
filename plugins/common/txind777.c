@@ -130,7 +130,7 @@ void txinds777_ensure(struct txinds777_info *txinds,uint32_t blocknum,uint64_t c
 int64_t txind777_create(struct txinds777_info *txinds,uint32_t blocknum,uint32_t timestamp,void *txdata,uint16_t len)
 {
     int64_t txind = -1; uint32_t triplet[3];
-    if ( txdata == 0 )
+    if ( txdata == 0 || txinds == 0 )
         return(0);
     if ( len != 0 )
     {

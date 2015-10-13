@@ -556,7 +556,7 @@ uint32_t set_handstr(char *handstr,uint8_t cards[7],int32_t verbose)
     for (i=0; i<7; i++)
         if ( cards[i] < 0 || cards[i] >= 52 )
         {
-            printf("illegal card[%d] %d\n",i,cards[i]);
+            //printf("illegal card[%d] %d\n",i,cards[i]);
             return(0);
         }
    	score = SevenCardDrawScore (&cards[0]);

@@ -106,7 +106,7 @@ int32_t cards777_validate(bits256 cardpriv,bits256 final,bits256 *cardpubs,int32
     checkcard = fcontract(val);
     if ( memcmp(checkcard.bytes,audit[0].bytes,sizeof(checkcard)) != 0 )
     {
-        printf("cards777_validate: checkcard not validated %llx vs %llx\n",(long long)checkcard.txid,(long long)audit[0].txid);
+        printf("cards777_validate: checkcard not validated %llx vs %llx numplayers.%d\n",(long long)checkcard.txid,(long long)audit[0].txid,numplayers);
         return(-1);
     }
     ver = cards777_initcrypt(cardpriv,cardpriv,playerpub,0);
@@ -217,8 +217,8 @@ bits256 cards777_pubkeys(bits256 *pubkeys,int32_t numcards,bits256 cmppubkey)
     if ( cmppubkey.txid != 0 )
     {
         if ( memcmp(check.bytes,cmppubkey.bytes,sizeof(check)) != 0 )
-            printf("permicheck.%llx != prod.%llx\n",(long long)check.txid,(long long)pubkey.txid);
-        else printf("pubkeys matched\n");
+            printf("cards777_pubkeys: mismatched pubkeys permicheck.%llx != prod.%llx\n",(long long)check.txid,(long long)pubkey.txid);
+        //else printf("pubkeys matched\n");
     }
     return(check);
 }
@@ -265,15 +265,22 @@ bits256 cards777_initdeck(bits256 *cards,bits256 *cardpubs,int32_t numcards,int3
     return(fcontract(prod));
 }
 
-uint8_t *cards777_encode(bits256 *encoded,bits256 *xoverz,uint8_t *allshares,uint8_t *myshares[],uint8_t *sharenrs,int32_t M,bits256 *ciphers,int32_t numcards,int32_t N)
+uint8_t *cards777_encode(bits256 *encoded,bits256 *xoverz,uint8_t *allshares,uint8_t *myshares[],uint8_t sharenrs[255],int32_t M,bits256 *ciphers,int32_t numcards,int32_t N)
 {
     bits256 shuffled[CARDS777_MAXCARDS * CARDS777_MAXPLAYERS];
     cards777_shuffle(shuffled,ciphers,numcards,N);
     cards777_layer(encoded,xoverz,shuffled,numcards,N);
+    memset(sharenrs,0,255);
+    init_sharenrs(sharenrs,0,N,N);
     cards777_calcmofn(allshares,myshares,sharenrs,M,xoverz,numcards,N);
     memcpy(ciphers,shuffled,numcards * N * sizeof(bits256));
-    if ( 0 )
+    if ( 1 )
     {
+        /*{
+            init_hexbytes_noT(nrs,dp->hand.sharenrs,dp->N);
+            if ( (nrs= jstr(json,"sharenrs")) != 0 )
+                decode_hex(dp->hand.sharenrs,(int32_t)strlen(nrs)>>1,nrs);
+        }*/
         int32_t i,j,m,size; uint8_t *recover,*testshares[CARDS777_MAXPLAYERS],testnrs[255];
         size = N * sizeof(bits256) * numcards;
         for (j=0; j<1; j++)
@@ -346,22 +353,22 @@ struct cards777_privdata *cards777_allocpriv(int32_t numcards,int32_t N)
 struct cards777_pubdata *cards777_allocpub(int32_t M,int32_t numcards,int32_t N)
 {
     struct cards777_pubdata *dp;
-    if ( (dp= calloc(1,sizeof(*dp) + sizeof(bits256) * ((N + numcards + 1) + (N * numcards)))) == 0 )
+    if ( (dp= calloc(1,sizeof(*dp) + sizeof(bits256) * ((numcards + 1) + (N * numcards)))) == 0 )
     {
         printf("cards777_allocpub: unexpected out of memory error\n");
         return(0);
     }
     dp->M = M, dp->N = N, dp->numcards = numcards;
-    dp->playerpubs = &dp->data[0];
-    dp->hand.cardpubs = &dp->playerpubs[N];
+    dp->hand.cardpubs = &dp->data[0];
     dp->hand.final = &dp->hand.cardpubs[numcards + 1];
     return(dp);
 }
 
-int32_t cards777_init(struct hostnet777_server *srv,int32_t M,struct hostnet777_client **clients,int32_t N,int32_t numcards)
+int32_t cards777_testinit(struct hostnet777_server *srv,int32_t M,struct hostnet777_client **clients,int32_t N,int32_t numcards)
 {
-    int32_t i,j; uint8_t sharenrs[255]; //,destplayer,cardibits256 *ciphers,cardpriv,card; uint64_t mask = 0;
-    struct cards777_pubdata *dp; struct cards777_privdata *priv;
+    //static int64_t balances[9];
+    int32_t i; uint8_t sharenrs[255]; //,destplayer,cardibits256 *ciphers,cardpriv,card; uint64_t mask = 0;
+    struct cards777_pubdata *dp; struct cards777_privdata *priv; struct pangea_info *sp;
     if ( srv->num != N )
     {
         printf("srv->num.%d != N.%d\n",srv->num,N);
@@ -372,11 +379,16 @@ int32_t cards777_init(struct hostnet777_server *srv,int32_t M,struct hostnet777_
     for (i=0; i<N; i++)
     {
         dp = srv->clients[i].pubdata = cards777_allocpub(M,numcards,N);
+        sp = dp->table;
         memcpy(dp->hand.sharenrs,sharenrs,dp->N);
+        /*for (j=0; j<N; j++)
+            sp->playerpubs[j] = srv->clients[j].pubkey;
         for (j=0; j<N; j++)
-            dp->playerpubs[j] = srv->clients[j].pubkey;
-        for (j=0; j<N; j++)
-            dp->balances[j] = 100;
+        {
+            balances[j] = 100;
+            dp->balances[j] = &balances[j];
+        }*/
+        printf("deprecated, need to init sp->\n");
         priv = srv->clients[i].privdata = cards777_allocpriv(numcards,N);
         //priv->privkey = (i == 0) ? srv->H.privkey : clients[i]->H.privkey;
         /*if ( i == 0 )

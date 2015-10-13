@@ -46,6 +46,8 @@ char *get_acct_coinaddr(char *coinaddr,char *coinstr,char *serverport,char *user
 int32_t get_pubkey(struct destbuf *pubkey,char *coinstr,char *serverport,char *userpass,char *coinaddr);
 cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass);
 char *get_rawtransaction(char *coinstr,char *serverport,char *userpass,char *txidstr);
+int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params);
+int32_t gen_msigaddr(char *multisigaddr,char *redeemScript,char *name,char *pubkeys[],int32_t m,int32_t n);
 
 #endif
 #else
@@ -1142,6 +1144,137 @@ cJSON *_get_localaddresses(char *coinstr,char *serverport,char *userpass)
         free(retstr);
     }
     return(json);
+}
+
+int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params)
+{
+    char addr[1024],*retstr; struct destbuf tmp; cJSON *json,*redeemobj,*msigobj; int32_t flag = 0;
+    if ( addmultisig != 0 )
+    {
+        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"addmultisigaddress",params)) != 0 )
+        {
+            strcpy(multisigaddr,retstr);
+            free(retstr);
+            sprintf(addr,"\"%s\"",multisigaddr);
+            if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"validateaddress",addr)) != 0 )
+            {
+                json = cJSON_Parse(retstr);
+                if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
+                else
+                {
+                    if ( (redeemobj= cJSON_GetObjectItem(json,"hex")) != 0 )
+                    {
+                        copy_cJSON(&tmp,redeemobj); strcpy(redeemScript,tmp.buf);
+                        flag = 1;
+                    } else printf("missing redeemScript in (%s)\n",retstr);
+                    free_json(json);
+                }
+                free(retstr);
+            }
+        } else printf("error creating multisig address\n");
+    }
+    else
+    {
+        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"createmultisig",params)) != 0 )
+        {
+            json = cJSON_Parse(retstr);
+            if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
+            else
+            {
+                if ( (msigobj= cJSON_GetObjectItem(json,"address")) != 0 )
+                {
+                    if ( (redeemobj= cJSON_GetObjectItem(json,"redeemScript")) != 0 )
+                    {
+                        copy_cJSON(&tmp,msigobj); strcpy(multisigaddr,tmp.buf);
+                        copy_cJSON(&tmp,redeemobj); strcpy(redeemScript,tmp.buf);
+                        flag = 1;
+                    } else printf("missing redeemScript in (%s)\n",retstr);
+                } else printf("multisig missing address in (%s) params.(%s)\n",retstr,params);
+                free_json(json);
+            }
+            free(retstr);
+        } else printf("error issuing createmultisig.(%s)\n",params);
+    }
+    return(flag);
+}
+
+int32_t gen_msigaddr(char *multisigaddr,char *redeemScript,char *name,char *pubkeys[],int32_t m,int32_t n)
+{
+    char *params; int32_t i,retval = -1; cJSON *array,*keys; struct coin777 *coin; char scriptPubKey[1024],multisigaddr2[128],redeemScript2[8192];
+    multisigaddr[0] = redeemScript[0] = 0;
+    if ( (coin= coin777_find(name,0)) != 0 )
+    {
+        keys = cJSON_CreateArray();
+        for (i=0; i<n; i++)
+            jaddistr(keys,pubkeys[i]);
+        array = cJSON_CreateArray();
+        jaddinum(array,m);
+        jaddi(array,keys);
+        params = jprint(array,1);
+        create_MofN(coin->p2shtype,redeemScript,scriptPubKey,multisigaddr,pubkeys,m,n);
+        retval = generate_multisigaddr(multisigaddr2,redeemScript2,coin->name,coin->serverport,coin->userpass,coin->mgw.use_addmultisig,params);
+        printf("params.(%s) retval.%d scriptPubKey.(%s) multisigaddr.(%s) redeemScript.(%s) vs (%s) (%s)\n",params,retval,scriptPubKey,multisigaddr,redeemScript,multisigaddr2,redeemScript2);
+        free(params);
+    }
+    return(retval);
+}
+
+char *pangea_cashout(char *coinstr,int32_t oldtx_format,uint64_t values[],char *txidstrs[],int32_t vouts[],int32_t numinputs,char *destaddrs[],char *destscripts[],uint64_t outputs[],int32_t n,char *scriptPubKey,char *redeemScript,char *wip,uint64_t txfee,char sigs[][256],int32_t numplayers,uint8_t *privkey,int32_t privkeyind,char *othersignedtx)
+{
+    char *pangea_signp2sh(int32_t oldtx_format,struct cointx_info *refT,int32_t redeemi,char *redeemscript,char sigs[][256],int32_t n,uint8_t privkey[32],int32_t privkeyind);
+    int64_t i,len,amount = 0; struct cointx_info *cointx; char *paramstr,*signedtx,*signedtx2,rawtx[32768];
+    cJSON *vinarray,*item,*array;
+    cointx = calloc(1,sizeof(*cointx));
+    memset(cointx,0,sizeof(*cointx));
+    strcpy(cointx->coinstr,coinstr);
+    array = cJSON_CreateArray();
+    vinarray = cJSON_CreateArray();
+    for (i=0; i<numinputs; i++)
+    {
+        cointx->inputsum += values[i];
+        cointx->inputs[i].value = values[i];
+        cointx->inputs[i].tx.vout = vouts[i];
+        strcpy(cointx->inputs[i].tx.txidstr,txidstrs[i]);
+        //strcpy(cointx->inputs[i].tx.sig,redeemScript);
+        item = cJSON_CreateObject();
+        jaddstr(item,"txid",txidstrs[i]);
+        jaddnum(item,"vout",vouts[i]);
+        jaddstr(item,"scriptPubKey",scriptPubKey);
+        jaddstr(item,"redeemScript",redeemScript);
+        jaddi(vinarray,item);
+    }
+    for (i=0; i<n; i++)
+    {
+        strcpy(cointx->outputs[i].coinaddr,destaddrs[i]);
+        cointx->outputs[i].value = outputs[i];
+        strcpy(cointx->outputs[i].script,destscripts[i]);
+        amount += outputs[i];
+    }
+    cointx->inputsum -= txfee;
+    cointx->numoutputs = n;
+    cointx->version = 1;
+    cointx->numinputs = numinputs;
+    printf("inputsum %.8f change %.8f\n",dstr(cointx->inputsum),dstr(cointx->change));
+    disp_cointx(cointx);
+    len = _emit_cointx(rawtx,sizeof(rawtx),cointx,oldtx_format);
+    if ( othersignedtx != 0 )
+        jaddistr(array,othersignedtx);
+    else jaddistr(array,rawtx);
+    jaddi(array,vinarray);
+    item = cJSON_CreateArray();
+    jaddistr(item,wip);
+    jaddi(array,item);
+    paramstr = jprint(array,1);
+    len += 16384;
+    signedtx2 = calloc(1,len);
+    if ( jumblr_signtx(signedtx2,len,coin777_find(coinstr,1),paramstr) > 0 )
+        printf("SIGS completed\n");
+    signedtx = pangea_signp2sh(oldtx_format,cointx,0,redeemScript,sigs,numplayers,privkey,privkeyind);
+    printf("SIGNEDTX.(%s) (%s)\n",signedtx,signedtx2);
+    free(paramstr);
+    free(cointx);
+    free(signedtx2);
+    return(signedtx);
 }
 
 #endif

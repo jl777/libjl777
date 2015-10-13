@@ -326,8 +326,13 @@ void calc_OP_HASH160(char hexstr[41],uint8_t hash160[20],char *pubkey)
 {
     int32_t decode_hex(unsigned char *bytes,int32_t n,char *hex);
     int32_t init_hexbytes_noT(char *hexbytes,uint8_t *message,long len);
-    uint8_t sha256[32],buf[128]; int32_t len; hash_state md;
+    uint8_t sha256[32],buf[4096]; int32_t len; hash_state md;
     len = (int32_t)strlen(pubkey)/2;
+    if ( len > sizeof(buf) )
+    {
+        printf("calc_OP_HASH160 overflow len.%d vs %ld\n",len,sizeof(buf));
+        return;
+    }
     decode_hex(buf,len,pubkey);
     sha256_init(&md);
     sha256_process(&md,buf,len);

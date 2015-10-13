@@ -116,6 +116,43 @@ char *create_atomictx_scripts(uint8_t addrtype,char *scriptPubKey,char *p2shaddr
     return(retstr);
 }
 
+int32_t create_MofN(uint8_t addrtype,char *redeemScript,char *scriptPubKey,char *p2shaddr,char *pubkeys[],int32_t M,int32_t N)
+{
+    cstring *btc_addr; uint8_t pubkey[33],tmpbuf[24],hex[4096]; int32_t i,n = 0;
+    hex[n++] = 0x50 + M;
+    for (i=0; i<N; i++)
+    {
+        decode_hex(pubkey,33,pubkeys[i]);
+        hex[n++] = 33;
+        memcpy(&hex[n],pubkey,33);
+        n += 33;
+    }
+    hex[n++] = 0x50 + N;
+    hex[n++] = SCRIPT_OP_CHECKMULTISIG;
+    for (i=0; i<n; i++)
+    {
+        redeemScript[i*2] = hexbyte((hex[i]>>4) & 0xf);
+        redeemScript[i*2 + 1] = hexbyte(hex[i] & 0xf);
+        //fprintf(stderr,"%02x",hex[i]);
+    }
+    //fprintf(stderr," n.%d\n",n);
+    redeemScript[n*2] = 0;
+    calc_OP_HASH160(0,tmpbuf+2,redeemScript);
+    //printf("op160.(%s)\n",redeemScript);
+    tmpbuf[0] = SCRIPT_OP_HASH160;
+    tmpbuf[1] = 20;
+    tmpbuf[22] = SCRIPT_OP_EQUAL;
+    init_hexbytes_noT(scriptPubKey,tmpbuf,23);
+    p2shaddr[0] = 0;
+    if ( (btc_addr= base58_encode_check(addrtype,true,tmpbuf+2,20)) != 0 )
+    {
+        if ( strlen(btc_addr->str) < 36 )
+            strcpy(p2shaddr,btc_addr->str);
+        cstr_free(btc_addr,true);
+    }
+    return(n);
+}
+
 struct btcaddr *btcaddr_new(char *coinstr,char *p2sh_script)
 {
     uint8_t script[8192],md160[20]; char pubkeystr[512],privkeystr[512],hashstr[41]; struct coin777 *coin;
@@ -338,6 +375,55 @@ int32_t script_coinaddr(char *coinaddr,cJSON *scriptobj)
         return(0);
     }
     return(-1);
+}
+
+char *pangea_signp2sh(int32_t oldtx_format,struct cointx_info *refT,int32_t redeemi,char *redeemscript,char sigs[][256],int32_t n,uint8_t privkey[32],int32_t privkeyind)
+{
+    char hexstr[16384]; bits256 hash2; uint8_t data[4096],sigbuf[512]; struct bp_key key;
+    struct cointx_info *T; int32_t i,len; void *sig = NULL; size_t siglen = 0; struct cointx_input *vin;
+    if ( bp_key_init(&key) != 0 && bp_key_secret_set(&key,privkey,32) != 0 )
+    {
+        if ( (T= calloc(1,sizeof(*T))) == 0 )
+            return(0);
+        *T = *refT; vin = &T->inputs[redeemi];
+        for (i=0; i<T->numinputs; i++)
+            strcpy(T->inputs[i].sigs,"00");
+        strcpy(vin->sigs,redeemscript);
+        vin->sequence = (uint32_t)-1;
+        T->nlocktime = 0;
+        //disp_cointx(&T);
+        emit_cointx(&hash2,data,sizeof(data),T,oldtx_format,SIGHASH_ALL);
+        //printf("HASH2.(%llx)\n",(long long)hash2.txid);
+        if ( bp_sign(&key,hash2.bytes,sizeof(hash2),&sig,&siglen) != 0 )
+        {
+            memcpy(sigbuf,sig,siglen);
+            sigbuf[siglen++] = SIGHASH_ALL;
+            init_hexbytes_noT(sigs[privkeyind],sigbuf,(int32_t)siglen);
+            strcpy(vin->sigs,"00");
+            for (i=0; i<n; i++)
+            {
+                if ( sigs[i][0] != 0 )
+                {
+                    sprintf(vin->sigs + strlen(vin->sigs),"%02lx%s",strlen(sigs[i])>>1,sigs[i]);
+                    //printf("(%s).%ld ",sigs[i],strlen(sigs[i]));
+                }
+            }
+            len = (int32_t)(strlen(redeemscript)/2);
+            if ( len >= 0xfd )
+                sprintf(&vin->sigs[strlen(vin->sigs)],"4d%02x%02x",len & 0xff,(len >> 8) & 0xff);
+            else sprintf(&vin->sigs[strlen(vin->sigs)],"4c%02x",len);
+            sprintf(&vin->sigs[strlen(vin->sigs)],"%s",redeemscript);
+            //printf("after A.(%s) othersig.(%s) siglen.%02lx -> (%s)\n",hexstr,othersig != 0 ? othersig : "",siglen,vin->sigs);
+            //printf("vinsigs.(%s) %ld\n",vin->sigs,strlen(vin->sigs));
+            _emit_cointx(hexstr,sizeof(hexstr),T,oldtx_format);
+            //disp_cointx(&T);
+            free(T);
+            return(clonestr(hexstr));
+        }
+        else printf("error signing\n");
+        free(T);
+    }
+    return(0);
 }
 
 uint64_t jumblr_getcoinaddr(char *coinaddr,struct destbuf *scriptPubKey,struct coin777 *coin,char *txid,int32_t vout)

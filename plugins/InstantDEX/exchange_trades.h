@@ -114,9 +114,12 @@ uint64_t bittrex_trade(char **retstrp,struct exchange_info *exchange,char *base,
 
 uint64_t poloniex_trade(char **retstrp,struct exchange_info *exchange,char *base,char *rel,int32_t dir,double price,double volume)
 {
-    static CURL *cHandle;
+    static CURL *cHandle; static uint32_t lastnonce;
  	char *sig,*data,*extra,*typestr,cmdbuf[8192],hdr1[4096],hdr2[4096],pairstr[512],dest[SHA512_DIGEST_SIZE*2 + 1]; cJSON *json; uint64_t nonce,txid = 0;
     nonce = time(NULL);
+    if ( nonce <= lastnonce )
+        nonce = lastnonce+1;
+    lastnonce = (uint32_t)nonce;
     if ( (extra= *retstrp) != 0 )
         *retstrp = 0;
     if ( dir == 0 )

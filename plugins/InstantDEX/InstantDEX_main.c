@@ -372,6 +372,13 @@ int32_t bidask_parse(int32_t localaccess,struct destbuf *exchangestr,struct dest
                 iQ->s.relamount = j64bits(json,"ante");
             iQ->s.minbuyin = juint(json,"minbuyin");
             iQ->s.maxbuyin = juint(json,"maxbuyin");
+            /*if ( (iQ->s.maxrake= j64bits(json,"maxrake")) != 0 )
+            {
+                if ( strcmp(base->buf,"BTC") == 0 && iQ->s.maxrake < SATOSHIDEN/10 )
+                    iQ->s.maxrake = SATOSHIDEN/10;
+                else if ( iQ->s.maxrake < 10*SATOSHIDEN )
+                    iQ->s.maxrake = 10*SATOSHIDEN;
+            }*/
         }
         if ( iQ->s.price == 0. )
             iQ->s.price = 1.;

@@ -53,6 +53,8 @@ int32_t OS_conv_unixtime(int32_t *secondsp,time_t timestamp);
 uint32_t OS_conv_datenum(int32_t datenum,int32_t hour,int32_t minute,int32_t second);
 unsigned char _decode_hex(char *hex);
 char hexbyte(int32_t c);
+int32_t create_MofN(uint8_t addrtype,char *redeemScript,char *scriptPubKey,char *p2shaddr,char *pubkeys[],int32_t M,int32_t N);
+int32_t coin777_wiftype(char *coinstr);
 
 char *nn_typestr(int32_t type);
 

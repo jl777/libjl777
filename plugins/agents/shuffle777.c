@@ -887,7 +887,7 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
     if ( initflag > 0 )
     {
         //coin777_find("BTC",1);
-        coin777_find("BTCD",1);
+        //coin777_find("BTCD",1);
         //coin777_find("LTC",1);
         plugin->sleepmillis = 100;
         plugin->ready = 1;

@@ -44,9 +44,9 @@ int32_t MGW_idle(struct plugin_info *plugin)
 char *fix_msigaddr(struct coin777 *coin,char *NXTaddr,char *method);
 
 STRUCTNAME MGW;
-char *PLUGNAME(_methods)[] = { "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
-char *PLUGNAME(_pubmethods)[] = { "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
-char *PLUGNAME(_authmethods)[] = { "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status" };
+char *PLUGNAME(_methods)[] = { "markdeposited", "markspent", "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
+char *PLUGNAME(_pubmethods)[] = { "markdeposited", "markspent", "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status", "findmsigaddr" };
+char *PLUGNAME(_authmethods)[] = { "markdeposited", "markspent", "clearstate", "myacctpubkeys", "myacctpubkey", "askacctpubkey", "msigaddr", "status" };
 
 uint64_t PLUGNAME(_register)(struct plugin_info *plugin,STRUCTNAME   *data,cJSON *json)
 {
@@ -441,60 +441,6 @@ int32_t _map_msigaddr(char *redeemScript,char *coinstr,char *serverport,char *us
         return(1);
     strcpy(normaladdr,msigaddr);
     return(-1);
-}
-
-int32_t generate_multisigaddr(char *multisigaddr,char *redeemScript,char *coinstr,char *serverport,char *userpass,int32_t addmultisig,char *params)
-{
-    char addr[1024],*retstr;
-    cJSON *json,*redeemobj,*msigobj;
-    int32_t flag = 0;
-    if ( addmultisig != 0 )
-    {
-        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"addmultisigaddress",params)) != 0 )
-        {
-            strcpy(multisigaddr,retstr);
-            free(retstr);
-            sprintf(addr,"\"%s\"",multisigaddr);
-            if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"validateaddress",addr)) != 0 )
-            {
-                json = cJSON_Parse(retstr);
-                if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
-                else
-                {
-                    if ( (redeemobj= cJSON_GetObjectItem(json,"hex")) != 0 )
-                    {
-                        copy_cJSON(redeemScript,redeemobj);
-                        flag = 1;
-                    } else printf("missing redeemScript in (%s)\n",retstr);
-                    free_json(json);
-                }
-                free(retstr);
-            }
-        } else printf("error creating multisig address\n");
-    }
-    else
-    {
-        if ( (retstr= bitcoind_passthru(coinstr,serverport,userpass,"createmultisig",params)) != 0 )
-        {
-            json = cJSON_Parse(retstr);
-            if ( json == 0 ) printf("Error before: [%s]\n",cJSON_GetErrorPtr());
-            else
-            {
-                if ( (msigobj= cJSON_GetObjectItem(json,"address")) != 0 )
-                {
-                    if ( (redeemobj= cJSON_GetObjectItem(json,"redeemScript")) != 0 )
-                    {
-                        copy_cJSON(multisigaddr,msigobj);
-                        copy_cJSON(redeemScript,redeemobj);
-                        flag = 1;
-                    } else printf("missing redeemScript in (%s)\n",retstr);
-                } else printf("multisig missing address in (%s) params.(%s)\n",retstr,params);
-                free_json(json);
-            }
-            free(retstr);
-        } else printf("error issuing createmultisig.(%s)\n",params);
-    }
-    return(flag);
 }
 
 char *createmultisig_json_params(struct pubkey_info *pubkeys,int32_t m,int32_t n,char *acctparm)
@@ -1495,19 +1441,21 @@ int32_t mgw_clearunspent(char *txidstr,int32_t vout)
     return(db777_write(0,DB_MGW,key,keylen,&status,sizeof(status)));
 }
 
-int32_t mgw_clearstate(struct coin777 *coin,char *txidstr,int32_t vout)
+int32_t mgw_setstate(struct coin777 *coin,char *txidstr,int32_t vout,int32_t newstatus)
 {
     int32_t i,n,flag = 0; struct extra_info extra;
-    mgw_clearunspent(txidstr,vout);
-    NXT_revassettxid(&extra,coin->mgw.assetidbits,0), n = extra.ind;
+    if ( newstatus == 0 )
+        mgw_clearunspent(txidstr,vout);
+    else mgw_markunspent(txidstr,vout,newstatus);
+    NXT_revassettxid(&extra,coin->mgw.assetidbits,newstatus), n = extra.ind;
     for (i=1; i<=n; i++)
     {
         if ( NXT_revassettxid(&extra,coin->mgw.assetidbits,i) == sizeof(extra) )
         {
             if ( extra.vout == vout && strcmp(txidstr,extra.coindata) == 0 )
             {
-                printf("clear revassettxid.%d %llu for (%s/v%d)\n",i,(long long)extra.txidbits,extra.coindata,extra.vout);
-                extra.flags = 0;
+                printf("set %d revassettxid.%d %llu for (%s/v%d)\n",newstatus,i,(long long)extra.txidbits,extra.coindata,extra.vout);
+                extra.flags = newstatus;
                 NXT_set_revassettxid(coin->mgw.assetidbits,i,&extra);
             }
         } else printf("error loading assettxid[%d] for %llu\n",i,(long long)coin->mgw.assetidbits);
@@ -1725,6 +1673,8 @@ uint64_t mgw_unspentsfunc(struct coin777 *coin,void *args,uint32_t addrind,struc
         if ( (vout= coin777_unspentmap(&txidind,txidstr,coin,unspentind)) >= 0 )
         {
             Ustatus = mgw_unspentstatus(txidstr,vout);
+            if ( (Ustatus & MGW_ALREADYSPENT) != 0 )
+                continue;
             if ( (Ustatus & (MGW_DEPOSITDONE | MGW_ISINTERNAL | MGW_IGNORE)) == 0 )
             {
                 if ( (status= mgw_isinternal(coin,msig,addrind,unspentind,txidstr,vout,0)) != 0 )
@@ -2041,7 +1991,7 @@ struct unspent_info *coin777_bestfit(uint64_t *valuep,struct coin777 *coin,struc
 int64_t coin777_inputs(uint64_t *changep,uint32_t *nump,struct coin777 *coin,struct cointx_input *inputs,int32_t max,uint64_t amount,uint64_t txfee)
 {
     int64_t remainder,sum = 0; int32_t i,numinputs = 0; uint32_t txidind,unspentind; uint64_t value;
-    struct unspent_info *vin,U; struct cointx_input I; struct coin777_addrinfo A; struct mgw777 *mgw = &coin->mgw;
+    struct unspent_info U,*vin; struct cointx_input I; struct coin777_addrinfo A; struct mgw777 *mgw = &coin->mgw;
     *nump = 0;
     remainder = amount + txfee;
     for (i=0; i<mgw->numunspents&&i<max-1; i++)
@@ -2424,8 +2374,38 @@ int32_t PLUGNAME(_process_json)(char *forwarder,char *sender,int32_t valid,struc
             {
                 if ( (coin= coin777_find(coinstr,0)) != 0 )
                 {
-                    mgw_clearstate(coin,cJSON_str(cJSON_GetObjectItem(json,"txid")),get_API_uint(cJSON_GetObjectItem(json,"vout"),0));
+                    mgw_setstate(coin,cJSON_str(cJSON_GetObjectItem(json,"txid")),get_API_uint(cJSON_GetObjectItem(json,"vout"),0),0);
                     sprintf(retbuf,"{\"result\":\"clearstate issued\"}");
+                }
+                else sprintf(retbuf,"{\"error\":\"coin not active\"}");
+            }
+        }
+        else if ( strcmp(methodstr,"markspent") == 0 )
+        {
+            struct coin777 *coin;
+            if ( sender[0] != 0 )
+                sprintf(retbuf,"{\"error\":\"markspent can only be done locally\"}");
+            else
+            {
+                if ( (coin= coin777_find(coinstr,0)) != 0 )
+                {
+                    mgw_setstate(coin,cJSON_str(cJSON_GetObjectItem(json,"txid")),get_API_uint(cJSON_GetObjectItem(json,"vout"),0),MGW_ALREADYSPENT);
+                    sprintf(retbuf,"{\"result\":\"markspent issued\"}");
+                }
+                else sprintf(retbuf,"{\"error\":\"coin not active\"}");
+            }
+        }
+        else if ( strcmp(methodstr,"markdeposited") == 0 )
+        {
+            struct coin777 *coin;
+            if ( sender[0] != 0 )
+                sprintf(retbuf,"{\"error\":\"markdeposited can only be done locally\"}");
+            else
+            {
+                if ( (coin= coin777_find(coinstr,0)) != 0 )
+                {
+                    mgw_setstate(coin,cJSON_str(cJSON_GetObjectItem(json,"txid")),get_API_uint(cJSON_GetObjectItem(json,"vout"),0),MGW_DEPOSITDONE);
+                    sprintf(retbuf,"{\"result\":\"markdeposited issued\"}");
                 }
                 else sprintf(retbuf,"{\"error\":\"coin not active\"}");
             }
